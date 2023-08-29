@@ -3,7 +3,9 @@ use re_data_store::InstancePath;
 use re_data_ui::{item_ui, DataUi};
 use re_space_view::DataBlueprintGroup;
 use re_ui::list_item::ListItem;
-use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, UiVerbosity, ViewerContext};
+use re_viewer_context::{
+    DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
+};
 
 use crate::{
     space_view_heuristics::all_possible_space_views, SpaceInfoCollection, SpaceViewBlueprint,
@@ -149,10 +151,13 @@ impl ViewportBlueprint<'_> {
         let root_group = space_view.data_blueprint.root_group();
         let default_open = Self::default_open_for_group(root_group);
         let collapsing_header_id = ui.id().with(space_view.id);
+        let is_item_hovered =
+            ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let response = ListItem::new(ctx.re_ui, space_view.display_name.clone())
             .selected(ctx.selection().contains(&item))
             .subdued(!visible)
+            .override_hover(is_item_hovered)
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .with_buttons(|re_ui, ui| {
                 //TODO(ab): deduplicate that
@@ -186,7 +191,7 @@ impl ViewportBlueprint<'_> {
             focus_tab(&mut self.tree, space_view_id);
         }
 
-        item_ui::cursor_interact_with_selectable(ctx, response, item);
+        item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if visibility_changed {
             self.has_been_user_edited = true;
@@ -232,6 +237,8 @@ impl ViewportBlueprint<'_> {
                 Some(space_view.id),
                 InstancePath::entity_splat(entity_path.clone()),
             );
+            let is_item_hovered =
+                ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
             let mut properties = space_view
                 .data_blueprint
@@ -242,6 +249,7 @@ impl ViewportBlueprint<'_> {
             let response = ListItem::new(ctx.re_ui, label)
                 .selected(is_selected)
                 .subdued(!group_is_visible || !properties.visible)
+                .override_hover(is_item_hovered)
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
                         visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
@@ -269,7 +277,7 @@ impl ViewportBlueprint<'_> {
                     entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
                 });
 
-            item_ui::cursor_interact_with_selectable(ctx, response, item);
+            item_ui::select_hovered_on_click(ctx, &response, &[item]);
         }
 
         for child_group_handle in &children {
@@ -280,6 +288,8 @@ impl ViewportBlueprint<'_> {
 
             let item = Item::DataBlueprintGroup(space_view.id, *child_group_handle);
             let is_selected = ctx.selection().contains(&item);
+            let is_item_hovered =
+                ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
             let mut remove_group = false;
             let default_open = Self::default_open_for_group(child_group);
@@ -288,6 +298,7 @@ impl ViewportBlueprint<'_> {
             let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
                 .selected(is_selected)
                 .subdued(!child_group_visible || !group_is_visible)
+                .override_hover(is_item_hovered)
                 .with_icon(&re_ui::icons::CONTAINER)
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
@@ -317,7 +328,7 @@ impl ViewportBlueprint<'_> {
                 .item_response
                 .on_hover_text("Group");
 
-            re_data_ui::item_ui::cursor_interact_with_selectable(ctx, response, item);
+            item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
             // needed by the borrow checker
             let Some(child_group) = space_view.data_blueprint.group_mut(*child_group_handle) else {

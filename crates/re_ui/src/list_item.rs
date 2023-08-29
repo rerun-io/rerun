@@ -55,6 +55,7 @@ pub struct ListItem<'a> {
     active: bool,
     selected: bool,
     subdued: bool,
+    override_hover: bool,
     collapse_openness: Option<f32>,
     icon_fn:
         Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
@@ -70,6 +71,7 @@ impl<'a> ListItem<'a> {
             active: true,
             selected: false,
             subdued: false,
+            override_hover: false,
             collapse_openness: None,
             icon_fn: None,
             buttons_fn: None,
@@ -95,6 +97,16 @@ impl<'a> ListItem<'a> {
     // related to the design system table.
     pub fn subdued(mut self, subdued: bool) -> Self {
         self.subdued = subdued;
+        self
+    }
+
+    /// Override the hovered state even if the item is not actually hovered.
+    ///
+    /// Used to highlight items representing things that are hovered elsewhere in the UI. Note that
+    /// the [`egui::Response`] returned by [`Self::show`] and ]`Self::show_collapsing`] will still
+    /// reflect the actual hover state.
+    pub fn override_hover(mut self, override_hover: bool) -> Self {
+        self.override_hover = override_hover;
         self
     }
 
@@ -189,11 +201,18 @@ impl<'a> ListItem<'a> {
         let desired_size = egui::vec2(ui.available_width(), ReUi::list_item_height());
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
+        // override_hover should not affect the returned response
+        let mut style_response = response.clone();
+        if self.override_hover {
+            style_response.hovered = true;
+        }
+
         let mut collapse_response = None;
 
         if ui.is_rect_visible(rect) {
             let mut visuals = if self.active {
-                ui.style().interact_selectable(&response, self.selected)
+                ui.style()
+                    .interact_selectable(&style_response, self.selected)
             } else {
                 ui.visuals().widgets.inactive
             };
@@ -289,9 +308,9 @@ impl<'a> ListItem<'a> {
             let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
                 Some(visuals.bg_fill)
             } else if self.selected
-                || response.hovered()
-                || response.highlighted()
-                || response.has_focus()
+                || style_response.hovered()
+                || style_response.highlighted()
+                || style_response.has_focus()
             {
                 Some(visuals.weak_bg_fill)
             } else {
