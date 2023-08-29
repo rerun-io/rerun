@@ -34,6 +34,7 @@ ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
 egui_extras.workspace = true
+egui_plot.workspace = true
 egui.workspace = true
 image.workspace = true
 itertools.workspace = true

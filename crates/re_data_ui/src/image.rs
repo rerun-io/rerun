@@ -644,7 +644,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
         }
     }
 
-    use egui::plot::{Bar, BarChart, Legend, Plot};
+    use egui_plot::{Bar, BarChart, Legend, Plot};
 
     let names = ["R", "G", "B"];
     let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
