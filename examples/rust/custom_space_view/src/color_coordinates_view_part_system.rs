@@ -48,6 +48,14 @@ impl re_types::Archetype for ColorArchetype {
         Self::required_components()
     }
 
+    fn indicator_component() -> re_types::ComponentName {
+        unimplemented!()
+    }
+
+    fn num_instances(&self) -> usize {
+        unimplemented!()
+    }
+
     fn try_to_arrow(
         &self,
     ) -> re_types::SerializationResult<

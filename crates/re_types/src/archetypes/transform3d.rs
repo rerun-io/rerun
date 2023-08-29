@@ -115,30 +115,63 @@ impl crate::Archetype for Transform3D {
     }
 
     #[inline]
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.Transform3DIndicator".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
+    }
+
+    #[inline]
     fn try_to_arrow(
         &self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::Transform3D>::try_to_arrow([&self.transform], None);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.Transform3D".into(),
-                        Box::new(array.data_type().clone()),
-                        Some("rerun.transform3d".into()),
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("transform", datatype, false),
-                        array,
-                    )
+        Ok([
+            {
+                Some({
+                    let array =
+                        <crate::components::Transform3D>::try_to_arrow([&self.transform], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.Transform3D".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.transform3d".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("transform", datatype, false),
+                            array,
+                        )
+                    })
                 })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.Transform3D#transform")?
-        }]
+                .transpose()
+                .with_context("rerun.archetypes.Transform3D#transform")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.Transform3DIndicator".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.Transform3DIndicator".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.Transform3DIndicator",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
+            },
+        ]
         .into_iter()
         .flatten()
         .collect())

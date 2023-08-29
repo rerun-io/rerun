@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <rerun/arrow.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>

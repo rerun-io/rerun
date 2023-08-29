@@ -116,31 +116,63 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.AnnotationContextIndicator".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
+    }
+
+    #[inline]
     fn try_to_arrow(
         &self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array =
-                    <crate::components::AnnotationContext>::try_to_arrow([&self.context], None);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.AnnotationContext".into(),
-                        Box::new(array.data_type().clone()),
-                        Some("rerun.annotation_context".into()),
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("context", datatype, false),
-                        array,
-                    )
+        Ok([
+            {
+                Some({
+                    let array =
+                        <crate::components::AnnotationContext>::try_to_arrow([&self.context], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.AnnotationContext".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.annotation_context".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("context", datatype, false),
+                            array,
+                        )
+                    })
                 })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.AnnotationContext#context")?
-        }]
+                .transpose()
+                .with_context("rerun.archetypes.AnnotationContext#context")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.AnnotationContextIndicator".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.AnnotationContextIndicator".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.AnnotationContextIndicator",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
+            },
+        ]
         .into_iter()
         .flatten()
         .collect())
