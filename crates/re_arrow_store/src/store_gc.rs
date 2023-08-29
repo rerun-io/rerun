@@ -23,10 +23,10 @@ pub enum GarbageCollectionTarget {
 
 #[derive(Debug, Clone, Copy)]
 pub struct GarbageCollectionOptions {
-    /// How to express how much to garbage collection
+    /// What target threshold should the GC try to meet.
     pub target: GarbageCollectionTarget,
 
-    /// Whether to also garbage-collect timeless data
+    /// Whether to also GC timeless data.
     pub gc_timeless: bool,
 
     /// How many component revisions to preserve on each timeline.
@@ -80,8 +80,12 @@ impl DataStore {
     ///
     /// ## Limitations
     ///
-    /// The garbage collector is currently unaware of our latest-at semantics, i.e. it will drop
-    /// old data even if doing so would impact the results of recent queries.
+    /// The garbage collector has limited support for latest-at semantics. The configuration option:
+    /// [`GarbageCollectionOptions::protect_latest`] will protect the N latest values of each
+    /// component on each timeline.
+    ///
+    /// NOTE: This configuration option is not yet enabled for the Rerun viewer GC pass.
+    ///
     /// See <https://github.com/rerun-io/rerun/issues/1803>.
     //
     // TODO(#1804): There shouldn't be any need to return the purged `RowId`s, all secondary
@@ -97,13 +101,23 @@ impl DataStore {
 
         self.gc_id += 1;
 
-        // NOTE: only temporal data and row metadata get purged!
-        // TODO(jleibs): Consider timeless data.
         let stats_before = DataStoreStats::from_store(self);
-        let initial_num_rows =
-            stats_before.temporal.num_rows + stats_before.metadata_registry.num_rows;
-        let initial_num_bytes =
-            (stats_before.temporal.num_bytes + stats_before.metadata_registry.num_bytes) as f64;
+
+        let initial_num_rows = if options.gc_timeless {
+            stats_before.temporal.num_rows
+                + stats_before.timeless.num_rows
+                + stats_before.metadata_registry.num_rows
+        } else {
+            stats_before.temporal.num_rows + stats_before.metadata_registry.num_rows
+        };
+
+        let initial_num_bytes = if options.gc_timeless {
+            (stats_before.temporal.num_bytes
+                + stats_before.timeless.num_bytes
+                + stats_before.metadata_registry.num_bytes) as f64
+        } else {
+            (stats_before.temporal.num_bytes + stats_before.metadata_registry.num_bytes) as f64
+        };
 
         let protected_rows = self.find_all_protected_rows(options.protect_latest);
 
@@ -150,9 +164,20 @@ impl DataStore {
 
         // NOTE: only temporal data and row metadata get purged!
         let stats_after = DataStoreStats::from_store(self);
-        let new_num_rows = stats_after.temporal.num_rows + stats_after.metadata_registry.num_rows;
-        let new_num_bytes =
-            (stats_after.temporal.num_bytes + stats_after.metadata_registry.num_bytes) as f64;
+        let new_num_rows = if options.gc_timeless {
+            stats_after.temporal.num_rows + stats_after.metadata_registry.num_rows
+        } else {
+            stats_after.temporal.num_rows
+                + stats_after.timeless.num_rows
+                + stats_after.metadata_registry.num_rows
+        };
+        let new_num_bytes = if options.gc_timeless {
+            (stats_after.temporal.num_bytes
+                + stats_after.timeless.num_bytes
+                + stats_after.metadata_registry.num_bytes) as f64
+        } else {
+            (stats_after.temporal.num_bytes + stats_after.metadata_registry.num_bytes) as f64
+        };
 
         re_log::trace!(
             kind = "gc",
@@ -267,8 +292,6 @@ impl DataStore {
                 table.try_drop_row(*row_id, time.as_i64());
             }
 
-            // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
-            // first and then remove them in one pass.
             if timepoint.is_timeless() && include_timeless {
                 for table in self.timeless_tables.values_mut() {
                     table.try_drop_row(*row_id);
