@@ -336,7 +336,7 @@ impl ViewportBlueprint<'_> {
             item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
             // needed by the borrow checker
-            let Some(child_group) = space_view.data_blueprint.group_mut(*child_group_handle) else {
+            let Some(child_group) = space_view.contents.group_mut(*child_group_handle) else {
                 unreachable!("we did the same thing just above");
             };
             child_group.properties_individual.visible = child_group_visible;
