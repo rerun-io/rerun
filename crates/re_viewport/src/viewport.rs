@@ -6,8 +6,9 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use egui_tiles::Behavior;
-use re_ui::ReUi;
+use nohash_hasher::IntMap;
 
+use re_ui::ReUi;
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewHighlights,
     SpaceViewId, SpaceViewState, ViewerContext,
@@ -15,8 +16,9 @@ use re_viewer_context::{
 
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::default_created_space_views,
-    space_view_highlights::highlights_for_space_view, viewport_blueprint::load_viewport_blueprint,
+    space_view_heuristics::{default_created_space_views, identify_entities_per_system_per_class},
+    space_view_highlights::highlights_for_space_view,
+    viewport_blueprint::load_viewport_blueprint,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -63,8 +65,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let blueprint = load_viewport_blueprint(blueprint_db);
 
+        let snapshot = blueprint.clone();
+
         Self {
-            snapshot: blueprint.clone(),
+            snapshot,
             blueprint,
             state,
         }
@@ -151,17 +155,31 @@ impl<'a, 'b> Viewport<'a, 'b> {
     ) {
         re_tracing::profile_function!();
 
+        let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
+
         for space_view in self.blueprint.space_views.values_mut() {
             let space_view_state = self.state.space_view_state_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
                 space_view.class_name(),
             );
-            space_view.on_frame_start(ctx, spaces_info, space_view_state);
+
+            let empty_map = IntMap::default();
+            let entities_per_system_for_class = entities_per_system_per_class
+                .get(space_view.class_name())
+                .unwrap_or(&empty_map);
+            space_view.on_frame_start(
+                ctx,
+                spaces_info,
+                space_view_state,
+                entities_per_system_for_class,
+            );
         }
 
         if self.blueprint.auto_space_views {
-            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
+            for space_view_candidate in
+                default_created_space_views(ctx, spaces_info, &entities_per_system_per_class)
+            {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.blueprint.add_space_view(space_view_candidate);
                 }
@@ -170,6 +188,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
     }
 
     fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
+        re_tracing::profile_function!();
+
         for existing_view in self.blueprint.space_views.values() {
             if existing_view.space_origin == space_view_candidate.space_origin {
                 if existing_view.entities_determined_by_user {
@@ -177,11 +197,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     // So let's skip that.
                     return false;
                 }
-
-                if space_view_candidate
-                    .data_blueprint
-                    .entity_paths()
-                    .is_subset(existing_view.data_blueprint.entity_paths())
+                if existing_view
+                    .contents
+                    .contains_all_entities_from(&space_view_candidate.contents)
                 {
                     // This space view wouldn't add anything we haven't already
                     return false;
@@ -219,9 +237,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let highlights =
             highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);
-        let Some(space_view_blueprint) = self
-            .space_views
-            .get_mut(space_view_id) else {
+        let Some(space_view_blueprint) = self.space_views.get_mut(space_view_id) else {
             return Default::default();
         };
 
@@ -293,12 +309,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         tile_id: egui_tiles::TileId,
     ) {
         let Some(tab_widget) = TabWidget::new(self, ui, tiles, tile_id, true, 0.5) else {
-            return egui_tiles::Behavior::<SpaceViewId>::drag_ui(
-                self,
-                tiles,
-                ui,
-                tile_id,
-            );
+            return egui_tiles::Behavior::<SpaceViewId>::drag_ui(self, tiles, ui, tile_id);
         };
 
         let frame = egui::Frame {
@@ -340,11 +351,17 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
     ) {
-        let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else { return; };
-        let egui_tiles::Tile::Pane(space_view_id) = active else { return; };
+        let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else {
+            return;
+        };
+        let egui_tiles::Tile::Pane(space_view_id) = active else {
+            return;
+        };
         let space_view_id = *space_view_id;
 
-        let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
+        let Some(space_view) = self.space_views.get(&space_view_id) else {
+            return;
+        };
         let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
 
         ui.add_space(8.0); // margin within the frame
@@ -425,7 +442,7 @@ fn space_view_ui(
         ui.centered_and_justified(|ui| {
             ui.weak("No time selected");
         });
-        return
+        return;
     };
 
     space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
@@ -458,7 +475,7 @@ impl TabWidget {
             return None;
         };
         let Some(space_view) = space_view else {
-            return None
+            return None;
         };
         let space_view_id = space_view.id;
 

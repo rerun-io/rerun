@@ -1,14 +1,15 @@
 use web_time::Instant;
 
+use re_data_source::{DataSource, FileContents};
 use re_data_store::store_db::StoreDb;
 use re_log_types::{LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{Receiver, SmartChannelSource};
+use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DynSpaceViewClass, FileContents, PlayState, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, StoreContext, SystemCommand, SystemCommandSender,
+    DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    StoreContext, SystemCommand, SystemCommandSender,
 };
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
     background_tasks::BackgroundTasks,
     store_hub::{StoreHub, StoreHubStats},
     viewer_analytics::ViewerAnalytics,
-    AppState, StoreBundle,
+    AppState,
 };
 
 // ----------------------------------------------------------------------------
@@ -91,10 +92,10 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx: Receiver<LogMsg>,
+    rx: ReceiveSet<LogMsg>,
 
     #[cfg(target_arch = "wasm32")]
-    open_file_promise: Option<poll_promise::Promise<Option<FileContents>>>,
+    open_files_promise: Option<poll_promise::Promise<Vec<re_data_source::FileContents>>>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -131,13 +132,12 @@ pub struct App {
 
 impl App {
     /// Create a viewer that receives new log messages over time
-    pub fn from_receiver(
+    pub fn new(
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
-        rx: Receiver<LogMsg>,
     ) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
@@ -203,9 +203,9 @@ impl App {
 
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
-            rx,
+            rx: Default::default(),
             #[cfg(target_arch = "wasm32")]
-            open_file_promise: Default::default(),
+            open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new()),
@@ -254,7 +254,15 @@ impl App {
         self.screenshotter.is_screenshotting()
     }
 
-    pub fn msg_receiver(&self) -> &Receiver<LogMsg> {
+    pub fn add_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
+        // Make sure we wake up when a message is sent.
+        #[cfg(not(target_arch = "wasm32"))]
+        let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.re_ui.egui_ctx.clone());
+
+        self.rx.add(rx);
+    }
+
+    pub fn msg_receive_set(&self) -> &ReceiveSet<LogMsg> {
         &self.rx
     }
 
@@ -304,25 +312,24 @@ impl App {
                 store_hub.remove_recording_id(&recording_id);
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            SystemCommand::LoadRrdPath(path) => {
-                let with_notification = true;
-                if let Some(rrd) = crate::loading::load_file_path(&path, with_notification) {
-                    let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
-                    store_hub.add_bundle(rrd);
-                    if let Some(store_id) = store_id {
-                        store_hub.set_recording_id(store_id);
-                    }
-                }
-            }
+            SystemCommand::LoadDataSource(data_source) => {
+                let egui_ctx = self.re_ui.egui_ctx.clone();
 
-            SystemCommand::LoadRrdContents(FileContents { file_name, bytes }) => {
-                let bytes: &[u8] = &bytes;
-                if let Some(rrd) = crate::loading::load_file_contents(&file_name, bytes) {
-                    let store_id = rrd.store_dbs().next().map(|db| db.store_id().clone());
-                    store_hub.add_bundle(rrd);
-                    if let Some(store_id) = store_id {
-                        store_hub.set_recording_id(store_id);
+                // On native, `add_receiver` spawns a thread that wakes up the ui thread
+                // on any new message. On web we cannot spawn threads, so instead we need
+                // to supply a waker that is called when new messages arrive in background tasks
+                let waker = Box::new(move || {
+                    // Spend a few more milliseconds decoding incoming messages,
+                    // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                    egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+                });
+
+                match data_source.stream(Some(waker)) {
+                    Ok(rx) => {
+                        self.add_receiver(rx);
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to open data source: {}", re_error::format(err));
                     }
                 }
             }
@@ -334,7 +341,7 @@ impl App {
                     match blueprint_db.entity_db.try_add_data_row(&row) {
                         Ok(()) => {}
                         Err(err) => {
-                            re_log::warn_once!("Failed to store blueprint delta: {err}",);
+                            re_log::warn_once!("Failed to store blueprint delta: {err}");
                         }
                     }
                 }
@@ -365,15 +372,17 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
-                if let Some(rrd_file) = open_rrd_dialog() {
+                for file_path in open_file_dialog_native() {
                     self.command_sender
-                        .send_system(SystemCommand::LoadRrdPath(rrd_file));
+                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                            file_path,
+                        )));
                 }
             }
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
                 let egui_ctx = _egui_ctx.clone();
-                self.open_file_promise = Some(poll_promise::Promise::spawn_async(async move {
+                self.open_files_promise = Some(poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
                     file
@@ -494,9 +503,13 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         command: TimeControlCommand,
     ) {
-        let Some(store_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else { return; };
+        let Some(store_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else {
+            return;
+        };
         let rec_id = store_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else { return; };
+        let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
+            return;
+        };
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
         let times_per_timeline = store_db.times_per_timeline();
@@ -683,7 +696,7 @@ impl App {
 
         let start = web_time::Instant::now();
 
-        while let Ok(msg) = self.rx.try_recv() {
+        while let Some((channel_source, msg)) = self.rx.try_recv() {
             let msg = match msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
@@ -703,7 +716,7 @@ impl App {
             let store_db = store_hub.store_db_mut(store_id);
 
             if store_db.data_source.is_none() {
-                store_db.data_source = Some(self.rx.source().clone());
+                store_db.data_source = Some((*channel_source).clone());
             }
 
             if let Err(err) = store_db.add(&msg) {
@@ -818,48 +831,32 @@ impl App {
             .and_then(|store_hub| store_hub.current_recording())
     }
 
-    fn on_rrd_loaded(&mut self, store_hub: &mut StoreHub, loaded_store_bundle: StoreBundle) {
-        let mut new_rec_id = None;
-        if let Some(store_db) = loaded_store_bundle.recordings().next() {
-            new_rec_id = Some(store_db.store_id().clone());
-            self.analytics.on_open_recording(store_db);
-        }
-
-        for blueprint_db in loaded_store_bundle.blueprints() {
-            if let Some(app_id) = blueprint_db.app_id() {
-                store_hub.set_blueprint_for_app_id(blueprint_db.store_id().clone(), app_id.clone());
-            }
-        }
-
-        store_hub.add_bundle(loaded_store_bundle);
-
-        // Set recording-id after adding to the store so that app-id, etc.
-        // is available internally.
-        if let Some(rec_id) = new_rec_id {
-            store_hub.set_recording_id(rec_id);
-        }
-    }
-
-    fn handle_dropping_files(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+    fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
+
         for file in dropped_files {
-            if let Some(bytes) = &file.bytes {
-                let mut bytes: &[u8] = &(*bytes)[..];
-                if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
-                    self.on_rrd_loaded(store_hub, rrd);
-                }
+            if let Some(bytes) = file.bytes {
+                // This is what we get on Web.
+                self.command_sender
+                    .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                        FileContents {
+                            name: file.name.clone(),
+                            bytes: bytes.clone(),
+                        },
+                    )));
+                continue;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            if let Some(path) = &file.path {
-                let with_notification = true;
-                if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
-                    self.on_rrd_loaded(store_hub, rrd);
-                }
+            if let Some(path) = file.path {
+                self.command_sender
+                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(path)));
             }
         }
+
+        egui_ctx.request_repaint();
     }
 
     /// This function will create an empty blueprint whenever the welcome screen should be
@@ -882,25 +879,38 @@ impl App {
             return false;
         }
 
+        let sources = self.rx.sources();
+
+        if sources.is_empty() {
+            return true;
+        }
+
         // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
         // being used in.
-        match self.rx.source() {
-            // These source are typically "finite". We want the loading screen so long as data is
-            // coming in.
-            SmartChannelSource::Files { .. } | SmartChannelSource::RrdHttpStream { .. } => {
-                !self.rx.is_connected()
+        for source in sources {
+            match &*source {
+                // No need for a welome screen - data is coming soon!
+                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                    return false;
+                }
+
+                // The workflows associated with these sources typically do not require showing the
+                // welcome screen until after some recording have been loaded and then closed.
+                SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::WsClient { .. } => {}
+
+                // This might be the trickiest case. When running the bare executable, we want to show
+                // the welcome screen (default, "new user" workflow). There are other case using Tcp
+                // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
+                // scenarios. In this cases, `--skip-welcome-screen` should be used.
+                SmartChannelSource::TcpServer { .. } => {
+                    return true;
+                }
             }
-            // The workflows associated with these sources typically do not require showing the
-            // welcome screen until after some recording have been loaded and then closed.
-            SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::WsClient { .. } => false,
-            // This might be the trickiest case. When running the bare executable, we want to show
-            // the welcome screen (default, "new user" workflow). There are other case using Tcp
-            // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
-            // scenarios. In this cases, `--skip-welcome-screen` should be used.
-            SmartChannelSource::TcpServer { .. } => true,
         }
+
+        false
     }
 }
 
@@ -951,13 +961,15 @@ impl eframe::App for App {
         }
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(promise) = &self.open_file_promise {
-            if let Some(contents_opt) = promise.ready() {
-                if let Some(contents) = contents_opt {
+        if let Some(promise) = &self.open_files_promise {
+            if let Some(files) = promise.ready() {
+                for file in files {
                     self.command_sender
-                        .send_system(SystemCommand::LoadRrdContents(contents.clone()));
+                        .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                            file.clone(),
+                        )));
                 }
-                self.open_file_promise = None;
+                self.open_files_promise = None;
             }
         }
 
@@ -1050,7 +1062,7 @@ impl eframe::App for App {
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
-        self.handle_dropping_files(&mut store_hub, egui_ctx);
+        self.handle_dropping_files(egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
@@ -1182,35 +1194,43 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn open_rrd_dialog() -> Option<std::path::PathBuf> {
+fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
+    re_tracing::profile_function!();
     rfd::FileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
-        .pick_file()
+        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
+        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
+        .pick_files()
+        .unwrap_or_default()
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn async_open_rrd_dialog() -> Option<FileContents> {
-    let res = rfd::AsyncFileDialog::new()
+async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
+    let files = rfd::AsyncFileDialog::new()
         .add_filter("Rerun data file", &["rrd"])
-        .pick_file()
-        .await;
+        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
+        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
+        .pick_files()
+        .await
+        .unwrap_or_default();
 
-    match res {
-        Some(file) => Some({
-            let file_name = file.file_name();
-            re_log::debug!("Reading {file_name}…");
-            let bytes = file.read().await;
-            re_log::debug!(
-                "{file_name} was {}",
-                re_format::format_bytes(bytes.len() as _)
-            );
-            FileContents {
-                file_name,
-                bytes: bytes.into(),
-            }
-        }),
-        None => None,
+    let mut file_contents = Vec::with_capacity(files.len());
+
+    for file in files {
+        let file_name = file.file_name();
+        re_log::debug!("Reading {file_name}…");
+        let bytes = file.read().await;
+        re_log::debug!(
+            "{file_name} was {}",
+            re_format::format_bytes(bytes.len() as _)
+        );
+        file_contents.push(re_data_source::FileContents {
+            name: file_name,
+            bytes: bytes.into(),
+        });
     }
+
+    file_contents
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1222,10 +1242,10 @@ fn save(
     use crate::saving::save_database_to_file;
 
     let Some(store_db) = store_context.as_ref().and_then(|view| view.recording) else {
-            // NOTE: Can only happen if saving through the command palette.
-            re_log::error!("No data to save!");
-            return;
-        };
+        // NOTE: Can only happen if saving through the command palette.
+        re_log::error!("No data to save!");
+        return;
+    };
 
     let title = if loop_selection.is_some() {
         "Save loop selection"

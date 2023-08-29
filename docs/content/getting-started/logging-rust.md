@@ -62,7 +62,7 @@ We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://do
 ```rust
 fn main() {
     let recording =
-        rerun::RecordingStreamBuilder::new("DNA Abacus").connect(rerun::default_server_addr())?;
+        rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus").connect(rerun::default_server_addr())?;
 
     Ok(())
 }

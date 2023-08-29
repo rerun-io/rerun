@@ -229,6 +229,8 @@ impl<'a> LineBatchBuilder<'a> {
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_> {
+        #![allow(clippy::tuple_array_conversions)] // false positive
+
         if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
             re_log::error_once!(
                 "Reached maximum number of supported line strips of {}. \
@@ -470,7 +472,7 @@ impl<'a> LineStripBuilder<'a> {
 
     #[inline]
     pub fn radius(self, radius: Size) -> Self {
-        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
+        for strip in &mut self.builder.strips[self.strip_range.clone()] {
             strip.radius = radius;
         }
         self
@@ -478,7 +480,7 @@ impl<'a> LineStripBuilder<'a> {
 
     #[inline]
     pub fn color(self, color: Color32) -> Self {
-        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
+        for strip in &mut self.builder.strips[self.strip_range.clone()] {
             strip.color = color;
         }
         self
@@ -487,7 +489,7 @@ impl<'a> LineStripBuilder<'a> {
     /// Adds (!) flags to the line strip.
     #[inline]
     pub fn flags(self, flags: LineStripFlags) -> Self {
-        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
+        for strip in &mut self.builder.strips[self.strip_range.clone()] {
             strip.flags |= flags;
         }
         self

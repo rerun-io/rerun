@@ -1,7 +1,7 @@
 """Log different transforms between three arrows."""
 import rerun as rr
 
-rr.init("transform", spawn=True)
+rr.init("rerun_example_transform", spawn=True)
 
 origin = [0, 0, 0]
 base_vector = [0, 1, 0]

@@ -265,7 +265,7 @@ impl DataRow {
         let timepoint = timepoint.into();
 
         let mut components = IntSet::with_capacity(cells.len());
-        for cell in cells.iter() {
+        for cell in &*cells {
             let component = cell.component_name();
 
             if !components.insert(component) {

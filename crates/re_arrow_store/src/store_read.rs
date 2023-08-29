@@ -201,8 +201,6 @@ impl DataStore {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
-        re_tracing::profile_function!();
-
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -461,8 +459,6 @@ impl IndexedTable {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
-        re_tracing::profile_function!();
-
         // Early-exit if this entire table is unaware of this component.
         if !self.all_components.contains(&primary) {
             return None;
@@ -669,8 +665,6 @@ impl IndexedBucket {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
-        re_tracing::profile_function!();
-
         self.sort_indices_if_needed();
 
         let IndexedBucketInner {

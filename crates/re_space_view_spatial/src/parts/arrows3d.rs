@@ -7,7 +7,7 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -41,7 +41,7 @@ impl Arrows3DPart {
         arch_view: &'a ArchetypeView<Arrows3D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
-        annotation_infos: &'a [ResolvedAnnotationInfo],
+        annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
@@ -166,6 +166,12 @@ impl Arrows3DPart {
     }
 }
 
+impl NamedViewSystem for Arrows3DPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Arrows3D".into()
+    }
+}
+
 impl ViewPartSystem for Arrows3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         Arrows3D::all_components().try_into().unwrap()
@@ -177,9 +183,7 @@ impl ViewPartSystem for Arrows3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Arrows3DPart");
-
-        process_archetype_views::<Arrows3D, { Arrows3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Arrows3DPart, Arrows3D, { Arrows3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

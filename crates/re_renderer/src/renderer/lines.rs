@@ -26,7 +26,7 @@
 //!
 //! Data is provided in two separate textures, the "position data texture" and the "line strip texture".
 //! The "line strip texture" contains packed information over properties that are global to a single strip (see `gpu_data::LineStripInfo`)
-//! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionData`):
+//! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionRadius`):
 //! ```raw
 //!                   ___________________________________________________________________
 //! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
@@ -350,7 +350,7 @@ pub enum LineDrawDataError {
 
 // Textures are 2D since 1D textures are very limited in size (8k typically).
 // Need to keep these values in sync with lines.wgsl!
-const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionData
+const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionRadius
 const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5MiB, 65536 line strips
 
 impl LineDrawData {

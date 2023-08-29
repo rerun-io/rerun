@@ -35,8 +35,8 @@ re_viewer_context.workspace = true
 re_space_view.workspace = true
 
 ahash.workspace = true
-arrow2.workspace = true
 arrow2_convert.workspace = true
+arrow2.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
 enumset.workspace = true
@@ -45,3 +45,4 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 nohash-hasher = "0.2"
 serde = "1.0"
+tinyvec.workspace = true

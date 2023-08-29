@@ -45,110 +45,8 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let build_info = re_build_info::build_info!();
-                    let app_env = crate::AppEnvironment::Web;
-                    let persist_state = get_persist_state(&cc.integration_info);
-                    let startup_options = crate::StartupOptions {
-                        memory_limit: re_memory::MemoryLimit {
-                            // On wasm32 we only have 4GB of memory to play around with.
-                            limit: Some(2_500_000_000),
-                        },
-                        persist_state,
-                        skip_welcome_screen: false,
-                    };
-                    let re_ui = crate::customize_eframe(cc);
-                    let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
-
-                    match categorize_uri(url) {
-                        EndpointCategory::HttpRrd(url) => {
-                            // Download an .rrd file over http:
-                            let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::SmartMessageSource::RrdHttpStream {
-                                    url: url.clone(),
-                                },
-                                re_smart_channel::SmartChannelSource::RrdHttpStream {
-                                    url: url.clone(),
-                                },
-                            );
-                            re_log_encoding::stream_rrd_from_http::stream_rrd_from_http(
-                                url,
-                                Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
-                                    move |msg| {
-                                        egui_ctx.request_repaint(); // wake up ui thread
-                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
-                                        match msg {
-                                            HttpMessage::LogMsg(msg) => tx
-                                                .send(msg)
-                                                .warn_on_err_once("failed to send message"),
-                                            HttpMessage::Success => tx
-                                                .quit(None)
-                                                .warn_on_err_once("failed to send quit marker"),
-                                            HttpMessage::Failure(err) => tx
-                                                .quit(Some(err))
-                                                .warn_on_err_once("failed to send quit marker"),
-                                        };
-                                    }
-                                }),
-                            );
-
-                            Box::new(crate::App::from_receiver(
-                                build_info,
-                                &app_env,
-                                startup_options,
-                                re_ui,
-                                cc.storage,
-                                rx,
-                            ))
-                        }
-                        EndpointCategory::WebEventListener => {
-                            // Process an rrd when it's posted via `window.postMessage`
-                            let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::SmartMessageSource::RrdWebEventCallback,
-                                re_smart_channel::SmartChannelSource::RrdWebEventListener,
-                            );
-                            re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
-                                Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
-                                    move |msg| {
-                                        egui_ctx.request_repaint(); // wake up ui thread
-                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
-                                        match msg {
-                                            HttpMessage::LogMsg(msg) => tx
-                                                .send(msg)
-                                                .warn_on_err_once("failed to send message"),
-                                            HttpMessage::Success => tx
-                                                .quit(None)
-                                                .warn_on_err_once("failed to send quit marker"),
-                                            HttpMessage::Failure(err) => tx
-                                                .quit(Some(err))
-                                                .warn_on_err_once("failed to send quit marker"),
-                                        };
-                                    }
-                                }),
-                            );
-
-                            Box::new(crate::App::from_receiver(
-                                build_info,
-                                &app_env,
-                                startup_options,
-                                re_ui,
-                                cc.storage,
-                                rx,
-                            ))
-                        }
-                        EndpointCategory::WebSocket(url) => {
-                            // Connect to a Rerun server over WebSockets.
-                            Box::new(crate::RemoteViewerApp::new(
-                                build_info,
-                                app_env,
-                                startup_options,
-                                re_ui,
-                                cc.storage,
-                                url,
-                            ))
-                        }
-                    }
+                    let app = create_app(cc, url.clone());
+                    Box::new(app)
                 }),
             )
             .await?;
@@ -177,6 +75,72 @@ impl WebHandle {
     pub fn panic_callstack(&self) -> Option<String> {
         self.runner.panic_summary().map(|s| s.callstack())
     }
+}
+
+fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::App {
+    let build_info = re_build_info::build_info!();
+    let app_env = crate::AppEnvironment::Web;
+    let persist_state = get_persist_state(&cc.integration_info);
+    let startup_options = crate::StartupOptions {
+        memory_limit: re_memory::MemoryLimit {
+            // On wasm32 we only have 4GB of memory to play around with.
+            limit: Some(2_500_000_000),
+        },
+        persist_state,
+        skip_welcome_screen: false,
+    };
+    let re_ui = crate::customize_eframe(cc);
+    let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
+
+    let egui_ctx = cc.egui_ctx.clone();
+    let wake_up_ui_on_msg = Box::new(move || {
+        // Spend a few more milliseconds decoding incoming messages,
+        // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+        egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+    });
+
+    let rx = match categorize_uri(url) {
+        EndpointCategory::HttpRrd(url) => {
+            re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
+                url,
+                Some(wake_up_ui_on_msg),
+            )
+        }
+        EndpointCategory::WebEventListener => {
+            // Process an rrd when it's posted via `window.postMessage`
+            let (tx, rx) = re_smart_channel::smart_channel(
+                re_smart_channel::SmartMessageSource::RrdWebEventCallback,
+                re_smart_channel::SmartChannelSource::RrdWebEventListener,
+            );
+            re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
+                move |msg| {
+                    wake_up_ui_on_msg();
+                    use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                    match msg {
+                        HttpMessage::LogMsg(msg) => {
+                            tx.send(msg).warn_on_err_once("failed to send message")
+                        }
+                        HttpMessage::Success => {
+                            tx.quit(None).warn_on_err_once("failed to send quit marker")
+                        }
+                        HttpMessage::Failure(err) => tx
+                            .quit(Some(err))
+                            .warn_on_err_once("failed to send quit marker"),
+                    };
+                }
+            }));
+            rx
+        }
+        EndpointCategory::WebSocket(url) => {
+            re_data_source::connect_to_ws_url(&url, Some(wake_up_ui_on_msg)).unwrap_or_else(|err| {
+                panic!("Failed to connect to WebSocket server at {url}: {err}")
+            })
+        }
+    };
+
+    let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+    app.add_receiver(rx);
+    app
 }
 
 #[wasm_bindgen]

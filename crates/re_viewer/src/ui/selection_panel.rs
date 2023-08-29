@@ -196,10 +196,7 @@ fn what_is_selected_ui(
         }
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
-                if let Some(group) = space_view
-                    .data_blueprint
-                    .group(*data_blueprint_group_handle)
-                {
+                if let Some(group) = space_view.contents.group(*data_blueprint_group_handle) {
                     egui::Grid::new("data_blueprint_group")
                         .num_columns(2)
                         .show(ui, |ui| {
@@ -302,7 +299,7 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
-                        let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
+                        let data_blueprint = space_view.contents.data_blueprints_individual();
                         let mut props = data_blueprint.get(&instance_path.entity_path);
                         entity_props_ui(ctx, ui, Some(&instance_path.entity_path), &mut props);
                         data_blueprint.set(instance_path.entity_path.clone(), props);
@@ -320,10 +317,7 @@ fn blueprint_ui(
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                if let Some(group) = space_view
-                    .data_blueprint
-                    .group_mut(*data_blueprint_group_handle)
-                {
+                if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
                     entity_props_ui(ctx, ui, None, &mut group.properties_individual);
                 } else {
                     ctx.selection_state_mut().clear_current();

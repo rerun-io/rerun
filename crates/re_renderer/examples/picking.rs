@@ -160,11 +160,10 @@ impl framework::Example for Picking {
                 .batch(format!("Random Points {i}"))
                 .picking_object_id(re_renderer::PickingLayerObjectId(i as u64 + 1)) // offset by one since 0=default=no hit
                 .add_points(
-                    point_set.positions.len(),
-                    point_set.positions.iter().cloned(),
-                    point_set.radii.iter().cloned(),
-                    point_set.colors.iter().cloned(),
-                    point_set.picking_ids.iter().cloned(),
+                    &point_set.positions,
+                    &point_set.radii,
+                    &point_set.colors,
+                    &point_set.picking_ids,
                 );
         }
         view_builder.queue_draw(point_builder.into_draw_data(re_ctx).unwrap());

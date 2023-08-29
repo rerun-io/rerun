@@ -194,11 +194,18 @@ impl ViewerAnalytics {
 
             self.register("store_source", store_source);
             self.register("is_official_example", store_info.is_official_example);
+            self.register(
+                "app_id_starts_with_rerun_example",
+                store_info
+                    .application_id
+                    .as_str()
+                    .starts_with("rerun_example"),
+            );
         }
 
         if let Some(data_source) = &store_db.data_source {
             let data_source = match data_source {
-                re_smart_channel::SmartChannelSource::Files { .. } => "file", // .rrd, .png, .glb, …
+                re_smart_channel::SmartChannelSource::File(_) => "file", // .rrd, .png, .glb, …
                 re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
                 re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
                 re_smart_channel::SmartChannelSource::Sdk => "sdk", // show()

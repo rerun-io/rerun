@@ -116,7 +116,9 @@ impl LoadedMesh {
             vertex_colors
                 .iter()
                 .map(|c| {
-                    Rgba32Unmul::from_rgba_unmul_array(re_types::datatypes::Color(*c).to_array())
+                    Rgba32Unmul::from_rgba_unmul_array(
+                        re_types::datatypes::Color::from_u32(*c).to_array(),
+                    )
                 })
                 .collect()
         } else {

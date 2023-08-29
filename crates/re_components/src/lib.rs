@@ -33,7 +33,6 @@ mod text_box;
 mod text_entry;
 mod vec;
 
-#[cfg(not(target_arch = "wasm32"))]
 mod load_file;
 
 #[cfg(feature = "arrow_datagen")]
@@ -66,7 +65,9 @@ pub use self::{
 pub use self::tensor::{TensorImageLoadError, TensorImageSaveError};
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path, FromFileError};
+pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path};
+
+pub use self::load_file::{data_cell_from_file_contents, FromFileError};
 
 // This is very convenient to re-export
 pub use re_log_types::LegacyComponent;
@@ -187,7 +188,7 @@ where
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()> {
         let values = array.mut_values();
-        for i in v.iter() {
+        for i in v {
             <T as ArrowSerialize>::arrow_serialize(i, values)?;
         }
         array.try_push_valid()

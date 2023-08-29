@@ -1,24 +1,14 @@
+use re_data_source::DataSource;
 use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 // ----------------------------------------------------------------------------
 
-/// The contents of as file
-#[derive(Clone)]
-pub struct FileContents {
-    pub file_name: String,
-    pub bytes: std::sync::Arc<[u8]>,
-}
-
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
-    /// Load an RRD by Filename
-    #[cfg(not(target_arch = "wasm32"))]
-    LoadRrdPath(std::path::PathBuf),
-
-    /// Load an RRD by content
-    LoadRrdContents(FileContents),
+    /// Load some data.
+    LoadDataSource(DataSource),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,

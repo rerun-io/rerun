@@ -43,7 +43,8 @@ impl From<GltfPrimitive> for Mesh3D {
             indices: indices.map(|i| i.into()),
             vertex_positions: vertex_positions.into_iter().flatten().collect(),
             vertex_normals: vertex_normals.map(|normals| normals.into_iter().flatten().collect()),
-            vertex_colors: vertex_colors.map(|colors| colors.into_iter().map(|c| c.0 .0).collect()),
+            vertex_colors: vertex_colors
+                .map(|colors| colors.into_iter().map(|c| c.to_u32()).collect()),
         };
 
         raw.sanity_check().unwrap();
@@ -189,11 +190,13 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let default_enabled = true;
-    args.rerun
-        .clone()
-        .run("raw_mesh_rs", default_enabled, move |rec_stream| {
+    args.rerun.clone().run(
+        "rerun_example_raw_mesh_rs",
+        default_enabled,
+        move |rec_stream| {
             run(&rec_stream, &args).unwrap();
-        })
+        },
+    )
 }
 
 // --- glTF parsing ---

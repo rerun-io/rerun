@@ -6,7 +6,7 @@ use re_types::{
     Archetype,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -41,7 +41,7 @@ impl Points2DPart {
         arch_view: &'a ArchetypeView<Points2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
-        annotation_infos: &'a [ResolvedAnnotationInfo],
+        annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
@@ -120,24 +120,33 @@ impl Points2DPart {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-            let point_positions = {
-                re_tracing::profile_scope!("collect_points");
-                arch_view
-                    .iter_required_component::<Point2D>()?
-                    .map(|pt| pt.into())
-            };
+            let positions = arch_view
+                .iter_required_component::<Point2D>()?
+                .map(|pt| pt.into());
 
             let picking_instance_ids = arch_view
                 .iter_instance_keys()
                 .map(picking_id_from_instance_key);
 
-            let mut point_range_builder = point_batch.add_points_2d(
-                arch_view.num_instances(),
-                point_positions,
-                radii,
-                colors,
-                picking_instance_ids,
-            );
+            let positions: Vec<glam::Vec3> = {
+                re_tracing::profile_scope!("collect_positions");
+                positions.collect()
+            };
+            let radii: Vec<_> = {
+                re_tracing::profile_scope!("collect_radii");
+                radii.collect()
+            };
+            let colors: Vec<_> = {
+                re_tracing::profile_scope!("collect_colors");
+                colors.collect()
+            };
+            let picking_instance_ids: Vec<_> = {
+                re_tracing::profile_scope!("collect_picking_instance_ids");
+                picking_instance_ids.collect()
+            };
+
+            let mut point_range_builder =
+                point_batch.add_points_2d(&positions, &radii, &colors, &picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -158,7 +167,7 @@ impl Points2DPart {
             }
         };
 
-        load_keypoint_connections(ent_context, ent_path, keypoints);
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         self.data.extend_bounding_box_with_points(
             arch_view
@@ -168,6 +177,12 @@ impl Points2DPart {
         );
 
         Ok(())
+    }
+}
+
+impl NamedViewSystem for Points2DPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Points2D".into()
     }
 }
 
@@ -182,9 +197,7 @@ impl ViewPartSystem for Points2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Points2DPart");
-
-        process_archetype_views::<Points2D, { Points2D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Points2DPart, Points2D, { Points2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

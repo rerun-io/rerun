@@ -2,8 +2,8 @@ use re_arrow_store::LatestAtQuery;
 use re_query::{query_entity_with_primary, QueryError};
 use re_types::Loggable as _;
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 // ---
@@ -19,6 +19,12 @@ pub struct TextBoxSystem {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
+impl NamedViewSystem for TextBoxSystem {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "TextBox".into()
+    }
+}
+
 impl ViewPartSystem for TextBoxSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
@@ -32,7 +38,7 @@ impl ViewPartSystem for TextBoxSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let store = &ctx.store_db.entity_db.data_store;
 
-        for (ent_path, props) in query.iter_entities() {
+        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             if !props.visible {
                 continue;
             }
