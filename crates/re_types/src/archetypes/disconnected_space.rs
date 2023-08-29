@@ -97,8 +97,8 @@ impl crate::Archetype for DisconnectedSpace {
     }
 
     #[inline]
-    fn marker_component() -> crate::ComponentName {
-        "rerun.components.DisconnectedSpaceMarker".into()
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.DisconnectedSpaceIndicator".into()
     }
 
     #[inline]
@@ -137,9 +137,9 @@ impl crate::Archetype for DisconnectedSpace {
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.DisconnectedSpaceMarker".to_owned(),
+                    "rerun.components.DisconnectedSpaceIndicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.DisconnectedSpaceMarker".to_owned()),
+                    Some("rerun.components.DisconnectedSpaceIndicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -148,7 +148,7 @@ impl crate::Archetype for DisconnectedSpace {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.components.DisconnectedSpaceMarker",
+                        "rerun.components.DisconnectedSpaceIndicator",
                         datatype,
                         false,
                     ),

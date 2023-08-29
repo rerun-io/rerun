@@ -290,8 +290,8 @@ impl crate::Archetype for AffixFuzzer1 {
     }
 
     #[inline]
-    fn marker_component() -> crate::ComponentName {
-        "rerun.testing.archetypes.AffixFuzzer1Marker".into()
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.testing.archetypes.AffixFuzzer1Indicator".into()
     }
 
     #[inline]
@@ -1935,9 +1935,9 @@ impl crate::Archetype for AffixFuzzer1 {
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.testing.archetypes.AffixFuzzer1Marker".to_owned(),
+                    "rerun.testing.archetypes.AffixFuzzer1Indicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.testing.archetypes.AffixFuzzer1Marker".to_owned()),
+                    Some("rerun.testing.archetypes.AffixFuzzer1Indicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -1946,7 +1946,7 @@ impl crate::Archetype for AffixFuzzer1 {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.testing.archetypes.AffixFuzzer1Marker",
+                        "rerun.testing.archetypes.AffixFuzzer1Indicator",
                         datatype,
                         false,
                     ),

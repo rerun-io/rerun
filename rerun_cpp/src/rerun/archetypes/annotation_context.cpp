@@ -19,8 +19,8 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             {
-                const auto result = create_marker_component(
-                    "rerun.components.AnnotationContextMarker",
+                const auto result = create_indicator_component(
+                    "rerun.components.AnnotationContextIndicator",
                     num_instances()
                 );
                 if (result.is_err()) {

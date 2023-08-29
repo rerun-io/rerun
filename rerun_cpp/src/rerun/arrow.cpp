@@ -20,8 +20,8 @@ namespace rerun {
         }
     }
 
-    Result<rerun::DataCell> create_marker_component(
-        const char* marker_fqname, size_t num_instances
+    Result<rerun::DataCell> create_indicator_component(
+        const char* indicator_fqname, size_t num_instances
     ) {
         arrow::MemoryPool* pool = arrow::default_memory_pool();
         auto builder = std::make_shared<arrow::NullBuilder>(pool);
@@ -29,10 +29,10 @@ namespace rerun {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        auto schema = arrow::schema({arrow::field(marker_fqname, arrow::null(), false)});
+        auto schema = arrow::schema({arrow::field(indicator_fqname, arrow::null(), false)});
 
         rerun::DataCell cell;
-        cell.component_name = marker_fqname;
+        cell.component_name = indicator_fqname;
         const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
         RR_RETURN_NOT_OK(ipc_result.error);
         cell.buffer = std::move(ipc_result.value);

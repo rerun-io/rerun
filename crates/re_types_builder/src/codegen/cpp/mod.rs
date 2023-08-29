@@ -1279,7 +1279,7 @@ fn archetype_to_data_cells(
         }
     });
 
-    let marker_fqname = format!("rerun.components.{}Marker", obj.name);
+    let indicator_fqname = format!("rerun.components.{}Indicator", obj.name);
     Method {
         docs: "Creates a list of Rerun DataCell from this archetype.".into(),
         declaration: MethodDeclaration {
@@ -1295,7 +1295,7 @@ fn archetype_to_data_cells(
             #(#push_cells)*
             {
                 const auto result =
-                    create_marker_component(#marker_fqname, num_instances());
+                    create_indicator_component(#indicator_fqname, num_instances());
                 if (result.is_err()) {
                     return result.error;
                 }

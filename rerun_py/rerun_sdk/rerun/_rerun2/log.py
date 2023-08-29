@@ -65,21 +65,21 @@ def _add_extension_components(
             instanced[name] = pa_value  # noqa
 
 
-def _add_marker_component(
+def _add_indicator_component(
     arch_name: str,
     num_instances: int,
     instanced: dict[str, pa.ExtensionArray],
 ) -> None:
-    marker_name = f"rerun.components.{arch_name}Marker"
+    indicator_name = f"rerun.components.{arch_name}Indicator"
 
-    class MarkerComponentType(pa.ExtensionType):  # type: ignore[misc]
+    class IndicatorComponentType(pa.ExtensionType):  # type: ignore[misc]
         def __init__(self) -> None:
-            pa.ExtensionType.__init__(self, pa.null(), marker_name)
+            pa.ExtensionType.__init__(self, pa.null(), indicator_name)
 
         def __arrow_ext_serialize__(self) -> bytes:
             return b""
 
-    instanced[marker_name] = pa.nulls(num_instances, type=MarkerComponentType()).storage
+    instanced[indicator_name] = pa.nulls(num_instances, type=IndicatorComponentType()).storage
 
 
 def _extract_components(entity: Archetype) -> Iterable[tuple[NamedExtensionArray, bool]]:
@@ -174,7 +174,7 @@ def log(
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
-    _add_marker_component(type(entity).__name__, num_instances, instanced)
+    _add_indicator_component(type(entity).__name__, num_instances, instanced)
 
     if splats:
         splats["rerun.instance_key"] = _splat()

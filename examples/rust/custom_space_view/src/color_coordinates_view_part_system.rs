@@ -48,7 +48,7 @@ impl re_types::Archetype for ColorArchetype {
         Self::required_components()
     }
 
-    fn marker_component() -> re_types::ComponentName {
+    fn indicator_component() -> re_types::ComponentName {
         unimplemented!()
     }
 

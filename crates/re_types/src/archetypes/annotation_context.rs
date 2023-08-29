@@ -116,8 +116,8 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
-    fn marker_component() -> crate::ComponentName {
-        "rerun.components.AnnotationContextMarker".into()
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.AnnotationContextIndicator".into()
     }
 
     #[inline]
@@ -154,9 +154,9 @@ impl crate::Archetype for AnnotationContext {
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.AnnotationContextMarker".to_owned(),
+                    "rerun.components.AnnotationContextIndicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.AnnotationContextMarker".to_owned()),
+                    Some("rerun.components.AnnotationContextIndicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -165,7 +165,7 @@ impl crate::Archetype for AnnotationContext {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.components.AnnotationContextMarker",
+                        "rerun.components.AnnotationContextIndicator",
                         datatype,
                         false,
                     ),

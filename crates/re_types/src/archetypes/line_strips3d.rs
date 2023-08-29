@@ -157,8 +157,8 @@ impl crate::Archetype for LineStrips3D {
     }
 
     #[inline]
-    fn marker_component() -> crate::ComponentName {
-        "rerun.components.LineStrips3DMarker".into()
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.LineStrips3DIndicator".into()
     }
 
     #[inline]
@@ -296,9 +296,9 @@ impl crate::Archetype for LineStrips3D {
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.LineStrips3DMarker".to_owned(),
+                    "rerun.components.LineStrips3DIndicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.LineStrips3DMarker".to_owned()),
+                    Some("rerun.components.LineStrips3DIndicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -307,7 +307,7 @@ impl crate::Archetype for LineStrips3D {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.components.LineStrips3DMarker",
+                        "rerun.components.LineStrips3DIndicator",
                         datatype,
                         false,
                     ),

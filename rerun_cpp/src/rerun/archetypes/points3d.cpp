@@ -80,8 +80,10 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             {
-                const auto result =
-                    create_marker_component("rerun.components.Points3DMarker", num_instances());
+                const auto result = create_indicator_component(
+                    "rerun.components.Points3DIndicator",
+                    num_instances()
+                );
                 if (result.is_err()) {
                     return result.error;
                 }

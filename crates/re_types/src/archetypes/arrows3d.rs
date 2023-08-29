@@ -139,8 +139,8 @@ impl crate::Archetype for Arrows3D {
     }
 
     #[inline]
-    fn marker_component() -> crate::ComponentName {
-        "rerun.components.Arrows3DMarker".into()
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.Arrows3DIndicator".into()
     }
 
     #[inline]
@@ -298,9 +298,9 @@ impl crate::Archetype for Arrows3D {
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.Arrows3DMarker".to_owned(),
+                    "rerun.components.Arrows3DIndicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.Arrows3DMarker".to_owned()),
+                    Some("rerun.components.Arrows3DIndicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -309,7 +309,7 @@ impl crate::Archetype for Arrows3D {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.components.Arrows3DMarker",
+                        "rerun.components.Arrows3DIndicator",
                         datatype,
                         false,
                     ),

@@ -1047,8 +1047,8 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
-            let marker_fqname =
-                format!("{}Marker", obj.fqname).replace("rerun.archetypes", "rerun.components");
+            let indicator_fqname =
+                format!("{}Indicator", obj.fqname).replace("rerun.archetypes", "rerun.components");
 
             quote! {
                 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> =
@@ -1094,8 +1094,8 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn marker_component() -> crate::ComponentName  {
-                        #marker_fqname.into()
+                    fn indicator_component() -> crate::ComponentName  {
+                        #indicator_fqname.into()
                     }
 
                     #[inline]
@@ -1110,19 +1110,19 @@ fn quote_trait_impls_from_obj(
                         use crate::{Loggable as _, ResultExt as _};
                         Ok([
                             #({ #all_serializers }),*,
-                            // Inject the marker component.
+                            // Inject the indicator component.
                             {
                                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                                    #marker_fqname.to_owned(),
+                                    #indicator_fqname.to_owned(),
                                     Box::new(::arrow2::datatypes::DataType::Null),
                                     // NOTE: Mandatory during migration to codegen.
-                                    Some(#marker_fqname.to_owned()),
+                                    Some(#indicator_fqname.to_owned()),
                                 );
                                 let array = ::arrow2::array::NullArray::new(
                                     datatype.to_logical_type().clone(), self.num_instances(),
                                 ).boxed();
                                 Some((
-                                    ::arrow2::datatypes::Field::new(#marker_fqname, datatype, false),
+                                    ::arrow2::datatypes::Field::new(#indicator_fqname, datatype, false),
                                     array,
                                 ))
                             },

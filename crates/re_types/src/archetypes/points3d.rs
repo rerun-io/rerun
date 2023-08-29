@@ -123,8 +123,8 @@ impl crate::Archetype for Points3D {
     }
 
     #[inline]
-    fn marker_component() -> crate::ComponentName {
-        "rerun.components.Points3DMarker".into()
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.Points3DIndicator".into()
     }
 
     #[inline]
@@ -283,9 +283,9 @@ impl crate::Archetype for Points3D {
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.Points3DMarker".to_owned(),
+                    "rerun.components.Points3DIndicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.Points3DMarker".to_owned()),
+                    Some("rerun.components.Points3DIndicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -294,7 +294,7 @@ impl crate::Archetype for Points3D {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.components.Points3DMarker",
+                        "rerun.components.Points3DIndicator",
                         datatype,
                         false,
                     ),

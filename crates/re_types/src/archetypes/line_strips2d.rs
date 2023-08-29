@@ -164,8 +164,8 @@ impl crate::Archetype for LineStrips2D {
     }
 
     #[inline]
-    fn marker_component() -> crate::ComponentName {
-        "rerun.components.LineStrips2DMarker".into()
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.LineStrips2DIndicator".into()
     }
 
     #[inline]
@@ -323,9 +323,9 @@ impl crate::Archetype for LineStrips2D {
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.LineStrips2DMarker".to_owned(),
+                    "rerun.components.LineStrips2DIndicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.LineStrips2DMarker".to_owned()),
+                    Some("rerun.components.LineStrips2DIndicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -334,7 +334,7 @@ impl crate::Archetype for LineStrips2D {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.components.LineStrips2DMarker",
+                        "rerun.components.LineStrips2DIndicator",
                         datatype,
                         false,
                     ),
