@@ -24,9 +24,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 
     use anyhow::Context;
 
-    // TODO(jleibs) is there a better way to get this folder from egui?
-    if let Some(proj_dirs) = directories_next::ProjectDirs::from("", "", "rerun") {
-        let data_dir = proj_dirs.data_dir().join("blueprints");
+    if let Some(data_dir) = eframe::storage_dir(crate::native::APP_ID) {
         std::fs::create_dir_all(&data_dir).context("Could not create blueprint save directory.")?;
 
         // We want a unique filename (not a directory) for each app-id.
