@@ -1,10 +1,12 @@
+use egui::{Response, Ui};
 use itertools::Itertools;
 use re_data_store::InstancePath;
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::item_ui;
 use re_space_view::DataBlueprintGroup;
 use re_ui::list_item::ListItem;
+use re_ui::ReUi;
 use re_viewer_context::{
-    DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
+    DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
 use crate::{
@@ -104,15 +106,10 @@ impl ViewportBlueprint<'_> {
         ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
             .subdued(true)
             .with_buttons(|re_ui, ui| {
-                //TODO(ab): deduplicate that
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
-
                 visibility_changed = vis_response.changed();
 
-                let response = re_ui
-                    .small_icon_button(ui, &re_ui::icons::REMOVE)
-                    .on_hover_text("Remove container");
-
+                let response = remove_button_ui(re_ui, ui, "Remove container");
                 if response.clicked() {
                     action = TreeAction::Remove;
                 }
@@ -159,18 +156,13 @@ impl ViewportBlueprint<'_> {
         let response = ListItem::new(ctx.re_ui, space_view.display_name.clone())
             .selected(ctx.selection().contains(&item))
             .subdued(!visible)
-            .override_hover(is_item_hovered)
+            .force_hovered(is_item_hovered)
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .with_buttons(|re_ui, ui| {
-                //TODO(ab): deduplicate that
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
-
                 visibility_changed = vis_response.changed();
 
-                let response = re_ui
-                    .small_icon_button(ui, &re_ui::icons::REMOVE)
-                    .on_hover_text("Remove Space View from the Viewport");
-
+                let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
                     action = TreeAction::Remove;
                 }
@@ -251,7 +243,7 @@ impl ViewportBlueprint<'_> {
             let response = ListItem::new(ctx.re_ui, label)
                 .selected(is_selected)
                 .subdued(!group_is_visible || !properties.visible)
-                .override_hover(is_item_hovered)
+                .force_hovered(is_item_hovered)
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
                         visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
@@ -261,22 +253,18 @@ impl ViewportBlueprint<'_> {
                             .data_blueprints_individual()
                             .set(entity_path.clone(), properties);
                     }
-                    let response = re_ui
-                        .small_icon_button(ui, &re_ui::icons::REMOVE)
-                        .on_hover_text("Remove Entity from the Space View");
 
+                    let response = remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                     if response.clicked() {
                         space_view.contents.remove_entity(entity_path);
                         space_view.entities_determined_by_user = true;
                     }
+
                     response | vis_response
                 })
                 .show(ui)
-                //TODO(ab): refactor that (duplicated from data_blueprint_button_to)
                 .on_hover_ui(|ui| {
-                    ui.strong("Space View Entity");
-                    ui.label(format!("Path: {entity_path}"));
-                    entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+                    re_data_ui::item_ui::data_blueprint_tooltip(ui, ctx, entity_path);
                 });
 
             item_ui::select_hovered_on_click(ctx, &response, &[item]);
@@ -303,17 +291,21 @@ impl ViewportBlueprint<'_> {
             let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
                 .selected(is_selected)
                 .subdued(!child_group_visible || !group_is_visible)
-                .override_hover(is_item_hovered)
+                .force_hovered(is_item_hovered)
                 .with_icon(&re_ui::icons::CONTAINER)
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
                         visibility_button_ui(re_ui, ui, group_is_visible, &mut child_group_visible);
-                    let response = re_ui
-                        .small_icon_button(ui, &re_ui::icons::REMOVE)
-                        .on_hover_text("Remove Group and all its children from the Space View");
+
+                    let response = remove_button_ui(
+                        re_ui,
+                        ui,
+                        "Remove Group and all its children from the Space View",
+                    );
                     if response.clicked() {
                         remove_group = true;
                     }
+
                     response | vis_response
                 })
                 .show_collapsing(
@@ -399,6 +391,12 @@ fn focus_tab(tree: &mut egui_tiles::Tree<SpaceViewId>, tab: &SpaceViewId) {
         egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
         egui_tiles::Tile::Container(_) => false,
     });
+}
+
+fn remove_button_ui(re_ui: &ReUi, ui: &mut Ui, tooltip: &str) -> Response {
+    re_ui
+        .small_icon_button(ui, &re_ui::icons::REMOVE)
+        .on_hover_text(tooltip)
 }
 
 fn visibility_button_ui(
