@@ -1,5 +1,8 @@
 use re_log_types::LogMsg;
 
+/// Used by `eframe` to decide where to store the app state.
+pub const APP_ID: &str = "rerun";
+
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
@@ -21,7 +24,7 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
 pub fn eframe_options() -> eframe::NativeOptions {
     eframe::NativeOptions {
         // Controls where on disk the app state is persisted.
-        app_id: Some("rerun_example_rerun".to_owned()),
+        app_id: Some(APP_ID.to_owned()),
 
         initial_window_size: Some([1600.0, 1200.0].into()),
         min_window_size: Some([320.0, 450.0].into()), // Should be high enough to fit the rerun menu
