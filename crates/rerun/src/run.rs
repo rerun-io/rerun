@@ -45,7 +45,7 @@ use re_ws_comms::RerunServerPort;
 struct Args {
     // Note: arguments are sorted lexicographically for nicer `--help` message:
     #[command(subcommand)]
-    commands: Option<Commands>,
+    command: Option<Command>,
 
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
@@ -152,7 +152,7 @@ struct Args {
 }
 
 #[derive(Debug, Clone, Subcommand)]
-enum Commands {
+enum Command {
     /// Configure the behavior of our analytics.
     #[cfg(feature = "analytics")]
     #[command(subcommand)]
@@ -170,6 +170,12 @@ enum Commands {
         #[clap(long, default_value_t = false)]
         full_dump: bool,
     },
+
+    /// Reset the memory of the Rerun Viewer.
+    ///
+    /// Only run this if you're having trouble with the Viewer,
+    /// e.g. if it is crashing on startup.
+    Reset,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -271,12 +277,12 @@ where
         re_log::info!("--strict mode: any warning or error will cause Rerun to panic.");
     }
 
-    let res = if let Some(commands) = &args.commands {
-        match commands {
+    let res = if let Some(command) = &args.command {
+        match command {
             #[cfg(feature = "analytics")]
-            Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
+            Command::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
 
-            Commands::Compare {
+            Command::Compare {
                 path_to_rrd1,
                 path_to_rrd2,
                 full_dump,
@@ -285,6 +291,8 @@ where
                 let path_to_rrd2 = PathBuf::from(path_to_rrd2);
                 run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
             }
+
+            Command::Reset => reset_viewer(),
         }
     } else {
         run_impl(build_info, call_source, args).await
@@ -293,6 +301,7 @@ where
     match res {
         // Clean success
         Ok(_) => Ok(0),
+
         // Clean failure -- known error AddrInUse
         Err(err)
             if err
@@ -304,6 +313,7 @@ where
             re_log::warn!("{err}");
             Ok(1)
         }
+
         // Unclean failure -- re-raise exception
         Err(err) => Err(err),
     }
@@ -648,6 +658,25 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
         re_format::parse_duration(time)
             .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
     })
+}
+
+fn reset_viewer() -> anyhow::Result<()> {
+    if let Some(data_dir) = re_viewer::external::eframe::storage_dir(re_viewer::native::APP_ID) {
+        // Note: `remove_dir_all` fails if the directory doesn't exist.
+        if data_dir.exists() {
+            if let Err(err) = std::fs::remove_dir_all(&data_dir) {
+                anyhow::bail!("Failed to remove {data_dir:?}: {err}");
+            } else {
+                eprintln!("Removed {data_dir:?}.");
+                Ok(())
+            }
+        } else {
+            eprintln!("Rerun state was already cleared.");
+            Ok(())
+        }
+    } else {
+        anyhow::bail!("Failed to figure out where Rerun stores its data.")
+    }
 }
 
 // ----------------------------------------------------------------------------
