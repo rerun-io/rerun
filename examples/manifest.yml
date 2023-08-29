@@ -128,7 +128,7 @@ root:
           python: python/text_logging
 
     - name: paper-walkthrough
-      title: Paper Walkthroughs
+      title: Paper Visualizations
       prelude: |
         The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
         from the official open-source implementations adding Rerun as the visualizer.
@@ -170,6 +170,6 @@ root:
         For example, if your SDK version is `0.3.1`, check out the matching tag
         in the Rerun repository by running `git checkout v0.3.1`.
 
-        ### Paper Walkthroughs
+        ### Paper Visualizations
         To reproduce the paper visualizations check out the README of the respective
         Rerun forks.
