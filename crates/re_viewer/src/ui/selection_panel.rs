@@ -122,6 +122,26 @@ fn has_data_section(item: &Item) -> bool {
     }
 }
 
+fn space_view_button(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view: &re_viewport::SpaceViewBlueprint,
+) -> egui::Response {
+    let item = Item::SpaceView(space_view.id);
+    let is_selected = ctx.selection().contains(&item);
+
+    let response = ctx
+        .re_ui
+        .selectable_label_with_icon(
+            ui,
+            space_view.class(ctx.space_view_class_registry).icon(),
+            space_view.display_name.clone(),
+            is_selected,
+        )
+        .on_hover_text("Space View");
+    item_ui::cursor_interact_with_selectable(ctx, response, item)
+}
+
 /// What is selected? Not the contents, just the short id of it.
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
@@ -168,7 +188,7 @@ fn what_is_selected_ui(
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                         ui.label("In Space View");
-                        re_viewport::item_ui::space_view_button(ctx, ui, space_view);
+                        space_view_button(ctx, ui, space_view);
                         ui.end_row();
                     }
                 }
@@ -194,7 +214,7 @@ fn what_is_selected_ui(
                             ui.end_row();
 
                             ui.label("In Space View");
-                            re_viewport::item_ui::space_view_button(ctx, ui, space_view);
+                            space_view_button(ctx, ui, space_view);
                             ui.end_row();
                         });
                 }
