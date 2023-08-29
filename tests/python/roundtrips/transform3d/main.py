@@ -17,7 +17,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "roundtrip_transform3d")
+    rr.script_setup(args, "rerun_example_roundtrip_transform3d")
 
     rr2.log("translation_and_mat3x3/identity", rr2.Transform3D(rrd.TranslationAndMat3x3()))
 

@@ -94,7 +94,9 @@ impl IndexedTable {
                 .map(|bucket| bucket.inner.read().time_range)
                 .collect::<Vec<_>>();
             for time_ranges in time_ranges.windows(2) {
-                let &[t1, t2] = time_ranges else { unreachable!() };
+                let &[t1, t2] = time_ranges else {
+                    unreachable!()
+                };
                 if t1.max.as_i64() >= t2.min.as_i64() {
                     return Err(SanityError::OverlappingBuckets {
                         t1_max: t1.max.as_i64(),

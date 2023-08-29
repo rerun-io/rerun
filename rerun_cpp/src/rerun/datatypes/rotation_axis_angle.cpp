@@ -11,10 +11,10 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &RotationAxisAngle::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &RotationAxisAngle::arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("axis", rerun::datatypes::Vec3D::to_arrow_datatype(), false),
-                arrow::field("angle", rerun::datatypes::Angle::to_arrow_datatype(), false),
+                arrow::field("axis", rerun::datatypes::Vec3D::arrow_datatype(), false),
+                arrow::field("angle", rerun::datatypes::Angle::arrow_datatype(), false),
             });
             return datatype;
         }
@@ -27,7 +27,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value,

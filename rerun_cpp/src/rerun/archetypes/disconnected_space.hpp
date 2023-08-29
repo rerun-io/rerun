@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/disconnected_space.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
@@ -30,7 +31,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("disconnected_space");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_disconnected_space");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    // These two points can be projected into the same space..

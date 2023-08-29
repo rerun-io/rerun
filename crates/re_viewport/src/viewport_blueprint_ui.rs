@@ -5,8 +5,8 @@ use re_space_view::DataBlueprintGroup;
 use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
 
 use crate::{
-    space_view_heuristics::all_possible_space_views, SpaceInfoCollection, SpaceViewBlueprint,
-    ViewportBlueprint,
+    space_view_heuristics::{all_possible_space_views, identify_entities_per_system_per_class},
+    SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
 #[must_use]
@@ -49,7 +49,9 @@ impl ViewportBlueprint<'_> {
         tile_id: egui_tiles::TileId,
     ) -> TreeAction {
         // Temporarily remove the tile so we don't get borrow checker fights:
-        let Some(mut tile) = self.tree.tiles.remove(tile_id) else { return TreeAction::Remove; };
+        let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
+            return TreeAction::Remove;
+        };
 
         let action = match &mut tile {
             egui_tiles::Tile::Container(container) => {
@@ -139,9 +141,9 @@ impl ViewportBlueprint<'_> {
         space_view_id: &SpaceViewId,
     ) -> TreeAction {
         let Some(space_view) = self.space_views.get_mut(space_view_id) else {
-                re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
-                return TreeAction::Remove;
-            };
+            re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
+            return TreeAction::Remove;
+        };
         debug_assert_eq!(space_view.id, *space_view_id);
 
         let mut visibility_changed = false;
@@ -150,7 +152,7 @@ impl ViewportBlueprint<'_> {
         let item = Item::SpaceView(space_view.id);
         let is_selected = ctx.selection().contains(&item);
 
-        let root_group = space_view.data_blueprint.root_group();
+        let root_group = space_view.contents.root_group();
         let default_open = Self::default_open_for_group(root_group);
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -186,10 +188,10 @@ impl ViewportBlueprint<'_> {
             );
         })
         .body(|ui| {
-            Self::data_blueprint_tree_ui(
+            Self::space_view_blueprint_ui(
                 ctx,
                 ui,
-                space_view.data_blueprint.root_handle(),
+                space_view.contents.root_handle(),
                 space_view,
                 visible,
             );
@@ -207,19 +209,19 @@ impl ViewportBlueprint<'_> {
         action
     }
 
-    fn data_blueprint_tree_ui(
+    fn space_view_blueprint_ui(
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         group_handle: DataBlueprintGroupHandle,
         space_view: &mut SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
-        let Some(group) = space_view.data_blueprint.group(group_handle) else {
-                debug_assert!(false, "Invalid group handle in blueprint group tree");
-                return;
-            };
+        let Some(group) = space_view.contents.group(group_handle) else {
+            debug_assert!(false, "Invalid group handle in blueprint group tree");
+            return;
+        };
 
-        // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
+        // TODO(andreas): These clones are workarounds against borrowing multiple times from space_view_blueprint_ui.
         let children = group.children.clone();
         let entities = group.entities.clone();
         let group_name = group.display_name.clone();
@@ -237,7 +239,7 @@ impl ViewportBlueprint<'_> {
 
             ui.horizontal(|ui| {
                 let mut properties = space_view
-                    .data_blueprint
+                    .contents
                     .data_blueprints_individual()
                     .get(entity_path);
                 blueprint_row_with_buttons(
@@ -267,7 +269,7 @@ impl ViewportBlueprint<'_> {
                         .changed()
                         {
                             space_view
-                                .data_blueprint
+                                .contents
                                 .data_blueprints_individual()
                                 .set(entity_path.clone(), properties);
                         }
@@ -276,7 +278,7 @@ impl ViewportBlueprint<'_> {
                             .on_hover_text("Remove Entity from the Space View")
                             .clicked()
                         {
-                            space_view.data_blueprint.remove_entity(entity_path);
+                            space_view.contents.remove_entity(entity_path);
                             space_view.entities_determined_by_user = true;
                         }
                     },
@@ -285,10 +287,13 @@ impl ViewportBlueprint<'_> {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = space_view.data_blueprint.group_mut(*child_group_handle) else {
-                    debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
-                    continue;
-                };
+            let Some(child_group) = space_view.contents.group_mut(*child_group_handle) else {
+                debug_assert!(
+                    false,
+                    "Data blueprint group {group_name} has an invalid child"
+                );
+                continue;
+            };
 
             let is_selected = ctx.selection().contains(&Item::DataBlueprintGroup(
                 space_view.id,
@@ -336,7 +341,7 @@ impl ViewportBlueprint<'_> {
                 );
             })
             .body(|ui| {
-                Self::data_blueprint_tree_ui(
+                Self::space_view_blueprint_ui(
                     ctx,
                     ui,
                     *child_group_handle,
@@ -345,7 +350,7 @@ impl ViewportBlueprint<'_> {
                 );
             });
             if remove_group {
-                space_view.data_blueprint.remove_group(*child_group_handle);
+                space_view.contents.remove_group(*child_group_handle);
                 space_view.entities_determined_by_user = true;
             }
         }
@@ -364,9 +369,11 @@ impl ViewportBlueprint<'_> {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            for space_view in all_possible_space_views(ctx, spaces_info)
-                .into_iter()
-                .sorted_by_key(|space_view| space_view.space_origin.to_string())
+            let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
+            for space_view in
+                all_possible_space_views(ctx, spaces_info, &entities_per_system_per_class)
+                    .into_iter()
+                    .sorted_by_key(|space_view| space_view.space_origin.to_string())
             {
                 if ctx
                     .re_ui

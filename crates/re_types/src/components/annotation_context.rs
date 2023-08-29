@@ -56,11 +56,11 @@ impl crate::Loggable for AnnotationContext {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype(),
+            data_type: <crate::datatypes::ClassDescriptionMapElem>::arrow_datatype(),
             is_nullable: false,
             metadata: [].into(),
         }))
@@ -114,7 +114,7 @@ impl crate::Loggable for AnnotationContext {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.components.AnnotationContext".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -153,8 +153,8 @@ impl crate::Loggable for AnnotationContext {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
-                            data_type:
-                                <crate::datatypes::ClassDescriptionMapElem>::to_arrow_datatype(),
+                            data_type: <crate::datatypes::ClassDescriptionMapElem>::arrow_datatype(
+                            ),
                             is_nullable: false,
                             metadata: [].into(),
                         })),

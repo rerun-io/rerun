@@ -2,7 +2,7 @@ use ahash::HashMap;
 
 use re_data_store::StoreDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
-use re_smart_channel::Receiver;
+use re_smart_channel::ReceiveSet;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SpaceViewClassRegistry, StoreContext, ViewerContext,
@@ -79,7 +79,7 @@ impl AppState {
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
-        rx: &Receiver<LogMsg>,
+        rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
     ) {
         re_tracing::profile_function!();
@@ -95,21 +95,12 @@ impl AppState {
 
         let mut viewport = Viewport::from_db(store_context.blueprint, viewport_state);
 
-        recording_config_entry(
-            recording_configs,
-            store_db.store_id().clone(),
-            rx.source(),
-            store_db,
-        )
-        .selection_state
-        .on_frame_start(|item| viewport.is_item_valid(item));
+        recording_config_entry(recording_configs, store_db.store_id().clone(), store_db)
+            .selection_state
+            .on_frame_start(|item| viewport.is_item_valid(item));
 
-        let rec_cfg = recording_config_entry(
-            recording_configs,
-            store_db.store_id().clone(),
-            rx.source(),
-            store_db,
-        );
+        let rec_cfg =
+            recording_config_entry(recording_configs, store_db.store_id().clone(), store_db);
 
         let mut ctx = ViewerContext {
             app_options,
@@ -128,6 +119,13 @@ impl AppState {
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
         let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
+
+        // If the blueprint is invalid, reset it.
+        if viewport.blueprint.is_invalid() {
+            re_log::warn!("Incompatible blueprint detected. Resetting to default.");
+            viewport.blueprint.reset(&mut ctx, &spaces_info);
+        }
+
         viewport.on_frame_start(&mut ctx, &spaces_info);
 
         time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
@@ -246,24 +244,24 @@ impl AppState {
 fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
     id: StoreId,
-    data_source: &'_ re_smart_channel::SmartChannelSource,
     store_db: &'_ StoreDb,
 ) -> &'cfgs mut RecordingConfig {
-    fn new_recording_confg(
-        data_source: &'_ re_smart_channel::SmartChannelSource,
-        store_db: &'_ StoreDb,
-    ) -> RecordingConfig {
-        let play_state = match data_source {
-            // Play files from the start by default - it feels nice and alive./
-            // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-            re_smart_channel::SmartChannelSource::Files { .. }
-            | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
-            | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
+    fn new_recording_config(store_db: &'_ StoreDb) -> RecordingConfig {
+        let play_state = if let Some(data_source) = &store_db.data_source {
+            match data_source {
+                // Play files from the start by default - it feels nice and alive.
+                // We assume the `RrdHttpStream` is a done recording.
+                re_smart_channel::SmartChannelSource::File(_)
+                | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
+                | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 
-            // Live data - follow it!
-            re_smart_channel::SmartChannelSource::Sdk
-            | re_smart_channel::SmartChannelSource::WsClient { .. }
-            | re_smart_channel::SmartChannelSource::TcpServer { .. } => PlayState::Following,
+                // Live data - follow it!
+                re_smart_channel::SmartChannelSource::Sdk
+                | re_smart_channel::SmartChannelSource::WsClient { .. }
+                | re_smart_channel::SmartChannelSource::TcpServer { .. } => PlayState::Following,
+            }
+        } else {
+            PlayState::Following // No known source 🤷‍♂️
         };
 
         let mut rec_cfg = RecordingConfig::default();
@@ -277,5 +275,5 @@ fn recording_config_entry<'cfgs>(
 
     configs
         .entry(id)
-        .or_insert_with(|| new_recording_confg(data_source, store_db))
+        .or_insert_with(|| new_recording_config(store_db))
 }

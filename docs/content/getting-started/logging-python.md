@@ -31,7 +31,7 @@ logging calls, and allows us to name our recording using an `ApplicationId`.
 ```python
 import rerun as rr
 
-rr.init("DNA Abacus")
+rr.init("rerun_example_dna_abacus")
 ```
 
 Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/latest/common/initialization/#rerun.init) will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
@@ -197,7 +197,7 @@ Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) ri
 Unfortunately, the logging time isn't particularly helpful to us in this case: we can't have our beads animate depending on the logging time, else they would move at different speeds depending on the performance of the logging process!
 For that, we need to introduce our own custom timeline that uses a deterministic clock which we control.
 
-Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ of the timeline(s)... you'll find a lot of flexibility in there.
+Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ of the timeline(s)… you'll find a lot of flexibility in there.
 
 Let's add our custom timeline:
 ```python

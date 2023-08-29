@@ -7,8 +7,8 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -103,6 +103,12 @@ impl Boxes3DPart {
     }
 }
 
+impl NamedViewSystem for Boxes3DPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Boxes3D".into()
+    }
+}
+
 impl ViewPartSystem for Boxes3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
@@ -123,9 +129,7 @@ impl ViewPartSystem for Boxes3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Boxes3DPart");
-
-        process_entity_views::<Box3D, 8, _>(
+        process_entity_views::<Boxes3DPart, Box3D, 8, _>(
             ctx,
             query,
             view_ctx,

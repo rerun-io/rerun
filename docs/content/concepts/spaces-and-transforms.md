@@ -48,7 +48,7 @@ There are 4 parent/child entity relationships represented in this hierarchy.
 - `world` -> `world/robot`
 - `world/robot` -> `world/robot/observed_features`
 
-The call: `rr.log_transform3d("world/robot", ...)` only applies to the relationship: `world` -> `world/robot` because the
+The call: `rr.log_transform3d("world/robot", …)` only applies to the relationship: `world` -> `world/robot` because the
 logged transform (`world/robot`) describes the relationship between the entity and its _parent_ (`world`). All other
 relationships are considered to be an identity transform.
 

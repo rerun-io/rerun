@@ -1,11 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use itertools::Itertools;
-use re_log_types::{LogMsg, PythonVersion};
-use re_smart_channel::{Receiver, SmartMessagePayload};
-
 use anyhow::Context as _;
 use clap::Subcommand;
+use itertools::Itertools;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
+use re_data_source::DataSource;
+use re_log_types::{LogMsg, PythonVersion};
+use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::host_web_viewer;
@@ -226,7 +228,7 @@ impl CallSource {
 
 /// Run the Rerun application and return an exit code.
 ///
-/// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args...]`.
+/// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args…]`.
 ///
 /// This installs crash panic and signal handlers that sends analytics on panics and signals.
 /// These crash reports includes a stacktrace. We make sure the file paths in the stacktrace
@@ -417,108 +419,7 @@ async fn run_impl(
     };
 
     // Where do we get the data from?
-    let rx = if !args.url_or_paths.is_empty() {
-        let arguments = args
-            .url_or_paths
-            .iter()
-            .cloned()
-            .map(ArgumentCategory::from_uri)
-            .collect_vec();
-
-        if arguments.len() == 1 {
-            match arguments[0].clone() {
-                ArgumentCategory::RrdHttpUrl(url) => {
-                    re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
-                }
-                ArgumentCategory::FilePath(path) => {
-                    let (tx, rx) = re_smart_channel::smart_channel(
-                        re_smart_channel::SmartMessageSource::File(path.clone()),
-                        re_smart_channel::SmartChannelSource::Files {
-                            paths: vec![path.clone()],
-                        },
-                    );
-                    let store_id =
-                        re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                    load_file_to_channel_at(store_id, &path, tx)
-                        .with_context(|| format!("{path:?}"))?;
-                    rx
-                }
-                ArgumentCategory::WebSocketAddr(rerun_server_ws_url) => {
-                    // We are connecting to a server at a websocket address:
-
-                    if args.web_viewer {
-                        #[cfg(feature = "web_viewer")]
-                        {
-                            let web_viewer = host_web_viewer(
-                                args.bind.clone(),
-                                args.web_viewer_port,
-                                true,
-                                rerun_server_ws_url,
-                            );
-                            // We return here because the running [`WebViewerServer`] is all we need.
-                            // The page we open will be pointed at a websocket url hosted by a *different* server.
-                            return web_viewer.await;
-                        }
-                        #[cfg(not(feature = "web_viewer"))]
-                        {
-                            _ = rerun_server_ws_url;
-                            panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
-                        }
-                    } else {
-                        #[cfg(feature = "native_viewer")]
-                        return native_viewer_connect_to_ws_url(
-                            _build_info,
-                            call_source.app_env(),
-                            startup_options,
-                            profiler,
-                            rerun_server_ws_url,
-                        );
-
-                        #[cfg(not(feature = "native_viewer"))]
-                        {
-                            _ = (call_source, rerun_server_ws_url);
-                            anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
-                        }
-                    }
-                }
-            }
-        } else {
-            // Load many files:
-            let mut paths = vec![];
-            for argument in arguments {
-                if let ArgumentCategory::FilePath(path) = argument {
-                    paths.push(path);
-                } else {
-                    // TODO(#2121): Support loading multiple `http://` and `ws://` urls
-                    anyhow::bail!("Can only load a single URL, or multiple files. See https://github.com/rerun-io/rerun/issues/2121");
-                }
-            }
-
-            let (tx, rx) = re_smart_channel::smart_channel(
-                // NOTE: We can't know yet, each file will get its own properly sourced sender a
-                // few lines below.
-                re_smart_channel::SmartMessageSource::Unknown,
-                re_smart_channel::SmartChannelSource::Files {
-                    paths: paths.clone(),
-                },
-            );
-
-            let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-
-            // Load the files in parallel, and log errors.
-            // Failing to log one out of many files is not a big deal.
-            for path in paths {
-                let tx = tx.clone_as(re_smart_channel::SmartMessageSource::File(path.clone()));
-                let store_id = store_id.clone();
-                rayon::spawn(move || {
-                    if let Err(err) = load_file_to_channel_at(store_id, &path, tx) {
-                        re_log::error!("Failed to load {path:?}: {err}");
-                    }
-                });
-            }
-            rx
-        }
-    } else {
+    let rx: Vec<Receiver<LogMsg>> = if args.url_or_paths.is_empty() {
         #[cfg(feature = "server")]
         {
             let server_options = re_sdk_comms::ServerOptions {
@@ -527,19 +428,49 @@ async fn run_impl(
                 // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
             };
-            re_sdk_comms::serve(&args.bind, args.port, server_options).await?
+            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options).await?;
+            vec![rx]
         }
 
         #[cfg(not(feature = "server"))]
-        anyhow::bail!("No url or .rrd path given");
+        vec![]
+    } else {
+        let data_sources = args
+            .url_or_paths
+            .iter()
+            .cloned()
+            .map(DataSource::from_uri)
+            .collect_vec();
+
+        #[cfg(feature = "web_viewer")]
+        if data_sources.len() == 1 && args.web_viewer {
+            if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
+                // Special case! We are connecting a web-viewer to a web-socket address.
+                // Instead of piping, just host a web-viewer that connects to the web-socket directly:
+                return host_web_viewer(
+                    args.bind.clone(),
+                    args.web_viewer_port,
+                    true,
+                    rerun_server_ws_url,
+                )
+                .await;
+            }
+        }
+
+        data_sources
+            .into_par_iter()
+            .map(|data_source| data_source.stream(None))
+            .collect::<Result<Vec<_>, _>>()?
     };
 
     // Now what do we do with the data?
 
     if args.test_receive {
+        let rx = ReceiveSet::new(rx);
         assert_receive_into_store_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
-        Ok(stream_to_rrd(&rx, &rrd_path.into())?)
+        let rx = ReceiveSet::new(rx);
+        Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
         {
@@ -558,6 +489,7 @@ async fn run_impl(
             let ws_server =
                 re_ws_comms::RerunServer::new(args.bind.clone(), args.ws_server_port).await?;
             let ws_server_url = ws_server.server_url();
+            let rx = ReceiveSet::new(rx);
             let ws_server_handle = tokio::spawn(ws_server.listen(rx));
 
             // This is the server that serves the Wasm+HTML:
@@ -583,15 +515,16 @@ async fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app = re_viewer::App::from_receiver(
+            let mut app = re_viewer::App::new(
                 _build_info,
                 &call_source.app_env(),
                 startup_options,
                 re_ui,
                 cc.storage,
-                rx,
             );
+            for rx in rx {
+                app.add_receiver(rx);
+            }
             app.set_profiler(profiler);
             Box::new(app)
         }))
@@ -621,9 +554,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::StoreDb> {
-    use re_smart_channel::RecvTimeoutError;
-
+fn assert_receive_into_store_db(rx: &ReceiveSet<LogMsg>) -> anyhow::Result<re_data_store::StoreDb> {
     re_log::info!("Receiving messages into a StoreDb…");
 
     let mut db: Option<re_data_store::StoreDb> = None;
@@ -633,8 +564,12 @@ fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data
     let timeout = std::time::Duration::from_secs(12);
 
     loop {
+        if !rx.is_connected() {
+            anyhow::bail!("Channel disconnected without a Goodbye message.");
+        }
+
         match rx.recv_timeout(timeout) {
-            Ok(msg) => {
+            Some((_, msg)) => {
                 re_log::info_once!("Received first message.");
 
                 match msg.payload {
@@ -648,7 +583,7 @@ fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data
                     }
                     SmartMessagePayload::Quit(err) => {
                         if let Some(err) = err {
-                            anyhow::bail!("data source has disconnected unexpectedly: {err}",)
+                            anyhow::bail!("data source has disconnected unexpectedly: {err}")
                         } else if let Some(db) = db {
                             db.entity_db.data_store.sanity_check()?;
                             anyhow::ensure!(0 < num_messages, "No messages received");
@@ -660,288 +595,18 @@ fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data
                     }
                 }
             }
-            Err(RecvTimeoutError::Timeout) => {
+            None => {
                 anyhow::bail!(
                     "Didn't receive any messages within {} seconds. Giving up.",
                     timeout.as_secs()
                 );
             }
-            Err(RecvTimeoutError::Disconnected) => {
-                anyhow::bail!("Channel disconnected without a Goodbye message.");
-            }
         }
     }
 }
 
-#[derive(Clone)]
-enum ArgumentCategory {
-    /// A remote RRD file, served over http.
-    RrdHttpUrl(String),
-
-    /// A path to a local file.
-    FilePath(std::path::PathBuf),
-
-    /// A remote Rerun server.
-    WebSocketAddr(String),
-}
-
-impl ArgumentCategory {
-    pub fn from_uri(mut uri: String) -> ArgumentCategory {
-        fn looks_like_windows_abs_path(path: &str) -> bool {
-            let path = path.as_bytes();
-            // "C:/" etc
-            path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
-        }
-
-        fn looks_like_a_file_path(uri: &str) -> bool {
-            // How do we distinguish a file path from a web url? "example.zip" could be either.
-
-            if uri.starts_with('/') {
-                return true; // Unix absolute path
-            }
-            if looks_like_windows_abs_path(uri) {
-                return true;
-            }
-
-            // We use a simple heuristic here: if there are multiple dots, it is likely an url,
-            // like "example.com/foo.zip".
-            // If there is only one dot, we treat it as an extension and look it up in a list of common
-            // file extensions:
-
-            let parts = uri.split('.').collect_vec();
-            if parts.len() <= 1 {
-                true // Only one part. Weird. Let's assume it is a file path.
-            } else if parts.len() == 2 {
-                let extension = parts[1];
-                matches!(
-                    extension,
-                    // Our own:
-                    "rrd"
-
-                    // Misc:
-                    | "txt"
-                    | "zip"
-
-                    // Meshes:
-                    | "glb"
-                    | "gltf"
-                    | "obj"
-                    | "ply"
-                    | "stl"
-
-                    // Images:
-                    | "avif"
-                    | "bmp"
-                    | "dds"
-                    | "exr"
-                    | "farbfeld"
-                    | "ff"
-                    | "gif"
-                    | "hdr"
-                    | "ico"
-                    | "jpeg"
-                    | "jpg"
-                    | "pam"
-                    | "pbm"
-                    | "pgm"
-                    | "png"
-                    | "ppm"
-                    | "tga"
-                    | "tif"
-                    | "tiff"
-                    | "webp"
-                )
-            } else {
-                false // Too many dots; assume an url
-            }
-        }
-
-        let path = std::path::Path::new(&uri).to_path_buf();
-
-        if uri.starts_with("file://") || path.exists() {
-            ArgumentCategory::FilePath(path)
-        } else if uri.starts_with("http://")
-            || uri.starts_with("https://")
-            || (uri.starts_with("www.") && uri.ends_with(".rrd"))
-        {
-            ArgumentCategory::RrdHttpUrl(uri)
-        } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
-            ArgumentCategory::WebSocketAddr(uri)
-
-        // Now we are into heuristics territory:
-        } else if looks_like_a_file_path(&uri) {
-            ArgumentCategory::FilePath(path)
-        } else if uri.ends_with(".rrd") {
-            ArgumentCategory::RrdHttpUrl(uri)
-        } else {
-            // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
-            // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::debug!("Assuming WebSocket endpoint");
-            if !uri.contains("://") {
-                uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
-            }
-            ArgumentCategory::WebSocketAddr(uri)
-        }
-    }
-}
-
-#[test]
-fn test_argument_categorization() {
-    let file = [
-        "file://foo",
-        "foo.rrd",
-        "foo.zip",
-        "/foo/bar/baz",
-        "D:/file",
-    ];
-    let http = [
-        "http://foo.zip",
-        "https://foo.zip",
-        "example.zip/foo.rrd",
-        "www.foo.zip/foo.rrd",
-    ];
-    let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
-
-    for uri in file {
-        assert!(
-            matches!(
-                ArgumentCategory::from_uri(uri.to_owned()),
-                ArgumentCategory::FilePath(_)
-            ),
-            "Expected {uri:?} to be categorized as FilePath"
-        );
-    }
-
-    for uri in http {
-        assert!(
-            matches!(
-                ArgumentCategory::from_uri(uri.to_owned()),
-                ArgumentCategory::RrdHttpUrl(_)
-            ),
-            "Expected {uri:?} to be categorized as RrdHttpUrl"
-        );
-    }
-
-    for uri in ws {
-        assert!(
-            matches!(
-                ArgumentCategory::from_uri(uri.to_owned()),
-                ArgumentCategory::WebSocketAddr(_)
-            ),
-            "Expected {uri:?} to be categorized as WebSocketAddr"
-        );
-    }
-}
-
-#[cfg(feature = "native_viewer")]
-fn native_viewer_connect_to_ws_url(
-    build_info: re_build_info::BuildInfo,
-    app_env: re_viewer::AppEnvironment,
-    startup_options: re_viewer::StartupOptions,
-    profiler: re_tracing::Profiler,
-    rerun_server_ws_url: String,
-) -> anyhow::Result<()> {
-    // By using RemoteViewerApp we let the user change the server they are connected to.
-    re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-        let mut app = re_viewer::RemoteViewerApp::new(
-            build_info,
-            app_env,
-            startup_options,
-            re_ui,
-            cc.storage,
-            rerun_server_ws_url,
-        );
-        app.set_profiler(profiler);
-        Box::new(app)
-    }))?;
-    Ok(())
-}
-
-#[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
-fn load_file_to_channel_at(
-    store_id: re_log_types::StoreId,
-    path: &std::path::Path,
-    tx: re_smart_channel::Sender<LogMsg>,
-) -> Result<(), anyhow::Error> {
-    puffin::profile_function!(path.to_string_lossy());
-    re_log::info!("Loading {path:?}…");
-
-    let extension = path
-        .extension()
-        .unwrap_or_default()
-        .to_ascii_lowercase()
-        .to_string_lossy()
-        .to_string();
-
-    if extension == "rrd" {
-        load_rrd_file_to_channel(path.to_owned(), tx)
-    } else {
-        #[cfg(feature = "sdk")]
-        {
-            use re_log_types::SetStoreInfo;
-            // First, set a store info since this is the first thing the application expects.
-            tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
-                row_id: re_log_types::RowId::random(),
-                info: re_log_types::StoreInfo {
-                    application_id: re_log_types::ApplicationId(
-                        path.to_str().unwrap_or("file").to_owned(),
-                    ),
-                    store_id: store_id.clone(),
-                    is_official_example: false,
-                    started: re_log_types::Time::now(),
-                    store_source: re_log_types::StoreSource::FileFromCli {
-                        rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-                        llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-                    },
-                    store_kind: re_log_types::StoreKind::Recording,
-                },
-            }))
-            .ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
-
-            // Send actual file.
-            tx.send(re_sdk::MsgSender::from_file_path(path)?.into_log_msg(store_id)?)
-                .ok();
-
-            tx.quit(None).ok();
-            Ok(())
-        }
-
-        #[cfg(not(feature = "sdk"))]
-        {
-            _ = store_id;
-            anyhow::bail!("Unsupported file extension: '{extension}' for path {path:?}. Try enabling the 'sdk' feature of 'rerun'.");
-        }
-    }
-}
-
-fn load_rrd_file_to_channel(
-    path: std::path::PathBuf,
-    tx: re_smart_channel::Sender<LogMsg>,
-) -> anyhow::Result<()> {
-    use anyhow::Context as _;
-    let file = std::fs::File::open(&path).context("Failed to open file")?;
-    let decoder = re_log_encoding::decoder::Decoder::new(file)?;
-
-    rayon::spawn(move || {
-        re_tracing::profile_scope!("load_rrd_file_to_channel");
-        for msg in decoder {
-            match msg {
-                Ok(msg) => {
-                    tx.send(msg).ok(); // .ok(): we're running in a background thread, so who knows if the receiver is still open
-                }
-                Err(err) => {
-                    re_log::warn_once!("Failed to decode message in {path:?}: {err}");
-                }
-            }
-        }
-        tx.quit(None).ok(); // .ok(): we're running in a background thread, so who knows if the receiver is still open
-    });
-
-    Ok(())
-}
-
-fn stream_to_rrd(
-    rx: &re_smart_channel::Receiver<LogMsg>,
+fn stream_to_rrd_on_disk(
+    rx: &re_smart_channel::ReceiveSet<LogMsg>,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;

@@ -1068,7 +1068,7 @@ fn arrow_data_type_method(
         declaration: MethodDeclaration {
             is_static: true,
             return_type: quote! { const std::shared_ptr<arrow::DataType>& },
-            name_and_parameters: quote! { to_arrow_datatype() },
+            name_and_parameters: quote! { arrow_datatype() },
         },
         definition_body: quote! {
             static const auto datatype = #quoted_datatype;
@@ -1203,7 +1203,7 @@ fn component_to_data_cell_method(
             #NEWLINE_TOKEN
             auto schema = arrow::schema({arrow::field(
                 #type_ident::NAME, // Unused, but should be the name of the field in the archetype if any.
-                #type_ident::to_arrow_datatype(),
+                #type_ident::arrow_datatype(),
                 false
             )});
             #NEWLINE_TOKEN
@@ -1228,6 +1228,7 @@ fn archetype_to_data_cells(
 ) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
+    hpp_includes.insert_rerun("arrow.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
     // TODO(andreas): Splats need to be handled separately.
@@ -1278,6 +1279,7 @@ fn archetype_to_data_cells(
         }
     });
 
+    let indicator_fqname = format!("rerun.components.{}Indicator", obj.name);
     Method {
         docs: "Creates a list of Rerun DataCell from this archetype.".into(),
         declaration: MethodDeclaration {
@@ -1291,6 +1293,14 @@ fn archetype_to_data_cells(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_cells)*
+            {
+                const auto result =
+                    create_indicator_component(#indicator_fqname, num_instances());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
+            }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cells;
@@ -1947,9 +1957,9 @@ fn quote_arrow_data_type(
             // In the future we'll add the extension type here to the schema.
             let obj = &objects[fqname];
             if !is_top_level_type {
-                // If we're not at the top level, we should have already a `to_arrow_datatype` method that we can relay to.
+                // If we're not at the top level, we should have already a `arrow_datatype` method that we can relay to.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
-                quote!(#quoted_fqname::to_arrow_datatype())
+                quote!(#quoted_fqname::arrow_datatype())
             } else if obj.is_arrow_transparent() {
                 quote_arrow_data_type(&obj.fields[0].typ, objects, includes, false)
             } else {

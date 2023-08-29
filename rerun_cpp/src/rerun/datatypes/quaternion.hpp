@@ -17,6 +17,9 @@ namespace arrow {
 namespace rerun {
     namespace datatypes {
         /// A Quaternion represented by 4 real numbers.
+        ///
+        /// Note: although the x,y,z,w components of the quaternion will be passed through to the
+        /// datastore as provided, when used in the viewer Quaternions will always be normalized.
         struct Quaternion {
             float xyzw[4];
 
@@ -48,7 +51,7 @@ namespace rerun {
             Quaternion(const float (&_xyzw)[4]) : xyzw{_xyzw[0], _xyzw[1], _xyzw[2], _xyzw[3]} {}
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(

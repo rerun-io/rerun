@@ -6,13 +6,15 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main clippy.toml:
 
-msrv = "1.69"
+msrv = "1.72"
 
 allow-unwrap-in-tests = true
 
 # https://doc.rust-lang.org/nightly/clippy/lint_configuration.html#avoid-breaking-exported-api
 # We want suggestions, even if it changes public API.
 avoid-breaking-exported-api = false
+
+excessive-nesting-threshold = 16 # TODO(emilk): lower this
 
 max-fn-params-bools = 2 # TODO(emilk): decrease this to 1
 
@@ -35,8 +37,9 @@ disallowed-methods = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
-  { path = "std::thread::Builder", reason = "Cannot spawn threads on wasm" },
   { path = "instant::SystemTime", reason = "Known bugs. Use web-time." },
+  { path = "std::thread::Builder", reason = "Cannot spawn threads on wasm" },
+  # { path = "std::path::PathBuf", reason = "Can't read/write files on web" }, // Used in build.rs files (which is fine).
 ]
 
 # Allow-list of words for markdown in dosctrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown

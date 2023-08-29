@@ -327,14 +327,13 @@ impl Example for Multiview {
             .batch("Random Points")
             .world_from_obj(glam::Affine3A::from_rotation_x(seconds_since_startup))
             .add_points(
-                self.random_points_positions.len(),
-                self.random_points_positions.iter().cloned(),
-                self.random_points_radii.iter().cloned(),
-                self.random_points_colors.iter().cloned(),
-                std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
+                &self.random_points_positions,
+                &self.random_points_radii,
+                &self.random_points_colors,
+                &[],
             );
 
-        let point_cloud = builder.into_draw_data(re_ctx);
+        let point_cloud = builder.into_draw_data(re_ctx).unwrap();
         let meshes = build_mesh_instances(
             re_ctx,
             &self.model_mesh_instances,

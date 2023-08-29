@@ -248,7 +248,7 @@ impl MeshDrawData {
                             .0
                             .map_or([0, 0, 0, 0], |mask| [mask[0], mask[1], 0, 0]),
                         picking_layer_id: instance.picking_layer_id.into(),
-                    });
+                    })?;
                 }
                 num_processed_instances += count;
 
@@ -266,7 +266,7 @@ impl MeshDrawData {
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &instance_buffer,
                 0,
-            );
+            )?;
         }
 
         Ok(MeshDrawData {

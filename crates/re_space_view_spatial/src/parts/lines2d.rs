@@ -6,7 +6,7 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -41,7 +41,7 @@ impl Lines2DPart {
         arch_view: &'a ArchetypeView<LineStrips2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
-        annotation_infos: &'a [ResolvedAnnotationInfo],
+        annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
@@ -158,6 +158,12 @@ impl Lines2DPart {
     }
 }
 
+impl NamedViewSystem for Lines2DPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Lines2D".into()
+    }
+}
+
 impl ViewPartSystem for Lines2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         LineStrips2D::all_components().try_into().unwrap()
@@ -169,9 +175,7 @@ impl ViewPartSystem for Lines2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("Lines2DPart");
-
-        process_archetype_views::<LineStrips2D, { LineStrips2D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Lines2DPart, LineStrips2D, { LineStrips2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

@@ -2,7 +2,7 @@
 import rerun as rr
 import rerun.experimental as rr2
 
-rr.init("line_strip3d", spawn=True)
+rr.init("rerun_example_line_strip3d", spawn=True)
 
 points = [
     [0, 0, 0],

@@ -8,7 +8,7 @@ rng = default_rng(12345)
 # Create a 1-dimensional tensor
 tensor = rng.laplace(0.0, 1.0, 100)
 
-rr.init("tensors", spawn=True)
+rr.init("rerun_example_tensors", spawn=True)
 
 # Log the tensor, assigning names to each dimension
 rr.log_tensor("tensor", tensor)

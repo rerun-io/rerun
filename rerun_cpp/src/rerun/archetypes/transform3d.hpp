@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/transform3d.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
@@ -30,7 +31,7 @@ namespace rerun {
         /// const float pi = static_cast<float>(M_PI);
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("transform3d");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_transform3d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    auto arrow = rr::Arrows3D({0.0f, 1.0f, 0.0f});

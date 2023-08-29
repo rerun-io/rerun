@@ -18,7 +18,7 @@ pub use cameras::CamerasPart;
 pub use images::Image;
 pub use images::ImagesPart;
 pub use spatial_view_part::SpatialViewPartData;
-pub use transform3d_arrows::add_axis_arrows;
+pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
 use ahash::HashMap;
 use std::sync::Arc;
@@ -29,7 +29,7 @@ use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfo, SpaceViewSystemRegistry,
+    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewSystemRegistry,
     ViewPartCollection, ViewQuery,
 };
 
@@ -105,7 +105,7 @@ pub fn picking_id_from_instance_key(
 pub fn process_colors<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &'a EntityPath,
-    annotation_infos: &'a [ResolvedAnnotationInfo],
+    annotation_infos: &'a ResolvedAnnotationInfos,
 ) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError> {
     re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
@@ -153,7 +153,7 @@ fn process_annotations_and_keypoints<Primary, A: Archetype>(
     arch_view: &re_query::ArchetypeView<A>,
     annotations: &Arc<Annotations>,
     mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
-) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), re_query::QueryError>
+) -> Result<(ResolvedAnnotationInfos, Keypoints), re_query::QueryError>
 where
     Primary: re_types::Component + Clone + Default,
 {
@@ -168,8 +168,9 @@ where
         let resolved_annotation = annotations
             .resolved_class_description(None)
             .annotation_info();
+
         return Ok((
-            vec![resolved_annotation; arch_view.num_instances()],
+            ResolvedAnnotationInfos::Same(arch_view.num_instances(), resolved_annotation),
             keypoints,
         ));
     }
@@ -194,7 +195,7 @@ where
     })
     .collect();
 
-    Ok((annotation_info, keypoints))
+    Ok((ResolvedAnnotationInfos::Many(annotation_info), keypoints))
 }
 
 #[derive(Clone)]
@@ -224,11 +225,13 @@ pub struct UiLabel {
 pub fn load_keypoint_connections(
     ent_context: &SpatialSceneEntityContext<'_>,
     ent_path: &re_data_store::EntityPath,
-    keypoints: Keypoints,
+    keypoints: &Keypoints,
 ) {
     if keypoints.is_empty() {
         return;
     }
+
+    re_tracing::profile_function!();
 
     // Generate keypoint connections if any.
     let mut line_builder = ent_context.shared_render_builders.lines();
@@ -240,7 +243,7 @@ pub fn load_keypoint_connections(
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let resolved_class_description = ent_context
             .annotations
-            .resolved_class_description(Some(class_id));
+            .resolved_class_description(Some(*class_id));
 
         let Some(class_description) = resolved_class_description.class_description else {
             continue;

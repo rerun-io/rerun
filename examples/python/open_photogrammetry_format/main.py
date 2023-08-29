@@ -204,7 +204,7 @@ def main() -> None:
     project = OPFProject.from_dataset(args.dataset, log_as_frames=not args.no_frames)
 
     # display everything in Rerun
-    rr.script_setup(args, "open_photogrammetry_format")
+    rr.script_setup(args, "rerun_example_open_photogrammetry_format")
     project.log_point_cloud()
     project.log_calibrated_cameras()
     rr.script_teardown(args)

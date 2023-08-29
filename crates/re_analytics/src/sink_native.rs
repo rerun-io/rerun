@@ -110,7 +110,7 @@ impl PostHogSink {
                 }
             };
 
-            // 2023-02-26 the resolved URL was https://eu.posthog.com/capture (in Europe)
+            // 2023-08-25 the resolved URL was https://tel.rerun.io/
 
             Ok(resolved_url)
         })

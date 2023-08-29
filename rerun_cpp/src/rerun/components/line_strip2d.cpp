@@ -14,10 +14,9 @@ namespace rerun {
     namespace components {
         const char *LineStrip2D::NAME = "rerun.linestrip2d";
 
-        const std::shared_ptr<arrow::DataType> &LineStrip2D::to_arrow_datatype() {
-            static const auto datatype = arrow::list(
-                arrow::field("item", rerun::datatypes::Vec2D::to_arrow_datatype(), false)
-            );
+        const std::shared_ptr<arrow::DataType> &LineStrip2D::arrow_datatype() {
+            static const auto datatype =
+                arrow::list(arrow::field("item", rerun::datatypes::Vec2D::arrow_datatype(), false));
             return datatype;
         }
 
@@ -85,7 +84,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema = arrow::schema(
-                {arrow::field(LineStrip2D::NAME, LineStrip2D::to_arrow_datatype(), false)}
+                {arrow::field(LineStrip2D::NAME, LineStrip2D::arrow_datatype(), false)}
             );
 
             rerun::DataCell cell;

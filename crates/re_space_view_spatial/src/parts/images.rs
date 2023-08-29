@@ -17,11 +17,11 @@ use re_types::{
     components::{Color, DrawOrder, InstanceKey},
     Loggable as _,
 };
-use re_viewer_context::ViewContextCollection;
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
     TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
 };
+use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
@@ -57,7 +57,9 @@ fn to_textured_rect(
 ) -> Option<re_renderer::renderer::TexturedRect> {
     re_tracing::profile_function!();
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
+    let Some([height, width, _]) = tensor.image_height_width_channels() else {
+        return None;
+    };
 
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
@@ -209,7 +211,9 @@ impl ImagesPart {
             ent_view.iter_component::<DrawOrder>()?
         ) {
             re_tracing::profile_scope!("loop_iter");
-            let Some(tensor) = tensor else { continue; };
+            let Some(tensor) = tensor else {
+                continue;
+            };
 
             if !tensor.is_shaped_like_an_image() {
                 return Ok(());
@@ -305,10 +309,9 @@ impl ImagesPart {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        let Some(intrinsics) = store.query_latest_component::<Pinhole>(
-            parent_pinhole_path,
-            &ctx.current_query(),
-        ) else {
+        let Some(intrinsics) =
+            store.query_latest_component::<Pinhole>(parent_pinhole_path, &ctx.current_query())
+        else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 
@@ -380,6 +383,12 @@ impl ImagesPart {
     }
 }
 
+impl NamedViewSystem for ImagesPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Images".into()
+    }
+}
+
 impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
@@ -412,12 +421,10 @@ impl ViewPartSystem for ImagesPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("ImagesPart");
-
         let mut depth_clouds = Vec::new();
 
         let transforms = view_ctx.get::<TransformContext>()?;
-        process_entity_views::<_, 4, _>(
+        process_entity_views::<ImagesPart, _, 4, _>(
             ctx,
             query,
             view_ctx,

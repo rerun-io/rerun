@@ -56,7 +56,7 @@ namespace rerun {
                       _coeffs[8]} {}
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(

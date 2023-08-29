@@ -1,11 +1,10 @@
-use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    AutoSpawnHeuristic, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemRegistry,
-    ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSystemRegistry, ViewQuery, ViewerContext,
 };
 
 /// First element is the primary component, all others are optional.
@@ -18,6 +17,12 @@ re_string_interner::declare_new_type!(
     #[derive(serde::Deserialize, serde::Serialize)]
     pub struct SpaceViewClassName;
 );
+
+impl SpaceViewClassName {
+    pub fn invalid() -> Self {
+        Self::from("invalid")
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum SpaceViewClassLayoutPriority {
@@ -88,7 +93,7 @@ pub trait DynSpaceViewClass {
         &self,
         _ctx: &ViewerContext<'_>,
         space_origin: &EntityPath,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
     ) -> AutoSpawnHeuristic;
 
     /// Executed for all active space views on frame start (before any ui is drawn),
@@ -100,7 +105,7 @@ pub trait DynSpaceViewClass {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
         entity_properties: &mut EntityPropertyMap,
     );
 

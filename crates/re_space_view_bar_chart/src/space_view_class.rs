@@ -121,7 +121,7 @@ impl SpaceViewClass for BarChartSpaceView {
                         .color(color)
                     }
 
-                    for (ent_path, tensor) in charts.iter() {
+                    for (ent_path, tensor) in charts {
                         let chart = match &tensor.data {
                             TensorData::U8(data) => {
                                 create_bar_chart(ent_path, data.iter().copied())

@@ -1,8 +1,7 @@
 use egui::{Ui, Widget};
-use itertools::Itertools;
-use re_log_types::LogMsg;
-use re_smart_channel::Receiver;
 
+use re_log_types::LogMsg;
+use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::ReUi;
 
 const MIN_COLUMN_WIDTH: f32 = 250.0;
@@ -17,7 +16,7 @@ const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer
 pub fn welcome_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    rx: &Receiver<LogMsg>,
+    rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) {
     egui::ScrollArea::both()
@@ -29,37 +28,42 @@ pub fn welcome_ui(
 }
 
 /// Full-screen UI shown while in loading state.
-pub fn loading_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
-    ui.centered_and_justified(|ui| {
-        let status_strings = status_strings(rx);
+pub fn loading_ui(ui: &mut egui::Ui, rx: &ReceiveSet<LogMsg>) {
+    let status_strings = status_strings(rx);
+    if status_strings.is_empty() {
+        return;
+    }
 
-        let style = ui.style();
-        let mut layout_job = egui::text::LayoutJob::default();
-        layout_job.append(
-            status_strings.status,
-            0.0,
-            egui::TextFormat::simple(
-                egui::TextStyle::Heading.resolve(style),
-                style.visuals.strong_text_color(),
-            ),
-        );
-        layout_job.append(
-            &format!("\n\n{}", status_strings.source),
-            0.0,
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                style.visuals.text_color(),
-            ),
-        );
-        layout_job.halign = egui::Align::Center;
-        ui.label(layout_job);
+    ui.centered_and_justified(|ui| {
+        for status_string in status_strings {
+            let style = ui.style();
+            let mut layout_job = egui::text::LayoutJob::default();
+            layout_job.append(
+                status_string.status,
+                0.0,
+                egui::TextFormat::simple(
+                    egui::TextStyle::Heading.resolve(style),
+                    style.visuals.strong_text_color(),
+                ),
+            );
+            layout_job.append(
+                &format!("\n\n{}", status_string.source),
+                0.0,
+                egui::TextFormat::simple(
+                    egui::TextStyle::Body.resolve(style),
+                    style.visuals.text_color(),
+                ),
+            );
+            layout_job.halign = egui::Align::Center;
+            ui.label(layout_job);
+        }
     });
 }
 
 fn welcome_ui_impl(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    rx: &Receiver<LogMsg>,
+    rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) {
     let mut margin = egui::Margin::same(40.0);
@@ -91,16 +95,17 @@ fn welcome_ui_impl(
 
             onboarding_content_ui(re_ui, ui, command_sender);
 
-            let status_strings = status_strings(rx);
-            if status_strings.long_term {
-                ui.add_space(55.0);
-                ui.vertical_centered(|ui| {
-                    ui.label(status_strings.status);
-                    ui.label(
-                        egui::RichText::new(status_strings.source)
-                            .color(ui.visuals().weak_text_color()),
-                    );
-                });
+            for status_strings in status_strings(rx) {
+                if status_strings.long_term {
+                    ui.add_space(55.0);
+                    ui.vertical_centered(|ui| {
+                        ui.label(status_strings.status);
+                        ui.label(
+                            egui::RichText::new(status_strings.source)
+                                .color(ui.visuals().weak_text_color()),
+                        );
+                    });
+                }
             }
         });
     });
@@ -289,8 +294,8 @@ fn image_banner(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, image: &re_ui::Icon, col
     );
 }
 
-/// Strings describing the current state of the Rerun viewer.
-struct StatusStrings {
+/// Describes the current state of the Rerun viewer.
+struct StatusString {
     /// General status string (e.g. "Ready", "Loading…", etc.).
     status: &'static str,
 
@@ -302,7 +307,7 @@ struct StatusStrings {
     long_term: bool,
 }
 
-impl StatusStrings {
+impl StatusString {
     fn new(status: &'static str, source: String, long_term: bool) -> Self {
         Self {
             status,
@@ -313,39 +318,39 @@ impl StatusStrings {
 }
 
 /// Returns the status strings to be displayed by the loading and welcome screen.
-fn status_strings(rx: &Receiver<LogMsg>) -> StatusStrings {
-    match rx.source() {
-        re_smart_channel::SmartChannelSource::Files { paths } => StatusStrings::new(
-            "Loading…",
-            format!(
-                "{}",
-                paths
-                    .iter()
-                    .format_with(", ", |path, f| f(&format_args!("{}", path.display()))),
-            ),
-            false,
-        ),
+fn status_strings(rx: &ReceiveSet<LogMsg>) -> Vec<StatusString> {
+    rx.sources()
+        .into_iter()
+        .map(|s| status_string(&s))
+        .collect()
+}
+
+fn status_string(source: &SmartChannelSource) -> StatusString {
+    match source {
+        re_smart_channel::SmartChannelSource::File(path) => {
+            StatusString::new("Loading…", path.display().to_string(), false)
+        }
         re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
-            StatusStrings::new("Loading…", url.clone(), false)
+            StatusString::new("Loading…", url.clone(), false)
         }
         re_smart_channel::SmartChannelSource::RrdWebEventListener => {
-            StatusStrings::new("Ready", "Waiting for logging data…".to_owned(), true)
+            StatusString::new("Ready", "Waiting for logging data…".to_owned(), true)
         }
-        re_smart_channel::SmartChannelSource::Sdk => StatusStrings::new(
+        re_smart_channel::SmartChannelSource::Sdk => StatusString::new(
             "Ready",
             "Waiting for logging data from SDK".to_owned(),
             true,
         ),
         re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
             // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-            StatusStrings::new(
+            StatusString::new(
                 "Ready",
                 format!("Waiting for data from {ws_server_url}"),
                 true,
             )
         }
         re_smart_channel::SmartChannelSource::TcpServer { port } => {
-            StatusStrings::new("Ready", format!("Listening on port {port}"), true)
+            StatusString::new("Ready", format!("Listening on port {port}"), true)
         }
     }
 }

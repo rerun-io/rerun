@@ -429,7 +429,7 @@ if node_data:
     # Log this node's mesh, if it has one.
     mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
     if mesh:
-        # ... extract some color information
+        # … extract some color information
         rr.log_mesh(
             path,
             mesh.vertices,
