@@ -469,7 +469,7 @@ impl PersistentIndexedTable {
 
             // each data column
             for column in columns.values_mut() {
-                dropped_num_bytes += column.0.swap_remove(row_index).total_size_bytes();
+                dropped_num_bytes += column.0.remove(row_index).total_size_bytes();
             }
         }
 
