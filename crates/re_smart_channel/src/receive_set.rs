@@ -143,3 +143,65 @@ impl<T: Send> ReceiveSet<T> {
         }
     }
 }
+
+#[test]
+fn test_receive_set() {
+    use crate::{smart_channel, SmartMessageSource};
+
+    let timeout = std::time::Duration::from_millis(100);
+
+    let (tx_file, rx_file) = smart_channel::<i32>(
+        SmartMessageSource::File("path".into()),
+        SmartChannelSource::File("path".into()),
+    );
+    let (tx_sdk, rx_sdk) = smart_channel::<i32>(SmartMessageSource::Sdk, SmartChannelSource::Sdk);
+
+    let set = ReceiveSet::default();
+
+    assert_eq!(set.try_recv(), None);
+    assert_eq!(set.recv_timeout(timeout), None);
+    assert_eq!(set.sources(), vec![]);
+
+    set.add(rx_file);
+
+    assert_eq!(set.try_recv(), None);
+    assert_eq!(set.recv_timeout(timeout), None);
+    assert_eq!(
+        set.sources(),
+        vec![Arc::new(SmartChannelSource::File("path".into()))]
+    );
+
+    set.add(rx_sdk);
+
+    assert_eq!(set.try_recv(), None);
+    assert_eq!(set.recv_timeout(timeout), None);
+    assert_eq!(
+        set.sources(),
+        vec![
+            Arc::new(SmartChannelSource::File("path".into())),
+            Arc::new(SmartChannelSource::Sdk)
+        ]
+    );
+
+    tx_sdk.send(42).unwrap();
+    assert_eq!(set.try_recv().unwrap().0, Arc::new(SmartChannelSource::Sdk));
+
+    assert_eq!(set.try_recv(), None);
+    assert_eq!(set.recv_timeout(timeout), None);
+    assert_eq!(set.sources().len(), 2);
+
+    drop(tx_sdk);
+
+    assert_eq!(set.try_recv(), None);
+    assert_eq!(set.recv_timeout(timeout), None);
+    assert_eq!(
+        set.sources(),
+        vec![Arc::new(SmartChannelSource::File("path".into()))]
+    );
+
+    drop(tx_file);
+
+    assert_eq!(set.try_recv(), None);
+    assert_eq!(set.recv_timeout(timeout), None);
+    assert_eq!(set.sources(), vec![]);
+}
