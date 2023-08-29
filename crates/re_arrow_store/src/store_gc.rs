@@ -288,14 +288,14 @@ impl DataStore {
         row_ids
     }
 
-    /// For each [`EntityPath`], [`Timeline`], [`Component`] find the N latest [`RowId`]s.
+    /// For each `EntityPath`, `Timeline`, `Component` find the N latest [`RowId`]s.
     ///
     /// These are the rows that must be protected so as not to impact a latest-at query.
     /// Note that latest for Timeless is currently based on insertion-order rather than
     /// tuid. [See: #1807](https://github.com/rerun-io/rerun/issues/1807)
     //
     // TODO(jleibs): More complex functionality might required expanding this to also
-    // *ignore* specific entities, componenents, timelines, etc. for this protection.
+    // *ignore* specific entities, components, timelines, etc. for this protection.
     fn find_all_protected_rows(&mut self, target_count: usize) -> HashSet<RowId> {
         re_tracing::profile_function!();
 
