@@ -889,6 +889,100 @@ fn gc_impl(store: &mut DataStore) {
     }
 }
 
+#[test]
+fn protected_gc() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        protected_gc_impl(&mut store);
+    }
+}
+
+fn protected_gc_impl(store: &mut DataStore) {
+    init_logs();
+
+    let ent_path = EntityPath::from("this/that");
+
+    let frame0: TimeInt = 0.into();
+    let frame1: TimeInt = 1.into();
+    let frame2: TimeInt = 2.into();
+    let frame3: TimeInt = 3.into();
+    let frame4: TimeInt = 4.into();
+
+    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
+    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+
+    let points2 = build_some_point2d(3);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
+
+    let points3 = build_some_point2d(10);
+    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
+
+    let colors4 = build_some_colors(5);
+    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
+
+    store
+        .insert_table(&DataTable::from_rows(
+            TableId::random(),
+            [row1.clone(), row2.clone(), row3.clone(), row4.clone()],
+        ))
+        .unwrap();
+
+    // Re-insert row1 and row2 as timeless data as well
+    let mut table_timeless = DataTable::from_rows(TableId::random(), [row1.clone(), row2.clone()]);
+    table_timeless.col_timelines = Default::default();
+    store.insert_table(&table_timeless).unwrap();
+
+    store.gc(GarbageCollectionOptions {
+        target: GarbageCollectionTarget::DropAtLeastFraction(1.0),
+        gc_timeless: true,
+        protect_latest: 1,
+    });
+
+    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let components_all = &[Color::name(), Point2D::name()];
+
+        let df = polars_util::latest_components(
+            store,
+            &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+            &ent_path,
+            components_all,
+            &JoinType::Outer,
+        )
+        .unwrap();
+
+        let df_expected = joint_df(store.cluster_key(), rows);
+
+        store.sort_indices_if_needed();
+        assert_eq!(df_expected, df, "{store}");
+    };
+
+    // The timeless data was preserved
+    assert_latest_components(
+        frame0,
+        &[(Color::name(), &row1), (Point2D::name(), &row2)], // timeless
+    );
+
+    //
+    assert_latest_components(
+        frame3,
+        &[
+            (Color::name(), &row1),   // timeless
+            (Point2D::name(), &row3), // protected
+        ],
+    );
+
+    assert_latest_components(
+        frame4,
+        &[
+            (Color::name(), &row4),   //protected
+            (Point2D::name(), &row3), // protected
+        ],
+    );
+}
+
 // ---
 
 pub fn init_logs() {
