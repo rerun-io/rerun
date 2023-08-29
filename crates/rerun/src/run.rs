@@ -175,6 +175,8 @@ enum Command {
     ///
     /// Only run this if you're having trouble with the Viewer,
     /// e.g. if it is crashing on startup.
+    ///
+    /// Rerun will forget all blueprints, as well as the native window's size, position and scale factor.
     Reset,
 }
 
