@@ -98,14 +98,14 @@ def compare(
     before_header: str,
     after_header: str,
 ) -> None:
-    previous_bytes = json.loads(Path(previous_path).read_text())
-    current_bytes = json.loads(Path(current_path).read_text())
+    previous = json.loads(Path(previous_path).read_text())
+    current = json.loads(Path(current_path).read_text())
 
     entries = {}
-    for entry in current_bytes:
+    for entry in current:
         name = entry["name"]
         entries[name] = {"current": entry}
-    for entry in previous_bytes:
+    for entry in previous:
         name = entry["name"]
         if name not in entries:
             entries[name] = {}
