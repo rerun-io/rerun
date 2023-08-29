@@ -24,8 +24,10 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 
     use anyhow::Context;
 
-    if let Some(data_dir) = eframe::storage_dir(crate::native::APP_ID) {
-        std::fs::create_dir_all(&data_dir).context("Could not create blueprint save directory.")?;
+    if let Some(storage_dir) = eframe::storage_dir(crate::native::APP_ID) {
+        let blueprint_dir = storage_dir.join("blueprints");
+        std::fs::create_dir_all(&blueprint_dir)
+            .context("Could not create blueprint save directory.")?;
 
         // We want a unique filename (not a directory) for each app-id.
 
@@ -37,7 +39,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
         // still have this restriction.
         // TODO(jleibs): Determine this value from the environment.
         const MAX_PATH: usize = 255;
-        let directory_part_length = data_dir.as_os_str().len();
+        let directory_part_length = blueprint_dir.as_os_str().len();
         let hash_part_length = 16 + 1;
         let extension_part_length = ".blueprint".len();
         let total_reserved_length =
@@ -61,7 +63,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
             sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
         }
 
-        Ok(data_dir.join(format!("{sanitized_app_id}.blueprint")))
+        Ok(blueprint_dir.join(format!("{sanitized_app_id}.blueprint")))
     } else {
         anyhow::bail!("Error finding project directory for blueprints.")
     }
