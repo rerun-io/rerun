@@ -16,6 +16,9 @@ pub enum GarbageCollectionTarget {
     ///
     /// The fraction must be a float in the range [0.0 : 1.0].
     DropAtLeastFraction(f64),
+
+    /// GC Everything that isn't protected
+    Everything,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -33,8 +36,8 @@ pub struct GarbageCollectionOptions {
 impl GarbageCollectionOptions {
     pub fn gc_everything() -> Self {
         GarbageCollectionOptions {
-            target: GarbageCollectionTarget::DropAtLeastFraction(1.0),
-            gc_timeless: false, // TODO(jleibs): Change this to `true` once
+            target: GarbageCollectionTarget::Everything,
+            gc_timeless: true,
             protect_latest: 0,
         }
     }
@@ -46,6 +49,7 @@ impl std::fmt::Display for GarbageCollectionTarget {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 write!(f, "DropAtLeast({:.3}%)", re_format::format_f64(*p * 100.0))
             }
+            GarbageCollectionTarget::Everything => write!(f, "Everything"),
         }
     }
 }
@@ -94,11 +98,14 @@ impl DataStore {
         self.gc_id += 1;
 
         // NOTE: only temporal data and row metadata get purged!
+        // TODO(jleibs): Consider timeless data.
         let stats_before = DataStoreStats::from_store(self);
         let initial_num_rows =
             stats_before.temporal.num_rows + stats_before.metadata_registry.num_rows;
         let initial_num_bytes =
             (stats_before.temporal.num_bytes + stats_before.metadata_registry.num_bytes) as f64;
+
+        let protected_rows = self.find_all_protected_rows(options.protect_latest);
 
         let row_ids = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
@@ -118,13 +125,23 @@ impl DataStore {
                     "starting GC"
                 );
 
-                let protected_rows = self.find_all_latest_rows(options.protect_latest);
-
                 self.gc_drop_at_least_num_bytes(
                     num_bytes_to_drop,
                     options.gc_timeless,
                     &protected_rows,
                 )
+            }
+            GarbageCollectionTarget::Everything => {
+                re_log::trace!(
+                    kind = "gc",
+                    id = self.gc_id,
+                    %options.target,
+                    initial_num_rows = re_format::format_large_number(initial_num_rows as _),
+                    initial_num_bytes = re_format::format_bytes(initial_num_bytes),
+                    "starting GC"
+                );
+
+                self.gc_everything(options.gc_timeless, &protected_rows)
             }
         };
 
@@ -167,22 +184,25 @@ impl DataStore {
         let mut row_ids = Vec::new();
 
         // The algorithm is straightforward:
-        // 1. Pop the oldest `RowId` available
+        // 1. Find the the oldest `RowId` that is not protected
         // 2. Find all tables that potentially hold data associated with that `RowId`
         // 3. Drop the associated row and account for the space we got back
+
+        let mut candidate_rows = self.metadata_registry.registry.iter();
+
         while num_bytes_to_drop > 0.0 {
             // pop next row id
-            let Some((row_id, timepoint)) = self.metadata_registry.pop_first() else {
+            let Some((row_id, timepoint)) = candidate_rows.next() else {
                 break;
             };
-            if protected_rows.contains(&row_id) {
+            if protected_rows.contains(row_id) {
                 continue;
             }
             let metadata_dropped_size_bytes =
                 row_id.total_size_bytes() + timepoint.total_size_bytes();
             self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
             num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
-            row_ids.push(row_id);
+            row_ids.push(*row_id);
 
             // find all tables that could possibly contain this `RowId`
             let temporal_tables = self.tables.iter_mut().filter_map(|((timeline, _), table)| {
@@ -190,16 +210,69 @@ impl DataStore {
             });
 
             for (time, table) in temporal_tables {
-                num_bytes_to_drop -= table.try_drop_row(row_id, time.as_i64()) as f64;
+                num_bytes_to_drop -= table.try_drop_row(*row_id, time.as_i64()) as f64;
             }
 
             // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
             // first and then remove them in one pass.
             if timepoint.is_timeless() && include_timeless {
                 for table in self.timeless_tables.values_mut() {
-                    num_bytes_to_drop -= table.try_drop_row(row_id) as f64;
+                    num_bytes_to_drop -= table.try_drop_row(*row_id) as f64;
                 }
             }
+        }
+
+        for row_id in &row_ids {
+            self.metadata_registry.remove(row_id);
+        }
+
+        row_ids
+    }
+
+    /// GCs everything that isn't protected.
+    ///
+    /// Returns the list of `RowId`s that were purged from the store.
+    fn gc_everything(
+        &mut self,
+        include_timeless: bool,
+        protected_rows: &HashSet<RowId>,
+    ) -> Vec<RowId> {
+        re_tracing::profile_function!();
+
+        let mut row_ids = Vec::new();
+
+        // Iterate from newest to oldest rows since it generally preserves sorting
+        // and makes dropping cheaper
+        for (row_id, timepoint) in self.metadata_registry.registry.iter().rev() {
+            if protected_rows.contains(row_id) {
+                continue;
+            }
+            let metadata_dropped_size_bytes =
+                row_id.total_size_bytes() + timepoint.total_size_bytes();
+            self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
+
+            row_ids.push(*row_id);
+
+            // find all tables that could possibly contain this `RowId`
+            let temporal_tables = self.tables.iter_mut().filter_map(|((timeline, _), table)| {
+                timepoint.get(timeline).map(|time| (*time, table))
+            });
+
+            for (time, table) in temporal_tables {
+                table.try_drop_row(*row_id, time.as_i64());
+            }
+
+            // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
+            // first and then remove them in one pass.
+            if timepoint.is_timeless() && include_timeless {
+                for table in self.timeless_tables.values_mut() {
+                    table.try_drop_row(*row_id);
+                }
+            }
+        }
+
+        for row_id in &row_ids {
+            self.metadata_registry.remove(row_id);
         }
 
         row_ids
@@ -207,13 +280,13 @@ impl DataStore {
 
     /// For each [`EntityPath`], [`Timeline`], [`Component`] find the N latest [`RowId`]s.
     ///
-    /// These are the rows that must be preserved so as not to impact a latest-at query.
+    /// These are the rows that must be protected so as not to impact a latest-at query.
     /// Note that latest for Timeless is currently based on insertion-order rather than
     /// tuid. [See: #1807](https://github.com/rerun-io/rerun/issues/1807)
     //
     // TODO(jleibs): More complex functionality might required expanding this to also
     // *ignore* specific entities, componenents, timelines, etc. for this protection.
-    fn find_all_latest_rows(&mut self, target_count: usize) -> HashSet<RowId> {
+    fn find_all_protected_rows(&mut self, target_count: usize) -> HashSet<RowId> {
         re_tracing::profile_function!();
 
         if target_count == 0 {
@@ -223,7 +296,7 @@ impl DataStore {
         // We need to sort to be able to determine latest-at.
         self.sort_indices_if_needed();
 
-        let mut found_rows: HashSet<RowId> = Default::default();
+        let mut protected_rows: HashSet<RowId> = Default::default();
 
         // Find all protected rows in regular indexed tables
         for table in self.tables.values() {
@@ -253,7 +326,10 @@ impl DataStore {
                             .take(*count)
                         {
                             *count -= 1;
-                            found_rows.insert(*row);
+                            // TODO(jleibs): Implement similar logic as for timeless data.
+                            // need to be more clever for temporal though since an empty temporal
+                            // component might be masking a real timeless components.
+                            protected_rows.insert(*row);
                         }
                     }
                 }
@@ -278,23 +354,30 @@ impl DataStore {
                 // TODO(jleibs): Make sure we have an optimization where we don't store
                 // fully empty columns.
                 if let Some(column) = table.columns.get(component) {
-                    for row in column
+                    for (row, cell) in column
                         .iter()
                         .enumerate()
                         .rev()
                         .filter_map(|(row_index, cell)| {
-                            cell.as_ref().and_then(|_| table.col_row_id.get(row_index))
+                            cell.as_ref().and_then(|cell| {
+                                table.col_row_id.get(row_index).map(|row| (row, cell))
+                            })
                         })
                         .take(*count)
                     {
                         *count -= 1;
-                        found_rows.insert(*row);
+                        // If the last cell is empty, don't protect it.
+                        // This is an edge-case that rows up when removing blueprint space-views. There's no value
+                        // in holding onto the empty tombstone once it's not masking any real data.
+                        if *count == 0 && !cell.is_empty() {
+                            protected_rows.insert(*row);
+                        }
                     }
                 }
             }
         }
 
-        found_rows
+        protected_rows
     }
 }
 

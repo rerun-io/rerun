@@ -230,7 +230,7 @@ impl StoreHub {
             if let Some(blueprint) = self.store_dbs.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
                     let gc_rows = blueprint.store_mut().gc(GarbageCollectionOptions {
-                        target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+                        target: re_arrow_store::GarbageCollectionTarget::Everything,
                         gc_timeless: true,
                         protect_latest: 1,
                     });
