@@ -18,7 +18,7 @@ pub use cameras::CamerasPart;
 pub use images::Image;
 pub use images::ImagesPart;
 pub use spatial_view_part::SpatialViewPartData;
-pub use transform3d_arrows::add_axis_arrows;
+pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
 use ahash::HashMap;
 use std::sync::Arc;

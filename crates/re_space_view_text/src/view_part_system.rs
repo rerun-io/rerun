@@ -4,8 +4,8 @@ use re_log_types::RowId;
 use re_query::{range_entity_with_primary, QueryError};
 use re_types::{components::InstanceKey, Loggable as _};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Debug, Clone)]
@@ -31,6 +31,12 @@ pub struct TextSystem {
     pub text_entries: Vec<TextEntry>,
 }
 
+impl NamedViewSystem for TextSystem {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Text".into()
+    }
+}
+
 impl ViewPartSystem for TextSystem {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextEntry::name()]
@@ -44,7 +50,7 @@ impl ViewPartSystem for TextSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let store = &ctx.store_db.entity_db.data_store;
 
-        for (ent_path, _) in query.iter_entities() {
+        for (ent_path, _) in query.iter_entities_for_system(Self::name()) {
             let query = re_arrow_store::RangeQuery::new(
                 query.timeline,
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),

@@ -8,7 +8,7 @@ use re_types::{
     components::{DisconnectedSpace, Transform3D},
     Loggable as _,
 };
-use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
+use re_viewer_context::{ArchetypeDefinition, NamedViewSystem, ViewContextSystem};
 
 use crate::parts::image_view_coordinates;
 
@@ -44,6 +44,12 @@ pub struct TransformContext {
 
     /// The first parent of reference_path that is no longer reachable.
     first_unreachable_parent: Option<(EntityPath, UnreachableTransformReason)>,
+}
+
+impl NamedViewSystem for TransformContext {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "TransformContext".into()
+    }
 }
 
 impl Default for TransformContext {

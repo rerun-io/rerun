@@ -1,6 +1,6 @@
 use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataBlueprintTree, ScreenshotMode};
+use re_space_view::{ScreenshotMode, SpaceViewContents};
 use re_viewer_context::{
     DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
     SpaceViewSystemRegistry, ViewerContext,
@@ -8,7 +8,9 @@ use re_viewer_context::{
 
 use crate::{
     space_info::SpaceInfoCollection,
-    space_view_heuristics::{default_queried_entities, is_entity_processed_by_class},
+    space_view_heuristics::{
+        is_entity_processed_by_class, reachable_entities_from_root, EntitiesPerSystem,
+    },
 };
 
 // ----------------------------------------------------------------------------
@@ -28,7 +30,7 @@ pub struct SpaceViewBlueprint {
 
     /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
     /// It determines which entities are part of the spaceview.
-    pub data_blueprint: DataBlueprintTree,
+    pub contents: SpaceViewContents,
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
@@ -42,7 +44,7 @@ impl Default for SpaceViewBlueprint {
             display_name: "invalid".to_owned(),
             class_name: SpaceViewClassName::invalid(),
             space_origin: EntityPath::root(),
-            data_blueprint: Default::default(),
+            contents: Default::default(),
             entities_determined_by_user: Default::default(),
         }
     }
@@ -56,7 +58,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_name,
             space_origin,
-            data_blueprint,
+            contents,
             entities_determined_by_user,
         } = self;
 
@@ -64,16 +66,16 @@ impl SpaceViewBlueprint {
             || display_name != &other.display_name
             || class_name != &other.class_name
             || space_origin != &other.space_origin
-            || data_blueprint.has_edits(&other.data_blueprint)
+            || contents.has_edits(&other.contents)
             || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
 
 impl SpaceViewBlueprint {
-    pub fn new(
+    pub fn new<'a>(
         space_view_class: SpaceViewClassName,
         space_path: &EntityPath,
-        queries_entities: &[EntityPath],
+        queries_entities: impl Iterator<Item = &'a EntityPath>,
     ) -> Self {
         // We previously named the [`SpaceView`] after the [`EntityPath`] if there was only a single entity. However,
         // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
@@ -86,16 +88,15 @@ impl SpaceViewBlueprint {
             format!("/ ({space_view_class})")
         };
 
-        let mut data_blueprint_tree = DataBlueprintTree::default();
-        data_blueprint_tree
-            .insert_entities_according_to_hierarchy(queries_entities.iter(), space_path);
+        let mut contents = SpaceViewContents::default();
+        contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
         Self {
             display_name,
             class_name: space_view_class,
             id: SpaceViewId::random(),
             space_origin: space_path.clone(),
-            data_blueprint: data_blueprint_tree,
+            contents,
             entities_determined_by_user: false,
         }
     }
@@ -123,16 +124,21 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         view_state: &mut dyn SpaceViewState,
+        entities_per_system_for_class: &EntitiesPerSystem,
     ) {
         if !self.entities_determined_by_user {
-            // Add entities that have been logged since we were created
-            let queries_entities =
-                default_queried_entities(ctx, &self.class_name, &self.space_origin, spaces_info);
-            self.data_blueprint.insert_entities_according_to_hierarchy(
-                queries_entities.iter(),
-                &self.space_origin,
-            );
+            // Add entities that have been logged since we were created.
+            let reachable_entities = reachable_entities_from_root(&self.space_origin, spaces_info);
+            let queries_entities = reachable_entities.iter().filter(|ent_path| {
+                entities_per_system_for_class
+                    .iter()
+                    .any(|(_, ents)| ents.contains(ent_path))
+            });
+            self.contents
+                .insert_entities_according_to_hierarchy(queries_entities, &self.space_origin);
         }
+
+        self.reset_systems_per_entity_path(entities_per_system_for_class);
 
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
@@ -145,12 +151,12 @@ impl SpaceViewBlueprint {
         self.class(ctx.space_view_class_registry).on_frame_start(
             ctx,
             view_state,
-            &self.data_blueprint.entity_paths().clone(), // Clone to work around borrow checker.
-            self.data_blueprint.data_blueprints_individual(),
+            &self.contents.per_system_entities().clone(), // Clone to work around borrow checker.
+            self.contents.data_blueprints_individual(),
         );
 
         // Propagate any heuristic changes that may have been in `on_frame_start` made to blueprints right away.
-        self.data_blueprint.propagate_individual_to_tree();
+        self.contents.propagate_individual_to_tree();
     }
 
     fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
@@ -214,10 +220,10 @@ impl SpaceViewBlueprint {
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
             space_origin: &self.space_origin,
-            entity_paths: self.data_blueprint.entity_paths(),
+            per_system_entities: self.contents.per_system_entities(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            entity_props_map: self.contents.data_blueprints_projected(),
             highlights,
         };
 
@@ -233,7 +239,7 @@ impl SpaceViewBlueprint {
         re_tracing::profile_function!();
 
         tree.visit_children_recursively(&mut |path: &EntityPath| {
-            self.data_blueprint.remove_entity(path);
+            self.contents.remove_entity(path);
             self.entities_determined_by_user = true;
         });
     }
@@ -252,7 +258,7 @@ impl SpaceViewBlueprint {
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
             if is_entity_processed_by_class(ctx, &self.class_name, entity_path)
-                && !self.data_blueprint.contains_entity(entity_path)
+                && !self.contents.contains_entity(entity_path)
                 && spaces_info
                     .is_reachable_by_transform(entity_path, &self.space_origin)
                     .is_ok()
@@ -262,9 +268,34 @@ impl SpaceViewBlueprint {
         });
 
         if !entities.is_empty() {
-            self.data_blueprint
+            self.contents
                 .insert_entities_according_to_hierarchy(entities.iter(), &self.space_origin);
             self.entities_determined_by_user = true;
         }
+    }
+
+    /// Resets the [`SpaceViewContents::per_system_entities`] for all paths that are part of this space view.
+    pub fn reset_systems_per_entity_path(
+        &mut self,
+        entities_per_system_for_class: &EntitiesPerSystem,
+    ) {
+        re_tracing::profile_function!();
+
+        // TODO(andreas): We believe this is *correct* but not necessarily optimal. Pay attention
+        // to the algorithmic complexity here as we consider changing the indexing and
+        // access patterns of these structures in the future.
+        let mut per_system_entities = re_viewer_context::PerSystemEntities::new();
+        for (system, entities) in entities_per_system_for_class {
+            per_system_entities.insert(
+                *system,
+                self.contents
+                    .entity_paths()
+                    .filter(|ent_path| entities.contains(ent_path))
+                    .cloned()
+                    .collect(),
+            );
+        }
+
+        *self.contents.per_system_entities_mut() = per_system_entities;
     }
 }

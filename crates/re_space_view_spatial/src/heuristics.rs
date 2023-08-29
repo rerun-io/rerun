@@ -1,24 +1,26 @@
+use std::collections::BTreeSet;
+
 use egui::NumExt as _;
-use nohash_hasher::IntSet;
 
 use re_components::{Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::EditableAutoValue;
-use re_log_types::{EntityPath, Timeline};
-use re_types::components::Transform3D;
-use re_viewer_context::{AutoSpawnHeuristic, SpaceViewClassName, ViewerContext};
+use re_log_types::EntityPath;
+use re_viewer_context::{
+    AutoSpawnHeuristic, NamedViewSystem, PerSystemEntities, SpaceViewClassName, ViewerContext,
+};
 
-use crate::{parts::SpatialViewPartData, view_kind::SpatialSpaceViewKind};
+use crate::{
+    parts::{CamerasPart, ImagesPart, SpatialViewPartData, Transform3DArrowsPart},
+    view_kind::SpatialSpaceViewKind,
+};
 
 pub fn auto_spawn_heuristic(
     class: &SpaceViewClassName,
     ctx: &ViewerContext<'_>,
-    ent_paths: &IntSet<EntityPath>,
+    per_system_entities: &PerSystemEntities,
     view_kind: SpatialSpaceViewKind,
 ) -> AutoSpawnHeuristic {
     re_tracing::profile_function!();
-
-    let store = ctx.store_db.store();
-    let timeline = Timeline::log_time();
 
     let mut score = 0.0;
 
@@ -26,25 +28,26 @@ pub fn auto_spawn_heuristic(
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
-    let parts_with_view_kind = parts
-        .iter()
-        .filter(|part| {
+
+    // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
+    let system_names_with_matching_view_kind = parts
+        .iter_with_names()
+        .filter_map(|(name, part)| {
             part.data()
                 .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
                 .map_or(false, |data| data.preferred_view_kind == Some(view_kind))
+                .then_some(name)
         })
         .collect::<Vec<_>>();
 
-    for ent_path in ent_paths {
-        let Some(components) = store.all_components(&timeline, ent_path) else {
-            continue;
-        };
-
-        for part in &parts_with_view_kind {
-            if part.queries_any_components_of(store, ent_path, &components) {
-                score += 1.0;
-                break;
-            }
+    // For each of the system with the matching "preferred view kind", count the entities involved.
+    // We tally this up for scoring.
+    for system_name in system_names_with_matching_view_kind {
+        if per_system_entities
+            .get(&system_name)
+            .map_or(false, |c| !c.is_empty())
+        {
+            score += 1.0;
         }
     }
 
@@ -58,19 +61,27 @@ pub fn auto_spawn_heuristic(
 
 pub fn update_object_property_heuristics(
     ctx: &mut ViewerContext<'_>,
-    ent_paths: &IntSet<EntityPath>,
+    per_system_entities: &PerSystemEntities,
     entity_properties: &mut re_data_store::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
     spatial_kind: SpatialSpaceViewKind,
 ) {
     re_tracing::profile_function!();
 
-    for entity_path in ent_paths {
-        // Do pinhole properties before, since they may be used in transform3d heuristics.
-        update_pinhole_property_heuristics(ctx, entity_path, entity_properties, scene_bbox_accum);
-        update_depth_cloud_property_heuristics(ctx, entity_path, entity_properties, spatial_kind);
-        update_transform3d_lines_heuristics(ctx, entity_path, entity_properties, scene_bbox_accum);
-    }
+    // Do pinhole properties before, since they may be used in transform3d heuristics.
+    update_pinhole_property_heuristics(per_system_entities, entity_properties, scene_bbox_accum);
+    update_depth_cloud_property_heuristics(
+        ctx,
+        per_system_entities,
+        entity_properties,
+        spatial_kind,
+    );
+    update_transform3d_lines_heuristics(
+        ctx,
+        per_system_entities,
+        entity_properties,
+        scene_bbox_accum,
+    );
 }
 
 pub fn auto_size_world_heuristic(
@@ -99,17 +110,15 @@ pub fn auto_size_world_heuristic(
 }
 
 fn update_pinhole_property_heuristics(
-    ctx: &mut ViewerContext<'_>,
-    entity_path: &EntityPath,
+    per_system_entities: &PerSystemEntities,
     entity_properties: &mut re_data_store::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
-    let store = &ctx.store_db.entity_db.data_store;
-    if store
-        .query_latest_component::<Pinhole>(entity_path, &ctx.current_query())
-        .is_some()
+    for ent_path in per_system_entities
+        .get(&CamerasPart::name())
+        .unwrap_or(&BTreeSet::new())
     {
-        let mut properties = entity_properties.get(entity_path);
+        let mut properties = entity_properties.get(ent_path);
         if properties.pinhole_image_plane_distance.is_auto() {
             let scene_size = scene_bbox_accum.size().length();
             let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
@@ -119,118 +128,124 @@ fn update_pinhole_property_heuristics(
             };
             properties.pinhole_image_plane_distance =
                 EditableAutoValue::Auto(default_image_plane_distance);
-            entity_properties.set(entity_path.clone(), properties);
+            entity_properties.set(ent_path.clone(), properties);
         }
     }
 }
 
 fn update_depth_cloud_property_heuristics(
     ctx: &mut ViewerContext<'_>,
-    entity_path: &EntityPath,
+    per_system_entities: &PerSystemEntities,
     entity_properties: &mut re_data_store::EntityPropertyMap,
     spatial_kind: SpatialSpaceViewKind,
-) -> Option<()> {
-    let store = &ctx.store_db.entity_db.data_store;
-    let tensor = store.query_latest_component::<Tensor>(entity_path, &ctx.current_query())?;
+) {
+    // TODO(andreas): There should be a depth cloud system
+    for ent_path in per_system_entities
+        .get(&ImagesPart::name())
+        .unwrap_or(&BTreeSet::new())
+    {
+        let store = &ctx.store_db.entity_db.data_store;
+        let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &ctx.current_query())
+        else {
+            continue;
+        };
 
-    let mut properties = entity_properties.get(entity_path);
-    if properties.backproject_depth.is_auto() {
-        properties.backproject_depth = EditableAutoValue::Auto(
-            tensor.meaning == TensorDataMeaning::Depth
-                && spatial_kind == SpatialSpaceViewKind::ThreeD,
-        );
-    }
-
-    if tensor.meaning == TensorDataMeaning::Depth {
-        if properties.depth_from_world_scale.is_auto() {
-            let auto = tensor.meter.unwrap_or_else(|| {
-                if tensor.dtype().is_integer() {
-                    1000.0
-                } else {
-                    1.0
-                }
-            });
-            properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
+        let mut properties = entity_properties.get(ent_path);
+        if properties.backproject_depth.is_auto() {
+            properties.backproject_depth = EditableAutoValue::Auto(
+                tensor.meaning == TensorDataMeaning::Depth
+                    && spatial_kind == SpatialSpaceViewKind::ThreeD,
+            );
         }
 
-        if properties.backproject_radius_scale.is_auto() {
-            properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
+        if tensor.meaning == TensorDataMeaning::Depth {
+            if properties.depth_from_world_scale.is_auto() {
+                let auto = tensor.meter.unwrap_or_else(|| {
+                    if tensor.dtype().is_integer() {
+                        1000.0
+                    } else {
+                        1.0
+                    }
+                });
+                properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
+            }
+
+            if properties.backproject_radius_scale.is_auto() {
+                properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
+            }
+
+            entity_properties.set(ent_path.clone(), properties);
         }
-
-        entity_properties.set(entity_path.clone(), properties);
     }
-
-    Some(())
 }
 
 fn update_transform3d_lines_heuristics(
     ctx: &ViewerContext<'_>,
-    ent_path: &EntityPath,
+    per_system_entities: &PerSystemEntities,
     entity_properties: &mut re_data_store::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
-    if ctx
-        .store_db
-        .store()
-        .query_latest_component::<Transform3D>(ent_path, &ctx.current_query())
-        .is_none()
+    for ent_path in per_system_entities
+        .get(&Transform3DArrowsPart::name())
+        .unwrap_or(&BTreeSet::new())
     {
-        return;
-    }
-
-    fn is_pinhole_extrinsics_of<'a>(
-        store: &re_arrow_store::DataStore,
-        ent_path: &'a EntityPath,
-        ctx: &'a ViewerContext<'_>,
-    ) -> Option<&'a EntityPath> {
-        if store
-            .query_latest_component::<Pinhole>(ent_path, &ctx.current_query())
-            .is_some()
-        {
-            return Some(ent_path);
-        } else {
-            // Any direct child has a pinhole camera?
-            if let Some(child_tree) = ctx.store_db.entity_db.tree.subtree(ent_path) {
-                for child in child_tree.children.values() {
-                    if store
-                        .query_latest_component::<Pinhole>(&child.path, &ctx.current_query())
-                        .is_some()
-                    {
-                        return Some(&child.path);
+        fn is_pinhole_extrinsics_of<'a>(
+            store: &re_arrow_store::DataStore,
+            ent_path: &'a EntityPath,
+            ctx: &'a ViewerContext<'_>,
+        ) -> Option<&'a EntityPath> {
+            if store
+                .query_latest_component::<Pinhole>(ent_path, &ctx.current_query())
+                .is_some()
+            {
+                return Some(ent_path);
+            } else {
+                // Any direct child has a pinhole camera?
+                if let Some(child_tree) = ctx.store_db.entity_db.tree.subtree(ent_path) {
+                    for child in child_tree.children.values() {
+                        if store
+                            .query_latest_component::<Pinhole>(&child.path, &ctx.current_query())
+                            .is_some()
+                        {
+                            return Some(&child.path);
+                        }
                     }
                 }
             }
+
+            None
         }
 
-        None
-    }
-
-    let mut properties = entity_properties.get(ent_path);
-    if properties.transform_3d_visible.is_auto() {
-        // By default show the transform if it is a camera extrinsic or if it's the only component on this entity path.
-        let single_component = ctx
-            .store_db
-            .store()
-            .all_components(&ctx.current_query().timeline, ent_path)
-            .map_or(false, |c| c.len() == 1);
-        properties.transform_3d_visible = EditableAutoValue::Auto(
-            single_component
-                || is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx).is_some(),
-        );
-    }
-
-    if properties.transform_3d_size.is_auto() {
-        if let Some(pinhole_path) = is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx) {
-            // If there's a pinhole, we orient ourselves on its image plane distance
-            let pinhole_path_props = entity_properties.get(pinhole_path);
-            properties.transform_3d_size =
-                EditableAutoValue::Auto(*pinhole_path_props.pinhole_image_plane_distance * 0.25);
-        } else {
-            // Size should be proportional to the scene extent, here covered by its diagonal
-            let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
-            properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.05);
+        let mut properties = entity_properties.get(ent_path);
+        if properties.transform_3d_visible.is_auto() {
+            // By default show the transform if it is a camera extrinsic or if it's the only component on this entity path.
+            let single_component = ctx
+                .store_db
+                .store()
+                .all_components(&ctx.current_query().timeline, ent_path)
+                .map_or(false, |c| c.len() == 1);
+            properties.transform_3d_visible = EditableAutoValue::Auto(
+                single_component
+                    || is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx).is_some(),
+            );
         }
-    }
 
-    entity_properties.set(ent_path.clone(), properties);
+        if properties.transform_3d_size.is_auto() {
+            if let Some(pinhole_path) =
+                is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx)
+            {
+                // If there's a pinhole, we orient ourselves on its image plane distance
+                let pinhole_path_props = entity_properties.get(pinhole_path);
+                properties.transform_3d_size = EditableAutoValue::Auto(
+                    *pinhole_path_props.pinhole_image_plane_distance * 0.25,
+                );
+            } else {
+                // Size should be proportional to the scene extent, here covered by its diagonal
+                let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
+                properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.05);
+            }
+        }
+
+        entity_properties.set(ent_path.clone(), properties);
+    }
 }

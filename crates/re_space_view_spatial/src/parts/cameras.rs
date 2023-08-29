@@ -7,7 +7,7 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -33,6 +33,12 @@ impl Default for CamerasPart {
             data: (SpatialViewPartData::new(None)),
             space_cameras: Vec::new(),
         }
+    }
+}
+
+impl NamedViewSystem for CamerasPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Cameras".into()
     }
 }
 
@@ -178,13 +184,11 @@ impl ViewPartSystem for CamerasPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("CamerasPart");
-
         let transforms = view_ctx.get::<TransformContext>()?;
         let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
 
         let store = ctx.store_db.store();
-        for (ent_path, props) in query.iter_entities() {
+        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &time_query) {

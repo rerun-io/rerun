@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_log_types::EntityPathHash;
 use re_types::{components::DrawOrder, Loggable as _};
-use re_viewer_context::{ArchetypeDefinition, ViewContextSystem};
+use re_viewer_context::{ArchetypeDefinition, NamedViewSystem, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]
@@ -19,6 +19,12 @@ pub struct EntityDepthOffsets {
     pub points: re_renderer::DepthOffset,
 }
 
+impl NamedViewSystem for EntityDepthOffsets {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "EntityDepthOffsets".into()
+    }
+}
+
 impl ViewContextSystem for EntityDepthOffsets {
     fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         vec![vec1::vec1![DrawOrder::name()]]
@@ -29,8 +35,6 @@ impl ViewContextSystem for EntityDepthOffsets {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
-        re_tracing::profile_function!();
-
         #[derive(PartialEq, PartialOrd, Eq, Ord)]
         enum DrawOrderTarget {
             Entity(EntityPathHash),
@@ -44,7 +48,7 @@ impl ViewContextSystem for EntityDepthOffsets {
 
         // Use a BTreeSet for entity hashes to get a stable order.
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();
-        for (ent_path, _) in query.iter_entities() {
+        for (ent_path, _) in query.iter_entities_for_system(Self::name()) {
             if let Some(draw_order) = store.query_latest_component::<DrawOrder>(
                 ent_path,
                 &ctx.rec_cfg.time_ctrl.current_query(),

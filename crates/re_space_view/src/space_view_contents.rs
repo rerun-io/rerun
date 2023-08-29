@@ -1,8 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::DataBlueprintGroupHandle;
+use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -79,7 +79,7 @@ impl DataBlueprints {
 
 /// Tree of all data blueprint groups for a single space view.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
-pub struct DataBlueprintTree {
+pub struct SpaceViewContents {
     /// All data blueprint groups.
     groups: SlotMap<DataBlueprintGroupHandle, DataBlueprintGroup>,
 
@@ -92,11 +92,12 @@ pub struct DataBlueprintTree {
 
     /// List of all entities that we query via this data blueprint collection.
     ///
-    /// Two things to keep in sync:
-    /// * children on [`DataBlueprintGroup`] this is on
-    /// * elements in [`Self::path_to_group`]
-    /// TODO(andreas): Can we reduce the amount of these dependencies?
-    entity_paths: IntSet<EntityPath>,
+    /// Currently this is reset every frame in `SpaceViewBlueprint::reset_systems_per_entity_path`.
+    /// In the future, we may want to keep this around and only add/remove systems
+    /// for entities. But at this point we'd likely handle the heuristics a bit differently as well
+    /// and don't use serde here for serialization.
+    #[serde(skip)]
+    per_system_entity_list: PerSystemEntities,
 
     /// Root group, always exists as a placeholder
     root_group_handle: DataBlueprintGroupHandle,
@@ -105,12 +106,12 @@ pub struct DataBlueprintTree {
 }
 
 /// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
-impl DataBlueprintTree {
+impl SpaceViewContents {
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             groups,
             path_to_group,
-            entity_paths,
+            per_system_entity_list: _,
             root_group_handle,
             data_blueprints,
         } = self;
@@ -123,13 +124,12 @@ impl DataBlueprintTree {
                     .map_or(true, |other_val| val.has_edits(other_val))
             })
             || *path_to_group != other.path_to_group
-            || *entity_paths != other.entity_paths
             || *root_group_handle != other.root_group_handle
             || data_blueprints.has_edits(&other.data_blueprints)
     }
 }
 
-impl Default for DataBlueprintTree {
+impl Default for SpaceViewContents {
     fn default() -> Self {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup::default());
@@ -140,14 +140,14 @@ impl Default for DataBlueprintTree {
         Self {
             groups,
             path_to_group: path_to_blueprint,
-            entity_paths: IntSet::default(),
+            per_system_entity_list: BTreeMap::default(),
             root_group_handle: root_group,
             data_blueprints: DataBlueprints::default(),
         }
     }
 }
 
-impl DataBlueprintTree {
+impl SpaceViewContents {
     /// Returns a handle to the root data blueprint.
     ///
     /// Even if there are no other groups, we always have a root group at the top.
@@ -207,12 +207,47 @@ impl DataBlueprintTree {
     }
 
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
-        self.entity_paths.contains(path)
+        // If an entity is in path_to_group it is *likely* also an entity in the Space View.
+        // However, it could be that the path *only* refers to a group, not also an entity.
+        // So once we resolved the group, we need to check if it contains the entity of interest.
+        self.path_to_group
+            .get(path)
+            .and_then(|group| {
+                self.groups
+                    .get(*group)
+                    .and_then(|group| group.entities.get(path))
+            })
+            .is_some()
     }
 
     /// List of all entities that we query via this data blueprint collection.
-    pub fn entity_paths(&self) -> &IntSet<EntityPath> {
-        &self.entity_paths
+    pub fn entity_paths(&self) -> impl Iterator<Item = &EntityPath> {
+        // Each entity is only ever in one group, therefore collecting all entities from all groups, gives us all entities.
+        self.groups.values().flat_map(|group| group.entities.iter())
+    }
+
+    pub fn per_system_entities(&self) -> &PerSystemEntities {
+        &self.per_system_entity_list
+    }
+
+    pub fn per_system_entities_mut(&mut self) -> &mut PerSystemEntities {
+        &mut self.per_system_entity_list
+    }
+
+    pub fn contains_all_entities_from(&self, other: &SpaceViewContents) -> bool {
+        for (system, entities) in &other.per_system_entity_list {
+            let Some(self_entities) = self.per_system_entity_list.get(system) else {
+                if entities.is_empty() {
+                    continue;
+                } else {
+                    return false;
+                }
+            };
+            if !entities.is_subset(self_entities) {
+                return false;
+            }
+        }
+        true
     }
 
     /// Should be called on frame start.
@@ -225,7 +260,7 @@ impl DataBlueprintTree {
         // and/or when new entity paths are added, but such memoization would add complexity.
 
         fn project_tree(
-            tree: &mut DataBlueprintTree,
+            tree: &mut SpaceViewContents,
             parent_properties: &EntityProperties,
             group_handle: DataBlueprintGroupHandle,
         ) {
@@ -270,8 +305,6 @@ impl DataBlueprintTree {
         let mut new_leaf_groups = Vec::new();
 
         for path in paths {
-            self.entity_paths.insert(path.clone());
-
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
             // If so, we can simply move it under this existing group.
             let group_handle = if let Some(group_handle) = self.path_to_group.get(path) {
@@ -393,6 +426,8 @@ impl DataBlueprintTree {
     ///
     /// If the entity was not known by this data blueprint tree nothing happens.
     pub fn remove_entity(&mut self, path: &EntityPath) {
+        re_tracing::profile_function!();
+
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
                 group.entities.remove(path);
@@ -400,7 +435,10 @@ impl DataBlueprintTree {
             }
         }
         self.path_to_group.remove(path);
-        self.entity_paths.remove(path);
+
+        for per_system_list in self.per_system_entity_list.values_mut() {
+            per_system_list.remove(path);
+        }
     }
 
     /// Removes a group and all its entities and subgroups from the blueprint tree
@@ -421,7 +459,9 @@ impl DataBlueprintTree {
 
         // Remove all child entities.
         for entity_path in &group.entities {
-            self.entity_paths.remove(entity_path);
+            for per_system_list in self.per_system_entity_list.values_mut() {
+                per_system_list.remove(entity_path);
+            }
         }
 
         // Remove from `path_to_group` map.

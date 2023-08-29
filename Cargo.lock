@@ -4782,6 +4782,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "serde",
+ "tinyvec",
 ]
 
 [[package]]

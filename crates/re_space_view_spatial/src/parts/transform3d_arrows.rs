@@ -6,8 +6,8 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -25,6 +25,12 @@ impl Default for Transform3DArrowsPart {
     }
 }
 
+impl NamedViewSystem for Transform3DArrowsPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Transform3DArrows".into()
+    }
+}
+
 impl ViewPartSystem for Transform3DArrowsPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Transform3D::name()]
@@ -36,14 +42,12 @@ impl ViewPartSystem for Transform3DArrowsPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("TransformGizmoPart");
-
         let mut line_builder = view_ctx.get::<SharedRenderBuilders>()?.lines();
         let transforms = view_ctx.get::<TransformContext>()?;
 
         let store = &ctx.store_db.entity_db.data_store;
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
-        for (ent_path, props) in query.iter_entities() {
+        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             if store
                 .query_latest_component::<Transform3D>(ent_path, &latest_at_query)
                 .is_none()
