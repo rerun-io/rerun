@@ -1,10 +1,9 @@
-use nohash_hasher::IntSet;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, AutoSpawnHeuristic, SpaceViewClass, SpaceViewClassName,
+    level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassName,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
@@ -72,7 +71,7 @@ impl SpaceViewClass for TextSpaceView {
         &self,
         _ctx: &ViewerContext<'_>,
         space_origin: &EntityPath,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
     ) -> re_viewer_context::AutoSpawnHeuristic {
         // Always spawn a single text view for the root and nothing else.
         if space_origin.is_root() && !ent_paths.is_empty() {

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/annotation_context.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"

@@ -863,13 +863,13 @@ fn log_meshes(
                 [_, 3] => Some(
                     slice_from_np_array(&vertex_colors)
                         .chunks_exact(3)
-                        .map(|c| Color::from_rgb(c[0], c[1], c[2]).0 .0)
+                        .map(|c| Color::from_rgb(c[0], c[1], c[2]).to_u32())
                         .collect(),
                 ),
                 [_, 4] => Some(
                     slice_from_np_array(&vertex_colors)
                         .chunks_exact(4)
-                        .map(|c| Color::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).0 .0)
+                        .map(|c| Color::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).to_u32())
                         .collect(),
                 ),
                 shape => {
@@ -1144,14 +1144,9 @@ fn add_space_view(
         return;
     };
 
-    let mut space_view = SpaceViewBlueprint::new(
-        "Spatial".into(),
-        &origin.into(),
-        &entity_paths
-            .into_iter()
-            .map(|s| s.into())
-            .collect::<Vec<_>>(),
-    );
+    let entity_paths = entity_paths.into_iter().map(|s| s.into()).collect_vec();
+    let mut space_view =
+        SpaceViewBlueprint::new("Spatial".into(), &origin.into(), entity_paths.iter());
 
     // Choose the space-view id deterministically from the name; this means the user
     // can run the application multiple times and get sane behavior.

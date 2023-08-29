@@ -247,7 +247,7 @@ fn rr_recording_stream_connect_impl(
     let tcp_addr = tcp_addr.parse().map_err(|err| {
         CError::new(
             CErrorCode::InvalidSocketAddress,
-            &format!("Failed to parse tcp address {tcp_addr:?}: {err}",),
+            &format!("Failed to parse tcp address {tcp_addr:?}: {err}"),
         )
     })?;
 

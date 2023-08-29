@@ -288,6 +288,25 @@ pub trait Archetype {
     /// All components including required, recommended, and optional.
     fn all_components() -> &'static [ComponentName];
 
+    /// Returns the name of the associated indicator component, whose presence indicates that the
+    /// high-level archetype-based APIs where used to log the data.
+    ///
+    /// Indicator components open new opportunities in terms of API design, better heuristics and
+    /// performance improvements on the query side.
+    ///
+    /// Indicator components are non-splatted null arrays.
+    /// Their names follow the pattern `rerun.components.{ArchetypeName}Indicator`, e.g.
+    /// `rerun.components.Points3DIndicator`.
+    ///
+    /// The reason for not using splats is so that indicator components don't require dedicated rows.
+    /// This is not an issue because of the way null arrays are stored: storing 1 null value or 1M null
+    /// values takes the same size.
+    fn indicator_component() -> ComponentName;
+
+    /// Returns the number of instances of the archetype, i.e. the number of instances currently
+    /// present in its required component(s).
+    fn num_instances(&self) -> usize;
+
     // ---
 
     /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.
@@ -537,6 +556,7 @@ impl<T> ResultExt<T> for SerializationResult<T> {
         })
     }
 
+    #[track_caller]
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,
@@ -566,6 +586,7 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
         })
     }
 
+    #[track_caller]
     fn detailed_unwrap(self) -> T {
         match self {
             Ok(v) => v,

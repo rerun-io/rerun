@@ -41,17 +41,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
     let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());
 
-    re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-        let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+    println!(
+        "This example starts a custom Rerun Viewer that is ready to accept data… you have to give it some!"
+    );
+    println!("Try for example to run: `cargo run -p minimal_options -- --connect` in another terminal instance.");
 
-        let mut app = re_viewer::App::from_receiver(
+    re_viewer::run_native_app(Box::new(move |cc, re_ui| {
+        let mut app = re_viewer::App::new(
             re_viewer::build_info(),
             &app_env,
             startup_options,
             re_ui,
             cc.storage,
-            rx,
         );
+        app.add_receiver(rx);
 
         // Register the custom space view
         app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()

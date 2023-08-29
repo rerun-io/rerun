@@ -1,0 +1,38 @@
+[package]
+name = "re_data_source"
+authors.workspace = true
+description = "Handles loading of Rerun data"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+
+[dependencies]
+re_components.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder"] }
+re_log_types.workspace = true
+re_log.workspace = true
+re_smart_channel.workspace = true
+re_tracing.workspace = true
+re_ws_comms = { workspace = true, features = ["client"] }
+
+anyhow.workspace = true
+itertools.workspace = true
+rayon.workspace = true
+
+
+[build-dependencies]
+re_build_tools.workspace = true

@@ -91,13 +91,8 @@ pub fn run_native_viewer_with_messages(
         tx.send(log_msg).ok();
     }
     run_native_app(Box::new(move |cc, re_ui| {
-        Box::new(crate::App::from_receiver(
-            build_info,
-            &app_env,
-            startup_options,
-            re_ui,
-            cc.storage,
-            rx,
-        ))
+        let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+        app.add_receiver(rx);
+        Box::new(app)
     }))
 }

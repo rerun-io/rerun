@@ -7,8 +7,8 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::SpatialViewPartData;
@@ -72,6 +72,12 @@ impl MeshPart {
     }
 }
 
+impl NamedViewSystem for MeshPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Mesh".into()
+    }
+}
+
 impl ViewPartSystem for MeshPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Mesh3D::name(), InstanceKey::name(), Color::name()]
@@ -83,11 +89,9 @@ impl ViewPartSystem for MeshPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("MeshPart");
-
         let mut instances = Vec::new();
 
-        process_entity_views::<_, 3, _>(
+        process_entity_views::<MeshPart, _, 3, _>(
             ctx,
             query,
             view_ctx,

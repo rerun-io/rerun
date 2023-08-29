@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/disconnected_space.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"

@@ -17,5 +17,8 @@ all-features = true
 
 
 [dependencies]
+re_tracing.workspace = true
+
 crossbeam.workspace = true
+parking_lot.workspace = true
 web-time.workspace = true
