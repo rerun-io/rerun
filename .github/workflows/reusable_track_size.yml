@@ -6,10 +6,6 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      ADHOC_NAME:
-        required: false
-        type: string
-        default: ""
       PR_NUMBER:
         required: false
         type: number
@@ -30,14 +26,7 @@ jobs:
       - name: Get context
         id: context
         run: |
-          echo "head_short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
-
-          if [ -n ${{ inputs.PR_NUMBER }} ]; then
-            base_short_sha=$(echo ${{ github.event.pull_request.base.sha }} | cut -c1-7)
-          else
-            base_short_sha=$short_sha
-          fi
-          echo "base_short_sha=$base_short_sha" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -62,12 +51,29 @@ jobs:
           name: web_demo
           path: web_demo
 
-      - name: Download base branch results
+      - name: Download base results
         run: |
-          file_path="gs://rerun-builds/sizes/commit/${{ steps.context.outputs.base_short_sha }}/data.json"
+          # Get base commit:
+          # 1. From the index file
+          # 2. From the latest commit in the base branch of the PR
+          # 3. From the latest commit in the current branch
+          index_path="gs://rerun-builds/sizes/index"
+          if [ "$(gsutil -q stat $index_path ; echo $?)" = 0 ]; then
+            gsutil cp $index_path "/tmp/base_index"
+            base_commit=$(cat /tmp/base_index)
+          else
+            if [ -n ${{ inputs.PR_NUMBER }} ]; then
+              base_commit=$(echo ${{ github.event.pull_request.base.sha }} | cut -c1-7)
+            else
+              base_commit=${{ steps.context.outputs.short_sha }}
+            fi
+          fi
+          echo "base commit: $base_commit"
 
-          if [ "$(gsutil -q stat $file_path ; echo $?)" = 0 ]; then
-            gsutil cp $file_path "/tmp/prev.json"
+          # Download data for base commit, or default to empty file
+          data_path="gs://rerun-builds/sizes/commit/$base_commit/data.json"
+          if [ "$(gsutil -q stat $data_path ; echo $?)" = 0 ]; then
+            gsutil cp $data_path "/tmp/prev.json"
           else
             echo "[]" > "/tmp/prev.json"
           fi
@@ -87,8 +93,6 @@ jobs:
           done
 
           data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
-          echo "$data"
-
           echo "$data" > "/tmp/data.json"
 
           comparison=$(
@@ -98,8 +102,6 @@ jobs:
               --after-header=${{ github.ref_name }} \
               "/tmp/prev.json" "/tmp/data.json"
           )
-          echo "$comparison"
-
           {
             echo 'comparison<<EOF'
             echo "$comparison"
@@ -112,22 +114,19 @@ jobs:
             echo "is_comparison_set=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload data to GCS (commit)
-        if: inputs.ADHOC_NAME == ''
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: /tmp/data.json
-          destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.head_short_sha }}"
+          echo "$entries"
+          echo "previous: $(cat /tmp/prev.json)"
+          echo "current: $(cat /tmp/data.json)"
+          echo "$comparison"
+          echo "is comparison set: $is_comparison_set"
 
-      - name: Upload data to GCS (adhoc)
-        if: inputs.ADHOC_NAME != ''
+      - name: Upload data to GCS (commit)
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: /tmp/data.json
-          destination: "rerun-builds/sizes/adhoc/${{ inputs.ADHOC_NAME }}"
+          destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.short_sha }}"
 
       - name: Store result
-        # Only run on `main`
         if: github.ref == 'refs/heads/main'
         # https://github.com/benchmark-action/github-action-benchmark
         uses: benchmark-action/github-action-benchmark@v1
@@ -148,6 +147,18 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/sizes
           max-items-in-chart: 30
+
+      - name: Create index file
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "${{ steps.context.outputs.short_sha }}" > "/tmp/index"
+
+      - name: Upload index
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: /tmp/index
+          destination: "rerun-builds/sizes"
 
       - name: Create PR comment
         if: inputs.PR_NUMBER != '' && steps.measure.outputs.is_comparison_set == 'true'
