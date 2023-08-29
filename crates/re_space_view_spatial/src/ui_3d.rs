@@ -289,12 +289,12 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.add_button_text("WASD");
     layout.add(" and ");
     layout.add_button_text("QE");
-    layout.add("\n");
+    layout.add(".\n");
 
     layout.add(SPEED_UP_3D_MODIFIER);
-    layout.add(" slows down, ");
+    layout.add(" speeds up, ");
     layout.add(SLOW_DOWN_3D_MODIFIER);
-    layout.add(" speeds up\n\n");
+    layout.add(" slows down.\n\n");
 
     layout.add_button_text("double-click");
     layout.add(" an object to focus the view on it.\n");
