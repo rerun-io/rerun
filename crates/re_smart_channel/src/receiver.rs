@@ -9,12 +9,25 @@ use crate::{
 
 pub struct Receiver<T: Send> {
     pub(crate) rx: crossbeam::channel::Receiver<SmartMessage<T>>,
-    pub(crate) stats: Arc<SharedStats>,
+    stats: Arc<SharedStats>,
     pub(crate) source: Arc<SmartChannelSource>,
-    pub(crate) connected: AtomicBool,
+    connected: AtomicBool,
 }
 
 impl<T: Send> Receiver<T> {
+    pub(crate) fn new(
+        rx: crossbeam::channel::Receiver<SmartMessage<T>>,
+        stats: Arc<SharedStats>,
+        source: Arc<SmartChannelSource>,
+    ) -> Self {
+        Self {
+            rx,
+            stats,
+            source,
+            connected: AtomicBool::new(true),
+        }
+    }
+
     /// Are we still connected?
     ///
     /// Once false, we will never be connected again: the source has run dry.

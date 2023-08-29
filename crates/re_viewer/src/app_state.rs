@@ -207,7 +207,14 @@ impl AppState {
             // We move the time at the very end of the frame,
             // so we have one frame to see the first data before we move the time.
             let dt = ui.ctx().input(|i| i.stable_dt);
-            let more_data_is_coming = rx.is_connected();
+
+            // Are we still connected to the data source for the current store?
+            let more_data_is_coming = if let Some(store_source) = &store_db.data_source {
+                rx.sources().iter().any(|s| s.as_ref() == store_source)
+            } else {
+                false
+            };
+
             let needs_repaint = ctx.rec_cfg.time_ctrl.update(
                 store_db.times_per_timeline(),
                 dt,

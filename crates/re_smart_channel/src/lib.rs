@@ -1,9 +1,6 @@
 //! A channel that keeps track of latency and queue length.
 
-use std::sync::{
-    atomic::{AtomicBool, AtomicU64},
-    Arc,
-};
+use std::sync::{atomic::AtomicU64, Arc};
 
 use web_time::Instant;
 
@@ -152,17 +149,8 @@ pub(crate) fn smart_channel_with_stats<T: Send>(
 ) -> (Sender<T>, Receiver<T>) {
     let (tx, rx) = crossbeam::channel::unbounded();
     let sender_source = Arc::new(sender_source);
-    let sender = Sender {
-        tx,
-        source: sender_source,
-        stats: stats.clone(),
-    };
-    let receiver = Receiver {
-        rx,
-        stats,
-        source,
-        connected: AtomicBool::new(true),
-    };
+    let sender = Sender::new(tx, sender_source, stats.clone());
+    let receiver = Receiver::new(rx, stats, source);
     (sender, receiver)
 }
 
