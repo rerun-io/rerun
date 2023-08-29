@@ -218,6 +218,7 @@ impl StoreHub {
     // TODO(#2579): implement persistence for web
     #[cfg(not(target_arch = "wasm32"))]
     pub fn persist_app_blueprints(&mut self) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
