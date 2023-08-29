@@ -663,21 +663,21 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
 }
 
 fn reset_viewer() -> anyhow::Result<()> {
-    if let Some(data_dir) = re_viewer::external::eframe::storage_dir(re_viewer::native::APP_ID) {
-        // Note: `remove_dir_all` fails if the directory doesn't exist.
-        if data_dir.exists() {
-            if let Err(err) = std::fs::remove_dir_all(&data_dir) {
-                anyhow::bail!("Failed to remove {data_dir:?}: {err}");
-            } else {
-                eprintln!("Removed {data_dir:?}.");
-                Ok(())
-            }
+    let Some(data_dir) = re_viewer::external::eframe::storage_dir(re_viewer::native::APP_ID) else {
+        anyhow::bail!("Failed to figure out where Rerun stores its data.")
+    };
+
+    // Note: `remove_dir_all` fails if the directory doesn't exist.
+    if data_dir.exists() {
+        if let Err(err) = std::fs::remove_dir_all(&data_dir) {
+            anyhow::bail!("Failed to remove {data_dir:?}: {err}");
         } else {
-            eprintln!("Rerun state was already cleared.");
+            eprintln!("Removed {data_dir:?}.");
             Ok(())
         }
     } else {
-        anyhow::bail!("Failed to figure out where Rerun stores its data.")
+        eprintln!("Rerun state was already cleared.");
+        Ok(())
     }
 }
 
