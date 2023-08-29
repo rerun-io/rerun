@@ -177,6 +177,7 @@ enum Command {
     /// e.g. if it is crashing on startup.
     ///
     /// Rerun will forget all blueprints, as well as the native window's size, position and scale factor.
+    #[cfg(feature = "native_viewer")]
     Reset,
 }
 
@@ -294,6 +295,7 @@ where
                 run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
             }
 
+            #[cfg(feature = "native_viewer")]
             Command::Reset => reset_viewer(),
         }
     } else {
@@ -662,6 +664,7 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
     })
 }
 
+#[cfg(feature = "native_viewer")]
 fn reset_viewer() -> anyhow::Result<()> {
     let Some(data_dir) = re_viewer::external::eframe::storage_dir(re_viewer::native::APP_ID) else {
         anyhow::bail!("Failed to figure out where Rerun stores its data.")
