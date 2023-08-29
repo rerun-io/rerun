@@ -191,7 +191,7 @@ impl DataStore {
         let mut candidate_rows = self.metadata_registry.registry.iter();
 
         while num_bytes_to_drop > 0.0 {
-            // pop next row id
+            // Try to get the next candidate
             let Some((row_id, timepoint)) = candidate_rows.next() else {
                 break;
             };
@@ -222,9 +222,14 @@ impl DataStore {
             }
         }
 
+        // Purge the removed rows from the metadata_registry
         for row_id in &row_ids {
             self.metadata_registry.remove(row_id);
         }
+
+        // Any tables that are empty can be dropped
+        self.tables.retain(|_, table| table.num_rows() > 0);
+        self.timeless_tables.retain(|_, table| table.num_rows() > 0);
 
         row_ids
     }
@@ -271,9 +276,14 @@ impl DataStore {
             }
         }
 
+        // Purge the removed rows from the metadata_registry
         for row_id in &row_ids {
             self.metadata_registry.remove(row_id);
         }
+
+        // Any tables that are empty can be dropped
+        self.tables.retain(|_, table| table.num_rows() > 0);
+        self.timeless_tables.retain(|_, table| table.num_rows() > 0);
 
         row_ids
     }
@@ -387,8 +397,6 @@ impl IndexedTable {
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
-        re_tracing::profile_function!();
-
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
         let (bucket_key, bucket) = self.find_bucket_mut(time.into());
@@ -433,8 +441,6 @@ impl IndexedBucketInner {
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
-        re_tracing::profile_function!();
-
         self.sort();
 
         let IndexedBucketInner {
@@ -513,8 +519,6 @@ impl PersistentIndexedTable {
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(&mut self, row_id: RowId) -> u64 {
-        re_tracing::profile_function!();
-
         let mut dropped_num_bytes = 0u64;
 
         let PersistentIndexedTable {

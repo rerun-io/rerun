@@ -230,12 +230,12 @@ impl StoreHub {
 
             if let Some(blueprint) = self.store_dbs.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    let gc_rows = blueprint.store_mut().gc(GarbageCollectionOptions {
+                    // GC everything but the latest row.
+                    blueprint.store_mut().gc(GarbageCollectionOptions {
                         target: re_arrow_store::GarbageCollectionTarget::Everything,
                         gc_timeless: true,
-                        protect_latest: 1,
+                        protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
                     });
-                    re_log::debug!("Cleaned up blueprint: {:?}", gc_rows);
                     // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                     // be small & fast to save, but maybe not once we start adding big pieces of user data?
                     let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
