@@ -13,7 +13,7 @@ namespace rerun {
     namespace components {
         const char* InstanceKey::NAME = "rerun.instance_key";
 
-        const std::shared_ptr<arrow::DataType>& InstanceKey::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& InstanceKey::arrow_field() {
             static const auto datatype = arrow::uint64();
             return datatype;
         }
@@ -66,9 +66,8 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(InstanceKey::NAME, InstanceKey::arrow_datatype(), false)}
-            );
+            auto schema =
+                arrow::schema({arrow::field(InstanceKey::NAME, InstanceKey::arrow_field(), false)});
 
             rerun::DataCell cell;
             cell.component_name = InstanceKey::NAME;

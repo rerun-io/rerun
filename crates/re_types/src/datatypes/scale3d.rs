@@ -38,8 +38,6 @@ impl<'a> From<&'a Scale3D> for ::std::borrow::Cow<'a, Scale3D> {
 
 impl crate::Loggable for Scale3D {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -86,6 +84,7 @@ impl crate::Loggable for Scale3D {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -95,17 +94,7 @@ impl crate::Loggable for Scale3D {
                 })
                 .collect();
             UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::Scale3D>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::Scale3D>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::Scale3D>::arrow_datatype(),
                 data.iter()
                     .map(|a| match a.as_deref() {
                         None => 0,
@@ -157,25 +146,17 @@ impl crate::Loggable for Scale3D {
                                         .into()
                                 });
                             FixedSizeListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    )
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
+                                    DataType::Float32,
                                     three_d_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
@@ -205,10 +186,7 @@ impl crate::Loggable for Scale3D {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
+                            DataType::Float32,
                             uniform.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             uniform_bitmap,
                         )
@@ -461,21 +439,4 @@ impl crate::Loggable for Scale3D {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for Scale3D {}

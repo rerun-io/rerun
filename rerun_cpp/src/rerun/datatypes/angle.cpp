@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Angle::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Angle::arrow_field() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("Radians", arrow::float32(), false),
@@ -31,7 +31,7 @@ namespace rerun {
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
                 }),
-                arrow_datatype()
+                arrow_field()
             ));
         }
 

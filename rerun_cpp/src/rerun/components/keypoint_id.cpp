@@ -14,8 +14,8 @@ namespace rerun {
     namespace components {
         const char *KeypointId::NAME = "rerun.keypoint_id";
 
-        const std::shared_ptr<arrow::DataType> &KeypointId::arrow_datatype() {
-            static const auto datatype = rerun::datatypes::KeypointId::arrow_datatype();
+        const std::shared_ptr<arrow::DataType> &KeypointId::arrow_field() {
+            static const auto datatype = rerun::datatypes::KeypointId::arrow_field();
             return datatype;
         }
 
@@ -70,8 +70,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(KeypointId::NAME, KeypointId::arrow_datatype(), false)}
-                );
+                arrow::schema({arrow::field(KeypointId::NAME, KeypointId::arrow_field(), false)});
 
             rerun::DataCell cell;
             cell.component_name = KeypointId::NAME;

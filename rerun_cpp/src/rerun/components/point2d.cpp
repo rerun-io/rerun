@@ -14,8 +14,8 @@ namespace rerun {
     namespace components {
         const char *Point2D::NAME = "rerun.point2d";
 
-        const std::shared_ptr<arrow::DataType> &Point2D::arrow_datatype() {
-            static const auto datatype = rerun::datatypes::Vec2D::arrow_datatype();
+        const std::shared_ptr<arrow::DataType> &Point2D::arrow_field() {
+            static const auto datatype = rerun::datatypes::Vec2D::arrow_field();
             return datatype;
         }
 
@@ -70,7 +70,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(Point2D::NAME, Point2D::arrow_datatype(), false)});
+                arrow::schema({arrow::field(Point2D::NAME, Point2D::arrow_field(), false)});
 
             rerun::DataCell cell;
             cell.component_name = Point2D::NAME;

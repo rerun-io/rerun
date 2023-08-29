@@ -8,6 +8,7 @@
 #include "datatypes/class_description_map_elem.hpp"
 #include "datatypes/class_id.hpp"
 #include "datatypes/color.hpp"
+#include "datatypes/float32.hpp"
 #include "datatypes/keypoint_id.hpp"
 #include "datatypes/keypoint_pair.hpp"
 #include "datatypes/label.hpp"

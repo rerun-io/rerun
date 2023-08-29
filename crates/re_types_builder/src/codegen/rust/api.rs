@@ -744,39 +744,6 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
-            let quoted_item = if optimize_for_buffer_slice {
-                quote!(Self)
-            } else {
-                quote!(Option<Self>)
-            };
-
-            let quoted_item_converters = if optimize_for_buffer_slice {
-                quote! {
-                    #[inline]
-                    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
-                        item
-                    }
-
-                    #[inline]
-                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-                        Some(item)
-                    }
-                }
-            } else {
-                quote! {
-                    #[inline]
-                    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-                        item
-                    }
-                }
-            };
-
-            let quoted_iter_from_arrow_impl = if optimize_for_buffer_slice {
-                quote!(try_from_arrow)
-            } else {
-                quote!(try_from_arrow_opt)
-            };
-
             let quoted_try_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
@@ -809,8 +776,6 @@ fn quote_trait_impls_from_obj(
 
                 impl crate::Loggable for #name {
                     type Name = crate::#kind_name;
-                    type Item<'a> = #quoted_item;
-                    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
                     #[inline]
                     fn name() -> Self::Name {
@@ -835,6 +800,7 @@ fn quote_trait_impls_from_obj(
                     {
                         use ::arrow2::{datatypes::*, array::*};
                         use crate::{Loggable as _, ResultExt as _};
+                        _ = extension_wrapper;
                         Ok(#quoted_serializer)
                     }
 
@@ -842,29 +808,15 @@ fn quote_trait_impls_from_obj(
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
-                        Self: Sized {
+                        Self: Sized
+                    {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
                         Ok(#quoted_deserializer)
                     }
 
                     #quoted_try_from_arrow
-
-                    #[inline]
-                    fn try_iter_from_arrow(
-                        data: &dyn ::arrow2::array::Array,
-                    ) -> crate::DeserializationResult<Self::Iter<'_>>
-                    where
-                        Self: Sized,
-                    {
-                        Ok(Self:: #quoted_iter_from_arrow_impl (data)?.into_iter())
-                    }
-
-
-                    #quoted_item_converters
                 }
-
-                impl crate::#quoted_kind for #name {}
             }
         }
 
@@ -918,6 +870,29 @@ fn quote_trait_impls_from_obj(
                 .iter()
                 .map(|field| format_ident!("{}", field.name))
                 .collect::<Vec<_>>();
+
+            let all_component_lists = {
+                obj.fields.iter().map(|obj_field| {
+                    let field_name = format_ident!("{}", obj_field.name);
+                    let is_plural = obj_field.typ.is_plural();
+                    let is_nullable = obj_field.is_nullable;
+
+                    // NOTE: Archetypes are AoS (arrays of structs), thus the nullability we're
+                    // dealing with here is the nullability of an entire array of components, not
+                    // the nullability of individual elements (i.e. instances)!
+                    match (is_plural, is_nullable) {
+                        (true, true) => {
+                            quote! { self.#field_name.as_ref().map(|comp_list| comp_list as &dyn crate::ComponentList) }
+                        }
+                        (false, true) => {
+                            quote! { self.#field_name.as_ref().map(|comp| comp as &dyn crate::ComponentList) }
+                        }
+                        (_, false) => {
+                            quote! { Some(&self.#field_name as &dyn crate::ComponentList) }
+                        }
+                    }
+                })
+            };
 
             let all_serializers = {
                 obj.fields.iter().map(|obj_field| {
@@ -1070,29 +1045,31 @@ fn quote_trait_impls_from_obj(
                 impl crate::Archetype for #name {
                     #[inline]
                     fn name() -> crate::ArchetypeName {
-                        crate::ArchetypeName::Borrowed(#fqname)
+                        #fqname.into()
                     }
 
                     #[inline]
-                    fn required_components() -> &'static [crate::ComponentName] {
-                        REQUIRED_COMPONENTS.as_slice()
+                    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+                        REQUIRED_COMPONENTS.as_slice().into()
                     }
 
                     #[inline]
-                    fn recommended_components() -> &'static [crate::ComponentName]  {
-                        RECOMMENDED_COMPONENTS.as_slice()
+                    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]>  {
+                        RECOMMENDED_COMPONENTS.as_slice().into()
                     }
 
                     #[inline]
-                    fn optional_components() -> &'static [crate::ComponentName]  {
-                        OPTIONAL_COMPONENTS.as_slice()
+                    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]>  {
+                        OPTIONAL_COMPONENTS.as_slice().into()
                     }
 
+                    // NOTE: Don't rely on default implementation so that we can keep everything static.
                     #[inline]
-                    fn all_components() -> &'static [crate::ComponentName]  {
-                        ALL_COMPONENTS.as_slice()
+                    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]>  {
+                        ALL_COMPONENTS.as_slice().into()
                     }
 
+                    // NOTE: Don't rely on default implementation so that we can avoid runtime formatting.
                     #[inline]
                     fn indicator_component() -> crate::ComponentName  {
                         #indicator_fqname.into()
@@ -1103,6 +1080,12 @@ fn quote_trait_impls_from_obj(
                         #num_instances
                     }
 
+                    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+                        [#(#all_component_lists,)*].into_iter().flatten().collect()
+                    }
+
+                    // TODO: Make indicator components first class and return them through `as_component_lists`,
+                    // at which point we can rely on the default implementation and remove this altogether.
                     #[inline]
                     fn try_to_arrow(
                         &self,

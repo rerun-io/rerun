@@ -54,8 +54,6 @@ impl<'a> From<&'a ClassDescription> for ::std::borrow::Cow<'a, ClassDescription>
 
 impl crate::Loggable for ClassDescription {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -108,6 +106,7 @@ impl crate::Loggable for ClassDescription {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -121,17 +120,7 @@ impl crate::Loggable for ClassDescription {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::ClassDescription>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::ClassDescription>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::ClassDescription>::arrow_datatype(),
                 vec![
                     {
                         let (somes, info): (Vec<_>, Vec<_>) = data
@@ -192,18 +181,12 @@ impl crate::Loggable for ClassDescription {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 {
                                     _ = keypoint_annotations_inner_bitmap;
@@ -256,18 +239,12 @@ impl crate::Loggable for ClassDescription {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: <crate::datatypes::KeypointPair>::arrow_datatype(
-                                        ),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 {
                                     _ = keypoint_connections_inner_bitmap;
@@ -537,21 +514,4 @@ impl crate::Loggable for ClassDescription {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for ClassDescription {}

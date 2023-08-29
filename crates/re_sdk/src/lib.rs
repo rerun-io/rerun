@@ -18,7 +18,7 @@ mod recording_stream;
 // Public items:
 
 pub use self::msg_sender::{MsgSender, MsgSenderError};
-pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
+pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
@@ -96,7 +96,8 @@ pub mod coordinates {
 }
 
 pub use re_types::{
-    archetypes, datatypes, Archetype, Component, ComponentName, Datatype, Loggable,
+    archetypes, datatypes, Archetype, ArchetypeName, Component, ComponentList, ComponentName,
+    Datatype, DatatypeList, DatatypeName, Loggable,
 };
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
@@ -110,6 +111,10 @@ pub mod external {
     pub use re_memory;
     pub use re_sdk_comms;
     pub use re_types;
+
+    pub use re_log::external::*;
+    pub use re_log_types::external::*;
+    pub use re_types::external::*;
 
     #[cfg(feature = "glam")]
     pub use re_components::external::glam;

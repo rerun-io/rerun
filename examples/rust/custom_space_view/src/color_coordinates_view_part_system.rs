@@ -3,7 +3,7 @@ use re_viewer::external::{
     re_log_types::EntityPath,
     re_query::query_archetype,
     re_renderer,
-    re_types::{self, components::InstanceKey, Archetype, Loggable as _},
+    re_types::{self, components::InstanceKey, Archetype, ComponentName, Loggable as _},
     re_viewer_context::{
         ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
         ViewPartSystem, ViewQuery, ViewSystemName, ViewerContext,
@@ -30,22 +30,12 @@ impl re_types::Archetype for ColorArchetype {
         "InstanceColor".into()
     }
 
-    fn required_components() -> &'static [re_types::ComponentName] {
-        static COMPONENTS: once_cell::sync::Lazy<[re_types::ComponentName; 1]> =
-            once_cell::sync::Lazy::new(|| [re_types::components::Color::name()]);
-        &*COMPONENTS
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+        ::std::borrow::Cow::Borrowed(&[re_types::components::Color::name()])
     }
 
-    fn recommended_components() -> &'static [re_types::ComponentName] {
-        &[]
-    }
-
-    fn optional_components() -> &'static [re_types::ComponentName] {
-        &[]
-    }
-
-    fn all_components() -> &'static [re_types::ComponentName] {
-        Self::required_components()
+    fn num_instances(&self) -> usize {
+        unimplemented!()
     }
 
     fn indicator_component() -> re_types::ComponentName {
@@ -53,17 +43,6 @@ impl re_types::Archetype for ColorArchetype {
     }
 
     fn num_instances(&self) -> usize {
-        unimplemented!()
-    }
-
-    fn try_to_arrow(
-        &self,
-    ) -> re_types::SerializationResult<
-        Vec<(
-            re_viewer::external::arrow2::datatypes::Field,
-            Box<dyn re_viewer::external::arrow2::array::Array>,
-        )>,
-    > {
         unimplemented!()
     }
 

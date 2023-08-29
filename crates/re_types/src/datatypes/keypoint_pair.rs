@@ -35,8 +35,6 @@ impl<'a> From<&'a KeypointPair> for ::std::borrow::Cow<'a, KeypointPair> {
 
 impl crate::Loggable for KeypointPair {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -73,6 +71,7 @@ impl crate::Loggable for KeypointPair {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -86,17 +85,7 @@ impl crate::Loggable for KeypointPair {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::KeypointPair>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::KeypointPair>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::KeypointPair>::arrow_datatype(),
                 vec![
                     {
                         let (somes, keypoint0): (Vec<_>, Vec<_>) = data
@@ -114,10 +103,7 @@ impl crate::Loggable for KeypointPair {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::UInt16.to_logical_type().clone()
-                            },
+                            DataType::UInt16,
                             keypoint0
                                 .into_iter()
                                 .map(|datum| {
@@ -149,10 +135,7 @@ impl crate::Loggable for KeypointPair {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::UInt16.to_logical_type().clone()
-                            },
+                            DataType::UInt16,
                             keypoint1
                                 .into_iter()
                                 .map(|datum| {
@@ -283,21 +266,4 @@ impl crate::Loggable for KeypointPair {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for KeypointPair {}

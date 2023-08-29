@@ -92,27 +92,27 @@ impl Transform3D {
 impl crate::Archetype for Transform3D {
     #[inline]
     fn name() -> crate::ArchetypeName {
-        crate::ArchetypeName::Borrowed("rerun.archetypes.Transform3D")
+        "rerun.archetypes.Transform3D".into()
     }
 
     #[inline]
-    fn required_components() -> &'static [crate::ComponentName] {
-        REQUIRED_COMPONENTS.as_slice()
+    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> &'static [crate::ComponentName] {
-        RECOMMENDED_COMPONENTS.as_slice()
+    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> &'static [crate::ComponentName] {
-        OPTIONAL_COMPONENTS.as_slice()
+    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> &'static [crate::ComponentName] {
-        ALL_COMPONENTS.as_slice()
+    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
@@ -123,6 +123,13 @@ impl crate::Archetype for Transform3D {
     #[inline]
     fn num_instances(&self) -> usize {
         1
+    }
+
+    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+        [Some(&self.transform as &dyn crate::ComponentList)]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 
     #[inline]

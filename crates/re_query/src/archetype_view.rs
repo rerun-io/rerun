@@ -38,20 +38,16 @@ impl ComponentWithInstances {
         self.values.is_empty()
     }
 
-    /// Iterate over the [`InstanceKey`]s.
+    /// Returns the array of [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(
-        &self,
-    ) -> impl Iterator<Item = re_types::components::InstanceKey> + '_ {
+    pub fn instance_keys(&self) -> Vec<re_types::components::InstanceKey> {
         re_tracing::profile_function!();
         self.instance_keys.to_native::<InstanceKey>()
     }
 
-    /// Iterate over the values and convert them to a native [`Component`]
+    /// Returns the array of values as native [`Component`]s.
     #[inline]
-    pub fn iter_values<'a, C: Component + 'a>(
-        &'a self,
-    ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
+    pub fn values<'a, C: Component + 'a>(&'a self) -> crate::Result<Vec<Option<C>>> {
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
                 actual: self.name(),
@@ -266,12 +262,12 @@ impl<A: Archetype> ArchetypeView<A> {
         &self.components[&first_required]
     }
 
-    /// Iterate over the [`InstanceKey`]s.
+    /// Returns an iterator over [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> {
         re_tracing::profile_function!();
         // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
-        self.required_comp().iter_instance_keys()
+        self.required_comp().instance_keys().into_iter()
     }
 
     /// Check if the entity has a component and its not empty
@@ -296,7 +292,8 @@ impl<A: Archetype> ArchetypeView<A> {
             let component_value_iter = component
                 .values
                 .try_to_native()
-                .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
+                .map_err(|err| DeserializationError::DataCellError(err.to_string()))?
+                .into_iter();
 
             Ok(component_value_iter)
         } else {
@@ -306,7 +303,7 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
-    /// Iterate over the values of an optional `Component`.
+    /// Iterate over optional values as native [`Component`]s.
     ///
     /// Always produces an iterator that matches the length of a primary
     /// component by joining on the `InstanceKey` values.
@@ -319,9 +316,9 @@ impl<A: Archetype> ArchetypeView<A> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let primary_instance_key_iter = self.iter_instance_keys();
+            let primary_instance_key_iter = self.iter_instance_keys().into_iter();
 
-            let mut component_instance_key_iter = component.iter_instance_keys();
+            let mut component_instance_key_iter = component.instance_keys().into_iter();
 
             let component_value_iter = {
                 re_tracing::profile_scope!("try_from_arrow_opt", C::name());

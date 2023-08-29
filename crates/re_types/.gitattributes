@@ -42,6 +42,7 @@ src/datatypes/mod.rs linguist-generated=true
 src/datatypes/quaternion.rs linguist-generated=true
 src/datatypes/rotation3d.rs linguist-generated=true
 src/datatypes/rotation_axis_angle.rs linguist-generated=true
+src/datatypes/scalars.rs linguist-generated=true
 src/datatypes/scale3d.rs linguist-generated=true
 src/datatypes/transform3d.rs linguist-generated=true
 src/datatypes/translation_and_mat3x3.rs linguist-generated=true

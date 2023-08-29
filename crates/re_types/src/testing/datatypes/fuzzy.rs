@@ -33,8 +33,6 @@ impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
 
 impl crate::Loggable for FlattenedScalar {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -63,6 +61,7 @@ impl crate::Loggable for FlattenedScalar {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -76,17 +75,7 @@ impl crate::Loggable for FlattenedScalar {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::FlattenedScalar>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::testing::datatypes::FlattenedScalar>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 vec![{
                     let (somes, value): (Vec<_>, Vec<_>) = data
                         .iter()
@@ -103,10 +92,7 @@ impl crate::Loggable for FlattenedScalar {
                         any_nones.then(|| somes.into())
                     };
                     PrimitiveArray::new(
-                        {
-                            _ = extension_wrapper;
-                            DataType::Float32.to_logical_type().clone()
-                        },
+                        DataType::Float32,
                         value.into_iter().map(|v| v.unwrap_or_default()).collect(),
                         value_bitmap,
                     )
@@ -192,24 +178,7 @@ impl crate::Loggable for FlattenedScalar {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for FlattenedScalar {}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer1 {
@@ -240,8 +209,6 @@ impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
 
 impl crate::Loggable for AffixFuzzer1 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -335,6 +302,7 @@ impl crate::Loggable for AffixFuzzer1 {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -348,17 +316,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer1>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                 vec![
                     {
                         let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
@@ -382,10 +340,7 @@ impl crate::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
+                            DataType::Float32,
                             single_float_optional
                                 .into_iter()
                                 .map(|v| v.unwrap_or_default())
@@ -428,10 +383,7 @@ impl crate::Loggable for AffixFuzzer1 {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Utf8.to_logical_type().clone()
-                                    },
+                                    DataType::Utf8,
                                     offsets,
                                     inner_data,
                                     single_string_required_bitmap,
@@ -477,10 +429,7 @@ impl crate::Loggable for AffixFuzzer1 {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Utf8.to_logical_type().clone()
-                                    },
+                                    DataType::Utf8,
                                     offsets,
                                     inner_data,
                                     single_string_optional_bitmap,
@@ -532,23 +481,15 @@ impl crate::Loggable for AffixFuzzer1 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
+                                    DataType::Float32,
                                     many_floats_optional_inner_data,
                                     many_floats_optional_inner_bitmap,
                                 )
@@ -596,17 +537,12 @@ impl crate::Loggable for AffixFuzzer1 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 {
                                     let inner_data: ::arrow2::buffer::Buffer<u8> =
@@ -628,10 +564,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
                                         Utf8Array::<i32>::new_unchecked(
-                                            {
-                                                _ = extension_wrapper;
-                                                DataType::Utf8.to_logical_type().clone()
-                                            },
+                                            DataType::Utf8,
                                             offsets,
                                             inner_data,
                                             many_strings_required_inner_bitmap,
@@ -685,17 +618,12 @@ impl crate::Loggable for AffixFuzzer1 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 {
                                     let inner_data: ::arrow2::buffer::Buffer<u8> =
@@ -717,10 +645,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
                                         Utf8Array::<i32>::new_unchecked(
-                                            {
-                                                _ = extension_wrapper;
-                                                DataType::Utf8.to_logical_type().clone()
-                                            },
+                                            DataType::Utf8,
                                             offsets,
                                             inner_data,
                                             many_strings_optional_inner_bitmap,
@@ -751,10 +676,7 @@ impl crate::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
+                            DataType::Float32,
                             flattened_scalar
                                 .into_iter()
                                 .map(|v| v.unwrap_or_default())
@@ -809,10 +731,7 @@ impl crate::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         BooleanArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Boolean.to_logical_type().clone()
-                            },
+                            DataType::Boolean,
                             from_parent
                                 .into_iter()
                                 .map(|v| v.unwrap_or_default())
@@ -1489,24 +1408,7 @@ impl crate::Loggable for AffixFuzzer1 {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for AffixFuzzer1 {}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
@@ -1527,8 +1429,6 @@ impl<'a> From<&'a AffixFuzzer2> for ::std::borrow::Cow<'a, AffixFuzzer2> {
 
 impl crate::Loggable for AffixFuzzer2 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -1552,6 +1452,7 @@ impl crate::Loggable for AffixFuzzer2 {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -1571,16 +1472,7 @@ impl crate::Loggable for AffixFuzzer2 {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                {
-                    _ = extension_wrapper;
-                    DataType::Extension(
-                        "rerun.testing.datatypes.AffixFuzzer2".to_owned(),
-                        Box::new(Self::arrow_datatype()),
-                        None,
-                    )
-                    .to_logical_type()
-                    .clone()
-                },
+                Self::arrow_datatype(),
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -1615,24 +1507,7 @@ impl crate::Loggable for AffixFuzzer2 {
             .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")
             .with_context("rerun.testing.datatypes.AffixFuzzer2")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for AffixFuzzer2 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer3 {
@@ -1658,8 +1533,6 @@ impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
 
 impl crate::Loggable for AffixFuzzer3 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -1731,6 +1604,7 @@ impl crate::Loggable for AffixFuzzer3 {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -1740,17 +1614,7 @@ impl crate::Loggable for AffixFuzzer3 {
                 })
                 .collect();
             UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer3>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                 data.iter()
                     .map(|a| match a.as_deref() {
                         None => 0,
@@ -1782,10 +1646,7 @@ impl crate::Loggable for AffixFuzzer3 {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
+                            DataType::Float32,
                             degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             degrees_bitmap,
                         )
@@ -1811,10 +1672,7 @@ impl crate::Loggable for AffixFuzzer3 {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
+                            DataType::Float32,
                             radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             radians_bitmap,
                         )
@@ -1856,13 +1714,13 @@ impl crate::Loggable for AffixFuzzer3 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field { name : "item".to_owned(),
-                        data_type : < crate ::testing::datatypes::AffixFuzzer1 >
-                        ::arrow_datatype(), is_nullable : false, metadata : [].into(),
-                        })).to_logical_type().clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type:
+                                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 {
                                     _ = craziness_inner_bitmap;
@@ -1918,25 +1776,17 @@ impl crate::Loggable for AffixFuzzer3 {
                                     .into()
                             });
                             FixedSizeListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    )
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
+                                    DataType::Float32,
                                     fixed_size_shenanigans_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
@@ -2365,24 +2215,7 @@ impl crate::Loggable for AffixFuzzer3 {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for AffixFuzzer3 {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer4 {
@@ -2407,8 +2240,6 @@ impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
 
 impl crate::Loggable for AffixFuzzer4 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -2471,6 +2302,7 @@ impl crate::Loggable for AffixFuzzer4 {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -2480,17 +2312,7 @@ impl crate::Loggable for AffixFuzzer4 {
                 })
                 .collect();
             UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer4>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
                 data.iter()
                     .map(|a| match a.as_deref() {
                         None => 0,
@@ -2565,13 +2387,13 @@ impl crate::Loggable for AffixFuzzer4 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field { name : "item".to_owned(),
-                        data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                        ::arrow_datatype(), is_nullable : false, metadata : [].into(),
-                        })).to_logical_type().clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type:
+                                        <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 {
                                     _ = many_required_inner_bitmap;
@@ -2623,13 +2445,13 @@ impl crate::Loggable for AffixFuzzer4 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field { name : "item".to_owned(),
-                        data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                        ::arrow_datatype(), is_nullable : true, metadata : [].into(), }))
-                        .to_logical_type().clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type:
+                                        <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 {
                                     _ = many_optional_inner_bitmap;
@@ -2978,24 +2800,7 @@ impl crate::Loggable for AffixFuzzer4 {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for AffixFuzzer4 {}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer5 {
@@ -3026,8 +2831,6 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
 
 impl crate::Loggable for AffixFuzzer5 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -3056,6 +2859,7 @@ impl crate::Loggable for AffixFuzzer5 {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -3069,17 +2873,7 @@ impl crate::Loggable for AffixFuzzer5 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer5>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::testing::datatypes::AffixFuzzer5>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::testing::datatypes::AffixFuzzer5>::arrow_datatype(),
                 vec![{
                     let (somes, single_optional_union): (Vec<_>, Vec<_>) = data
                         .iter()
@@ -3180,24 +2974,7 @@ impl crate::Loggable for AffixFuzzer5 {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for AffixFuzzer5 {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
@@ -3221,8 +2998,6 @@ impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
 
 impl crate::Loggable for AffixFuzzer20 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -3259,6 +3034,7 @@ impl crate::Loggable for AffixFuzzer20 {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -3272,17 +3048,7 @@ impl crate::Loggable for AffixFuzzer20 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::testing::datatypes::AffixFuzzer20>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::testing::datatypes::AffixFuzzer20>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::testing::datatypes::AffixFuzzer20>::arrow_datatype(),
                 vec![
                     {
                         let (somes, p): (Vec<_>, Vec<_>) = data
@@ -3300,10 +3066,7 @@ impl crate::Loggable for AffixFuzzer20 {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::UInt32.to_logical_type().clone()
-                            },
+                            DataType::UInt32,
                             p.into_iter()
                                 .map(|datum| {
                                     datum
@@ -3361,10 +3124,7 @@ impl crate::Loggable for AffixFuzzer20 {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Utf8.to_logical_type().clone()
-                                    },
+                                    DataType::Utf8,
                                     offsets,
                                     inner_data,
                                     s_bitmap,
@@ -3518,21 +3278,4 @@ impl crate::Loggable for AffixFuzzer20 {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for AffixFuzzer20 {}

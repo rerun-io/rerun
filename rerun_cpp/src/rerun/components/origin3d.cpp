@@ -14,8 +14,8 @@ namespace rerun {
     namespace components {
         const char *Origin3D::NAME = "rerun.components.Origin3D";
 
-        const std::shared_ptr<arrow::DataType> &Origin3D::arrow_datatype() {
-            static const auto datatype = rerun::datatypes::Vec3D::arrow_datatype();
+        const std::shared_ptr<arrow::DataType> &Origin3D::arrow_field() {
+            static const auto datatype = rerun::datatypes::Vec3D::arrow_field();
             return datatype;
         }
 
@@ -70,7 +70,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(Origin3D::NAME, Origin3D::arrow_datatype(), false)});
+                arrow::schema({arrow::field(Origin3D::NAME, Origin3D::arrow_field(), false)});
 
             rerun::DataCell cell;
             cell.component_name = Origin3D::NAME;

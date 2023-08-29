@@ -14,10 +14,10 @@ namespace rerun {
     namespace components {
         const char *AnnotationContext::NAME = "rerun.annotation_context";
 
-        const std::shared_ptr<arrow::DataType> &AnnotationContext::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AnnotationContext::arrow_field() {
             static const auto datatype = arrow::list(arrow::field(
                 "item",
-                rerun::datatypes::ClassDescriptionMapElem::arrow_datatype(),
+                rerun::datatypes::ClassDescriptionMapElem::arrow_field(),
                 false
             ));
             return datatype;
@@ -91,7 +91,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema = arrow::schema(
-                {arrow::field(AnnotationContext::NAME, AnnotationContext::arrow_datatype(), false)}
+                {arrow::field(AnnotationContext::NAME, AnnotationContext::arrow_field(), false)}
             );
 
             rerun::DataCell cell;

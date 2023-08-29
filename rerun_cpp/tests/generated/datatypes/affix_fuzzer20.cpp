@@ -11,10 +11,10 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer20::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer20::arrow_field() {
             static const auto datatype = arrow::struct_({
-                arrow::field("p", rerun::datatypes::PrimitiveComponent::arrow_datatype(), false),
-                arrow::field("s", rerun::datatypes::StringComponent::arrow_datatype(), false),
+                arrow::field("p", rerun::datatypes::PrimitiveComponent::arrow_field(), false),
+                arrow::field("s", rerun::datatypes::StringComponent::arrow_field(), false),
             });
             return datatype;
         }
@@ -27,7 +27,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                arrow_datatype(),
+                arrow_field(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     rerun::datatypes::PrimitiveComponent::new_arrow_array_builder(memory_pool)

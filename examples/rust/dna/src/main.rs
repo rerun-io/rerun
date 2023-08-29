@@ -5,55 +5,55 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    components::{Color, LineStrip3D, Point3D, Radius, Transform3D},
-    datatypes::Vec3D,
+    archetypes::{LineStrips3D, Points3D, Transform3D},
+    components::{Color, Point3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
-    MsgSender, MsgSenderError, RecordingStream,
+    RecordingStream, RecordingStreamResult,
 };
 
 const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store_info = rerun::new_store_info("DNA Abacus");
-    rerun::native_viewer::spawn(store_info, Default::default(), |rec_stream| {
-        run(&rec_stream).unwrap();
+    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
+        run(&rec).unwrap();
     })?;
     Ok(())
 }
 
-fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
+fn run(rec: &RecordingStream) -> RecordingStreamResult<()> {
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
-    rec_stream.set_time_seconds("stable_time", 0f64);
+    rec.set_time_seconds("stable_time", 0f64);
 
-    MsgSender::new("dna/structure/left")
-        .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
-        .with_component(&colors1.iter().copied().map(Color::from).collect_vec())?
-        .with_splat(Radius(0.08))?
-        .send(rec_stream)?;
+    rec.log(
+        "dna/structure/left",
+        &Points3D::new(points1.iter().copied())
+            .with_colors(colors1)
+            .with_radii([0.08]),
+    )?;
+    rec.log(
+        "dna/structure/right",
+        &Points3D::new(points2.iter().copied())
+            .with_colors(colors2)
+            .with_radii([0.08]),
+    )?;
 
-    MsgSender::new("dna/structure/right")
-        .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
-        .with_component(&colors2.iter().copied().map(Color::from).collect_vec())?
-        .with_splat(Radius(0.08))?
-        .send(rec_stream)?;
-
-    let scaffolding = points1
-        .iter()
-        .interleave(points2.iter())
-        .copied()
-        .map(Vec3D::from)
-        .map(Into::into)
+    let points_interleaved: Vec<[glam::Vec3; 2]> = points1
+        .into_iter()
+        .interleave(points2)
         .chunks(2)
         .into_iter()
-        .map(|positions| LineStrip3D(positions.collect_vec()))
+        .map(|chunk| chunk.into_iter().collect_vec().try_into().unwrap())
         .collect_vec();
-    MsgSender::new("dna/structure/scaffolding")
-        .with_component(&scaffolding)?
-        .with_splat(Color::from([128, 128, 128, 255]))?
-        .send(rec_stream)?;
+
+    rec.log(
+        "dna/structure/scaffolding",
+        &LineStrips3D::new(points_interleaved.iter().cloned())
+            .with_colors([Color::from([128, 128, 128, 255])]),
+    )?;
 
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
@@ -62,18 +62,13 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
     for i in 0..400 {
         let time = i as f32 * 0.01;
 
-        rec_stream.set_time_seconds("stable_time", time as f64);
+        rec.set_time_seconds("stable_time", time as f64);
 
         let times = offsets.iter().map(|offset| time + offset).collect_vec();
-        let (beads, colors): (Vec<_>, Vec<_>) = points1
+        let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
             .iter()
-            .interleave(points2.iter())
-            .copied()
-            .chunks(2)
-            .into_iter()
             .enumerate()
-            .map(|(n, mut points)| {
-                let (p1, p2) = (points.next().unwrap(), points.next().unwrap());
+            .map(|(n, &[p1, p2])| {
                 let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
                 (
                     Point3D::from(bounce_lerp(p1, p2, times[n])),
@@ -81,18 +76,19 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
                 )
             })
             .unzip();
-        MsgSender::new("dna/structure/scaffolding/beads")
-            .with_component(&beads)?
-            .with_component(&colors)?
-            .with_splat(Radius(0.06))?
-            .send(rec_stream)?;
 
-        MsgSender::new("dna/structure")
-            .with_component(&[Transform3D::new(rerun::transform::RotationAxisAngle::new(
+        rec.log(
+            "dna/structure/scaffolding/beads",
+            &Points3D::new(beads).with_colors(colors).with_radii([0.06]),
+        )?;
+
+        rec.log(
+            "dna/structure",
+            &Transform3D::new(rerun::transform::RotationAxisAngle::new(
                 glam::Vec3::Z,
                 rerun::transform::Angle::Radians(time / 4.0 * TAU),
-            ))])?
-            .send(rec_stream)?;
+            )),
+        )?;
     }
 
     Ok(())

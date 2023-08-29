@@ -11,17 +11,17 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Transform3D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Transform3D::arrow_field() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field(
                     "TranslationAndMat3x3",
-                    rerun::datatypes::TranslationAndMat3x3::arrow_datatype(),
+                    rerun::datatypes::TranslationAndMat3x3::arrow_field(),
                     false
                 ),
                 arrow::field(
                     "TranslationRotationScale",
-                    rerun::datatypes::TranslationRotationScale3D::arrow_datatype(),
+                    rerun::datatypes::TranslationRotationScale3D::arrow_field(),
                     false
                 ),
             });
@@ -46,7 +46,7 @@ namespace rerun {
                     )
                         .value,
                 }),
-                arrow_datatype()
+                arrow_field()
             ));
         }
 

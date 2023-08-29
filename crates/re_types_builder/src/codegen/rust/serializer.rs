@@ -24,15 +24,7 @@ pub fn quote_arrow_serializer(
         unreachable!()
     };
     let fqname_use = quote_fqname_as_type_path(fqname);
-    let quoted_datatype = quote! {
-        (if let Some(ext) = extension_wrapper {
-            DataType::Extension(ext.to_owned(), Box::new(<#fqname_use>::arrow_datatype()), None)
-        } else {
-            <#fqname_use>::arrow_datatype()
-        })
-        // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
-        .to_logical_type().clone()
-    };
+    let quoted_datatype = quote!(<#fqname_use>::arrow_datatype());
 
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
@@ -349,19 +341,6 @@ fn quote_arrow_field_serializer(
     data_src: &proc_macro2::Ident,
     inner_repr: InnerRepr,
 ) -> TokenStream {
-    let quoted_datatype = if let Some(ext) = extension_wrapper {
-        quote!(DataType::Extension(#ext.to_owned(), Box::new(#quoted_datatype), None))
-    } else {
-        quote!(#quoted_datatype)
-    };
-    let quoted_datatype = quote! {{
-        // NOTE: This is a field, it's never going to need the runtime one.
-        _ = extension_wrapper;
-        #quoted_datatype
-            // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
-            .to_logical_type().clone()
-    }};
-
     let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
         Some(&objects[fqname])
     } else {

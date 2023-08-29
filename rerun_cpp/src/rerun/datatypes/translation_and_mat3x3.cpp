@@ -11,10 +11,10 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &TranslationAndMat3x3::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &TranslationAndMat3x3::arrow_field() {
             static const auto datatype = arrow::struct_({
-                arrow::field("translation", rerun::datatypes::Vec3D::arrow_datatype(), true),
-                arrow::field("matrix", rerun::datatypes::Mat3x3::arrow_datatype(), true),
+                arrow::field("translation", rerun::datatypes::Vec3D::arrow_field(), true),
+                arrow::field("matrix", rerun::datatypes::Mat3x3::arrow_field(), true),
                 arrow::field("from_parent", arrow::boolean(), false),
             });
             return datatype;
@@ -28,7 +28,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                arrow_datatype(),
+                arrow_field(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value,

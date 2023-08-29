@@ -5,11 +5,13 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::{
-    ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    ApplicationId, DataCell, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
+    DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource,
+    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
+use re_types::components::InstanceKey;
+use re_types::Archetype;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
@@ -539,6 +541,118 @@ impl RecordingStream {
         Self {
             inner: Arc::new(None),
         }
+    }
+}
+
+impl RecordingStream {
+    /// Records the contents of an [`Archetype`].
+    #[inline]
+    pub fn log(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        self._log(ent_path, false, arch)
+    }
+
+    #[inline]
+    pub fn log_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        self._log(ent_path, true, arch)
+    }
+
+    pub fn log_component<'a, C: crate::Component + 'a>(
+        ent_path: impl Into<EntityPath>,
+        instances: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
+        timeless: bool, // doc
+    ) {
+        unimplemented!()
+    }
+
+    // TODO: if one can do this, then one needs a way to force a splat... (how are we dealing with
+    // this in python?)
+    // TODO: maybe we have `log_component_list` vs. `log_component_splat`.
+    pub fn log_component_list<C: crate::Component>(
+        ent_path: impl Into<EntityPath>,
+        instances: impl IntoIterator<Item = impl Into<C>>,
+        timeless: bool, // doc
+    ) {
+        unimplemented!()
+    }
+
+    // TODO: log_timeless
+    // TODO: document where the time comes from
+    fn _log(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timeless: bool,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        if !self.is_enabled() {
+            return Ok(()); // silently drop the message
+        }
+
+        let ent_path = ent_path.into();
+        let num_instances = arch.num_instances() as u32;
+
+        let serialized = arch.to_arrow();
+        let cells: Vec<_> = arch
+            .to_arrow()
+            .into_iter()
+            .map(|(field, array)| {
+                // NOTE: Unreachable, a top-level Field will always be a component, and thus an
+                // extension.
+                use re_log_types::external::arrow2::datatypes::DataType;
+                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
+                    // TODO: codegen cannot hit this... but handwritten components can
+                    unreachable!()
+                };
+                DataCell::from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
+            })
+            .collect();
+
+        // TODO: reminder not to record splatted when unnecessary
+
+        let mut instanced: Vec<DataCell> = Vec::new();
+        let mut splatted: Vec<DataCell> = Vec::new();
+        for cell in cells {
+            if num_instances > 1 && cell.num_instances() == 1 {
+                splatted.push(cell);
+            } else {
+                instanced.push(cell);
+            }
+        }
+
+        // TODO: not sure about this though
+        let timepoint = TimePoint::default();
+        let instanced = (!instanced.is_empty()).then(|| {
+            DataRow::from_cells(
+                RowId::random(),
+                timepoint.clone(),
+                ent_path.clone(),
+                num_instances,
+                instanced,
+            )
+        });
+        // TODO(#1629): unsplit splats once new data cells are in
+        let splatted = (!splatted.is_empty()).then(|| {
+            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
+            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
+        });
+
+        if let Some(instanced) = instanced {
+            self.record_row(instanced, !timeless);
+        }
+        // Always the primary component last so range-based queries will include the other data.
+        // Since the primary component can't be splatted it must be in msg_standard, see(#1215).
+        if let Some(splatted) = splatted {
+            self.record_row(splatted, !timeless);
+        }
+
+        Ok(())
     }
 }
 

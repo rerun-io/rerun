@@ -14,8 +14,8 @@ namespace rerun {
     namespace components {
         const char *Point3D::NAME = "rerun.point3d";
 
-        const std::shared_ptr<arrow::DataType> &Point3D::arrow_datatype() {
-            static const auto datatype = rerun::datatypes::Vec3D::arrow_datatype();
+        const std::shared_ptr<arrow::DataType> &Point3D::arrow_field() {
+            static const auto datatype = rerun::datatypes::Vec3D::arrow_field();
             return datatype;
         }
 
@@ -70,7 +70,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(Point3D::NAME, Point3D::arrow_datatype(), false)});
+                arrow::schema({arrow::field(Point3D::NAME, Point3D::arrow_field(), false)});
 
             rerun::DataCell cell;
             cell.component_name = Point3D::NAME;

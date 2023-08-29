@@ -10,30 +10,26 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer4::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer4::arrow_field() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field(
                     "single_required",
-                    rerun::datatypes::AffixFuzzer3::arrow_datatype(),
+                    rerun::datatypes::AffixFuzzer3::arrow_field(),
                     false
                 ),
                 arrow::field(
                     "many_required",
-                    arrow::list(arrow::field(
-                        "item",
-                        rerun::datatypes::AffixFuzzer3::arrow_datatype(),
-                        false
-                    )),
+                    arrow::list(
+                        arrow::field("item", rerun::datatypes::AffixFuzzer3::arrow_field(), false)
+                    ),
                     false
                 ),
                 arrow::field(
                     "many_optional",
-                    arrow::list(arrow::field(
-                        "item",
-                        rerun::datatypes::AffixFuzzer3::arrow_datatype(),
-                        false
-                    )),
+                    arrow::list(
+                        arrow::field("item", rerun::datatypes::AffixFuzzer3::arrow_field(), false)
+                    ),
                     true
                 ),
             });
@@ -61,7 +57,7 @@ namespace rerun {
                         rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).value
                     ),
                 }),
-                arrow_datatype()
+                arrow_field()
             ));
         }
 

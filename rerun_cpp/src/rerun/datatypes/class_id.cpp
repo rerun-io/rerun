@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& ClassId::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& ClassId::arrow_field() {
             static const auto datatype = arrow::uint16();
             return datatype;
         }

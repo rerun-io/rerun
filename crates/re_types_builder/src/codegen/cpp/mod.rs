@@ -1068,7 +1068,7 @@ fn arrow_data_type_method(
         declaration: MethodDeclaration {
             is_static: true,
             return_type: quote! { const std::shared_ptr<arrow::DataType>& },
-            name_and_parameters: quote! { arrow_datatype() },
+            name_and_parameters: quote! { arrow_field() },
         },
         definition_body: quote! {
             static const auto datatype = #quoted_datatype;
@@ -1203,7 +1203,7 @@ fn component_to_data_cell_method(
             #NEWLINE_TOKEN
             auto schema = arrow::schema({arrow::field(
                 #type_ident::NAME, // Unused, but should be the name of the field in the archetype if any.
-                #type_ident::arrow_datatype(),
+                #type_ident::arrow_field(),
                 false
             )});
             #NEWLINE_TOKEN
@@ -1957,9 +1957,9 @@ fn quote_arrow_data_type(
             // In the future we'll add the extension type here to the schema.
             let obj = &objects[fqname];
             if !is_top_level_type {
-                // If we're not at the top level, we should have already a `arrow_datatype` method that we can relay to.
+                // If we're not at the top level, we should have already a `arrow_field` method that we can relay to.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
-                quote!(#quoted_fqname::arrow_datatype())
+                quote!(#quoted_fqname::arrow_field())
             } else if obj.is_arrow_transparent() {
                 quote_arrow_data_type(&obj.fields[0].typ, objects, includes, false)
             } else {

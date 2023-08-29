@@ -12,7 +12,7 @@ namespace rerun {
     namespace components {
         const char *AffixFuzzer13::NAME = "rerun.testing.components.AffixFuzzer13";
 
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer13::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer13::arrow_field() {
             static const auto datatype = arrow::list(arrow::field("item", arrow::utf8(), false));
             return datatype;
         }
@@ -84,7 +84,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema = arrow::schema(
-                {arrow::field(AffixFuzzer13::NAME, AffixFuzzer13::arrow_datatype(), false)}
+                {arrow::field(AffixFuzzer13::NAME, AffixFuzzer13::arrow_field(), false)}
             );
 
             rerun::DataCell cell;

@@ -182,7 +182,7 @@ pub fn quote_arrow_array_builder_type_instantiation(
                     ObjectSpecifics::Struct => {
                         quote! {
                             std::make_shared<arrow::#builder_type>(
-                                arrow_datatype(),
+                                arrow_field(),
                                 memory_pool,
                                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({ #(#field_builders,)* })
                             )
@@ -195,7 +195,7 @@ pub fn quote_arrow_array_builder_type_instantiation(
                                  std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                                      std::make_shared<arrow::NullBuilder>(memory_pool), #(#field_builders,)*
                                  }),
-                                 arrow_datatype()
+                                 arrow_field()
                              )
                         }
                     }

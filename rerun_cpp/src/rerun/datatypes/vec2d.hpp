@@ -40,7 +40,7 @@ namespace rerun {
             Vec2D(const float (&_xy)[2]) : xy{_xy[0], _xy[1]} {}
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_field();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(

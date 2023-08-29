@@ -35,8 +35,6 @@ impl<'a> From<&'a Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
 
 impl crate::Loggable for Quaternion {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -68,6 +66,7 @@ impl crate::Loggable for Quaternion {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -103,27 +102,9 @@ impl crate::Loggable for Quaternion {
                             .into()
                     });
                 FixedSizeListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.datatypes.Quaternion".to_owned(),
-                            Box::new(Self::arrow_datatype()),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
+                    Self::arrow_datatype(),
                     PrimitiveArray::new(
-                        {
-                            _ = extension_wrapper;
-                            DataType::Extension(
-                                "rerun.datatypes.Quaternion".to_owned(),
-                                Box::new(DataType::Float32),
-                                None,
-                            )
-                            .to_logical_type()
-                            .clone()
-                        },
+                        DataType::Float32,
                         data0_inner_data
                             .into_iter()
                             .map(|v| v.unwrap_or_default())
@@ -218,21 +199,4 @@ impl crate::Loggable for Quaternion {
         .with_context("rerun.datatypes.Quaternion#xyzw")
         .with_context("rerun.datatypes.Quaternion")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for Quaternion {}

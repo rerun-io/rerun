@@ -5,6 +5,11 @@ include "rust/attributes.fbs";
 
 namespace rerun.datatypes;
 
-struct Float32 (transparent, order: 0) {
-  value: float (order: 0);
+struct Float32 (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.tuple_struct",
+  order: 100
+) {
+  value: float (order: 100);
 }

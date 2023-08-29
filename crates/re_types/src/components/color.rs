@@ -50,8 +50,6 @@ impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
 
 impl crate::Loggable for Color {
     type Name = crate::ComponentName;
-    type Item<'a> = Self;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -75,6 +73,7 @@ impl crate::Loggable for Color {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -92,16 +91,7 @@ impl crate::Loggable for Color {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                {
-                    _ = extension_wrapper;
-                    DataType::Extension(
-                        "rerun.components.Color".to_owned(),
-                        Box::new(Self::arrow_datatype()),
-                        None,
-                    )
-                    .to_logical_type()
-                    .clone()
-                },
+                Self::arrow_datatype(),
                 data0
                     .into_iter()
                     .map(|datum| {
@@ -179,26 +169,4 @@ impl crate::Loggable for Color {
             .map(|v| Self(v))
             .collect::<Vec<_>>())
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_self(item: Self::Item<'_>) -> Self {
-        item
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        Some(item)
-    }
 }
-
-impl crate::Component for Color {}

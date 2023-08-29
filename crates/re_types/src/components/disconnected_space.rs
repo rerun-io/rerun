@@ -36,8 +36,6 @@ impl<'a> From<&'a DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpac
 
 impl crate::Loggable for DisconnectedSpace {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -61,6 +59,7 @@ impl crate::Loggable for DisconnectedSpace {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -78,16 +77,7 @@ impl crate::Loggable for DisconnectedSpace {
                 any_nones.then(|| somes.into())
             };
             BooleanArray::new(
-                {
-                    _ = extension_wrapper;
-                    DataType::Extension(
-                        "rerun.components.DisconnectedSpace".to_owned(),
-                        Box::new(Self::arrow_datatype()),
-                        None,
-                    )
-                    .to_logical_type()
-                    .clone()
-                },
+                Self::arrow_datatype(),
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -121,21 +111,4 @@ impl crate::Loggable for DisconnectedSpace {
             .with_context("rerun.components.DisconnectedSpace#is_disconnected")
             .with_context("rerun.components.DisconnectedSpace")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Component for DisconnectedSpace {}

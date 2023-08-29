@@ -116,27 +116,27 @@ impl Points2D {
 impl crate::Archetype for Points2D {
     #[inline]
     fn name() -> crate::ArchetypeName {
-        crate::ArchetypeName::Borrowed("rerun.archetypes.Points2D")
+        "rerun.archetypes.Points2D".into()
     }
 
     #[inline]
-    fn required_components() -> &'static [crate::ComponentName] {
-        REQUIRED_COMPONENTS.as_slice()
+    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> &'static [crate::ComponentName] {
-        RECOMMENDED_COMPONENTS.as_slice()
+    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> &'static [crate::ComponentName] {
-        OPTIONAL_COMPONENTS.as_slice()
+    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> &'static [crate::ComponentName] {
-        ALL_COMPONENTS.as_slice()
+    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
@@ -147,6 +147,36 @@ impl crate::Archetype for Points2D {
     #[inline]
     fn num_instances(&self) -> usize {
         self.points.len()
+    }
+
+    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+        [
+            Some(&self.points as &dyn crate::ComponentList),
+            self.radii
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.colors
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.labels
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.draw_order
+                .as_ref()
+                .map(|comp| comp as &dyn crate::ComponentList),
+            self.class_ids
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.keypoint_ids
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.instance_keys
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 
     #[inline]

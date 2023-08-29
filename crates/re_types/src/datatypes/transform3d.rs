@@ -38,8 +38,6 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
 
 impl crate::Loggable for Transform3D {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -86,6 +84,7 @@ impl crate::Loggable for Transform3D {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -95,17 +94,7 @@ impl crate::Loggable for Transform3D {
                 })
                 .collect();
             UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::Transform3D>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::Transform3D>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::Transform3D>::arrow_datatype(),
                 data.iter()
                     .map(|a| match a.as_deref() {
                         None => 0,
@@ -349,21 +338,4 @@ impl crate::Loggable for Transform3D {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for Transform3D {}

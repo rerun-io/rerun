@@ -11,11 +11,11 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AnnotationInfo::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AnnotationInfo::arrow_field() {
             static const auto datatype = arrow::struct_({
                 arrow::field("id", arrow::uint16(), false),
-                arrow::field("label", rerun::datatypes::Label::arrow_datatype(), true),
-                arrow::field("color", rerun::datatypes::Color::arrow_datatype(), true),
+                arrow::field("label", rerun::datatypes::Label::arrow_field(), true),
+                arrow::field("color", rerun::datatypes::Color::arrow_field(), true),
             });
             return datatype;
         }
@@ -28,7 +28,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                arrow_datatype(),
+                arrow_field(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::UInt16Builder>(memory_pool),

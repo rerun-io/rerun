@@ -32,8 +32,6 @@ impl<'a> From<&'a PrimitiveComponent> for ::std::borrow::Cow<'a, PrimitiveCompon
 
 impl crate::Loggable for PrimitiveComponent {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -57,6 +55,7 @@ impl crate::Loggable for PrimitiveComponent {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -74,16 +73,7 @@ impl crate::Loggable for PrimitiveComponent {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                {
-                    _ = extension_wrapper;
-                    DataType::Extension(
-                        "rerun.testing.datatypes.PrimitiveComponent".to_owned(),
-                        Box::new(Self::arrow_datatype()),
-                        None,
-                    )
-                    .to_logical_type()
-                    .clone()
-                },
+                Self::arrow_datatype(),
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -118,24 +108,7 @@ impl crate::Loggable for PrimitiveComponent {
             .with_context("rerun.testing.datatypes.PrimitiveComponent#value")
             .with_context("rerun.testing.datatypes.PrimitiveComponent")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for PrimitiveComponent {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(transparent)]
@@ -157,8 +130,6 @@ impl<'a> From<&'a StringComponent> for ::std::borrow::Cow<'a, StringComponent> {
 
 impl crate::Loggable for StringComponent {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -182,6 +153,7 @@ impl crate::Loggable for StringComponent {
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        _ = extension_wrapper;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -212,16 +184,7 @@ impl crate::Loggable for StringComponent {
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
                     Utf8Array::<i32>::new_unchecked(
-                        {
-                            _ = extension_wrapper;
-                            DataType::Extension(
-                                "rerun.testing.datatypes.StringComponent".to_owned(),
-                                Box::new(Self::arrow_datatype()),
-                                None,
-                            )
-                            .to_logical_type()
-                            .clone()
-                        },
+                        Self::arrow_datatype(),
                         offsets,
                         inner_data,
                         data0_bitmap,
@@ -288,21 +251,4 @@ impl crate::Loggable for StringComponent {
         .with_context("rerun.testing.datatypes.StringComponent#value")
         .with_context("rerun.testing.datatypes.StringComponent")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for StringComponent {}

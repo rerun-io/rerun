@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Vec2D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Vec2D::arrow_field() {
             static const auto datatype =
                 arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 2);
             return datatype;

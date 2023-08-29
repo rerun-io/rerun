@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& AffixFuzzer2::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer2::arrow_field() {
             static const auto datatype = arrow::float32();
             return datatype;
         }
