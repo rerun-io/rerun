@@ -97,7 +97,7 @@ jobs:
 
           comparison=$(
             python3 scripts/ci/sizes.py compare \
-              --threshold=5 \
+              --threshold=5% \
               --before-header=${{ (inputs.PR_NUMBER && github.event.pull_request.base.ref) || 'Before' }} \
               --after-header=${{ github.ref_name }} \
               "/tmp/prev.json" "/tmp/data.json"

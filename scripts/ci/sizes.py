@@ -172,6 +172,11 @@ def measure(files: list[str], format: Format) -> None:
     sys.stdout.flush()
 
 
+def percentage(value: str) -> int:
+    value = value.replace("%", "")
+    return int(value)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
 
@@ -182,7 +187,7 @@ def main() -> None:
     compare_parser.add_argument("after", type=str, help="Current result .json file")
     compare_parser.add_argument(
         "--threshold",
-        type=float,
+        type=percentage,
         required=False,
         default=20,
         help="Only print row if value is N%% larger or smaller",
