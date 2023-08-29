@@ -5,7 +5,9 @@ use parking_lot::Mutex;
 
 use crate::{Receiver, RecvError, SmartChannelSource, SmartMessage};
 
-/// A set of [`Receiver`]s.
+/// A set of connected [`Receiver`]s.
+///
+/// Any receiver that gets disconnected is automatically removed from the set.
 pub struct ReceiveSet<T: Send> {
     receivers: Mutex<Vec<Receiver<T>>>,
 }
@@ -29,12 +31,26 @@ impl<T: Send> ReceiveSet<T> {
         rx.push(r);
     }
 
-    /// Any receivers left?
+    /// List of connected receiver sources.
+    ///
+    /// This gets culled after calling one of the `recv` methods.
+    pub fn sources(&self) -> Vec<Arc<SmartChannelSource>> {
+        re_tracing::profile_function!();
+        let mut rx = self.receivers.lock();
+        rx.retain(|r| r.is_connected());
+        rx.iter().map(|r| r.source.clone()).collect()
+    }
+
+    /// Any connected receivers?
+    ///
+    /// This gets updated after calling one of the `recv` methods.
     pub fn is_connected(&self) -> bool {
         !self.is_empty()
     }
 
-    /// No receivers left.
+    /// No connected receivers?
+    ///
+    /// This gets updated after calling one of the `recv` methods.
     pub fn is_empty(&self) -> bool {
         re_tracing::profile_function!();
         let mut rx = self.receivers.lock();
@@ -42,6 +58,7 @@ impl<T: Send> ReceiveSet<T> {
         rx.is_empty()
     }
 
+    /// Maximum latency among all receivers (or 0, if none).
     pub fn latency_ns(&self) -> u64 {
         re_tracing::profile_function!();
         let mut latency_ns = 0;
@@ -52,17 +69,11 @@ impl<T: Send> ReceiveSet<T> {
         latency_ns
     }
 
+    /// Sum queue length of all receivers.
     pub fn queue_len(&self) -> usize {
         re_tracing::profile_function!();
         let rx = self.receivers.lock();
         rx.iter().map(|r| r.len()).sum()
-    }
-
-    pub fn sources(&self) -> Vec<Arc<SmartChannelSource>> {
-        re_tracing::profile_function!();
-        let mut rx = self.receivers.lock();
-        rx.retain(|r| r.is_connected());
-        rx.iter().map(|r| r.source.clone()).collect()
     }
 
     /// Blocks until a message is ready to be received,
