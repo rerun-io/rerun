@@ -7,15 +7,15 @@ thumbnail: https://static.rerun.io/394d6544341a45882dcad4f2f5fbaabd74b3d1a3_simp
 
 SimpleRecon is a back-to-basics approach for 3D scene reconstruction from posed monocular images by Niantic Labs. It offers state-of-the-art depth accuracy and competitive 3D scene reconstruction which makes it perfect for resource-constrained environments.
 
-TODO(roym899) v1
+https://www.youtube.com/watch?v=TYR9_Ql0w7k?playlist=TYR9_Ql0w7k&loop=1&hd=1&rel=0&autoplay=1
 
 SimpleRecon's key contributions include using a 2D CNN with a cost volume, incorporating metadata via MLP, and avoiding computational costs of 3D convolutions. The different frustrums in the visualization show each source frame used to compute the cost volume. These source frames have their features extracted and back-projected into the current frames depth plane hypothesis.
 
-TODO(roym899) v2
+https://www.youtube.com/watch?v=g0dzm-k1-K8?playlist=g0dzm-k1-K8&loop=1&hd=1&rel=0&autoplay=1
 
 SimpleRecon only uses camera poses, depths, and surface normals (generated from depth) for supervision allowing for out-of-distribution inference e.g. from an ARKit compatible iPhone.
 
-TODO(roym899) v3
+https://www.youtube.com/watch?v=OYsErbNdQSs?playlist=OYsErbNdQSs&loop=1&hd=1&rel=0&autoplay=1
 
 The method works well for applications such as robotic navigation, autonomous driving, and AR. It takes input images, their intrinsics, and relative camera poses to predict dense depth maps, combining monocular depth estimation and MVS via plane sweep.
 
