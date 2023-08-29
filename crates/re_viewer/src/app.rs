@@ -855,8 +855,6 @@ impl App {
                     .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(path)));
             }
         }
-
-        egui_ctx.request_repaint();
     }
 
     /// This function will create an empty blueprint whenever the welcome screen should be
@@ -1058,11 +1056,11 @@ impl eframe::App for App {
             self.command_sender.send_ui(cmd);
         }
 
-        self.run_pending_ui_commands(frame, egui_ctx, &app_blueprint, store_context.as_ref());
-
-        self.run_pending_system_commands(&mut store_hub, egui_ctx);
-
         self.handle_dropping_files(egui_ctx);
+
+        // Run pending commands last:
+        self.run_pending_ui_commands(frame, egui_ctx, &app_blueprint, store_context.as_ref());
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
