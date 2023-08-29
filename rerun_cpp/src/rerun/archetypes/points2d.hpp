@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"

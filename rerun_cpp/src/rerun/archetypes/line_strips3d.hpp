@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -32,7 +33,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("line_strip3d");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_line_strip3d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec3D> strip1 = {
@@ -70,7 +71,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("line_segments3d");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_line_segments3d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec3D> points = {

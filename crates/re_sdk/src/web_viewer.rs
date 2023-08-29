@@ -30,7 +30,11 @@ impl WebViewerSink {
             re_smart_channel::SmartChannelSource::Sdk,
         );
 
-        let rerun_server = RerunServerHandle::new(rerun_rx, bind_ip.to_owned(), ws_port)?;
+        let rerun_server = RerunServerHandle::new(
+            re_smart_channel::ReceiveSet::new(vec![rerun_rx]),
+            bind_ip.to_owned(),
+            ws_port,
+        )?;
         let webviewer_server = WebViewerServerHandle::new(bind_ip, web_port)?;
 
         let http_web_viewer_url = webviewer_server.server_url();

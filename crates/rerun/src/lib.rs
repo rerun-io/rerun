@@ -34,7 +34,7 @@
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Point3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::components::Color> { Default::default() }
-//! let rec_stream = rerun::RecordingStreamBuilder::new("my_app").buffered()?;
+//! let rec_stream = rerun::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
 //!
 //! let points: Vec<rerun::components::Point3D> = positions();
 //! let colors: Vec<rerun::components::Color> = colors();
@@ -61,7 +61,7 @@
 //! Then do this:
 //!
 //! ```no_run
-//! let rec_stream = rerun::RecordingStreamBuilder::new("my_app")
+//! let rec_stream = rerun::RecordingStreamBuilder::new("rerun_example_app")
 //!     .connect(rerun::default_server_addr(), rerun::default_flush_timeout());
 //! ```
 //!
@@ -70,7 +70,7 @@
 //! ```no_run
 //! # fn log_using(rec_stream: &rerun::RecordingStream) {}
 //!
-//! let (rec_stream, storage) = rerun::RecordingStreamBuilder::new("my_app").memory()?;
+//! let (rec_stream, storage) = rerun::RecordingStreamBuilder::new("rerun_example_app").memory()?;
 //! log_using(&rec_stream);
 //! rerun::native_viewer::show(storage.take());
 //!

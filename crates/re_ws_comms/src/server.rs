@@ -14,7 +14,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Error};
 
 use re_log_types::LogMsg;
-use re_smart_channel::Receiver;
+use re_smart_channel::ReceiveSet;
 
 use crate::{server_url, RerunServerError, RerunServerPort};
 
@@ -51,7 +51,7 @@ impl RerunServer {
     }
 
     /// Accept new connections
-    pub async fn listen(self, rx: Receiver<LogMsg>) -> Result<(), RerunServerError> {
+    pub async fn listen(self, rx: ReceiveSet<LogMsg>) -> Result<(), RerunServerError> {
         let (_shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
         self.listen_with_graceful_shutdown(rx, shutdown_rx).await
     }
@@ -59,7 +59,7 @@ impl RerunServer {
     /// Accept new connections until we get a message on `shutdown_rx`
     pub async fn listen_with_graceful_shutdown(
         self,
-        rx: Receiver<LogMsg>,
+        rx: ReceiveSet<LogMsg>,
         mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
     ) -> Result<(), RerunServerError> {
         let history = Arc::new(Mutex::new(Vec::new()));
@@ -114,7 +114,7 @@ impl RerunServerHandle {
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
     pub fn new(
-        rerun_rx: Receiver<LogMsg>,
+        rerun_rx: ReceiveSet<LogMsg>,
         bind_ip: String,
         requested_port: RerunServerPort,
     ) -> Result<Self, RerunServerError> {
@@ -147,7 +147,7 @@ impl RerunServerHandle {
 }
 
 fn to_broadcast_stream(
-    log_rx: Receiver<LogMsg>,
+    log_rx: ReceiveSet<LogMsg>,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
     let (tx, _) = tokio::sync::broadcast::channel(1024 * 1024);

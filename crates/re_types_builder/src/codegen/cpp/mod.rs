@@ -1228,6 +1228,7 @@ fn archetype_to_data_cells(
 ) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
+    hpp_includes.insert_rerun("arrow.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
     // TODO(andreas): Splats need to be handled separately.
@@ -1278,6 +1279,7 @@ fn archetype_to_data_cells(
         }
     });
 
+    let indicator_fqname = format!("rerun.components.{}Indicator", obj.name);
     Method {
         docs: "Creates a list of Rerun DataCell from this archetype.".into(),
         declaration: MethodDeclaration {
@@ -1291,6 +1293,14 @@ fn archetype_to_data_cells(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_cells)*
+            {
+                const auto result =
+                    create_indicator_component(#indicator_fqname, num_instances());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
+            }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cells;

@@ -290,6 +290,16 @@ impl crate::Archetype for AffixFuzzer1 {
     }
 
     #[inline]
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.testing.archetypes.AffixFuzzer1Indicator".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
+    }
+
+    #[inline]
     fn try_to_arrow(
         &self,
     ) -> crate::SerializationResult<
@@ -1922,6 +1932,26 @@ impl crate::Archetype for AffixFuzzer1 {
                     })
                     .transpose()
                     .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2118")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.testing.archetypes.AffixFuzzer1Indicator".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.testing.archetypes.AffixFuzzer1Indicator".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.testing.archetypes.AffixFuzzer1Indicator",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
             },
         ]
         .into_iter()

@@ -1,17 +1,14 @@
-use nohash_hasher::IntSet;
-use re_arrow_store::LatestAtQuery;
-use re_components::Pinhole;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::EntityPath;
 use re_viewer_context::{
-    AutoSpawnHeuristic, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
-    ViewerContext,
+    AutoSpawnHeuristic, NamedViewSystem as _, PerSystemEntities, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use crate::{
     contexts::{register_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_parts},
+    parts::{calculate_bounding_box, register_parts, CamerasPart},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
 };
@@ -55,29 +52,31 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         ctx: &ViewerContext<'_>,
         space_origin: &EntityPath,
-        ent_paths: &IntSet<EntityPath>,
+        per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
-        let score =
-            auto_spawn_heuristic(&self.name(), ctx, ent_paths, SpatialSpaceViewKind::ThreeD);
+        let score = auto_spawn_heuristic(
+            &self.name(),
+            ctx,
+            per_system_entities,
+            SpatialSpaceViewKind::ThreeD,
+        );
 
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
             // If there's a camera at a non-root path, make 3D view higher priority.
-            for ent_path in ent_paths {
-                if ent_path == space_origin {
-                    continue;
-                }
-
-                if ctx
-                    .store_db
-                    .store()
-                    .query_latest_component::<Pinhole>(
-                        ent_path,
-                        &LatestAtQuery::latest(Timeline::log_time()),
-                    )
-                    .is_some()
-                {
-                    score += 100.0;
-                }
+            if per_system_entities
+                .get(&CamerasPart::name())
+                .map_or(false, |c| {
+                    if c.contains(space_origin) {
+                        c.len() > 1 // Need another camera!
+                    } else {
+                        !c.is_empty()
+                    }
+                })
+            {
+                // TODO(andreas): It would be nice to just return `AutoSpawnHeuristic::AlwaysSpawn` here
+                // but AlwaysSpawn does not prevent other `SpawnClassWithHighestScoreForRoot` instances
+                // from being added to the view.
+                score += 100.0;
             }
 
             AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
@@ -90,7 +89,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &Self::State,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
         entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
         update_object_property_heuristics(

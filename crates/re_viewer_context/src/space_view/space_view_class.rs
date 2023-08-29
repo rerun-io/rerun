@@ -1,11 +1,11 @@
-use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, SpaceViewClassName,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities,
+    SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
+    ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -53,7 +53,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         &self,
         _ctx: &ViewerContext<'_>,
         _space_origin: &EntityPath,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(ent_paths.len() as f32)
     }
@@ -74,7 +74,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         &self,
         _ctx: &mut ViewerContext<'_>,
         _state: &Self::State,
-        _ent_paths: &IntSet<EntityPath>,
+        _ent_paths: &PerSystemEntities,
         _entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
     }
@@ -157,7 +157,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         &self,
         ctx: &ViewerContext<'_>,
         space_origin: &EntityPath,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         self.auto_spawn_heuristic(ctx, space_origin, ent_paths)
     }
@@ -171,7 +171,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
-        ent_paths: &IntSet<EntityPath>,
+        ent_paths: &PerSystemEntities,
         entity_properties: &mut EntityPropertyMap,
     ) {
         typed_state_wrapper_mut(state, |state| {
@@ -193,6 +193,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         });
     }
 
+    #[allow(clippy::for_kv_map)]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -204,21 +205,21 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         re_tracing::profile_function!();
 
         // TODO(andreas): We should be able to parallelize both of these loops
-        let mut view_ctx = systems.new_context_collection();
-
-        {
-            re_tracing::profile_scope!("ViewContextSystem");
-            for system in view_ctx.systems.values_mut() {
+        let view_ctx = {
+            re_tracing::profile_scope!("ViewContextSystem::execute");
+            let mut view_ctx = systems.new_context_collection();
+            for (_name, system) in &mut view_ctx.systems {
+                re_tracing::profile_scope!(_name.as_str());
                 system.execute(ctx, query);
             }
-        }
-
-        let mut parts = systems.new_part_collection();
-        let mut draw_data = Vec::new();
-
-        {
-            re_tracing::profile_scope!("ViewPartSystem");
-            for part in parts.systems.values_mut() {
+            view_ctx
+        };
+        let (parts, draw_data) = {
+            re_tracing::profile_scope!("ViewPartSystem::execute");
+            let mut parts = systems.new_part_collection();
+            let mut draw_data = Vec::new();
+            for (_name, part) in &mut parts.systems {
+                re_tracing::profile_scope!(_name.as_str());
                 match part.execute(ctx, query, &view_ctx) {
                     Ok(part_draw_data) => draw_data.extend(part_draw_data),
                     Err(err) => {
@@ -226,7 +227,8 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
                     }
                 }
             }
-        }
+            (parts, draw_data)
+        };
 
         typed_state_wrapper_mut(state, |state| {
             if let Err(err) = self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data) {

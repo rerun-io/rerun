@@ -5,7 +5,7 @@
 namespace rr = rerun;
 
 int main() {
-    auto rr_stream = rr::RecordingStream("annotation_context_rects");
+    auto rr_stream = rr::RecordingStream("rerun_example_annotation_context_rects");
     rr_stream.connect("127.0.0.1:9876").throw_on_failure();
 
     // Log an annotation context to assign a label and color to each class

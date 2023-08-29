@@ -1,14 +1,17 @@
 use ahash::HashMap;
 use re_log_types::{ComponentName, EntityPath};
 
-use crate::{ArchetypeDefinition, SpaceViewSystemExecutionError, ViewQuery, ViewerContext};
-
-use super::view_context_system::ViewContextCollection;
+use crate::{
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewSystemName, ViewerContext,
+};
 
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
 pub trait ViewPartSystem {
+    // TODO(andreas): This should be able to list out the ContextSystems it needs.
+
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
 
@@ -58,22 +61,38 @@ pub trait ViewPartSystem {
 }
 
 pub struct ViewPartCollection {
-    pub(crate) systems: HashMap<std::any::TypeId, Box<dyn ViewPartSystem>>,
+    pub(crate) systems: HashMap<ViewSystemName, Box<dyn ViewPartSystem>>,
 }
 
 impl ViewPartCollection {
-    pub fn get<T: ViewPartSystem + Default + 'static>(
+    #[inline]
+    pub fn get<T: ViewPartSystem + NamedViewSystem + 'static>(
         &self,
     ) -> Result<&T, SpaceViewSystemExecutionError> {
         self.systems
-            .get(&std::any::TypeId::of::<T>())
+            .get(&T::name())
             .and_then(|s| s.as_any().downcast_ref())
-            .ok_or_else(|| {
-                SpaceViewSystemExecutionError::PartSystemNotFound(std::any::type_name::<T>())
-            })
+            .ok_or_else(|| SpaceViewSystemExecutionError::PartSystemNotFound(T::name().as_str()))
     }
 
+    #[inline]
+    pub fn get_by_name(
+        &self,
+        name: ViewSystemName,
+    ) -> Result<&dyn ViewPartSystem, SpaceViewSystemExecutionError> {
+        self.systems
+            .get(&name)
+            .map(|s| s.as_ref())
+            .ok_or_else(|| SpaceViewSystemExecutionError::PartSystemNotFound(name.as_str()))
+    }
+
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &dyn ViewPartSystem> {
         self.systems.values().map(|s| s.as_ref())
+    }
+
+    #[inline]
+    pub fn iter_with_names(&self) -> impl Iterator<Item = (ViewSystemName, &dyn ViewPartSystem)> {
+        self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
 }

@@ -3,6 +3,7 @@ use re_log_types::DataCell;
 /// Errors from [`data_cell_from_file_path`] and [`data_cell_from_mesh_file_path`].
 #[derive(thiserror::Error, Debug)]
 pub enum FromFileError {
+    #[cfg(not(target_arch = "wasm32"))]
     #[error(transparent)]
     FileRead(#[from] std::io::Error),
 
@@ -28,6 +29,7 @@ pub enum FromFileError {
 ///  * `png` and other image formats: decoded here. Requires the `image` feature.
 ///
 /// All other extensions will return an error.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell, FromFileError> {
     let extension = file_path
         .extension()
@@ -56,20 +58,68 @@ pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell,
     }
 }
 
+pub fn data_cell_from_file_contents(
+    file_name: &str,
+    bytes: Vec<u8>,
+) -> Result<DataCell, FromFileError> {
+    re_tracing::profile_function!(file_name);
+
+    let extension = std::path::Path::new(file_name)
+        .extension()
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .to_string_lossy()
+        .to_string();
+
+    match extension.as_str() {
+        "glb" => data_cell_from_mesh_file_contents(bytes, crate::MeshFormat::Glb),
+        "glft" => data_cell_from_mesh_file_contents(bytes, crate::MeshFormat::Gltf),
+        "obj" => data_cell_from_mesh_file_contents(bytes, crate::MeshFormat::Obj),
+
+        #[cfg(feature = "image")]
+        _ => {
+            let format = if let Some(format) = image::ImageFormat::from_extension(extension) {
+                format
+            } else {
+                image::guess_format(&bytes).map_err(crate::TensorImageLoadError::from)?
+            };
+
+            // Assume an image (there are so many image extensions):
+            let tensor = crate::Tensor::from_image_bytes(bytes, format)?;
+            Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
+        }
+
+        #[cfg(not(feature = "image"))]
+        _ => Err(FromFileError::UnknownExtension {
+            extension,
+            path: file_name.to_owned().into(),
+        }),
+    }
+}
+
 /// Read the mesh file at the given path.
 ///
 /// Supported file extensions are:
 ///  * `glb`, `gltf`, `obj`: encoded meshes, leaving it to the viewer to decode
 ///
 /// All other extensions will return an error.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn data_cell_from_mesh_file_path(
     file_path: &std::path::Path,
+    format: crate::MeshFormat,
+) -> Result<DataCell, FromFileError> {
+    let bytes = std::fs::read(file_path)?;
+    data_cell_from_mesh_file_contents(bytes, format)
+}
+
+pub fn data_cell_from_mesh_file_contents(
+    bytes: Vec<u8>,
     format: crate::MeshFormat,
 ) -> Result<DataCell, FromFileError> {
     let mesh = crate::EncodedMesh3D {
         mesh_id: crate::MeshId::random(),
         format,
-        bytes: std::fs::read(file_path)?.into(),
+        bytes: bytes.into(),
         transform: [
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],

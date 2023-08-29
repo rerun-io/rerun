@@ -100,7 +100,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "roundtrip_transform3d",
+        "rerun_example_roundtrip_transform3d",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();

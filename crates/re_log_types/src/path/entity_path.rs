@@ -103,9 +103,12 @@ impl EntityPath {
     /// The returned path will only have one part.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_file_path_as_single_string(file_path: &std::path::Path) -> Self {
-        Self::new(vec![EntityPathPart::Index(crate::Index::String(
-            file_path.to_string_lossy().to_string(),
-        ))])
+        Self::from_single_string(file_path.to_string_lossy().to_string())
+    }
+
+    /// Treat the string as one opaque string, NOT splitting on any slashes.
+    pub fn from_single_string(string: String) -> Self {
+        Self::new(vec![EntityPathPart::Index(crate::Index::String(string))])
     }
 
     #[inline]

@@ -440,7 +440,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "arkit_scenes")
+    rr.script_setup(args, "rerun_example_arkit_scenes")
     recording_path = ensure_recording_available(args.video_id, args.include_highres)
     log_arkit(recording_path, args.include_highres)
 

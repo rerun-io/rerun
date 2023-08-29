@@ -5,8 +5,8 @@ use re_viewer::external::{
     re_renderer,
     re_types::{self, components::InstanceKey, Archetype, Loggable as _},
     re_viewer_context::{
-        ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-        ViewQuery, ViewerContext,
+        ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+        ViewPartSystem, ViewQuery, ViewSystemName, ViewerContext,
     },
 };
 
@@ -48,6 +48,14 @@ impl re_types::Archetype for ColorArchetype {
         Self::required_components()
     }
 
+    fn indicator_component() -> re_types::ComponentName {
+        unimplemented!()
+    }
+
+    fn num_instances(&self) -> usize {
+        unimplemented!()
+    }
+
     fn try_to_arrow(
         &self,
     ) -> re_types::SerializationResult<
@@ -74,6 +82,12 @@ impl re_types::Archetype for ColorArchetype {
     }
 }
 
+impl NamedViewSystem for InstanceColorSystem {
+    fn name() -> ViewSystemName {
+        "InstanceColor".into()
+    }
+}
+
 impl ViewPartSystem for InstanceColorSystem {
     /// The archetype this scene part is querying from the store.
     ///
@@ -90,8 +104,8 @@ impl ViewPartSystem for InstanceColorSystem {
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        // For each entity in the space view...
-        for (ent_path, props) in query.iter_entities() {
+        // For each entity in the space view that should be displayed with the the `InstanceColorSystem`...
+        for (ent_path, props) in query.iter_entities_for_system(InstanceColorSystem::name()) {
             if !props.visible {
                 continue;
             }
