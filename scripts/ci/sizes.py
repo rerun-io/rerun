@@ -53,10 +53,6 @@ def get_divisor(unit: str) -> int:
     return DIVISORS[unit]
 
 
-def cell(value: float, div: float) -> str:
-    return f"{value / div:.2f}"
-
-
 def render_table_dict(data: list[dict[str, str]]) -> str:
     keys = data[0].keys()
     column_widths = [max(len(key), max(len(str(row[key])) for row in data)) for key in keys]
@@ -95,7 +91,13 @@ class Format(Enum):
             return render_table_dict(data)
 
 
-def compare(previous_path: str, current_path: str, threshold: float) -> None:
+def compare(
+    previous_path: str,
+    current_path: str,
+    threshold_pct: float,
+    before_header: str,
+    after_header: str,
+) -> None:
     previous = json.loads(Path(previous_path).read_text())
     current = json.loads(Path(current_path).read_text())
 
@@ -109,28 +111,27 @@ def compare(previous_path: str, current_path: str, threshold: float) -> None:
             entries[name] = {}
         entries[name]["previous"] = entry
 
-    headers = ["Name", "Previous", "Current", "Change"]
+    headers = ["Name", before_header, after_header, "Change"]
     rows: list[tuple[str, str, str, str]] = []
     for name, entry in entries.items():
         if "previous" in entry and "current" in entry:
-            previous = float(entry["previous"]["value"]) * DIVISORS[entry["previous"]["unit"]]
-            current = float(entry["current"]["value"]) * DIVISORS[entry["current"]["unit"]]
-
-            min_change = previous * (threshold / 100)
-
-            unit = get_unit(min(previous, current))
+            previous_bytes = float(entry["previous"]["value"]) * DIVISORS[entry["previous"]["unit"]]
+            current_bytes = float(entry["current"]["value"]) * DIVISORS[entry["current"]["unit"]]
+            unit = get_unit(min(previous_bytes, current_bytes))
             div = get_divisor(unit)
 
-            change = ((previous / current) * 100) - 100
-            sign = "+" if change > 0 else ""
-
-            if abs(current - previous) >= min_change:
+            abs_diff_bytes = abs(current_bytes - previous_bytes)
+            min_diff_bytes = previous_bytes * (threshold_pct / 100)
+            if abs_diff_bytes >= min_diff_bytes:
+                previous = previous_bytes / div
+                current = current_bytes / div
+                change_pct = ((current_bytes - previous_bytes) / previous_bytes) * 100
                 rows.append(
                     (
                         name,
-                        f"{cell(previous, div)} {unit}",
-                        f"{cell(current, div)} {unit}",
-                        f"{sign}{change:.2f}%",
+                        f"{previous:.2f} {unit}",
+                        f"{current:.2f} {unit}",
+                        f"{change_pct:+.2f}%",
                     )
                 )
         elif "current" in entry:
@@ -171,6 +172,11 @@ def measure(files: list[str], format: Format) -> None:
     sys.stdout.flush()
 
 
+def percentage(value: str) -> int:
+    value = value.replace("%", "")
+    return int(value)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
 
@@ -181,10 +187,24 @@ def main() -> None:
     compare_parser.add_argument("after", type=str, help="Current result .json file")
     compare_parser.add_argument(
         "--threshold",
-        type=float,
+        type=percentage,
         required=False,
         default=20,
         help="Only print row if value is N%% larger or smaller",
+    )
+    compare_parser.add_argument(
+        "--before-header",
+        type=str,
+        required=False,
+        default="Before",
+        help="Header for before column",
+    )
+    compare_parser.add_argument(
+        "--after-header",
+        type=str,
+        required=False,
+        default="After",
+        help="Header for after column",
     )
 
     measure_parser = cmds_parser.add_parser("measure", help="Measure sizes")
@@ -200,7 +220,13 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.cmd == "compare":
-        compare(args.before, args.after, args.threshold)
+        compare(
+            args.before,
+            args.after,
+            args.threshold,
+            args.before_header,
+            args.after_header,
+        )
     elif args.cmd == "measure":
         measure(args.files, args.format)
 
