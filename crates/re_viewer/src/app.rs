@@ -1058,7 +1058,7 @@ impl eframe::App for App {
 
         self.handle_dropping_files(egui_ctx);
 
-        // Run pending commands last:
+        // Run pending commands last (so we don't have to wait for a repaint before they are run):
         self.run_pending_ui_commands(frame, egui_ctx, &app_blueprint, store_context.as_ref());
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
