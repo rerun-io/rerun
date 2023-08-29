@@ -110,10 +110,18 @@ impl<T: Send> ReceiveSet<T> {
         let oper = sel.try_select().ok()?;
         let index = oper.index();
         if let Ok(msg) = oper.recv(&rx[index].rx) {
-            Some((rx[index].source.clone(), msg))
-        } else {
-            None
+            return Some((rx[index].source.clone(), msg));
         }
+
+        // Nothing ready to receive, but we must poll all receivers to update their `connected` status.
+        // Why use `select` first? Because `select` is fair (random) when there is contention.
+        for rx in rx.iter() {
+            if let Ok(msg) = rx.try_recv() {
+                return Some((rx.source.clone(), msg));
+            }
+        }
+
+        None
     }
 
     pub fn recv_timeout(
@@ -137,10 +145,18 @@ impl<T: Send> ReceiveSet<T> {
         let oper = sel.select_timeout(timeout).ok()?;
         let index = oper.index();
         if let Ok(msg) = oper.recv(&rx[index].rx) {
-            Some((rx[index].source.clone(), msg))
-        } else {
-            None
+            return Some((rx[index].source.clone(), msg));
         }
+
+        // Nothing ready to receive, but we must poll all receivers to update their `connected` status.
+        // Why use `select` first? Because `select` is fair (random) when there is contention.
+        for rx in rx.iter() {
+            if let Ok(msg) = rx.try_recv() {
+                return Some((rx.source.clone(), msg));
+            }
+        }
+
+        None
     }
 }
 
