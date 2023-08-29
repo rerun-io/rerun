@@ -56,9 +56,11 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let default_enabled = true;
-    args.rerun
-        .clone()
-        .run("minimal_options", default_enabled, move |rec_stream| {
+    args.rerun.clone().run(
+        "rerun_example_minimal_options",
+        default_enabled,
+        move |rec_stream| {
             run(&rec_stream, &args).unwrap();
-        })
+        },
+    )
 }

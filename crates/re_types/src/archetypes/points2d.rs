@@ -24,7 +24,7 @@
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+///    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
 ///
 ///    MsgSender::from_archetype("points", &Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?
 ///        .send(&rec_stream)?;

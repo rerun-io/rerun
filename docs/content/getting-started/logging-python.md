@@ -31,7 +31,7 @@ logging calls, and allows us to name our recording using an `ApplicationId`.
 ```python
 import rerun as rr
 
-rr.init("DNA Abacus")
+rr.init("rerun_example_dna_abacus")
 ```
 
 Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/latest/common/initialization/#rerun.init) will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.

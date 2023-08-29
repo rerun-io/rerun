@@ -3,7 +3,7 @@ use rerun::components::Box3D;
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_box3d").memory()?;
 
     MsgSender::new("simple")
         .with_component(&[Box3D::new(2.0, 2.0, 1.0)])?

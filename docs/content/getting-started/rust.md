@@ -29,7 +29,7 @@ use rerun::{
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let recording =
-        RecordingStreamBuilder::new("minimal").connect(rerun::default_server_addr())?;
+        RecordingStreamBuilder::new("rerun_example_minimal").connect(rerun::default_server_addr())?;
 
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)
         .map(Point3D::from)

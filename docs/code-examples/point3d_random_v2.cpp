@@ -8,7 +8,7 @@
 namespace rr = rerun;
 
 int main() {
-    auto rr_stream = rr::RecordingStream("points3d_random");
+    auto rr_stream = rr::RecordingStream("rerun_example_points3d_random");
     rr_stream.connect("127.0.0.1:9876").throw_on_failure();
 
     std::default_random_engine gen;
