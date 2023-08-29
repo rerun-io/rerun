@@ -10,7 +10,9 @@ Tracking any point in a video is a fundamental problem in computer vision. The p
 
 https://www.youtube.com/watch?v=5EixnuJnFdo?playlist=5EixnuJnFdo&loop=1&hd=1&rel=0&autoplay=1
 
-“TAPIR: Tracking Any Point with per-frame Initialization and temporal Refinement” proposes a two-stage approach: (1) compare the query point's feature with the target image features to estimate an initial track; (2) iteratively refine by taking neighboring frames into account.
+“TAPIR: Tracking Any Point with per-frame Initialization and temporal Refinement” proposes a two-stage approach:
+1. compare the query point's feature with the target image features to estimate an initial track, and
+2. iteratively refine by taking neighboring frames into account.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/f47b954cd1f7a1109df1419b39cc020a364f098d_tapir_overview_480w.png">

@@ -5,11 +5,16 @@ tags: [2D, 3D, view-synthesis, time-series, pinhole-camera]
 thumbnail: https://static.rerun.io/2bca79bebaf58c7f8780756e07b93798abe5f6d8_widebaseline_480w.png
 ---
 
-Novel view synthesis has made remarkable progress in recent years, but most methods require per-scene optimization on many images. In their #CVPR2023 paper @du_yilun et al. propose a method that works with just 2 views. I created a visual walkthrough of the work with @rerundotio.
+Novel view synthesis has made remarkable progress in recent years, but most methods require per-scene optimization on many images. In their [CVPR 2023 paper](https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html) Yilun Du et al. propose a method that works with just 2 views. I created a visual walkthrough of the work using the Rerun SDK.
 
 https://www.youtube.com/watch?v=dc445VtMj_4?playlist=dc445VtMj_4&loop=1&hd=1&rel=0&autoplay=1
 
-“Learning to Render Novel Views from Wide-Baseline Stereo Pairs” describes a three stage approach. (a) Image features for each input view are extracted.  (b) Features along the target rays are collected. (c) The color is predicted through the use of cross-attention.
+“Learning to Render Novel Views from Wide-Baseline Stereo Pairs” describes a three stage approach.
+<ol style="list-style-type:lower-alpha">
+  <li>Image features for each input view are extracted.</li>
+  <li>Features along the target rays are collected. </li>
+  <li>The color is predicted through the use of cross-attention.</li>
+</ol>
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/c010bf05e00119b4e955d857ed5442ac2d45b618_widebaseline-overview_480w.png">
@@ -27,4 +32,4 @@ The image features at these samples are used to synthesize new views. The method
 
 https://www.youtube.com/watch?v=u-dmTM1w7Z4?playlist=u-dmTM1w7Z4&loop=1&hd=1&rel=0&autoplay=1
 
-Make sure to check out the [paper](https://arxiv.org/abs/2304.08463) by Yilun Du, Cameron Smith, Ayush Tewari, Vincent Sitzmann to learn about the details of the method.
+Make sure to check out the [paper](https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html) by Yilun Du, Cameron Smith, Ayush Tewari, Vincent Sitzmann to learn about the details of the method.
