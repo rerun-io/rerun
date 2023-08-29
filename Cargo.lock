@@ -1725,7 +1725,7 @@ checksum = "79386fdcec5e0fde91b1a6a5bcd89677d1f9304f7f986b154a1b9109038854d9"
 dependencies = [
  "az",
  "bytemuck",
- "half 2.3.1",
+ "half 1.8.2",
  "serde",
  "typenum",
 ]

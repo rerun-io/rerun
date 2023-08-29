@@ -33,8 +33,6 @@ namespace rerun {
         /// defined, and both keypoints exist within the instance of the class, then the
         /// keypoints should be connected with an edge. The edge should be labeled and
         /// colored as described by the class's `AnnotationInfo`.
-        ///
-        /// The default `info` is an `id=0` with no label or color.
         struct ClassDescription {
             /// The `AnnotationInfo` for the class.
             rerun::datatypes::AnnotationInfo info;
