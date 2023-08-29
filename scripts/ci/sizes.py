@@ -53,10 +53,6 @@ def get_divisor(unit: str) -> int:
     return DIVISORS[unit]
 
 
-def cell(value: float, div: float) -> str:
-    return f"{value / div:.2f}"
-
-
 def render_table_dict(data: list[dict[str, str]]) -> str:
     keys = data[0].keys()
     column_widths = [max(len(key), max(len(str(row[key])) for row in data)) for key in keys]
@@ -95,15 +91,21 @@ class Format(Enum):
             return render_table_dict(data)
 
 
-def compare(previous_path: str, current_path: str, threshold: float, before_header: str, after_header: str) -> None:
-    previous = json.loads(Path(previous_path).read_text())
-    current = json.loads(Path(current_path).read_text())
+def compare(
+    previous_path: str,
+    current_path: str,
+    threshold_pct: float,
+    before_header: str,
+    after_header: str,
+) -> None:
+    previous_bytes = json.loads(Path(previous_path).read_text())
+    current_bytes = json.loads(Path(current_path).read_text())
 
     entries = {}
-    for entry in current:
+    for entry in current_bytes:
         name = entry["name"]
         entries[name] = {"current": entry}
-    for entry in previous:
+    for entry in previous_bytes:
         name = entry["name"]
         if name not in entries:
             entries[name] = {}
@@ -113,21 +115,22 @@ def compare(previous_path: str, current_path: str, threshold: float, before_head
     rows: list[tuple[str, str, str, str]] = []
     for name, entry in entries.items():
         if "previous" in entry and "current" in entry:
-            previous = float(entry["previous"]["value"]) * DIVISORS[entry["previous"]["unit"]]
-            current = float(entry["current"]["value"]) * DIVISORS[entry["current"]["unit"]]
-
-            unit = get_unit(min(previous, current))
+            previous_bytes = float(entry["previous"]["value"]) * DIVISORS[entry["previous"]["unit"]]
+            current_bytes = float(entry["current"]["value"]) * DIVISORS[entry["current"]["unit"]]
+            unit = get_unit(min(previous_bytes, current_bytes))
             div = get_divisor(unit)
 
-            change_pct = ((current - previous) / previous) * 100
-
-            min_change = previous * (threshold / 100)
-            if abs(current - previous) >= min_change:
+            abs_diff_bytes = abs(current_bytes - previous_bytes)
+            min_diff_bytes = previous_bytes * (threshold_pct / 100)
+            if abs_diff_bytes >= min_diff_bytes:
+                previous = previous_bytes / div
+                current = current_bytes / div
+                change_pct = ((current_bytes - previous_bytes) / previous_bytes) * 100
                 rows.append(
                     (
                         name,
-                        f"{cell(previous, div)} {unit}",
-                        f"{cell(current, div)} {unit}",
+                        f"{previous:.2f} {unit}",
+                        f"{current:.2f} {unit}",
                         f"{change_pct:+.2f}%",
                     )
                 )
