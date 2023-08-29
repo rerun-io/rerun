@@ -169,9 +169,11 @@ impl AppState {
                         // before drawing the blueprint panel.
                         ui.spacing_mut().item_spacing.y = 0.0;
 
-                        recordings_panel_ui(&mut ctx, ui);
+                        let recording_shown = recordings_panel_ui(&mut ctx, ui);
 
-                        ui.add_space(4.0);
+                        if recording_shown {
+                            ui.add_space(4.0);
+                        }
 
                         blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
                     },

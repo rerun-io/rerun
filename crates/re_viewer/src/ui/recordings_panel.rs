@@ -7,7 +7,9 @@ static TIME_FORMAT_DESCRIPTION: once_cell::sync::Lazy<
 > = once_cell::sync::Lazy::new(|| format_description!(version = 2, "[hour]:[minute]:[second]Z"));
 
 /// Show the currently open Recordings in a selectable list.
-pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+///
+/// Returns `true` if any recordings were shown.
+pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     ctx.re_ui.panel_content(ui, |re_ui, ui| {
         re_ui.panel_title_bar_with_buttons(
             ui,
@@ -25,12 +27,16 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         .max_height(300.)
         .show(ui, |ui| {
             ctx.re_ui
-                .panel_content(ui, |_re_ui, ui| recording_list_ui(ctx, ui));
-        });
+                .panel_content(ui, |_re_ui, ui| recording_list_ui(ctx, ui))
+        })
+        .inner
 }
 
+/// Draw the recording list.
+///
+/// Returns `true` if any recordings were shown.
 #[allow(clippy::blocks_in_if_conditions)]
-fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     let ViewerContext {
         store_context,
         command_sender,
@@ -46,7 +52,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     }
 
     if store_dbs_map.is_empty() {
-        return;
+        return false;
     }
 
     for store_dbs in store_dbs_map.values_mut() {
@@ -97,6 +103,8 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
             );
         }
     }
+
+    true
 }
 
 /// Show the UI for a single recording.
