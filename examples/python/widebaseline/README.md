@@ -9,12 +9,7 @@ Novel view synthesis has made remarkable progress in recent years, but most meth
 
 https://www.youtube.com/watch?v=dc445VtMj_4?playlist=dc445VtMj_4&loop=1&hd=1&rel=0&autoplay=1
 
-“Learning to Render Novel Views from Wide-Baseline Stereo Pairs” describes a three stage approach.
-<ol style="list-style-type:lower-alpha">
-  <li>Image features for each input view are extracted.</li>
-  <li>Features along the target rays are collected. </li>
-  <li>The color is predicted through the use of cross-attention.</li>
-</ol>
+“Learning to Render Novel Views from Wide-Baseline Stereo Pairs” describes a three stage approach. (a) Image features for each input view are extracted. (b) Features along the target rays are collected. (c) The color is predicted through the use of cross-attention.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/c010bf05e00119b4e955d857ed5442ac2d45b618_widebaseline-overview_480w.png">
