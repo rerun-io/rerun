@@ -65,9 +65,9 @@ struct Args {
     ///
     /// When this limit is used, Rerun will purge the oldest data.
     ///
-    /// Example: `16GB`
-    #[clap(long)]
-    memory_limit: Option<String>,
+    /// Example: `16GB` or `50%` (of system total).
+    #[clap(long, default_value = "75%")]
+    memory_limit: String,
 
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
@@ -415,10 +415,8 @@ async fn run_impl(
 
     #[cfg(feature = "native_viewer")]
     let startup_options = re_viewer::StartupOptions {
-        memory_limit: args.memory_limit.as_ref().map_or(Default::default(), |l| {
-            re_memory::MemoryLimit::parse(l)
-                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
-        }),
+        memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
+            .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}")),
         persist_state: args.persist_state,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
