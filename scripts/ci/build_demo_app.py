@@ -4,15 +4,56 @@
 from __future__ import annotations
 
 import argparse
+import html.parser
 import http.server
+import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import threading
 from functools import partial
+from io import BytesIO
+from pathlib import Path
+from typing import Any
 
+import frontmatter
+import requests
 from jinja2 import Template
+from PIL import Image
+
+
+def measure_thumbnail(url: str) -> Any:
+    """Downloads `url` and returns its width and height."""
+    response = requests.get(url)
+    response.raise_for_status()
+    image = Image.open(BytesIO(response.content))
+    return image.size
+
+
+# https://stackoverflow.com/a/7778368
+class HTMLTextExtractor(html.parser.HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.result: list[Any] = []
+
+    def handle_data(self, d: Any) -> None:
+        self.result.append(d)
+
+    def get_text(self) -> str:
+        return "".join(self.result)
+
+
+def extract_text_from_html(html: str) -> str:
+    """
+    Strips tags and unescapes entities from `html`.
+
+    This is not a sanitizer, it should not be used on untrusted input.
+    """
+    extractor = HTMLTextExtractor()
+    extractor.feed(html)
+    return extractor.get_text()
 
 
 class Example:
@@ -24,14 +65,40 @@ class Example:
         commit: str,
         build_args: list[str],
     ):
+        readme_path = Path("examples/python", name, "README.md")
+        if readme_path.exists():
+            readme = frontmatter.loads(readme_path.read_text())
+        else:
+            readme = frontmatter.Post(content="")
+
+        thumbnail_url = readme.get("thumbnail")
+        if thumbnail_url:
+            width, height = measure_thumbnail(thumbnail_url)
+            thumbnail = {
+                "url": thumbnail_url,
+                "width": width,
+                "height": height,
+            }
+        else:
+            thumbnail = None
+
+        description_html = "".join([f"<p>{segment}</p>" for segment in description.split("\n\n")])
+
+        description = extract_text_from_html(description)
+        description = re.sub(r"[\n\s]+", " ", description)
+        description = description.strip()
+
         self.path = os.path.join("examples/python", name, "main.py")
         self.name = name
-        self.source_url = f"https://github.com/rerun-io/rerun/tree/{commit}/examples/python/{self.name}/main.py"
         self.title = title
+        self.description = description
+        self.tags = readme.get("tags", [])
+        self.demo_url = f"https://demo.rerun.io/commit/{commit}/examples/{name}/"
+        self.rrd_url = f"https://demo.rerun.io/commit/{commit}/examples/{name}/data.rrd"
+        self.source_url = f"https://github.com/rerun-io/rerun/tree/{commit}/examples/python/{name}/main.py"
+        self.thumbnail = thumbnail
         self.build_args = build_args
-
-        segments = [f"<p>{segment}</p>" for segment in description.split("\n\n")]
-        self.description = "".join(segments)
+        self.description_html = description_html
 
     def save(self) -> None:
         in_path = os.path.abspath(self.path)
@@ -155,6 +222,28 @@ def render_examples(examples: list[Example]) -> None:
             f.write(template.render(example=example, examples=examples))
 
 
+def render_manifest(examples: list[Example]) -> None:
+    logging.info("Rendering index")
+
+    index = []
+    for example in examples:
+        index.append(
+            {
+                "name": example.name,
+                "description": example.description,
+                "tags": example.tags,
+                "demo_url": example.demo_url,
+                "rrd_url": example.rrd_url,
+                "thumbnail": example.thumbnail,
+            }
+        )
+
+    index_dir = Path(BASE_PATH) / "examples"
+    index_dir.mkdir(parents=True, exist_ok=True)
+    index_path = index_dir / "manifest.json"
+    index_path.write_text(json.dumps(index))
+
+
 def serve_files() -> None:
     def serve() -> None:
         logging.info("\nServing examples at http://0.0.0.0:8080/")
@@ -195,6 +284,7 @@ def main() -> None:
 
     if not args.skip_examples:
         shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
+        render_manifest(examples)
         save_examples_rrd(examples)
 
     render_examples(examples)
@@ -218,7 +308,7 @@ def main() -> None:
 BASE_PATH = "web_demo"
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 # When adding examples, add their requirements to `requirements-web-demo.txt`
-EXAMPLES = {
+EXAMPLES: dict[str, Any] = {
     "arkit_scenes": {
         "title": "ARKit Scenes",
         "description": """
