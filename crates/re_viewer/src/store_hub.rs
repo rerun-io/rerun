@@ -6,7 +6,6 @@ use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
 
-#[cfg(not(target_arch = "wasm32"))]
 use re_arrow_store::StoreGeneration;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -33,7 +32,6 @@ pub struct StoreHub {
     was_recording_active: bool,
 
     // The [`StoreGeneration`] from when the [`StoreDb`] was last saved
-    #[cfg(not(target_arch = "wasm32"))]
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
 }
 
@@ -75,7 +73,6 @@ impl StoreHub {
 
             was_recording_active: false,
 
-            #[cfg(not(target_arch = "wasm32"))]
             blueprint_last_save: Default::default(),
         }
     }
@@ -216,7 +213,6 @@ impl StoreHub {
 
     /// Persist any in-use blueprints to durable storage.
     // TODO(#2579): implement persistence for web
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn persist_app_blueprints(&mut self) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         // Because we save blueprints based on their `ApplicationId`, we only
@@ -225,9 +221,6 @@ impl StoreHub {
 
         use re_arrow_store::GarbageCollectionOptions;
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
-            let blueprint_path = default_blueprint_path(app_id)?;
-            re_log::debug!("Saving blueprint for {app_id} to {blueprint_path:?}");
-
             if let Some(blueprint) = self.store_dbs.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
                     // GC everything but the latest row.
@@ -236,12 +229,17 @@ impl StoreHub {
                         gc_timeless: true,
                         protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
                     });
-                    // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-                    // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                    let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
-                    file_saver()?;
-                    self.blueprint_last_save
-                        .insert(blueprint_id.clone(), blueprint.generation());
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let blueprint_path = default_blueprint_path(app_id)?;
+                        re_log::debug!("Saving blueprint for {app_id} to {blueprint_path:?}");
+                        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+                        // be small & fast to save, but maybe not once we start adding big pieces of user data?
+                        let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
+                        file_saver()?;
+                        self.blueprint_last_save
+                            .insert(blueprint_id.clone(), blueprint.generation());
+                    }
                 }
             }
         }
@@ -506,7 +504,14 @@ impl StoreBundle {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
-        for store_db in self.store_dbs.values_mut() {
+        // TODO(jleibs) Calling purge-frction-of-ram on Blueprints appears to
+        // cause partial corruption. Blueprints are aggressively garbage-collected
+        // independently, so skipping here should be ok.
+        for store_db in self
+            .store_dbs
+            .values_mut()
+            .filter(|log| log.store_kind() == StoreKind::Recording)
+        {
             store_db.purge_fraction_of_ram(fraction_to_purge);
         }
     }

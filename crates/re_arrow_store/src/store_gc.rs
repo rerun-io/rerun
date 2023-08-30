@@ -319,6 +319,9 @@ impl DataStore {
     //
     // TODO(jleibs): More complex functionality might required expanding this to also
     // *ignore* specific entities, components, timelines, etc. for this protection.
+    //
+    // TODO(jleibs): `RowId`s should never overlap between entities, so this should be able
+    // to be done on a more localized basis for smaller / more efficient `HashSet` operations.
     fn find_all_protected_rows(&mut self, target_count: usize) -> HashSet<RowId> {
         re_tracing::profile_function!();
 
@@ -373,6 +376,9 @@ impl DataStore {
         // NOTE this is still based on insertion order.
         // https://github.com/rerun-io/rerun/issues/1807
         for table in self.timeless_tables.values() {
+            let mut candidate_protected: HashSet<RowId> = Default::default();
+            let mut masked_rows_from_clear: HashMap<RowId, HashSet<RowId>> = Default::default();
+
             let mut components_to_find: HashMap<ComponentName, usize> = table
                 .columns
                 .keys()
@@ -387,27 +393,57 @@ impl DataStore {
                 // TODO(jleibs): Make sure we have an optimization where we don't store
                 // fully empty columns.
                 if let Some(column) = table.columns.get(component) {
-                    for (row, cell) in column
-                        .iter()
-                        .enumerate()
-                        .rev()
-                        .filter_map(|(row_index, cell)| {
-                            cell.as_ref().and_then(|cell| {
-                                table.col_row_id.get(row_index).map(|row| (row, cell))
-                            })
-                        })
-                        .take(*count)
-                    {
+                    let mut component_rows =
+                        column
+                            .iter()
+                            .enumerate()
+                            .rev()
+                            .filter_map(|(row_index, cell)| {
+                                cell.as_ref().and_then(|cell| {
+                                    table.col_row_id.get(row_index).map(|row| (row, cell))
+                                })
+                            });
+
+                    for (row_id, cell) in component_rows.by_ref().take(*count) {
                         *count -= 1;
-                        // If the last cell is empty, don't protect it.
-                        // This is an edge-case that rows up when removing blueprint space-views. There's no value
-                        // in holding onto the empty tombstone once it's not masking any real data.
-                        if *count == 0 && !cell.is_empty() {
-                            protected_rows.insert(*row);
+
+                        candidate_protected.insert(*row_id);
+
+                        // If the last cell we would otherwise protect is empty, this is something that can potentially
+                        // be removed from the store altogether. This allows us to fully drop tables in cases such as
+                        // removing space-views that exceed the undo threshold.
+                        //
+                        // This is a situation that shows up when completely removing entities, such as deleting
+                        // a space-view. There's no value in holding onto the empty tombstone once it's not masking
+                        // any real data, and repeatedly resetting a blueprint can potentially leave many orphaned
+                        // values since every recreated space-view gets a unique random id.
+                        //
+                        // There is an edge-case to be careful about where a multi-component row is protected by an
+                        // older component.  Even if the newer component was cleared with no further history, the
+                        // protection of the older component will keep it from being cleared, and if we don't protect
+                        // the tombstone then the component will effectively be resurrected.
+                        if *count == 0 && cell.is_empty() {
+                            // Collect all the remaining rows for this component in the masked set. If any of these is
+                            // protected, then we can't actually clear this component.
+                            masked_rows_from_clear
+                                .insert(*row_id, component_rows.map(|(r, _)| *r).collect());
+                            // This only happens once when count is 0. Break here due to iterator lifetime.
+                            break;
                         }
                     }
                 }
             }
+
+            // Now that we've processed every component for this table, we can check if any of the masked
+            // rows are protected. If not, we are free to drop protection from this row as well and allow
+            // the table to be potentially GC'd.
+            for (row, masked_rows) in masked_rows_from_clear {
+                if candidate_protected.is_disjoint(&masked_rows) {
+                    candidate_protected.remove(&row);
+                }
+            }
+
+            protected_rows.extend(candidate_protected);
         }
 
         protected_rows
