@@ -1,6 +1,7 @@
 use std::{
     fs::{File, OpenOptions},
     io::{BufRead, BufReader, Seek, Write},
+    sync::Arc,
     time::Duration,
 };
 
@@ -135,7 +136,7 @@ fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: E
 
 fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()> {
     let data_path = config.data_dir();
-    let analytics_id = config.analytics_id.clone();
+    let analytics_id: Arc<str> = config.analytics_id.clone().into();
     let current_session_id = config.session_id.to_string();
 
     let read_dir = data_path.read_dir()?;
@@ -165,7 +166,7 @@ fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<(
             let Ok(mut session_file) = File::open(&path) else {
                 continue;
             };
-            match flush_events(&mut session_file, &analytics_id, session_id, sink) {
+            match flush_events(&mut session_file, &analytics_id, &session_id.into(), sink) {
                 Ok(_) => {
                     re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");
                     match std::fs::remove_file(&path) {
@@ -198,8 +199,8 @@ fn realtime_pipeline(
     event_tx: &channel::Sender<Result<Event, RecvError>>,
     event_rx: &channel::Receiver<Result<Event, RecvError>>,
 ) -> anyhow::Result<()> {
-    let analytics_id = config.analytics_id.clone();
-    let session_id = config.session_id.to_string();
+    let analytics_id: Arc<str> = config.analytics_id.clone().into();
+    let session_id: Arc<str> = config.session_id.to_string().into();
     let is_first_run = config.is_first_run();
 
     let ticker_rx = crossbeam::channel::tick(tick);
@@ -294,8 +295,8 @@ fn append_event(
 /// Sends all events currently buffered in the `session_file` down the `sink`.
 fn flush_events(
     session_file: &mut File,
-    analytics_id: &str,
-    session_id: &str,
+    analytics_id: &Arc<str>,
+    session_id: &Arc<str>,
     sink: &PostHogSink,
 ) -> Result<(), SinkError> {
     if let Err(err) = session_file.rewind() {
@@ -329,29 +330,7 @@ fn flush_events(
         return Ok(());
     }
 
-    if let Err(err) = sink.send(analytics_id, session_id, &events) {
-        if matches!(err, SinkError::HttpTransport(_)) {
-            // No internet connection. No biggie, we'll try again later.
-            re_log::debug_once!(
-                "Failed to send analytics down the sink, will try again later.\n{err}
-            "
-            );
-        } else {
-            // A more unusual error. Show it to the user.
-            re_log::debug_once!(
-                "Failed to send analytics down the sink, will try again later.\n{err}
-            "
-            );
-        }
-        return Err(err);
-    }
-
-    re_log::trace!(
-        %analytics_id,
-        %session_id,
-        num_events = events.len(),
-        "events successfully flushed"
-    );
+    sink.send(analytics_id, session_id, &events);
 
     Ok(())
 }
