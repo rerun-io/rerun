@@ -82,6 +82,8 @@ class Example:
         else:
             thumbnail = None
 
+        description_html = "".join([f"<p>{segment}</p>" for segment in description.split("\n\n")])
+
         description = extract_text_from_html(description)
         description = re.sub(r"[\n\s]+", " ", description)
         description = description.strip()
@@ -96,7 +98,7 @@ class Example:
         self.source_url = f"https://github.com/rerun-io/rerun/tree/{commit}/examples/python/{name}/main.py"
         self.thumbnail = thumbnail
         self.build_args = build_args
-        self.description_html = "".join([f"<p>{segment}</p>" for segment in description.split("\n\n")])
+        self.description_html = description_html
 
     def save(self) -> None:
         in_path = os.path.abspath(self.path)
