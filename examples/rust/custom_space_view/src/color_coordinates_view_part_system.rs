@@ -3,7 +3,7 @@ use re_viewer::external::{
     re_log_types::EntityPath,
     re_query::query_archetype,
     re_renderer,
-    re_types::{self, components::InstanceKey, Archetype, Loggable as _},
+    re_types::{self, components::InstanceKey, Archetype, ComponentName, Loggable as _},
     re_viewer_context::{
         ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
         ViewPartSystem, ViewQuery, ViewSystemName, ViewerContext,
@@ -24,61 +24,13 @@ pub struct ColorWithInstanceKey {
 struct ColorArchetype;
 
 // TODO(#2778): The introduction of ArchetypeInfo should make this much much nicer.
-#[allow(clippy::unimplemented)]
 impl re_types::Archetype for ColorArchetype {
     fn name() -> re_types::ArchetypeName {
         "InstanceColor".into()
     }
 
-    fn required_components() -> &'static [re_types::ComponentName] {
-        static COMPONENTS: once_cell::sync::Lazy<[re_types::ComponentName; 1]> =
-            once_cell::sync::Lazy::new(|| [re_types::components::Color::name()]);
-        &*COMPONENTS
-    }
-
-    fn recommended_components() -> &'static [re_types::ComponentName] {
-        &[]
-    }
-
-    fn optional_components() -> &'static [re_types::ComponentName] {
-        &[]
-    }
-
-    fn all_components() -> &'static [re_types::ComponentName] {
-        Self::required_components()
-    }
-
-    fn indicator_component() -> re_types::ComponentName {
-        unimplemented!()
-    }
-
-    fn num_instances(&self) -> usize {
-        unimplemented!()
-    }
-
-    fn try_to_arrow(
-        &self,
-    ) -> re_types::SerializationResult<
-        Vec<(
-            re_viewer::external::arrow2::datatypes::Field,
-            Box<dyn re_viewer::external::arrow2::array::Array>,
-        )>,
-    > {
-        unimplemented!()
-    }
-
-    fn try_from_arrow(
-        _data: impl IntoIterator<
-            Item = (
-                re_viewer::external::arrow2::datatypes::Field,
-                Box<dyn re_viewer::external::arrow2::array::Array>,
-            ),
-        >,
-    ) -> re_viewer::external::re_types::DeserializationResult<Self>
-    where
-        Self: Sized,
-    {
-        unimplemented!()
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+        vec![re_types::components::Color::name()].into()
     }
 }
 
