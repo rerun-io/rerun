@@ -213,7 +213,8 @@ impl StoreHub {
 
     /// Persist any in-use blueprints to durable storage.
     // TODO(#2579): implement persistence for web
-    pub fn persist_app_blueprints(&mut self) -> anyhow::Result<()> {
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn gc_and_persist_app_blueprints(&mut self) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
@@ -239,6 +240,10 @@ impl StoreHub {
                         file_saver()?;
                         self.blueprint_last_save
                             .insert(blueprint_id.clone(), blueprint.generation());
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        _ = app_id;
                     }
                 }
             }
