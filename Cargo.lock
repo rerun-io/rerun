@@ -3926,10 +3926,9 @@ dependencies = [
 name = "re_analytics"
 version = "0.9.0-alpha.3"
 dependencies = [
- "anyhow",
  "crossbeam",
  "directories-next",
- "once_cell",
+ "ehttp",
  "re_build_info",
  "re_build_tools",
  "re_log",
@@ -3938,7 +3937,6 @@ dependencies = [
  "sha2",
  "thiserror",
  "time",
- "ureq",
  "uuid",
  "web-sys",
 ]
@@ -6068,8 +6066,6 @@ dependencies = [
  "log",
  "once_cell",
  "rustls",
- "serde",
- "serde_json",
  "url",
  "webpki",
  "webpki-roots",
