@@ -305,8 +305,9 @@ impl DataStore {
     // TODO(jleibs): More complex functionality might required expanding this to also
     // *ignore* specific entities, components, timelines, etc. for this protection.
     //
-    // TODO(jleibs): `RowId`s should never overlap between entities, so this should be able
-    // to be done on a more localized basis for smaller / more efficient `HashSet` operations.
+    // TODO(jleibs): `RowId`s should never overlap between entities. Creating a single large
+    // HashSet might actually be sub-optimal here. Consider switching to a map of
+    // `EntityPath` -> `HashSet<RowId>`.
     fn find_all_protected_rows(&mut self, target_count: usize) -> HashSet<RowId> {
         re_tracing::profile_function!();
 
