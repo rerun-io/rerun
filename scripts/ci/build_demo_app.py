@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import threading
 from functools import partial
+from typing import Any
 
 from jinja2 import Template
 
@@ -218,7 +219,7 @@ def main() -> None:
 BASE_PATH = "web_demo"
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 # When adding examples, add their requirements to `requirements-web-demo.txt`
-EXAMPLES = {
+EXAMPLES: dict[str, Any] = {
     "arkit_scenes": {
         "title": "ARKit Scenes",
         "description": """
