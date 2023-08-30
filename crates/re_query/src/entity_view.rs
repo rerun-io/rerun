@@ -172,7 +172,7 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
     let expected_point = [points[2]];
-    let expected_arrow = Point2D::to_arrow(expected_point, None);
+    let expected_arrow = Point2D::to_arrow(expected_point);
 
     assert_eq!(expected_arrow, value);
 
@@ -192,7 +192,7 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
     let expected_point = [points[3]];
-    let expected_arrow = Point2D::to_arrow(expected_point, None);
+    let expected_arrow = Point2D::to_arrow(expected_point);
 
     assert_eq!(expected_arrow, value);
 
