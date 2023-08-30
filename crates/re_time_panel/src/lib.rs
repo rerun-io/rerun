@@ -485,8 +485,6 @@ impl TimePanel {
 
         // If this is an entity:
         if !tree.components.is_empty() {
-            let indent = ui.spacing().indent;
-
             for (component_name, data) in &tree.components {
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.num_timeless_messages() == 0
@@ -504,7 +502,7 @@ impl TimePanel {
                         ctx.selection_state().highlight_for_ui_element(&item)
                             == HoverHighlight::Hovered,
                     )
-                    .with_icon_fn(|re_ui, ui, rect, visual| {
+                    .with_icon_fn(|_, ui, rect, visual| {
                         ui.painter()
                             .circle_filled(rect.center(), 2.0, visual.text_color());
                     })
@@ -688,7 +686,7 @@ fn help_button(ui: &mut egui::Ui) {
         Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
         Double-click to reset view.\n\
         \n\
-        Press spacebar to play/pause.",
+        Press the space bar to play/pause.",
     );
 }
 
