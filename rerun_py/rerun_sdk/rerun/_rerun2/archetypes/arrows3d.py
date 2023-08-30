@@ -2,41 +2,15 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
-
 from attrs import define, field
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
 
+from .. import components
 from .._baseclasses import (
     Archetype,
-    BaseExtensionType,
-    BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
 )
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
-)
-from .. import components
+
 __all__ = ["Arrows3D"]
+
 
 @define(str=False, repr=False)
 class Arrows3D(Archetype):
@@ -45,7 +19,6 @@ class Arrows3D(Archetype):
 
     Example
     -------
-
     ```python
     from math import tau
 
@@ -65,21 +38,26 @@ class Arrows3D(Archetype):
     """
 
     vectors: components.Vector3DArray = field(
-    metadata={'component': 'primary'}, converter=components.Vector3DArray.from_similar, # type: ignore[misc]
+        metadata={"component": "primary"},
+        converter=components.Vector3DArray.from_similar,  # type: ignore[misc]
     )
     """
     All the vectors for each arrow in the batch.
     """
 
     origins: components.Origin3DArray | None = field(
-    metadata={'component': 'secondary'}, default=None, converter=components.Origin3DArray.from_similar, # type: ignore[misc]
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.Origin3DArray.from_similar,  # type: ignore[misc]
     )
     """
     All the origin points for each arrow in the batch.
     """
 
     radii: components.RadiusArray | None = field(
-    metadata={'component': 'secondary'}, default=None, converter=components.RadiusArray.from_similar, # type: ignore[misc]
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the arrows.
@@ -89,21 +67,27 @@ class Arrows3D(Archetype):
     """
 
     colors: components.ColorArray | None = field(
-    metadata={'component': 'secondary'}, default=None, converter=components.ColorArray.from_similar, # type: ignore[misc]
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.ColorArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the points.
     """
 
     labels: components.LabelArray | None = field(
-    metadata={'component': 'secondary'}, default=None, converter=components.LabelArray.from_similar, # type: ignore[misc]
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.LabelArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the arrows.
     """
 
     class_ids: components.ClassIdArray | None = field(
-    metadata={'component': 'secondary'}, default=None, converter=components.ClassIdArray.from_similar, # type: ignore[misc]
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional class Ids for the points.
@@ -112,7 +96,9 @@ class Arrows3D(Archetype):
     """
 
     instance_keys: components.InstanceKeyArray | None = field(
-    metadata={'component': 'secondary'}, default=None, converter=components.InstanceKeyArray.from_similar, # type: ignore[misc]
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual point in the batch.
@@ -120,6 +106,3 @@ class Arrows3D(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-

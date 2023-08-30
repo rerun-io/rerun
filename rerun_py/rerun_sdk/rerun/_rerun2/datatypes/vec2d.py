@@ -2,76 +2,54 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
-from attrs import define, field
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
+    BaseExtensionType,
 )
 from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
     to_np_float32,
-    to_np_float64
 )
 from ._overrides import vec2d_native_to_pa_array  # noqa: F401
+
 __all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
 
 
 @define
 class Vec2D:
-    """
-    A vector in 2D space.
-    """
+    """A vector in 2D space."""
 
     xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
-    def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.xy, dtype=dtype)
 
 
 if TYPE_CHECKING:
-    Vec2DLike = Union[
-        Vec2D,
-        npt.NDArray[Any], npt.ArrayLike, Sequence[float]
-    ]
+    Vec2DLike = Union[Vec2D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
 else:
     Vec2DLike = Any
 
 Vec2DArrayLike = Union[
-    Vec2D,
-    Sequence[Vec2DLike],
-    npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+    Vec2D, Sequence[Vec2DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
 ]
 
 
 # --- Arrow support ---
+
 
 class Vec2DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 2), "rerun.datatypes.Vec2D"
         )
+
 
 class Vec2DArray(BaseExtensionArray[Vec2DArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.Vec2D"
@@ -81,9 +59,8 @@ class Vec2DArray(BaseExtensionArray[Vec2DArrayLike]):
     def _native_to_pa_array(data: Vec2DArrayLike, data_type: pa.DataType) -> pa.Array:
         return vec2d_native_to_pa_array(data, data_type)
 
+
 Vec2DType._ARRAY_TYPE = Vec2DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Vec2DType())
-
-

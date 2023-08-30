@@ -2,40 +2,19 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
-from attrs import define, field
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
+    BaseExtensionType,
 )
 from ._overrides import keypointid_native_to_pa_array  # noqa: F401
+
 __all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
 
 
@@ -51,34 +30,37 @@ class KeypointId:
     """
 
     id: int = field(converter=int)
-    def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:
         return int(self.id)
 
+
 if TYPE_CHECKING:
-    KeypointIdLike = Union[
-        KeypointId,
-        int
-    ]
+    KeypointIdLike = Union[KeypointId, int]
 else:
     KeypointIdLike = Any
 
 KeypointIdArrayLike = Union[
     KeypointId,
     Sequence[KeypointIdLike],
-    int, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32], npt.NDArray[np.uint64]
+    int,
+    npt.NDArray[np.uint8],
+    npt.NDArray[np.uint16],
+    npt.NDArray[np.uint32],
+    npt.NDArray[np.uint64],
 ]
 
 
 # --- Arrow support ---
 
+
 class KeypointIdType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.uint16(), "rerun.datatypes.KeypointId"
-        )
+        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.datatypes.KeypointId")
+
 
 class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.KeypointId"
@@ -88,9 +70,8 @@ class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
         return keypointid_native_to_pa_array(data, data_type)
 
+
 KeypointIdType._ARRAY_TYPE = KeypointIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(KeypointIdType())
-
-

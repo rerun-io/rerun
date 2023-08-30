@@ -2,50 +2,25 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
 
-from attrs import define, field
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
+    BaseExtensionType,
 )
 from ._overrides import angle_init  # noqa: F401
+
 __all__ = ["Angle", "AngleArray", "AngleArrayLike", "AngleLike", "AngleType"]
 
 
 @define(init=False)
 class Angle:
-    """
-    Angle in either radians or degrees.
-    """
+    """Angle in either radians or degrees."""
 
-    def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         angle_init(self, *args, **kwargs)
 
     inner: float = field(converter=float)
@@ -58,12 +33,16 @@ class Angle:
     """
 
     kind: Literal["radians", "degrees"] = field(default="radians")
+
+
 if TYPE_CHECKING:
     AngleLike = Union[
-        Angle,float,
+        Angle,
+        float,
     ]
     AngleArrayLike = Union[
-        Angle,float,
+        Angle,
+        float,
         Sequence[AngleLike],
     ]
 else:
@@ -72,11 +51,21 @@ else:
 
 # --- Arrow support ---
 
+
 class AngleType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.dense_union([pa.field("_null_markers", pa.null(), nullable=True, metadata={}), pa.field("Radians", pa.float32(), nullable=False, metadata={}), pa.field("Degrees", pa.float32(), nullable=False, metadata={})]), "rerun.datatypes.Angle"
+            self,
+            pa.dense_union(
+                [
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                    pa.field("Radians", pa.float32(), nullable=False, metadata={}),
+                    pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
+                ]
+            ),
+            "rerun.datatypes.Angle",
         )
+
 
 class AngleArray(BaseExtensionArray[AngleArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.Angle"
@@ -86,9 +75,8 @@ class AngleArray(BaseExtensionArray[AngleArrayLike]):
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError
 
+
 AngleType._ARRAY_TYPE = AngleArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AngleType())
-
-

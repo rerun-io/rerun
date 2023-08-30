@@ -2,42 +2,26 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import Sequence, Union
 
-from attrs import define, field
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
+from .. import datatypes
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
+    BaseExtensionType,
 )
 from ._overrides import rotationaxisangle_angle_converter  # noqa: F401
-from .. import datatypes
-__all__ = ["RotationAxisAngle", "RotationAxisAngleArray", "RotationAxisAngleArrayLike", "RotationAxisAngleLike", "RotationAxisAngleType"]
+
+__all__ = [
+    "RotationAxisAngle",
+    "RotationAxisAngleArray",
+    "RotationAxisAngleArrayLike",
+    "RotationAxisAngleLike",
+    "RotationAxisAngleType",
+]
+
 
 def _rotationaxisangle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D:
     if isinstance(x, datatypes.Vec3D):
@@ -48,9 +32,7 @@ def _rotationaxisangle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D
 
 @define
 class RotationAxisAngle:
-    """
-    3D rotation represented by a rotation around a given axis.
-    """
+    """3D rotation represented by a rotation around a given axis."""
 
     axis: datatypes.Vec3D = field(converter=_rotationaxisangle_axis_converter)
     """
@@ -67,22 +49,45 @@ class RotationAxisAngle:
     """
 
 
-
 RotationAxisAngleLike = RotationAxisAngle
 RotationAxisAngleArrayLike = Union[
     RotationAxisAngle,
     Sequence[RotationAxisAngleLike],
-    
 ]
 
 
 # --- Arrow support ---
 
+
 class RotationAxisAngleType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("axis", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), nullable=False, metadata={}), pa.field("angle", pa.dense_union([pa.field("_null_markers", pa.null(), nullable=True, metadata={}), pa.field("Radians", pa.float32(), nullable=False, metadata={}), pa.field("Degrees", pa.float32(), nullable=False, metadata={})]), nullable=False, metadata={})]), "rerun.datatypes.RotationAxisAngle"
+            self,
+            pa.struct(
+                [
+                    pa.field(
+                        "axis",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field(
+                        "angle",
+                        pa.dense_union(
+                            [
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("Radians", pa.float32(), nullable=False, metadata={}),
+                                pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
+                            ]
+                        ),
+                        nullable=False,
+                        metadata={},
+                    ),
+                ]
+            ),
+            "rerun.datatypes.RotationAxisAngle",
         )
+
 
 class RotationAxisAngleArray(BaseExtensionArray[RotationAxisAngleArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.RotationAxisAngle"
@@ -92,9 +97,8 @@ class RotationAxisAngleArray(BaseExtensionArray[RotationAxisAngleArrayLike]):
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError
 
+
 RotationAxisAngleType._ARRAY_TYPE = RotationAxisAngleArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(RotationAxisAngleType())
-
-

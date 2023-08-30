@@ -2,41 +2,18 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
-from attrs import define, field
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
+from .. import datatypes
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
+    BaseExtensionType,
 )
 from ._overrides import scale3d_inner_converter  # noqa: F401
-from .. import datatypes
+
 __all__ = ["Scale3D", "Scale3DArray", "Scale3DArrayLike", "Scale3DLike", "Scale3DType"]
 
 
@@ -47,7 +24,6 @@ class Scale3D:
 
     Example
     -------
-
     ```python
     # uniform scaling
     scale = rr.dt.Scale3D(3.)
@@ -58,7 +34,7 @@ class Scale3D:
     ```
     """
 
-    inner: Union[datatypes.Vec3D, float] = field(converter=scale3d_inner_converter)
+    inner: datatypes.Vec3D | float = field(converter=scale3d_inner_converter)
     """
     ThreeD (datatypes.Vec3D):
         Individual scaling factors for each axis, distorting the original object.
@@ -67,12 +43,13 @@ class Scale3D:
         Uniform scaling factor along all axis.
     """
 
+
 if TYPE_CHECKING:
-    Scale3DLike = Union[
-        Scale3D,datatypes.Vec3D,float,datatypes.Vec3DLike
-    ]
+    Scale3DLike = Union[Scale3D, datatypes.Vec3D, float, datatypes.Vec3DLike]
     Scale3DArrayLike = Union[
-        Scale3D,datatypes.Vec3D,float,
+        Scale3D,
+        datatypes.Vec3D,
+        float,
         Sequence[Scale3DLike],
     ]
 else:
@@ -81,11 +58,26 @@ else:
 
 # --- Arrow support ---
 
+
 class Scale3DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.dense_union([pa.field("_null_markers", pa.null(), nullable=True, metadata={}), pa.field("ThreeD", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), nullable=False, metadata={}), pa.field("Uniform", pa.float32(), nullable=False, metadata={})]), "rerun.datatypes.Scale3D"
+            self,
+            pa.dense_union(
+                [
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                    pa.field(
+                        "ThreeD",
+                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field("Uniform", pa.float32(), nullable=False, metadata={}),
+                ]
+            ),
+            "rerun.datatypes.Scale3D",
         )
+
 
 class Scale3DArray(BaseExtensionArray[Scale3DArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.Scale3D"
@@ -95,9 +87,8 @@ class Scale3DArray(BaseExtensionArray[Scale3DArrayLike]):
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError
 
+
 Scale3DType._ARRAY_TYPE = Scale3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Scale3DType())
-
-

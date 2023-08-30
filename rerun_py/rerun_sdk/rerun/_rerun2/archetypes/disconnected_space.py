@@ -2,41 +2,15 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
-
 from attrs import define, field
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
 
+from .. import components
 from .._baseclasses import (
     Archetype,
-    BaseExtensionType,
-    BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
 )
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
-)
-from .. import components
+
 __all__ = ["DisconnectedSpace"]
+
 
 @define(str=False, repr=False)
 class DisconnectedSpace(Archetype):
@@ -50,7 +24,6 @@ class DisconnectedSpace(Archetype):
 
     Example
     -------
-
     ```python
     import rerun as rr
     import rerun.experimental as rr2
@@ -68,10 +41,8 @@ class DisconnectedSpace(Archetype):
     """
 
     disconnected_space: components.DisconnectedSpaceArray = field(
-    metadata={'component': 'primary'}, converter=components.DisconnectedSpaceArray.from_similar, # type: ignore[misc]
+        metadata={"component": "primary"},
+        converter=components.DisconnectedSpaceArray.from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-

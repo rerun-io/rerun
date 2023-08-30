@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
-from .line_strips2d import LineStrips2D
 from .annotation_context import AnnotationContext
 from .arrows3d import Arrows3D
-from .points2d import Points2D
-from .fuzzy import AffixFuzzer1
 from .disconnected_space import DisconnectedSpace
+from .fuzzy import AffixFuzzer1
+from .line_strips2d import LineStrips2D
+from .line_strips3d import LineStrips3D
+from .points2d import Points2D
 from .points3d import Points3D
 from .transform3d import Transform3D
-from .line_strips3d import LineStrips3D
-__all__ = ["AffixFuzzer1", "AnnotationContext", "Arrows3D", "DisconnectedSpace", "LineStrips2D", "LineStrips3D", "Points2D", "Points3D", "Transform3D"]
+
+__all__ = [
+    "AffixFuzzer1",
+    "AnnotationContext",
+    "Arrows3D",
+    "DisconnectedSpace",
+    "LineStrips2D",
+    "LineStrips3D",
+    "Points2D",
+    "Points3D",
+    "Transform3D",
+]

@@ -2,40 +2,22 @@
 
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
+from typing import Any, Sequence, Union
 
-from attrs import define, field
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
 from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
     BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
+    BaseExtensionType,
 )
 from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
     to_np_float32,
-    to_np_float64
 )
 from ._overrides import quaternion_init  # noqa: F401
+
 __all__ = ["Quaternion", "QuaternionArray", "QuaternionArrayLike", "QuaternionLike", "QuaternionType"]
 
 
@@ -48,11 +30,12 @@ class Quaternion:
     datastore as provided, when used in the viewer Quaternions will always be normalized.
     """
 
-    def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         quaternion_init(self, *args, **kwargs)
 
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
-    def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.xyzw, dtype=dtype)
 
 
@@ -60,17 +43,18 @@ QuaternionLike = Quaternion
 QuaternionArrayLike = Union[
     Quaternion,
     Sequence[QuaternionLike],
-    
 ]
 
 
 # --- Arrow support ---
+
 
 class QuaternionType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), "rerun.datatypes.Quaternion"
         )
+
 
 class QuaternionArray(BaseExtensionArray[QuaternionArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.Quaternion"
@@ -80,9 +64,8 @@ class QuaternionArray(BaseExtensionArray[QuaternionArrayLike]):
     def _native_to_pa_array(data: QuaternionArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError
 
+
 QuaternionType._ARRAY_TYPE = QuaternionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(QuaternionType())
-
-
