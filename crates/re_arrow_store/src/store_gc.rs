@@ -148,7 +148,7 @@ impl DataStore {
                     "starting GC"
                 );
 
-                self.gc_everything(options.gc_timeless, &protected_rows)
+                self.gc_drop_at_least_num_bytes(f64::INFINITY, options.gc_timeless, &protected_rows)
             }
         };
 
@@ -183,6 +183,12 @@ impl DataStore {
     /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
     ///
     /// Returns the list of `RowId`s that were purged from the store.
+    //
+    // TODO(jleibs): There are some easy optimizations here if we find GC taking too long:
+    //  - If we stored the entity_path_hash along with timepoints in the metadata_registry we could jump
+    //    directly to the relevant tables instead of needing to iterate over all tables.
+    //  - If we know we are clearing almost everything, then we can batch-clear the rows from the
+    //    the tables instead of needing to iterate over every single row incrementally.
     fn gc_drop_at_least_num_bytes(
         &mut self,
         mut num_bytes_to_drop: f64,
@@ -205,13 +211,16 @@ impl DataStore {
             let Some((row_id, timepoint)) = candidate_rows.next() else {
                 break;
             };
+
             if protected_rows.contains(row_id) {
                 continue;
             }
+
             let metadata_dropped_size_bytes =
                 row_id.total_size_bytes() + timepoint.total_size_bytes();
             self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
             num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
+
             row_ids.push(*row_id);
 
             // find all tables that could possibly contain this `RowId`
@@ -236,62 +245,6 @@ impl DataStore {
         for row_id in &row_ids {
             self.metadata_registry.remove(row_id);
         }
-
-        // Any tables that are empty can be dropped
-        self.tables.retain(|_, table| table.num_rows() > 0);
-        self.timeless_tables.retain(|_, table| table.num_rows() > 0);
-
-        row_ids
-    }
-
-    /// GCs everything that isn't protected.
-    ///
-    /// Returns the list of `RowId`s that were purged from the store.
-    fn gc_everything(
-        &mut self,
-        include_timeless: bool,
-        protected_rows: &HashSet<RowId>,
-    ) -> Vec<RowId> {
-        re_tracing::profile_function!();
-
-        let mut row_ids = Vec::new();
-
-        // Iterate from newest to oldest rows since it generally preserves sorting
-        // and makes dropping cheaper
-        for (row_id, timepoint) in self.metadata_registry.registry.iter().rev() {
-            if protected_rows.contains(row_id) {
-                continue;
-            }
-            let metadata_dropped_size_bytes =
-                row_id.total_size_bytes() + timepoint.total_size_bytes();
-            self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
-
-            row_ids.push(*row_id);
-
-            // find all tables that could possibly contain this `RowId`
-            let temporal_tables = self.tables.iter_mut().filter_map(|((timeline, _), table)| {
-                timepoint.get(timeline).map(|time| (*time, table))
-            });
-
-            for (time, table) in temporal_tables {
-                table.try_drop_row(*row_id, time.as_i64());
-            }
-
-            if timepoint.is_timeless() && include_timeless {
-                for table in self.timeless_tables.values_mut() {
-                    table.try_drop_row(*row_id);
-                }
-            }
-        }
-
-        // Purge the removed rows from the metadata_registry
-        for row_id in &row_ids {
-            self.metadata_registry.remove(row_id);
-        }
-
-        // Any tables that are empty can be dropped
-        self.tables.retain(|_, table| table.num_rows() > 0);
-        self.timeless_tables.retain(|_, table| table.num_rows() > 0);
 
         row_ids
     }
