@@ -105,21 +105,8 @@ impl DataStore {
 
         let stats_before = DataStoreStats::from_store(self);
 
-        let initial_num_rows = if options.gc_timeless {
-            stats_before.temporal.num_rows
-                + stats_before.timeless.num_rows
-                + stats_before.metadata_registry.num_rows
-        } else {
-            stats_before.temporal.num_rows + stats_before.metadata_registry.num_rows
-        };
-
-        let initial_num_bytes = if options.gc_timeless {
-            (stats_before.temporal.num_bytes
-                + stats_before.timeless.num_bytes
-                + stats_before.metadata_registry.num_bytes) as f64
-        } else {
-            (stats_before.temporal.num_bytes + stats_before.metadata_registry.num_bytes) as f64
-        };
+        let (initial_num_rows, initial_num_bytes) =
+            stats_before.total_rows_and_bytes_with_timeless(options.gc_timeless);
 
         let protected_rows = self.find_all_protected_rows(options.protect_latest);
 
@@ -166,20 +153,8 @@ impl DataStore {
 
         // NOTE: only temporal data and row metadata get purged!
         let stats_after = DataStoreStats::from_store(self);
-        let new_num_rows = if options.gc_timeless {
-            stats_after.temporal.num_rows + stats_after.metadata_registry.num_rows
-        } else {
-            stats_after.temporal.num_rows
-                + stats_after.timeless.num_rows
-                + stats_after.metadata_registry.num_rows
-        };
-        let new_num_bytes = if options.gc_timeless {
-            (stats_after.temporal.num_bytes
-                + stats_after.timeless.num_bytes
-                + stats_after.metadata_registry.num_bytes) as f64
-        } else {
-            (stats_after.temporal.num_bytes + stats_after.metadata_registry.num_bytes) as f64
-        };
+        let (new_num_rows, new_num_bytes) =
+            stats_after.total_rows_and_bytes_with_timeless(options.gc_timeless);
 
         re_log::trace!(
             kind = "gc",

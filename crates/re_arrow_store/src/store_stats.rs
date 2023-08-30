@@ -146,6 +146,18 @@ impl DataStoreStats {
             total,
         }
     }
+
+    pub fn total_rows_and_bytes_with_timeless(&self, include_timeless: bool) -> (u64, f64) {
+        let mut num_rows = self.temporal.num_rows + self.metadata_registry.num_rows;
+        let mut num_bytes = (self.temporal.num_bytes + self.metadata_registry.num_bytes) as f64;
+
+        if include_timeless {
+            num_rows += self.timeless.num_rows;
+            num_bytes += self.timeless.num_bytes as f64;
+        }
+
+        (num_rows, num_bytes)
+    }
 }
 
 // --- Data store ---
