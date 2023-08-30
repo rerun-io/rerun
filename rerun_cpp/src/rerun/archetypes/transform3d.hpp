@@ -16,14 +16,14 @@ namespace rerun {
     namespace archetypes {
         /// A 3D transform.
         ///
-        ///## Example
+        /// ## Example
         ///
         ///```ignore
         ///// Log some transforms.
         ///
-        ///#include <rerun.hpp>
+        /// #include <rerun.hpp>
         ///
-        ///#include <cmath>
+        /// #include <cmath>
         ///
         /// namespace rr = rerun;
         /// namespace rrd = rr::datatypes;

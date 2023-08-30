@@ -21,12 +21,12 @@ namespace rerun {
         /// If a transform or pinhole is logged on the same path, this archetype's components
         /// will be ignored.
         ///
-        ///## Example
+        /// ## Example
         ///
         ///```
         ///// Disconnect two spaces.
         ///
-        ///#include <rerun.hpp>
+        /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///

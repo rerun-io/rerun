@@ -23,12 +23,12 @@ namespace rerun {
     namespace archetypes {
         /// A 3D point cloud with positions and optional colors, radii, labels, etc.
         ///
-        ///## Example
+        /// ## Example
         ///
         ///```
         ///// Log some very simple points.
         ///
-        ///#include <rerun.hpp>
+        /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
