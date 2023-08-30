@@ -46,7 +46,7 @@ impl PostHogSink {
                             response.text().unwrap_or("")
                         );
                         re_log::debug!("Failed to send analytics down the sink: {err}");
-                        return abort_signal.signal();
+                        return abort_signal.abort();
                     }
 
                     re_log::trace!(
@@ -59,7 +59,7 @@ impl PostHogSink {
                 }
                 Err(err) => {
                     re_log::debug!("Failed to send analytics down the sink: {err}");
-                    abort_signal.signal();
+                    abort_signal.abort();
                 }
             }
         };

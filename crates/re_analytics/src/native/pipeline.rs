@@ -233,28 +233,28 @@ fn realtime_pipeline(
 
         if is_first_run {
             // We never send data on first run, to give end users an opportunity to opt-out.
-            return abort_signal.signal();
+            return abort_signal.abort();
         }
 
         if let Err(err) = flush_events(session_file, &analytics_id, &session_id, sink, abort_signal)
         {
             re_log::debug_once!("couldn't flush analytics data file: {err}");
             // We couldn't flush the session file: keep it intact so that we can retry later.
-            return abort_signal.signal();
+            return abort_signal.abort();
         }
 
         if let Err(err) = session_file.set_len(0) {
             re_log::debug_once!("couldn't truncate analytics data file: {err}");
             // We couldn't truncate the session file: we'll have to keep it intact for now, which
             // will result in duplicated data that we'll be able to deduplicate at query time.
-            return abort_signal.signal();
+            return abort_signal.abort();
         }
         if let Err(err) = session_file.rewind() {
             // We couldn't reset the session file… That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
             re_log::debug_once!("couldn't seek into analytics data file: {err}");
-            abort_signal.signal();
+            abort_signal.abort();
         }
     };
 

@@ -18,7 +18,7 @@ impl AbortSignal {
         Self::default()
     }
 
-    pub(crate) fn signal(&self) {
+    pub(crate) fn abort(&self) {
         self.aborted.store(true, Ordering::SeqCst);
     }
 
