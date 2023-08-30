@@ -229,6 +229,7 @@ impl StoreHub {
                         target: re_arrow_store::GarbageCollectionTarget::Everything,
                         gc_timeless: true,
                         protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
+                        purge_empty_tables: true,
                     });
                     #[cfg(not(target_arch = "wasm32"))]
                     {

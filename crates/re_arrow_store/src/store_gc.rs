@@ -31,6 +31,9 @@ pub struct GarbageCollectionOptions {
 
     /// How many component revisions to preserve on each timeline.
     pub protect_latest: usize,
+
+    /// Whether to purge tables that no longer contain any data
+    pub purge_empty_tables: bool,
 }
 
 impl GarbageCollectionOptions {
@@ -39,6 +42,7 @@ impl GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
             gc_timeless: true,
             protect_latest: 0,
+            purge_empty_tables: true,
         }
     }
 }
@@ -110,7 +114,7 @@ impl DataStore {
 
         let protected_rows = self.find_all_protected_rows(options.protect_latest);
 
-        let row_ids = match options.target {
+        let mut row_ids = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
 
@@ -147,6 +151,10 @@ impl DataStore {
                 self.gc_everything(options.gc_timeless, &protected_rows)
             }
         };
+
+        if options.purge_empty_tables {
+            row_ids.extend(self.purge_empty_tables());
+        }
 
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
@@ -340,9 +348,6 @@ impl DataStore {
                             .take(*count)
                         {
                             *count -= 1;
-                            // TODO(jleibs): Implement similar logic as for timeless data.
-                            // need to be more clever for temporal though since an empty temporal
-                            // component might be masking a real timeless components.
                             protected_rows.insert(*row);
                         }
                     }
@@ -354,9 +359,6 @@ impl DataStore {
         // NOTE this is still based on insertion order.
         // https://github.com/rerun-io/rerun/issues/1807
         for table in self.timeless_tables.values() {
-            let mut candidate_protected: HashSet<RowId> = Default::default();
-            let mut masked_rows_from_clear: HashMap<RowId, HashSet<RowId>> = Default::default();
-
             let mut components_to_find: HashMap<ComponentName, usize> = table
                 .columns
                 .keys()
@@ -372,60 +374,73 @@ impl DataStore {
                 // make sure the column is dropped so we don't have to iterate over a
                 // bunch of Nones.
                 if let Some(column) = table.columns.get(component) {
-                    let mut component_rows =
-                        column
-                            .iter()
-                            .enumerate()
-                            .rev()
-                            .filter_map(|(row_index, cell)| {
-                                cell.as_ref().and_then(|cell| {
-                                    table.col_row_id.get(row_index).map(|row| (row, cell))
-                                })
-                            });
-
-                    for (row_id, cell) in component_rows.by_ref().take(*count) {
+                    for row_id in column
+                        .iter()
+                        .enumerate()
+                        .rev()
+                        .filter_map(|(row_index, cell)| {
+                            cell.as_ref().and_then(|_| table.col_row_id.get(row_index))
+                        })
+                        .take(*count)
+                    {
                         *count -= 1;
+                        protected_rows.insert(*row_id);
+                    }
+                }
+            }
+        }
 
-                        candidate_protected.insert(*row_id);
+        protected_rows
+    }
 
-                        // If the last cell we would otherwise protect is empty, this is something that can potentially
-                        // be removed from the store altogether. This allows us to fully drop tables in cases such as
-                        // removing space-views that exceed the undo threshold.
-                        //
-                        // This is a situation that shows up when completely removing entities, such as deleting
-                        // a space-view. There's no value in holding onto the empty tombstone once it's not masking
-                        // any real data, and repeatedly resetting a blueprint can potentially leave many orphaned
-                        // values since every recreated space-view gets a unique random id.
-                        //
-                        // There is an edge-case to be careful about where a multi-component row is protected by an
-                        // older component.  Even if the newer component was cleared with no further history, the
-                        // protection of the older component will keep it from being cleared, and if we don't protect
-                        // the tombstone then the component will effectively be resurrected.
-                        if *count == 0 && cell.is_empty() {
-                            // Collect all the remaining rows for this component in the masked set. If any of these is
-                            // protected, then we can't actually clear this component.
-                            masked_rows_from_clear
-                                .insert(*row_id, component_rows.map(|(r, _)| *r).collect());
-                            // This only happens once when count is 0. Break here due to iterator lifetime.
-                            break;
-                        }
+    /// Remove any tables which contain only components which are empty.
+    // TODO(jleibs): We could optimize this further by also erasing empty columns.
+    fn purge_empty_tables(&mut self) -> Vec<RowId> {
+        re_tracing::profile_function!();
+
+        let mut row_ids = Vec::new();
+
+        // Drop any empty timeless tables
+        self.timeless_tables.retain(|_, table| {
+            // If any column is non-empty, we need to keep this table
+            for num in &table.col_num_instances {
+                if num != &0 {
+                    return true;
+                }
+            }
+
+            // Otherwise we can drop it
+            row_ids.extend(table.col_row_id.iter());
+            false
+        });
+
+        // Drop any empty temporal tables that aren't backed by a timeless table
+        self.tables.retain(|(_, entity), table| {
+            // If the timeless table still exists, this table might be storing empty values
+            // that hide the timeless values, so keep it around.
+            if self.timeless_tables.contains_key(entity) {
+                return true;
+            }
+
+            // If any bucket has a non-empty component in any column, we keep it.
+            for bucket in table.buckets.values() {
+                let inner = bucket.inner.read();
+                for num in &inner.col_num_instances {
+                    if num != &0 {
+                        return true;
                     }
                 }
             }
 
-            // Now that we've processed every component for this table, we can check if any of the masked
-            // rows are protected. If not, we are free to drop protection from this row as well and allow
-            // the table to be potentially GC'd.
-            for (row, masked_rows) in masked_rows_from_clear {
-                if candidate_protected.is_disjoint(&masked_rows) {
-                    candidate_protected.remove(&row);
-                }
+            // Otherwise we can drop it
+            for bucket in table.buckets.values() {
+                let inner = bucket.inner.read();
+                row_ids.extend(inner.col_row_id.iter());
             }
+            false
+        });
 
-            protected_rows.extend(candidate_protected);
-        }
-
-        protected_rows
+        row_ids
     }
 }
 

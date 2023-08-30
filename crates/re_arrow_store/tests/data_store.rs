@@ -866,6 +866,7 @@ fn gc_impl(store: &mut DataStore) {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             gc_timeless: false,
             protect_latest: 0,
+            purge_empty_tables: false,
         });
         for row_id in &row_ids {
             assert!(store.get_msg_metadata(row_id).is_none());
@@ -938,6 +939,7 @@ fn protected_gc_impl(store: &mut DataStore) {
         target: GarbageCollectionTarget::Everything,
         gc_timeless: true,
         protect_latest: 1,
+        purge_empty_tables: true,
     });
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
@@ -1002,6 +1004,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let frame1 = TimeInt::from(1);
     let frame2 = TimeInt::from(2);
     let frame3 = TimeInt::from(3);
+    let frame4 = TimeInt::from(4);
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
@@ -1012,7 +1015,10 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let colors2 = build_some_colors(0);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 0; [colors2]);
 
-    // Re-insert row1 and row2 as timeless data as well
+    let points4 = build_some_point2d(0);
+    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 0; [points4]);
+
+    // Insert the 3 rows as timeless
     let mut table_timeless = DataTable::from_rows(
         TableId::random(),
         [row1.clone(), row2.clone(), row3.clone()],
@@ -1024,6 +1030,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         target: GarbageCollectionTarget::Everything,
         gc_timeless: true,
         protect_latest: 1,
+        purge_empty_tables: true,
     });
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
@@ -1046,11 +1053,27 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     };
 
     // Only points are preserved, since colors were cleared and then GC'd
-    assert_latest_components(frame0, &[(Point2D::name(), &row2)]);
+    assert_latest_components(frame0, &[(Color::name(), &row3), (Point2D::name(), &row2)]);
 
-    // Only 1 row should remain in the table
+    // Only the 2 rows should remain in the table
     let stats = DataStoreStats::from_store(store);
-    assert_eq!(stats.timeless.num_rows, 1);
+    assert_eq!(stats.timeless.num_rows, 2);
+
+    // Now erase points and GC again
+    let mut table_timeless = DataTable::from_rows(TableId::random(), [row4]);
+    table_timeless.col_timelines = Default::default();
+    store.insert_table(&table_timeless).unwrap();
+
+    store.gc(GarbageCollectionOptions {
+        target: GarbageCollectionTarget::Everything,
+        gc_timeless: true,
+        protect_latest: 1,
+        purge_empty_tables: true,
+    });
+
+    // No rows should remain because the table should have been purged
+    let stats = DataStoreStats::from_store(store);
+    assert_eq!(stats.timeless.num_rows, 0);
 }
 
 // ---

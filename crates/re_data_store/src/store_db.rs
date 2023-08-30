@@ -353,6 +353,7 @@ impl StoreDb {
             ),
             gc_timeless: false,
             protect_latest: 0,
+            purge_empty_tables: false,
         });
         re_log::trace!(
             num_row_ids_dropped = drop_row_ids.len(),
