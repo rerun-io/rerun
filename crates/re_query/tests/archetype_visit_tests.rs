@@ -14,11 +14,8 @@ fn basic_single_iter() {
 
     let component = ComponentWithInstances::from_native(instance_keys, points);
 
-    let results = itertools::izip!(
-        points.into_iter(),
-        component.values::<Point2D>().unwrap()
-    )
-    .collect_vec();
+    let results =
+        itertools::izip!(points.into_iter(), component.values::<Point2D>().unwrap()).collect_vec();
     assert_eq!(results.len(), 2);
     results
         .iter()
