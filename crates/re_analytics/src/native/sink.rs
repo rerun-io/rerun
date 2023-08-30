@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use time::OffsetDateTime;
 
-use crate::{AbortSignal, Event, Property};
+use super::AbortSignal;
+use crate::{Event, Property};
 
 // TODO(cmc): abstract away the concept of a `Sink` behind an actual trait when comes the time to
 // support more than just PostHog.
@@ -38,13 +39,13 @@ impl PostHogSink {
             move |result: Result<ehttp::Response, String>| match result {
                 Ok(response) => {
                     if !response.ok {
-                        let error = format!(
+                        let err = format!(
                             "HTTP request failed: {} {} {}",
                             response.status,
                             response.status_text,
                             response.text().unwrap_or("")
                         );
-                        re_log::debug!("Failed to send analytics down the sink: {error}");
+                        re_log::debug!("Failed to send analytics down the sink: {err}");
                         return abort_signal.signal();
                     }
 
@@ -56,8 +57,8 @@ impl PostHogSink {
                         "events successfully flushed"
                     );
                 }
-                Err(error) => {
-                    re_log::debug!("Failed to send analytics down the sink: {error}");
+                Err(err) => {
+                    re_log::debug!("Failed to send analytics down the sink: {err}");
                     abort_signal.signal();
                 }
             }
@@ -71,7 +72,7 @@ impl PostHogSink {
 
         let json = match serde_json::to_string_pretty(&batch) {
             Ok(json) => json,
-            Err(error) => return on_done(Err(error.to_string())),
+            Err(err) => return on_done(Err(err.to_string())),
         };
         re_log::trace!("Sending analytics: {json}");
         ehttp::fetch(ehttp::Request::post(Self::URL, json.into_bytes()), on_done);

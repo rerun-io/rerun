@@ -9,36 +9,14 @@
 // enough to require the attention of our users.
 
 #[cfg(not(target_arch = "wasm32"))]
-mod config_native;
+mod native;
 #[cfg(not(target_arch = "wasm32"))]
-use self::config_native::{Config, ConfigError};
+use native::{Config, ConfigError, Pipeline, PipelineError};
 
 #[cfg(target_arch = "wasm32")]
-mod config_web;
+mod web;
 #[cfg(target_arch = "wasm32")]
-use self::config_web::{Config, ConfigError};
-
-#[cfg(not(target_arch = "wasm32"))]
-mod pipeline_native;
-#[cfg(not(target_arch = "wasm32"))]
-use self::pipeline_native::{Pipeline, PipelineError};
-
-// TODO(cmc): web pipeline
-#[cfg(target_arch = "wasm32")]
-mod pipeline_web;
-#[cfg(target_arch = "wasm32")]
-use self::pipeline_web::{Pipeline, PipelineError};
-
-#[cfg(not(target_arch = "wasm32"))]
-mod sink_native;
-#[cfg(not(target_arch = "wasm32"))]
-use self::sink_native::PostHogSink;
-
-// TODO(cmc): web sink
-#[cfg(target_arch = "wasm32")]
-mod sink_web;
-#[cfg(target_arch = "wasm32")]
-use self::sink_web::PostHogSink;
+use web::{Config, ConfigError, Pipeline, PipelineError};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
@@ -48,8 +26,7 @@ pub mod cli;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Error as IoError;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use time::OffsetDateTime;
@@ -266,8 +243,7 @@ impl Analytics {
             re_log::trace!(?config, ?tick, "saved analytics config");
         }
 
-        let sink = PostHogSink::default();
-        let pipeline = Pipeline::new(&config, tick, sink)?;
+        let pipeline = Pipeline::new(&config, tick)?;
 
         Ok(Self {
             config,
@@ -310,24 +286,5 @@ impl Analytics {
 
             pipeline.record(event);
         }
-    }
-}
-
-#[derive(Default, Clone)]
-pub(crate) struct AbortSignal {
-    aborted: Arc<AtomicBool>,
-}
-
-impl AbortSignal {
-    pub(crate) fn new() -> Self {
-        Self::default()
-    }
-
-    pub(crate) fn signal(&self) {
-        self.aborted.store(true, Ordering::SeqCst);
-    }
-
-    pub(crate) fn is_aborted(&self) -> bool {
-        self.aborted.load(Ordering::SeqCst)
     }
 }

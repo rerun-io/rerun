@@ -10,7 +10,9 @@ use crossbeam::{
     select,
 };
 
-use crate::{AbortSignal, Config, Event, PostHogSink};
+use super::sink::PostHogSink;
+use super::AbortSignal;
+use crate::{Config, Event};
 
 // TODO(cmc): abstract away the concept of a `Pipeline` behind an actual trait when comes the time
 // to support more than just PostHog.
@@ -30,16 +32,14 @@ pub enum PipelineError {
 ///
 /// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
 #[derive(Debug)]
-pub(crate) struct Pipeline {
+pub struct Pipeline {
     event_tx: channel::Sender<Result<Event, RecvError>>,
 }
 
 impl Pipeline {
-    pub(crate) fn new(
-        config: &Config,
-        tick: Duration,
-        sink: PostHogSink,
-    ) -> Result<Option<Self>, PipelineError> {
+    pub(crate) fn new(config: &Config, tick: Duration) -> Result<Option<Self>, PipelineError> {
+        let sink = PostHogSink::default();
+
         if !config.analytics_enabled {
             return Ok(None);
         }
