@@ -2,33 +2,42 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+    TYPE_CHECKING, SupportsFloat, Literal)
 
-import pyarrow as pa
 from attrs import define, field
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
 
-# noqa: F401
-from .. import datatypes
 from .._baseclasses import (
-    BaseExtensionArray,
+    Archetype,
     BaseExtensionType,
+    BaseExtensionArray,
+    BaseDelegatingExtensionType,
+    BaseDelegatingExtensionArray
 )
-from ._overrides import (
-    classdescription_info_converter,
-    classdescription_init,
-    classdescription_keypoint_annotations_converter,
-    classdescription_keypoint_connections_converter,
-    classdescription_native_to_pa_array,
+from .._converters import (
+    int_or_none,
+    float_or_none,
+    bool_or_none,
+    str_or_none,
+    to_np_uint8,
+    to_np_uint16,
+    to_np_uint32,
+    to_np_uint64,
+    to_np_int8,
+    to_np_int16,
+    to_np_int32,
+    to_np_int64,
+    to_np_bool,
+    to_np_float16,
+    to_np_float32,
+    to_np_float64
 )
-
-__all__ = [
-    "ClassDescription",
-    "ClassDescriptionArray",
-    "ClassDescriptionArrayLike",
-    "ClassDescriptionLike",
-    "ClassDescriptionType",
-]
-
+from ._overrides import classdescription_keypoint_annotations_converter, classdescription_keypoint_connections_converter, classdescriptionmapelem_native_to_pa_array, classdescription_native_to_pa_array, classdescription_info_converter, classdescription_init  # noqa: F401
+from .. import datatypes
+__all__ = ["ClassDescription", "ClassDescriptionArray", "ClassDescriptionArrayLike", "ClassDescriptionLike", "ClassDescriptionType"]
 
 @define(init=False)
 class ClassDescription:
@@ -49,7 +58,7 @@ class ClassDescription:
     colored as described by the class's `AnnotationInfo`.
     """
 
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+    def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]
         classdescription_init(self, *args, **kwargs)
 
     info: datatypes.AnnotationInfo = field(converter=classdescription_info_converter)
@@ -57,95 +66,40 @@ class ClassDescription:
     The `AnnotationInfo` for the class.
     """
 
-    keypoint_annotations: list[datatypes.AnnotationInfo] = field(
-        converter=classdescription_keypoint_annotations_converter
-    )
+    keypoint_annotations: list[datatypes.AnnotationInfo] = field(converter=classdescription_keypoint_annotations_converter)
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
-    keypoint_connections: list[datatypes.KeypointPair] = field(
-        converter=classdescription_keypoint_connections_converter
-    )
+    keypoint_connections: list[datatypes.KeypointPair] = field(converter=classdescription_keypoint_connections_converter)
     """
     The connections between keypoints.
     """
 
 
+
 if TYPE_CHECKING:
-    ClassDescriptionLike = Union[ClassDescription, datatypes.AnnotationInfoLike]
+    ClassDescriptionLike = Union[
+        ClassDescription,
+        datatypes.AnnotationInfoLike
+    ]
 else:
     ClassDescriptionLike = Any
 
 ClassDescriptionArrayLike = Union[
     ClassDescription,
     Sequence[ClassDescriptionLike],
+    
 ]
 
 
 # --- Arrow support ---
 
-
 class ClassDescriptionType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.struct(
-                [
-                    pa.field(
-                        "info",
-                        pa.struct(
-                            [
-                                pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                            ]
-                        ),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "keypoint_annotations",
-                        pa.list_(
-                            pa.field(
-                                "item",
-                                pa.struct(
-                                    [
-                                        pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                        pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                        pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                    ]
-                                ),
-                                nullable=False,
-                                metadata={},
-                            )
-                        ),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "keypoint_connections",
-                        pa.list_(
-                            pa.field(
-                                "item",
-                                pa.struct(
-                                    [
-                                        pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
-                                        pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
-                                    ]
-                                ),
-                                nullable=False,
-                                metadata={},
-                            )
-                        ),
-                        nullable=False,
-                        metadata={},
-                    ),
-                ]
-            ),
-            "rerun.datatypes.ClassDescription",
+            self, pa.struct([pa.field("info", pa.struct([pa.field("id", pa.uint16(), nullable=False, metadata={}), pa.field("label", pa.utf8(), nullable=True, metadata={}), pa.field("color", pa.uint32(), nullable=True, metadata={})]), nullable=False, metadata={}), pa.field("keypoint_annotations", pa.list_(pa.field("item", pa.struct([pa.field("id", pa.uint16(), nullable=False, metadata={}), pa.field("label", pa.utf8(), nullable=True, metadata={}), pa.field("color", pa.uint32(), nullable=True, metadata={})]), nullable=False, metadata={})), nullable=False, metadata={}), pa.field("keypoint_connections", pa.list_(pa.field("item", pa.struct([pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}), pa.field("keypoint1", pa.uint16(), nullable=False, metadata={})]), nullable=False, metadata={})), nullable=False, metadata={})]), "rerun.datatypes.ClassDescription"
         )
-
 
 class ClassDescriptionArray(BaseExtensionArray[ClassDescriptionArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.ClassDescription"
@@ -155,8 +109,9 @@ class ClassDescriptionArray(BaseExtensionArray[ClassDescriptionArrayLike]):
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
         return classdescription_native_to_pa_array(data, data_type)
 
-
 ClassDescriptionType._ARRAY_TYPE = ClassDescriptionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassDescriptionType())
+
+

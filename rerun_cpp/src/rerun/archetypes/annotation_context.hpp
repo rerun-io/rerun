@@ -22,12 +22,12 @@ namespace rerun {
         /// path-hierarchy when searching up through the ancestors of a given entity
         /// path.
         ///
-        /// ## Example
+        ///## Example
         ///
         ///```
         ///// Log an annotation context to assign a label and color to each class
         ///
-        /// #include <rerun.hpp>
+        ///#include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///

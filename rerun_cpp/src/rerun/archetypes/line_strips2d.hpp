@@ -23,13 +23,13 @@ namespace rerun {
     namespace archetypes {
         /// A batch of line strips with positions and optional colors, radii, labels, etc.
         ///
-        /// ## Example
+        ///## Example
         ///
         /// Many strips:
         ///```ignore
         ///// Log a batch of 2d line strips.
         ///
-        /// #include <rerun.hpp>
+        ///#include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
@@ -55,7 +55,7 @@ namespace rerun {
         ///```ignore
         ///// Log a couple 2D line segments using 2D line strips.
         ///
-        /// #include <rerun.hpp>
+        ///#include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///

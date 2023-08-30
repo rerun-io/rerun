@@ -23,15 +23,15 @@ namespace rerun {
     namespace archetypes {
         /// A batch of 3D arrows with optional colors, radii, labels, etc.
         ///
-        /// ## Example
+        ///## Example
         ///
         ///```
         ///// Log a batch of 3D arrows.
         ///
-        /// #include <rerun.hpp>
+        ///#include <rerun.hpp>
         ///
-        /// #include <cmath>
-        /// #include <numeric>
+        ///#include <cmath>
+        ///#include <numeric>
         ///
         /// namespace rr = rerun;
         ///

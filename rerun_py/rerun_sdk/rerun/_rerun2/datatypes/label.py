@@ -2,45 +2,76 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+    TYPE_CHECKING, SupportsFloat, Literal)
 
-import pyarrow as pa
 from attrs import define, field
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
 
 from .._baseclasses import (
-    BaseExtensionArray,
+    Archetype,
     BaseExtensionType,
+    BaseExtensionArray,
+    BaseDelegatingExtensionType,
+    BaseDelegatingExtensionArray
+)
+from .._converters import (
+    int_or_none,
+    float_or_none,
+    bool_or_none,
+    str_or_none,
+    to_np_uint8,
+    to_np_uint16,
+    to_np_uint32,
+    to_np_uint64,
+    to_np_int8,
+    to_np_int16,
+    to_np_int32,
+    to_np_int64,
+    to_np_bool,
+    to_np_float16,
+    to_np_float32,
+    to_np_float64
 )
 from ._overrides import label_native_to_pa_array  # noqa: F401
-
 __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 
 
 @define
 class Label:
-    """A String label datatype."""
+    """
+    A String label datatype.
+    """
 
     value: str = field(converter=str)
 
     def __str__(self) -> str:
         return str(self.value)
 
-
 if TYPE_CHECKING:
-    LabelLike = Union[Label, str]
+    LabelLike = Union[
+        Label,
+        str
+    ]
 else:
     LabelLike = Any
 
-LabelArrayLike = Union[Label, Sequence[LabelLike], str, Sequence[str]]
+LabelArrayLike = Union[
+    Label,
+    Sequence[LabelLike],
+    str, Sequence[str]
+]
 
 
 # --- Arrow support ---
 
-
 class LabelType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), "rerun.label")
-
+        pa.ExtensionType.__init__(
+            self, pa.utf8(), "rerun.label"
+        )
 
 class LabelArray(BaseExtensionArray[LabelArrayLike]):
     _EXTENSION_NAME = "rerun.label"
@@ -50,8 +81,9 @@ class LabelArray(BaseExtensionArray[LabelArrayLike]):
     def _native_to_pa_array(data: LabelArrayLike, data_type: pa.DataType) -> pa.Array:
         return label_native_to_pa_array(data, data_type)
 
-
 LabelType._ARRAY_TYPE = LabelArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(LabelType())
+
+

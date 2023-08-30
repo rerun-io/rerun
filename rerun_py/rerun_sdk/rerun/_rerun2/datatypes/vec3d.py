@@ -2,54 +2,76 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+    TYPE_CHECKING, SupportsFloat, Literal)
 
+from attrs import define, field
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from attrs import define, field
 
 from .._baseclasses import (
-    BaseExtensionArray,
+    Archetype,
     BaseExtensionType,
+    BaseExtensionArray,
+    BaseDelegatingExtensionType,
+    BaseDelegatingExtensionArray
 )
 from .._converters import (
+    int_or_none,
+    float_or_none,
+    bool_or_none,
+    str_or_none,
+    to_np_uint8,
+    to_np_uint16,
+    to_np_uint32,
+    to_np_uint64,
+    to_np_int8,
+    to_np_int16,
+    to_np_int32,
+    to_np_int64,
+    to_np_bool,
+    to_np_float16,
     to_np_float32,
+    to_np_float64
 )
 from ._overrides import vec3d_native_to_pa_array  # noqa: F401
-
 __all__ = ["Vec3D", "Vec3DArray", "Vec3DArrayLike", "Vec3DLike", "Vec3DType"]
 
 
 @define
 class Vec3D:
-    """A vector in 3D space."""
+    """
+    A vector in 3D space.
+    """
 
     xyz: npt.NDArray[np.float32] = field(converter=to_np_float32)
-
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+    def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
         return np.asarray(self.xyz, dtype=dtype)
 
 
 if TYPE_CHECKING:
-    Vec3DLike = Union[Vec3D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
+    Vec3DLike = Union[
+        Vec3D,
+        npt.NDArray[Any], npt.ArrayLike, Sequence[float]
+    ]
 else:
     Vec3DLike = Any
 
 Vec3DArrayLike = Union[
-    Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
+    Vec3D,
+    Sequence[Vec3DLike],
+    npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
 ]
 
 
 # --- Arrow support ---
-
 
 class Vec3DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), "rerun.datatypes.Vec3D"
         )
-
 
 class Vec3DArray(BaseExtensionArray[Vec3DArrayLike]):
     _EXTENSION_NAME = "rerun.datatypes.Vec3D"
@@ -59,8 +81,9 @@ class Vec3DArray(BaseExtensionArray[Vec3DArrayLike]):
     def _native_to_pa_array(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return vec3d_native_to_pa_array(data, data_type)
 
-
 Vec3DType._ARRAY_TYPE = Vec3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Vec3DType())
+
+

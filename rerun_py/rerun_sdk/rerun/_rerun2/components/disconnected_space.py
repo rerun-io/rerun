@@ -2,26 +2,41 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+    TYPE_CHECKING, SupportsFloat, Literal)
 
+from attrs import define, field
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from attrs import define, field
 
 from .._baseclasses import (
-    BaseExtensionArray,
+    Archetype,
     BaseExtensionType,
+    BaseExtensionArray,
+    BaseDelegatingExtensionType,
+    BaseDelegatingExtensionArray
+)
+from .._converters import (
+    int_or_none,
+    float_or_none,
+    bool_or_none,
+    str_or_none,
+    to_np_uint8,
+    to_np_uint16,
+    to_np_uint32,
+    to_np_uint64,
+    to_np_int8,
+    to_np_int16,
+    to_np_int32,
+    to_np_int64,
+    to_np_bool,
+    to_np_float16,
+    to_np_float32,
+    to_np_float64
 )
 from ._overrides import disconnectedspace_native_to_pa_array  # noqa: F401
-
-__all__ = [
-    "DisconnectedSpace",
-    "DisconnectedSpaceArray",
-    "DisconnectedSpaceArrayLike",
-    "DisconnectedSpaceLike",
-    "DisconnectedSpaceType",
-]
+__all__ = ["DisconnectedSpace", "DisconnectedSpaceArray", "DisconnectedSpaceArrayLike", "DisconnectedSpaceLike", "DisconnectedSpaceType"]
 
 
 @define
@@ -38,20 +53,27 @@ class DisconnectedSpace:
 
 
 if TYPE_CHECKING:
-    DisconnectedSpaceLike = Union[DisconnectedSpace, bool]
+    DisconnectedSpaceLike = Union[
+        DisconnectedSpace,
+        bool
+    ]
 else:
     DisconnectedSpaceLike = Any
 
-DisconnectedSpaceArrayLike = Union[DisconnectedSpace, Sequence[DisconnectedSpaceLike], bool, npt.NDArray[np.bool_]]
+DisconnectedSpaceArrayLike = Union[
+    DisconnectedSpace,
+    Sequence[DisconnectedSpaceLike],
+    bool, npt.NDArray[np.bool_]
+]
 
 
 # --- Arrow support ---
 
-
 class DisconnectedSpaceType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.bool_(), "rerun.disconnected_space")
-
+        pa.ExtensionType.__init__(
+            self, pa.bool_(), "rerun.disconnected_space"
+        )
 
 class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
     _EXTENSION_NAME = "rerun.disconnected_space"
@@ -61,8 +83,9 @@ class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
         return disconnectedspace_native_to_pa_array(data, data_type)
 
-
 DisconnectedSpaceType._ARRAY_TYPE = DisconnectedSpaceArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(DisconnectedSpaceType())
+
+
