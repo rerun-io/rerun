@@ -672,7 +672,7 @@ fn reset_viewer() -> anyhow::Result<()> {
 
     // Note: `remove_dir_all` fails if the directory doesn't exist.
     if data_dir.exists() {
-        // Keep analytics, because it is used to uniquely idenitfy users over time.
+        // Keep analytics, because it is used to uniquely identify users over time.
         let analytics_file_path = data_dir.join("analytics.json");
         let analytics = std::fs::read(&analytics_file_path);
 
