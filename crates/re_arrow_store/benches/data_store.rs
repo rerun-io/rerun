@@ -5,8 +5,8 @@ use arrow2::array::UnionArray;
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{
-    DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt,
-    TimeRange,
+    DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
+    RangeQuery, TimeInt, TimeRange,
 };
 use re_components::{
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
@@ -276,7 +276,12 @@ fn gc(c: &mut Criterion) {
         let store = insert_table(Default::default(), InstanceKey::name(), &table);
         b.iter(|| {
             let mut store = store.clone();
-            let (_, stats_diff) = store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0));
+            let (_, stats_diff) = store.gc(GarbageCollectionOptions {
+                target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+                gc_timeless: false,
+                protect_latest: 0,
+                purge_empty_tables: false,
+            });
             stats_diff
         });
     });
@@ -294,8 +299,12 @@ fn gc(c: &mut Criterion) {
             );
             b.iter(|| {
                 let mut store = store.clone();
-                let (_, stats_diff) =
-                    store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0));
+                let (_, stats_diff) = store.gc(GarbageCollectionOptions {
+                    target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+                    gc_timeless: false,
+                    protect_latest: 0,
+                    purge_empty_tables: false,
+                });
                 stats_diff
             });
         });

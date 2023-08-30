@@ -798,9 +798,8 @@ impl eframe::App for App {
 
             // Save the blueprints
             // TODO(2579): implement web-storage for blueprints as well
-            #[cfg(not(target_arch = "wasm32"))]
             if let Some(hub) = &mut self.store_hub {
-                match hub.persist_app_blueprints() {
+                match hub.gc_and_persist_app_blueprints() {
                     Ok(f) => f,
                     Err(err) => {
                         re_log::error!("Saving blueprints failed: {err}");

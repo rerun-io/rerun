@@ -12,7 +12,8 @@ use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_arrow_store::{
     polars_util, test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
-    GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+    GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt,
+    TimeRange,
 };
 use re_components::{
     datagen::{
@@ -22,7 +23,7 @@ use re_components::{
     ColorRGBA, InstanceKey, Point2D, Rect2D,
 };
 use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
-use re_types::{ComponentName, Loggable as _};
+use re_types::{components::Color, ComponentName, Loggable as _};
 
 // --- LatestComponentsAt ---
 
@@ -32,11 +33,11 @@ fn all_components() {
 
     let ent_path = EntityPath::from("this/that");
 
-    // let frame0: TimeInt = 0.into();
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
-    let frame4: TimeInt = 4.into();
+    // let frame0= TimeInt::from(0);
+    let frame1 = TimeInt::from(1);
+    let frame2 = TimeInt::from(2);
+    let frame3 = TimeInt::from(3);
+    let frame4 = TimeInt::from(4);
 
     let assert_latest_components_at =
         |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
@@ -47,7 +48,7 @@ fn all_components() {
             }
 
             // Stress test GC
-            store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+            store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 store2.insert_table(&table).unwrap();
             }
@@ -259,11 +260,11 @@ fn latest_at_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0: TimeInt = 0.into();
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
-    let frame4: TimeInt = 4.into();
+    let frame0 = TimeInt::from(0);
+    let frame1 = TimeInt::from(1);
+    let frame2 = TimeInt::from(2);
+    let frame3 = TimeInt::from(3);
+    let frame4 = TimeInt::from(4);
 
     // helper to insert a table both as a temporal and timeless payload
     let insert_table = |store: &mut DataStore, table: &DataTable| {
@@ -302,7 +303,7 @@ fn latest_at_impl(store: &mut DataStore) {
         store2.insert_table(&table).unwrap();
     }
     // Stress test GC
-    store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+    store2.gc(GarbageCollectionOptions::gc_everything());
     for table in store.to_data_tables(None) {
         store2.insert_table(&table).unwrap();
     }
@@ -373,12 +374,12 @@ fn range_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0: TimeInt = 0.into();
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
-    let frame4: TimeInt = 4.into();
-    let frame5: TimeInt = 5.into();
+    let frame0 = TimeInt::from(0);
+    let frame1 = TimeInt::from(1);
+    let frame2 = TimeInt::from(2);
+    let frame3 = TimeInt::from(3);
+    let frame4 = TimeInt::from(4);
+    let frame5 = TimeInt::from(5);
 
     // helper to insert a row both as a temporal and timeless payload
     let insert = |store: &mut DataStore, row| {
@@ -444,7 +445,7 @@ fn range_impl(store: &mut DataStore) {
                 store2.insert_table(&table).unwrap();
             }
             store2.wipe_timeless_data();
-            store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+            store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 store2.insert_table(&table).unwrap();
             }
@@ -873,8 +874,12 @@ fn gc_impl(store: &mut DataStore) {
 
         let stats = DataStoreStats::from_store(store);
 
-        let (row_ids, stats_diff) =
-            store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0));
+        let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions {
+            target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+            gc_timeless: false,
+            protect_latest: 0,
+            purge_empty_tables: false,
+        });
         for row_id in &row_ids {
             assert!(store.get_msg_metadata(row_id).is_none());
         }
@@ -895,6 +900,190 @@ fn gc_impl(store: &mut DataStore) {
             re_format::format_bytes(num_bytes_dropped_expected_max),
         );
     }
+}
+
+#[test]
+fn protected_gc() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        protected_gc_impl(&mut store);
+    }
+}
+
+fn protected_gc_impl(store: &mut DataStore) {
+    init_logs();
+
+    let ent_path = EntityPath::from("this/that");
+
+    let frame0 = TimeInt::from(0);
+    let frame1 = TimeInt::from(1);
+    let frame2 = TimeInt::from(2);
+    let frame3 = TimeInt::from(3);
+    let frame4 = TimeInt::from(4);
+
+    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
+    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+
+    let points2 = build_some_point2d(3);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
+
+    let points3 = build_some_point2d(10);
+    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
+
+    let colors4 = build_some_colors(5);
+    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
+
+    store
+        .insert_table(&DataTable::from_rows(
+            TableId::random(),
+            [row1.clone(), row2.clone(), row3.clone(), row4.clone()],
+        ))
+        .unwrap();
+
+    // Re-insert row1 and row2 as timeless data as well
+    let mut table_timeless = DataTable::from_rows(TableId::random(), [row1.clone(), row2.clone()]);
+    table_timeless.col_timelines = Default::default();
+    store.insert_table(&table_timeless).unwrap();
+
+    store.gc(GarbageCollectionOptions {
+        target: GarbageCollectionTarget::Everything,
+        gc_timeless: true,
+        protect_latest: 1,
+        purge_empty_tables: true,
+    });
+
+    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let components_all = &[Color::name(), Point2D::name()];
+
+        let df = polars_util::latest_components(
+            store,
+            &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+            &ent_path,
+            components_all,
+            &JoinType::Outer,
+        )
+        .unwrap();
+
+        let df_expected = joint_df(store.cluster_key(), rows);
+
+        store.sort_indices_if_needed();
+        assert_eq!(df_expected, df, "{store}");
+    };
+
+    // The timeless data was preserved
+    assert_latest_components(
+        frame0,
+        &[(Color::name(), &row1), (Point2D::name(), &row2)], // timeless
+    );
+
+    //
+    assert_latest_components(
+        frame3,
+        &[
+            (Color::name(), &row1),   // timeless
+            (Point2D::name(), &row3), // protected
+        ],
+    );
+
+    assert_latest_components(
+        frame4,
+        &[
+            (Color::name(), &row4),   //protected
+            (Point2D::name(), &row3), // protected
+        ],
+    );
+}
+
+#[test]
+fn protected_gc_clear() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        protected_gc_clear_impl(&mut store);
+    }
+}
+
+fn protected_gc_clear_impl(store: &mut DataStore) {
+    init_logs();
+
+    let ent_path = EntityPath::from("this/that");
+
+    let frame0 = TimeInt::from(0);
+    let frame1 = TimeInt::from(1);
+    let frame2 = TimeInt::from(2);
+    let frame3 = TimeInt::from(3);
+    let frame4 = TimeInt::from(4);
+
+    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
+    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+
+    let points2 = build_some_point2d(3);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
+
+    let colors2 = build_some_colors(0);
+    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 0; [colors2]);
+
+    let points4 = build_some_point2d(0);
+    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 0; [points4]);
+
+    // Insert the 3 rows as timeless
+    let mut table_timeless =
+        DataTable::from_rows(TableId::random(), [row1, row2.clone(), row3.clone()]);
+    table_timeless.col_timelines = Default::default();
+    store.insert_table(&table_timeless).unwrap();
+
+    store.gc(GarbageCollectionOptions {
+        target: GarbageCollectionTarget::Everything,
+        gc_timeless: true,
+        protect_latest: 1,
+        purge_empty_tables: true,
+    });
+
+    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let components_all = &[Color::name(), Point2D::name()];
+
+        let df = polars_util::latest_components(
+            store,
+            &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+            &ent_path,
+            components_all,
+            &JoinType::Outer,
+        )
+        .unwrap();
+
+        let df_expected = joint_df(store.cluster_key(), rows);
+
+        store.sort_indices_if_needed();
+        assert_eq!(df_expected, df, "{store}");
+    };
+
+    // Only points are preserved, since colors were cleared and then GC'd
+    assert_latest_components(frame0, &[(Color::name(), &row3), (Point2D::name(), &row2)]);
+
+    // Only the 2 rows should remain in the table
+    let stats = DataStoreStats::from_store(store);
+    assert_eq!(stats.timeless.num_rows, 2);
+
+    // Now erase points and GC again
+    let mut table_timeless = DataTable::from_rows(TableId::random(), [row4]);
+    table_timeless.col_timelines = Default::default();
+    store.insert_table(&table_timeless).unwrap();
+
+    store.gc(GarbageCollectionOptions {
+        target: GarbageCollectionTarget::Everything,
+        gc_timeless: true,
+        protect_latest: 1,
+        purge_empty_tables: true,
+    });
+
+    // No rows should remain because the table should have been purged
+    let stats = DataStoreStats::from_store(store);
+    assert_eq!(stats.timeless.num_rows, 0);
 }
 
 // ---
