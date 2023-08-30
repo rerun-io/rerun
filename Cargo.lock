@@ -3926,11 +3926,9 @@ dependencies = [
 name = "re_analytics"
 version = "0.9.0-alpha.3"
 dependencies = [
- "anyhow",
  "crossbeam",
  "directories-next",
  "ehttp",
- "once_cell",
  "re_build_info",
  "re_build_tools",
  "re_log",

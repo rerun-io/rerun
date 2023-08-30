@@ -26,10 +26,10 @@ pub enum PipelineError {
 ///
 /// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
 #[derive(Debug)]
-pub struct Pipeline {}
+pub(crate) struct Pipeline {}
 
 impl Pipeline {
-    pub fn new(
+    pub(crate) fn new(
         _config: &Config,
         _tick: Duration,
         _sink: PostHogSink,

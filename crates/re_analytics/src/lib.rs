@@ -32,13 +32,13 @@ use self::pipeline_web::{Pipeline, PipelineError};
 #[cfg(not(target_arch = "wasm32"))]
 mod sink_native;
 #[cfg(not(target_arch = "wasm32"))]
-use self::sink_native::{PostHogSink, SinkError};
+use self::sink_native::PostHogSink;
 
 // TODO(cmc): web sink
 #[cfg(target_arch = "wasm32")]
 mod sink_web;
 #[cfg(target_arch = "wasm32")]
-use self::sink_web::{PostHogSink, SinkError};
+use self::sink_web::PostHogSink;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
@@ -47,7 +47,9 @@ pub mod cli;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::io::Error as IoError;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use time::OffsetDateTime;
@@ -239,7 +241,7 @@ pub enum AnalyticsError {
     Pipeline(#[from] PipelineError),
 
     #[error(transparent)]
-    Sink(#[from] SinkError),
+    Io(#[from] IoError),
 }
 
 pub struct Analytics {
@@ -308,5 +310,24 @@ impl Analytics {
 
             pipeline.record(event);
         }
+    }
+}
+
+#[derive(Default, Clone)]
+pub(crate) struct AbortSignal {
+    aborted: Arc<AtomicBool>,
+}
+
+impl AbortSignal {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn signal(&self) {
+        self.aborted.store(true, Ordering::SeqCst);
+    }
+
+    pub(crate) fn is_aborted(&self) -> bool {
+        self.aborted.load(Ordering::SeqCst)
     }
 }

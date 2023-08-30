@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use time::OffsetDateTime;
 
-use crate::{Event, Property};
+use crate::{AbortSignal, Event, Property};
 
 // TODO(cmc): abstract away the concept of a `Sink` behind an actual trait when comes the time to
 // support more than just PostHog.
@@ -15,41 +15,39 @@ const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_sgKidIE4WYYFSJHd8LEYY1UZqASpnfQKeM
 #[derive(Debug, Clone)]
 struct Url(String);
 
-#[derive(thiserror::Error, Debug)]
-pub enum SinkError {
-    #[error("File seek error: {0}")]
-    FileSeek(std::io::Error),
-
-    #[error("JSON: {0}")]
-    Serde(#[from] serde_json::Error),
-
-    /// Usually because there is no internet.
-    #[error("HTTP: {0}")]
-    Http(String),
-
-    #[error("HTTP status {status_code} {status_text}: {body}")]
-    HttpStatus {
-        status_code: u16,
-        status_text: String,
-        body: String,
-    },
-}
-
 #[derive(Default, Debug, Clone)]
-pub struct PostHogSink {}
+pub(crate) struct PostHogSink {}
 
 impl PostHogSink {
     /// Our public telemetry endpoint.
     const URL: &str = "https://tel.rerun.io";
 
     #[allow(clippy::unused_self)]
-    pub fn send(&self, analytics_id: &Arc<str>, session_id: &Arc<str>, events: &[Event]) {
+    pub(crate) fn send(
+        &self,
+        analytics_id: &Arc<str>,
+        session_id: &Arc<str>,
+        events: &[Event],
+        abort_signal: &AbortSignal,
+    ) {
         let num_events = events.len();
         let on_done = {
             let analytics_id = analytics_id.clone();
             let session_id = session_id.clone();
+            let abort_signal = abort_signal.clone();
             move |result: Result<ehttp::Response, String>| match result {
                 Ok(response) => {
+                    if !response.ok {
+                        let error = format!(
+                            "HTTP request failed: {} {} {}",
+                            response.status,
+                            response.status_text,
+                            response.text().unwrap_or("")
+                        );
+                        re_log::debug!("Failed to send analytics down the sink: {error}");
+                        return abort_signal.signal();
+                    }
+
                     re_log::trace!(
                         ?response,
                         %analytics_id,
@@ -59,9 +57,8 @@ impl PostHogSink {
                     );
                 }
                 Err(error) => {
-                    re_log::debug_once!(
-                        "Failed to send analytics down the sink, will try again later.\n{error}"
-                    );
+                    re_log::debug!("Failed to send analytics down the sink: {error}");
+                    abort_signal.signal();
                 }
             }
         };
