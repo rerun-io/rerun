@@ -349,8 +349,9 @@ impl DataStore {
                         continue;
                     }
                     let inner = bucket.inner.read();
-                    // TODO(jleibs): Make sure we have an optimization where we don't store
-                    // fully empty columns.
+                    // TODO(jleibs): If the entire column for a component is empty, we should
+                    // make sure the column is dropped so we don't have to iterate over a
+                    // bunch of Nones.
                     if let Some(column) = inner.columns.get(component) {
                         for row in column
                             .iter()
@@ -390,8 +391,9 @@ impl DataStore {
                 if *count == 0 {
                     continue;
                 }
-                // TODO(jleibs): Make sure we have an optimization where we don't store
-                // fully empty columns.
+                // TODO(jleibs): If the entire column for a component is empty, we should
+                // make sure the column is dropped so we don't have to iterate over a
+                // bunch of Nones.
                 if let Some(column) = table.columns.get(component) {
                     let mut component_rows =
                         column
