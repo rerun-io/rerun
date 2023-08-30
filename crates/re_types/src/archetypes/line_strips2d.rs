@@ -142,27 +142,27 @@ impl LineStrips2D {
 impl crate::Archetype for LineStrips2D {
     #[inline]
     fn name() -> crate::ArchetypeName {
-        crate::ArchetypeName::Borrowed("rerun.archetypes.LineStrips2D")
+        "rerun.archetypes.LineStrips2D".into()
     }
 
     #[inline]
-    fn required_components() -> &'static [crate::ComponentName] {
-        REQUIRED_COMPONENTS.as_slice()
+    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> &'static [crate::ComponentName] {
-        RECOMMENDED_COMPONENTS.as_slice()
+    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> &'static [crate::ComponentName] {
-        OPTIONAL_COMPONENTS.as_slice()
+    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> &'static [crate::ComponentName] {
-        ALL_COMPONENTS.as_slice()
+    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+        ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
@@ -175,6 +175,33 @@ impl crate::Archetype for LineStrips2D {
         self.strips.len()
     }
 
+    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+        [
+            Some(&self.strips as &dyn crate::ComponentList),
+            self.radii
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.colors
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.labels
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.draw_order
+                .as_ref()
+                .map(|comp| comp as &dyn crate::ComponentList),
+            self.class_ids
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+            self.instance_keys
+                .as_ref()
+                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
     #[inline]
     fn try_to_arrow(
         &self,
@@ -185,8 +212,7 @@ impl crate::Archetype for LineStrips2D {
         Ok([
             {
                 Some({
-                    let array =
-                        <crate::components::LineStrip2D>::try_to_arrow(self.strips.iter(), None);
+                    let array = <crate::components::LineStrip2D>::try_to_arrow(self.strips.iter());
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.LineStrip2D".into(),
@@ -206,7 +232,7 @@ impl crate::Archetype for LineStrips2D {
                 self.radii
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Radius>::try_to_arrow(many.iter(), None);
+                        let array = <crate::components::Radius>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Radius".into(),
@@ -226,7 +252,7 @@ impl crate::Archetype for LineStrips2D {
                 self.colors
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Color>::try_to_arrow(many.iter(), None);
+                        let array = <crate::components::Color>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Color".into(),
@@ -246,7 +272,7 @@ impl crate::Archetype for LineStrips2D {
                 self.labels
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Label>::try_to_arrow(many.iter(), None);
+                        let array = <crate::components::Label>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Label".into(),
@@ -266,7 +292,7 @@ impl crate::Archetype for LineStrips2D {
                 self.draw_order
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::DrawOrder>::try_to_arrow([single], None);
+                        let array = <crate::components::DrawOrder>::try_to_arrow([single]);
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DrawOrder".into(),
@@ -286,7 +312,7 @@ impl crate::Archetype for LineStrips2D {
                 self.class_ids
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::ClassId>::try_to_arrow(many.iter(), None);
+                        let array = <crate::components::ClassId>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
@@ -306,8 +332,7 @@ impl crate::Archetype for LineStrips2D {
                 self.instance_keys
                     .as_ref()
                     .map(|many| {
-                        let array =
-                            <crate::components::InstanceKey>::try_to_arrow(many.iter(), None);
+                        let array = <crate::components::InstanceKey>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.InstanceKey".into(),

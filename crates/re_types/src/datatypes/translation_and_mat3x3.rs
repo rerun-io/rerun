@@ -44,8 +44,6 @@ impl<'a> From<&'a TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAn
 
 impl crate::Loggable for TranslationAndMat3x3 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -81,7 +79,6 @@ impl crate::Loggable for TranslationAndMat3x3 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -101,17 +98,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::TranslationAndMat3x3>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::TranslationAndMat3x3>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
                 vec![
                     {
                         let (somes, translation): (Vec<_>, Vec<_>) = data
@@ -156,25 +143,17 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                         .into()
                                 });
                             FixedSizeListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    )
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
+                                    DataType::Float32,
                                     translation_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
@@ -230,25 +209,17 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                         .into()
                                 });
                             FixedSizeListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        9usize,
-                                    )
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    9usize,
+                                ),
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
+                                    DataType::Float32,
                                     matrix_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
@@ -277,10 +248,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                             any_nones.then(|| somes.into())
                         };
                         BooleanArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Boolean.to_logical_type().clone()
-                            },
+                            DataType::Boolean,
                             from_parent
                                 .into_iter()
                                 .map(|v| v.unwrap_or_default())
@@ -557,21 +525,4 @@ impl crate::Loggable for TranslationAndMat3x3 {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for TranslationAndMat3x3 {}

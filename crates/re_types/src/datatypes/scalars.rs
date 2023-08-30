@@ -12,43 +12,36 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 16-bit ID representing a type of semantic keypoint within a class.
-///
-/// `KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`.
-///
-/// Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct KeypointId(pub u16);
+#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+pub struct Float32(pub f32);
 
-impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
+impl<'a> From<Float32> for ::std::borrow::Cow<'a, Float32> {
     #[inline]
-    fn from(value: KeypointId) -> Self {
+    fn from(value: Float32) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
+impl<'a> From<&'a Float32> for ::std::borrow::Cow<'a, Float32> {
     #[inline]
-    fn from(value: &'a KeypointId) -> Self {
+    fn from(value: &'a Float32) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for KeypointId {
+impl crate::Loggable for Float32 {
     type Name = crate::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.datatypes.KeypointId".into()
+        "rerun.datatypes.Float32".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt16
+        DataType::Float32
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -96,20 +89,20 @@ impl crate::Loggable for KeypointId {
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
-            .downcast_ref::<UInt16Array>()
+            .downcast_ref::<Float32Array>()
             .ok_or_else(|| {
                 crate::DeserializationError::datatype_mismatch(
-                    DataType::UInt16,
+                    DataType::Float32,
                     arrow_data.data_type().clone(),
                 )
             })
-            .with_context("rerun.datatypes.KeypointId#id")?
+            .with_context("rerun.datatypes.Float32#value")?
             .into_iter()
             .map(|opt| opt.copied())
             .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.datatypes.KeypointId#id")
-            .with_context("rerun.datatypes.KeypointId")?)
+            .with_context("rerun.datatypes.Float32#value")
+            .with_context("rerun.datatypes.Float32")?)
     }
 }

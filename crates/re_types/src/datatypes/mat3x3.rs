@@ -32,8 +32,6 @@ impl<'a> From<&'a Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
 
 impl crate::Loggable for Mat3x3 {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -58,7 +56,6 @@ impl crate::Loggable for Mat3x3 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -100,27 +97,9 @@ impl crate::Loggable for Mat3x3 {
                             .into()
                     });
                 FixedSizeListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.datatypes.Mat3x3".to_owned(),
-                            Box::new(Self::arrow_datatype()),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
+                    Self::arrow_datatype(),
                     PrimitiveArray::new(
-                        {
-                            _ = extension_wrapper;
-                            DataType::Extension(
-                                "rerun.datatypes.Mat3x3".to_owned(),
-                                Box::new(DataType::Float32),
-                                None,
-                            )
-                            .to_logical_type()
-                            .clone()
-                        },
+                        DataType::Float32,
                         data0_inner_data
                             .into_iter()
                             .map(|v| v.unwrap_or_default())
@@ -218,21 +197,4 @@ impl crate::Loggable for Mat3x3 {
         .with_context("rerun.datatypes.Mat3x3#coeffs")
         .with_context("rerun.datatypes.Mat3x3")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for Mat3x3 {}

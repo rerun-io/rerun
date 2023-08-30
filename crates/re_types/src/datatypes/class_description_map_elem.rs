@@ -37,8 +37,6 @@ impl<'a> From<&'a ClassDescriptionMapElem> for ::std::borrow::Cow<'a, ClassDescr
 
 impl crate::Loggable for ClassDescriptionMapElem {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -68,7 +66,6 @@ impl crate::Loggable for ClassDescriptionMapElem {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -88,17 +85,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::ClassDescriptionMapElem>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::ClassDescriptionMapElem>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::ClassDescriptionMapElem>::arrow_datatype(),
                 vec![
                     {
                         let (somes, class_id): (Vec<_>, Vec<_>) = data
@@ -116,10 +103,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::UInt16.to_logical_type().clone()
-                            },
+                            DataType::UInt16,
                             class_id
                                 .into_iter()
                                 .map(|datum| {
@@ -154,11 +138,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         };
                         {
                             _ = class_description_bitmap;
-                            _ = extension_wrapper;
-                            crate::datatypes::ClassDescription::try_to_arrow_opt(
-                                class_description,
-                                None::<&str>,
-                            )?
+                            crate::datatypes::ClassDescription::try_to_arrow_opt(class_description)?
                         }
                     },
                 ],
@@ -271,21 +251,4 @@ impl crate::Loggable for ClassDescriptionMapElem {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for ClassDescriptionMapElem {}

@@ -45,6 +45,7 @@ src/datatypes/mod.rs linguist-generated=true
 src/datatypes/quaternion.rs linguist-generated=true
 src/datatypes/rotation3d.rs linguist-generated=true
 src/datatypes/rotation_axis_angle.rs linguist-generated=true
+src/datatypes/scalars.rs linguist-generated=true
 src/datatypes/scale3d.rs linguist-generated=true
 src/datatypes/tensor_buffer.rs linguist-generated=true
 src/datatypes/tensor_data.rs linguist-generated=true
