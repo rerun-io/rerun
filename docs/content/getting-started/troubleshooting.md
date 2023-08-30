@@ -25,6 +25,7 @@ On WSL2, in addition to the above packages for Linux, you also need to run:
 sometimes causes Rerun to crash. Try setting `WINIT_UNIX_BACKEND=x11` as a workaround.
 
 ## Graphics issues
+<--! This section is linked to from `crates/re_viewer/src/native.rs` -->
 
 [Wgpu](https://github.com/gfx-rs/wgpu) (the graphics API we use) maintains a list of
 [known driver issues](https://github.com/gfx-rs/wgpu/wiki/Known-Driver-Issues) and workarounds for them.
@@ -33,6 +34,8 @@ The following environment variables overwrite the config we choose for wgpu:
 * `WGPU_BACKEND`: Overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
     Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we use `metal`.
 * `WGPU_POWER_PREF`: Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+
+For instance, you can try `WGPU_BACKEND=gl rerun`.
 
 We recommend setting these only if you're asked to try them or know what you're doing,
 since we don't support all of these settings equally well.
