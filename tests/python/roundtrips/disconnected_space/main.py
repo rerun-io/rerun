@@ -15,7 +15,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "roundtrip_disconnected_space")
+    rr.script_setup(args, "rerun_example_roundtrip_disconnected_space")
 
     rr2.log("disconnected_space", rr2.DisconnectedSpace(True))
 

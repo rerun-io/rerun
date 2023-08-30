@@ -14,12 +14,15 @@
 
 mod channel_logger;
 mod multi_logger;
+mod result_extensions;
 mod setup;
 
 #[cfg(target_arch = "wasm32")]
 mod web_logger;
 
 pub use log::{Level, LevelFilter};
+
+pub use result_extensions::ResultExt;
 
 // The tracing macros support more syntax features than the log, that's why we use them:
 pub use tracing::{debug, error, info, trace, warn};
@@ -41,13 +44,16 @@ pub mod external {
 }
 
 /// Never log anything less serious than a `ERROR` from these crates.
-const CRATES_AT_ERROR_LEVEL: [&str; 1] = [
+const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // Waiting for https://github.com/etemesi254/zune-image/issues/131 to be released
     "zune_jpeg",
+    // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
+    #[cfg(not(debug_assertions))]
+    "rustls",
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
-const CRATES_AT_WARN_LEVEL: [&str; 3] = [
+const CRATES_AT_WARN_LEVEL: &[&str] = &[
     // wgpu crates spam a lot on info level, which is really annoying
     // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
     "naga",
@@ -56,9 +62,14 @@ const CRATES_AT_WARN_LEVEL: [&str; 3] = [
 ];
 
 /// Never log anything less serious than a `INFO` from these crates.
-const CRATES_FORCED_TO_INFO: [&str; 4] = [
+const CRATES_FORCED_TO_INFO: &[&str] = &[
     // These are quite spammy on debug, drowning out what we care about:
-    "h2", "hyper", "rustls", "ureq",
+    "h2",
+    "hyper",
+    "ureq",
+    // only let rustls run in debug mode: https://github.com/rerun-io/rerun/issues/3104
+    #[cfg(debug_assertions)]
+    "rustls",
 ];
 
 /// Should we log this message given the filter?

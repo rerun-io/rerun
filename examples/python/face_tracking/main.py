@@ -116,7 +116,9 @@ class FaceDetectorLogger:
         # With this annotation, the viewer will connect the keypoints with some lines to improve visibility.
         rr.log_annotation_context(
             "video/detector",
-            rr.ClassDescription(keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]),
+            rr.ClassDescription(
+                info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
+            ),
         )
 
     def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
@@ -407,7 +409,7 @@ def main() -> None:
     args, unknown = parser.parse_known_args()
     for arg in unknown:
         logging.warning(f"unknown arg: {arg}")
-    rr.script_setup(args, "mp_face_detection")
+    rr.script_setup(args, "rerun_example_mp_face_detection")
 
     if args.demo_image:
         if not SAMPLE_IMAGE_PATH.exists():

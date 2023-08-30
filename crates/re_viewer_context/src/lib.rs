@@ -22,7 +22,10 @@ pub mod gpu_bridge;
 
 use std::hash::BuildHasher;
 
-pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSING_ANNOTATIONS};
+pub use annotations::{
+    AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
+    MISSING_ANNOTATIONS,
+};
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
 pub use command_sender::{
@@ -30,16 +33,18 @@ pub use command_sender::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
+use re_log_types::EntityPath;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, SpaceViewClass,
-    SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
+    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, NamedViewSystem, PerSystemEntities,
+    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
     ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
+    ViewSystemName,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
@@ -66,8 +71,18 @@ pub mod external {
 pub struct SpaceViewId(uuid::Uuid);
 
 impl SpaceViewId {
+    pub fn invalid() -> Self {
+        Self(uuid::Uuid::nil())
+    }
+
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
+    }
+
+    pub fn from_entity_path(path: &EntityPath) -> Self {
+        path.last()
+            .and_then(|last| uuid::Uuid::parse_str(last.to_string().as_str()).ok())
+            .map_or(Self::invalid(), Self)
     }
 
     pub fn hashed_from_str(s: &str) -> Self {

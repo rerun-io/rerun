@@ -92,18 +92,21 @@ ANNOTATION_CONTEXT_INPUTS = [
         (2, "label2", [4, 5, 6]),
     ],
     [
-        rr_dt.ClassDescription((1, "label1", [1, 2, 3]), keypoint_annotations=[(3, "kp_label1", [7, 8, 9])]),
-        rr_dt.ClassDescription((2, "label2", [4, 5, 6]), keypoint_annotations=[(4, "kp_label2", [10, 11, 12])]),
+        rr_dt.ClassDescription(info=(1, "label1", [1, 2, 3]), keypoint_annotations=[(3, "kp_label1", [7, 8, 9])]),
+        rr_dt.ClassDescription(info=(2, "label2", [4, 5, 6]), keypoint_annotations=[(4, "kp_label2", [10, 11, 12])]),
     ],
     [
         rr_dt.AnnotationInfo(1, "label1"),
         rr_dt.AnnotationInfo(2, color=[4, 5, 6]),
     ],
     [
-        rr_dt.ClassDescription((1, "label1"), keypoint_annotations=[(3, "kp_label1")]),
-        rr_dt.ClassDescription((2, "label2", [4, 5, 6]), keypoint_annotations=[(4, "kp_label2", [10, 11, 12])]),
+        rr_dt.ClassDescription(info=(1, "label1"), keypoint_annotations=[(3, "kp_label1")]),
+        rr_dt.ClassDescription(info=(2, "label2", [4, 5, 6]), keypoint_annotations=[(4, "kp_label2", [10, 11, 12])]),
     ],
-    [rr_dt.ClassDescription((1, "label1"), keypoint_connections=[(1, 2)]), rr_dt.ClassDescription((2, "label2"))],
+    [
+        rr_dt.ClassDescription(info=(1, "label1"), keypoint_connections=[(1, 2)]),
+        rr_dt.ClassDescription(info=(2, "label2")),
+    ],
 ]
 
 
@@ -113,13 +116,13 @@ def assert_correct_annotation_context(ctx: rr_cmp.AnnotationContext) -> None:
         rr_dt.ClassDescriptionMapElem(
             class_id=1,
             class_description=rr_dt.ClassDescription(
-                (1, "label1", [1, 2, 3]), keypoint_annotations=[(3, "kp_label1", [7, 8, 9])]
+                info=(1, "label1", [1, 2, 3]), keypoint_annotations=[(3, "kp_label1", [7, 8, 9])]
             ),
         ),
         rr_dt.ClassDescriptionMapElem(
             class_id=2,
             class_description=rr_dt.ClassDescription(
-                (2, "label2", [4, 5, 6]), keypoint_annotations=[(4, "kp_label2", [10, 11, 12])]
+                info=(2, "label2", [4, 5, 6]), keypoint_annotations=[(4, "kp_label2", [10, 11, 12])]
             ),
         ),
     ]
@@ -145,7 +148,7 @@ def test_annotation_context_component(ctx: Sequence[rr_dt.ClassDescriptionMapEle
 
 
 ANNOTATION_ARCH_INPUTS = [
-    rr_dt.ClassDescription((1, "label1", [1, 2, 3])),
+    rr_dt.ClassDescription(info=(1, "label1", [1, 2, 3])),
 ] + ANNOTATION_CONTEXT_INPUTS
 
 

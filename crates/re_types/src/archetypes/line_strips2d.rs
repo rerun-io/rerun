@@ -26,7 +26,8 @@
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+///    let (rec_stream, storage) =
+///        RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
 ///
 ///    let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
 ///    #[rustfmt::skip]
@@ -60,7 +61,8 @@
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+///    let (rec_stream, storage) =
+///        RecordingStreamBuilder::new("rerun_example_line_segments2d").memory()?;
 ///
 ///    let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
 ///    MsgSender::from_archetype("segments", &LineStrips2D::new(points.chunks(2)))?
@@ -161,6 +163,16 @@ impl crate::Archetype for LineStrips2D {
     #[inline]
     fn all_components() -> &'static [crate::ComponentName] {
         ALL_COMPONENTS.as_slice()
+    }
+
+    #[inline]
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.LineStrips2DIndicator".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.strips.len()
     }
 
     #[inline]
@@ -310,6 +322,26 @@ impl crate::Archetype for LineStrips2D {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.LineStrips2D#instance_keys")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.LineStrips2DIndicator".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.LineStrips2DIndicator".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.LineStrips2DIndicator",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
             },
         ]
         .into_iter()

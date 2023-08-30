@@ -10,7 +10,7 @@ pub use lines::{
 mod point_cloud;
 pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-    PointCloudVertex,
+    PositionRadius,
 };
 
 mod depth_cloud;

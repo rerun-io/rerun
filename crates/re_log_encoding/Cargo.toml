@@ -37,7 +37,7 @@ re_smart_channel.workspace = true
 re_tracing.workspace = true
 
 # External:
-ehttp = { version = "0.3", features = ["streaming"] }
+ehttp = { workspace = true, features = ["streaming"] }
 parking_lot.workspace = true
 thiserror.workspace = true
 web-time.workspace = true

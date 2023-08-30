@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -13,7 +14,6 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -33,11 +33,10 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("points3d_simple");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_points3d_simple");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    rr_stream.log("points", rr::archetypes::Points3D({{0.0f, 0.0f, 0.0f},
-        ///    {1.0f, 1.0f, 1.0f}}));
+        ///    rr_stream.log("points", rr::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
         /// }
         ///```
         struct Points3D {

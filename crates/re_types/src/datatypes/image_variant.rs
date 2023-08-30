@@ -57,7 +57,7 @@ impl crate::Loggable for ImageVariant {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -125,11 +125,11 @@ impl crate::Loggable for ImageVariant {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::ImageVariant>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::ImageVariant>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::ImageVariant>::to_arrow_datatype()
+                    <crate::datatypes::ImageVariant>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -401,7 +401,7 @@ impl crate::Loggable for ImageVariant {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
@@ -589,7 +589,7 @@ impl crate::Loggable for ImageVariant {
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(
-                                        Self::to_arrow_datatype(),
+                                        Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ))

@@ -1,3 +1,4 @@
+use re_data_source::DataSource;
 use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
@@ -6,9 +7,8 @@ use re_ui::{UICommand, UICommandSender};
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
-    /// Load an RRD by Filename
-    #[cfg(not(target_arch = "wasm32"))]
-    LoadRrd(std::path::PathBuf),
+    /// Load some data.
+    LoadDataSource(DataSource),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,

@@ -15,7 +15,9 @@ pub use transform_context::{pinhole_camera_view_coordinates, TransformContext};
 // -----------------------------------------------------------------------------
 
 use re_renderer::DepthOffset;
-use re_viewer_context::{Annotations, SpaceViewClassRegistryError, ViewContextSystem};
+use re_viewer_context::{
+    Annotations, NamedViewSystem, SpaceViewClassRegistryError, ViewContextSystem,
+};
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
@@ -30,6 +32,12 @@ pub struct SpatialSceneEntityContext<'a> {
 #[derive(Default)]
 pub struct PrimitiveCounter {
     pub num_primitives: AtomicUsize,
+}
+
+impl NamedViewSystem for PrimitiveCounter {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "PrimitiveCounter".into()
+    }
 }
 
 impl ViewContextSystem for PrimitiveCounter {

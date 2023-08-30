@@ -3,32 +3,37 @@
 
 #include "primitive_component.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& PrimitiveComponent::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& PrimitiveComponent::arrow_datatype() {
             static const auto datatype = arrow::uint32();
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::UInt32Builder>>
-            PrimitiveComponent::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
+        Result<std::shared_ptr<arrow::UInt32Builder>> PrimitiveComponent::new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::UInt32Builder>(memory_pool));
+            return Result(std::make_shared<arrow::UInt32Builder>(memory_pool));
         }
 
-        arrow::Status PrimitiveComponent::fill_arrow_array_builder(
+        Error PrimitiveComponent::fill_arrow_array_builder(
             arrow::UInt32Builder* builder, const PrimitiveComponent* elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             static_assert(sizeof(*elements) == sizeof(elements->value));
@@ -36,7 +41,7 @@ namespace rerun {
                 builder->AppendValues(&elements->value, static_cast<int64_t>(num_elements))
             );
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

@@ -45,6 +45,7 @@ testing = []
 # Rerun
 re_error.workspace = true
 re_log.workspace = true
+re_string_interner.workspace = true
 re_tracing.workspace = true
 
 # External
@@ -77,8 +78,6 @@ serde = { version = "1", optional = true, features = ["derive", "rc"] }
 zune-core = { version = "0.2", optional = true }
 zune-jpeg = { version = "0.3", optional = true }
 
-# Rerun
-re_string_interner.workspace = true
 
 [dev-dependencies]
 

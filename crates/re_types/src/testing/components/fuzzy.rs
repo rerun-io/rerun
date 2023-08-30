@@ -47,7 +47,7 @@ impl crate::Loggable for AffixFuzzer1 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -109,7 +109,7 @@ impl crate::Loggable for AffixFuzzer1 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -233,7 +233,7 @@ impl crate::Loggable for AffixFuzzer2 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -295,7 +295,7 @@ impl crate::Loggable for AffixFuzzer2 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -419,7 +419,7 @@ impl crate::Loggable for AffixFuzzer3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -481,7 +481,7 @@ impl crate::Loggable for AffixFuzzer3 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -605,7 +605,7 @@ impl crate::Loggable for AffixFuzzer4 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -667,7 +667,7 @@ impl crate::Loggable for AffixFuzzer4 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -793,7 +793,7 @@ impl crate::Loggable for AffixFuzzer5 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -855,7 +855,7 @@ impl crate::Loggable for AffixFuzzer5 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -981,7 +981,7 @@ impl crate::Loggable for AffixFuzzer6 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -1043,7 +1043,7 @@ impl crate::Loggable for AffixFuzzer6 {
             },
             Field {
                 name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -1171,11 +1171,11 @@ impl crate::Loggable for AffixFuzzer7 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -1231,7 +1231,7 @@ impl crate::Loggable for AffixFuzzer7 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer7".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -1270,8 +1270,7 @@ impl crate::Loggable for AffixFuzzer7 {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
-                            data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(
-                            ),
+                            data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                             is_nullable: true,
                             metadata: [].into(),
                         })),
@@ -1375,7 +1374,7 @@ impl crate::Loggable for AffixFuzzer8 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Float32
     }
@@ -1413,7 +1412,7 @@ impl crate::Loggable for AffixFuzzer8 {
                     _ = extension_wrapper;
                     DataType::Extension(
                         "rerun.testing.components.AffixFuzzer8".to_owned(),
-                        Box::new(Self::to_arrow_datatype()),
+                        Box::new(Self::arrow_datatype()),
                         None,
                     )
                     .to_logical_type()
@@ -1501,7 +1500,7 @@ impl crate::Loggable for AffixFuzzer9 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Utf8
     }
@@ -1550,7 +1549,7 @@ impl crate::Loggable for AffixFuzzer9 {
                             _ = extension_wrapper;
                             DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer9".to_owned(),
-                                Box::new(Self::to_arrow_datatype()),
+                                Box::new(Self::arrow_datatype()),
                                 None,
                             )
                             .to_logical_type()
@@ -1670,7 +1669,7 @@ impl crate::Loggable for AffixFuzzer10 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Utf8
     }
@@ -1721,7 +1720,7 @@ impl crate::Loggable for AffixFuzzer10 {
                             _ = extension_wrapper;
                             DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer10".to_owned(),
-                                Box::new(Self::to_arrow_datatype()),
+                                Box::new(Self::arrow_datatype()),
                                 None,
                             )
                             .to_logical_type()
@@ -1841,7 +1840,7 @@ impl crate::Loggable for AffixFuzzer11 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
@@ -1902,7 +1901,7 @@ impl crate::Loggable for AffixFuzzer11 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer11".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -2060,7 +2059,7 @@ impl crate::Loggable for AffixFuzzer12 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
@@ -2118,7 +2117,7 @@ impl crate::Loggable for AffixFuzzer12 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer12".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -2331,7 +2330,7 @@ impl crate::Loggable for AffixFuzzer13 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
@@ -2391,7 +2390,7 @@ impl crate::Loggable for AffixFuzzer13 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer13".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -2610,7 +2609,7 @@ impl crate::Loggable for AffixFuzzer14 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -2636,7 +2635,7 @@ impl crate::Loggable for AffixFuzzer14 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -2774,7 +2773,7 @@ impl crate::Loggable for AffixFuzzer15 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -2800,7 +2799,7 @@ impl crate::Loggable for AffixFuzzer15 {
                     name: "craziness".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::to_arrow_datatype(),
+                        data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                         is_nullable: false,
                         metadata: [].into(),
                     })),
@@ -2942,11 +2941,11 @@ impl crate::Loggable for AffixFuzzer16 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
             is_nullable: false,
             metadata: [].into(),
         }))
@@ -3000,7 +2999,7 @@ impl crate::Loggable for AffixFuzzer16 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer16".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -3039,8 +3038,7 @@ impl crate::Loggable for AffixFuzzer16 {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
-                            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(
-                            ),
+                            data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                             is_nullable: false,
                             metadata: [].into(),
                         })),
@@ -3154,11 +3152,11 @@ impl crate::Loggable for AffixFuzzer17 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -3214,7 +3212,7 @@ impl crate::Loggable for AffixFuzzer17 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer17".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -3253,8 +3251,7 @@ impl crate::Loggable for AffixFuzzer17 {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
-                            data_type: <crate::testing::datatypes::AffixFuzzer3>::to_arrow_datatype(
-                            ),
+                            data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                             is_nullable: true,
                             metadata: [].into(),
                         })),
@@ -3368,11 +3365,11 @@ impl crate::Loggable for AffixFuzzer18 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }))
@@ -3428,7 +3425,7 @@ impl crate::Loggable for AffixFuzzer18 {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.testing.components.AffixFuzzer18".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()
@@ -3467,8 +3464,7 @@ impl crate::Loggable for AffixFuzzer18 {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
-                            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(
-                            ),
+                            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
                             is_nullable: true,
                             metadata: [].into(),
                         })),
@@ -3580,11 +3576,11 @@ impl crate::Loggable for AffixFuzzer19 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "single_optional_union".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer4>::to_arrow_datatype(),
+            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])
@@ -3701,18 +3697,18 @@ impl crate::Loggable for AffixFuzzer20 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "p".to_owned(),
-                data_type: <crate::testing::datatypes::PrimitiveComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
             Field {
                 name: "s".to_owned(),
-                data_type: <crate::testing::datatypes::StringComponent>::to_arrow_datatype(),
+                data_type: <crate::testing::datatypes::StringComponent>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },

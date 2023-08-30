@@ -42,7 +42,7 @@ impl crate::Loggable for Vec4D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::FixedSizeList(
             Box::new(Field {
@@ -104,7 +104,7 @@ impl crate::Loggable for Vec4D {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.datatypes.Vec4D".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()

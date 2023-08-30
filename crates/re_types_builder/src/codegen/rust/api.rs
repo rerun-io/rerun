@@ -29,7 +29,7 @@ use crate::{
 use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
 
 // TODO(cmc): it'd be nice to be able to generate vanilla comments (as opposed to doc-comments)
-// once again at some point (`TokenStream` strips them)... nothing too urgent though.
+// once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
 // ---
 
@@ -179,7 +179,7 @@ fn create_files(
             let mut acc = TokenStream::new();
 
             // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
-            // inject some of our own when writing to file... while making sure that don't inject
+            // inject some of our own when writing to file… while making sure that don't inject
             // random spacing into doc comments that look like code!
 
             let mut tokens = obj.tokens.into_iter();
@@ -846,7 +846,7 @@ fn quote_trait_impls_from_obj(
 
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+                    fn arrow_datatype() -> arrow2::datatypes::DataType {
                         use ::arrow2::datatypes::*;
                         #datatype
                     }
@@ -912,6 +912,24 @@ fn quote_trait_impls_from_obj(
                 let quoted_components = quote!(#(#components.into(),)*);
                 (num_components, quoted_components)
             }
+
+            let first_required_comp = obj
+                .fields
+                .iter()
+                .find(|field| {
+                    field
+                        .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
+                        .is_some()
+                })
+                // NOTE: must have at least one required component.
+                .unwrap();
+
+            let num_instances = if first_required_comp.typ.is_plural() {
+                let name = format_ident!("{}", first_required_comp.name);
+                quote!(self.#name.len())
+            } else {
+                quote!(1)
+            };
 
             let (num_required, required) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, objects);
@@ -1056,6 +1074,9 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
+            let indicator_fqname =
+                format!("{}Indicator", obj.fqname).replace("rerun.archetypes", "rerun.components");
+
             quote! {
                 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> =
                     once_cell::sync::Lazy::new(|| {[#required]});
@@ -1100,11 +1121,39 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
+                    fn indicator_component() -> crate::ComponentName  {
+                        #indicator_fqname.into()
+                    }
+
+                    #[inline]
+                    fn num_instances(&self) -> usize {
+                        #num_instances
+                    }
+
+                    #[inline]
                     fn try_to_arrow(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
                         use crate::{Loggable as _, ResultExt as _};
-                        Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
+                        Ok([
+                            #({ #all_serializers }),*,
+                            // Inject the indicator component.
+                            {
+                                let datatype = ::arrow2::datatypes::DataType::Extension(
+                                    #indicator_fqname.to_owned(),
+                                    Box::new(::arrow2::datatypes::DataType::Null),
+                                    // NOTE: Mandatory during migration to codegen.
+                                    Some(#indicator_fqname.to_owned()),
+                                );
+                                let array = ::arrow2::array::NullArray::new(
+                                    datatype.to_logical_type().clone(), self.num_instances(),
+                                ).boxed();
+                                Some((
+                                    ::arrow2::datatypes::Field::new(#indicator_fqname, datatype, false),
+                                    array,
+                                ))
+                            },
+                        ].into_iter().flatten().collect())
                     }
 
                     #[inline]

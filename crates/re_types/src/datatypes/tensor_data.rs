@@ -53,12 +53,12 @@ impl crate::Loggable for TensorData {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "id".to_owned(),
-                data_type: <crate::datatypes::TensorId>::to_arrow_datatype(),
+                data_type: <crate::datatypes::TensorId>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -66,7 +66,7 @@ impl crate::Loggable for TensorData {
                 name: "shape".to_owned(),
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
-                    data_type: <crate::datatypes::TensorDimension>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::TensorDimension>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 })),
@@ -75,7 +75,7 @@ impl crate::Loggable for TensorData {
             },
             Field {
                 name: "buffer".to_owned(),
-                data_type: <crate::datatypes::TensorBuffer>::to_arrow_datatype(),
+                data_type: <crate::datatypes::TensorBuffer>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -108,11 +108,11 @@ impl crate::Loggable for TensorData {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::TensorData>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::TensorData>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::TensorData>::to_arrow_datatype()
+                    <crate::datatypes::TensorData>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -223,10 +223,15 @@ impl crate::Loggable for TensorData {
                             ListArray::new(
                                 {
                                     _ = extension_wrapper;
-                                    DataType::List(Box::new(Field { name : "item".to_owned(),
-                        data_type : < crate ::datatypes::TensorDimension >
-                        ::to_arrow_datatype(), is_nullable : false, metadata : [].into(),
-                        })).to_logical_type().clone()
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type:
+                                            <crate::datatypes::TensorDimension>::arrow_datatype(),
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 {
@@ -288,7 +293,7 @@ impl crate::Loggable for TensorData {
                         DataType::Struct(vec![
                             Field {
                                 name: "id".to_owned(),
-                                data_type: <crate::datatypes::TensorId>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::TensorId>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
@@ -296,8 +301,8 @@ impl crate::Loggable for TensorData {
                                 name: "shape".to_owned(),
                                 data_type: DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::TensorDimension>::to_arrow_datatype(),
+                                    data_type: <crate::datatypes::TensorDimension>::arrow_datatype(
+                                    ),
                                     is_nullable: false,
                                     metadata: [].into(),
                                 })),
@@ -306,7 +311,7 @@ impl crate::Loggable for TensorData {
                             },
                             Field {
                                 name: "buffer".to_owned(),
-                                data_type: <crate::datatypes::TensorBuffer>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::TensorBuffer>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
@@ -328,7 +333,7 @@ impl crate::Loggable for TensorData {
                 let id = {
                     if !arrays_by_name.contains_key("id") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "id",
                         ))
                         .with_context("rerun.datatypes.TensorData");
@@ -412,7 +417,7 @@ impl crate::Loggable for TensorData {
                 let shape = {
                     if !arrays_by_name.contains_key("shape") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "shape",
                         ))
                         .with_context("rerun.datatypes.TensorData");
@@ -422,17 +427,18 @@ impl crate::Loggable for TensorData {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
-                                        data_type: <crate::datatypes::TensorDimension>::to_arrow_datatype(),
+                                        data_type:
+                                            <crate::datatypes::TensorDimension>::arrow_datatype(),
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorData#shape")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -483,7 +489,7 @@ impl crate::Loggable for TensorData {
                 let buffer = {
                     if !arrays_by_name.contains_key("buffer") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "buffer",
                         ))
                         .with_context("rerun.datatypes.TensorData");

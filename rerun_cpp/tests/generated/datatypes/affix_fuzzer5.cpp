@@ -5,46 +5,49 @@
 
 #include "affix_fuzzer4.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer5::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer5::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "single_optional_union",
-                    rerun::datatypes::AffixFuzzer4::to_arrow_datatype(),
+                    rerun::datatypes::AffixFuzzer4::arrow_datatype(),
                     true
                 ),
             });
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer5::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer5::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+            return Result(std::make_shared<arrow::StructBuilder>(
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rerun::datatypes::AffixFuzzer4::new_arrow_array_builder(memory_pool)
-                        .ValueOrDie(),
+                    rerun::datatypes::AffixFuzzer4::new_arrow_array_builder(memory_pool).value,
                 })
             ));
         }
 
-        arrow::Status AffixFuzzer5::fill_arrow_array_builder(
+        Error AffixFuzzer5::fill_arrow_array_builder(
             arrow::StructBuilder *builder, const AffixFuzzer5 *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             {
@@ -54,13 +57,11 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.single_optional_union.has_value()) {
-                        ARROW_RETURN_NOT_OK(
-                            rerun::datatypes::AffixFuzzer4::fill_arrow_array_builder(
-                                field_builder,
-                                &element.single_optional_union.value(),
-                                1
-                            )
-                        );
+                        RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer4::fill_arrow_array_builder(
+                            field_builder,
+                            &element.single_optional_union.value(),
+                            1
+                        ));
                     } else {
                         ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                     }
@@ -68,7 +69,7 @@ namespace rerun {
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

@@ -54,7 +54,7 @@ impl crate::Loggable for AnnotationInfo {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -65,13 +65,13 @@ impl crate::Loggable for AnnotationInfo {
             },
             Field {
                 name: "label".to_owned(),
-                data_type: <crate::datatypes::Label>::to_arrow_datatype(),
+                data_type: <crate::datatypes::Label>::arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
             Field {
                 name: "color".to_owned(),
-                data_type: <crate::datatypes::Color>::to_arrow_datatype(),
+                data_type: <crate::datatypes::Color>::arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
@@ -104,11 +104,11 @@ impl crate::Loggable for AnnotationInfo {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::AnnotationInfo>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::AnnotationInfo>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::AnnotationInfo>::to_arrow_datatype()
+                    <crate::datatypes::AnnotationInfo>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -262,13 +262,13 @@ impl crate::Loggable for AnnotationInfo {
                             },
                             Field {
                                 name: "label".to_owned(),
-                                data_type: <crate::datatypes::Label>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::Label>::arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
                             Field {
                                 name: "color".to_owned(),
-                                data_type: <crate::datatypes::Color>::to_arrow_datatype(),
+                                data_type: <crate::datatypes::Color>::arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
@@ -290,7 +290,7 @@ impl crate::Loggable for AnnotationInfo {
                 let id = {
                     if !arrays_by_name.contains_key("id") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "id",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -312,7 +312,7 @@ impl crate::Loggable for AnnotationInfo {
                 let label = {
                     if !arrays_by_name.contains_key("label") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "label",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -366,7 +366,7 @@ impl crate::Loggable for AnnotationInfo {
                 let color = {
                     if !arrays_by_name.contains_key("color") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "color",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");

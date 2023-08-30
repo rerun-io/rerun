@@ -54,7 +54,7 @@ pub fn quote_arrow_deserializer(
     let data_src = format_ident!("arrow_data");
 
     let datatype = &arrow_registry.get(&obj.fqname);
-    let quoted_datatype = quote! { Self::to_arrow_datatype() };
+    let quoted_datatype = quote! { Self::arrow_datatype() };
 
     let obj_fqname = obj.fqname.as_str();
     let is_arrow_transparent = obj.datatype.is_none();
@@ -132,7 +132,7 @@ pub fn quote_arrow_deserializer(
                         let #data_dst = {
                             // NOTE: `arrays_by_name` is a runtime collection of all of the input's
                             // payload's struct fields, while `#field_name` is the field we're
-                            // looking for at comptime... there's no guarantee it's actually there at
+                            // looking for at comptime… there's no guarantee it's actually there at
                             // runtime!
                             if !arrays_by_name.contains_key(#field_name) {
                                 return Err(crate::DeserializationError::missing_struct_field(
@@ -227,7 +227,7 @@ pub fn quote_arrow_deserializer(
                             let #data_dst = {
                                 // NOTE: `data_src_arrays` is a runtime collection of all of the
                                 // input's payload's union arms, while `#i` is our comptime union
-                                // arm counter... there's no guarantee it's actually there at
+                                // arm counter… there's no guarantee it's actually there at
                                 // runtime!
                                 if #i >= #data_src_arrays.len() {
                                     // By not returning an error but rather defaulting to an empty
@@ -699,7 +699,9 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::Struct(_) | DataType::Union(_, _, _) => {
-            let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+            let DataType::Extension(fqname, _, _) = datatype else {
+                unreachable!()
+            };
             let fqname_use = quote_fqname_as_type_path(fqname);
             quote!(#fqname_use::try_from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }

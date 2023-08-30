@@ -7,9 +7,15 @@
 #include "../datatypes/vec3d.hpp"
 #include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
+#include <memory>
 #include <utility>
+
+namespace arrow {
+    class DataType;
+    class FixedSizeListBuilder;
+    class MemoryPool;
+} // namespace arrow
 
 namespace rerun {
     namespace components {
@@ -51,14 +57,15 @@ namespace rerun {
             Vector3D(const float (&arg)[3]) : vector(arg) {}
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
-            static arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
-                new_arrow_array_builder(arrow::MemoryPool* memory_pool);
+            static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
+                arrow::MemoryPool* memory_pool
+            );
 
             /// Fills an arrow array builder with an array of this type.
-            static arrow::Status fill_arrow_array_builder(
+            static Error fill_arrow_array_builder(
                 arrow::FixedSizeListBuilder* builder, const Vector3D* elements, size_t num_elements
             );
 

@@ -207,9 +207,9 @@ impl std::ops::DerefMut for TableId {
 /// (standard):
 /// ```text
 /// [
-///   [[C1, C1, C1], [], [C3], [C4, C4, C4], ...],
-///   [None, [C2, C2], [], [C4], ...],
-///   [None, [C2, C2], [], None, ...],
+///   [[C1, C1, C1], [], [C3], [C4, C4, C4], …],
+///   [None, [C2, C2], [], [C4], …],
+///   [None, [C2, C2], [], None, …],
 ///   ...
 /// ]
 /// ```
@@ -589,21 +589,21 @@ impl DataTable {
             let (control_schema, control_columns) = self.serialize_time_columns();
             schema.fields.extend(control_schema.fields);
             schema.metadata.extend(control_schema.metadata);
-            columns.extend(control_columns.into_iter());
+            columns.extend(control_columns);
         }
 
         {
             let (control_schema, control_columns) = self.serialize_control_columns()?;
             schema.fields.extend(control_schema.fields);
             schema.metadata.extend(control_schema.metadata);
-            columns.extend(control_columns.into_iter());
+            columns.extend(control_columns);
         }
 
         {
             let (data_schema, data_columns) = self.serialize_data_columns()?;
             schema.fields.extend(data_schema.fields);
             schema.metadata.extend(data_schema.metadata);
-            columns.extend(data_columns.into_iter());
+            columns.extend(data_columns);
         }
 
         Ok((schema, Chunk::new(columns)))
@@ -698,8 +698,8 @@ impl DataTable {
 
         /// Transforms an array of unit values into a list of unit arrays.
         ///
-        /// * Before: `[C, C, C, C, C, ...]`
-        /// * After: `ListArray[ [C], [C], [C], [C], [C], ... ]`
+        /// * Before: `[C, C, C, C, C, …]`
+        /// * After: `ListArray[ [C], [C], [C], [C], [C], … ]`
         // NOTE: keeping that one around, just in case.
         #[allow(dead_code)]
         fn unit_values_to_unit_lists(array: Box<dyn Array>) -> Box<dyn Array> {
@@ -795,8 +795,8 @@ impl DataTable {
 
         /// Create a list-array out of a flattened array of cell values.
         ///
-        /// * Before: `[C, C, C, C, C, C, C, ...]`
-        /// * After: `ListArray[ [[C, C], [C, C, C], None, [C], [C], ...] ]`
+        /// * Before: `[C, C, C, C, C, C, C, …]`
+        /// * After: `ListArray[ [[C, C], [C, C, C], None, [C], [C], …] ]`
         fn data_to_lists(
             column: &[Option<DataCell>],
             data: Box<dyn Array>,

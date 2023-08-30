@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     let native_options = eframe::NativeOptions {
-        app_id: Some("my_app_id".to_owned()),
+        app_id: Some("rerun_example_app_id".to_owned()),
         ..re_viewer::native::eframe_options()
     };
 
@@ -51,19 +51,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         window_title,
         native_options,
         Box::new(move |cc| {
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-
             let re_ui = re_viewer::customize_eframe(cc);
 
-            let rerun_app = re_viewer::App::from_receiver(
+            let mut rerun_app = re_viewer::App::new(
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,
                 re_ui,
                 cc.storage,
-                rx,
             );
-
+            rerun_app.add_receiver(rx);
             Box::new(MyApp { rerun_app })
         }),
     )?;

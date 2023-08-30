@@ -6,53 +6,53 @@
 #include "quaternion.hpp"
 #include "rotation_axis_angle.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Rotation3D::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Rotation3D::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field(
-                    "Quaternion",
-                    rerun::datatypes::Quaternion::to_arrow_datatype(),
-                    false
-                ),
+                arrow::field("Quaternion", rerun::datatypes::Quaternion::arrow_datatype(), false),
                 arrow::field(
                     "AxisAngle",
-                    rerun::datatypes::RotationAxisAngle::to_arrow_datatype(),
+                    rerun::datatypes::RotationAxisAngle::arrow_datatype(),
                     false
                 ),
             });
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
-            Rotation3D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+        Result<std::shared_ptr<arrow::DenseUnionBuilder>> Rotation3D::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::DenseUnionBuilder>(
+            return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
-                    rerun::datatypes::Quaternion::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rerun::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool)
-                        .ValueOrDie(),
+                    rerun::datatypes::Quaternion::new_arrow_array_builder(memory_pool).value,
+                    rerun::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool).value,
                 }),
-                to_arrow_datatype()
+                arrow_datatype()
             ));
         }
 
-        arrow::Status Rotation3D::fill_arrow_array_builder(
+        Error Rotation3D::fill_arrow_array_builder(
             arrow::DenseUnionBuilder *builder, const Rotation3D *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -71,7 +71,7 @@ namespace rerun {
                     case detail::Rotation3DTag::Quaternion: {
                         auto variant_builder =
                             static_cast<arrow::FixedSizeListBuilder *>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(rerun::datatypes::Quaternion::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Quaternion::fill_arrow_array_builder(
                             variant_builder,
                             &union_instance._data.quaternion,
                             1
@@ -81,7 +81,7 @@ namespace rerun {
                     case detail::Rotation3DTag::AxisAngle: {
                         auto variant_builder =
                             static_cast<arrow::StructBuilder *>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(
+                        RR_RETURN_NOT_OK(
                             rerun::datatypes::RotationAxisAngle::fill_arrow_array_builder(
                                 variant_builder,
                                 &union_instance._data.axis_angle,
@@ -93,7 +93,7 @@ namespace rerun {
                 }
             }
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

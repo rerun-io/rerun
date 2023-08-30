@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -12,7 +13,6 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -33,7 +33,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("line_strip3d");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_line_strip3d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec3D> strip1 = {
@@ -54,7 +54,7 @@ namespace rerun {
         ///    };
         ///    rr_stream.log(
         ///        "strips",
-        ///        rr::archetypes::LineStrips3D({strip1, strip2})
+        ///        rr::LineStrips3D({strip1, strip2})
         ///            .with_colors({0xFF0000FF, 0x00FF00FF})
         ///            .with_radii({0.025f, 0.005f})
         ///            .with_labels({"one strip here", "and one strip there"})
@@ -71,7 +71,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("line_segments3d");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_line_segments3d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::datatypes::Vec3D> points = {
@@ -84,7 +84,7 @@ namespace rerun {
         ///        {0.f, 1.f, 0.f},
         ///        {0.f, 1.f, 1.f},
         ///    };
-        ///    rr_stream.log("segments", rr::archetypes::LineStrips3D(points));
+        ///    rr_stream.log("segments", rr::LineStrips3D(points));
         /// }
         ///```
         struct LineStrips3D {

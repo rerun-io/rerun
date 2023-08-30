@@ -48,7 +48,7 @@ impl crate::Loggable for Transform3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -60,13 +60,13 @@ impl crate::Loggable for Transform3D {
                 },
                 Field {
                     name: "TranslationAndMat3x3".to_owned(),
-                    data_type: <crate::datatypes::TranslationAndMat3x3>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
                 Field {
                     name: "TranslationRotationScale".to_owned(),
-                    data_type: <crate::datatypes::TranslationRotationScale3D>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::TranslationRotationScale3D>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
@@ -98,11 +98,11 @@ impl crate::Loggable for Transform3D {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::Transform3D>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::Transform3D>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::Transform3D>::to_arrow_datatype()
+                    <crate::datatypes::Transform3D>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -229,12 +229,11 @@ impl crate::Loggable for Transform3D {
                             DataType::Null, is_nullable : true, metadata : [].into(), },
                             Field { name : "TranslationAndMat3x3".to_owned(), data_type :
                             < crate ::datatypes::TranslationAndMat3x3 >
-                            ::to_arrow_datatype(), is_nullable : false, metadata : []
+                            ::arrow_datatype(), is_nullable : false, metadata : []
                             .into(), }, Field { name : "TranslationRotationScale"
                             .to_owned(), data_type : < crate
-                            ::datatypes::TranslationRotationScale3D >
-                            ::to_arrow_datatype(), is_nullable : false, metadata : []
-                            .into(), },
+                            ::datatypes::TranslationRotationScale3D > ::arrow_datatype(),
+                            is_nullable : false, metadata : [].into(), },
                         ],
                             Some(vec![0i32, 1i32, 2i32]),
                             UnionMode::Dense,
@@ -252,7 +251,7 @@ impl crate::Loggable for Transform3D {
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
@@ -337,7 +336,7 @@ impl crate::Loggable for Transform3D {
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(
-                                        Self::to_arrow_datatype(),
+                                        Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ))

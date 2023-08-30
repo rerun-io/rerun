@@ -241,8 +241,8 @@ impl TimeControl {
                 self.following = false;
 
                 // Start from beginning if we are at the end:
-                if let Some(time_points) = times_per_timeline.get(self.timeline.get()) {
-                    if let Some(state) = self.states.get_mut(self.timeline.get()) {
+                if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+                    if let Some(state) = self.states.get_mut(&self.timeline) {
                         if max(time_points) <= state.time {
                             state.time = min(time_points).into();
                         }
@@ -256,7 +256,7 @@ impl TimeControl {
                 self.playing = true;
                 self.following = true;
 
-                if let Some(time_points) = times_per_timeline.get(self.timeline.get()) {
+                if let Some(time_points) = times_per_timeline.get(&self.timeline) {
                     // Set the time to the max:
                     match self.states.entry(*self.timeline) {
                         std::collections::btree_map::Entry::Vacant(entry) => {
@@ -276,7 +276,9 @@ impl TimeControl {
     }
 
     pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
-        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
+        let Some(time_values) = times_per_timeline.get(self.timeline()) else {
+            return;
+        };
 
         self.pause();
 
@@ -292,7 +294,9 @@ impl TimeControl {
     }
 
     pub fn step_time_fwd(&mut self, times_per_timeline: &TimesPerTimeline) {
-        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
+        let Some(time_values) = times_per_timeline.get(self.timeline()) else {
+            return;
+        };
 
         self.pause();
 
@@ -308,8 +312,8 @@ impl TimeControl {
     }
 
     pub fn restart(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if let Some(time_points) = times_per_timeline.get(self.timeline.get()) {
-            if let Some(state) = self.states.get_mut(self.timeline.get()) {
+        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+            if let Some(state) = self.states.get_mut(&self.timeline) {
                 state.time = min(time_points).into();
                 self.following = false;
             }
@@ -344,8 +348,8 @@ impl TimeControl {
             // the beginning in play mode.
 
             // Start from beginning if we are at the end:
-            if let Some(time_points) = times_per_timeline.get(self.timeline.get()) {
-                if let Some(state) = self.states.get_mut(self.timeline.get()) {
+            if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+                if let Some(state) = self.states.get_mut(&self.timeline) {
                     if max(time_points) <= state.time {
                         state.time = min(time_points).into();
                         self.playing = true;
@@ -380,7 +384,7 @@ impl TimeControl {
 
     /// playback fps
     pub fn set_fps(&mut self, fps: f32) {
-        if let Some(state) = self.states.get_mut(self.timeline.get()) {
+        if let Some(state) = self.states.get_mut(&self.timeline) {
             state.fps = fps;
         }
     }
@@ -407,7 +411,7 @@ impl TimeControl {
     /// The currently selected timeline
     #[inline]
     pub fn timeline(&self) -> &Timeline {
-        self.timeline.get()
+        &self.timeline
     }
 
     /// The time type of the currently selected timeline
@@ -473,7 +477,7 @@ impl TimeControl {
 
     /// Remove the current loop selection.
     pub fn remove_loop_selection(&mut self) {
-        if let Some(state) = self.states.get_mut(self.timeline.get()) {
+        if let Some(state) = self.states.get_mut(&self.timeline) {
             state.loop_selection = None;
         }
         if self.looping() == Looping::Selection {
@@ -525,7 +529,7 @@ impl TimeControl {
 
     /// The range of time we are currently zoomed in on.
     pub fn reset_time_view(&mut self) {
-        if let Some(state) = self.states.get_mut(self.timeline.get()) {
+        if let Some(state) = self.states.get_mut(&self.timeline) {
             state.view = None;
         }
     }

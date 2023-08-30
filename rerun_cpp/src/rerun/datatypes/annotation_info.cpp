@@ -6,44 +6,49 @@
 #include "color.hpp"
 #include "label.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AnnotationInfo::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AnnotationInfo::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("id", arrow::uint16(), false),
-                arrow::field("label", rerun::datatypes::Label::to_arrow_datatype(), true),
-                arrow::field("color", rerun::datatypes::Color::to_arrow_datatype(), true),
+                arrow::field("label", rerun::datatypes::Label::arrow_datatype(), true),
+                arrow::field("color", rerun::datatypes::Color::arrow_datatype(), true),
             });
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>>
-            AnnotationInfo::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+        Result<std::shared_ptr<arrow::StructBuilder>> AnnotationInfo::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+            return Result(std::make_shared<arrow::StructBuilder>(
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::UInt16Builder>(memory_pool),
-                    rerun::datatypes::Label::new_arrow_array_builder(memory_pool).ValueOrDie(),
-                    rerun::datatypes::Color::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::Label::new_arrow_array_builder(memory_pool).value,
+                    rerun::datatypes::Color::new_arrow_array_builder(memory_pool).value,
                 })
             ));
         }
 
-        arrow::Status AnnotationInfo::fill_arrow_array_builder(
+        Error AnnotationInfo::fill_arrow_array_builder(
             arrow::StructBuilder *builder, const AnnotationInfo *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             {
@@ -59,7 +64,7 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.label.has_value()) {
-                        ARROW_RETURN_NOT_OK(rerun::datatypes::Label::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Label::fill_arrow_array_builder(
                             field_builder,
                             &element.label.value(),
                             1
@@ -75,7 +80,7 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.color.has_value()) {
-                        ARROW_RETURN_NOT_OK(rerun::datatypes::Color::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Color::fill_arrow_array_builder(
                             field_builder,
                             &element.color.value(),
                             1
@@ -87,7 +92,7 @@ namespace rerun {
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

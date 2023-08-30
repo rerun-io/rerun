@@ -15,7 +15,7 @@ Some key features:
 * Built with multiple independent views/cameras in mind
 * WebGL compatible quality tier allows use in the browser without WebGPU support
 * Hot shader reloading
-* ... and more to come!
+* … and more to come!
 
 Goals & philosophy:
 * Handle fully dynamic data

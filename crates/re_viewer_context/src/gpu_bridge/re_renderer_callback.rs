@@ -44,21 +44,26 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         paint_callback_resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
         let Some(ctx) = paint_callback_resources.get_mut::<re_renderer::RenderContext>() else {
-            re_log::error_once!("Failed to execute egui prepare callback. No render context available.");
+            re_log::error_once!(
+                "Failed to execute egui prepare callback. No render context available."
+            );
             return Vec::new();
         };
 
         // Takes the view_builder out of the slotmap, so we don't have a mutable reference to ctx in use.
-        let Some(mut view_builder) = ctx.active_frame
+        let Some(mut view_builder) = ctx
+            .active_frame
             .per_frame_data_helper
             .get_mut::<ViewBuilderMap>()
             .and_then(|view_builder_map| {
                 view_builder_map
                     .get_mut(self.view_builder)
                     .and_then(|slot| slot.take())
-            }) else {
+            })
+        else {
             re_log::error_once!(
-                "Failed to execute egui prepare callback. View builder with handle {:?} not found.", self.view_builder
+                "Failed to execute egui prepare callback. View builder with handle {:?} not found.",
+                self.view_builder
             );
             return Vec::new();
         };
@@ -92,16 +97,21 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         paint_callback_resources: &'a egui_wgpu::CallbackResources,
     ) {
         let Some(ctx) = paint_callback_resources.get::<re_renderer::RenderContext>() else {
-            re_log::error_once!("Failed to execute egui draw callback. No render context available.");
+            re_log::error_once!(
+                "Failed to execute egui draw callback. No render context available."
+            );
             return;
         };
 
         let Some(Some(view_builder)) = ctx
             .active_frame
             .per_frame_data_helper
-            .get::<ViewBuilderMap>().and_then(|view_builder_map| view_builder_map.get(self.view_builder)) else {
+            .get::<ViewBuilderMap>()
+            .and_then(|view_builder_map| view_builder_map.get(self.view_builder))
+        else {
             re_log::error_once!(
-                "Failed to execute egui draw callback. View builder with handle {:?} not found.", self.view_builder
+                "Failed to execute egui draw callback. View builder with handle {:?} not found.",
+                self.view_builder
             );
             return;
         };

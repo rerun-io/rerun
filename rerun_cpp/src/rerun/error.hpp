@@ -13,13 +13,23 @@ namespace arrow {
 
 struct rr_error;
 
+/// Return error if a given rerun::Error producing expression is not rerun::ErrorCode::Ok.
+#define RR_RETURN_NOT_OK(status_expr)      \
+    do {                                   \
+        const auto _status_ = status_expr; \
+        if (_status_.is_err()) {           \
+            return _status_;               \
+        }                                  \
+    } while (false)
+
 namespace rerun {
     /// Status codes returned by the SDK as part of `Status`.
     ///
     /// Category codes are used to group errors together, but are never returned directly.
     enum class ErrorCode : uint32_t {
-        Ok = 0,
-        OutOfMemory = 1,
+        Ok = 0x0000'0000,
+        OutOfMemory = 0x0000'0001,
+        NotImplemented = 0x0000'0002,
 
         // Invalid argument errors.
         _CategoryArgument = 0x0000'0010,
@@ -85,6 +95,11 @@ namespace rerun {
 
         /// Construct from an arrow status.
         Error(const arrow::Status& status);
+
+        /// Creates a new error set to ok.
+        static Error ok() {
+            return Error();
+        }
 
         /// Compare two errors for equality. Requires the description to match.
         bool operator==(const Error& other) const {

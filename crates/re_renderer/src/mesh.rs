@@ -230,15 +230,15 @@ impl GpuMesh {
                 &ctx.gpu_resources.buffers,
                 vb_combined_size as _,
             );
-            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_positions));
-            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_colors));
-            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_normals));
-            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_texcoords));
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_positions))?;
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_colors))?;
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_normals))?;
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_texcoords))?;
             staging_buffer.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &vertex_buffer_combined,
                 0,
-            );
+            )?;
             vertex_buffer_combined
         };
 
@@ -259,12 +259,12 @@ impl GpuMesh {
                 &ctx.gpu_resources.buffers,
                 data.indices.len(),
             );
-            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.indices));
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.indices))?;
             staging_buffer.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &index_buffer,
                 0,
-            );
+            )?;
             index_buffer
         };
 

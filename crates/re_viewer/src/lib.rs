@@ -10,7 +10,6 @@ mod background_tasks;
 pub mod blueprint_components;
 pub mod env_vars;
 mod loading;
-mod remote_viewer_app;
 mod saving;
 mod screenshotter;
 mod store_hub;
@@ -23,7 +22,6 @@ pub(crate) use {
 };
 
 pub use app::{App, StartupOptions};
-pub use remote_viewer_app::RemoteViewerApp;
 pub use store_hub::StoreBundle;
 
 pub mod external {

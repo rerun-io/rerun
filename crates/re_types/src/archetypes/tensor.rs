@@ -85,30 +85,62 @@ impl crate::Archetype for Tensor {
     }
 
     #[inline]
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.TensorIndicator".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
+    }
+
+    #[inline]
     fn try_to_arrow(
         &self,
     ) -> crate::SerializationResult<
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::TensorData>::try_to_arrow([&self.data], None);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.TensorData".into(),
-                        Box::new(array.data_type().clone()),
-                        Some("rerun.components.TensorData".into()),
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("data", datatype, false),
-                        array,
-                    )
+        Ok([
+            {
+                Some({
+                    let array = <crate::components::TensorData>::try_to_arrow([&self.data], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.components.TensorData".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.components.TensorData".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("data", datatype, false),
+                            array,
+                        )
+                    })
                 })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.Tensor#data")?
-        }]
+                .transpose()
+                .with_context("rerun.archetypes.Tensor#data")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.TensorIndicator".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.TensorIndicator".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.TensorIndicator",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
+            },
+        ]
         .into_iter()
         .flatten()
         .collect())

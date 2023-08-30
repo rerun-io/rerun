@@ -5,23 +5,24 @@
 
 #include "affix_fuzzer3.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer4::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &AffixFuzzer4::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field(
                     "single_required",
-                    rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                    rerun::datatypes::AffixFuzzer3::arrow_datatype(),
                     false
                 ),
                 arrow::field(
                     "many_required",
                     arrow::list(arrow::field(
                         "item",
-                        rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                        rerun::datatypes::AffixFuzzer3::arrow_datatype(),
                         false
                     )),
                     false
@@ -30,7 +31,7 @@ namespace rerun {
                     "many_optional",
                     arrow::list(arrow::field(
                         "item",
-                        rerun::datatypes::AffixFuzzer3::to_arrow_datatype(),
+                        rerun::datatypes::AffixFuzzer3::arrow_datatype(),
                         false
                     )),
                     true
@@ -39,41 +40,42 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
-            AffixFuzzer4::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+        Result<std::shared_ptr<arrow::DenseUnionBuilder>> AffixFuzzer4::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::DenseUnionBuilder>(
+            return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
-                    rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
-                        .ValueOrDie(),
+                    rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).value,
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
-                            .ValueOrDie()
+                        rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).value
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool)
-                            .ValueOrDie()
+                        rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).value
                     ),
                 }),
-                to_arrow_datatype()
+                arrow_datatype()
             ));
         }
 
-        arrow::Status AffixFuzzer4::fill_arrow_array_builder(
+        Error AffixFuzzer4::fill_arrow_array_builder(
             arrow::DenseUnionBuilder *builder, const AffixFuzzer4 *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -92,20 +94,19 @@ namespace rerun {
                     case detail::AffixFuzzer4Tag::single_required: {
                         auto variant_builder =
                             static_cast<arrow::DenseUnionBuilder *>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(
-                            rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
-                                variant_builder,
-                                &union_instance._data.single_required,
-                                1
-                            )
-                        );
+                        RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
+                            variant_builder,
+                            &union_instance._data.single_required,
+                            1
+                        ));
                         break;
                     }
                     case detail::AffixFuzzer4Tag::many_required: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -114,7 +115,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -122,7 +124,7 @@ namespace rerun {
                 }
             }
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

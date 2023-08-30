@@ -48,12 +48,12 @@ impl crate::Loggable for TensorData {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "id".to_owned(),
-                data_type: <crate::datatypes::TensorId>::to_arrow_datatype(),
+                data_type: <crate::datatypes::TensorId>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },
@@ -61,7 +61,7 @@ impl crate::Loggable for TensorData {
                 name: "shape".to_owned(),
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
-                    data_type: <crate::datatypes::TensorDimension>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::TensorDimension>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 })),
@@ -70,7 +70,7 @@ impl crate::Loggable for TensorData {
             },
             Field {
                 name: "buffer".to_owned(),
-                data_type: <crate::datatypes::TensorBuffer>::to_arrow_datatype(),
+                data_type: <crate::datatypes::TensorBuffer>::arrow_datatype(),
                 is_nullable: false,
                 metadata: [].into(),
             },

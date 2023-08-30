@@ -3,12 +3,22 @@
 
 #pragma once
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
+
+namespace arrow {
+    template <typename T>
+    class NumericBuilder;
+
+    class DataType;
+    class FloatType;
+    class MemoryPool;
+    using FloatBuilder = NumericBuilder<FloatType>;
+} // namespace arrow
 
 namespace rerun {
     namespace components {
@@ -30,15 +40,15 @@ namespace rerun {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& to_arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
-            static arrow::Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
+            static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
                 arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static arrow::Status fill_arrow_array_builder(
+            static Error fill_arrow_array_builder(
                 arrow::FloatBuilder* builder, const AffixFuzzer8* elements, size_t num_elements
             );
 

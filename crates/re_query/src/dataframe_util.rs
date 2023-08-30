@@ -32,7 +32,7 @@ fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
             // include optional fields.
             let validity = phys_arrow.values()[0].validity();
             let fixed_arrow = StructArray::new(
-                C::to_arrow_datatype(),
+                C::arrow_datatype(),
                 phys_arrow.clone().into_data().1,
                 validity.cloned(),
             );

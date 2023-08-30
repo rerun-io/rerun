@@ -185,7 +185,7 @@ fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Sa
     let mut points = Vec::with_capacity(NUM_POINTS as _);
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
-    for path in paths.iter() {
+    for path in paths {
         query_entity_with_primary::<Point2D>(store, &query, path, &[Color::name()])
             .and_then(|entity_view| {
                 entity_view.visit2(|_: InstanceKey, pos: Point2D, color: Option<Color>| {
@@ -212,7 +212,7 @@ fn query_and_visit_vecs(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Save
 
     let mut rects = Vec::with_capacity(NUM_VECS as _);
 
-    for path in paths.iter() {
+    for path in paths {
         query_entity_with_primary::<LegacyVec3D>(store, &query, path, &[])
             .and_then(|entity_view| {
                 entity_view.visit1(|_: InstanceKey, vec: LegacyVec3D| {

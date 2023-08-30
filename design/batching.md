@@ -15,7 +15,7 @@ This redesign and the major changes involved also present an opportunity to addr
 - Try and keep note of all the good ideas that came up during discussions around batching
 - Gather all the information needed for a future technical blog post about the datastore
 
-TL;DR: A big braindump that covers a lot of the discussions and design thoughts that have been thrown around during the last few weeks, just to make sure it doesn't all get lost to time... I'm sure I've missed most of it though.
+TL;DR: A big braindump that covers a lot of the discussions and design thoughts that have been thrown around during the last few weeks, just to make sure it doesn't all get lost to time… I'm sure I've missed most of it though.
 
 ---
 
@@ -69,7 +69,7 @@ The proposed implementation aims to address several issues and provide numerous 
 - Resolution of splat issues that currently require dedicated events/rows to function.
 - Resolution of the dreaded `MsgId` mismatch issues.
 - Replacement of the current hackish and partially broken garbage collection mechanism with a more viable one.
-- Should massively improve the speed of range queries (even more so for our scenes that span the entire time-range, e.g.: text, plot...).
+- Should massively improve the speed of range queries (even more so for our scenes that span the entire time-range, e.g.: text, plot…).
 - Should (likely) vastly improve the loading speed of .rrd files (even more so on the web).
 
 Finally, these changes are expected to significantly simplify the DataStore codebase by completely eliminating component tables and their corresponding buckets.
@@ -425,34 +425,34 @@ pub struct DataCell {
 
 impl DataCell {
     /// Builds a new `DataCell` out of a uniform list of native component values.
-    pub fn from_native<C: Component>(values: Vec<C>) -> Self { /* ... */ }
+    pub fn from_native<C: Component>(values: Vec<C>) -> Self { /* … */ }
 
     /// Builds a new `DataCell` from an arrow array.
     //
     // TODO(cmc): We shouldn't have to specify the component name separately, this should be part of the
     // metadata by using an extension.
-    pub fn from_arrow(name: ComponentName, values: Box<dyn arrow2::Array>) -> Self  { /* ... */ }
+    pub fn from_arrow(name: ComponentName, values: Box<dyn arrow2::Array>) -> Self  { /* … */ }
 
     /// Builds an empty `DataCell` from an arrow datatype.
     //
     // TODO(cmc): We shouldn't have to specify the component name separately, this should be part of the
     // metadata by using an extension.
-    pub fn from_datatype(name: ComponentName, datatype: DataType) -> Self  { /* ... */ }
+    pub fn from_datatype(name: ComponentName, datatype: DataType) -> Self  { /* … */ }
 
     /// Builds an empty `DataCell` from a component type.
     //
     // TODO(cmc): do keep in mind there's a future not too far away where components become a
     // `(component, type)` tuple kinda thing.
-    pub fn from_component<C: Component>() -> Self  { /* ... */ }
+    pub fn from_component<C: Component>() -> Self  { /* … */ }
 
     /// Returns the contents of the cell as an arrow array.
-    pub fn as_arrow(&self) -> Box<dyn arrow2::Array> { /* ... */ }
+    pub fn as_arrow(&self) -> Box<dyn arrow2::Array> { /* … */ }
 
     /// Returns the contents of the cell as vector of native components.
     //
     // TODO(cmc): We could potentially keep the original native component values if the cell was created
     // using `from_native`.
-    pub fn as_components<C: Component>(&self) -> Vec<C> { /* ... */ }
+    pub fn as_components<C: Component>(&self) -> Vec<C> { /* … */ }
 }
 
 // TODO(cmc): Some convenient `From` implementations etc
@@ -494,7 +494,7 @@ impl DataRow {
         entity_path: EntityPath,
         num_instances: u32,
         cells: Vec<DataCell>,
-    ) -> Self { /* ... */ }
+    ) -> Self { /* … */ }
 
     /// Append a cell to an existing row.
     ///
@@ -502,7 +502,7 @@ impl DataRow {
     /// - Trying to append a cell which contains neither `0`, `1` or `num_instances`.
     /// - Trying to append the same component type more than once.
     /// - Etc.
-    pub fn append_cell(&mut self, cell: DataCell) -> Result<()> { /* ... */ }
+    pub fn append_cell(&mut self, cell: DataCell) -> Result<()> { /* … */ }
 }
 
 // TODO(cmc): Some convenient `From` implementations etc
@@ -537,12 +537,12 @@ struct DataTable {
 
 impl DataTable {
     /// Builds a new `DataTable` out of a list of [`DataRow`]s.
-    pub fn from_rows(rows: Vec<DataRow>) -> Self { /* ... */ }
+    pub fn from_rows(rows: Vec<DataRow>) -> Self { /* … */ }
 
     /// Append a row to an existing table.
     ///
     /// Returns an error if the row is not compatible with the table.
-    pub fn append_row(&mut self, row: DataRow) -> Result<()> { /* ... */ }
+    pub fn append_row(&mut self, row: DataRow) -> Result<()> { /* … */ }
 }
 
 // TODO(cmc): Some convenient `From` implementations etc
@@ -680,7 +680,7 @@ Lastly, we inject the `BatchId` as metadata.
 
 At this point we might want to sort the batch by `(event_id, entity_path)`, which will greatly improve data locality once it sits in the store (see storage section below).
 
-That's also an opportunity to pre-compact the data: if two rows share the same timepoints with different components, we could potentially merge them together... that's a bit more controversial though as it means either dropping some `EventId`s, or supporting multiple `EventId`s for a single event.
+That's also an opportunity to pre-compact the data: if two rows share the same timepoints with different components, we could potentially merge them together… that's a bit more controversial though as it means either dropping some `EventId`s, or supporting multiple `EventId`s for a single event.
 
 One last thing that needs to be taken care of before actually sending the data is compression / dictionary-encoding of some kind.
 We already have `zstd` in place for that.
@@ -769,7 +769,7 @@ We also actually deserialize the `event_id` and `num_instances` columns into nat
 
 ### Read path
 
-The major difference is we now directly return arrow buffers (which are really arrow slices under the hood), which means `get` queries are gone... which means latest-at queries should get a bit faster and range queries should get much faster.
+The major difference is we now directly return arrow buffers (which are really arrow slices under the hood), which means `get` queries are gone… which means latest-at queries should get a bit faster and range queries should get much faster.
 
 Everything else is the same: grab the right index (`EntityPath` + `Timeline`), binsearch for the right bucket, walk backwards if you need to, and you're done.
 
@@ -815,7 +815,7 @@ Doing the above results in something functional and technically correct.. but th
 Not only we do not want to lose the original batching, ideally we would want to improve on it, i.e. batch even more aggressively when we're writing to disk!
 
 We want an extra step in there: accumulate rows of data until we reach a given size, and then craft a single `LogMsg` out of that.
-This will make the resulting .rrd file both faster to load (there's some fixed overhead for each `LogMsg`, especially on web...) and faster to explore (improved cache locality in the store).
+This will make the resulting .rrd file both faster to load (there's some fixed overhead for each `LogMsg`, especially on web…) and faster to explore (improved cache locality in the store).
 
 ## Implementation plan
 
@@ -831,7 +831,7 @@ We should already be 95% of the way there at this point.
 1. Move `DataStore` sanity checks and formatting tools to separate files
 `store.rs` is supposed to be the place where one can get an overview of all the datastructures involved in the store, except it has slowly become a mess over time and is now pretty much unreadable.
 
-1. Replace `MsgBundle` & `ComponentBundle` with the new types (`DataCell`, `DataRow`, `DataTable`, `EventId`, `BatchId`...)
+1. Replace `MsgBundle` & `ComponentBundle` with the new types (`DataCell`, `DataRow`, `DataTable`, `EventId`, `BatchId`…)
 No actual batching features nor any kind of behavior changes of any sort: just define the new types and use them everywhere.
 
 1. Pass entity path as a column rather than as metadata
@@ -840,7 +840,7 @@ Replace the current entity_path that is passed in the metadata map with an actua
 1. Implement explicit number of instances
 Introduce a new column for `num_instances`, integrate it in the store index and expose it in the store APIs.
 
-1. Fix splats all around (rs sdk, py sdk, re_query...)
+1. Fix splats all around (rs sdk, py sdk, re_query…)
 Update the SDKs and `re_query` to properly make use of the new explicit `num_instances`.
 
 1. Get rid of component buckets altogether
@@ -986,7 +986,7 @@ The terminology is very subtle.
 - `InstanceKey` is indeed a component, and so it is always passed as a list, which we colloquially refer to as "the instance keys".
 - a "component instance", or just "instance", is the name we give to any single value in a component cell:
 ```
-[C, C, ...]
+[C, C, …]
  ^  ^
  |  |
  |  |

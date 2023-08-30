@@ -13,12 +13,13 @@ int main(int argc, char** argv) {
 
     LOG_F(INFO, "Rerun C++ SDK version: %s", rr::version_string());
 
-    auto rr_stream = rr::RecordingStream("c-example-app");
+    auto rr_stream = rr::RecordingStream("rerun_example_cpp_app");
     rr_stream.connect("127.0.0.1:9876").throw_on_failure();
 
+    // Log points with the archetype api - this is the preferred way of logging.
     rr_stream.log(
         "3d/points",
-        rr::archetypes::Points3D({{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})
+        rr::Points3D({{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})
             .with_radii({0.42f, 0.43f})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
@@ -27,6 +28,8 @@ int main(int argc, char** argv) {
             .with_instance_keys({66, 666})
     );
 
+    // Log points with the components api - this is the advanced way of logging components in a
+    // fine-grained matter. It supports passing various types of containers.
     rrc::Label c_style_array[3] = {rrc::Label("hello"), rrc::Label("friend"), rrc::Label("yo")};
     rr_stream.log_components(
         "2d/points",

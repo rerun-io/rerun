@@ -41,7 +41,7 @@ root:
     individual example sections below.
   children:
     - name: real-data
-      title: Examples with real data
+      title: Examples with Real Data
       prelude: |
         The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
         They all require additional data to be downloaded, so an internet connection is needed at least once.
@@ -97,7 +97,7 @@ root:
           python: python/face_tracking
 
     - name: artificial-data
-      title: Examples with artificial data
+      title: Examples with Artificial Data
       prelude: |
         The following examples serve to illustrate various uses of the Rerun logging SDK.
         They should not require any additional data downloads, and should run offline.
@@ -127,10 +127,38 @@ root:
         - name: text-logging
           python: python/text_logging
 
+    - name: paper-visualizations
+      title: Paper Visualizations
+      prelude: |
+        The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
+        from the official open-source implementations adding Rerun as the visualizer.
+        Check out the respective READMEs for installation instructions.
+        For the simplest possible examples showing how to use each api,
+        check out [Loggable Data Types](/docs/reference/data_types).
+      children:
+        - name: differentiable_blocks_world
+          python: python/differentiable_blocks_world
+        - name: tapir
+          python: python/tapir
+        - name: widebaseline
+          python: python/widebaseline
+        - name: shape_pointe
+          python: python/shape_pointe
+        - name: limap
+          python: python/limap
+        - name: simplerecon
+          python: python/simplerecon
+        - name: mcc
+          python: python/mcc
+        - name: slahmr
+          python: python/slahmr
+
     - name: setup
       title: Setup
       prelude: |
-        Make sure you have the Rerun repository checked out and the latest SDK installed.
+        ### Examples with Real / Artificial Data
+        To run these examples, make sure you have the Rerun repository checked out
+        and the latest SDK installed.
 
         ```bash
         pip install --upgrade rerun-sdk  # install the latest Rerun SDK
@@ -141,3 +169,7 @@ root:
         > Note: Make sure your SDK version matches the examples.
         For example, if your SDK version is `0.3.1`, check out the matching tag
         in the Rerun repository by running `git checkout v0.3.1`.
+
+        ### Paper Visualizations
+        To reproduce the paper visualizations check out the README of the respective
+        Rerun forks.

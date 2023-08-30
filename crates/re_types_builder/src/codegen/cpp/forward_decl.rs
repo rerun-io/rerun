@@ -1,28 +1,77 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 
 use super::NEWLINE_TOKEN;
 
 /// A C++ forward declaration.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub enum ForwardDecl {
-    Struct(String),
-    Class(String),
+    Class(Ident),
+    TemplateClass(Ident),
+
+    /// Aliases are only identified by their `from` name!
+    Alias {
+        from: Ident,
+        to: TokenStream,
+    },
+}
+
+impl PartialEq for ForwardDecl {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Class(l0), Self::Class(r0))
+            | (Self::TemplateClass(l0), Self::TemplateClass(r0)) => l0 == r0,
+            (Self::Alias { from: l_from, .. }, Self::Alias { from: r_from, .. }) => {
+                // Ignore `to` for equality
+                l_from == r_from
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Eq for ForwardDecl {}
+
+impl PartialOrd for ForwardDecl {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ForwardDecl {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (ForwardDecl::TemplateClass(a), ForwardDecl::TemplateClass(b))
+            | (ForwardDecl::Class(a), ForwardDecl::Class(b))
+            | (ForwardDecl::Alias { from: a, .. }, ForwardDecl::Alias { from: b, .. }) => {
+                a.to_string().cmp(&b.to_string())
+            }
+            (ForwardDecl::TemplateClass(_), _) => std::cmp::Ordering::Less,
+            (_, ForwardDecl::TemplateClass(_)) => std::cmp::Ordering::Greater,
+
+            (ForwardDecl::Class(_), _) => std::cmp::Ordering::Less,
+            (_, ForwardDecl::Class(_)) => std::cmp::Ordering::Greater,
+        }
+    }
 }
 
 impl quote::ToTokens for ForwardDecl {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ForwardDecl::Struct(name) => {
-                let name_ident = format_ident!("{name}");
-                quote! { struct #name_ident; }
-            }
             ForwardDecl::Class(name) => {
-                let name_ident = format_ident!("{name}");
-                quote! { class #name_ident; }
+                quote! { class #name; }
+            }
+            ForwardDecl::TemplateClass(name) => {
+                quote! {
+                    template<typename T> class #name;
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                }
+            }
+            ForwardDecl::Alias { from, to } => {
+                quote! { using #from = #to; }
             }
         }
         .to_tokens(tokens);

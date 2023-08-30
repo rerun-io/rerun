@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -13,7 +14,6 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -36,7 +36,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("arrow3d");
+        ///    auto rr_stream = rr::RecordingStream("rerun_example_arrow3d");
         ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    std::vector<rr::components::Vector3D> vectors;
@@ -51,7 +51,7 @@ namespace rerun {
         ///        colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});
         ///    }
         ///
-        ///    rr_stream.log("arrows", rr::archetypes::Arrows3D(vectors).with_colors(colors));
+        ///    rr_stream.log("arrows", rr::Arrows3D(vectors).with_colors(colors));
         /// }
         ///```
         struct Arrows3D {

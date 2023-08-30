@@ -36,9 +36,9 @@ pub use self::rebuild_detector::{
 //
 // When working within the workspace, we can simply try and call `git` and we're done.
 //
-// # Using an unpublished crate (e.g. `path = "..."` or `git = "..."` or `[patch.crates-io]`)
+// # Using an unpublished crate (e.g. `path = "…"` or `git = "…"` or `[patch.crates-io]`)
 //
-// In these cases we may or may not have access to the workspace (e.g. a `path = ...` import likely
+// In these cases we may or may not have access to the workspace (e.g. a `path = …` import likely
 // will, while a crate patch won't).
 //
 // This is not an issue however, as we can simply try and see what we get.

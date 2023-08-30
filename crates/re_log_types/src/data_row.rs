@@ -171,7 +171,7 @@ impl std::ops::DerefMut for RowId {
 /// ## Layout
 ///
 /// A row is a collection of cells where each cell must either be empty (a clear), unit-lengthed
-/// (a splat) or `num_instances` long (standard): `[[C1, C1, C1], [], [C3], [C4, C4, C4], ...]`.
+/// (a splat) or `num_instances` long (standard): `[[C1, C1, C1], [], [C3], [C4, C4, C4], …]`.
 ///
 /// Consider this example:
 /// ```ignore
@@ -265,7 +265,7 @@ impl DataRow {
         let timepoint = timepoint.into();
 
         let mut components = IntSet::with_capacity(cells.len());
-        for cell in cells.iter() {
+        for cell in &*cells {
             let component = cell.component_name();
 
             if !components.insert(component) {

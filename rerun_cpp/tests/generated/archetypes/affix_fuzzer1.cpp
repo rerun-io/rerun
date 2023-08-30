@@ -24,8 +24,6 @@
 #include "../components/affix_fuzzer8.hpp"
 #include "../components/affix_fuzzer9.hpp"
 
-#include <arrow/api.h>
-
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> AffixFuzzer1::to_data_cells() const {
@@ -635,6 +633,16 @@ namespace rerun {
                 const auto& value = fuzz2118.value();
                 const auto result =
                     rerun::components::AffixFuzzer18::to_data_cell(value.data(), value.size());
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
+            }
+            {
+                const auto result = create_indicator_component(
+                    "rerun.components.AffixFuzzer1Indicator",
+                    num_instances()
+                );
                 if (result.is_err()) {
                     return result.error;
                 }

@@ -3,38 +3,42 @@
 
 #include "mat4x4.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Mat4x4::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &Mat4x4::arrow_datatype() {
             static const auto datatype =
                 arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 16);
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Mat4x4::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Mat4x4::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::FixedSizeListBuilder>(
+            return Result(std::make_shared<arrow::FixedSizeListBuilder>(
                 memory_pool,
                 std::make_shared<arrow::FloatBuilder>(memory_pool),
                 16
             ));
         }
 
-        arrow::Status Mat4x4::fill_arrow_array_builder(
+        Error Mat4x4::fill_arrow_array_builder(
             arrow::FixedSizeListBuilder *builder, const Mat4x4 *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             auto value_builder = static_cast<arrow::FloatBuilder *>(builder->value_builder());
@@ -47,7 +51,7 @@ namespace rerun {
                 nullptr
             ));
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

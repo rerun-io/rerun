@@ -7,58 +7,61 @@
 #include "tensor_dimension.hpp"
 #include "tensor_id.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &TensorData::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &TensorData::arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("id", rerun::datatypes::TensorId::to_arrow_datatype(), false),
+                arrow::field("id", rerun::datatypes::TensorId::arrow_datatype(), false),
                 arrow::field(
                     "shape",
                     arrow::list(arrow::field(
                         "item",
-                        rerun::datatypes::TensorDimension::to_arrow_datatype(),
+                        rerun::datatypes::TensorDimension::arrow_datatype(),
                         false
                     )),
                     false
                 ),
-                arrow::field("buffer", rerun::datatypes::TensorBuffer::to_arrow_datatype(), false),
+                arrow::field("buffer", rerun::datatypes::TensorBuffer::arrow_datatype(), false),
             });
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>> TensorData::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::StructBuilder>> TensorData::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+            return Result(std::make_shared<arrow::StructBuilder>(
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rerun::datatypes::TensorId::new_arrow_array_builder(memory_pool).ValueOrDie(),
+                    rerun::datatypes::TensorId::new_arrow_array_builder(memory_pool).value,
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
                         rerun::datatypes::TensorDimension::new_arrow_array_builder(memory_pool)
-                            .ValueOrDie()
+                            .value
                     ),
-                    rerun::datatypes::TensorBuffer::new_arrow_array_builder(memory_pool)
-                        .ValueOrDie(),
+                    rerun::datatypes::TensorBuffer::new_arrow_array_builder(memory_pool).value,
                 })
             ));
         }
 
-        arrow::Status TensorData::fill_arrow_array_builder(
+        Error TensorData::fill_arrow_array_builder(
             arrow::StructBuilder *builder, const TensorData *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             {
@@ -66,7 +69,7 @@ namespace rerun {
                     static_cast<arrow::FixedSizeListBuilder *>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(rerun::datatypes::TensorId::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(rerun::datatypes::TensorId::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].id,
                         1
@@ -84,7 +87,7 @@ namespace rerun {
                     const auto &element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     if (element.shape.data()) {
-                        ARROW_RETURN_NOT_OK(
+                        RR_RETURN_NOT_OK(
                             rerun::datatypes::TensorDimension::fill_arrow_array_builder(
                                 value_builder,
                                 element.shape.data(),
@@ -99,7 +102,7 @@ namespace rerun {
                     static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(2));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(rerun::datatypes::TensorBuffer::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(rerun::datatypes::TensorBuffer::fill_arrow_array_builder(
                         field_builder,
                         &elements[elem_idx].buffer,
                         1
@@ -108,7 +111,7 @@ namespace rerun {
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

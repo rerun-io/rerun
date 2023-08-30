@@ -3,33 +3,37 @@
 
 #include "affix_fuzzer2.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& AffixFuzzer2::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer2::arrow_datatype() {
             static const auto datatype = arrow::float32();
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::FloatBuilder>> AffixFuzzer2::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::FloatBuilder>> AffixFuzzer2::new_arrow_array_builder(
             arrow::MemoryPool* memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
+            return Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
         }
 
-        arrow::Status AffixFuzzer2::fill_arrow_array_builder(
+        Error AffixFuzzer2::fill_arrow_array_builder(
             arrow::FloatBuilder* builder, const AffixFuzzer2* elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -42,7 +46,7 @@ namespace rerun {
                 }
             }
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

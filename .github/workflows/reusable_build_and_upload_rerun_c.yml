@@ -94,7 +94,7 @@ jobs:
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               run_tests="true"
-              container="{'image': 'rerunio/ci_docker:0.8'}"
+              container="{'image': 'rerunio/ci_docker:0.9'}"
               lib_name="librerun_c.a"
               ;;
             windows)
@@ -170,6 +170,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
         id: "short-sha"
         run: |
           if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then

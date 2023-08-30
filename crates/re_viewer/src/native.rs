@@ -1,5 +1,8 @@
 use re_log_types::LogMsg;
 
+/// Used by `eframe` to decide where to store the app state.
+pub const APP_ID: &str = "rerun";
+
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
@@ -12,16 +15,71 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
         window_title,
         native_options,
         Box::new(move |cc| {
+            check_graphics_driver(cc.wgpu_render_state.as_ref());
             let re_ui = crate::customize_eframe(cc);
             app_creator(cc, re_ui)
         }),
     )
 }
 
+fn check_graphics_driver(wgpu_render_state: Option<&egui_wgpu::RenderState>) {
+    let wgpu_render_state = wgpu_render_state.expect("Expected wgpu to be enabled");
+    let info = wgpu_render_state.adapter.get_info();
+
+    let human_readable_summary = {
+        let wgpu::AdapterInfo {
+            name,
+            vendor: _, // skip integer id
+            device: _, // skip integer id
+            device_type,
+            driver,
+            driver_info,
+            backend,
+        } = &info;
+
+        // Example outputs:
+        // > wgpu adapter name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+        // > wgpu adapter name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+
+        format!(
+            "wgpu adapter name: {name:?}, \
+             device_type: {device_type:?}, \
+             backend: {backend:?}, \
+             driver: {driver:?}, \
+             driver_info: {driver_info:?}"
+        )
+    };
+
+    let is_software_rasterizer_with_known_crashes = {
+        // See https://github.com/rerun-io/rerun/issues/3089
+        const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
+            "lavapipe", // Vulkan software rasterizer
+            "llvmpipe", // OpenGL software rasterizer
+        ];
+
+        // I'm not sure where the incriminating string will appear, so check all fields at once:
+        let info_string = format!("{info:?}").to_lowercase();
+
+        KNOWN_SOFTWARE_RASTERIZERS
+            .iter()
+            .any(|&software_rasterizer| info_string.contains(software_rasterizer))
+    };
+
+    if is_software_rasterizer_with_known_crashes {
+        re_log::warn!("Software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("{human_readable_summary}");
+    } else if info.device_type == wgpu::DeviceType::Cpu {
+        re_log::warn!("Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("{human_readable_summary}");
+    } else {
+        re_log::debug!("{human_readable_summary}");
+    }
+}
+
 pub fn eframe_options() -> eframe::NativeOptions {
     eframe::NativeOptions {
         // Controls where on disk the app state is persisted.
-        app_id: Some("rerun".to_owned()),
+        app_id: Some(APP_ID.to_owned()),
 
         initial_window_size: Some([1600.0, 1200.0].into()),
         min_window_size: Some([320.0, 450.0].into()), // Should be high enough to fit the rerun menu
@@ -91,13 +149,8 @@ pub fn run_native_viewer_with_messages(
         tx.send(log_msg).ok();
     }
     run_native_app(Box::new(move |cc, re_ui| {
-        Box::new(crate::App::from_receiver(
-            build_info,
-            &app_env,
-            startup_options,
-            re_ui,
-            cc.storage,
-            rx,
-        ))
+        let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+        app.add_receiver(rx);
+        Box::new(app)
     }))
 }

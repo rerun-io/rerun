@@ -3,14 +3,15 @@
 
 #pragma once
 
+#include "../arrow.hpp"
 #include "../components/image_variant.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <utility>
+#include <vector>
 
 namespace rerun {
     namespace archetypes {

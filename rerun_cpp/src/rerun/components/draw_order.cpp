@@ -5,35 +5,40 @@
 
 #include "../arrow.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/table.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace components {
         const char* DrawOrder::NAME = "rerun.draw_order";
 
-        const std::shared_ptr<arrow::DataType>& DrawOrder::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& DrawOrder::arrow_datatype() {
             static const auto datatype = arrow::float32();
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::FloatBuilder>> DrawOrder::new_arrow_array_builder(
+        Result<std::shared_ptr<arrow::FloatBuilder>> DrawOrder::new_arrow_array_builder(
             arrow::MemoryPool* memory_pool
         ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
+            return Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
         }
 
-        arrow::Status DrawOrder::fill_arrow_array_builder(
+        Error DrawOrder::fill_arrow_array_builder(
             arrow::FloatBuilder* builder, const DrawOrder* elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             static_assert(sizeof(*elements) == sizeof(elements->value));
@@ -41,7 +46,7 @@ namespace rerun {
                 builder->AppendValues(&elements->value, static_cast<int64_t>(num_elements))
             );
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
 
         Result<rerun::DataCell> DrawOrder::to_data_cell(
@@ -50,9 +55,11 @@ namespace rerun {
             // TODO(andreas): Allow configuring the memory pool.
             arrow::MemoryPool* pool = arrow::default_memory_pool();
 
-            ARROW_ASSIGN_OR_RAISE(auto builder, DrawOrder::new_arrow_array_builder(pool));
+            auto builder_result = DrawOrder::new_arrow_array_builder(pool);
+            RR_RETURN_NOT_OK(builder_result.error);
+            auto builder = std::move(builder_result.value);
             if (instances && num_instances > 0) {
-                ARROW_RETURN_NOT_OK(
+                RR_RETURN_NOT_OK(
                     DrawOrder::fill_arrow_array_builder(builder.get(), instances, num_instances)
                 );
             }
@@ -60,16 +67,13 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(DrawOrder::NAME, DrawOrder::to_arrow_datatype(), false)}
-                );
+                arrow::schema({arrow::field(DrawOrder::NAME, DrawOrder::arrow_datatype(), false)});
 
             rerun::DataCell cell;
             cell.component_name = DrawOrder::NAME;
-            const auto result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            if (result.is_err()) {
-                return result.error;
-            }
-            cell.buffer = std::move(result.value);
+            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
+            RR_RETURN_NOT_OK(ipc_result.error);
+            cell.buffer = std::move(ipc_result.value);
 
             return cell;
         }

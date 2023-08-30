@@ -24,9 +24,9 @@
 #include "../components/affix_fuzzer8.hpp"
 #include "../components/affix_fuzzer9.hpp"
 
-#include <arrow/type_fwd.h>
 #include <cstdint>
 #include <optional>
+#include <rerun/arrow.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>

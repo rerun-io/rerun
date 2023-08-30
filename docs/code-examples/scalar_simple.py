@@ -2,7 +2,7 @@
 import numpy as np
 import rerun as rr
 
-rr.init("scalar", spawn=True)
+rr.init("rerun_example_scalar", spawn=True)
 rng = np.random.default_rng(12345)
 
 value = 1.0

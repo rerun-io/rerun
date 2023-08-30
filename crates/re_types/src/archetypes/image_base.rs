@@ -78,6 +78,16 @@ impl crate::Archetype for ImageBase {
     }
 
     #[inline]
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.ImageBaseIndicator".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
+    }
+
+    #[inline]
     fn try_to_arrow(
         &self,
     ) -> crate::SerializationResult<
@@ -121,6 +131,26 @@ impl crate::Archetype for ImageBase {
                 })
                 .transpose()
                 .with_context("rerun.archetypes.ImageBase#data")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.ImageBaseIndicator".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.ImageBaseIndicator".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.ImageBaseIndicator",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
             },
         ]
         .into_iter()

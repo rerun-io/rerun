@@ -227,7 +227,7 @@ fn picking_gpu(
         // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
         if let Some(PickingResult { hits }) = previous_picking_result {
-            for previous_opaque_hit in hits.iter() {
+            for previous_opaque_hit in hits {
                 if matches!(
                     previous_opaque_hit.hit_type,
                     PickingHitType::GpuPickingResult

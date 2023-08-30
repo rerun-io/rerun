@@ -3,11 +3,12 @@
 
 #include "tensor_dimension.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &TensorDimension::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &TensorDimension::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("size", arrow::uint64(), false),
                 arrow::field("name", arrow::utf8(), true),
@@ -15,14 +16,15 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::StructBuilder>>
-            TensorDimension::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+        Result<std::shared_ptr<arrow::StructBuilder>> TensorDimension::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+            return Result(std::make_shared<arrow::StructBuilder>(
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::UInt64Builder>(memory_pool),
@@ -31,14 +33,17 @@ namespace rerun {
             ));
         }
 
-        arrow::Status TensorDimension::fill_arrow_array_builder(
+        Error TensorDimension::fill_arrow_array_builder(
             arrow::StructBuilder *builder, const TensorDimension *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             {
@@ -62,7 +67,7 @@ namespace rerun {
             }
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

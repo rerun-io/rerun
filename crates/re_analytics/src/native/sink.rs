@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use time::OffsetDateTime;
 
+use super::AbortSignal;
 use crate::{Event, Property};
 
 // TODO(cmc): abstract away the concept of a `Sink` behind an actual trait when comes the time to
@@ -14,70 +16,53 @@ const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_sgKidIE4WYYFSJHd8LEYY1UZqASpnfQKeM
 #[derive(Debug, Clone)]
 struct Url(String);
 
-#[derive(thiserror::Error, Debug)]
-pub enum SinkError {
-    #[error("File seek error: {0}")]
-    FileSeek(std::io::Error),
-
-    #[error("JSON: {0}")]
-    Serde(#[from] serde_json::Error),
-
-    /// Usually because there is no internet.
-    #[error("HTTP transport: {0}")]
-    HttpTransport(Box<ureq::Transport>),
-
-    #[error("HTTP status {status_code} {status_text}: {body}")]
-    HttpStatus {
-        status_code: u16,
-        status_text: String,
-        body: String,
-    },
-}
-
-impl From<ureq::Error> for SinkError {
-    fn from(err: ureq::Error) -> Self {
-        match err {
-            ureq::Error::Status(status_code, response) => Self::HttpStatus {
-                status_code,
-                status_text: response.status_text().to_owned(),
-                body: response.into_string().unwrap_or_default(),
-            },
-
-            ureq::Error::Transport(transport) => Self::HttpTransport(Box::new(transport)),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PostHogSink {
-    agent: ureq::Agent,
-    // Lazily resolve the url so that we don't do blocking requests in `PostHogSink::default`
-    resolved_url: once_cell::sync::OnceCell<String>,
-}
-
-impl Default for PostHogSink {
-    fn default() -> Self {
-        Self {
-            agent: ureq::AgentBuilder::new()
-                .timeout(std::time::Duration::from_secs(5))
-                .build(),
-            resolved_url: Default::default(),
-        }
-    }
-}
+#[derive(Default, Debug, Clone)]
+pub(crate) struct PostHogSink {}
 
 impl PostHogSink {
-    /// Our public entrypoint; this will be resolved into an actual HTTP2/TLS URL when creating
-    /// the client.
-    const URL: &str = "http://tel.rerun.io";
+    /// Our public telemetry endpoint.
+    const URL: &str = "https://tel.rerun.io";
 
-    pub fn send(
+    #[allow(clippy::unused_self)]
+    pub(crate) fn send(
         &self,
-        analytics_id: &str,
-        session_id: &str,
+        analytics_id: &Arc<str>,
+        session_id: &Arc<str>,
         events: &[Event],
-    ) -> Result<(), SinkError> {
-        let resolved_url = self.init()?;
+        abort_signal: &AbortSignal,
+    ) {
+        let num_events = events.len();
+        let on_done = {
+            let analytics_id = analytics_id.clone();
+            let session_id = session_id.clone();
+            let abort_signal = abort_signal.clone();
+            move |result: Result<ehttp::Response, String>| match result {
+                Ok(response) => {
+                    if !response.ok {
+                        let err = format!(
+                            "HTTP request failed: {} {} {}",
+                            response.status,
+                            response.status_text,
+                            response.text().unwrap_or("")
+                        );
+                        re_log::debug!("Failed to send analytics down the sink: {err}");
+                        return abort_signal.abort();
+                    }
+
+                    re_log::trace!(
+                        ?response,
+                        %analytics_id,
+                        %session_id,
+                        num_events = num_events,
+                        "events successfully flushed"
+                    );
+                }
+                Err(err) => {
+                    re_log::debug!("Failed to send analytics down the sink: {err}");
+                    abort_signal.abort();
+                }
+            }
+        };
 
         let events = events
             .iter()
@@ -85,35 +70,12 @@ impl PostHogSink {
             .collect::<Vec<_>>();
         let batch = PostHogBatch::from_events(&events);
 
-        re_log::trace!(
-            "Sending analytics: {}",
-            serde_json::to_string_pretty(&batch)?
-        );
-        self.agent.post(resolved_url).send_json(&batch)?;
-        Ok(())
-    }
-
-    fn init(&self) -> Result<&String, SinkError> {
-        self.resolved_url.get_or_try_init(|| {
-            // Make a dummy-request to resolve our final URL.
-            let resolved_url = match self.agent.get(Self::URL).call() {
-                Ok(response) => response.get_url().to_owned(),
-                Err(ureq::Error::Status(status, response)) => {
-                    // We actually expect to get here, because we make a bad request (GET to and end-point that expects a POST).
-                    // We only do this requests to get redirected to the final URL.
-                    let resolved_url = response.get_url().to_owned();
-                    re_log::trace!("status: {status} {}", response.status_text().to_owned());
-                    resolved_url
-                }
-                Err(ureq::Error::Transport(transport)) => {
-                    return Err(SinkError::HttpTransport(Box::new(transport)))
-                }
-            };
-
-            // 2023-02-26 the resolved URL was https://eu.posthog.com/capture (in Europe)
-
-            Ok(resolved_url)
-        })
+        let json = match serde_json::to_string_pretty(&batch) {
+            Ok(json) => json,
+            Err(err) => return on_done(Err(err.to_string())),
+        };
+        re_log::trace!("Sending analytics: {json}");
+        ehttp::fetch(ehttp::Request::post(Self::URL, json.into_bytes()), on_done);
     }
 }
 

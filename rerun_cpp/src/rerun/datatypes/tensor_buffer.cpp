@@ -3,11 +3,12 @@
 
 #include "tensor_buffer.hpp"
 
-#include <arrow/api.h>
+#include <arrow/builder.h>
+#include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &TensorBuffer::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &TensorBuffer::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("U8", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
@@ -61,13 +62,14 @@ namespace rerun {
             return datatype;
         }
 
-        arrow::Result<std::shared_ptr<arrow::DenseUnionBuilder>>
-            TensorBuffer::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+        Result<std::shared_ptr<arrow::DenseUnionBuilder>> TensorBuffer::new_arrow_array_builder(
+            arrow::MemoryPool *memory_pool
+        ) {
             if (!memory_pool) {
-                return arrow::Status::Invalid("Memory pool is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return arrow::Result(std::make_shared<arrow::DenseUnionBuilder>(
+            return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
@@ -109,25 +111,28 @@ namespace rerun {
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        std::make_shared<arrow::DoubleBuilder>(memory_pool)
+                        std::make_shared<arrow::Float64Builder>(memory_pool)
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
                         std::make_shared<arrow::UInt8Builder>(memory_pool)
                     ),
                 }),
-                to_arrow_datatype()
+                arrow_datatype()
             ));
         }
 
-        arrow::Status TensorBuffer::fill_arrow_array_builder(
+        Error TensorBuffer::fill_arrow_array_builder(
             arrow::DenseUnionBuilder *builder, const TensorBuffer *elements, size_t num_elements
         ) {
             if (!builder) {
-                return arrow::Status::Invalid("Passed array builder is null.");
+                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (!elements) {
-                return arrow::Status::Invalid("Cannot serialize null pointer to arrow array.");
+                return Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Cannot serialize null pointer to arrow array."
+                );
             }
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -147,7 +152,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -156,7 +162,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -165,7 +172,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -174,7 +182,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -183,7 +192,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -192,7 +202,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -201,7 +212,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -210,7 +222,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -219,7 +232,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -228,7 +242,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -237,7 +252,8 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
-                        return arrow::Status::NotImplemented(
+                        return Error(
+                            ErrorCode::NotImplemented,
                             "TODO(andreas): list types in unions are not yet supported"
                         );
                         break;
@@ -245,7 +261,7 @@ namespace rerun {
                 }
             }
 
-            return arrow::Status::OK();
+            return Error::ok();
         }
     } // namespace datatypes
 } // namespace rerun

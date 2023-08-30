@@ -1,7 +1,7 @@
 """Log a simple rectangle."""
 import rerun as rr
 
-rr.init("rect2d", spawn=True)
+rr.init("rerun_example_rect2d", spawn=True)
 
 rr.log_rect("simple", [-1, -1, 2, 2], rect_format=rr.RectFormat.XYWH)
 

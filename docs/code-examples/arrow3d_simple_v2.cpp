@@ -8,7 +8,7 @@
 namespace rr = rerun;
 
 int main() {
-    auto rr_stream = rr::RecordingStream("arrow3d");
+    auto rr_stream = rr::RecordingStream("rerun_example_arrow3d");
     rr_stream.connect("127.0.0.1:9876").throw_on_failure();
 
     std::vector<rr::components::Vector3D> vectors;
@@ -23,5 +23,5 @@ int main() {
         colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});
     }
 
-    rr_stream.log("arrows", rr::archetypes::Arrows3D(vectors).with_colors(colors));
+    rr_stream.log("arrows", rr::Arrows3D(vectors).with_colors(colors));
 }

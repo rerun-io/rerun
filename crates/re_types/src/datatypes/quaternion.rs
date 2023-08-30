@@ -13,6 +13,9 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A Quaternion represented by 4 real numbers.
+///
+/// Note: although the x,y,z,w components of the quaternion will be passed through to the
+/// datastore as provided, when used in the viewer Quaternions will always be normalized.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
@@ -42,7 +45,7 @@ impl crate::Loggable for Quaternion {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::FixedSizeList(
             Box::new(Field {
@@ -104,7 +107,7 @@ impl crate::Loggable for Quaternion {
                         _ = extension_wrapper;
                         DataType::Extension(
                             "rerun.datatypes.Quaternion".to_owned(),
-                            Box::new(Self::to_arrow_datatype()),
+                            Box::new(Self::arrow_datatype()),
                             None,
                         )
                         .to_logical_type()

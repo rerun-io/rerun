@@ -45,7 +45,7 @@ impl crate::Loggable for TensorDimension {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
@@ -89,11 +89,11 @@ impl crate::Loggable for TensorDimension {
                 (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
-                        Box::new(<crate::datatypes::TensorDimension>::to_arrow_datatype()),
+                        Box::new(<crate::datatypes::TensorDimension>::arrow_datatype()),
                         None,
                     )
                 } else {
-                    <crate::datatypes::TensorDimension>::to_arrow_datatype()
+                    <crate::datatypes::TensorDimension>::arrow_datatype()
                 })
                 .to_logical_type()
                 .clone(),
@@ -219,7 +219,7 @@ impl crate::Loggable for TensorDimension {
                 let size = {
                     if !arrays_by_name.contains_key("size") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "size",
                         ))
                         .with_context("rerun.datatypes.TensorDimension");
@@ -241,7 +241,7 @@ impl crate::Loggable for TensorDimension {
                 let name = {
                     if !arrays_by_name.contains_key("name") {
                         return Err(crate::DeserializationError::missing_struct_field(
-                            Self::to_arrow_datatype(),
+                            Self::arrow_datatype(),
                             "name",
                         ))
                         .with_context("rerun.datatypes.TensorDimension");

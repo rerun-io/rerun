@@ -7,7 +7,7 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -36,6 +36,12 @@ impl Default for CamerasPart {
     }
 }
 
+impl NamedViewSystem for CamerasPart {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Cameras".into()
+    }
+}
+
 impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
@@ -58,10 +64,10 @@ impl CamerasPart {
             .parent()
             .expect("root path can't be part of scene query");
         let Some(mut world_from_camera) = transforms.reference_from_entity(&parent_path) else {
-                return;
-            };
+            return;
+        };
 
-        let frustum_length = *props.pinhole_image_plane_distance.get();
+        let frustum_length = *props.pinhole_image_plane_distance;
 
         // If the camera is our reference, there is nothing for us to display.
         if transforms.reference_path() == ent_path {
@@ -85,7 +91,8 @@ impl CamerasPart {
 
         // If this transform is not representable an iso transform transform we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into()) else {
+        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
+        else {
             return;
         };
 
@@ -177,13 +184,11 @@ impl ViewPartSystem for CamerasPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_scope!("CamerasPart");
-
         let transforms = view_ctx.get::<TransformContext>()?;
         let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
 
         let store = ctx.store_db.store();
-        for (ent_path, props) in query.iter_entities() {
+        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &time_query) {
