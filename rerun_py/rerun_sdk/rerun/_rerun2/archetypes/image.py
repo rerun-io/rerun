@@ -9,11 +9,11 @@ from .._baseclasses import (
     Archetype,
 )
 
-__all__ = ["ImageBase"]
+__all__ = ["Image"]
 
 
 @define(str=False, repr=False)
-class ImageBase(Archetype):
+class Image(Archetype):
     """
     The base archetype for all Image variants.
 

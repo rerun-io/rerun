@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use re_types::{
-    archetypes::{Image, ImageBase},
+    archetypes::Image,
     datatypes::{ImageVariant, TensorBuffer, TensorData, TensorDimension, TensorId},
     Archetype as _,
 };
@@ -15,7 +15,7 @@ fn some_id(x: u8) -> TensorId {
 }
 #[test]
 fn image_roundtrip() {
-    let all_expected = [ImageBase {
+    let all_expected = [Image {
         variant: ImageVariant::Mono(true).into(),
         data: TensorData {
             id: some_id(0),
@@ -58,7 +58,7 @@ fn image_roundtrip() {
             }
         }
 
-        let deserialized = ImageBase::from_arrow(serialized);
+        let deserialized = Image::from_arrow(serialized);
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
@@ -71,7 +71,7 @@ macro_rules! check_image_array {
 
         let img = <$img>::from_arrow(arrow);
 
-        assert_eq!(img.base().variant.0, $variant);
+        assert_eq!(img.variant.0, $variant);
 
         let view1 = arr.view().into_dyn();
         let view2 = ndarray::ArrayViewD::<$typ>::try_from(&img).unwrap();

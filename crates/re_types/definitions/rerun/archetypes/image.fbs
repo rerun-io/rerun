@@ -10,7 +10,7 @@ namespace rerun.archetypes;
 ///
 /// This archetype is not intended to be used directly, but rather to be
 /// used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
-table ImageBase (
+table Image (
   "attr.rust.derive": "PartialEq",
   order: 100
 ) {

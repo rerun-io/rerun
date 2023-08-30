@@ -17,7 +17,7 @@
 /// This archetype is not intended to be used directly, but rather to be
 /// used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ImageBase {
+pub struct Image {
     /// What variant of image this is.
     pub variant: crate::components::ImageVariant,
 
@@ -47,14 +47,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
         ]
     });
 
-impl ImageBase {
+impl Image {
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-impl crate::Archetype for ImageBase {
+impl crate::Archetype for Image {
     #[inline]
     fn name() -> crate::ArchetypeName {
-        crate::ArchetypeName::Borrowed("rerun.archetypes.ImageBase")
+        crate::ArchetypeName::Borrowed("rerun.archetypes.Image")
     }
 
     #[inline]
@@ -79,7 +79,7 @@ impl crate::Archetype for ImageBase {
 
     #[inline]
     fn indicator_component() -> crate::ComponentName {
-        "rerun.components.ImageBaseIndicator".into()
+        "rerun.components.ImageIndicator".into()
     }
 
     #[inline]
@@ -112,7 +112,7 @@ impl crate::Archetype for ImageBase {
                     })
                 })
                 .transpose()
-                .with_context("rerun.archetypes.ImageBase#variant")?
+                .with_context("rerun.archetypes.Image#variant")?
             },
             {
                 Some({
@@ -130,13 +130,13 @@ impl crate::Archetype for ImageBase {
                     })
                 })
                 .transpose()
-                .with_context("rerun.archetypes.ImageBase#data")?
+                .with_context("rerun.archetypes.Image#data")?
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.ImageBaseIndicator".to_owned(),
+                    "rerun.components.ImageIndicator".to_owned(),
                     Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.ImageBaseIndicator".to_owned()),
+                    Some("rerun.components.ImageIndicator".to_owned()),
                 );
                 let array = ::arrow2::array::NullArray::new(
                     datatype.to_logical_type().clone(),
@@ -145,7 +145,7 @@ impl crate::Archetype for ImageBase {
                 .boxed();
                 Some((
                     ::arrow2::datatypes::Field::new(
-                        "rerun.components.ImageBaseIndicator",
+                        "rerun.components.ImageIndicator",
                         datatype,
                         false,
                     ),
@@ -173,33 +173,33 @@ impl crate::Archetype for ImageBase {
             let array = arrays_by_name
                 .get("variant")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ImageBase#variant")?;
+                .with_context("rerun.archetypes.Image#variant")?;
             <crate::components::ImageVariant>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.ImageBase#variant")?
+                .with_context("rerun.archetypes.Image#variant")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ImageBase#variant")?
+                .with_context("rerun.archetypes.Image#variant")?
         };
         let data = {
             let array = arrays_by_name
                 .get("data")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ImageBase#data")?;
+                .with_context("rerun.archetypes.Image#data")?;
             <crate::components::TensorData>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.ImageBase#data")?
+                .with_context("rerun.archetypes.Image#data")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ImageBase#data")?
+                .with_context("rerun.archetypes.Image#data")?
         };
         Ok(Self { variant, data })
     }
 }
 
-impl ImageBase {
+impl Image {
     pub fn new(
         variant: impl Into<crate::components::ImageVariant>,
         data: impl Into<crate::components::TensorData>,

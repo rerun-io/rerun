@@ -4,7 +4,7 @@
 src/archetypes/annotation_context.rs linguist-generated=true
 src/archetypes/arrows3d.rs linguist-generated=true
 src/archetypes/disconnected_space.rs linguist-generated=true
-src/archetypes/image_base.rs linguist-generated=true
+src/archetypes/image.rs linguist-generated=true
 src/archetypes/line_strips2d.rs linguist-generated=true
 src/archetypes/line_strips3d.rs linguist-generated=true
 src/archetypes/mod.rs linguist-generated=true

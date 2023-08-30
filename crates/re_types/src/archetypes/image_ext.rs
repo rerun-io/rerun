@@ -1,106 +1,9 @@
 use smallvec::SmallVec;
 
 use crate::datatypes::{ImageVariant, TensorData, TensorDimension};
+use crate::Archetype;
 
-use super::ImageBase;
-
-// ----------------------------------------------------------------------------
-impl ImageBase {
-    pub fn with_id(self, id: crate::datatypes::TensorId) -> Self {
-        Self {
-            variant: self.variant,
-            data: TensorData {
-                id,
-                shape: self.data.0.shape,
-                buffer: self.data.0.buffer,
-            }
-            .into(),
-        }
-    }
-}
-// ----------------------------------------------------------------------------
-
-/// An Monochrome, RGB, or RGBA Image
-///
-/// This is an alias for the [`ImageBase`] archetype which correctly populates
-/// [`ImageVariant`] component based on the provided [`TensorData`]
-#[derive(Clone, Debug, PartialEq)]
-pub struct Image(ImageBase);
-
-impl Image {
-    pub const NUM_COMPONENTS: usize = ImageBase::NUM_COMPONENTS;
-
-    pub fn base(&self) -> &ImageBase {
-        &self.0
-    }
-
-    pub fn data(&self) -> &TensorData {
-        &self.base().data.0
-    }
-}
-
-impl crate::Archetype for Image {
-    #[inline]
-    fn name() -> crate::ArchetypeName {
-        crate::ArchetypeName::Borrowed("rerun.archetypes.Tensor")
-    }
-
-    #[inline]
-    fn required_components() -> &'static [crate::ComponentName] {
-        ImageBase::recommended_components()
-    }
-
-    #[inline]
-    fn recommended_components() -> &'static [crate::ComponentName] {
-        ImageBase::recommended_components()
-    }
-
-    #[inline]
-    fn optional_components() -> &'static [crate::ComponentName] {
-        ImageBase::optional_components()
-    }
-
-    #[inline]
-    fn all_components() -> &'static [crate::ComponentName] {
-        ImageBase::all_components()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        self.0.try_to_arrow()
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        let base = ImageBase::try_from_arrow(arrow_data)?;
-
-        let non_empty_dim_inds = find_non_empty_dim_indices(&base.data.0.shape);
-
-        let variant = base.variant.0;
-        let dims = non_empty_dim_inds.len();
-        let last_dim_size = non_empty_dim_inds
-            .last()
-            .map_or(0, |i| base.data.0.shape[*i].size);
-
-        match (variant, dims, last_dim_size) {
-            (ImageVariant::Mono(_), 2, _)
-            | (ImageVariant::Rgb(_), 3, 3)
-            | (ImageVariant::Rgba(_), 3, 4) => Ok(Self(base)),
-            _ => Err(crate::DeserializationError::ValidationError(format!(
-                "Invalid ImageBase for Image. Variant: {:?}, Shape: {:?}",
-                base.variant.0, base.data.0.shape
-            ))),
-        }
-    }
-}
+use super::Image;
 
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ImageConstructionError<T: TryInto<TensorData>> {
@@ -149,14 +52,49 @@ impl Image {
             _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
         };
 
-        Ok(Self(ImageBase {
+        Ok(Self {
             variant: variant.into(),
             data: data.into(),
-        }))
+        })
     }
 
     pub fn with_id(self, id: crate::datatypes::TensorId) -> Self {
-        Self(self.0.with_id(id))
+        Self {
+            variant: self.variant,
+            data: TensorData {
+                id,
+                shape: self.data.0.shape,
+                buffer: self.data.0.buffer,
+            }
+            .into(),
+        }
+    }
+
+    #[inline]
+    fn validate_and_try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        let img = Image::try_from_arrow(arrow_data)?;
+
+        let non_empty_dim_inds = find_non_empty_dim_indices(&img.data.0.shape);
+
+        let variant = img.variant.0;
+        let dims = non_empty_dim_inds.len();
+        let last_dim_size = non_empty_dim_inds
+            .last()
+            .map_or(0, |i| img.data.0.shape[*i].size);
+
+        match (variant, dims, last_dim_size) {
+            (ImageVariant::Mono(_), 2, _)
+            | (ImageVariant::Rgb(_), 3, 3)
+            | (ImageVariant::Rgba(_), 3, 4) => Ok(img),
+            _ => Err(crate::DeserializationError::ValidationError(format!(
+                "Invalid Image. Variant: {:?}, Shape: {:?}",
+                img.variant.0, img.data.0.shape
+            ))),
+        }
     }
 }
 
@@ -211,7 +149,7 @@ macro_rules! forward_array_views {
 
             #[inline]
             fn try_from(value: &'a $alias) -> Result<Self, Self::Error> {
-                value.data().try_into()
+                (&value.data.0).try_into()
             }
         }
     };

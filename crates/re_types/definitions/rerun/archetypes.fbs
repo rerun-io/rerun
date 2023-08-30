@@ -1,7 +1,7 @@
 include "./archetypes/annotation_context.fbs";
 include "./archetypes/arrows3d.fbs";
 include "./archetypes/disconnected_space.fbs";
-include "./archetypes/image_base.fbs";
+include "./archetypes/image.fbs";
 include "./archetypes/line_strips2d.fbs";
 include "./archetypes/line_strips3d.fbs";
 include "./archetypes/points2d.fbs";
