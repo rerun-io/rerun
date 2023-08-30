@@ -37,6 +37,10 @@ fn check_graphics_driver(wgpu_render_state: Option<&egui_wgpu::RenderState>) {
             backend,
         } = &info;
 
+        // Example outputs:
+        // > wgpu adapter name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+        // > wgpu adapter name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+
         format!(
             "wgpu adapter name: {name:?}, \
              device_type: {device_type:?}, \
