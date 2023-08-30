@@ -438,8 +438,6 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            paint_streams_guide_line(ctx, &item, ui, response_rect);
-
             let empty = re_data_store::TimeHistogram::default();
             let num_messages_at_time = tree
                 .prefix_times
@@ -540,8 +538,6 @@ impl TimePanel {
                     });
 
                     // show the data in the time area:
-                    paint_streams_guide_line(ctx, &item, ui, response_rect);
-
                     let row_rect = Rect::from_x_y_ranges(
                         time_area_response.rect.x_range(),
                         response_rect.y_range(),
@@ -649,31 +645,6 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
     }
 
     current_time_ui(ctx, ui);
-}
-
-/// Painted behind the data density graph.
-fn paint_streams_guide_line(
-    ctx: &mut ViewerContext<'_>,
-    item: &Item,
-    ui: &mut egui::Ui,
-    response_rect: Rect,
-) {
-    let is_selected = ctx.selection().contains(item);
-    let is_hovered = ctx.hovered().contains(item);
-
-    let stroke_width = if is_hovered { 1.0 } else { 0.5 };
-
-    let line_color = if is_selected {
-        ui.visuals().selection.bg_fill
-    } else {
-        ui.visuals().widgets.noninteractive.bg_stroke.color
-    };
-
-    ui.painter().hline(
-        response_rect.right()..=ui.max_rect().right(),
-        response_rect.center().y,
-        (stroke_width, line_color),
-    );
 }
 
 fn help_button(ui: &mut egui::Ui) {
