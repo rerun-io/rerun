@@ -44,13 +44,15 @@ pub mod external {
 }
 
 /// Never log anything less serious than a `ERROR` from these crates.
-const CRATES_AT_ERROR_LEVEL: [&str; 1] = [
+const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // Waiting for https://github.com/etemesi254/zune-image/issues/131 to be released
     "zune_jpeg",
+    #[cfg(not(debug_assertions))]
+    "rustls",
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
-const CRATES_AT_WARN_LEVEL: [&str; 3] = [
+const CRATES_AT_WARN_LEVEL: &[&str] = &[
     // wgpu crates spam a lot on info level, which is really annoying
     // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
     "naga",
@@ -59,9 +61,13 @@ const CRATES_AT_WARN_LEVEL: [&str; 3] = [
 ];
 
 /// Never log anything less serious than a `INFO` from these crates.
-const CRATES_FORCED_TO_INFO: [&str; 4] = [
+const CRATES_FORCED_TO_INFO: &[&str] = &[
     // These are quite spammy on debug, drowning out what we care about:
-    "h2", "hyper", "rustls", "ureq",
+    "h2",
+    "hyper",
+    "ureq",
+    #[cfg(debug_assertions)]
+    "rustls",
 ];
 
 /// Should we log this message given the filter?
