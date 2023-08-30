@@ -210,7 +210,7 @@ fn flush_pending_events(
     Ok(())
 }
 
-#[allow(clippy::unnecessary_wraps)]
+#[allow(clippy::unnecessary_wraps, clippy::needless_return)]
 fn realtime_pipeline(
     config: &Config,
     sink: &PostHogSink,
@@ -254,7 +254,7 @@ fn realtime_pipeline(
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
             re_log::debug_once!("couldn't seek into analytics data file: {err}");
-            abort_signal.abort();
+            return abort_signal.abort();
         }
     };
 
