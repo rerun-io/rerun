@@ -504,7 +504,7 @@ impl StoreBundle {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
-        // TODO(jleibs) Calling purge-frction-of-ram on Blueprints appears to
+        // TODO(jleibs) Calling `purge_fraction_of_ram` on Blueprints appears to
         // cause partial corruption. Blueprints are aggressively garbage-collected
         // independently, so skipping here should be ok.
         for store_db in self
