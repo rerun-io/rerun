@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use anyhow::Context as _;
 use clap::Subcommand;
 use itertools::Itertools;
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 use re_data_source::DataSource;
 use re_log_types::{LogMsg, PythonVersion};
@@ -472,7 +471,7 @@ async fn run_impl(
         }
 
         data_sources
-            .into_par_iter()
+            .into_iter()
             .map(|data_source| data_source.stream(None))
             .collect::<Result<Vec<_>, _>>()?
     };
