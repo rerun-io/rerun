@@ -18,19 +18,15 @@ use itertools::Itertools;
 use rerun::{
     archetypes::{AnnotationContext, LineStrips2D, LineStrips3D, Points2D, Transform3D},
     components::{
-        Box3D, Color, DrawOrder, Label, Point2D, Point3D, Radius, Rect2D, Tensor,
-        TensorDataMeaning, TextEntry, ViewCoordinates,
+        Box3D, Color, DrawOrder, Label, Point3D, Radius, Rect2D, Tensor, TensorDataMeaning,
+        TextEntry, ViewCoordinates,
     },
     coordinates::SignedAxis3,
     datatypes::{
         self, Angle, AnnotationInfo, RotationAxisAngle, TranslationRotationScale3D, Vec3D,
     },
-    external::{
-        re_log, re_log_types,
-        re_log_types::external::{arrow2, arrow2_convert},
-        re_types,
-    },
-    EntityPath, LegacyComponent, MsgSender, RecordingStream,
+    external::re_log,
+    EntityPath, MsgSender, RecordingStream,
 };
 
 // --- Rerun logging ---
@@ -64,100 +60,6 @@ fn test_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         )),
     )?
     .send(rec_stream)?;
-
-    Ok(())
-}
-
-fn test_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()> {
-    // Hack to establish 2d view bounds
-    rec_stream.set_time_seconds("sim_time", 0f64);
-    MsgSender::new("extension_components")
-        .with_component(&[Rect2D::from_xywh(0.0, 0.0, 128.0, 128.0)])?
-        .send(rec_stream)?;
-
-    // Separate extension component
-    // TODO(cmc): not that great to have to dig around for arrow2-* reexports :/
-    // TODO(cmc): not that great either to have all that boilerplate just to declare the component
-    // name.
-    #[derive(
-        arrow2_convert::ArrowField,
-        arrow2_convert::ArrowDeserialize,
-        arrow2_convert::ArrowSerialize,
-        Clone,
-    )]
-    #[arrow_field(transparent)]
-    struct Confidence(f32);
-
-    impl LegacyComponent for Confidence {
-        fn legacy_name() -> re_log_types::ComponentName {
-            "ext.confidence".into()
-        }
-    }
-
-    re_log_types::component_legacy_shim!(Confidence);
-
-    // Single point with our custom component!
-    rec_stream.set_time_seconds("sim_time", 0f64);
-    MsgSender::new("extension_components/point")
-        .with_component(&[Point2D::new(64.0, 64.0)])?
-        .with_component(&[Color::from(0xff000000)])?
-        .with_component(&[Confidence(0.9)])?
-        .send(rec_stream)?;
-
-    // Batch points with extension
-
-    // Separate extension components
-    #[derive(
-        arrow2_convert::ArrowField,
-        arrow2_convert::ArrowDeserialize,
-        arrow2_convert::ArrowSerialize,
-        Clone,
-    )]
-    #[arrow_field(transparent)]
-    struct Corner(String);
-
-    impl LegacyComponent for Corner {
-        fn legacy_name() -> re_log_types::ComponentName {
-            "ext.corner".into()
-        }
-    }
-
-    re_log_types::component_legacy_shim!(Corner);
-
-    #[derive(
-        arrow2_convert::ArrowField,
-        arrow2_convert::ArrowDeserialize,
-        arrow2_convert::ArrowSerialize,
-        Clone,
-    )]
-    #[arrow_field(transparent)]
-    struct Training(bool);
-
-    impl LegacyComponent for Training {
-        fn legacy_name() -> re_log_types::ComponentName {
-            "ext.training".into()
-        }
-    }
-
-    re_log_types::component_legacy_shim!(Training);
-
-    rec_stream.set_time_seconds("sim_time", 1f64);
-    MsgSender::new("extension_components/points")
-        .with_component(&[
-            Point2D::new(32.0, 32.0),
-            Point2D::new(32.0, 96.0),
-            Point2D::new(96.0, 32.0),
-            Point2D::new(96.0, 96.0),
-        ])?
-        .with_splat(Color::from(0x00ff0000))?
-        .with_component(&[
-            Corner("upper left".into()),
-            Corner("lower left".into()),
-            Corner("upper right".into()),
-            Corner("lower right".into()),
-        ])?
-        .with_splat(Training(true))?
-        .send(rec_stream)?;
 
     Ok(())
 }
@@ -633,9 +535,6 @@ enum Demo {
     #[value(name("bbox"))]
     BoundingBox,
 
-    #[value(name("extension_components"))]
-    ExtensionComponents,
-
     #[value(name("log_cleared"))]
     LogCleared,
 
@@ -679,7 +578,6 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     for test in tests {
         match test {
             Demo::BoundingBox => test_bbox(rec_stream)?,
-            Demo::ExtensionComponents => test_extension_components(rec_stream)?,
             Demo::LogCleared => test_log_cleared(rec_stream)?,
             Demo::Points3D => test_3d_points(rec_stream)?,
             Demo::Rects => test_rects(rec_stream)?,
