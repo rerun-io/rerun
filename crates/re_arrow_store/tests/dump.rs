@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use itertools::Itertools;
 use re_arrow_store::{
-    test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionTarget,
+    test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionOptions,
     TimeInt, TimeRange, Timeline,
 };
 use re_components::datagen::{
@@ -31,11 +31,11 @@ fn data_store_dump() {
 
         // stress-test GC impl
         store1.wipe_timeless_data();
-        store1.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+        store1.gc(GarbageCollectionOptions::gc_everything());
         store2.wipe_timeless_data();
-        store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+        store2.gc(GarbageCollectionOptions::gc_everything());
         store3.wipe_timeless_data();
-        store3.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+        store3.gc(GarbageCollectionOptions::gc_everything());
 
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
     }
@@ -125,8 +125,8 @@ fn data_store_dump_filtered() {
         data_store_dump_filtered_impl(&mut store1, &mut store2);
 
         // stress-test GC impl
-        store1.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
-        store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+        store1.gc(GarbageCollectionOptions::gc_everything());
+        store2.gc(GarbageCollectionOptions::gc_everything());
 
         data_store_dump_filtered_impl(&mut store1, &mut store2);
     }

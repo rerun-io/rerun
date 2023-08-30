@@ -8,7 +8,7 @@ use rand::Rng;
 
 use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
-    GarbageCollectionTarget, LatestAtQuery, WriteError,
+    GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
 use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
@@ -298,7 +298,7 @@ fn gc_correct() {
 
     let stats = DataStoreStats::from_store(&store);
 
-    let (row_ids, stats_diff) = store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+    let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
     let stats_diff = stats_diff + stats_empty; // account for fixed overhead
 
     assert_eq!(row_ids.len() as u64, stats.total.num_rows);
@@ -318,7 +318,7 @@ fn gc_correct() {
         assert!(store.get_msg_metadata(row_id).is_none());
     }
 
-    let (row_ids, stats_diff) = store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+    let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
     assert!(row_ids.is_empty());
     assert_eq!(DataStoreStats::default(), stats_diff);
 
