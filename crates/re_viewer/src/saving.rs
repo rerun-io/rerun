@@ -24,49 +24,50 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 
     use anyhow::Context;
 
-    // TODO(jleibs) is there a better way to get this folder from egui?
-    if let Some(proj_dirs) = directories_next::ProjectDirs::from("", "", "rerun") {
-        let data_dir = proj_dirs.data_dir().join("blueprints");
-        std::fs::create_dir_all(&data_dir).context("Could not create blueprint save directory.")?;
-
-        // We want a unique filename (not a directory) for each app-id.
-
-        // First we sanitize to remove disallowed characters
-        let mut sanitized_app_id = sanitize_app_id(app_id);
-
-        // Make sure the filename isn't too long
-        // This is overly conservative in most cases but some versions of Windows 10
-        // still have this restriction.
-        // TODO(jleibs): Determine this value from the environment.
-        const MAX_PATH: usize = 255;
-        let directory_part_length = data_dir.as_os_str().len();
-        let hash_part_length = 16 + 1;
-        let extension_part_length = ".blueprint".len();
-        let total_reserved_length =
-            directory_part_length + hash_part_length + extension_part_length;
-        if total_reserved_length > MAX_PATH {
-            anyhow::bail!("Could not form blueprint path: total minimum length exceeds {MAX_PATH} characters.")
-        }
-        sanitized_app_id.truncate(MAX_PATH - total_reserved_length);
-
-        // If the sanitization actually did something, we no longer have a uniqueness guarantee,
-        // so insert the hash.
-        if sanitized_app_id != app_id.0 {
-            // Hash the original app-id.
-
-            let hash = {
-                let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
-                app_id.0.hash(&mut hasher);
-                hasher.finish()
-            };
-
-            sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
-        }
-
-        Ok(data_dir.join(format!("{sanitized_app_id}.blueprint")))
-    } else {
+    let Some(storage_dir) = eframe::storage_dir(crate::native::APP_ID) else {
         anyhow::bail!("Error finding project directory for blueprints.")
+    };
+
+    let blueprint_dir = storage_dir.join("blueprints");
+    std::fs::create_dir_all(&blueprint_dir)
+        .context("Could not create blueprint save directory.")?;
+
+    // We want a unique filename (not a directory) for each app-id.
+
+    // First we sanitize to remove disallowed characters
+    let mut sanitized_app_id = sanitize_app_id(app_id);
+
+    // Make sure the filename isn't too long
+    // This is overly conservative in most cases but some versions of Windows 10
+    // still have this restriction.
+    // TODO(jleibs): Determine this value from the environment.
+    const MAX_PATH: usize = 255;
+    let directory_part_length = blueprint_dir.as_os_str().len();
+    let hash_part_length = 16 + 1;
+    let extension_part_length = ".blueprint".len();
+    let total_reserved_length = directory_part_length + hash_part_length + extension_part_length;
+    if total_reserved_length > MAX_PATH {
+        anyhow::bail!(
+            "Could not form blueprint path: total minimum length exceeds {MAX_PATH} characters."
+        )
     }
+    sanitized_app_id.truncate(MAX_PATH - total_reserved_length);
+
+    // If the sanitization actually did something, we no longer have a uniqueness guarantee,
+    // so insert the hash.
+    if sanitized_app_id != app_id.0 {
+        // Hash the original app-id.
+
+        let hash = {
+            let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
+            app_id.0.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
+    }
+
+    Ok(blueprint_dir.join(format!("{sanitized_app_id}.blueprint")))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

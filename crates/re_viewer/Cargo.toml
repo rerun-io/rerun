@@ -84,8 +84,9 @@ eframe = { workspace = true, default-features = false, features = [
   "puffin",
   "wgpu",
 ] }
-egui.workspace = true
+egui_plot.workspace = true
 egui-wgpu.workspace = true
+egui.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
 once_cell = { workspace = true }
