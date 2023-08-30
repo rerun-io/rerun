@@ -1,14 +1,16 @@
-use re_log_types::{
-    external::arrow2::datatypes::DataType, DataRow, DataTableError, RowId, StoreId,
-};
-use re_types::{components::InstanceKey, Archetype};
-
 use crate::{
     log::DataCell,
     time::{Time, TimeInt, TimePoint, Timeline},
     EntityPath, RecordingStream,
 };
-use re_types::{Component, Loggable as _};
+
+use re_log_types::{
+    external::arrow2::datatypes::DataType, DataRow, DataTableError, RowId, StoreId,
+};
+use re_types::{components::InstanceKey, Archetype, Component, Loggable as _};
+
+#[allow(unused_imports)] // used in docstringd
+use re_types::external::arrow2::datatypes::Field;
 
 // ---
 
@@ -27,6 +29,10 @@ pub enum MsgSenderError {
     /// [`InstanceKey`] with a [`u64::MAX`] was found, but is reserved for Rerun internals.
     #[error("InstanceKey(u64::MAX) is reserved for Rerun internals")]
     IllegalInstanceKey,
+
+    /// Cannot serialize data whose [`Field`] doesn't specify extensions.
+    #[error("Trying to serialize field without extension metadata")]
+    MissingExtensionMetadata,
 
     /// A message during packing. See [`DataTableError`].
     #[error(transparent)]
@@ -118,16 +124,14 @@ impl MsgSender {
 
         let mut this = Self::new(ent_path);
         for (field, array) in serialized {
-            // NOTE: Unreachable, a top-level Field will always be a component, and thus an
-            // extension.
-            let DataType::Extension(_, _, legacy_fqname) = field.data_type else {
-                unreachable!()
+            let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
+                return Err(MsgSenderError::MissingExtensionMetadata);
             };
             this = this.with_cell(DataCell::from_arrow(
                 // NOTE: Unwrapping is safe as we always include the legacy fqname into the Field's
                 // metadata while migrating towards HOPE.
                 //legacy_fqname.as_deref().unwrap().into(),
-                legacy_fqname.unwrap().into(),
+                legacy_fqname.unwrap_or(fqname).into(),
                 array,
             ))?;
         }

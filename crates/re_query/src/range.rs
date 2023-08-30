@@ -171,7 +171,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     re_tracing::profile_function!();
 
     // TODO(jleibs) this shim is super gross
-    let components: [ComponentName; N] = A::all_components().try_into().unwrap();
+    let components: [ComponentName; N] = A::all_components().into_owned().try_into().unwrap();
 
     let primary: ComponentName = A::required_components()[0];
     let cluster_key = store.cluster_key();

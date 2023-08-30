@@ -61,7 +61,7 @@ where
     C0: re_types::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
 {
-    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
 
@@ -78,8 +78,8 @@ where
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
 {
-    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
-    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()))?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
     let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -100,9 +100,9 @@ where
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
     &'a C2: Into<::std::borrow::Cow<'a, C2>>,
 {
-    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()), None)?;
-    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()), None)?;
-    let array2 = C2::try_to_arrow_opt(c2.iter().map(|c| c.as_ref()), None)?;
+    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
+    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()))?;
+    let array2 = C2::try_to_arrow_opt(c2.iter().map(|c| c.as_ref()))?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
     let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -159,7 +159,7 @@ where
     {
         let array0 = self.primary.instance_keys.as_arrow_ref();
         let array1 = self.primary.values.as_arrow_ref();
-        let array2 = C1::try_to_arrow_opt(self.iter_component::<C1>()?, None)?;
+        let array2 = C1::try_to_arrow_opt(self.iter_component::<C1>()?)?;
 
         let series0 = Series::try_from((
             InstanceKey::name().as_ref(),
@@ -177,8 +177,8 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
         &self,
     ) -> crate::Result<DataFrame> {
-        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
-        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
+        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys())?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?)?;
 
         let series0 = Series::try_from((
             re_types::components::InstanceKey::name().as_ref(),
@@ -196,9 +196,9 @@ impl<A: Archetype> ArchetypeView<A> {
     >(
         &self,
     ) -> crate::Result<DataFrame> {
-        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys(), None)?;
-        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?, None)?;
-        let array2 = C2::try_to_arrow_opt(self.iter_optional_component::<C2>()?, None)?;
+        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys())?;
+        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?)?;
+        let array2 = C2::try_to_arrow_opt(self.iter_optional_component::<C2>()?)?;
 
         let series0 = Series::try_from((
             re_types::components::InstanceKey::name().as_ref(),
@@ -245,7 +245,7 @@ fn test_df_builder() {
 
     let expected = df![
         Radius::name().as_ref() => &[1f32, 3f32,  5f32, 7f32],
-        Color::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
+        Color::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32) ],
     ]
     .unwrap();
 

@@ -56,24 +56,19 @@ where
     /// Iterate over the instance keys
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
-        self.primary.iter_instance_keys()
+        self.primary.instance_keys().into_iter()
     }
 
     /// Iterate over the primary component values.
     #[inline]
     pub fn iter_primary(&self) -> crate::Result<impl Iterator<Item = Option<Primary>> + '_> {
-        self.primary.iter_values()
+        Ok(self.primary.values()?.into_iter())
     }
 
     /// Iterate over the flattened list of primary component values if any.
     #[inline]
     pub fn iter_primary_flattened(&self) -> impl Iterator<Item = Primary> + '_ {
-        self.primary
-            .iter_values()
-            .ok()
-            .into_iter()
-            .flatten()
-            .flatten()
+        self.primary.values().ok().into_iter().flatten().flatten()
     }
 
     /// Check if the entity has a component and its not empty
@@ -93,11 +88,11 @@ where
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let primary_instance_key_iter = self.primary.iter_instance_keys();
+            let primary_instance_key_iter = self.primary.instance_keys().into_iter();
 
-            let mut component_instance_key_iter = component.iter_instance_keys();
+            let mut component_instance_key_iter = component.instance_keys().into_iter();
 
-            let component_value_iter = component.values.try_to_native_opt()?;
+            let component_value_iter = component.values.try_to_native_opt()?.into_iter();
 
             let next_component_instance_key = component_instance_key_iter.next();
 

@@ -16,7 +16,7 @@ fn basic_single_iter() {
 
     let results = itertools::izip!(
         points.into_iter(),
-        component.iter_values::<Point2D>().unwrap()
+        component.values::<Point2D>().unwrap()
     )
     .collect_vec();
     assert_eq!(results.len(), 2);
