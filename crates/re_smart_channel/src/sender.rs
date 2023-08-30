@@ -6,12 +6,20 @@ use crate::{SendError, SharedStats, SmartMessage, SmartMessagePayload, SmartMess
 
 #[derive(Clone)]
 pub struct Sender<T: Send> {
-    pub(crate) tx: crossbeam::channel::Sender<SmartMessage<T>>,
-    pub(crate) source: Arc<SmartMessageSource>,
-    pub(crate) stats: Arc<SharedStats>,
+    tx: crossbeam::channel::Sender<SmartMessage<T>>,
+    source: Arc<SmartMessageSource>,
+    stats: Arc<SharedStats>,
 }
 
 impl<T: Send> Sender<T> {
+    pub(crate) fn new(
+        tx: crossbeam::channel::Sender<SmartMessage<T>>,
+        source: Arc<SmartMessageSource>,
+        stats: Arc<SharedStats>,
+    ) -> Self {
+        Self { tx, source, stats }
+    }
+
     /// Clones the sender with an updated source.
     pub fn clone_as(&self, source: SmartMessageSource) -> Self {
         Self {

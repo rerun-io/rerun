@@ -165,21 +165,15 @@ impl AppState {
 
                         // ListItem don't need vertical spacing so we disable it, but restore it
                         // before drawing the blueprint panel.
-                        // TODO(ab): remove this once the blueprint tree uses list items
-                        let v_space = ui.spacing().item_spacing.y;
                         ui.spacing_mut().item_spacing.y = 0.0;
 
-                        recordings_panel_ui(&mut ctx, ui);
+                        let recording_shown = recordings_panel_ui(&mut ctx, ui);
 
-                        // TODO(ab): remove this frame once the blueprint tree uses list items
-                        egui::Frame {
-                            inner_margin: re_ui::ReUi::panel_margin(),
-                            ..Default::default()
+                        if recording_shown {
+                            ui.add_space(4.0);
                         }
-                        .show(ui, |ui| {
-                            ui.spacing_mut().item_spacing.y = v_space;
-                            blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
-                        });
+
+                        blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
                     },
                 );
 
@@ -213,7 +207,14 @@ impl AppState {
             // We move the time at the very end of the frame,
             // so we have one frame to see the first data before we move the time.
             let dt = ui.ctx().input(|i| i.stable_dt);
-            let more_data_is_coming = rx.is_connected();
+
+            // Are we still connected to the data source for the current store?
+            let more_data_is_coming = if let Some(store_source) = &store_db.data_source {
+                rx.sources().iter().any(|s| s.as_ref() == store_source)
+            } else {
+                false
+            };
+
             let needs_repaint = ctx.rec_cfg.time_ctrl.update(
                 store_db.times_per_timeline(),
                 dt,

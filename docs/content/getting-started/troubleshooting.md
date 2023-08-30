@@ -24,8 +24,15 @@ On WSL2, in addition to the above packages for Linux, you also need to run:
 [TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager
 sometimes causes Rerun to crash. Try setting `WINIT_UNIX_BACKEND=x11` as a workaround.
 
-<--! This section is linked to from `crates/re_viewer/src/native.rs` -->
+## Startup issues
+If Rerun is having trouble starting, you can try resetting its memory with:
+
+```
+rerun reset
+```
+
 ## Graphics issues
+<--! This section is linked to from `crates/re_viewer/src/native.rs` -->
 
 [Wgpu](https://github.com/gfx-rs/wgpu) (the graphics API we use) maintains a list of
 [known driver issues](https://github.com/gfx-rs/wgpu/wiki/Known-Driver-Issues) and workarounds for them.

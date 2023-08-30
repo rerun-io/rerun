@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
 def classdescription_init(
     self: ClassDescription,
-    info: AnnotationInfoLike = 0,
     *,
+    info: AnnotationInfoLike,
     keypoint_annotations: Sequence[AnnotationInfoLike] = [],
     keypoint_connections: Sequence[KeypointPairLike] = [],
 ) -> None:
