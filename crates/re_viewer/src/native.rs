@@ -46,7 +46,7 @@ fn check_graphics_driver(wgpu_render_state: Option<&egui_wgpu::RenderState>) {
         )
     };
 
-    let is_known_software_rasterizer = {
+    let is_software_rasterizer_with_known_crashes = {
         // See https://github.com/rerun-io/rerun/issues/3089
         const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
             "lavapipe", // Vulkan software rasterizer
@@ -61,8 +61,11 @@ fn check_graphics_driver(wgpu_render_state: Option<&egui_wgpu::RenderState>) {
             .any(|&software_rasterizer| info_string.contains(software_rasterizer))
     };
 
-    if is_known_software_rasterizer {
+    if is_software_rasterizer_with_known_crashes {
         re_log::warn!("Software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("{human_readable_summary}");
+    } else if info.device_type == wgpu::DeviceType::Cpu {
+        re_log::warn!("Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
         re_log::info!("{human_readable_summary}");
     } else {
         re_log::debug!("{human_readable_summary}");
