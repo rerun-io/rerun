@@ -100,7 +100,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # assert_eq!(3, cell.num_instances());
 /// # assert_eq!(cell.datatype(), &MyPoint::data_type());
 /// #
-/// # assert_eq!(points, cell.to_native().collect_vec().as_slice());
+/// # assert_eq!(points, cell.to_native().as_slice());
 /// ```
 ///
 #[derive(Debug, Clone, PartialEq)]
@@ -161,7 +161,7 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
-        Ok(Self::from_arrow(C::name(), C::try_to_arrow(values, None)?))
+        Ok(Self::from_arrow(C::name(), C::try_to_arrow(values)?))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.
@@ -175,10 +175,7 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
-        Ok(Self::from_arrow(
-            C::name(),
-            C::try_to_arrow_opt(values, None)?,
-        ))
+        Ok(Self::from_arrow(C::name(), C::try_to_arrow_opt(values)?))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.
@@ -270,7 +267,7 @@ impl DataCell {
     // `(component, type)` tuple kinda thing.
     #[inline]
     pub fn from_native_empty<C: Component>() -> Self {
-        Self::from_arrow_empty(C::name(), C::arrow_datatype())
+        Self::from_arrow_empty(C::name(), C::arrow_field().data_type)
     }
 
     /// Builds an empty `DataCell` from an arrow datatype.
@@ -359,11 +356,9 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native<'a, C: Component + Default + 'a>(
-        &'a self,
-    ) -> DataCellResult<impl Iterator<Item = C> + '_> {
+    pub fn try_to_native<'a, C: Component + Default + 'a>(&'a self) -> DataCellResult<Vec<C>> {
         re_tracing::profile_function!(C::name().as_str());
-        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_self))
+        Ok(C::try_from_arrow(self.inner.values.as_ref())?)
     }
 
     /// Returns the contents of an expected mono-component as an `Option<C>`.
@@ -371,10 +366,11 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
-        let mut iter =
-            C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_opt_self);
+        re_tracing::profile_function!(C::name().as_str());
 
-        let result = match iter.next() {
+        let mut instances = C::try_from_arrow_opt(self.inner.values.as_ref())?.into_iter();
+
+        let result = match instances.next() {
             // It's ok to have no result from the iteration: this is what we
             // should see for a cleared component (logged as an empty set).
             None => Ok(None),
@@ -388,8 +384,8 @@ impl DataCell {
             })?)),
         };
 
-        if iter.next().is_some() {
-            re_log::warn_once!("Expected only one {}, got {}", C::name(), iter.count() + 2);
+        if instances.next().is_some() {
+            re_log::warn_once!("Unexpected batch for {}", C::name());
         }
 
         result
@@ -400,7 +396,7 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native`] for a fallible alternative.
     #[inline]
-    pub fn to_native<'a, C: Component + Default + 'a>(&'a self) -> impl Iterator<Item = C> + '_ {
+    pub fn to_native<'a, C: Component + Default + 'a>(&'a self) -> Vec<C> {
         self.try_to_native().unwrap()
     }
 
@@ -408,10 +404,9 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native_opt<'a, C: Component + 'a>(
-        &'a self,
-    ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_> {
-        Ok(C::try_iter_from_arrow(self.inner.values.as_ref())?.map(C::convert_item_to_opt_self))
+    pub fn try_to_native_opt<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<Option<C>>> {
+        re_tracing::profile_function!(C::name().as_str());
+        Ok(C::try_from_arrow_opt(self.inner.values.as_ref())?)
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.
@@ -419,7 +414,7 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native_opt`] for a fallible alternative.
     #[inline]
-    pub fn to_native_opt<'a, C: Component + 'a>(&'a self) -> impl Iterator<Item = Option<C>> + '_ {
+    pub fn to_native_opt<'a, C: Component + 'a>(&'a self) -> Vec<Option<C>> {
         self.try_to_native_opt().unwrap()
     }
 }
