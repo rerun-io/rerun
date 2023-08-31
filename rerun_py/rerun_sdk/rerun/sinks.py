@@ -11,7 +11,7 @@ from rerun.recording_stream import RecordingStream
 
 
 def connect(
-    addr: str | None = None, flush_timeout_sec: float | None = 2.0, recording: RecordingStream | None = None
+    addr: str | None = None, *, flush_timeout_sec: float | None = 2.0, recording: RecordingStream | None = None
 ) -> None:
     """
     Connect to a remote Rerun Viewer on the given ip:port.
@@ -109,6 +109,7 @@ def memory_recording(recording: RecordingStream | None = None) -> MemoryRecordin
 
 
 def serve(
+    *,
     open_browser: bool = True,
     web_port: int | None = None,
     ws_port: int | None = None,
