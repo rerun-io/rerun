@@ -33,7 +33,7 @@ pub struct Config {
     pub session_id: Uuid,
 
     #[serde(rename = "m", default)]
-    pub metadata: HashMap<String, Property>,
+    pub opt_in_metadata: HashMap<String, Property>,
 }
 
 fn get_local_storage() -> Result<Storage, ConfigError> {
@@ -45,18 +45,18 @@ fn get_local_storage() -> Result<Storage, ConfigError> {
 impl Config {
     const STORAGE_KEY: &str = "rerun_config";
 
-    pub fn load() -> Result<Config, ConfigError> {
+    pub fn new() -> Result<Self, ConfigError> {
+        Ok(Self::default())
+    }
+
+    pub fn load() -> Result<Option<Config>, ConfigError> {
         let storage = get_local_storage()?;
         let value = storage
             .get_item(Self::STORAGE_KEY)
             .map_err(|_| ConfigError::Storage(format!("failed to get `{}`", Self::STORAGE_KEY)))?;
         match value {
-            Some(value) => Ok(serde_json::from_str(&value)?),
-            None => Ok(Config {
-                analytics_id: Uuid::new_v4().to_string(),
-                session_id: Uuid::new_v4(),
-                metadata: HashMap::new(),
-            }),
+            Some(value) => Ok(Some(serde_json::from_str(&value)?)),
+            None => Ok(None),
         }
     }
 
@@ -72,5 +72,15 @@ impl Config {
         // no first-run opt-out for web
 
         false
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            analytics_id: Uuid::new_v4().to_string(),
+            session_id: Uuid::new_v4(),
+            opt_in_metadata: HashMap::new(),
+        }
     }
 }

@@ -9,21 +9,18 @@
 //!
 //! DO NOT MOVE THIS FILE without updating all the docs pointing to it!
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_analytics::{Analytics, Event, Property};
-
-#[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_log_types::StoreSource;
 
 pub struct ViewerAnalytics {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
-    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+    #[cfg(feature = "analytics")]
     analytics: Option<Analytics>,
 }
 
 impl ViewerAnalytics {
-    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+    #[cfg(feature = "analytics")]
     pub fn new() -> Self {
         let analytics = match Analytics::new(std::time::Duration::from_secs(2)) {
             Ok(analytics) => Some(analytics),
@@ -36,12 +33,7 @@ impl ViewerAnalytics {
         Self { analytics }
     }
 
-    #[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+    #[cfg(feature = "analytics")]
     fn record(&self, event: Event) {
         if let Some(analytics) = &self.analytics {
             analytics.record(event);
@@ -49,7 +41,7 @@ impl ViewerAnalytics {
     }
 
     /// Register a property that will be included in all append-events.
-    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+    #[cfg(feature = "analytics")]
     fn register(&mut self, name: &'static str, property: impl Into<Property>) {
         if let Some(analytics) = &mut self.analytics {
             analytics.register_append_property(name, property);
@@ -57,7 +49,7 @@ impl ViewerAnalytics {
     }
 
     /// Deregister a property.
-    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+    #[cfg(feature = "analytics")]
     fn deregister(&mut self, name: &'static str) {
         if let Some(analytics) = &mut self.analytics {
             analytics.deregister_append_property(name);
@@ -67,8 +59,11 @@ impl ViewerAnalytics {
 
 // ----------------------------------------------------------------------------
 
+// TODO(jan): add URL (iff domain is `rerun.io`)
+// TODO(jan): make sure analytics knows the event comes from web
+
 /// Here follows all the analytics collected by the Rerun Viewer.
-#[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+#[cfg(feature = "analytics")]
 impl ViewerAnalytics {
     /// When the viewer is first started
     pub fn on_viewer_started(
@@ -87,7 +82,7 @@ impl ViewerAnalytics {
         };
         self.register("app_env", app_env_str);
 
-        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+        #[cfg(feature = "analytics")]
         if let Some(analytics) = &self.analytics {
             let mut event = Event::update("update_metadata").with_build_info(build_info);
 
@@ -118,8 +113,8 @@ impl ViewerAnalytics {
             // In practice this is the email of Rerun employees
             // who register their emails with `rerun analytics email`.
             // This is how we filter out employees from actual users!
-            for (name, value) in analytics.config().opt_in_metadata.clone() {
-                event = event.with_prop(name, value);
+            for (name, value) in analytics.config().opt_in_metadata.iter() {
+                event = event.with_prop(name.clone(), value.clone());
             }
 
             analytics.record(event);
@@ -217,20 +212,4 @@ impl ViewerAnalytics {
 
         self.record(Event::append("open_recording"));
     }
-}
-
-// ----------------------------------------------------------------------------
-
-// When analytics are disabled:
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
-impl ViewerAnalytics {
-    #[allow(clippy::unused_self)]
-    pub fn on_viewer_started(
-        &mut self,
-        _build_info: &re_build_info::BuildInfo,
-        _app_env: &crate::AppEnvironment,
-    ) {
-    }
-    #[allow(clippy::unused_self)]
-    pub fn on_open_recording(&mut self, _store_db: &re_data_store::StoreDb) {}
 }

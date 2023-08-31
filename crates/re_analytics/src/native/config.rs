@@ -59,28 +59,40 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load() -> Result<Config, ConfigError> {
+    pub fn new() -> Result<Self, ConfigError> {
         let dirs = Self::project_dirs()?;
         let config_path = dirs.config_dir().join("analytics.json");
         let data_path = dirs.data_local_dir().join("analytics");
-        let config = match File::open(&config_path) {
+        Ok(Self {
+            analytics_id: Uuid::new_v4().to_string(),
+            analytics_enabled: true,
+            opt_in_metadata: Default::default(),
+            session_id: Uuid::new_v4(),
+            is_first_run: true,
+            config_file_path: config_path,
+            data_dir_path: data_path,
+        })
+    }
+
+    pub fn load_or_default() -> Result<Config, ConfigError> {
+        match Self::load()? {
+            Some(config) => Ok(config),
+            None => Config::new(),
+        }
+    }
+
+    pub fn load() -> Result<Option<Config>, ConfigError> {
+        let dirs = Self::project_dirs()?;
+        let config_path = dirs.config_dir().join("analytics.json");
+        match File::open(&config_path) {
             Ok(file) => {
                 let reader = BufReader::new(file);
-                serde_json::from_reader(reader)?
+                let config = serde_json::from_reader(reader)?;
+                Ok(Some(config))
             }
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config {
-                analytics_id: Uuid::new_v4().to_string(),
-                analytics_enabled: true,
-                opt_in_metadata: Default::default(),
-                session_id: Uuid::new_v4(),
-                is_first_run: true,
-                config_file_path: config_path,
-                data_dir_path: data_path,
-            },
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
             Err(err) => return Err(ConfigError::Io(err)),
-        };
-
-        Ok(config)
+        }
     }
 
     pub fn save(&self) -> Result<(), ConfigError> {

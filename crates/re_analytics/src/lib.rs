@@ -234,6 +234,24 @@ pub struct Analytics {
 impl Analytics {
     pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = Config::load()?;
+
+        #[cfg(target_arch = "wasm32")]
+        let config = match config {
+            Some(config) => config,
+            None => {
+                // the config doesnt exist in local storage yet, save it
+                let config = Config::default();
+                config.save()?;
+                config
+            }
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let config = match config {
+            Some(config) => config,
+            None => Config::new()?,
+        };
+
         re_log::trace!(?config, ?tick, "loaded analytics config");
 
         if config.is_first_run() {
