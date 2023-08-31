@@ -111,7 +111,7 @@ namespace rerun {
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
-                        std::make_shared<arrow::Float64Builder>(memory_pool)
+                        std::make_shared<arrow::DoubleBuilder>(memory_pool)
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
