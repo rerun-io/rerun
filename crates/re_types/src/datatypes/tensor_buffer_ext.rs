@@ -1,4 +1,4 @@
-use crate::TensorDataType;
+use crate::tensor_data::TensorDataType;
 
 use super::TensorBuffer;
 

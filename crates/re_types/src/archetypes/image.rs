@@ -14,10 +14,10 @@
 
 /// A monochrome or color image.
 ///
-/// The shape of the TensorData must be mappable to:
-/// - A HxW tensor, treated as a grayscale image.
-/// - A HxWx3 tensor, treated as an RGB image.
-/// - A HxWx4 tensor, treated as an RGBA image.
+/// The shape of the `TensorData` must be mappable to:
+/// - A `HxW` tensor, treated as a grayscale image.
+/// - A `HxWx3` tensor, treated as an RGB image.
+/// - A `HxWx4` tensor, treated as an RGBA image.
 ///
 /// The viewer has limited support for ignoring extra empty dimensions.
 #[derive(Clone, Debug, PartialEq)]

@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::Tensor,
     datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId},
-    Archetype as _, TensorCastError,
+    tensor_data::TensorCastError,
+    Archetype as _,
 };
 
 mod util;
