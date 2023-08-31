@@ -9,6 +9,7 @@
 //!
 //! DO NOT MOVE THIS FILE without updating all the docs pointing to it!
 
+#[cfg(feature = "analytics")]
 use re_analytics::{Analytics, Event, Property};
 use re_log_types::StoreSource;
 
@@ -212,4 +213,20 @@ impl ViewerAnalytics {
 
         self.record(Event::append("open_recording"));
     }
+}
+
+#[cfg(not(feature = "analytics"))]
+impl ViewerAnalytics {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn on_viewer_started(
+        &mut self,
+        _build_info: &re_build_info::BuildInfo,
+        _app_env: &crate::AppEnvironment,
+    ) {
+    }
+
+    pub fn on_open_recording(&mut self, store_db: &re_data_store::StoreDb) {}
 }
