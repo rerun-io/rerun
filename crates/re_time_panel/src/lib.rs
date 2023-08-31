@@ -64,6 +64,10 @@ impl TimePanel {
         ui: &mut egui::Ui,
         time_panel_expanded: bool,
     ) {
+        // this is the size of everything above the central panel (window title bar, top bar on web,
+        // etc.)
+        let screen_header_height = ui.cursor().top();
+
         let top_bar_height = 28.0;
         let margin = ctx.re_ui.bottom_panel_margin();
         let mut panel_frame = ctx.re_ui.bottom_panel_frame();
@@ -85,7 +89,7 @@ impl TimePanel {
             .default_height(44.0);
 
         let min_height = 150.0;
-        let min_top_space = 180.0;
+        let min_top_space = 150.0 + screen_header_height;
         let expanded = egui::TopBottomPanel::bottom("time_panel_expanded")
             .resizable(true)
             .show_separator_line(false)
