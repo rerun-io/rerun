@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Tensor,
-    datatypes::{TensorBuffer, TensorCastError, TensorData, TensorDimension, TensorId},
-    Archetype as _,
+    datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId},
+    Archetype as _, TensorCastError,
 };
 
 mod util;

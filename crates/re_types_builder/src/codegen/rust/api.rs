@@ -215,8 +215,6 @@ fn create_files(
 
         code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
 
-        let mut ext_mods = vec![];
-
         for module in mods.keys() {
             code.push_text(format!("mod {module};"), 1, 0);
 
@@ -226,7 +224,6 @@ fn create_files(
             ext_path.set_extension("rs");
             if ext_path.exists() {
                 code.push_text(format!("mod {module}_ext;"), 1, 0);
-                ext_mods.push(format!("{module}_ext"));
             }
         }
 
@@ -235,11 +232,6 @@ fn create_files(
         for (module, names) in mods {
             let names = names.join(", ");
             code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
-        }
-
-        // TODO(jleibs): Declare these more explicitly to avoid '*'
-        for module in ext_mods {
-            code.push_text(format!("pub use self::{module}::*;"), 1, 0);
         }
 
         files_to_write.insert(path, code);

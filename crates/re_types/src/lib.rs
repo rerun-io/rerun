@@ -631,7 +631,7 @@ mod arrow_string;
 mod tensor_data;
 pub use arrow_buffer::ArrowBuffer;
 pub use arrow_string::ArrowString;
-pub use tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement};
+pub use tensor_data::{TensorCastError, TensorDataType, TensorDataTypeTrait, TensorElement};
 
 #[cfg(feature = "testing")]
 pub mod testing;

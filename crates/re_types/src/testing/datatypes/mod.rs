@@ -9,4 +9,3 @@ pub use self::fuzzy::{
     FlattenedScalar,
 };
 pub use self::fuzzy_deps::{PrimitiveComponent, StringComponent};
-pub use self::fuzzy_ext::*;

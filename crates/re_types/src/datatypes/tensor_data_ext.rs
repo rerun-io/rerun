@@ -1,26 +1,9 @@
-use crate::{TensorDataType, TensorElement};
+use crate::{TensorCastError, TensorDataType, TensorElement};
 
 #[cfg(feature = "image")]
 use crate::ArrowBuffer;
 
 use super::{TensorBuffer, TensorData, TensorDimension, TensorId};
-
-// ----------------------------------------------------------------------------
-
-#[derive(thiserror::Error, Debug, PartialEq, Clone)]
-pub enum TensorCastError {
-    #[error("ndarray type mismatch with tensor storage")]
-    TypeMismatch,
-
-    #[error("tensor shape did not match storage length")]
-    BadTensorShape {
-        #[from]
-        source: ndarray::ShapeError,
-    },
-
-    #[error("ndarray Array is not contiguous and in standard order")]
-    NotContiguousStdOrder,
-}
 
 // ----------------------------------------------------------------------------
 

@@ -1,5 +1,22 @@
 use half::f16;
 
+// ----------------------------------------------------------------------------
+
+#[derive(thiserror::Error, Debug, PartialEq, Clone)]
+pub enum TensorCastError {
+    #[error("ndarray type mismatch with tensor storage")]
+    TypeMismatch,
+
+    #[error("tensor shape did not match storage length")]
+    BadTensorShape {
+        #[from]
+        source: ndarray::ShapeError,
+    },
+
+    #[error("ndarray Array is not contiguous and in standard order")]
+    NotContiguousStdOrder,
+}
+
 /// The data types supported by a [`crate::datatypes::TensorData`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TensorDataType {

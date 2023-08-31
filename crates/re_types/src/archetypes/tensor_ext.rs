@@ -73,7 +73,7 @@ impl Tensor {
 macro_rules! forward_array_views {
     ($type:ty, $alias:ty) => {
         impl<'a> TryFrom<&'a $alias> for ::ndarray::ArrayViewD<'a, $type> {
-            type Error = crate::datatypes::TensorCastError;
+            type Error = crate::TensorCastError;
 
             #[inline]
             fn try_from(value: &'a $alias) -> Result<Self, Self::Error> {
