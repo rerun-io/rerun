@@ -53,8 +53,8 @@ impl TensorData {
 
         match shape_short.len() {
             1 => {
-                // Special case: Nx1(x1x1x...) tensors are treated as Nx1 gray images.
-                // Special case: Nx1(x1x1x...) tensors are treated as Nx1 gray images.
+                // Special case: Nx1(x1x1x …) tensors are treated as Nx1 gray images.
+                // Special case: Nx1(x1x1x …) tensors are treated as Nx1 gray images.
                 if self.shape.len() >= 2 {
                     Some([shape_short[0].size, 1, 1])
                 } else {
