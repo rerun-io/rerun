@@ -77,7 +77,7 @@ impl DataUi for EntityComponentWithInstances {
             egui_extras::TableBuilder::new(ui)
                 .resizable(false)
                 .vscroll(true)
-                .auto_shrink([false, true])
+                .auto_shrink([true, true])
                 .max_scroll_height(100.0)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                 .columns(egui_extras::Column::auto(), 2)
