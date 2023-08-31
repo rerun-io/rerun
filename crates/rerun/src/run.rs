@@ -671,12 +671,23 @@ fn reset_viewer() -> anyhow::Result<()> {
 
     // Note: `remove_dir_all` fails if the directory doesn't exist.
     if data_dir.exists() {
+        // Keep analytics, because it is used to uniquely identify users over time.
+        let analytics_file_path = data_dir.join("analytics.json");
+        let analytics = std::fs::read(&analytics_file_path);
+
         if let Err(err) = std::fs::remove_dir_all(&data_dir) {
             anyhow::bail!("Failed to remove {data_dir:?}: {err}");
         } else {
-            eprintln!("Removed {data_dir:?}.");
-            Ok(())
+            eprintln!("Cleared {data_dir:?}.");
         }
+
+        if let Ok(analytics) = analytics {
+            // Restore analytics.json:
+            std::fs::create_dir(&data_dir).ok();
+            std::fs::write(&analytics_file_path, analytics).ok();
+        }
+
+        Ok(())
     } else {
         eprintln!("Rerun state was already cleared.");
         Ok(())
