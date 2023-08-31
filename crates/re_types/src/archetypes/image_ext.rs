@@ -20,7 +20,7 @@ impl Image {
     /// Will return an [`ImageConstructionError`] if the shape of the tensor data is invalid
     /// for treating as an image.
     ///
-    /// This is useful for constructing a tensor from an ndarray.
+    /// This is useful for constructing an [`Image`] from an ndarray.
     pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, ImageConstructionError<T>> {
         let mut data: TensorData = data
             .try_into()
@@ -55,30 +55,6 @@ impl Image {
                 buffer: self.data.0.buffer,
             }
             .into(),
-        }
-    }
-
-    #[inline]
-    pub fn validate_and_try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        let img = Image::try_from_arrow(arrow_data)?;
-
-        let non_empty_dim_inds = find_non_empty_dim_indices(&img.data.0.shape);
-
-        let dims = non_empty_dim_inds.len();
-        let last_dim_size = non_empty_dim_inds
-            .last()
-            .map_or(0, |i| img.data.0.shape[*i].size);
-
-        match (dims, last_dim_size) {
-            (2, _) | (3, 3 | 4) => Ok(img),
-            _ => Err(crate::DeserializationError::ValidationError(format!(
-                "Invalid Image. Shape: {:?}",
-                img.data.0.shape
-            ))),
         }
     }
 }
