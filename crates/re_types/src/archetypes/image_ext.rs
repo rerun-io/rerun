@@ -1,7 +1,6 @@
 use smallvec::SmallVec;
 
 use crate::datatypes::{TensorData, TensorDimension};
-use crate::Archetype;
 
 use super::Image;
 
