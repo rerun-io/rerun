@@ -140,7 +140,6 @@ def copy_and_patch(src_dir: str, old_str: str, new_str: str) -> Iterable[tuple[s
                     for line in f:
                         print(line.replace(old_str, new_str), end="")
 
-                print(src_path)
                 yield (src_path, dest_path)
 
             break  # NOTE: Do _not_ recurse into sub-dirs, only weird non-runnable examples live there.
