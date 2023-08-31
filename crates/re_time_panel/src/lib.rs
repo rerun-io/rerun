@@ -11,7 +11,7 @@ mod time_ranges_ui;
 mod time_selection_ui;
 
 use egui::emath::Rangef;
-use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
+use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 use std::slice;
 
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
@@ -462,29 +462,33 @@ impl TimePanel {
         // ----------------------------------------------
 
         // show the data in the time area:
-
-        if is_visible && is_closed {
-            let empty = re_data_store::TimeHistogram::default();
-            let num_messages_at_time = tree
-                .prefix_times
-                .get(ctx.rec_cfg.time_ctrl.timeline())
-                .unwrap_or(&empty);
-
+        if is_visible {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
 
-            data_density_graph::data_density_graph_ui(
-                &mut self.data_density_graph_painter,
-                ctx,
-                time_area_response,
-                time_area_painter,
-                ui,
-                tree.num_timeless_messages(),
-                num_messages_at_time,
-                row_rect,
-                &self.time_ranges_ui,
-                &item,
-            );
+            highlight_timeline_row(ui, ctx, time_area_painter, &item, &row_rect);
+
+            // show the density graph only if that item is closed
+            if is_closed {
+                let empty = re_data_store::TimeHistogram::default();
+                let num_messages_at_time = tree
+                    .prefix_times
+                    .get(ctx.rec_cfg.time_ctrl.timeline())
+                    .unwrap_or(&empty);
+
+                data_density_graph::data_density_graph_ui(
+                    &mut self.data_density_graph_painter,
+                    ctx,
+                    time_area_response,
+                    time_area_painter,
+                    ui,
+                    tree.num_timeless_messages(),
+                    num_messages_at_time,
+                    row_rect,
+                    &self.time_ranges_ui,
+                    &item,
+                );
+            }
         }
     }
 
@@ -580,6 +584,8 @@ impl TimePanel {
                         response_rect.y_range(),
                     );
 
+                    highlight_timeline_row(ui, ctx, time_area_painter, &item, &row_rect);
+
                     data_density_graph::data_density_graph_ui(
                         &mut self.data_density_graph_painter,
                         ctx,
@@ -645,6 +651,35 @@ impl TimePanel {
                 help_button(ui);
             });
         }
+    }
+}
+
+/// Draw the hovered/selected highlight background for a timeline row.
+fn highlight_timeline_row(
+    ui: &mut Ui,
+    ctx: &ViewerContext<'_>,
+    painter: &Painter,
+    item: &Item,
+    row_rect: &Rect,
+) {
+    let item_hovered =
+        ctx.selection_state().highlight_for_ui_element(item) == HoverHighlight::Hovered;
+    let item_selected = ctx.selection().contains(item);
+    let bg_color = if item_selected {
+        Some(ui.visuals().selection.bg_fill.gamma_multiply(0.4))
+    } else if item_hovered {
+        Some(
+            ui.visuals()
+                .widgets
+                .hovered
+                .weak_bg_fill
+                .gamma_multiply(0.3),
+        )
+    } else {
+        None
+    };
+    if let Some(bg_color) = bg_color {
+        painter.rect_filled(*row_rect, egui::Rounding::ZERO, bg_color);
     }
 }
 
