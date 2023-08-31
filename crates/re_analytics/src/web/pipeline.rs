@@ -4,15 +4,11 @@
     clippy::unused_self
 )]
 
+use std::sync::Arc;
 use std::time::Duration;
 
-use super::sink::PostHogSink;
-use crate::{Config, Event};
-
-// TODO(cmc): abstract away the concept of a `Pipeline` behind an actual trait when comes the time
-// to support more than just PostHog.
-
-// ---
+use crate::PostHogBatch;
+use crate::{Config, Event, PostHogEvent};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
@@ -23,17 +19,71 @@ pub enum PipelineError {
     Serde(#[from] serde_json::Error),
 }
 
-/// An eventual, at-least-once(-ish) event pipeline, backed by a write-ahead log on the local disk.
+/// WASM event pipeline.
 ///
-/// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
+/// Unlike the native pipeline, this one is not backed by a WAL. All events are immediately sent as they are recorded.
 #[derive(Debug)]
-pub struct Pipeline {}
+pub struct Pipeline {
+    analytics_id: Arc<str>,
+    session_id: Arc<str>,
+}
 
 impl Pipeline {
-    pub(crate) fn new(_config: &Config, _tick: Duration) -> Result<Option<Self>, PipelineError> {
-        let _sink = PostHogSink::default();
-        Ok(None)
+    // NOTE: different from the native URL, this one is _specifically_ for web.
+    const URL: &str = "https://tel.rerun.io/api/pog";
+
+    pub(crate) fn new(config: &Config, _tick: Duration) -> Result<Option<Self>, PipelineError> {
+        Ok(Some(Pipeline {
+            analytics_id: config.analytics_id.as_str().into(),
+            session_id: config.session_id.to_string().into(),
+        }))
     }
 
-    pub fn record(&self, _event: Event) {}
+    pub fn record(&self, event: Event) {
+        // send all events immediately, ignore all errors
+
+        let analytics_id = self.analytics_id.clone();
+        let session_id = self.session_id.clone();
+
+        let events = [PostHogEvent::from_event(
+            &self.analytics_id,
+            &self.session_id,
+            &event,
+        )];
+        let batch = PostHogBatch::from_events(&events);
+        let json = match serde_json::to_string_pretty(&batch) {
+            Ok(json) => json,
+            Err(err) => {
+                re_log::debug_once!("failed to send event: {err}");
+                return;
+            }
+        };
+        re_log::trace!("Sending analytics: {json}");
+        ehttp::fetch(
+            ehttp::Request::post(Self::URL, json.into_bytes()),
+            move |result| match result {
+                Ok(response) => {
+                    if !response.ok {
+                        re_log::debug_once!(
+                            "Failed to send analytics down the sink: HTTP request failed: {} {} {}",
+                            response.status,
+                            response.status_text,
+                            response.text().unwrap_or("")
+                        );
+                        return;
+                    }
+
+                    re_log::trace!(
+                        ?response,
+                        %analytics_id,
+                        %session_id,
+                        "events successfully flushed"
+                    );
+                }
+                Err(err) => {
+                    re_log::debug_once!("Failed to send analytics down the sink: {err}");
+                }
+            },
+        );
+    }
 }

@@ -10,8 +10,6 @@ use uuid::Uuid;
 
 use crate::Property;
 
-// ---
-
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
     #[error("Couldn't compute config location")]
