@@ -8,6 +8,7 @@ namespace rerun.datatypes;
 // A unique id per [`Tensor`].
 struct TensorId (
   order: 100,
+  "attr.python.aliases": "uuid.UUID",
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, Default, Eq, PartialEq"
 ) {

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -12,6 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import tensordata_native_to_pa_array  # noqa: F401
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
@@ -49,10 +52,7 @@ class TensorData:
 
 
 TensorDataLike = TensorData
-TensorDataArrayLike = Union[
-    TensorData,
-    Sequence[TensorDataLike],
-]
+TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.NDArray[np.uint8]]
 
 
 # --- Arrow support ---
@@ -176,7 +176,7 @@ class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError
+        return tensordata_native_to_pa_array(data, data_type)
 
 
 TensorDataType._ARRAY_TYPE = TensorDataArray

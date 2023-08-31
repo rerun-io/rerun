@@ -17,6 +17,7 @@ __all__ = [
     "LineStrips3D",
     "Points2D",
     "Points3D",
+    "Tensor",
     "Transform3D",
     "add_space_view",
     "arch",
@@ -42,6 +43,7 @@ from ._rerun2.archetypes import (
     LineStrips3D,
     Points2D,
     Points3D,
+    Tensor,
     Transform3D,
 )
 from ._rerun2.log import log

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+import uuid
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +29,11 @@ class TensorId:
         return np.asarray(self.uuid, dtype=dtype)
 
 
-TensorIdLike = TensorId
+if TYPE_CHECKING:
+    TensorIdLike = Union[TensorId, uuid.UUID]
+else:
+    TensorIdLike = Any
+
 TensorIdArrayLike = Union[
     TensorId,
     Sequence[TensorIdLike],

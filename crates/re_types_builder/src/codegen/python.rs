@@ -281,6 +281,7 @@ fn quote_objects(
             import numpy as np
             import numpy.typing as npt
             import pyarrow as pa
+            import uuid
 
             from .._baseclasses import (
                 Archetype,
