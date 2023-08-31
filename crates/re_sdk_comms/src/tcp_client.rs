@@ -156,7 +156,7 @@ impl TcpClient {
         re_log::trace!("Attempting to flush TCP stream…");
         match &mut self.stream_state {
             TcpStreamState::Pending { .. } => {
-                re_log::warn!(
+                re_log::warn_once!(
                     "Tried to flush while TCP stream was still Pending. Data was possibly dropped."
                 );
             }

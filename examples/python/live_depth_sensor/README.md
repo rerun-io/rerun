@@ -16,14 +16,7 @@ thumbnail: https://static.rerun.io/8b7fe937b90b05972e01b0e79b4b87dde4a47914_live
 
 A minimal example of streaming frames live from an Intel RealSense depth sensor.
 
-NOTE: this example currently runs forever and will eventually exhaust your
-system memory. It is advised you run an independent rerun viewer with a memory
-limit:
+Usage:
 ```
-rerun --memory-limit 4GB
-```
-
-And then connect using:
-```
-python examples/python/live_depth_sensor/main.py --connect
+examples/python/live_depth_sensor/main.py
 ```
