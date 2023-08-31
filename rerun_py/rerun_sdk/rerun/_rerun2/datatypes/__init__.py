@@ -75,7 +75,6 @@ from .fuzzy_deps import (
     StringComponentLike,
     StringComponentType,
 )
-from .image_variant import ImageVariant, ImageVariantArray, ImageVariantArrayLike, ImageVariantLike, ImageVariantType
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArray, KeypointPairArrayLike, KeypointPairLike, KeypointPairType
 from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
@@ -186,11 +185,6 @@ __all__ = [
     "FlattenedScalarArrayLike",
     "FlattenedScalarLike",
     "FlattenedScalarType",
-    "ImageVariant",
-    "ImageVariantArray",
-    "ImageVariantArrayLike",
-    "ImageVariantLike",
-    "ImageVariantType",
     "KeypointId",
     "KeypointIdArray",
     "KeypointIdArrayLike",

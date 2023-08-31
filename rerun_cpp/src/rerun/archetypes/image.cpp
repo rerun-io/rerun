@@ -3,22 +3,14 @@
 
 #include "image.hpp"
 
-#include "../components/image_variant.hpp"
 #include "../components/tensor_data.hpp"
 
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> Image::to_data_cells() const {
             std::vector<rerun::DataCell> cells;
-            cells.reserve(2);
+            cells.reserve(1);
 
-            {
-                const auto result = rerun::components::ImageVariant::to_data_cell(&variant, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
             {
                 const auto result = rerun::components::TensorData::to_data_cell(&data, 1);
                 if (result.is_err()) {

@@ -3,7 +3,6 @@ include "./components/class_id.fbs";
 include "./components/color.fbs";
 include "./components/disconnected_space.fbs";
 include "./components/draw_order.fbs";
-include "./components/image_variant.fbs";
 include "./components/instance_key.fbs";
 include "./components/keypoint_id.fbs";
 include "./components/label.fbs";

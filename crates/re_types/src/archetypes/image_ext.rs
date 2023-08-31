@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::datatypes::{ImageVariant, TensorData, TensorDimension};
+use crate::datatypes::{TensorData, TensorDimension};
 use crate::Archetype;
 
 use super::Image;
@@ -28,39 +28,27 @@ impl Image {
 
         let non_empty_dim_inds = find_non_empty_dim_indices(&data.shape);
 
-        let variant = match non_empty_dim_inds.len() {
+        match non_empty_dim_inds.len() {
             2 => {
                 data.shape[non_empty_dim_inds[0]].name = Some("height".into());
                 data.shape[non_empty_dim_inds[1]].name = Some("width".into());
-                ImageVariant::Mono(true)
             }
             3 => match data.shape[non_empty_dim_inds[2]].size {
-                3 => {
+                3 | 4 => {
                     data.shape[non_empty_dim_inds[0]].name = Some("height".into());
                     data.shape[non_empty_dim_inds[1]].name = Some("width".into());
                     data.shape[non_empty_dim_inds[2]].name = Some("color".into());
-                    ImageVariant::Rgb(true)
-                }
-                4 => {
-                    data.shape[non_empty_dim_inds[0]].name = Some("height".into());
-                    data.shape[non_empty_dim_inds[1]].name = Some("width".into());
-                    data.shape[non_empty_dim_inds[2]].name = Some("color".into());
-                    ImageVariant::Rgba(true)
                 }
                 _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
             },
             _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
         };
 
-        Ok(Self {
-            variant: variant.into(),
-            data: data.into(),
-        })
+        Ok(Self { data: data.into() })
     }
 
     pub fn with_id(self, id: crate::datatypes::TensorId) -> Self {
         Self {
-            variant: self.variant,
             data: TensorData {
                 id,
                 shape: self.data.0.shape,
@@ -71,7 +59,7 @@ impl Image {
     }
 
     #[inline]
-    fn validate_and_try_from_arrow(
+    pub fn validate_and_try_from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -80,19 +68,16 @@ impl Image {
 
         let non_empty_dim_inds = find_non_empty_dim_indices(&img.data.0.shape);
 
-        let variant = img.variant.0;
         let dims = non_empty_dim_inds.len();
         let last_dim_size = non_empty_dim_inds
             .last()
             .map_or(0, |i| img.data.0.shape[*i].size);
 
-        match (variant, dims, last_dim_size) {
-            (ImageVariant::Mono(_), 2, _)
-            | (ImageVariant::Rgb(_), 3, 3)
-            | (ImageVariant::Rgba(_), 3, 4) => Ok(img),
+        match (dims, last_dim_size) {
+            (2, _) | (3, 3 | 4) => Ok(img),
             _ => Err(crate::DeserializationError::ValidationError(format!(
-                "Invalid Image. Variant: {:?}, Shape: {:?}",
-                img.variant.0, img.data.0.shape
+                "Invalid Image. Shape: {:?}",
+                img.data.0.shape
             ))),
         }
     }

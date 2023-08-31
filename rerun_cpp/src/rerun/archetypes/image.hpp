@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../arrow.hpp"
-#include "../components/image_variant.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
@@ -15,22 +14,22 @@
 
 namespace rerun {
     namespace archetypes {
-        /// The base archetype for all Image variants.
+        /// A monochrome or color image.
         ///
-        /// This archetype is not intended to be used directly, but rather to be
-        /// used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
+        /// The shape of the TensorData must be mappable to:
+        ///- A HxW tensor, treated as a grayscale image.
+        ///- A HxWx3 tensor, treated as an RGB image.
+        ///- A HxWx4 tensor, treated as an RGBA image.
+        ///
+        /// The viewer has limited support for ignoring extra empty dimensions.
         struct Image {
-            /// What variant of image this is.
-            rerun::components::ImageVariant variant;
-
             /// The image data. Should always be a rank-2 or rank-3 tensor.
             rerun::components::TensorData data;
 
           public:
             Image() = default;
 
-            Image(rerun::components::ImageVariant _variant, rerun::components::TensorData _data)
-                : variant(std::move(_variant)), data(std::move(_data)) {}
+            Image(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

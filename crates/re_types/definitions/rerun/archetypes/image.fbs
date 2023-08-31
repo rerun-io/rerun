@@ -6,18 +6,18 @@ include "rerun/components.fbs";
 namespace rerun.archetypes;
 
 
-/// The base archetype for all Image variants.
+/// A monochrome or color image.
 ///
-/// This archetype is not intended to be used directly, but rather to be
-/// used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
+/// The shape of the TensorData must be mappable to:
+/// - A HxW tensor, treated as a grayscale image.
+/// - A HxWx3 tensor, treated as an RGB image.
+/// - A HxWx4 tensor, treated as an RGBA image.
+///
+/// The viewer has limited support for ignoring extra empty dimensions.
 table Image (
   "attr.rust.derive": "PartialEq",
   order: 100
 ) {
-  /// What variant of image this is.
-  // TODO(jleibs): Consider just making these different archetypes
-  variant: rerun.components.ImageVariant ("attr.rerun.component_required", required, order: 1000);
-
   /// The image data. Should always be a rank-2 or rank-3 tensor.
   data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 2000);
 }

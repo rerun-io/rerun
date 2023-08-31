@@ -7,7 +7,6 @@
 #include "components/color.hpp"
 #include "components/disconnected_space.hpp"
 #include "components/draw_order.hpp"
-#include "components/image_variant.hpp"
 #include "components/instance_key.hpp"
 #include "components/keypoint_id.hpp"
 #include "components/label.hpp"

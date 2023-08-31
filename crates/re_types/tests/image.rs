@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Image,
-    datatypes::{ImageVariant, TensorBuffer, TensorData, TensorDimension, TensorId},
+    datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId},
     Archetype as _,
 };
 
@@ -16,7 +16,6 @@ fn some_id(x: u8) -> TensorId {
 #[test]
 fn image_roundtrip() {
     let all_expected = [Image {
-        variant: ImageVariant::Mono(true).into(),
         data: TensorData {
             id: some_id(0),
             shape: vec![
@@ -64,14 +63,24 @@ fn image_roundtrip() {
 }
 
 macro_rules! check_image_array {
-    ($img:ty, $typ:ty, $arr:expr, $variant:expr) => {{
+    ($img:ty, $typ:ty, $arr:expr, $color_dim:expr) => {{
         let arr = $arr;
 
         let arrow = <$img>::try_from(arr.clone()).unwrap().to_arrow();
 
         let img = <$img>::from_arrow(arrow);
 
-        assert_eq!(img.variant.0, $variant);
+        let color_dim = img
+            .data
+            .0
+            .shape
+            .iter()
+            .enumerate()
+            .find(|(_, dim)| dim.name.as_ref().map(|n| n.as_str()) == Some("color"))
+            .map(|(ind, _)| ind as i32)
+            .unwrap_or(-1);
+
+        assert_eq!(color_dim, $color_dim);
 
         let view1 = arr.view().into_dyn();
         let view2 = ndarray::ArrayViewD::<$typ>::try_from(&img).unwrap();
@@ -83,87 +92,47 @@ macro_rules! check_image_array {
 #[test]
 fn image_base_ext() {
     // 1x1 -> mono
-    check_image_array!(
-        Image,
-        u8,
-        ndarray::array![[4]],
-        re_types::datatypes::ImageVariant::Mono(true)
-    );
+    check_image_array!(Image, u8, ndarray::array![[4]], -1);
     // 2x3 -> mono
-    check_image_array!(
-        Image,
-        u16,
-        ndarray::array![[1, 2, 3], [4, 5, 6]],
-        re_types::datatypes::ImageVariant::Mono(true)
-    );
+    check_image_array!(Image, u16, ndarray::array![[1, 2, 3], [4, 5, 6]], -1);
     // 1x1x1 -> mono
-    check_image_array!(
-        Image,
-        u32,
-        ndarray::array![[[1]]],
-        re_types::datatypes::ImageVariant::Mono(true)
-    );
+    check_image_array!(Image, u32, ndarray::array![[[1]]], -1);
     // 1x3x1 -> mono
-    check_image_array!(
-        Image,
-        u64,
-        ndarray::array![[[1], [2], [3]]],
-        re_types::datatypes::ImageVariant::Mono(true)
-    );
+    check_image_array!(Image, u64, ndarray::array![[[1], [2], [3]]], -1);
     // 1x1x3 -> rgb
-    check_image_array!(
-        Image,
-        f32,
-        ndarray::array![[[1.0, 2.0, 3.0]]],
-        re_types::datatypes::ImageVariant::Rgb(true)
-    );
+    check_image_array!(Image, f32, ndarray::array![[[1.0, 2.0, 3.0]]], 2);
     // 1x1x5 -> mono
-    check_image_array!(
-        Image,
-        f64,
-        ndarray::array![[[1.0, 2.0, 3.0, 4.0, 5.0]]],
-        re_types::datatypes::ImageVariant::Mono(true)
-    );
+    check_image_array!(Image, f64, ndarray::array![[[1.0, 2.0, 3.0, 4.0, 5.0]]], -1);
     // 1x2x3 -> rgb
-    check_image_array!(
-        Image,
-        u8,
-        ndarray::array![[[1, 2, 3], [4, 5, 6]]],
-        re_types::datatypes::ImageVariant::Rgb(true)
-    );
+    check_image_array!(Image, u8, ndarray::array![[[1, 2, 3], [4, 5, 6]]], 2);
     // 1x2x4 -> rgba
-    check_image_array!(
-        Image,
-        u8,
-        ndarray::array![[[1, 2, 3, 4], [5, 6, 7, 8]]],
-        re_types::datatypes::ImageVariant::Rgba(true)
-    );
+    check_image_array!(Image, u8, ndarray::array![[[1, 2, 3, 4], [5, 6, 7, 8]]], 2);
     // 1x1x3x1 -> mono
     check_image_array!(
         Image,
         u8,
         ndarray::Array::from_shape_vec((1, 1, 3, 1), vec![1, 2, 3]).unwrap(),
-        re_types::datatypes::ImageVariant::Mono(true)
+        -1
     );
     // 1x1x1x3 -> rgb
     check_image_array!(
         Image,
         u8,
         ndarray::Array::from_shape_vec((1, 1, 1, 3), vec![1, 2, 3]).unwrap(),
-        re_types::datatypes::ImageVariant::Rgb(true)
+        3
     );
     // 1x1x1x5 -> mono
     check_image_array!(
         Image,
         u8,
         ndarray::Array::from_shape_vec((1, 1, 1, 5), vec![1, 2, 3, 4, 5]).unwrap(),
-        re_types::datatypes::ImageVariant::Mono(true)
+        -1
     );
     // 2x1x3x1 -> rgb
     check_image_array!(
         Image,
         u8,
         ndarray::Array::from_shape_vec((2, 1, 3, 1), vec![1, 2, 3, 4, 5, 6]).unwrap(),
-        re_types::datatypes::ImageVariant::Rgb(true)
+        2
     );
 }

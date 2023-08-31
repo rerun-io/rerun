@@ -12,26 +12,22 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// The base archetype for all Image variants.
+/// A monochrome or color image.
 ///
-/// This archetype is not intended to be used directly, but rather to be
-/// used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
+/// The shape of the TensorData must be mappable to:
+/// - A HxW tensor, treated as a grayscale image.
+/// - A HxWx3 tensor, treated as an RGB image.
+/// - A HxWx4 tensor, treated as an RGBA image.
+///
+/// The viewer has limited support for ignoring extra empty dimensions.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Image {
-    /// What variant of image this is.
-    pub variant: crate::components::ImageVariant,
-
     /// The image data. Should always be a rank-2 or rank-3 tensor.
     pub data: crate::components::TensorData,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.ImageVariant".into(),
-            "rerun.components.TensorData".into(),
-        ]
-    });
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
@@ -39,16 +35,11 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usi
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.ImageVariant".into(),
-            "rerun.components.TensorData".into(),
-        ]
-    });
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
 impl Image {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 1usize;
 }
 
 impl crate::Archetype for Image {
@@ -95,25 +86,6 @@ impl crate::Archetype for Image {
     > {
         use crate::{Loggable as _, ResultExt as _};
         Ok([
-            {
-                Some({
-                    let array =
-                        <crate::components::ImageVariant>::try_to_arrow([&self.variant], None);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.ImageVariant".into(),
-                            Box::new(array.data_type().clone()),
-                            Some("rerun.components.ImageVariant".into()),
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("variant", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.Image#variant")?
-            },
             {
                 Some({
                     let array = <crate::components::TensorData>::try_to_arrow([&self.data], None);
@@ -169,19 +141,6 @@ impl crate::Archetype for Image {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let variant = {
-            let array = arrays_by_name
-                .get("variant")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#variant")?;
-            <crate::components::ImageVariant>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#variant")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#variant")?
-        };
         let data = {
             let array = arrays_by_name
                 .get("data")
@@ -195,18 +154,12 @@ impl crate::Archetype for Image {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Image#data")?
         };
-        Ok(Self { variant, data })
+        Ok(Self { data })
     }
 }
 
 impl Image {
-    pub fn new(
-        variant: impl Into<crate::components::ImageVariant>,
-        data: impl Into<crate::components::TensorData>,
-    ) -> Self {
-        Self {
-            variant: variant.into(),
-            data: data.into(),
-        }
+    pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
+        Self { data: data.into() }
     }
 }

@@ -15,18 +15,14 @@ __all__ = ["Image"]
 @define(str=False, repr=False)
 class Image(Archetype):
     """
-    The base archetype for all Image variants.
+    A monochrome or color image.
 
-    This archetype is not intended to be used directly, but rather to be
-    used via the `Image`, `SegmentationImage`, and `DepthImage` archetype aliases.
-    """
+    The shape of the TensorData must be mappable to:
+    - A HxW tensor, treated as a grayscale image.
+    - A HxWx3 tensor, treated as an RGB image.
+    - A HxWx4 tensor, treated as an RGBA image.
 
-    variant: components.ImageVariantArray = field(
-        metadata={"component": "primary"},
-        converter=components.ImageVariantArray.from_similar,  # type: ignore[misc]
-    )
-    """
-    What variant of image this is.
+    The viewer has limited support for ignoring extra empty dimensions.
     """
 
     data: components.TensorDataArray = field(

@@ -91,7 +91,6 @@ from .fuzzy import (
     AffixFuzzer20Array,
     AffixFuzzer20Type,
 )
-from .image_variant import ImageVariantArray, ImageVariantType
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointIdArray, KeypointIdType
 from .label import LabelArray, LabelType
@@ -195,8 +194,6 @@ __all__ = [
     "DrawOrderArrayLike",
     "DrawOrderLike",
     "DrawOrderType",
-    "ImageVariantArray",
-    "ImageVariantType",
     "InstanceKey",
     "InstanceKeyArray",
     "InstanceKeyArrayLike",
