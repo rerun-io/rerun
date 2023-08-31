@@ -245,7 +245,7 @@ fn test_df_builder() {
 
     let expected = df![
         Radius::name().as_ref() => &[1f32, 3f32,  5f32, 7f32],
-        Color::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32) ],
+        Color::name().as_ref() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None],
     ]
     .unwrap();
 
