@@ -1,17 +1,11 @@
 use smallvec::SmallVec;
 
-use crate::datatypes::{TensorData, TensorDimension};
+use crate::{
+    datatypes::{TensorData, TensorDimension},
+    image::ImageConstructionError,
+};
 
 use super::Image;
-
-#[derive(thiserror::Error, Clone, Debug)]
-pub enum ImageConstructionError<T: TryInto<TensorData>> {
-    #[error("Could not convert source to TensorData")]
-    TensorDataConversion(T::Error),
-
-    #[error("Could not create Image from TensorData with shape {0:?}")]
-    BadImageShape(Vec<TensorDimension>),
-}
 
 impl Image {
     /// Try to construct an [`Image`] from anything that can be converted into [`TensorData`]

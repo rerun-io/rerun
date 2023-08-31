@@ -633,6 +633,7 @@ pub use arrow_string::ArrowString;
 
 // TODO(jleibs): Should all of this go into `tensor_data_ext`? Don't have a good way to export
 // additional helpers yet.
+pub mod image;
 pub mod tensor_data;
 
 #[cfg(feature = "testing")]
