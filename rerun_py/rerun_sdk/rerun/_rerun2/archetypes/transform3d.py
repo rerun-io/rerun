@@ -39,7 +39,7 @@ class Transform3D(Archetype):
        "base/rotated_scaled",
        rrd.TranslationRotationScale3D(
            rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], angle=rrd.Angle(rad=3.14 / 4)),
-           scale=2,
+           scalex=2,
        ),
     )
 
