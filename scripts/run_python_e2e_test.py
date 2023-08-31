@@ -89,13 +89,13 @@ def main() -> None:
     DOC_EXAMPLES_DIR_PATH = "docs/code-examples/"
     old_str = ", spawn=True)"
     new_str = f'); rr.connect(addr="127.0.0.1:{PORT}");'
-    for example in copy_and_patch(DOC_EXAMPLES_DIR_PATH, old_str, new_str):
+    for original, example in copy_and_patch(DOC_EXAMPLES_DIR_PATH, old_str, new_str):
         print("----------------------------------------------------------")
-        print(f"Testing {example}…\n")
+        print(f"Testing {original}…\n")
         start_time = time.time()
         run_example(example, [])
         elapsed = time.time() - start_time
-        print(f"{example} done in {elapsed:.1f} seconds")
+        print(f"{original} done in {elapsed:.1f} seconds")
         print()
 
     print()
@@ -128,8 +128,7 @@ def run_example(example: str, args: list[str]) -> None:
 #
 # Yields the patched filenames as it goes.
 # When all file have been yielded, the temporary directory is destroyed.
-def copy_and_patch(src_dir: str, old_str: str, new_str: str) -> Iterable[str]:
-    # Create a temporary directory
+def copy_and_patch(src_dir: str, old_str: str, new_str: str) -> Iterable[tuple[str, str]]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         for root, _, files in os.walk(src_dir):
             for file in [f for f in files if f.endswith(".py")]:
@@ -141,7 +140,10 @@ def copy_and_patch(src_dir: str, old_str: str, new_str: str) -> Iterable[str]:
                     for line in f:
                         print(line.replace(old_str, new_str), end="")
 
-                yield dest_path
+                print(src_path)
+                yield (src_path, dest_path)
+
+            break  # NOTE: Do _not_ recurse into sub-dirs, only weird non-runnable examples live there.
 
 
 if __name__ == "__main__":
