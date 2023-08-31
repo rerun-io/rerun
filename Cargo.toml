@@ -90,6 +90,7 @@ egui_extras = { version = "0.22.0", features = ["log"] }
 egui_plot = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
 egui_tiles = { version = "0.2" }
 egui-wgpu = "0.22.0"
+ehttp = { version = "0.3" }
 emath = "0.22.0"
 enumset = "1.0.12"
 epaint = "0.22.0"

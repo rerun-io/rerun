@@ -6,7 +6,6 @@ use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
 
-#[cfg(not(target_arch = "wasm32"))]
 use re_arrow_store::StoreGeneration;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -33,7 +32,6 @@ pub struct StoreHub {
     was_recording_active: bool,
 
     // The [`StoreGeneration`] from when the [`StoreDb`] was last saved
-    #[cfg(not(target_arch = "wasm32"))]
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
 }
 
@@ -75,7 +73,6 @@ impl StoreHub {
 
             was_recording_active: false,
 
-            #[cfg(not(target_arch = "wasm32"))]
             blueprint_last_save: Default::default(),
         }
     }
@@ -216,24 +213,39 @@ impl StoreHub {
 
     /// Persist any in-use blueprints to durable storage.
     // TODO(#2579): implement persistence for web
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn persist_app_blueprints(&mut self) -> anyhow::Result<()> {
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn gc_and_persist_app_blueprints(&mut self) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
-        for (app_id, blueprint_id) in &self.blueprint_by_app_id {
-            let blueprint_path = default_blueprint_path(app_id)?;
-            re_log::debug!("Saving blueprint for {app_id} to {blueprint_path:?}");
 
-            if let Some(blueprint) = self.store_dbs.blueprint(blueprint_id) {
+        use re_arrow_store::GarbageCollectionOptions;
+        for (app_id, blueprint_id) in &self.blueprint_by_app_id {
+            if let Some(blueprint) = self.store_dbs.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    // TODO(#1803): We should "flatten" blueprints when we save them
-                    // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-                    // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                    let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
-                    file_saver()?;
-                    self.blueprint_last_save
-                        .insert(blueprint_id.clone(), blueprint.generation());
+                    // GC everything but the latest row.
+                    blueprint.store_mut().gc(GarbageCollectionOptions {
+                        target: re_arrow_store::GarbageCollectionTarget::Everything,
+                        gc_timeless: true,
+                        protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
+                        purge_empty_tables: true,
+                    });
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let blueprint_path = default_blueprint_path(app_id)?;
+                        re_log::debug!("Saving blueprint for {app_id} to {blueprint_path:?}");
+                        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+                        // be small & fast to save, but maybe not once we start adding big pieces of user data?
+                        let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
+                        file_saver()?;
+                        self.blueprint_last_save
+                            .insert(blueprint_id.clone(), blueprint.generation());
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        _ = app_id;
+                    }
                 }
             }
         }

@@ -380,20 +380,24 @@ impl IndexedTable {
                 }
             }
 
-            let bucket_time_range = bucket.inner.read().time_range;
+            if 0 < config.indexed_bucket_num_rows {
+                let bucket_time_range = bucket.inner.read().time_range;
 
-            re_log::debug_once!(
-                "Failed to split bucket on timeline {}",
-                bucket.timeline.format_time_range(&bucket_time_range)
-            );
-
-            if bucket_time_range.min == bucket_time_range.max {
-                re_log::warn_once!(
-                    "Found over {} rows with the same timepoint {:?}={} - perhaps you forgot to update or remove the timeline?",
-                    config.indexed_bucket_num_rows,
-                    bucket.timeline.name(),
-                    bucket.timeline.typ().format(bucket_time_range.min)
+                re_log::debug_once!(
+                    "Failed to split bucket on timeline {}",
+                    bucket.timeline.format_time_range(&bucket_time_range)
                 );
+
+                if 1 < config.indexed_bucket_num_rows
+                    && bucket_time_range.min == bucket_time_range.max
+                {
+                    re_log::warn_once!(
+                        "Found over {} rows with the same timepoint {:?}={} - perhaps you forgot to update or remove the timeline?",
+                        config.indexed_bucket_num_rows,
+                        bucket.timeline.name(),
+                        bucket.timeline.typ().format(bucket_time_range.min)
+                    );
+                }
             }
         }
 
