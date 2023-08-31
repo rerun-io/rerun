@@ -10,8 +10,8 @@ use re_renderer::{
     LineStripSeriesBuilder, Size,
 };
 use re_space_view::controls::{
-    DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-    ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
+    RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
+    ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
 use re_viewer_context::{
     gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -291,9 +291,9 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.add_button_text("QE");
     layout.add("\n");
 
-    layout.add(SPEED_UP_3D_MODIFIER);
+    layout.add(RuntimeModifiers::slow_down(&re_ui.egui_ctx.os()));
     layout.add(" slows down, ");
-    layout.add(SLOW_DOWN_3D_MODIFIER);
+    layout.add(SPEED_UP_3D_MODIFIER);
     layout.add(" speeds up\n\n");
 
     layout.add_button_text("double-click");
