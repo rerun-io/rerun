@@ -1,6 +1,9 @@
 use half::f16;
 
-use crate::datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId};
+use crate::datatypes::{TensorBuffer, TensorData, TensorId};
+
+#[cfg(feature = "image")]
+use crate::datatypes::TensorDimension;
 
 // Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
 // will eventually go away as the Tensor migration is completed.
