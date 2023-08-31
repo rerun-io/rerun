@@ -11,6 +11,11 @@ const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun/_rerun2";
 fn main() {
     re_log::setup_native_logging();
 
+    rayon::ThreadPoolBuilder::new()
+        .thread_name(|i| format!("rayon-{i}"))
+        .build_global()
+        .unwrap();
+
     let mut profiler = re_tracing::Profiler::default();
 
     for arg in std::env::args().skip(1) {

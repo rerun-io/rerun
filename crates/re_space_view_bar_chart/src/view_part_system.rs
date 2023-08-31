@@ -6,14 +6,20 @@ use re_data_store::EntityPath;
 use re_log_types::{TimeInt, Timeline};
 use re_types::{ComponentName, Loggable as _};
 use re_viewer_context::{
-    ArchetypeDefinition, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartViewPartSystem {
     pub charts: BTreeMap<EntityPath, Tensor>,
+}
+
+impl NamedViewSystem for BarChartViewPartSystem {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "BarChartView".into()
+    }
 }
 
 impl ViewPartSystem for BarChartViewPartSystem {
@@ -51,7 +57,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        for (ent_path, props) in query.iter_entities() {
+        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             if !props.visible {
                 continue;
             }

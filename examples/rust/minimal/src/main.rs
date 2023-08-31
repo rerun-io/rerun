@@ -8,7 +8,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("minimal_rs").memory()?;
+    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
 
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)
         .map(Point3D::from)

@@ -12,7 +12,7 @@ import rerun as rr
 parser = argparse.ArgumentParser()
 rr.script_add_args(parser)
 args = parser.parse_args()
-rr.script_setup(args, "my_application")
+rr.script_setup(args, "rerun_example_application")
 # ... Run your logging code here ...
 rr.script_teardown(args)
 ```

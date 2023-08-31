@@ -14,8 +14,8 @@ namespace rerun {
     namespace components {
         const char *Transform3D::NAME = "rerun.transform3d";
 
-        const std::shared_ptr<arrow::DataType> &Transform3D::to_arrow_datatype() {
-            static const auto datatype = rerun::datatypes::Transform3D::to_arrow_datatype();
+        const std::shared_ptr<arrow::DataType> &Transform3D::arrow_datatype() {
+            static const auto datatype = rerun::datatypes::Transform3D::arrow_datatype();
             return datatype;
         }
 
@@ -71,7 +71,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema = arrow::schema(
-                {arrow::field(Transform3D::NAME, Transform3D::to_arrow_datatype(), false)}
+                {arrow::field(Transform3D::NAME, Transform3D::arrow_datatype(), false)}
             );
 
             rerun::DataCell cell;

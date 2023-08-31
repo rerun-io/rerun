@@ -13,7 +13,7 @@ namespace rerun {
     namespace components {
         const char *DisconnectedSpace::NAME = "rerun.disconnected_space";
 
-        const std::shared_ptr<arrow::DataType> &DisconnectedSpace::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &DisconnectedSpace::arrow_datatype() {
             static const auto datatype = arrow::boolean();
             return datatype;
         }
@@ -69,11 +69,9 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema({arrow::field(
-                DisconnectedSpace::NAME,
-                DisconnectedSpace::to_arrow_datatype(),
-                false
-            )});
+            auto schema = arrow::schema(
+                {arrow::field(DisconnectedSpace::NAME, DisconnectedSpace::arrow_datatype(), false)}
+            );
 
             rerun::DataCell cell;
             cell.component_name = DisconnectedSpace::NAME;

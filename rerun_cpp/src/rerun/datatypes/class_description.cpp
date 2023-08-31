@@ -11,14 +11,14 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &ClassDescription::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &ClassDescription::arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("info", rerun::datatypes::AnnotationInfo::to_arrow_datatype(), false),
+                arrow::field("info", rerun::datatypes::AnnotationInfo::arrow_datatype(), false),
                 arrow::field(
                     "keypoint_annotations",
                     arrow::list(arrow::field(
                         "item",
-                        rerun::datatypes::AnnotationInfo::to_arrow_datatype(),
+                        rerun::datatypes::AnnotationInfo::arrow_datatype(),
                         false
                     )),
                     false
@@ -27,7 +27,7 @@ namespace rerun {
                     "keypoint_connections",
                     arrow::list(arrow::field(
                         "item",
-                        rerun::datatypes::KeypointPair::to_arrow_datatype(),
+                        rerun::datatypes::KeypointPair::arrow_datatype(),
                         false
                     )),
                     false
@@ -44,7 +44,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     rerun::datatypes::AnnotationInfo::new_arrow_array_builder(memory_pool).value,

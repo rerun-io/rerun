@@ -148,8 +148,7 @@ pub fn resolve_mono_instance_path(
     re_tracing::profile_function!();
 
     if instance.instance_key.0 == 0 {
-        let Some(components) = store
-                .all_components(&query.timeline, &instance.entity_path) else {
+        let Some(components) = store.all_components(&query.timeline, &instance.entity_path) else {
             // No components at all, return splatted entity.
             return re_data_store::InstancePath::entity_splat(instance.entity_path.clone());
         };

@@ -4,7 +4,7 @@ order: 2
 ---
 
 ## Installing Rerun
-The Rerun SDK for Rust requires a working installation of Rust 1.69+.
+The Rerun SDK for Rust requires a working installation of Rust 1.72+.
 
 To use Rerun, you need to install the `rerun` binary with `cargo install rerun-cli`, and [the rerun crate](https://crates.io/crates/rerun) with `cargo add rerun`.
 
@@ -29,7 +29,7 @@ use rerun::{
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let recording =
-        RecordingStreamBuilder::new("minimal").connect(rerun::default_server_addr())?;
+        RecordingStreamBuilder::new("rerun_example_minimal").connect(rerun::default_server_addr())?;
 
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)
         .map(Point3D::from)

@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &FlattenedScalar::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType> &FlattenedScalar::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("value", arrow::float32(), false),
             });
@@ -23,7 +23,7 @@ namespace rerun {
             }
 
             return Result(std::make_shared<arrow::StructBuilder>(
-                to_arrow_datatype(),
+                arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::FloatBuilder>(memory_pool),

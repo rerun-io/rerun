@@ -32,7 +32,6 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
     },
-    Size,
 };
 
 use super::{
@@ -59,13 +58,17 @@ mod gpu_data {
     use crate::{draw_phases::PickingLayerObjectId, wgpu_buffer_types, Size};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
+
+    /// Position and radius.
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct PositionData {
+    pub struct PositionRadius {
         pub pos: glam::Vec3,
+
+        /// Radius of the point in world space
         pub radius: Size, // Might use a f16 here to free memory for more data!
     }
-    static_assertions::assert_eq_size!(PositionData, glam::Vec4);
+    static_assertions::assert_eq_size!(PositionRadius, glam::Vec4);
 
     /// Uniform buffer that changes once per draw data rendering.
     #[repr(C, align(256))]
@@ -150,20 +153,12 @@ pub struct PointCloudBatchInfo {
     pub depth_offset: DepthOffset,
 }
 
-/// Description of a point cloud.
-#[derive(Clone)]
-pub struct PointCloudVertex {
-    /// Connected points. Must be at least 2.
-    pub position: glam::Vec3,
-
-    /// Radius of the point in world space
-    pub radius: Size,
-}
+pub use gpu_data::PositionRadius;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
-    #[error("Size of vertex & color array was not equal")]
-    NumberOfColorsNotEqualNumberOfVertices,
+    #[error("Failed to transfer data to the GPU")]
+    FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
 /// Textures are 2D since 1D textures are very limited in size (8k typically).
@@ -183,7 +178,10 @@ impl PointCloudDrawData {
     /// Number of vertices and colors has to be equal.
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
-    pub fn new(ctx: &mut RenderContext, mut builder: PointCloudBuilder) -> Self {
+    pub fn new(
+        ctx: &mut RenderContext,
+        mut builder: PointCloudBuilder,
+    ) -> Result<Self, PointCloudDrawDataError> {
         re_tracing::profile_function!();
 
         let mut renderers = ctx.renderers.write();
@@ -198,11 +196,11 @@ impl PointCloudDrawData {
         let batches = builder.batches.as_slice();
 
         if vertices.is_empty() {
-            return PointCloudDrawData {
+            return Ok(PointCloudDrawData {
                 bind_group_all_points: None,
                 bind_group_all_points_outline_mask: None,
                 batches: Vec::new(),
-            };
+            });
         }
 
         let fallback_batches = [PointCloudBatchInfo {
@@ -223,7 +221,7 @@ impl PointCloudDrawData {
 
         // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
         static_assertions::const_assert_eq!(
-            DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
+            DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionRadius>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
@@ -235,8 +233,8 @@ impl PointCloudDrawData {
 
         let vertices = if vertices.len() > Self::MAX_NUM_POINTS {
             re_log::error_once!(
-                "Reached maximum number of supported points. Clamping down to {}, passed were {}.
- See also https://github.com/rerun-io/rerun/issues/957",
+                "Reached maximum number of supported points. Clamping down to {}, passed were {}. \
+                See also https://github.com/rerun-io/rerun/issues/957",
                 Self::MAX_NUM_POINTS,
                 vertices.len()
             );
@@ -299,13 +297,8 @@ impl PointCloudDrawData {
                 &ctx.gpu_resources.buffers,
                 num_points_written,
             );
-            staging_buffer.extend(vertices.iter().map(|point| gpu_data::PositionData {
-                pos: point.position,
-                radius: point.radius,
-            }));
-            staging_buffer.extend(
-                std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_elements_padding),
-            );
+            staging_buffer.extend_from_slice(vertices)?;
+            staging_buffer.fill_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
@@ -315,12 +308,12 @@ impl PointCloudDrawData {
                     aspect: wgpu::TextureAspect::All,
                 },
                 texture_copy_extent,
-            );
+            )?;
         }
 
         builder
             .color_buffer
-            .extend(std::iter::repeat(ecolor::Color32::TRANSPARENT).take(num_elements_padding));
+            .fill_n(ecolor::Color32::TRANSPARENT, num_elements_padding)?;
         builder.color_buffer.copy_to_texture2d(
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             wgpu::ImageCopyTexture {
@@ -330,11 +323,11 @@ impl PointCloudDrawData {
                 aspect: wgpu::TextureAspect::All,
             },
             texture_copy_extent,
-        );
+        )?;
 
         builder
             .picking_instance_ids_buffer
-            .extend(std::iter::repeat(Default::default()).take(num_elements_padding));
+            .fill_n(Default::default(), num_elements_padding)?;
         builder.picking_instance_ids_buffer.copy_to_texture2d(
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             wgpu::ImageCopyTexture {
@@ -344,7 +337,7 @@ impl PointCloudDrawData {
                 aspect: wgpu::TextureAspect::All,
             },
             texture_copy_extent,
-        );
+        )?;
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -488,11 +481,11 @@ impl PointCloudDrawData {
             }
         }
 
-        PointCloudDrawData {
+        Ok(PointCloudDrawData {
             bind_group_all_points: Some(bind_group_all_points),
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
-        }
+        })
     }
 }
 

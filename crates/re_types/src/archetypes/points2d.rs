@@ -24,7 +24,7 @@
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+///    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
 ///
 ///    MsgSender::from_archetype("points", &Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?
 ///        .send(&rec_stream)?;
@@ -137,6 +137,16 @@ impl crate::Archetype for Points2D {
     #[inline]
     fn all_components() -> &'static [crate::ComponentName] {
         ALL_COMPONENTS.as_slice()
+    }
+
+    #[inline]
+    fn indicator_component() -> crate::ComponentName {
+        "rerun.components.Points2DIndicator".into()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.points.len()
     }
 
     #[inline]
@@ -307,6 +317,26 @@ impl crate::Archetype for Points2D {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.Points2D#instance_keys")?
+            },
+            {
+                let datatype = ::arrow2::datatypes::DataType::Extension(
+                    "rerun.components.Points2DIndicator".to_owned(),
+                    Box::new(::arrow2::datatypes::DataType::Null),
+                    Some("rerun.components.Points2DIndicator".to_owned()),
+                );
+                let array = ::arrow2::array::NullArray::new(
+                    datatype.to_logical_type().clone(),
+                    self.num_instances(),
+                )
+                .boxed();
+                Some((
+                    ::arrow2::datatypes::Field::new(
+                        "rerun.components.Points2DIndicator",
+                        datatype,
+                        false,
+                    ),
+                    array,
+                ))
             },
         ]
         .into_iter()

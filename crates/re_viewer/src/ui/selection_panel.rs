@@ -122,6 +122,26 @@ fn has_data_section(item: &Item) -> bool {
     }
 }
 
+fn space_view_button(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view: &re_viewport::SpaceViewBlueprint,
+) -> egui::Response {
+    let item = Item::SpaceView(space_view.id);
+    let is_selected = ctx.selection().contains(&item);
+
+    let response = ctx
+        .re_ui
+        .selectable_label_with_icon(
+            ui,
+            space_view.class(ctx.space_view_class_registry).icon(),
+            space_view.display_name.clone(),
+            is_selected,
+        )
+        .on_hover_text("Space View");
+    item_ui::cursor_interact_with_selectable(ctx, response, item)
+}
+
 /// What is selected? Not the contents, just the short id of it.
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
@@ -168,7 +188,7 @@ fn what_is_selected_ui(
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                         ui.label("In Space View");
-                        re_viewport::item_ui::space_view_button(ctx, ui, space_view);
+                        space_view_button(ctx, ui, space_view);
                         ui.end_row();
                     }
                 }
@@ -176,10 +196,7 @@ fn what_is_selected_ui(
         }
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
-                if let Some(group) = space_view
-                    .data_blueprint
-                    .group(*data_blueprint_group_handle)
-                {
+                if let Some(group) = space_view.contents.group(*data_blueprint_group_handle) {
                     egui::Grid::new("data_blueprint_group")
                         .num_columns(2)
                         .show(ui, |ui| {
@@ -194,7 +211,7 @@ fn what_is_selected_ui(
                             ui.end_row();
 
                             ui.label("In Space View");
-                            re_viewport::item_ui::space_view_button(ctx, ui, space_view);
+                            space_view_button(ctx, ui, space_view);
                             ui.end_row();
                         });
                 }
@@ -282,7 +299,7 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
-                        let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
+                        let data_blueprint = space_view.contents.data_blueprints_individual();
                         let mut props = data_blueprint.get(&instance_path.entity_path);
                         entity_props_ui(ctx, ui, Some(&instance_path.entity_path), &mut props);
                         data_blueprint.set(instance_path.entity_path.clone(), props);
@@ -300,10 +317,7 @@ fn blueprint_ui(
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                if let Some(group) = space_view
-                    .data_blueprint
-                    .group_mut(*data_blueprint_group_handle)
-                {
+                if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
                     entity_props_ui(ctx, ui, None, &mut group.properties_individual);
                 } else {
                     ctx.selection_state_mut().clear_current();
@@ -439,7 +453,7 @@ fn pinhole_props_ui(
         .is_some()
     {
         ui.label("Image plane distance");
-        let mut distance = *entity_props.pinhole_image_plane_distance.get();
+        let mut distance = *entity_props.pinhole_image_plane_distance;
         let speed = (distance * 0.05).at_least(0.01);
         if ui
             .add(
@@ -477,7 +491,7 @@ fn depth_props_ui(
         .query_latest_component_at_closest_ancestor::<Pinhole>(entity_path, &query)?
         .0;
 
-    let mut backproject_depth = *entity_props.backproject_depth.get();
+    let mut backproject_depth = *entity_props.backproject_depth;
 
     if ctx
         .re_ui

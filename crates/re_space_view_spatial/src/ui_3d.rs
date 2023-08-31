@@ -289,7 +289,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.add_button_text("WASD");
     layout.add(" and ");
     layout.add_button_text("QE");
-    layout.add("\n");
+    layout.add(".\n");
 
     layout.add(RuntimeModifiers::slow_down(&re_ui.egui_ctx.os()));
     layout.add(" slows down, ");

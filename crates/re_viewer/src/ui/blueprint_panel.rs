@@ -8,17 +8,19 @@ pub fn blueprint_panel_ui(
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
 ) {
-    ctx.re_ui.panel_title_bar_with_buttons(
-        ui,
-        "Blueprint",
-        Some("The Blueprint is where you can configure the Rerun Viewer"),
-        |ui| {
-            blueprint.add_new_spaceview_button_ui(ctx, ui, spaces_info);
-            reset_button_ui(blueprint, ctx, ui, spaces_info);
-        },
-    );
+    ctx.re_ui.panel_content(ui, |_, ui| {
+        ctx.re_ui.panel_title_bar_with_buttons(
+            ui,
+            "Blueprint",
+            Some("The Blueprint is where you can configure the Rerun Viewer"),
+            |ui| {
+                blueprint.add_new_spaceview_button_ui(ctx, ui, spaces_info);
+                reset_button_ui(blueprint, ctx, ui, spaces_info);
+            },
+        );
 
-    blueprint.tree_ui(ctx, ui);
+        blueprint.tree_ui(ctx, ui);
+    });
 }
 
 fn reset_button_ui(

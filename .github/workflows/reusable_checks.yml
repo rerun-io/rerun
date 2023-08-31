@@ -108,7 +108,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.8
+      image: rerunio/ci_docker:0.9
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -191,7 +191,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.8
+      image: rerunio/ci_docker:0.9
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -225,19 +225,8 @@ jobs:
   toml-lints:
     name: Lint TOML files
     runs-on: ubuntu-latest
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          # Cache will be produced by `reusable_checks/rs-lints`
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
@@ -295,7 +284,7 @@ jobs:
     name: Cargo Deny
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.8
+      image: rerunio/ci_docker:0.9
     steps:
       - uses: actions/checkout@v3
 
@@ -323,7 +312,7 @@ jobs:
     name: C++ tests
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.8
+      image: rerunio/ci_docker:0.9
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -349,3 +338,4 @@ jobs:
       - name: Build code examples
         shell: bash
         run: ./tests/cpp/build_all_doc_examples.sh --werror
+

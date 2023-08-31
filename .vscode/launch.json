@@ -23,7 +23,7 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Debug 'rerun' colmap.rrd from url",
+            "name": "Debug 'rerun' (no args)",
             "type": "lldb",
             "request": "launch",
             "cargo": {
@@ -38,9 +38,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [
-                "https://demo.rerun.io/commit/0f89b62/examples/colmap/data.rrd"
-            ],
+            "args": [],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -61,6 +59,27 @@
             },
             "args": [
                 "../data.rrd"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug 'rerun' colmap.rrd from url",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=rerun-cli",
+                    "--no-default-features",
+                    "--features=native_viewer"
+                ],
+                "filter": {
+                    "name": "rerun",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "https://demo.rerun.io/commit/0f89b62/examples/colmap/data.rrd"
             ],
             "cwd": "${workspaceFolder}"
         },

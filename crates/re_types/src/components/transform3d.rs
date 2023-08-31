@@ -51,7 +51,7 @@ impl crate::Loggable for Transform3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Union(
             vec![
@@ -63,13 +63,13 @@ impl crate::Loggable for Transform3D {
                 },
                 Field {
                     name: "TranslationAndMat3x3".to_owned(),
-                    data_type: <crate::datatypes::TranslationAndMat3x3>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },
                 Field {
                     name: "TranslationRotationScale".to_owned(),
-                    data_type: <crate::datatypes::TranslationRotationScale3D>::to_arrow_datatype(),
+                    data_type: <crate::datatypes::TranslationRotationScale3D>::arrow_datatype(),
                     is_nullable: false,
                     metadata: [].into(),
                 },

@@ -296,15 +296,15 @@ pub fn view_2d(
         };
 
         let Ok(target_config) = setup_target_config(
-                &painter,
-                canvas_from_ui,
-                &query.space_origin.to_string(),
-                state.auto_size_config(),
-                query.highlights.any_outlines(),
-                pinhole
-            ) else {
-                return Ok(());
-            };
+            &painter,
+            canvas_from_ui,
+            &query.space_origin.to_string(),
+            state.auto_size_config(),
+            query.highlights.any_outlines(),
+            pinhole,
+        ) else {
+            return Ok(());
+        };
 
         let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
@@ -446,9 +446,7 @@ fn setup_target_config(
     let focal_length = pinhole.focal_length_in_pixels();
     let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean
     let Some(view_from_world) = macaw::IsoTransform::look_at_rh(
-        pinhole
-            .principal_point()
-            .extend(-focal_length),
+        pinhole.principal_point().extend(-focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,
     ) else {

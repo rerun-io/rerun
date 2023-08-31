@@ -245,11 +245,19 @@ pub fn data_blueprint_button_to(
     let response = ui
         .selectable_label(ctx.selection().contains(&item), text)
         .on_hover_ui(|ui| {
-            ui.strong("Space View Entity");
-            ui.label(format!("Path: {entity_path}"));
-            entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+            data_blueprint_tooltip(ui, ctx, entity_path);
         });
     cursor_interact_with_selectable(ctx, response, item)
+}
+
+pub fn data_blueprint_tooltip(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    entity_path: &EntityPath,
+) {
+    ui.strong("Space View Entity");
+    ui.label(format!("Path: {entity_path}"));
+    entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
 }
 
 pub fn time_button(

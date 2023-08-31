@@ -1,6 +1,7 @@
 use std::{
     fs::{File, OpenOptions},
     io::{BufRead, BufReader, Seek, Write},
+    sync::Arc,
     time::Duration,
 };
 
@@ -9,7 +10,9 @@ use crossbeam::{
     select,
 };
 
-use crate::{Config, Event, PostHogSink, SinkError};
+use super::sink::PostHogSink;
+use super::AbortSignal;
+use crate::{Config, Event};
 
 // TODO(cmc): abstract away the concept of a `Pipeline` behind an actual trait when comes the time
 // to support more than just PostHog.
@@ -34,16 +37,15 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn new(
-        config: &Config,
-        tick: Duration,
-        sink: PostHogSink,
-    ) -> Result<Option<Self>, PipelineError> {
+    pub(crate) fn new(config: &Config, tick: Duration) -> Result<Option<Self>, PipelineError> {
+        let sink = PostHogSink::default();
+
         if !config.analytics_enabled {
             return Ok(None);
         }
 
         let (event_tx, event_rx) = channel::bounded(2048);
+        let abort_signal = AbortSignal::new();
 
         let data_path = config.data_dir().to_owned();
 
@@ -61,7 +63,7 @@ impl Pipeline {
         //
         // Joining these threads is not a viable strategy for two reasons:
         // 1. We _never_ want to delay the shutdown process, analytics must never be in the way.
-        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL, ...),
+        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL, …),
         //    and we do indeed.
         //
         // This is an at-least-once pipeline: in the worst case, unexpected shutdowns will lead to
@@ -77,12 +79,13 @@ impl Pipeline {
             .spawn({
                 let config = config.clone();
                 let sink = sink.clone();
+                let abort_signal = abort_signal.clone();
                 move || {
                     let analytics_id = &config.analytics_id;
                     let session_id = &config.session_id.to_string();
 
                     re_log::trace!(%analytics_id, %session_id, "pipeline catchup thread started");
-                    let res = flush_pending_events(&config, &sink);
+                    let res = flush_pending_events(&config, &sink, &abort_signal);
                     re_log::trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
                 }
             })
@@ -93,14 +96,22 @@ impl Pipeline {
         if let Err(err) = std::thread::Builder::new().name("pipeline".into()).spawn({
             let config = config.clone();
             let event_tx = event_tx.clone();
+            let abort_signal = abort_signal.clone();
             move || {
                 let analytics_id = &config.analytics_id;
                 let session_id = &config.session_id.to_string();
 
                 re_log::trace!(%analytics_id, %session_id, "pipeline thread started");
-                let res =
-                    realtime_pipeline(&config, &sink, session_file, tick, &event_tx, &event_rx);
-                re_log::trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
+                realtime_pipeline(
+                    &config,
+                    &sink,
+                    session_file,
+                    tick,
+                    &event_tx,
+                    &event_rx,
+                    &abort_signal,
+                );
+                re_log::trace!(%analytics_id, %session_id, "pipeline thread shut down");
             }
         }) {
             re_log::debug!("Failed to spawn analytics thread: {err}");
@@ -133,29 +144,49 @@ fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: E
     }
 }
 
-fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()> {
+fn flush_pending_events(
+    config: &Config,
+    sink: &PostHogSink,
+    abort_signal: &AbortSignal,
+) -> std::io::Result<()> {
     let data_path = config.data_dir();
-    let analytics_id = config.analytics_id.clone();
+    let analytics_id: Arc<str> = config.analytics_id.clone().into();
     let current_session_id = config.session_id.to_string();
 
     let read_dir = data_path.read_dir()?;
     for entry in read_dir {
         // NOTE: all of these can only be transient I/O errors, so no reason to delete the
         // associated file; we'll retry later.
-        let Ok(entry) = entry else { continue; };
-        let Ok(name) = entry.file_name().into_string() else { continue; };
-        let Ok(metadata) = entry.metadata() else { continue; };
+        let Ok(entry) = entry else {
+            continue;
+        };
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
         let path = entry.path();
 
         if metadata.is_file() {
-            let Some(session_id) = name.strip_suffix(".json") else { continue; };
+            let Some(session_id) = name.strip_suffix(".json") else {
+                continue;
+            };
 
             if session_id == current_session_id {
                 continue;
             }
 
-            let Ok(mut session_file) = File::open(&path) else { continue; };
-            match flush_events(&mut session_file, &analytics_id, session_id, sink) {
+            let Ok(mut session_file) = File::open(&path) else {
+                continue;
+            };
+            match flush_events(
+                &mut session_file,
+                &analytics_id,
+                &session_id.into(),
+                sink,
+                abort_signal,
+            ) {
                 Ok(_) => {
                     re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");
                     match std::fs::remove_file(&path) {
@@ -176,10 +207,10 @@ fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<(
         }
     }
 
-    Ok::<_, anyhow::Error>(())
+    Ok(())
 }
 
-#[allow(clippy::unnecessary_wraps)]
+#[allow(clippy::unnecessary_wraps, clippy::needless_return)]
 fn realtime_pipeline(
     config: &Config,
     sink: &PostHogSink,
@@ -187,43 +218,50 @@ fn realtime_pipeline(
     tick: Duration,
     event_tx: &channel::Sender<Result<Event, RecvError>>,
     event_rx: &channel::Receiver<Result<Event, RecvError>>,
-) -> anyhow::Result<()> {
-    let analytics_id = config.analytics_id.clone();
-    let session_id = config.session_id.to_string();
+    abort_signal: &AbortSignal,
+) {
+    let analytics_id: Arc<str> = config.analytics_id.clone().into();
+    let session_id: Arc<str> = config.session_id.to_string().into();
     let is_first_run = config.is_first_run();
 
     let ticker_rx = crossbeam::channel::tick(tick);
 
     let on_tick = |session_file: &mut _, _elapsed| {
+        // A number of things can fail here, in all cases we will stop retrying.
+        // The next time the analytics boots up, the catchup thread should handle
+        // any remaining events.
+
         if is_first_run {
             // We never send data on first run, to give end users an opportunity to opt-out.
-            return;
+            return abort_signal.abort();
         }
 
-        if let Err(err) = flush_events(session_file, &analytics_id, &session_id, sink) {
+        if let Err(err) = flush_events(session_file, &analytics_id, &session_id, sink, abort_signal)
+        {
             re_log::debug_once!("couldn't flush analytics data file: {err}");
             // We couldn't flush the session file: keep it intact so that we can retry later.
-            return;
+            return abort_signal.abort();
         }
 
         if let Err(err) = session_file.set_len(0) {
             re_log::debug_once!("couldn't truncate analytics data file: {err}");
             // We couldn't truncate the session file: we'll have to keep it intact for now, which
             // will result in duplicated data that we'll be able to deduplicate at query time.
-            return;
+            return abort_signal.abort();
         }
         if let Err(err) = session_file.rewind() {
-            // We couldn't reset the session file... That one is a bit messy and will likely break
+            // We couldn't reset the session file… That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
             re_log::debug_once!("couldn't seek into analytics data file: {err}");
+            return abort_signal.abort();
         }
     };
 
     let on_event = |session_file: &mut _, event| {
         re_log::trace!(
             %analytics_id, %session_id,
-            "appending event to current session file..."
+            "appending event to current session file…"
         );
         if let Err(event) = append_event(session_file, &analytics_id, &session_id, event) {
             // We failed to append the event to the current session, so push it back at the end of
@@ -236,13 +274,17 @@ fn realtime_pipeline(
         select! {
             recv(ticker_rx) -> elapsed => on_tick(&mut session_file, elapsed),
             recv(event_rx) -> event => {
-                let Ok(event) = event.unwrap() else { break; };
+                let Ok(event) = event else { break };
+                let Ok(event) = event else { break };
                 on_event(&mut session_file, event);
             },
         }
+        // `on_tick` may have failed and signalled an abort
+        // in this case we accept our fate and stop collecting events
+        if abort_signal.is_aborted() {
+            return;
+        }
     }
-
-    Ok(())
 }
 
 // ---
@@ -284,13 +326,14 @@ fn append_event(
 /// Sends all events currently buffered in the `session_file` down the `sink`.
 fn flush_events(
     session_file: &mut File,
-    analytics_id: &str,
-    session_id: &str,
+    analytics_id: &Arc<str>,
+    session_id: &Arc<str>,
     sink: &PostHogSink,
-) -> Result<(), SinkError> {
+    abort_signal: &AbortSignal,
+) -> std::io::Result<()> {
     if let Err(err) = session_file.rewind() {
         re_log::debug!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
-        return Err(SinkError::FileSeek(err));
+        return Err(err);
     }
 
     let events = BufReader::new(&*session_file)
@@ -319,29 +362,7 @@ fn flush_events(
         return Ok(());
     }
 
-    if let Err(err) = sink.send(analytics_id, session_id, &events) {
-        if matches!(err, SinkError::HttpTransport(_)) {
-            // No internet connection. No biggie, we'll try again later.
-            re_log::debug_once!(
-                "Failed to send analytics down the sink, will try again later.\n{err}
-            "
-            );
-        } else {
-            // A more unusual error. Show it to the user.
-            re_log::debug_once!(
-                "Failed to send analytics down the sink, will try again later.\n{err}
-            "
-            );
-        }
-        return Err(err);
-    }
-
-    re_log::trace!(
-        %analytics_id,
-        %session_id,
-        num_events = events.len(),
-        "events successfully flushed"
-    );
+    sink.send(analytics_id, session_id, &events, abort_signal);
 
     Ok(())
 }

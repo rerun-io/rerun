@@ -403,26 +403,6 @@ impl PathOp {
 
 // ---------------------------------------------------------------------------
 
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
-}
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! component_legacy_shim {
@@ -442,7 +422,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+            fn arrow_datatype() -> arrow2::datatypes::DataType {
                 <Self as re_log_types::LegacyComponent>::field()
                     .data_type()
                     .clone()

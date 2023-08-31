@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "roundtrip_line_strips2d",
+        "rerun_example_roundtrip_line_strips2d",
         default_enabled,
         move |rec_stream| {
             run(&rec_stream, &args).unwrap();

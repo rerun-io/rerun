@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK
 rr.script_add_args(parser)
 args = parser.parse_args()
 
-rr.script_setup(args, "minimal_options")
+rr.script_setup(args, "rerun_example_minimal_options")
 
 positions = np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T
 colors = np.vstack([rgb.ravel() for rgb in np.mgrid[3 * [slice(0, 255, 10j)]]]).astype(np.uint8).T

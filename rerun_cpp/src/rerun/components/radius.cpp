@@ -13,7 +13,7 @@ namespace rerun {
     namespace components {
         const char* Radius::NAME = "rerun.radius";
 
-        const std::shared_ptr<arrow::DataType>& Radius::to_arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Radius::arrow_datatype() {
             static const auto datatype = arrow::float32();
             return datatype;
         }
@@ -67,7 +67,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
             auto schema =
-                arrow::schema({arrow::field(Radius::NAME, Radius::to_arrow_datatype(), false)});
+                arrow::schema({arrow::field(Radius::NAME, Radius::arrow_datatype(), false)});
 
             rerun::DataCell cell;
             cell.component_name = Radius::NAME;

@@ -84,7 +84,7 @@ impl SpaceViewClass for BarChartSpaceView {
         _query: &ViewQuery<'_>,
         _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        use egui::plot::{Bar, BarChart, Legend, Plot};
+        use egui_plot::{Bar, BarChart, Legend, Plot};
 
         let charts = &parts.get::<BarChartViewPartSystem>()?.charts;
 
@@ -94,7 +94,7 @@ impl SpaceViewClass for BarChartSpaceView {
             Plot::new("bar_chart_plot")
                 .legend(Legend::default())
                 .clamp_grid(true)
-                .allow_zoom(egui::plot::AxisBools {
+                .allow_zoom(egui_plot::AxisBools {
                     x: true,
                     y: zoom_both_axis,
                 })
@@ -121,7 +121,7 @@ impl SpaceViewClass for BarChartSpaceView {
                         .color(color)
                     }
 
-                    for (ent_path, tensor) in charts.iter() {
+                    for (ent_path, tensor) in charts {
                         let chart = match &tensor.data {
                             TensorData::U8(data) => {
                                 create_bar_chart(ent_path, data.iter().copied())

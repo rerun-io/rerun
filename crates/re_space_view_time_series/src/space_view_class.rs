@@ -1,7 +1,4 @@
-use egui::{
-    plot::{Legend, Line, Plot, Points},
-    Color32,
-};
+use egui_plot::{Legend, Line, Plot, Points};
 
 use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
@@ -128,12 +125,12 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
         let mut plot = Plot::new(plot_id_src)
-            .allow_zoom(egui::plot::AxisBools {
+            .allow_zoom(egui_plot::AxisBools {
                 x: true,
                 y: zoom_both_axis,
             })
             .legend(Legend {
-                position: egui::plot::Corner::RightBottom,
+                position: egui_plot::Corner::RightBottom,
                 ..Default::default()
             })
             .x_axis_formatter(move |time, _, _| format_time(time_type, time as i64 + time_offset))
@@ -154,7 +151,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
-        let egui::plot::PlotResponse {
+        let egui_plot::PlotResponse {
             inner: time_x,
             response,
             transform,
@@ -175,8 +172,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     .map(|p| [(p.0 - time_offset) as _, p.1])
                     .collect::<Vec<_>>();
 
-                let c = line.color;
-                let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
+                let color = line.color;
 
                 match line.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
@@ -246,8 +242,8 @@ fn format_time(time_type: TimeType, time_int: i64) -> String {
 
 fn ns_grid_spacer(
     canvas_size: egui::Vec2,
-    input: &egui::plot::GridInput,
-) -> Vec<egui::plot::GridMark> {
+    input: &egui_plot::GridInput,
+) -> Vec<egui_plot::GridMark> {
     let minimum_medium_line_spacing = 150.0; // ≈min size of a label
     let max_medium_lines = canvas_size.x as f64 / minimum_medium_line_spacing;
 
@@ -276,7 +272,7 @@ fn ns_grid_spacer(
             small_spacing_ns
         };
 
-        marks.push(egui::plot::GridMark {
+        marks.push(egui_plot::GridMark {
             value: current_ns as f64,
             step_size: step_size as f64,
         });

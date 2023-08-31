@@ -1,7 +1,10 @@
+use ahash::{HashMap, HashSet};
+
 use re_log_types::{RowId, SizeBytes as _, TimeInt, TimeRange};
+use re_types::ComponentName;
 
 use crate::{
-    store::{IndexedBucketInner, IndexedTable},
+    store::{IndexedBucketInner, IndexedTable, PersistentIndexedTable},
     DataStore, DataStoreStats,
 };
 
@@ -13,6 +16,35 @@ pub enum GarbageCollectionTarget {
     ///
     /// The fraction must be a float in the range [0.0 : 1.0].
     DropAtLeastFraction(f64),
+
+    /// GC Everything that isn't protected
+    Everything,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct GarbageCollectionOptions {
+    /// What target threshold should the GC try to meet.
+    pub target: GarbageCollectionTarget,
+
+    /// Whether to also GC timeless data.
+    pub gc_timeless: bool,
+
+    /// How many component revisions to preserve on each timeline.
+    pub protect_latest: usize,
+
+    /// Whether to purge tables that no longer contain any data
+    pub purge_empty_tables: bool,
+}
+
+impl GarbageCollectionOptions {
+    pub fn gc_everything() -> Self {
+        GarbageCollectionOptions {
+            target: GarbageCollectionTarget::Everything,
+            gc_timeless: true,
+            protect_latest: 0,
+            purge_empty_tables: true,
+        }
+    }
 }
 
 impl std::fmt::Display for GarbageCollectionTarget {
@@ -21,6 +53,7 @@ impl std::fmt::Display for GarbageCollectionTarget {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 write!(f, "DropAtLeast({:.3}%)", re_format::format_f64(*p * 100.0))
             }
+            GarbageCollectionTarget::Everything => write!(f, "Everything"),
         }
     }
 }
@@ -51,8 +84,14 @@ impl DataStore {
     ///
     /// ## Limitations
     ///
-    /// The garbage collector is currently unaware of our latest-at semantics, i.e. it will drop
-    /// old data even if doing so would impact the results of recent queries.
+    /// The garbage collector has limited support for latest-at semantics. The configuration option:
+    /// [`GarbageCollectionOptions::protect_latest`] will protect the N latest values of each
+    /// component on each timeline. The only practical guarantee this gives is that a latest-at query
+    /// with a value of max-int will be be unchanged. However, latest-at queries from other arbitrary
+    /// points in time may provide different results pre- and post- GC.
+    ///
+    /// NOTE: This configuration option is not yet enabled for the Rerun viewer GC pass.
+    ///
     /// See <https://github.com/rerun-io/rerun/issues/1803>.
     //
     // TODO(#1804): There shouldn't be any need to return the purged `RowId`s, all secondary
@@ -63,19 +102,19 @@ impl DataStore {
     // when purging data.
     //
     // TODO(#1823): Workload specific optimizations.
-    pub fn gc(&mut self, target: GarbageCollectionTarget) -> (Vec<RowId>, DataStoreStats) {
+    pub fn gc(&mut self, options: GarbageCollectionOptions) -> (Vec<RowId>, DataStoreStats) {
         re_tracing::profile_function!();
 
         self.gc_id += 1;
 
-        // NOTE: only temporal data and row metadata get purged!
         let stats_before = DataStoreStats::from_store(self);
-        let initial_num_rows =
-            stats_before.temporal.num_rows + stats_before.metadata_registry.num_rows;
-        let initial_num_bytes =
-            (stats_before.temporal.num_bytes + stats_before.metadata_registry.num_bytes) as f64;
 
-        let row_ids = match target {
+        let (initial_num_rows, initial_num_bytes) =
+            stats_before.total_rows_and_bytes_with_timeless(options.gc_timeless);
+
+        let protected_rows = self.find_all_protected_rows(options.protect_latest);
+
+        let mut row_ids = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
 
@@ -85,7 +124,7 @@ impl DataStore {
                 re_log::trace!(
                     kind = "gc",
                     id = self.gc_id,
-                    %target,
+                    %options.target,
                     initial_num_rows = re_format::format_large_number(initial_num_rows as _),
                     initial_num_bytes = re_format::format_bytes(initial_num_bytes),
                     target_num_bytes = re_format::format_bytes(target_num_bytes),
@@ -93,23 +132,42 @@ impl DataStore {
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_num_bytes(num_bytes_to_drop)
+                self.gc_drop_at_least_num_bytes(
+                    num_bytes_to_drop,
+                    options.gc_timeless,
+                    &protected_rows,
+                )
+            }
+            GarbageCollectionTarget::Everything => {
+                re_log::trace!(
+                    kind = "gc",
+                    id = self.gc_id,
+                    %options.target,
+                    initial_num_rows = re_format::format_large_number(initial_num_rows as _),
+                    initial_num_bytes = re_format::format_bytes(initial_num_bytes),
+                    "starting GC"
+                );
+
+                self.gc_drop_at_least_num_bytes(f64::INFINITY, options.gc_timeless, &protected_rows)
             }
         };
+
+        if options.purge_empty_tables {
+            row_ids.extend(self.purge_empty_tables());
+        }
 
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
 
         // NOTE: only temporal data and row metadata get purged!
         let stats_after = DataStoreStats::from_store(self);
-        let new_num_rows = stats_after.temporal.num_rows + stats_after.metadata_registry.num_rows;
-        let new_num_bytes =
-            (stats_after.temporal.num_bytes + stats_after.metadata_registry.num_bytes) as f64;
+        let (new_num_rows, new_num_bytes) =
+            stats_after.total_rows_and_bytes_with_timeless(options.gc_timeless);
 
         re_log::trace!(
             kind = "gc",
             id = self.gc_id,
-            %target,
+            %options.target,
             initial_num_rows = re_format::format_large_number(initial_num_rows as _),
             initial_num_bytes = re_format::format_bytes(initial_num_bytes),
             new_num_rows = re_format::format_large_number(new_num_rows as _),
@@ -125,35 +183,216 @@ impl DataStore {
     /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
     ///
     /// Returns the list of `RowId`s that were purged from the store.
-    fn gc_drop_at_least_num_bytes(&mut self, mut num_bytes_to_drop: f64) -> Vec<RowId> {
+    //
+    // TODO(jleibs): There are some easy optimizations here if we find GC taking too long:
+    //  - If we stored the entity_path_hash along with timepoints in the metadata_registry we could jump
+    //    directly to the relevant tables instead of needing to iterate over all tables.
+    //  - If we know we are clearing almost everything, then we can batch-clear the rows from the
+    //    the tables instead of needing to iterate over every single row incrementally.
+    fn gc_drop_at_least_num_bytes(
+        &mut self,
+        mut num_bytes_to_drop: f64,
+        include_timeless: bool,
+        protected_rows: &HashSet<RowId>,
+    ) -> Vec<RowId> {
         re_tracing::profile_function!();
 
         let mut row_ids = Vec::new();
 
         // The algorithm is straightforward:
-        // 1. Pop the oldest `RowId` available
+        // 1. Find the the oldest `RowId` that is not protected
         // 2. Find all tables that potentially hold data associated with that `RowId`
         // 3. Drop the associated row and account for the space we got back
+
+        let mut candidate_rows = self.metadata_registry.registry.iter();
+
         while num_bytes_to_drop > 0.0 {
-            // pop next row id
-            let Some((row_id, timepoint)) = self.metadata_registry.pop_first() else {
+            // Try to get the next candidate
+            let Some((row_id, timepoint)) = candidate_rows.next() else {
                 break;
             };
+
+            if protected_rows.contains(row_id) {
+                continue;
+            }
+
             let metadata_dropped_size_bytes =
                 row_id.total_size_bytes() + timepoint.total_size_bytes();
             self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
             num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
-            row_ids.push(row_id);
+
+            row_ids.push(*row_id);
 
             // find all tables that could possibly contain this `RowId`
-            let tables = self.tables.iter_mut().filter_map(|((timeline, _), table)| {
+            let temporal_tables = self.tables.iter_mut().filter_map(|((timeline, _), table)| {
                 timepoint.get(timeline).map(|time| (*time, table))
             });
 
-            for (time, table) in tables {
-                num_bytes_to_drop -= table.try_drop_row(row_id, time.as_i64()) as f64;
+            for (time, table) in temporal_tables {
+                num_bytes_to_drop -= table.try_drop_row(*row_id, time.as_i64()) as f64;
+            }
+
+            // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
+            // first and then remove them in one pass.
+            if timepoint.is_timeless() && include_timeless {
+                for table in self.timeless_tables.values_mut() {
+                    num_bytes_to_drop -= table.try_drop_row(*row_id) as f64;
+                }
             }
         }
+
+        // Purge the removed rows from the metadata_registry
+        for row_id in &row_ids {
+            self.metadata_registry.remove(row_id);
+        }
+
+        row_ids
+    }
+
+    /// For each `EntityPath`, `Timeline`, `Component` find the N latest [`RowId`]s.
+    ///
+    /// These are the rows that must be protected so as not to impact a latest-at query.
+    /// Note that latest for Timeless is currently based on insertion-order rather than
+    /// tuid. [See: #1807](https://github.com/rerun-io/rerun/issues/1807)
+    //
+    // TODO(jleibs): More complex functionality might required expanding this to also
+    // *ignore* specific entities, components, timelines, etc. for this protection.
+    //
+    // TODO(jleibs): `RowId`s should never overlap between entities. Creating a single large
+    // HashSet might actually be sub-optimal here. Consider switching to a map of
+    // `EntityPath` -> `HashSet<RowId>`.
+    fn find_all_protected_rows(&mut self, target_count: usize) -> HashSet<RowId> {
+        re_tracing::profile_function!();
+
+        if target_count == 0 {
+            return Default::default();
+        }
+
+        // We need to sort to be able to determine latest-at.
+        self.sort_indices_if_needed();
+
+        let mut protected_rows: HashSet<RowId> = Default::default();
+
+        // Find all protected rows in regular indexed tables
+        for table in self.tables.values() {
+            let mut components_to_find: HashMap<ComponentName, usize> = table
+                .all_components
+                .iter()
+                .filter(|c| **c != table.cluster_key)
+                .map(|c| (*c, target_count))
+                .collect();
+
+            for bucket in table.buckets.values().rev() {
+                for (component, count) in &mut components_to_find {
+                    if *count == 0 {
+                        continue;
+                    }
+                    let inner = bucket.inner.read();
+                    // TODO(jleibs): If the entire column for a component is empty, we should
+                    // make sure the column is dropped so we don't have to iterate over a
+                    // bunch of Nones.
+                    if let Some(column) = inner.columns.get(component) {
+                        for row in column
+                            .iter()
+                            .enumerate()
+                            .rev()
+                            .filter_map(|(row_index, cell)| {
+                                cell.as_ref().and_then(|_| inner.col_row_id.get(row_index))
+                            })
+                            .take(*count)
+                        {
+                            *count -= 1;
+                            protected_rows.insert(*row);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Find all protected rows in timeless tables
+        // NOTE this is still based on insertion order.
+        // https://github.com/rerun-io/rerun/issues/1807
+        for table in self.timeless_tables.values() {
+            let mut components_to_find: HashMap<ComponentName, usize> = table
+                .columns
+                .keys()
+                .filter(|c| **c != table.cluster_key)
+                .map(|c| (*c, target_count))
+                .collect();
+
+            for (component, count) in &mut components_to_find {
+                if *count == 0 {
+                    continue;
+                }
+                // TODO(jleibs): If the entire column for a component is empty, we should
+                // make sure the column is dropped so we don't have to iterate over a
+                // bunch of Nones.
+                if let Some(column) = table.columns.get(component) {
+                    for row_id in column
+                        .iter()
+                        .enumerate()
+                        .rev()
+                        .filter_map(|(row_index, cell)| {
+                            cell.as_ref().and_then(|_| table.col_row_id.get(row_index))
+                        })
+                        .take(*count)
+                    {
+                        *count -= 1;
+                        protected_rows.insert(*row_id);
+                    }
+                }
+            }
+        }
+
+        protected_rows
+    }
+
+    /// Remove any tables which contain only components which are empty.
+    // TODO(jleibs): We could optimize this further by also erasing empty columns.
+    fn purge_empty_tables(&mut self) -> Vec<RowId> {
+        re_tracing::profile_function!();
+
+        let mut row_ids = Vec::new();
+
+        // Drop any empty timeless tables
+        self.timeless_tables.retain(|_, table| {
+            // If any column is non-empty, we need to keep this table
+            for num in &table.col_num_instances {
+                if num != &0 {
+                    return true;
+                }
+            }
+
+            // Otherwise we can drop it
+            row_ids.extend(table.col_row_id.iter());
+            false
+        });
+
+        // Drop any empty temporal tables that aren't backed by a timeless table
+        self.tables.retain(|(_, entity), table| {
+            // If the timeless table still exists, this table might be storing empty values
+            // that hide the timeless values, so keep it around.
+            if self.timeless_tables.contains_key(entity) {
+                return true;
+            }
+
+            // If any bucket has a non-empty component in any column, we keep it.
+            for bucket in table.buckets.values() {
+                let inner = bucket.inner.read();
+                for num in &inner.col_num_instances {
+                    if num != &0 {
+                        return true;
+                    }
+                }
+            }
+
+            // Otherwise we can drop it
+            for bucket in table.buckets.values() {
+                let inner = bucket.inner.read();
+                row_ids.extend(inner.col_row_id.iter());
+            }
+            false
+        });
 
         row_ids
     }
@@ -165,8 +404,6 @@ impl IndexedTable {
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
-        re_tracing::profile_function!();
-
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
         let (bucket_key, bucket) = self.find_bucket_mut(time.into());
@@ -211,8 +448,6 @@ impl IndexedBucketInner {
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
-        re_tracing::profile_function!();
-
         self.sort();
 
         let IndexedBucketInner {
@@ -281,6 +516,56 @@ impl IndexedBucketInner {
         }
 
         *size_bytes -= dropped_num_bytes;
+
+        dropped_num_bytes
+    }
+}
+
+impl PersistentIndexedTable {
+    /// Tries to drop the given `row_id` from the table.
+    ///
+    /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
+    fn try_drop_row(&mut self, row_id: RowId) -> u64 {
+        let mut dropped_num_bytes = 0u64;
+
+        let PersistentIndexedTable {
+            ent_path: _,
+            cluster_key: _,
+            col_insert_id,
+            col_row_id,
+            col_num_instances,
+            columns,
+        } = self;
+
+        // TODO(jleibs) Timeless data isn't sorted, so we need to do a full scan here.
+        // Speed this up when we implement: https://github.com/rerun-io/rerun/issues/1807
+        if let Some(row_index) = col_row_id
+            .iter()
+            .enumerate()
+            .find(|(_, r)| **r == row_id)
+            .map(|(index, _)| index)
+        {
+            // col_row_id
+            // TODO(jleibs) Use swap_remove once we have a notion of sorted
+            let removed_row_id = col_row_id.remove(row_index);
+            debug_assert_eq!(row_id, removed_row_id);
+            dropped_num_bytes += removed_row_id.total_size_bytes();
+
+            // col_insert_id (if present)
+            if !col_insert_id.is_empty() {
+                // TODO(jleibs) Use swap_remove once we have a notion of sorted
+                dropped_num_bytes += col_insert_id.remove(row_index).total_size_bytes();
+            }
+
+            // col_num_instances
+            // TODO(jleibs) Use swap_remove once we have a notion of sorted
+            dropped_num_bytes += col_num_instances.remove(row_index).total_size_bytes();
+
+            // each data column
+            for column in columns.values_mut() {
+                dropped_num_bytes += column.0.remove(row_index).total_size_bytes();
+            }
+        }
 
         dropped_num_bytes
     }

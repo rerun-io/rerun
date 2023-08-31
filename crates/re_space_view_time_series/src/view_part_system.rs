@@ -2,8 +2,8 @@ use re_arrow_store::TimeRange;
 use re_query::{range_entity_with_primary, QueryError};
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, SpaceViewSystemExecutionError, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    AnnotationMap, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 #[derive(Clone, Debug)]
@@ -60,6 +60,12 @@ pub struct TimeSeriesSystem {
     pub lines: Vec<PlotSeries>,
 }
 
+impl NamedViewSystem for TimeSeriesSystem {
+    fn name() -> re_viewer_context::ViewSystemName {
+        "TimeSeries".into()
+    }
+}
+
 impl ViewPartSystem for TimeSeriesSystem {
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
         vec1::Vec1::try_from_vec(
@@ -83,7 +89,7 @@ impl ViewPartSystem for TimeSeriesSystem {
         self.annotation_map.load(
             ctx,
             &query.latest_at_query(),
-            query.iter_entities().map(|(p, _)| p),
+            query.iter_entities_for_system(Self::name()).map(|(p, _)| p),
         );
 
         self.load_scalars(ctx, query);
@@ -113,7 +119,7 @@ impl TimeSeriesSystem {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        for (ent_path, _ent_props) in query.iter_entities() {
+        for (ent_path, _ent_props) in query.iter_entities_for_system(Self::name()) {
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
             let annotation_info = annotations
@@ -132,7 +138,9 @@ impl TimeSeriesSystem {
             );
 
             for (time, ent_view) in ent_views {
-                let Some(time) = time else { continue; }; // scalars cannot be timeless
+                let Some(time) = time else {
+                    continue;
+                }; // scalars cannot be timeless
 
                 match ent_view.visit5(
                     |_instance,

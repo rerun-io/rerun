@@ -1,6 +1,6 @@
 import rerun as rr
 
-rr.init("annotation_context_connections", spawn=True)
+rr.init("rerun_example_annotation_context_connections", spawn=True)
 
 rr.log_annotation_context(
     "/",

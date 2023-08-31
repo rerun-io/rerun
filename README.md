@@ -19,7 +19,7 @@ Use one of our logging APIs (Python or Rust) to log rich data, such as images an
 ```py
 import rerun as rr
 
-rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
+rr.init("rerun_example_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
 
 rr.log_image("rgb_image", image)
 rr.log_points("points", positions)
@@ -87,5 +87,5 @@ The commercial product targets the needs specific to teams that build and run co
 ## Installing a pre-release Python SDK
 
 1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
-2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
+2. Run `pip install rerun_sdk<…>.whl` (replace `<…>` with the actual filename)
 3. Test it: `rerun --version`

@@ -29,5 +29,6 @@ re_viewer_context.workspace = true
 re_query.workspace = true
 re_format.workspace = true
 
+egui_plot.workspace = true
 egui.workspace = true
 vec1.workspace = true

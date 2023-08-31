@@ -6,7 +6,8 @@
 
 use std::time::Duration;
 
-use crate::{Config, Event, PostHogSink};
+use super::sink::PostHogSink;
+use crate::{Config, Event};
 
 // TODO(cmc): abstract away the concept of a `Pipeline` behind an actual trait when comes the time
 // to support more than just PostHog.
@@ -29,11 +30,8 @@ pub enum PipelineError {
 pub struct Pipeline {}
 
 impl Pipeline {
-    pub fn new(
-        _config: &Config,
-        _tick: Duration,
-        _sink: PostHogSink,
-    ) -> Result<Option<Self>, PipelineError> {
+    pub(crate) fn new(_config: &Config, _tick: Duration) -> Result<Option<Self>, PipelineError> {
+        let _sink = PostHogSink::default();
         Ok(None)
     }
 
