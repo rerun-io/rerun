@@ -1,9 +1,6 @@
 use half::f16;
 
-use crate::{
-    datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId},
-    ArrowBuffer,
-};
+use crate::datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId};
 
 // Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
 // will eventually go away as the Tensor migration is completed.
@@ -530,7 +527,7 @@ impl DecodedTensor {
     }
 
     pub fn decode_jpeg_bytes(
-        jpeg_bytes: &ArrowBuffer<u8>,
+        jpeg_bytes: &crate::ArrowBuffer<u8>,
         [expected_height, expected_width, expected_channels]: [u64; 3],
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!();
