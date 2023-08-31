@@ -161,7 +161,7 @@ def spawn(
         also connect to the viewer and stream logging data to it.
     memory_limit
         An upper limit on how much memory the Rerun Viewer should use.
-        When this limit is reached, Rerun will purge the oldest data.
+        When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
     recording
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.

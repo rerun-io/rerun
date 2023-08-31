@@ -63,7 +63,7 @@ struct Args {
 
     /// An upper limit on how much memory the Rerun Viewer should use.
     ///
-    /// When this limit is reached, Rerun will purge the oldest data.
+    /// When this limit is reached, Rerun will drop the oldest data.
     ///
     /// Example: `16GB` or `50%` (of system total).
     #[clap(long, default_value = "75%")]
