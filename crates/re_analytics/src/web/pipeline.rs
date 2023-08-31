@@ -19,7 +19,7 @@ pub enum PipelineError {
     Serde(#[from] serde_json::Error),
 }
 
-/// WASM event pipeline.
+/// Wasm event pipeline.
 ///
 /// Unlike the native pipeline, this one is not backed by a WAL. All events are immediately sent as they are recorded.
 #[derive(Debug)]
