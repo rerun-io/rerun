@@ -6,7 +6,7 @@ use rerun::time::{TimeType, Timeline};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_scalar").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_scalar").memory()?;
 
     let step_timeline = Timeline::new("step", TimeType::Sequence);
 
@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         MsgSender::new("scalar")
             .with_component(&[Scalar::from(value)])?
             .with_time(step_timeline, step)
-            .send(&rec_stream)?;
+            .send(&rec)?;
 
         value += thread_rng().sample::<f64, _>(StandardNormal);
     }

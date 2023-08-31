@@ -14,7 +14,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     MsgSender::from_archetype(
         "annotation_context",
         &AnnotationContext::new([
@@ -26,7 +26,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             },
         ]),
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     Ok(())
 }
@@ -41,8 +41,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_annotation_context",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

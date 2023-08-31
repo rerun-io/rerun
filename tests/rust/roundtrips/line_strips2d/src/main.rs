@@ -11,7 +11,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     MsgSender::from_archetype(
         "line_strips2d",
@@ -23,12 +23,12 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_class_ids([126, 127])
             .with_instance_keys([66, 666]),
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     // Hack to establish 2d view bounds
     MsgSender::new("rect")
         .with_component(&[Rect2D::from_xywh(-10.0, -10.0, 20.0, 20.0)])?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     Ok(())
 }
@@ -43,8 +43,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_line_strips2d",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

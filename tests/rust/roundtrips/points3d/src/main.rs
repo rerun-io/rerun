@@ -9,7 +9,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     MsgSender::from_archetype(
         "points3d",
         &Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
@@ -20,7 +20,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_keypoint_ids([2, 3])
             .with_instance_keys([66, 666]),
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     Ok(())
 }
@@ -35,8 +35,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_points3d",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

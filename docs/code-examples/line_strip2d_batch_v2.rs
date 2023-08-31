@@ -6,8 +6,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
 
     let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     #[rustfmt::skip]
@@ -19,12 +18,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_radii([0.025, 0.005])
             .with_labels(["one strip here", "and one strip there" /**/]),
     )?
-    .send(&rec_stream)?;
+    .send(&rec)?;
 
     // Log an extra rect to set the view bounds
     MsgSender::new("bounds")
         .with_component(&[Rect2D::XCYCWH(Vec4D([3.0, 1.5, 8.0, 9.0]).into())])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

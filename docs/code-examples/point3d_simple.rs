@@ -3,7 +3,7 @@
 use rerun::{components::Point3D, MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_points3d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points3d").memory()?;
 
     let points = [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]
         .into_iter()
@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     MsgSender::new("points")
         .with_component(&points)?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

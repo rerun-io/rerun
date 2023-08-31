@@ -4,8 +4,8 @@
 namespace rr = rerun;
 
 int main(int argc, char** argv) {
-    auto rec_stream = rr::RecordingStream("rerun_example_roundtrip_disconnected_space");
-    rec_stream.save(argv[1]).throw_on_failure();
+    auto rec = rr::RecordingStream("rerun_example_roundtrip_disconnected_space");
+    rec.save(argv[1]).throw_on_failure();
 
-    rec_stream.log("disconnected_space", rr::archetypes::DisconnectedSpace(true));
+    rec.log("disconnected_space", rr::archetypes::DisconnectedSpace(true));
 }

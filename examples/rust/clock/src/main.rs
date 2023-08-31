@@ -26,7 +26,7 @@ struct Args {
     steps: usize,
 }
 
-fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     const LENGTH_S: f32 = 20.0;
     const LENGTH_M: f32 = 10.0;
     const LENGTH_H: f32 = 4.0;
@@ -41,12 +41,12 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     MsgSender::new("world")
         .with_timeless(true)
         .with_component(&[view_coords])?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     MsgSender::new("world/frame")
         .with_timeless(true)
         .with_component(&[Box3D::new(LENGTH_S, LENGTH_S, 1.0)])?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     fn pos(angle: f32, length: f32) -> [f32; 3] {
         [length * angle.sin(), length * angle.cos(), 0.0]
@@ -58,7 +58,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     }
 
     fn log_hand(
-        rec_stream: &RecordingStream,
+        rec: &RecordingStream,
         name: &str,
         step: usize,
         angle: f32,
@@ -70,28 +70,28 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         let point: Point3D = pos.into();
         let color = color(angle, blue);
 
-        rec_stream.set_time_seconds("sim_time", step as f64);
+        rec.set_time_seconds("sim_time", step as f64);
 
         MsgSender::new(format!("world/{name}_pt"))
             .with_component(&[point])?
             .with_component(&[color])?
-            .send(rec_stream)?;
+            .send(rec)?;
         MsgSender::new(format!("world/{name}_hand"))
             .with_component(&[Vector3D::from(pos)])?
             .with_component(&[color])?
             .with_component(&[Radius(width * 0.5)])?
-            .send(rec_stream)?;
+            .send(rec)?;
 
         Ok(())
     }
 
     for step in 0..args.steps {
         #[rustfmt::skip]
-        log_hand(rec_stream, "seconds", step, (step % 60) as f32 / 60.0, LENGTH_S, WIDTH_S, 0)?;
+        log_hand(rec, "seconds", step, (step % 60) as f32 / 60.0, LENGTH_S, WIDTH_S, 0)?;
         #[rustfmt::skip]
-        log_hand(rec_stream, "minutes", step, (step % 3600) as f32 / 3600.0, LENGTH_M, WIDTH_M, 128)?;
+        log_hand(rec, "minutes", step, (step % 3600) as f32 / 3600.0, LENGTH_M, WIDTH_M, 128)?;
         #[rustfmt::skip]
-        log_hand(rec_stream, "hours", step, (step % 43200) as f32 / 43200.0, LENGTH_H, WIDTH_H, 255)?;
+        log_hand(rec, "hours", step, (step % 43200) as f32 / 43200.0, LENGTH_H, WIDTH_H, 255)?;
     }
 
     Ok(())
@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
     let default_enabled = true;
     args.rerun
         .clone()
-        .run("rerun_example_clock", default_enabled, move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        .run("rerun_example_clock", default_enabled, move |rec| {
+            run(&rec, &args).unwrap();
         })
 }

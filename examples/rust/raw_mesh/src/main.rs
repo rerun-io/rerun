@@ -65,7 +65,7 @@ impl From<GltfTransform> for Transform3D {
 }
 
 /// Log a glTF node with Rerun.
-fn log_node(rec_stream: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
+fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
     let ent_path = EntityPath::from(node.name.as_str());
 
     // Convert glTF objects into Rerun components.
@@ -76,23 +76,23 @@ fn log_node(rec_stream: &RecordingStream, node: GltfNode) -> anyhow::Result<()> 
         .map(Mesh3D::from)
         .collect::<Vec<_>>();
 
-    rec_stream.set_time_sequence("keyframe", 0);
+    rec.set_time_sequence("keyframe", 0);
     MsgSender::new(ent_path)
         .with_component(&primitives)?
         .with_component(transform.as_ref())?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     // Recurse through all of the node's children!
     for mut child in node.children {
         child.name = [node.name.as_str(), child.name.as_str()].join("/");
-        log_node(rec_stream, child)?;
+        log_node(rec, child)?;
     }
 
     Ok(())
 }
 
 fn log_coordinate_space(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     ent_path: impl Into<EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
@@ -103,7 +103,7 @@ fn log_coordinate_space(
     MsgSender::new(ent_path)
         .with_timeless(true)
         .with_component(&[view_coords])?
-        .send(rec_stream)
+        .send(rec)
         .map_err(Into::into)
 }
 
@@ -168,7 +168,7 @@ impl Args {
     }
 }
 
-fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Read glTF scene
     let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
     let nodes = load_gltf(&doc, &buffers);
@@ -176,8 +176,8 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        log_coordinate_space(rec_stream, root.name.as_str(), "RUB")?;
-        log_node(rec_stream, root)?;
+        log_coordinate_space(rec, root.name.as_str(), "RUB")?;
+        log_node(rec, root)?;
     }
 
     Ok(())
@@ -190,13 +190,11 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let default_enabled = true;
-    args.rerun.clone().run(
-        "rerun_example_raw_mesh_rs",
-        default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
-        },
-    )
+    args.rerun
+        .clone()
+        .run("rerun_example_raw_mesh_rs", default_enabled, move |rec| {
+            run(&rec, &args).unwrap();
+        })
 }
 
 // --- glTF parsing ---

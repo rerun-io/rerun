@@ -6,7 +6,7 @@ use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, Label};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
+    let (rec, storage) =
         RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
 
     // create a segmentation image
@@ -38,11 +38,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     // log the annotation and the image
-    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec)?;
 
     MsgSender::new("image")
         .with_component(&[tensor])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

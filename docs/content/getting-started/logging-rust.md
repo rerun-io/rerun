@@ -205,7 +205,7 @@ Let's add our custom timeline:
 for i in 0..400 {
     let time = i as f32 * 0.01;
 
-    rec_stream.set_time_seconds("stable_time", time as f64);
+    rec.set_time_seconds("stable_time", time as f64);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
     let (beads, colors): (Vec<_>, Vec<_>) = points1
@@ -247,7 +247,7 @@ Enter...
 That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the *default* timeline (called `log_time`).
 To fix this, add this at the beginning of the main function:
 ```rust
-rec_stream.set_time_seconds("stable_time", 0f64);
+rec.set_time_seconds("stable_time", 0f64);
 ```
 
 ![logging data - latest at](https://static.rerun.io/0182b4795ca2fed2f2097cfa5f5271115dee0aaf_logging_data8_latest_at.png)

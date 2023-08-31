@@ -4,7 +4,7 @@ use rerun::components::Tensor;
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_tensors").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_tensors").memory()?;
 
     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
     data.map_inplace(|x| *x = rand::random());
@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     MsgSender::new("tensor")
         .with_component(&[tensor])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

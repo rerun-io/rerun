@@ -23,7 +23,7 @@ struct Args {
     radius: f32,
 }
 
-fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     let points = grid(
         glam::Vec3::splat(-args.radius),
         glam::Vec3::splat(args.radius),
@@ -39,12 +39,12 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     .map(|v| Color::from_rgb(v.x as u8, v.y as u8, v.z as u8))
     .collect::<Vec<_>>();
 
-    rec_stream.set_time_sequence("keyframe", 0);
+    rec.set_time_sequence("keyframe", 0);
     MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?
         .with_splat(Radius(0.5))?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     Ok(())
 }
@@ -59,8 +59,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_minimal_options",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

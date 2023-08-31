@@ -29,13 +29,13 @@ where
     let sink = Box::new(NativeViewerSink(tx));
     let app_env = re_viewer::AppEnvironment::from_store_source(&store_info.store_source);
 
-    let rec_stream =
+    let rec =
         RecordingStream::new(store_info, batcher_config, sink).expect("Failed to spawn thread");
 
     // NOTE: Forget the handle on purpose, leave that thread be.
     std::thread::Builder::new()
         .name("spawned".into())
-        .spawn(move || run(rec_stream))
+        .spawn(move || run(rec))
         .expect("Failed to spawn thread");
 
     // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure

@@ -6,14 +6,14 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 
     let arrow = Vector3D::from((0.0, 1.0, 0.0));
 
     MsgSender::new("arrow")
         .with_component(&[arrow])?
         .with_component(&[Radius(0.05)])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

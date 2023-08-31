@@ -5,7 +5,7 @@ use rerun::components::{Color, Point3D, Radius};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_points").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points").memory()?;
 
     let mut rng = rand::thread_rng();
     let position_distribs = Uniform::new(-5., 5.);
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_component(&positions)?
         .with_component(&colors)?
         .with_component(&radii)?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

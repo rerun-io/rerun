@@ -127,12 +127,12 @@ impl RerunArgs {
             }
         };
 
-        let rec_stream = RecordingStream::new(store_info, batcher_config, sink)?;
-        run(rec_stream.clone());
+        let rec = RecordingStream::new(store_info, batcher_config, sink)?;
+        run(rec.clone());
 
         // The user callback is done executing, it's a good opportunity to flush the pipeline
         // independently of the current flush thresholds (which might be `NEVER`).
-        rec_stream.flush_async();
+        rec.flush_async();
 
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {

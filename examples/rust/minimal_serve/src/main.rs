@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
     let _guard = rt.enter();
 
-    let rec_stream = RecordingStreamBuilder::new("rerun_example_minimal_serve_rs").serve(
+    let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve_rs").serve(
         "0.0.0.0",
         Default::default(),
         Default::default(),
@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_component(&points)?
         .with_component(&colors)?
         .with_splat(Radius(0.5))?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     eprintln!("Check your browser!");
     std::thread::sleep(std::time::Duration::from_secs(100000));

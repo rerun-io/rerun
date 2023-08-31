@@ -10,7 +10,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
 
     let mut rng = rand::thread_rng();
     let dist = Uniform::new(-3., 3.);
@@ -21,12 +21,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_colors((0..10).map(|_| Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))
             .with_radii((0..10).map(|_| rng.gen::<f32>())),
     )?
-    .send(&rec_stream)?;
+    .send(&rec)?;
 
     // Log an extra rect to set the view bounds
     MsgSender::new("bounds")
         .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 8.0, 6.0]).into())])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

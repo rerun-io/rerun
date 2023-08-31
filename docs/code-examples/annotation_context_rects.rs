@@ -7,7 +7,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
+    let (rec, storage) =
         RecordingStreamBuilder::new("rerun_example_annotation_context_rects").memory()?;
 
     // Log an annotation context to assign a label and color to each class
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     ]);
 
-    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec)?;
 
     // Log a batch of 2 rectangles with different class IDs
     MsgSender::new("detections")
@@ -33,12 +33,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Rect2D::XYWH(Vec4D([0., 0., 2., 2.]).into()),
         ])?
         .with_component(&[ClassId::from(1), ClassId::from(2)])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     // Log an extra rect to set the view bounds
     MsgSender::new("bounds")
         .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 5.0, 5.0]).into())])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

@@ -9,9 +9,8 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    MsgSender::from_archetype("disconnected_space", &DisconnectedSpace::new(true))?
-        .send(rec_stream)?;
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+    MsgSender::from_archetype("disconnected_space", &DisconnectedSpace::new(true))?.send(rec)?;
 
     Ok(())
 }
@@ -26,8 +25,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_disconnected_space",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

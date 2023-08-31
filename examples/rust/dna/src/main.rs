@@ -16,29 +16,29 @@ const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store_info = rerun::new_store_info("DNA Abacus");
-    rerun::native_viewer::spawn(store_info, Default::default(), |rec_stream| {
-        run(&rec_stream).unwrap();
+    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
+        run(&rec).unwrap();
     })?;
     Ok(())
 }
 
-fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
+fn run(rec: &RecordingStream) -> Result<(), MsgSenderError> {
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
-    rec_stream.set_time_seconds("stable_time", 0f64);
+    rec.set_time_seconds("stable_time", 0f64);
 
     MsgSender::new("dna/structure/left")
         .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors1.iter().copied().map(Color::from).collect_vec())?
         .with_splat(Radius(0.08))?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     MsgSender::new("dna/structure/right")
         .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors2.iter().copied().map(Color::from).collect_vec())?
         .with_splat(Radius(0.08))?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     let scaffolding = points1
         .iter()
@@ -53,7 +53,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
     MsgSender::new("dna/structure/scaffolding")
         .with_component(&scaffolding)?
         .with_splat(Color::from([128, 128, 128, 255]))?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
@@ -62,7 +62,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
     for i in 0..400 {
         let time = i as f32 * 0.01;
 
-        rec_stream.set_time_seconds("stable_time", time as f64);
+        rec.set_time_seconds("stable_time", time as f64);
 
         let times = offsets.iter().map(|offset| time + offset).collect_vec();
         let (beads, colors): (Vec<_>, Vec<_>) = points1
@@ -85,14 +85,14 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
             .with_component(&beads)?
             .with_component(&colors)?
             .with_splat(Radius(0.06))?
-            .send(rec_stream)?;
+            .send(rec)?;
 
         MsgSender::new("dna/structure")
             .with_component(&[Transform3D::new(rerun::transform::RotationAxisAngle::new(
                 glam::Vec3::Z,
                 rerun::transform::Angle::Radians(time / 4.0 * TAU),
             ))])?
-            .send(rec_stream)?;
+            .send(rec)?;
     }
 
     Ok(())

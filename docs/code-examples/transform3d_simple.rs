@@ -11,24 +11,24 @@ use rerun::{
 use std::f32::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_transform").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_transform").memory()?;
 
     let vector = Vector3D::from((0.0, 1.0, 0.0));
 
     MsgSender::new("base")
         .with_component(&[vector])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     MsgSender::new("base/translated")
         .with_component(&[Transform3D::new(TranslationAndMat3x3::new(
             Vec3D::from([1.0, 0.0, 0.0]),
             Mat3x3::IDENTITY,
         ))])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     MsgSender::new("base/translated")
         .with_component(&[vector])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     MsgSender::new("base/rotated_scaled")
         .with_component(&[Transform3D::new(TranslationRotationScale3D {
@@ -40,11 +40,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             scale: Some(Scale3D::from(2.0)),
             ..Default::default()
         })])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     MsgSender::new("base/rotated_scaled")
         .with_component(&[vector])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

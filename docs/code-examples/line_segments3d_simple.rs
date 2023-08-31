@@ -2,8 +2,7 @@
 use rerun::{components::LineStrip3D, MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
 
     let points = [
         [0., 0., 0.],
@@ -23,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|p| LineStrip3D(vec![p[0].into(), p[1].into()]))
                 .collect::<Vec<_>>(),
         )?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

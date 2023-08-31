@@ -7,7 +7,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_pinhole").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_pinhole").memory()?;
 
     let mut image = Array::<u8, _>::default((3, 3, 3).f());
     image.map_inplace(|x| *x = rand::random());
@@ -17,11 +17,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             image_from_cam: Mat3x3::from([[3., 0., 1.5], [0., 3., 1.5], [0., 0., 1.]]).into(),
             resolution: Some(Vec2D::from([3., 3.]).into()),
         }])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     MsgSender::new("world/image")
         .with_component(&[Tensor::try_from(image.as_standard_layout().view())?])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

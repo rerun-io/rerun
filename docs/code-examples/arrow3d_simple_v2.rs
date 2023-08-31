@@ -9,7 +9,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 
     let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
         .map(|i| {
@@ -23,8 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unzip();
 
-    MsgSender::from_archetype("arrows", &Arrows3D::new(vectors).with_colors(colors))?
-        .send(&rec_stream)?;
+    MsgSender::from_archetype("arrows", &Arrows3D::new(vectors).with_colors(colors))?.send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

@@ -5,7 +5,7 @@ use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, KeypointPair, La
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
+    let (rec, storage) =
         RecordingStreamBuilder::new("rerun_example_annotation_context_connections").memory()?;
 
     // Log an annotation context to assign a label and color to each class
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into(),
     ]);
 
-    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
+    MsgSender::from_archetype("/", &annotation)?.send(&rec)?;
 
     // Log some points with different keypoint IDs
     MsgSender::from_archetype(
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_keypoint_ids([0, 1, 2, 3])
         .with_class_ids([0]),
     )?
-    .send(&rec_stream)?;
+    .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
 

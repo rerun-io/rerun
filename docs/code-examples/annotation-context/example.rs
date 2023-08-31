@@ -24,7 +24,7 @@ MsgSender::new("masks") // Applies to all entities below "masks".
         .map(|class| (ClassId(class.info.id), class))
         .collect(),
     }])?
-    .send(rec_stream)?;
+    .send(rec)?;
 
 // Annotation context with simple keypoints & keypoint connections.
 MsgSender::new("detections") // Applies to all entities below "detections".
@@ -53,4 +53,4 @@ MsgSender::new("detections") // Applies to all entities below "detections".
         ))
         .collect(),
     }])?
-    .send(rec_stream)?;
+    .send(rec)?;

@@ -43,7 +43,7 @@ pub enum MsgSenderError {
 ///
 /// ```ignore
 /// fn log_coordinate_space(
-///     rec_stream: &RecordingStream,
+///     rec: &RecordingStream,
 ///     ent_path: impl Into<EntityPath>,
 ///     axes: &str,
 /// ) -> anyhow::Result<()> {
@@ -54,7 +54,7 @@ pub enum MsgSenderError {
 ///     MsgSender::new(ent_path)
 ///         .with_timeless(true)
 ///         .with_component(&[view_coords])?
-///         .send(rec_stream)
+///         .send(rec)
 ///         .map_err(Into::into)
 /// }
 /// ```
@@ -359,8 +359,8 @@ impl MsgSender {
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
     #[allow(clippy::unnecessary_wraps)] // We might want to return errors in the future.
-    pub fn send(self, rec_stream: &RecordingStream) -> Result<(), DataTableError> {
-        if !rec_stream.is_enabled() {
+    pub fn send(self, rec: &RecordingStream) -> Result<(), DataTableError> {
+        if !rec.is_enabled() {
             return Ok(()); // silently drop the message
         }
 
@@ -368,13 +368,13 @@ impl MsgSender {
         let [row_standard, row_splats] = self.into_rows();
 
         if let Some(row_splats) = row_splats {
-            rec_stream.record_row(row_splats, !timeless);
+            rec.record_row(row_splats, !timeless);
         }
 
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in msg_standard, see(#1215).
         if let Some(row_standard) = row_standard {
-            rec_stream.record_row(row_standard, !timeless);
+            rec.record_row(row_standard, !timeless);
         }
 
         Ok(())

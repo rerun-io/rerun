@@ -73,7 +73,7 @@ impl<'a> From<&'a [objectron::FrameAnnotation]> for AnnotationsPerFrame<'a> {
 }
 
 fn log_coordinate_space(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     ent_path: impl Into<rerun::EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
@@ -83,34 +83,34 @@ fn log_coordinate_space(
     MsgSender::new(ent_path)
         .with_timeless(true)
         .with_component(&[view_coords])?
-        .send(rec_stream)
+        .send(rec)
         .map_err(Into::into)
 }
 
 fn log_ar_frame(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     annotations: &AnnotationsPerFrame<'_>,
     ar_frame: &ArFrame,
 ) -> anyhow::Result<()> {
-    log_video_frame(rec_stream, ar_frame)?;
+    log_video_frame(rec, ar_frame)?;
 
     if let Some(ar_camera) = ar_frame.data.camera.as_ref() {
-        log_ar_camera(rec_stream, ar_frame.timepoint.clone(), ar_camera)?;
+        log_ar_camera(rec, ar_frame.timepoint.clone(), ar_camera)?;
     }
 
     if let Some(points) = ar_frame.data.raw_feature_points.as_ref() {
-        log_feature_points(rec_stream, ar_frame.timepoint.clone(), points)?;
+        log_feature_points(rec, ar_frame.timepoint.clone(), points)?;
     }
 
     if let Some(&annotations) = annotations.0.get(&ar_frame.index) {
-        log_frame_annotations(rec_stream, &ar_frame.timepoint, annotations)?;
+        log_frame_annotations(rec, &ar_frame.timepoint, annotations)?;
     }
 
     Ok(())
 }
 
 fn log_baseline_objects(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
     use rerun::components::{Box3D, Color, Label, Transform3D};
@@ -143,26 +143,26 @@ fn log_baseline_objects(
             .with_component(&[transform])?
             .with_component(&[label])?
             .with_splat(Color::from_rgb(160, 230, 130))?
-            .send(rec_stream)?;
+            .send(rec)?;
     }
 
     Ok(())
 }
 
-fn log_video_frame(rec_stream: &RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
+fn log_video_frame(rec: &RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
     let tensor = rerun::components::Tensor::from_jpeg_file(&image_path)?;
 
     MsgSender::new("world/camera")
         .with_timepoint(ar_frame.timepoint.clone())
         .with_component(&[tensor])?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     Ok(())
 }
 
 fn log_ar_camera(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     timepoint: TimePoint,
     ar_camera: &objectron::ArCamera,
 ) -> anyhow::Result<()> {
@@ -197,20 +197,20 @@ fn log_ar_camera(
             translation,
             rot,
         ))])?
-        .send(rec_stream)?;
+        .send(rec)?;
     MsgSender::new("world/camera")
         .with_timepoint(timepoint)
         .with_component(&[Pinhole {
             image_from_cam: intrinsics.into(),
             resolution: Some(resolution.into()),
         }])?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     Ok(())
 }
 
 fn log_feature_points(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     timepoint: TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
@@ -237,13 +237,13 @@ fn log_feature_points(
         .with_component(&points)?
         .with_component(&ids)?
         .with_splat(Color::from_rgb(255, 255, 255))?
-        .send(rec_stream)?;
+        .send(rec)?;
 
     Ok(())
 }
 
 fn log_frame_annotations(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
@@ -304,7 +304,7 @@ fn log_frame_annotations(
                 .with_component(&points.into_iter().map(Point2D::from).collect::<Vec<_>>())?;
         }
 
-        msg.send(rec_stream)?;
+        msg.send(rec)?;
     }
 
     Ok(())
@@ -358,7 +358,7 @@ fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloat
     Ok(std::time::Duration::from_secs_f64(seconds))
 }
 
-fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Parse protobuf dataset
     let store_info = args.recording.info().with_context(|| {
         use clap::ValueEnum as _;
@@ -372,10 +372,10 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     let annotations = read_annotations(&store_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
-    log_coordinate_space(rec_stream, "world", "RUB")?;
-    log_coordinate_space(rec_stream, "world/camera", "RDF")?;
+    log_coordinate_space(rec, "world", "RUB")?;
+    log_coordinate_space(rec, "world/camera", "RDF")?;
 
-    log_baseline_objects(rec_stream, &annotations.objects)?;
+    log_baseline_objects(rec, &annotations.objects)?;
 
     let mut global_frame_offset = 0;
     let mut global_time_offset = 0.0;
@@ -402,7 +402,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
                 ar_frame,
             );
             let annotations = annotations.frame_annotations.as_slice().into();
-            log_ar_frame(rec_stream, &annotations, &ar_frame)?;
+            log_ar_frame(rec, &annotations, &ar_frame)?;
 
             if let Some(d) = args.per_frame_sleep {
                 std::thread::sleep(d);
@@ -430,13 +430,11 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let default_enabled = true;
-    args.rerun.clone().run(
-        "rerun_example_objectron_rs",
-        default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
-        },
-    )
+    args.rerun
+        .clone()
+        .run("rerun_example_objectron_rs", default_enabled, move |rec| {
+            run(&rec, &args).unwrap();
+        })
 }
 
 // --- Protobuf parsing ---

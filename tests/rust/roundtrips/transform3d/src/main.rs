@@ -19,14 +19,14 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     MsgSender::from_archetype(
         "translation_and_mat3x3/identity",
         &Transform3D::new(datatypes::Transform3D::TranslationAndMat3X3(
             TranslationAndMat3x3::IDENTITY,
         )), //
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     MsgSender::from_archetype(
         "translation_and_mat3x3/translation",
@@ -34,7 +34,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             TranslationAndMat3x3::translation([1.0, 2.0, 3.0]).from_parent(),
         )), //
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     MsgSender::from_archetype(
         "translation_and_mat3x3/rotation",
@@ -42,7 +42,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             TranslationAndMat3x3::rotation([[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]]),
         )),
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     MsgSender::from_archetype(
         "translation_rotation_scale/identity",
@@ -50,7 +50,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             TranslationRotationScale3D::IDENTITY,
         )), //
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     MsgSender::from_archetype(
         "translation_rotation_scale/translation_scale",
@@ -63,7 +63,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .from_parent(),
         )), //
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     MsgSender::from_archetype(
         "translation_rotation_scale/rigid",
@@ -74,7 +74,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             ),
         )), //
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     MsgSender::from_archetype(
         "translation_rotation_scale/affine",
@@ -87,7 +87,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .from_parent(),
         )), //
     )?
-    .send(rec_stream)?;
+    .send(rec)?;
 
     Ok(())
 }
@@ -102,8 +102,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_transform3d",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

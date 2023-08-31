@@ -169,22 +169,22 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecStr
 
     let application_id = ptr::try_char_ptr_as_str(application_id, "store_info.application_id")?;
 
-    let mut rec_stream_builder = RecordingStreamBuilder::new(application_id)
+    let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_log_types::StoreSource::CSdk);
 
     if store_kind == CStoreKind::Blueprint {
-        rec_stream_builder = rec_stream_builder.blueprint();
+        rec_builder = rec_builder.blueprint();
     }
 
-    let rec_stream = rec_stream_builder.buffered().map_err(|err| {
+    let rec = rec_builder.buffered().map_err(|err| {
         CError::new(
             CErrorCode::RecordingStreamCreationFailure,
             &format!("Failed to create recording stream: {err}"),
         )
     })?;
-    Ok(RECORDING_STREAMS.lock().insert(rec_stream))
+    Ok(RECORDING_STREAMS.lock().insert(rec))
 }
 
 #[allow(unsafe_code)]

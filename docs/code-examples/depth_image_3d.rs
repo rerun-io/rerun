@@ -7,8 +7,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
 
     // Create a dummy depth image
     let mut image = Array::<u16, _>::from_elem((200, 300).f(), 65535);
@@ -32,11 +31,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Vec2D::from([image.shape()[1] as f32, image.shape()[0] as f32]).into(),
             ),
         }])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     MsgSender::new("world/camera/depth")
         .with_component(&[tensor])?
-        .send(&rec_stream)?;
+        .send(&rec)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())
