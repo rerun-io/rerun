@@ -13,10 +13,16 @@ This is an end-to-end test for testing:
 from __future__ import annotations
 
 import argparse
+import fileinput
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
+from typing import Iterable
+
+PORT = 9752
 
 
 def main() -> None:
@@ -67,6 +73,7 @@ def main() -> None:
         ("examples/python/plots/main.py", []),
         ("examples/python/text_logging/main.py", []),
     ]
+
     for example, args in examples:
         print("----------------------------------------------------------")
         print(f"Testing {example}…\n")
@@ -76,24 +83,37 @@ def main() -> None:
         print(f"{example} done in {elapsed:.1f} seconds")
         print()
 
+    # NOTE: Doc-examples don't take any parameters and we want to keep it that way.
+    # For that reason, we copy them to a temporary directory and monkey patch them so
+    # that they connect to a remote Rerun viewer rather than spawn()ing.
+    DOC_EXAMPLES_DIR_PATH = "docs/code-examples/"
+    old_str = ", spawn=True)"
+    new_str = f'); rr.connect(addr="127.0.0.1:{PORT}");'
+    for example in copy_and_patch(DOC_EXAMPLES_DIR_PATH, old_str, new_str):
+        print("----------------------------------------------------------")
+        print(f"Testing {example}…\n")
+        start_time = time.time()
+        run_example(example, [])
+        elapsed = time.time() - start_time
+        print(f"{example} done in {elapsed:.1f} seconds")
+        print()
+
     print()
     print("All tests passed successfully!")
 
 
 def run_example(example: str, args: list[str]) -> None:
-    port = 9752
-
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
     if python_executable is None:
         python_executable = "python3"
 
     rerun_process = subprocess.Popen(
-        [python_executable, "-m", "rerun", "--port", str(port), "--strict", "--test-receive"]
+        [python_executable, "-m", "rerun", "--port", str(PORT), "--strict", "--test-receive"]
     )
     time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
 
-    python_process = subprocess.Popen([python_executable, example, "--connect", "--addr", f"127.0.0.1:{port}"] + args)
+    python_process = subprocess.Popen([python_executable, example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + args)
 
     print("Waiting for python process to finish…")
     returncode = python_process.wait(timeout=30)
@@ -102,6 +122,26 @@ def run_example(example: str, args: list[str]) -> None:
     print("Waiting for rerun process to finish…")
     returncode = rerun_process.wait(timeout=30)
     assert returncode == 0, f"rerun process exited with error code {returncode}"
+
+
+# Copies all files in a directory to a tempdir and replaces `old_str` with `new_str` in-place.
+#
+# Yields the patched filenames as it goes.
+# When all file have been yielded, the temporary directory is destroyed.
+def copy_and_patch(src_dir: str, old_str: str, new_str: str) -> Iterable[str]:
+    # Create a temporary directory
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        for root, _, files in os.walk(src_dir):
+            for file in [f for f in files if f.endswith(".py")]:
+                src_path = os.path.join(root, file)
+                dest_path = os.path.join(tmp_dir, file)
+                shutil.copy(src_path, dest_path)
+
+                with fileinput.FileInput(dest_path, inplace=True) as f:
+                    for line in f:
+                        print(line.replace(old_str, new_str), end="")
+
+                yield dest_path
 
 
 if __name__ == "__main__":
