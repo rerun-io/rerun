@@ -4,6 +4,29 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+## [0.8.2](https://github.com/rerun-io/rerun/compare/0.8.1...0.8.2) - Bug fixes - 2023-09-05
+
+#### 🪳 Bug Fixes
+- Fix quadratic slowdown when ingesting data with uniform time [#3088](https://github.com/rerun-io/rerun/pull/3088)
+- Normalize quaternions [#3094](https://github.com/rerun-io/rerun/pull/3094)
+- Improve error message in common `re_renderer` crash [#3070](https://github.com/rerun-io/rerun/pull/3070)
+- Fix crash when trying to render too many line segments [#3093](https://github.com/rerun-io/rerun/pull/3093)
+- Handle serde-field that fails to deserialize [#3130](https://github.com/rerun-io/rerun/pull/3130)
+- GC the blueprints before saving while preserving the current state [#3148](https://github.com/rerun-io/rerun/pull/3148)
+
+#### 🧑‍🏫 Examples
+- Make `custom_space_view` example more verbose [#3123](https://github.com/rerun-io/rerun/pull/3123)
+
+#### 🖼 UI Improvements
+- Change the "slow-down-camera" modifier to Alt on non-Mac [#3051](https://github.com/rerun-io/rerun/pull/3051) (thanks [@h3mosphere](https://github.com/h3mosphere)!)
+
+#### 🎨 Renderer Improvements
+- Warn if using software rasterizer (lavapipe or llvmpipe) [#3134](https://github.com/rerun-io/rerun/pull/3134)
+
+#### 📦 Dependencies
+- Update webpki: https://rustsec.org/advisories/RUSTSEC-2023-0052 [#3176](https://github.com/rerun-io/rerun/pull/3176)
+
+
 ## [0.8.1](https://github.com/rerun-io/rerun/compare/0.8.0...0.8.1) - Bug fixes - 2023-08-17
 
 #### 🐍 Python SDK
