@@ -5,6 +5,7 @@ rr.init("rerun_example_annotation_context_connections", spawn=True)
 rr.log_annotation_context(
     "/",
     rr.ClassDescription(
+        info=0,
         keypoint_annotations=[
             rr.AnnotationInfo(0, "zero", (255, 0, 0)),
             rr.AnnotationInfo(1, "one", (0, 255, 0)),

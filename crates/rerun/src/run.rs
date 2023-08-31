@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use anyhow::Context as _;
 use clap::Subcommand;
 use itertools::Itertools;
-use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 use re_data_source::DataSource;
 use re_log_types::{LogMsg, PythonVersion};
@@ -63,11 +62,11 @@ struct Args {
 
     /// An upper limit on how much memory the Rerun Viewer should use.
     ///
-    /// When this limit is used, Rerun will purge the oldest data.
+    /// When this limit is reached, Rerun will drop the oldest data.
     ///
-    /// Example: `16GB`
-    #[clap(long)]
-    memory_limit: Option<String>,
+    /// Example: `16GB` or `50%` (of system total).
+    #[clap(long, default_value = "75%")]
+    memory_limit: String,
 
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
@@ -415,10 +414,8 @@ async fn run_impl(
 
     #[cfg(feature = "native_viewer")]
     let startup_options = re_viewer::StartupOptions {
-        memory_limit: args.memory_limit.as_ref().map_or(Default::default(), |l| {
-            re_memory::MemoryLimit::parse(l)
-                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
-        }),
+        memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
+            .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}")),
         persist_state: args.persist_state,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
@@ -472,7 +469,7 @@ async fn run_impl(
         }
 
         data_sources
-            .into_par_iter()
+            .into_iter()
             .map(|data_source| data_source.stream(None))
             .collect::<Result<Vec<_>, _>>()?
     };
@@ -672,12 +669,23 @@ fn reset_viewer() -> anyhow::Result<()> {
 
     // Note: `remove_dir_all` fails if the directory doesn't exist.
     if data_dir.exists() {
+        // Keep analytics, because it is used to uniquely identify users over time.
+        let analytics_file_path = data_dir.join("analytics.json");
+        let analytics = std::fs::read(&analytics_file_path);
+
         if let Err(err) = std::fs::remove_dir_all(&data_dir) {
             anyhow::bail!("Failed to remove {data_dir:?}: {err}");
         } else {
-            eprintln!("Removed {data_dir:?}.");
-            Ok(())
+            eprintln!("Cleared {data_dir:?}.");
         }
+
+        if let Ok(analytics) = analytics {
+            // Restore analytics.json:
+            std::fs::create_dir(&data_dir).ok();
+            std::fs::write(&analytics_file_path, analytics).ok();
+        }
+
+        Ok(())
     } else {
         eprintln!("Rerun state was already cleared.");
         Ok(())
