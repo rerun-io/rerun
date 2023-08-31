@@ -168,7 +168,7 @@ impl TimeSeriesSystem {
                         });
                     },
                 ) {
-                    Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                    Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
                     Err(err) => {
                         re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                     }
