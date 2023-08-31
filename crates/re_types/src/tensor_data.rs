@@ -5,6 +5,9 @@ use crate::{
     ArrowBuffer,
 };
 
+// Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
+// will eventually go away as the Tensor migration is completed.
+
 // ----------------------------------------------------------------------------
 
 /// Errors when trying to cast [`TensorData`] to an `ndarray`

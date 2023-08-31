@@ -1,9 +1,12 @@
-use crate::tensor_data::{DecodedTensor, TensorCastError, TensorDataType, TensorElement};
+use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 
 #[cfg(feature = "image")]
-use crate::tensor_data::{TensorImageLoadError, TensorImageSaveError};
+use crate::tensor_data::{DecodedTensor, TensorImageLoadError, TensorImageSaveError};
 
 use super::{TensorBuffer, TensorData, TensorDimension, TensorId};
+
+// Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
+// will eventually go away as the Tensor migration is completed.
 
 // ----------------------------------------------------------------------------
 
