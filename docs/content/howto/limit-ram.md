@@ -6,11 +6,9 @@ description: How to limit the memory of Rerun so that it doesn't run out of RAM.
 
 ### `--memory-limit`
 
-The Rerun Viewer can not yet view more data than fits in RAM. The more data you log, the more RAM the Rerun Viewer will use. The RAM use will build up until you run out of memory. This can be fixed by starting the viewer from the command-line with the `--memory-limit` argument.
+The Rerun Viewer can not yet view more data than fits in RAM. The more data you log, the more RAM the Rerun Viewer will use. When it reaches a certain limit, the oldest data will be dropped. The default limit it to use up to 75% of the total system RAM.
 
-For instance, if you run `rerun --memory-limit 16GB` then the viewer will start throwing away the oldest logged so as not to go over that 16 GB limit.
-
-NOTE: This currently only work when you are using [`rr.connect`](https://ref.rerun.io/docs/python/latest/common/initialization/#rerun.connect) to connect to a separate `rerun` process. There is currently no way of specifying a memory limit when using `rr.spawn`.
+You can set the limit by with the `--memory-limit` command-lint argument, or the `memory_limit` argument of [`rr.spawn`](https://ref.rerun.io/docs/python/latest/common/initialization/#rerun.spawn).
 
 ### `--drop-at-latency`
 
