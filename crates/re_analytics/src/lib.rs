@@ -236,14 +236,13 @@ impl Analytics {
         let config = Config::load()?;
 
         #[cfg(target_arch = "wasm32")]
-        let config = match config {
-            Some(config) => config,
-            None => {
-                // the config doesnt exist in local storage yet, save it
-                let config = Config::default();
-                config.save()?;
-                config
-            }
+        let config = if let Some(config) = config {
+            config
+        } else {
+            // the config doesnt exist in local storage yet, save it
+            let config = Config::default();
+            config.save()?;
+            config
         };
 
         #[cfg(not(target_arch = "wasm32"))]

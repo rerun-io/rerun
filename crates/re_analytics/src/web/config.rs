@@ -38,13 +38,16 @@ pub struct Config {
 
 fn get_local_storage() -> Result<Storage, ConfigError> {
     let window = web_sys::window().ok_or(ConfigError::NoStorage)?;
-    let Ok(Some(storage)) = window.local_storage() else { return Err(ConfigError::NoStorage) };
+    let Ok(Some(storage)) = window.local_storage() else {
+        return Err(ConfigError::NoStorage);
+    };
     Ok(storage)
 }
 
 impl Config {
     const STORAGE_KEY: &str = "rerun_config";
 
+    #[allow(clippy::unnecessary_wraps, clippy::map_err_ignore)]
     pub fn new() -> Result<Self, ConfigError> {
         Ok(Self::default())
     }
