@@ -47,11 +47,12 @@ fn get_local_storage() -> Result<Storage, ConfigError> {
 impl Config {
     const STORAGE_KEY: &str = "rerun_config";
 
-    #[allow(clippy::unnecessary_wraps, clippy::map_err_ignore)]
+    #[allow(clippy::unnecessary_wraps)]
     pub fn new() -> Result<Self, ConfigError> {
         Ok(Self::default())
     }
 
+    #[allow(clippy::map_err_ignore)]
     pub fn load() -> Result<Option<Config>, ConfigError> {
         let storage = get_local_storage()?;
         let value = storage
@@ -63,6 +64,7 @@ impl Config {
         }
     }
 
+    #[allow(clippy::map_err_ignore)]
     pub fn save(&self) -> Result<(), ConfigError> {
         let storage = get_local_storage()?;
         let string = serde_json::to_string(self)?;

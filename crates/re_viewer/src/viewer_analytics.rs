@@ -114,7 +114,7 @@ impl ViewerAnalytics {
             // In practice this is the email of Rerun employees
             // who register their emails with `rerun analytics email`.
             // This is how we filter out employees from actual users!
-            for (name, value) in analytics.config().opt_in_metadata.iter() {
+            for (name, value) in &analytics.config().opt_in_metadata {
                 event = event.with_prop(name.clone(), value.clone());
             }
 

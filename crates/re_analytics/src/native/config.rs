@@ -84,14 +84,14 @@ impl Config {
     pub fn load() -> Result<Option<Config>, ConfigError> {
         let dirs = Self::project_dirs()?;
         let config_path = dirs.config_dir().join("analytics.json");
-        match File::open(&config_path) {
+        match File::open(config_path) {
             Ok(file) => {
                 let reader = BufReader::new(file);
                 let config = serde_json::from_reader(reader)?;
                 Ok(Some(config))
             }
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(err) => return Err(ConfigError::Io(err)),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(err) => Err(ConfigError::Io(err)),
         }
     }
 
