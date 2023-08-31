@@ -17,7 +17,7 @@ use std::slice;
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_data_ui::item_ui;
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
-use re_ui::list_item::ListItem;
+use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{HoverHighlight, Item, TimeControl, TimeView, ViewerContext};
 
 use time_axis::TimelineAxis;
@@ -111,10 +111,10 @@ impl TimePanel {
                     // Expanded:
                     ui.vertical(|ui| {
                         // Add back the margin we removed from the panel:
-                        let mut top_rop_frame = egui::Frame::default();
-                        top_rop_frame.inner_margin.right = margin.x;
-                        top_rop_frame.inner_margin.bottom = margin.y;
-                        let rop_row_rect = top_rop_frame
+                        let mut top_row_frame = egui::Frame::default();
+                        top_row_frame.inner_margin.right = margin.x;
+                        top_row_frame.inner_margin.bottom = margin.y;
+                        let top_row_rect = top_row_frame
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
@@ -127,17 +127,17 @@ impl TimePanel {
 
                         // Draw separator between top bar and the rest:
                         ui.painter().hline(
-                            0.0..=rop_row_rect.right(),
-                            rop_row_rect.bottom(),
+                            0.0..=top_row_rect.right(),
+                            top_row_rect.bottom(),
                             ui.visuals().widgets.noninteractive.bg_stroke,
                         );
 
                         ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
 
                         // Add extra margin on the left which was intentionally missing on the controls.
-                        let mut top_rop_frame = egui::Frame::default();
-                        top_rop_frame.inner_margin.left = 8.0;
-                        top_rop_frame.show(ui, |ui| {
+                        let mut streams_frame = egui::Frame::default();
+                        streams_frame.inner_margin.left = margin.x;
+                        streams_frame.show(ui, |ui| {
                             self.expanded_ui(ctx, ui);
                         });
                     });
@@ -198,6 +198,8 @@ impl TimePanel {
         // tree          |streams             |
         //               |  . .   .   . . .   |
         //               |            . . . . |
+        //               ▲
+        //               └ tree_max_y (= time_x_left)
 
         self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
 
@@ -301,7 +303,13 @@ impl TimePanel {
         ));
 
         // All the entity rows and their data density graphs:
-        self.tree_ui(ctx, &time_area_response, &lower_time_area_painter, ui);
+        self.tree_ui(
+            ctx,
+            &time_area_response,
+            &lower_time_area_painter,
+            time_x_left,
+            ui,
+        );
 
         {
             // Paint a shadow between the stream names on the left
@@ -347,6 +355,7 @@ impl TimePanel {
         ctx: &mut ViewerContext<'_>,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
+        tree_max_y: f32,
         ui: &mut egui::Ui,
     ) {
         re_tracing::profile_function!();
@@ -367,6 +376,7 @@ impl TimePanel {
                     ctx,
                     time_area_response,
                     time_area_painter,
+                    tree_max_y,
                     &ctx.store_db.entity_db.tree,
                     ui,
                 );
@@ -379,6 +389,7 @@ impl TimePanel {
         ctx: &mut ViewerContext<'_>,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
+        tree_max_y: f32,
         last_path_part: &EntityPathPart,
         tree: &EntityTree,
         ui: &mut egui::Ui,
@@ -406,15 +417,30 @@ impl TimePanel {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
+        let clip_rect_save = ui.clip_rect();
+        let mut clip_rect = clip_rect_save;
+        clip_rect.max.x = tree_max_y;
+        ui.set_clip_rect(clip_rect);
+
         let re_ui::list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
         } = ListItem::new(ctx.re_ui, text)
+            .width_allocation_mode(WidthAllocationMode::Fit)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
+                self.show_children(
+                    ctx,
+                    time_area_response,
+                    time_area_painter,
+                    tree_max_y,
+                    tree,
+                    ui,
+                );
             });
+
+        ui.set_clip_rect(clip_rect_save);
 
         let response = response
             .on_hover_ui(|ui| re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &tree.path));
@@ -467,6 +493,7 @@ impl TimePanel {
         ctx: &mut ViewerContext<'_>,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
+        tree_max_y: f32,
         tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
@@ -475,6 +502,7 @@ impl TimePanel {
                 ctx,
                 time_area_response,
                 time_area_painter,
+                tree_max_y,
                 last_component,
                 child,
                 ui,
@@ -483,6 +511,8 @@ impl TimePanel {
 
         // If this is an entity:
         if !tree.components.is_empty() {
+            let clip_rect_save = ui.clip_rect();
+
             for (component_name, data) in &tree.components {
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.num_timeless_messages() == 0
@@ -494,8 +524,13 @@ impl TimePanel {
                 let component_name = component_path.component_name.short_name();
                 let item = Item::ComponentPath(component_path);
 
+                let mut clip_rect = clip_rect_save;
+                clip_rect.max.x = tree_max_y;
+                ui.set_clip_rect(clip_rect);
+
                 let response = ListItem::new(ctx.re_ui, component_name)
                     .selected(ctx.selection().contains(&item))
+                    .width_allocation_mode(WidthAllocationMode::Fit)
                     .force_hovered(
                         ctx.selection_state().highlight_for_ui_element(&item)
                             == HoverHighlight::Hovered,
@@ -505,6 +540,8 @@ impl TimePanel {
                             .circle_filled(rect.center(), 2.0, visual.text_color());
                     })
                     .show(ui);
+
+                ui.set_clip_rect(clip_rect_save);
 
                 re_data_ui::item_ui::select_hovered_on_click(
                     ctx,

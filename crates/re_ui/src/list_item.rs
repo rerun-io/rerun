@@ -1,6 +1,7 @@
 use crate::{Icon, ReUi};
 use egui::epaint::text::TextWrapping;
 use egui::{Align, Align2, Response, Shape, Ui};
+use std::default::Default;
 
 struct ListItemResponse {
     response: Response,
@@ -14,6 +15,18 @@ pub struct ShowCollapsingResponse<R> {
 
     /// Response from the body, if it was displayed.
     pub body_response: Option<R>,
+}
+
+/// Specification of how the width of the [`ListItem`] must be allocated.
+#[derive(Default, Clone, Copy, Debug)]
+pub enum WidthAllocationMode {
+    /// Allocate the full available width. Useful for fixed-width container.
+    #[default]
+    Available,
+
+    /// Allocate the width needed for the text and icon(s) (if any). If buttons are used, the label
+    /// will get truncated to display them.
+    Fit,
 }
 
 /// Generic widget for use in lists.
@@ -57,6 +70,7 @@ pub struct ListItem<'a> {
     subdued: bool,
     force_hovered: bool,
     collapse_openness: Option<f32>,
+    width_allocation_mode: WidthAllocationMode,
     icon_fn:
         Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
@@ -73,6 +87,7 @@ impl<'a> ListItem<'a> {
             subdued: false,
             force_hovered: false,
             collapse_openness: None,
+            width_allocation_mode: Default::default(),
             icon_fn: None,
             buttons_fn: None,
         }
@@ -107,6 +122,12 @@ impl<'a> ListItem<'a> {
     /// reflect the actual hover state.
     pub fn force_hovered(mut self, force_hovered: bool) -> Self {
         self.force_hovered = force_hovered;
+        self
+    }
+
+    /// Set the width allocation mode.
+    pub fn width_allocation_mode(mut self, mode: WidthAllocationMode) -> Self {
+        self.width_allocation_mode = mode;
         self
     }
 
@@ -202,10 +223,15 @@ impl<'a> ListItem<'a> {
             0.0
         };
 
-        let desired_width = if self.buttons_fn.is_some() {
-            ui.available_width()
-        } else {
-            let text_job = self.text.clone().into_text_job(
+        /// Compute the "ideal" desired width of the item, accounting for text and icon(s) (but not
+        /// buttons).
+        fn fit_width(
+            ui: &mut egui::Ui,
+            item: &ListItem<'_>,
+            collapse_extra: f32,
+            icon_extra: f32,
+        ) -> f32 {
+            let text_job = item.text.clone().into_text_job(
                 ui.style(),
                 egui::FontSelection::Default,
                 Align::LEFT,
@@ -216,10 +242,26 @@ impl<'a> ListItem<'a> {
             // The `ceil()` is needed to avoid some rounding errors which leads to text being
             // truncated even though we allocated enough space.
             (collapse_extra + icon_extra + text_width).ceil()
+        }
+
+        let desired_width = match self.width_allocation_mode {
+            WidthAllocationMode::Available => ui.available_width(),
+            WidthAllocationMode::Fit => fit_width(ui, &self, collapse_extra, icon_extra),
         };
 
         let desired_size = egui::vec2(desired_width, ReUi::list_item_height());
-        let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+        let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+
+        // compute the full-span background rect
+        let mut bg_rect = rect;
+        bg_rect.extend_with_x(ui.clip_rect().right());
+        bg_rect.extend_with_x(ui.clip_rect().left());
+
+        // we want to be able to select/hover the item across its full span, so we sense that and
+        // update the response accordingly.
+        let full_span_response = ui.interact(bg_rect, response.id, egui::Sense::click());
+        response.clicked = full_span_response.clicked;
+        response.hovered = full_span_response.hovered;
 
         // override_hover should not affect the returned response
         let mut style_response = response.clone();
@@ -229,7 +271,7 @@ impl<'a> ListItem<'a> {
 
         let mut collapse_response = None;
 
-        if ui.is_rect_visible(rect) {
+        if ui.is_rect_visible(bg_rect) {
             let mut visuals = if self.active {
                 ui.style()
                     .interact_selectable(&style_response, self.selected)
@@ -242,9 +284,6 @@ impl<'a> ListItem<'a> {
                 visuals.fg_stroke.color = visuals.fg_stroke.color.gamma_multiply(0.5);
             }
 
-            let mut bg_rect = rect;
-            bg_rect.extend_with_x(ui.clip_rect().right());
-            bg_rect.extend_with_x(ui.clip_rect().left());
             let background_frame = ui.painter().add(egui::Shape::Noop);
 
             // Draw collapsing triangle
