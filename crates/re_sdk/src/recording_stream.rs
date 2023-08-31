@@ -5,10 +5,11 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::{
-    ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    ApplicationId, DataCell, DataCellError, DataRow, DataTable, DataTableBatcher,
+    DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
+    StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
+use re_types::{components::InstanceKey, Archetype, ComponentList, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -29,6 +30,14 @@ pub enum RecordingStreamError {
     /// Error within the underlying table batcher.
     #[error("Failed to spawn the underlying batcher: {0}")]
     DataTableBatcher(#[from] DataTableBatcherError),
+
+    /// Error within the underlying data cell.
+    #[error("Failed to instantiate data cell: {0}")]
+    DataCell(#[from] DataCellError),
+
+    /// Error within the underlying serializer.
+    #[error("Failed to serialize component data: {0}")]
+    Serialization(#[from] SerializationError),
 
     /// Error spawning one of the background threads.
     #[error("Failed to spawn background thread '{name}': {err}")]
@@ -540,6 +549,161 @@ impl RecordingStream {
         Self {
             inner: Arc::new(None),
         }
+    }
+}
+
+impl RecordingStream {
+    /// Logs the contents of an [`Archetype`] into Rerun.
+    ///
+    /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
+    /// See [`RecordingStream::set_time`] for more information.
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    #[inline]
+    pub fn log(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        self.log_archetype(ent_path, false, arch)
+    }
+
+    /// Logs the contents of an [`Archetype`] into Rerun.
+    ///
+    /// If `timeless` is set to `false`, all timestamp data associated with this message will be
+    /// dropped right before sending it to Rerun.
+    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
+    /// into the past.
+    ///
+    /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
+    /// internal clock.
+    /// See [`RecordingStream::set_time`] for more information.
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    #[inline]
+    pub fn log_archetype(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timeless: bool,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        self.log_component_lists(
+            ent_path,
+            timeless,
+            arch.num_instances() as u32,
+            arch.as_component_lists(),
+        )
+    }
+
+    /// Logs a set of [`ComponentList`]s into Rerun.
+    ///
+    /// If `timeless` is set to `false`, all timestamp data associated with this message will be
+    /// dropped right before sending it to Rerun.
+    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
+    /// into the past.
+    ///
+    /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
+    /// internal clock.
+    /// See [`RecordingStream::set_time`] for more information.
+    ///
+    /// `num_instances` specify the expected number of component instances present in each list.
+    /// Each can have either:
+    /// - exactly `num_instances` instances,
+    /// - a single instance (splat),
+    /// - or zero instance (clear).
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    pub fn log_component_lists<'a>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timeless: bool,
+        num_instances: u32,
+        comp_lists: impl IntoIterator<Item = &'a dyn ComponentList>,
+    ) -> RecordingStreamResult<()> {
+        if !self.is_enabled() {
+            return Ok(()); // silently drop the message
+        }
+
+        let ent_path = ent_path.into();
+
+        let comp_lists: Result<Vec<_>, _> = comp_lists
+            .into_iter()
+            .map(|comp_list| {
+                comp_list
+                    .try_to_arrow()
+                    .map(|array| (comp_list.arrow_field(), array))
+            })
+            .collect();
+        let comp_lists = comp_lists?;
+
+        let cells: Result<Vec<_>, _> = comp_lists
+            .into_iter()
+            .map(|(field, array)| {
+                // NOTE: Unreachable, a top-level Field will always be a component, and thus an
+                // extension.
+                use re_log_types::external::arrow2::datatypes::DataType;
+                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
+                    return Err(SerializationError::missing_extension_metadata(field.name))
+                        .map_err(Into::into);
+                };
+                DataCell::try_from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
+            })
+            .collect();
+        let cells = cells?;
+
+        let mut instanced: Vec<DataCell> = Vec::new();
+        let mut splatted: Vec<DataCell> = Vec::new();
+
+        for cell in cells {
+            if num_instances > 1 && cell.num_instances() == 1 {
+                splatted.push(cell);
+            } else {
+                instanced.push(cell);
+            }
+        }
+
+        // TODO: not sure about this though
+        let timepoint = TimePoint::default();
+
+        let instanced = (!instanced.is_empty()).then(|| {
+            DataRow::from_cells(
+                RowId::random(),
+                timepoint.clone(),
+                ent_path.clone(),
+                num_instances,
+                instanced,
+            )
+        });
+
+        // TODO(#1629): unsplit splats once new data cells are in
+        let splatted = (!splatted.is_empty()).then(|| {
+            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
+            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
+        });
+
+        if let Some(splatted) = splatted {
+            self.record_row(splatted, !timeless);
+        }
+
+        // Always the primary component last so range-based queries will include the other data.
+        // Since the primary component can't be splatted it must be in here, see(#1215).
+        if let Some(instanced) = instanced {
+            self.record_row(instanced, !timeless);
+        }
+
+        Ok(())
     }
 }
 
