@@ -503,8 +503,9 @@ pub fn data_density_graph_ui(
 fn graph_color(ctx: &mut ViewerContext<'_>, item: &Item, ui: &mut egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains(item);
     if is_selected {
-        make_brighter(ui.visuals().selection.bg_fill)
+        make_brighter(ui.visuals().widgets.active.fg_stroke.color)
     } else {
+        //TODO(ab): tokenize that!
         Color32::from_gray(225)
     }
 }

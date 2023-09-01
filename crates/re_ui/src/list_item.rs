@@ -1,6 +1,7 @@
 use crate::{Icon, ReUi};
 use egui::epaint::text::TextWrapping;
 use egui::{Align, Align2, Response, Shape, Ui};
+use std::default::Default;
 
 struct ListItemResponse {
     response: Response,
@@ -16,22 +17,77 @@ pub struct ShowCollapsingResponse<R> {
     pub body_response: Option<R>,
 }
 
+/// Specification of how the width of the [`ListItem`] must be allocated.
+#[derive(Default, Clone, Copy, Debug)]
+pub enum WidthAllocationMode {
+    /// Allocate the full available width.
+    ///
+    /// This mode is useful for fixed-width container, but should be avoided for dynamically-sized
+    /// containers as they will immediately grow to their max width.
+    ///
+    /// Examples of resulting layouts:
+    /// ```text
+    ///                      ◀──────available width────▶
+    ///
+    ///                      ┌─────────────────────────┐
+    ///              normal: │▼ □ label                │
+    ///                      └─────────────────────────┘
+    ///                      ┌─────────────────────────┐
+    ///             hovered: │▼ □ label             ■ ■│
+    ///                      └─────────────────────────┘
+    ///                      ┌─────────────────────────┐
+    ///  normal, long label: │▼ □ a very very long lab…│
+    ///                      └─────────────────────────┘
+    ///                      ┌─────────────────────────┐
+    /// hovered, long label: │▼ □ a very very long… ■ ■│
+    ///                      └─────────────────────────┘
+    /// ```
+    /// The allocated size is always the same, and the label is truncated depending on the available
+    /// space, which is further reduced whenever buttons are displayed.
+    #[default]
+    Available,
+
+    /// Allocate the width needed for the text and icon(s) (if any).
+    ///
+    /// This mode doesn't account for buttons (if any). If buttons are enabled, the label will get
+    /// truncated when they are displayed.
+    ///
+    /// Examples of resulting layouts:
+    /// ```text
+    ///                      ┌─────────┐
+    ///              normal: │▼ □ label│
+    ///                      └─────────┘
+    ///                      ┌─────────┐
+    ///             hovered: │▼ □ … ■ ■│
+    ///                      └─────────┘
+    ///                      ┌──────────────────────────┐
+    ///  normal, long label: │▼ □ a very very long label│
+    ///                      └──────────────────────────┘
+    ///                      ┌──────────────────────────┐
+    /// hovered, long label: │▼ □ a very very long … ■ ■│
+    ///                      └──────────────────────────┘
+    /// ```
+    Compact,
+}
+
 /// Generic widget for use in lists.
 ///
 /// Layout:
 /// ```text
-/// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-/// ┃┌──────┐ ┌──────┐                           ┌──────┐┌──────┐┃
-/// ┃│  __  │ │      │                           │      ││      │┃
-/// ┃│  \/  │ │ icon │  label                    │ btns ││ btns │┃
-/// ┃│      │ │      │                           │      ││      │┃
-/// ┃└──────┘ └──────┘                           └──────┘└──────┘┃
-/// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+/// ┌───┬────────────────────────────────────────────────────────────┬───┐
+/// │   │┌──────┐ ┌──────┐                           ┌──────┐┌──────┐│   │
+/// │   ││  __  │ │      │                           │      ││      ││   │
+/// │   ││  \/  │ │ icon │  label                    │ btns ││ btns ││   │
+/// │   ││      │ │      │                           │      ││      ││   │
+/// │   │└──────┘ └──────┘                           └──────┘└──────┘│   │
+/// └───┴────────────────────────────────────────────────────────────┴───┘
+///     ◀───────────── allocated width (used for layout) ───────────▶
+/// ◀────────────── clip rectangle (used for highlighting) ─────────────▶
 /// ```
 ///
 /// Features:
 /// - selectable
-/// - full span highlighting
+/// - full span highlighting based on clip rectangle
 /// - optional icon
 /// - optional on-hover buttons on the right
 /// - optional collapsing behavior for trees
@@ -57,6 +113,7 @@ pub struct ListItem<'a> {
     subdued: bool,
     force_hovered: bool,
     collapse_openness: Option<f32>,
+    width_allocation_mode: WidthAllocationMode,
     icon_fn:
         Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
@@ -73,6 +130,7 @@ impl<'a> ListItem<'a> {
             subdued: false,
             force_hovered: false,
             collapse_openness: None,
+            width_allocation_mode: Default::default(),
             icon_fn: None,
             buttons_fn: None,
         }
@@ -110,6 +168,12 @@ impl<'a> ListItem<'a> {
         self
     }
 
+    /// Set the width allocation mode.
+    pub fn width_allocation_mode(mut self, mode: WidthAllocationMode) -> Self {
+        self.width_allocation_mode = mode;
+        self
+    }
+
     /// Provide an [`Icon`] to be displayed on the left of the item.
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|re_ui, ui, rect, visuals| {
@@ -137,7 +201,11 @@ impl<'a> ListItem<'a> {
 
     /// Provide a closure to display on-hover buttons on the right of the item.
     ///
-    /// Note that the a right to left layout is used, so the right-most button must be added first.
+    /// Notes:
+    /// - If buttons are used, the item will allocate the full available width of the parent. If the
+    ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
+    ///   used, the item will only allocate the width needed for the text and icons if any.
+    /// - A right to left layout is used, so the right-most button must be added first.
     pub fn with_buttons(
         mut self,
         buttons: impl FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a,
@@ -198,8 +266,47 @@ impl<'a> ListItem<'a> {
             0.0
         };
 
-        let desired_size = egui::vec2(ui.available_width(), ReUi::list_item_height());
-        let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+        /// Compute the "ideal" desired width of the item, accounting for text and icon(s) (but not
+        /// buttons).
+        fn icons_and_label_width(
+            ui: &mut egui::Ui,
+            item: &ListItem<'_>,
+            collapse_extra: f32,
+            icon_extra: f32,
+        ) -> f32 {
+            let text_job = item.text.clone().into_text_job(
+                ui.style(),
+                egui::FontSelection::Default,
+                Align::LEFT,
+            );
+
+            let text_width = ui.fonts(|f| text_job.into_galley(f)).size().x;
+
+            // The `ceil()` is needed to avoid some rounding errors which leads to text being
+            // truncated even though we allocated enough space.
+            (collapse_extra + icon_extra + text_width).ceil()
+        }
+
+        let desired_width = match self.width_allocation_mode {
+            WidthAllocationMode::Available => ui.available_width(),
+            WidthAllocationMode::Compact => {
+                icons_and_label_width(ui, &self, collapse_extra, icon_extra)
+            }
+        };
+
+        let desired_size = egui::vec2(desired_width, ReUi::list_item_height());
+        let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+
+        // compute the full-span background rect
+        let mut bg_rect = rect;
+        bg_rect.extend_with_x(ui.clip_rect().right());
+        bg_rect.extend_with_x(ui.clip_rect().left());
+
+        // we want to be able to select/hover the item across its full span, so we sense that and
+        // update the response accordingly.
+        let full_span_response = ui.interact(bg_rect, response.id, egui::Sense::click());
+        response.clicked = full_span_response.clicked;
+        response.hovered = full_span_response.hovered;
 
         // override_hover should not affect the returned response
         let mut style_response = response.clone();
@@ -209,7 +316,7 @@ impl<'a> ListItem<'a> {
 
         let mut collapse_response = None;
 
-        if ui.is_rect_visible(rect) {
+        if ui.is_rect_visible(bg_rect) {
             let mut visuals = if self.active {
                 ui.style()
                     .interact_selectable(&style_response, self.selected)
@@ -222,9 +329,6 @@ impl<'a> ListItem<'a> {
                 visuals.fg_stroke.color = visuals.fg_stroke.color.gamma_multiply(0.5);
             }
 
-            let mut bg_rect = rect;
-            bg_rect.extend_with_x(ui.clip_rect().right());
-            bg_rect.extend_with_x(ui.clip_rect().left());
             let background_frame = ui.painter().add(egui::Shape::Noop);
 
             // Draw collapsing triangle
