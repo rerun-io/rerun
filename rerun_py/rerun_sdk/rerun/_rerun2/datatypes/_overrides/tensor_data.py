@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Final, Sequence, Union, cast
+from typing import TYPE_CHECKING, Final
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from .. import TensorDataArrayLike, TensorDataLike, TensorBufferLike
+    from .. import TensorBufferLike, TensorDataArrayLike, TensorDimension, TensorIdLike
 
 
 # TODO(jleibs): Move this somewhere common
@@ -42,22 +42,28 @@ def _build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: p
         raise ValueError(e.args)
 
 
-def _build_tensorid(id: uuid.UUID) -> pa.Array:
-    from .. import TensorIdType
+def _build_tensorid(id: TensorIdLike) -> pa.Array:
+    from .. import TensorId, TensorIdType
+
+    if isinstance(id, uuid.UUID):
+        array = np.asarray(list(id.bytes), dtype=np.uint8)
+    elif isinstance(id, TensorId):
+        array = id.uuid
+    else:
+        raise ValueError("Unsupported TensorId input")
 
     data_type = TensorIdType().storage_type
 
-    array = np.asarray(list(id.bytes), dtype=np.uint8).flatten()
     return pa.FixedSizeListArray.from_arrays(array, type=data_type)
 
 
-def _build_shape_array(dims: Sequence[int]) -> pa.Array:
+def _build_shape_array(dims: list[TensorDimension]) -> pa.Array:
     from .. import TensorDimensionType
 
     data_type = TensorDimensionType().storage_type
 
-    array = np.asarray(dims, dtype=np.uint64).flatten()
-    names = pa.array(["" for d in dims], mask=[True for d in dims], type=data_type.field("name").type)
+    array = np.asarray([d.size for d in dims], dtype=np.uint64).flatten()
+    names = pa.array([d.name for d in dims], mask=[d is None for d in dims], type=data_type.field("name").type)
 
     return pa.ListArray.from_arrays(
         offsets=[0, len(array)],
@@ -106,16 +112,23 @@ def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
 
 
 def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-    from .. import TensorData
+    from .. import TensorData, TensorDimension
 
-    if isinstance(data, TensorData):
-        data = data.buffer.inner
+    if isinstance(data, np.ndarray):
+        tensor_id = _build_tensorid(uuid.uuid4())
+        shape = [TensorDimension(d) for d in data.shape]
+        shape = _build_shape_array(shape).cast(data_type.field("shape").type)
+        buffer = _build_buffer_array(data)
 
-    tensor_id = _build_tensorid(uuid.uuid4())
-    shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
-    buffer = _build_buffer_array(data)
+    elif isinstance(data, TensorData):
+        tensor_id = _build_tensorid(data.id)
+        shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
+        buffer = _build_buffer_array(data.buffer)
 
-    storage = pa.StructArray.from_arrays(
+    else:
+        raise ValueError("Unsupported TensorData source")
+
+    return pa.StructArray.from_arrays(
         [
             tensor_id,
             shape,
@@ -123,8 +136,3 @@ def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataT
         ],
         fields=[data_type.field("id"), data_type.field("shape"), data_type.field("buffer")],
     ).cast(data_type)
-
-    storage.validate(full=True)
-    # TODO(john) enable extension type wrapper
-    # return cast(TensorArray, pa.ExtensionArray.from_storage(TensorType(), storage))
-    return storage  # type: ignore[no-any-return]

@@ -52,7 +52,20 @@ class TensorData:
 
 
 TensorDataLike = TensorData
-TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.NDArray[np.uint8]]
+TensorDataArrayLike = Union[
+    TensorData,
+    Sequence[TensorDataLike],
+    npt.NDArray[np.uint8]
+    | npt.NDArray[np.uint16]
+    | npt.NDArray[np.uint32]
+    | npt.NDArray[np.uint64]
+    | npt.NDArray[np.int8]
+    | npt.NDArray[np.int16]
+    | npt.NDArray[np.int32]
+    | npt.NDArray[np.int64]
+    | npt.NDArray[np.float32]
+    | npt.NDArray[np.float64],
+]
 
 
 # --- Arrow support ---
