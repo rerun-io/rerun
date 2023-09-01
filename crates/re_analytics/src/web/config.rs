@@ -25,14 +25,14 @@ pub enum ConfigError {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     // NOTE: not a UUID on purpose, it is sometimes useful to use handcrafted IDs.
-    #[serde(rename = "i")]
+    #[serde(rename = "analytics_id")]
     pub analytics_id: String,
 
     /// A unique ID for this session.
     #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
 
-    #[serde(rename = "m", default)]
+    #[serde(rename = "metadata", default)]
     pub opt_in_metadata: HashMap<String, Property>,
 }
 
