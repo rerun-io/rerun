@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *ClassId::NAME = "rerun.components.ClassId";
+        const char *ClassId::NAME = "rerun.class_id";
 
         const std::shared_ptr<arrow::DataType> &ClassId::arrow_datatype() {
             static const auto datatype = rerun::datatypes::ClassId::arrow_datatype();

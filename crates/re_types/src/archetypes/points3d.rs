@@ -18,13 +18,13 @@
 ///
 /// ```ignore
 /// //! Log some very simple points.
-/// use rerun::{archetypes::Points3D, MsgSender, RecordingStreamBuilder};
+///
+/// use rerun::{archetypes::Points3D, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points3d_simple").memory()?;
 ///
-///    MsgSender::from_archetype("points", &Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]))?
-///        .send(&rec)?;
+///    rec.log("points", &Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]))?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
 ///    Ok(())
@@ -73,7 +73,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.label".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.keypoint_id".into(),
             "rerun.instance_key".into(),
         ]
@@ -86,7 +86,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.keypoint_id".into(),
             "rerun.instance_key".into(),
         ]
@@ -254,7 +254,7 @@ impl crate::Archetype for Points3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.ClassId".into()),
+                                Some("rerun.class_id".into()),
                             );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),

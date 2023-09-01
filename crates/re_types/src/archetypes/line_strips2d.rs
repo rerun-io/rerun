@@ -21,8 +21,7 @@
 /// //! Log a batch of 2d line strips.
 ///
 /// use rerun::{
-///    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, MsgSender,
-///    RecordingStreamBuilder,
+///    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,19 +30,22 @@
 ///    let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
 ///    #[rustfmt::skip]
 ///    let strip2 = [[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]];
-///    MsgSender::from_archetype(
+///    rec.log(
 ///        "strips",
 ///        &LineStrips2D::new([strip1.to_vec(), strip2.to_vec()])
 ///            .with_colors([0xFF0000FF, 0x00FF00FF])
 ///            .with_radii([0.025, 0.005])
-///            .with_labels(["one strip here", "and one strip there" /**/]),
-///    )?
-///    .send(&rec)?;
+///            .with_labels(["one strip here", "and one strip there"]),
+///    )?;
 ///
 ///    // Log an extra rect to set the view bounds
-///    MsgSender::new("bounds")
-///        .with_component(&[Rect2D::XCYCWH(Vec4D([3.0, 1.5, 8.0, 9.0]).into())])?
-///        .send(&rec)?;
+///    // TODO(#2786): Rect2D archetype
+///    rec.log_component_lists(
+///        "bounds",
+///        false,
+///        1,
+///        [&Rect2D::XCYCWH(Vec4D([3.0, 1.5, 8.0, 9.0]).into()) as _],
+///    )?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
 ///    Ok(())
@@ -55,20 +57,23 @@
 /// //! Log a couple 2D line segments using 2D line strips.
 ///
 /// use rerun::{
-///    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, MsgSender,
-///    RecordingStreamBuilder,
+///    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments2d").memory()?;
 ///
 ///    let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-///    MsgSender::from_archetype("segments", &LineStrips2D::new(points.chunks(2)))?.send(&rec)?;
+///    rec.log("segments", &LineStrips2D::new(points.chunks(2)))?;
 ///
 ///    // Log an extra rect to set the view bounds
-///    MsgSender::new("bounds")
-///        .with_component(&[Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]).into())])?
-///        .send(&rec)?;
+///    // TODO(#2786): Rect2D archetype
+///    rec.log_component_lists(
+///        "bounds",
+///        false,
+///        1,
+///        [&Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]).into()) as _],
+///    )?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
 ///    Ok(())
@@ -114,7 +119,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]
         [
             "rerun.label".into(),
             "rerun.draw_order".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -127,7 +132,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
             "rerun.colorrgba".into(),
             "rerun.label".into(),
             "rerun.draw_order".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -314,7 +319,7 @@ impl crate::Archetype for LineStrips2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.ClassId".into()),
+                                Some("rerun.class_id".into()),
                             );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),
