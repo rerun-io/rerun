@@ -240,7 +240,18 @@ pub struct Analytics {
 
 impl Analytics {
     pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
-        let config = Config::load()?;
+        let config = match Config::load() {
+            Ok(config) => config,
+
+            #[allow(unused_variables)]
+            Err(err) => {
+                // NOTE: This will cause the first run disclaimer to show up again on native,
+                //       and analytics will be disabled for the rest of the session.
+                #[cfg(not(target_arch = "wasm32"))]
+                re_log::warn!("failed to load analytics config file: {err}");
+                None
+            }
+        };
 
         #[cfg(target_arch = "wasm32")]
         let config = if let Some(config) = config {
