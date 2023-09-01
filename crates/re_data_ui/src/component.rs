@@ -52,6 +52,23 @@ impl DataUi for EntityComponentWithInstances {
             UiVerbosity::All => num_instances,
         };
 
+        // Here we enforce that exactly `max_row` rows are displayed, which means that:
+        // - For `num_instances == max_row`, then `max_row` rows are displayed.
+        // - For `num_instances == max_row + 1`, then `max_row-1` rows are displayed and "…2 more"
+        //   is appended.
+        //
+        // ┏━━━┳━━━┳━━━┳━━━┓
+        // ┃ 3 ┃ 4 ┃ 5 ┃ 6 ┃ <- num_instances
+        // ┗━━━┻━━━┻━━━┻━━━┛
+        // ┌───┬───┬───┬───┐ ┐
+        // │ x │ x │ x │ x │ │
+        // ├───┼───┼───┼───┤ │
+        // │ x │ x │ x │ x │ │
+        // ├───┼───┼───┼───┤ ├─ max_row == 4
+        // │ x │ x │ x │ x │ │
+        // ├───┼───┼───┼───┤ │
+        // │   │ x │…+2│…+3│ │
+        // └───┴───┴───┴───┘ ┘
         let displayed_row = if num_instances <= max_row {
             num_instances
         } else {
