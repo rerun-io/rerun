@@ -80,5 +80,6 @@
         "rerun_py/pyproject.toml"
     ],
     "cmake.buildDirectory": "${workspaceRoot}/build/",
-    "C_Cpp.autoAddFileAssociations": false
+    "C_Cpp.autoAddFileAssociations": false,
+    "rust-analyzer.showUnlinkedFileNotification": false
 }
