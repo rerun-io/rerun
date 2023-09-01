@@ -3,7 +3,11 @@
 use mimalloc::MiMalloc;
 
 use re_memory::AccountingAllocator;
-use rerun::external::{image, re_memory, re_viewer};
+use rerun::{
+    archetypes::Image,
+    datatypes::TensorData,
+    external::{image, re_memory, re_viewer},
+};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc);
@@ -31,12 +35,9 @@ fn log_images(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Er
             image::Rgba([255, 255, 255, 255])
         }
     });
-    let tensor = rerun::components::Tensor::from_image(image)?;
 
     for _ in 0..n {
-        rerun::MsgSender::new("image")
-            .with_component(&[tensor.clone()])?
-            .send(rec)?;
+        rec.log("image", &Image::new(TensorData::from_image(image.clone())?))?;
     }
 
     rec.flush_blocking();
