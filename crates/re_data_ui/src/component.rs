@@ -48,14 +48,14 @@ impl DataUi for EntityComponentWithInstances {
         // in some cases, we don't want to display all instances
         let max_row = match verbosity {
             UiVerbosity::Small => 0,
-            UiVerbosity::Reduced => num_instances.at_most(4), // includes "... x more" if any
+            UiVerbosity::Reduced => num_instances.at_most(4), // includes "…x more" if any
             UiVerbosity::All => num_instances,
         };
 
         let displayed_row = if num_instances <= max_row {
             num_instances
         } else {
-            // this accounts for the "... x more" using a row
+            // this accounts for the "…x more" using a row
             max_row - 1
         };
 
