@@ -137,7 +137,6 @@ pub trait Loggable: Clone + Sized {
     ///
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::arrow_field`].
-    /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     #[inline]
     fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
         Self::try_from_arrow_opt(data)?
@@ -155,17 +154,6 @@ pub trait Loggable: Clone + Sized {
     ///
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::arrow_field`].
-    /// For the fallible version, see [`Loggable::try_from_arrow_opt`].
-    #[inline]
-    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>> {
-        Self::try_from_arrow_opt(data).detailed_unwrap()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
-    ///
-    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
-    /// [`Loggable::arrow_field`].
-    /// For the non-fallible version, see [`Loggable::from_arrow_opt`].
     fn try_from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {

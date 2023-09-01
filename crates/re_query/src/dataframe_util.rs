@@ -49,7 +49,7 @@ pub fn iter_column<'a, C: Component + 'a>(
     let res = match df.column(C::name().as_ref()) {
         Ok(col) => itertools::Either::Left(col.chunks().iter().flat_map(|array| {
             let fixed_array = fix_polars_nulls::<C>(array.as_ref());
-            C::from_arrow_opt(fixed_array.as_ref())
+            C::try_from_arrow_opt(fixed_array.as_ref()).unwrap()
         })),
         Err(_) => itertools::Either::Right(std::iter::repeat_with(|| None).take(df.height())),
     };
