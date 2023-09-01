@@ -24,10 +24,6 @@ name = "arrow3d_simple"
 path = "arrow3d_simple.rs"
 
 [[bin]]
-name = "arrow3d_simple_v2"
-path = "arrow3d_simple_v2.rs"
-
-[[bin]]
 name = "box3d_simple"
 path = "box3d_simple.rs"
 
@@ -40,56 +36,36 @@ name = "depth_image_simple"
 path = "depth_image_simple.rs"
 
 [[bin]]
-name = "disconnected_space_v2"
-path = "disconnected_space_v2.rs"
+name = "disconnected_space"
+path = "disconnected_space.rs"
 
 [[bin]]
 name = "image_simple"
 path = "image_simple.rs"
 
 [[bin]]
-name = "image_simple_v2"
-path = "image_simple_v2.rs"
-
-[[bin]]
 name = "line_segments2d_simple"
 path = "line_segments2d_simple.rs"
-
-[[bin]]
-name = "line_segments2d_simple_v2"
-path = "line_segments2d_simple_v2.rs"
 
 [[bin]]
 name = "line_segments3d_simple"
 path = "line_segments3d_simple.rs"
 
 [[bin]]
-name = "line_segments3d_simple_v2"
-path = "line_segments3d_simple_v2.rs"
-
-[[bin]]
 name = "line_strip2d_simple"
 path = "line_strip2d_simple.rs"
 
 [[bin]]
-name = "line_strip2d_simple_v2"
-path = "line_strip2d_simple_v2.rs"
-
-[[bin]]
-name = "line_strip2d_batch_v2"
-path = "line_strip2d_batch_v2.rs"
+name = "line_strip2d_batch"
+path = "line_strip2d_batch.rs"
 
 [[bin]]
 name = "line_strip3d_simple"
 path = "line_strip3d_simple.rs"
 
 [[bin]]
-name = "line_strip3d_simple_v2"
-path = "line_strip3d_simple_v2.rs"
-
-[[bin]]
-name = "line_strip3d_batch_v2"
-path = "line_strip3d_batch_v2.rs"
+name = "line_strip3d_batch"
+path = "line_strip3d_batch.rs"
 
 [[bin]]
 name = "mesh_simple"
@@ -104,32 +80,16 @@ name = "point2d_simple"
 path = "point2d_simple.rs"
 
 [[bin]]
-name = "point2d_simple_v2"
-path = "point2d_simple_v2.rs"
-
-[[bin]]
 name = "point2d_random"
 path = "point2d_random.rs"
-
-[[bin]]
-name = "point2d_random_v2"
-path = "point2d_random_v2.rs"
 
 [[bin]]
 name = "point3d_random"
 path = "point3d_random.rs"
 
 [[bin]]
-name = "point3d_random_v2"
-path = "point3d_random_v2.rs"
-
-[[bin]]
 name = "point3d_simple"
 path = "point3d_simple.rs"
-
-[[bin]]
-name = "point3d_simple_v2"
-path = "point3d_simple_v2.rs"
 
 [[bin]]
 name = "rect2d_simple"
@@ -152,20 +112,12 @@ name = "tensor_simple"
 path = "tensor_simple.rs"
 
 [[bin]]
-name = "tensor_simple_v2"
-path = "tensor_simple_v2.rs"
-
-[[bin]]
 name = "text_entry_simple"
 path = "text_entry_simple.rs"
 
 [[bin]]
 name = "transform3d_simple"
 path = "transform3d_simple.rs"
-
-[[bin]]
-name = "transform3d_simple_v2"
-path = "transform3d_simple_v2.rs"
 
 
 [dependencies]

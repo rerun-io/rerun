@@ -1,12 +1,11 @@
 //! Log a simple line strip.
 
-use rerun::components::LineStrip3D;
-use rerun::{MsgSender, RecordingStreamBuilder};
+use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
 
-    let points = vec![
+    let points = [
         [0., 0., 0.],
         [0., 0., 1.],
         [1., 0., 0.],
@@ -16,10 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         [0., 1., 0.],
         [0., 1., 1.],
     ];
-
-    MsgSender::new("simple")
-        .with_component(&[LineStrip3D(points.into_iter().map(Into::into).collect())])?
-        .send(&rec)?;
+    rec.log("strip", &LineStrips3D::new([points]))?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

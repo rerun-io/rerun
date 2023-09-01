@@ -14,36 +14,36 @@ namespace rerun.archetypes;
 /// \py
 /// \py Many strips:
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/line_strip2d_batch_v2.py
+/// \py \include:../../../../../docs/code-examples/line_strip2d_batch.py
 /// \py ```
 /// \py
 /// \py Many individual segments:
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/line_segments2d_simple_v2.py
+/// \py \include:../../../../../docs/code-examples/line_segments2d_simple.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
 /// \rs Many strips:
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/line_strip2d_batch_v2.rs
+/// \rs \include:../../../../../docs/code-examples/line_strip2d_batch.rs
 /// \rs ```
 /// \rs
 /// \rs Many individual segments:
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/line_segments2d_simple_v2.rs
+/// \rs \include:../../../../../docs/code-examples/line_segments2d_simple.rs
 /// \rs ```
 ///
 /// \cpp ## Example
 /// \cpp
 /// \cpp Many strips:
 /// \cpp ```ignore
-/// \cpp \include:../../../../../docs/code-examples/line_strip2d_batch_v2.cpp
+/// \cpp \include:../../../../../docs/code-examples/line_strip2d_batch.cpp
 /// \cpp ```
 /// \cpp
 /// \cpp Many individual segments:
 /// \cpp ```ignore
-/// \cpp \include:../../../../../docs/code-examples/line_segments2d_simple_v2.cpp
+/// \cpp \include:../../../../../docs/code-examples/line_segments2d_simple.cpp
 /// \cpp ```
 table LineStrips2D (
   "attr.rust.derive": "PartialEq",

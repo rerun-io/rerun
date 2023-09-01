@@ -18,7 +18,7 @@ namespace rerun.archetypes;
 /// \py -------
 /// \py
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/annotation_context_rects_v2.py
+/// \py \include:../../../../../docs/code-examples/annotation_context_rects.py
 /// \py ```
 ///
 /// \rs ## Example
@@ -31,7 +31,7 @@ namespace rerun.archetypes;
 /// \cpp
 /// \cpp ```
 //  \cpp TODO(#2786): implement Rect2D cpp example and link it here instead.
-/// \cpp \include:../../../../../docs/code-examples/annotation_context_arrows_v2.cpp
+/// \cpp \include:../../../../../docs/code-examples/annotation_context_arrows.cpp
 /// \cpp ```
 table AnnotationContext (
   "attr.rust.derive": "Eq, PartialEq",

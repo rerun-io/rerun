@@ -1,6 +1,9 @@
 //! Log a simple colored triangle.
-use rerun::components::{Mesh3D, MeshId, RawMesh3D};
-use rerun::{MsgSender, RecordingStreamBuilder};
+
+use rerun::{
+    components::{Mesh3D, MeshId, RawMesh3D},
+    RecordingStreamBuilder,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_mesh").memory()?;
@@ -22,9 +25,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         albedo_factor: None,
     };
 
-    MsgSender::new("triangle")
-        .with_component(&[Mesh3D::Raw(mesh)])?
-        .send(&rec)?;
+    // TODO(#2788): Mesh archetype
+    rec.log_component_lists("triangle", false, 1, [&Mesh3D::Raw(mesh) as _])?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

@@ -1,33 +1,21 @@
-//! Log some random points with color and radii."""
+//! Log some random points with color and radii.
+
 use rand::distributions::Uniform;
 use rand::Rng;
-use rerun::components::{Color, Point3D, Radius};
-use rerun::{MsgSender, RecordingStreamBuilder};
+use rerun::{archetypes::Points3D, components::Color, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points3d_random").memory()?;
 
     let mut rng = rand::thread_rng();
-    let position_distribs = Uniform::new(-5., 5.);
+    let dist = Uniform::new(-5., 5.);
 
-    let mut positions = vec![];
-    let mut colors = vec![];
-    let mut radii = vec![];
-    for _ in 0..10 {
-        positions.push(Point3D::new(
-            rng.sample(position_distribs),
-            rng.sample(position_distribs),
-            rng.sample(position_distribs),
-        ));
-        colors.push(Color::from_rgb(rng.gen(), rng.gen(), rng.gen()));
-        radii.push(Radius(rng.gen()));
-    }
-
-    MsgSender::new("random")
-        .with_component(&positions)?
-        .with_component(&colors)?
-        .with_component(&radii)?
-        .send(&rec)?;
+    rec.log(
+        "random",
+        &Points3D::new((0..10).map(|_| (rng.sample(dist), rng.sample(dist), rng.sample(dist))))
+            .with_colors((0..10).map(|_| Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))
+            .with_radii((0..10).map(|_| rng.gen::<f32>())),
+    )?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

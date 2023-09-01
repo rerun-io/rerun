@@ -19,13 +19,13 @@ namespace rerun.archetypes;
 /// \py -------
 /// \py
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/point2d_simple_v2.py
+/// \py \include:../../../../../docs/code-examples/point2d_simple.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/point2d_simple_v2.rs
+/// \rs \include:../../../../../docs/code-examples/point2d_simple.rs
 /// \rs ```
 table Points2D (
   "attr.rust.derive": "PartialEq",

@@ -1,27 +1,23 @@
-//! Log a simple line segment.
+//! Log a couple 2D line segments using 2D line strips.
+
 use rerun::{
-    components::{LineStrip2D, Rect2D},
-    datatypes::Vec4D,
-    MsgSender, RecordingStreamBuilder,
+    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments2d").memory()?;
 
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-    MsgSender::new("simple")
-        .with_component(
-            &points
-                .chunks(2)
-                .map(|p| LineStrip2D(vec![p[0].into(), p[1].into()]))
-                .collect::<Vec<_>>(),
-        )?
-        .send(&rec)?;
+    rec.log("segments", &LineStrips2D::new(points.chunks(2)))?;
 
     // Log an extra rect to set the view bounds
-    MsgSender::new("bounds")
-        .with_component(&[Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]).into())])?
-        .send(&rec)?;
+    // TODO(#2786): Rect2D archetype
+    rec.log_component_lists(
+        "bounds",
+        false,
+        1,
+        [&Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]).into()) as _],
+    )?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

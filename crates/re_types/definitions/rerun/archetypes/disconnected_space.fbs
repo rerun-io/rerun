@@ -16,19 +16,19 @@ namespace rerun.archetypes;
 /// \py -------
 /// \py
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/disconnected_space_v2.py
+/// \py \include:../../../../../docs/code-examples/disconnected_space.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/disconnected_space_v2.rs
+/// \rs \include:../../../../../docs/code-examples/disconnected_space.rs
 /// \rs ```
 ///
 /// \cpp ## Example
 /// \cpp
 /// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/disconnected_space_v2.cpp
+/// \cpp \include:../../../../../docs/code-examples/disconnected_space.cpp
 /// \cpp ```
 table DisconnectedSpace (
   "attr.rust.derive": "Copy, PartialEq, Eq",

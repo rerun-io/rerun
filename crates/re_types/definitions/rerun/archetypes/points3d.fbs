@@ -13,19 +13,19 @@ namespace rerun.archetypes;
 /// \py -------
 /// \py
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/point3d_simple_v2.py
+/// \py \include:../../../../../docs/code-examples/point3d_simple.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/point3d_simple_v2.rs
+/// \rs \include:../../../../../docs/code-examples/point3d_simple.rs
 /// \rs ```
 ///
 /// \cpp ## Example
 /// \cpp
 /// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/point3d_simple_v2.cpp
+/// \cpp \include:../../../../../docs/code-examples/point3d_simple.cpp
 /// \cpp ```
 table Points3D (
   "attr.rust.derive": "PartialEq",
