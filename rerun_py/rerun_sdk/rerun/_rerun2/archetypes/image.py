@@ -33,5 +33,17 @@ class Image(Archetype):
     The image data. Should always be a rank-2 or rank-3 tensor.
     """
 
+    draw_order: components.DrawOrderArray | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+    )
+    """
+    An optional floating point value that specifies the 2D drawing order.
+    Objects with higher values are drawn on top of those with lower values.
+
+    The default for 2D points is -10.0.
+    """
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

@@ -24,6 +24,17 @@ table Image (
   "attr.rust.derive": "PartialEq",
   order: 100
 ) {
+  // --- Required ---
+
   /// The image data. Should always be a rank-2 or rank-3 tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 2000);
+  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+
+  // --- Optional ---
+
+
+  /// An optional floating point value that specifies the 2D drawing order.
+  /// Objects with higher values are drawn on top of those with lower values.
+  ///
+  /// The default for 2D points is -10.0.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 }

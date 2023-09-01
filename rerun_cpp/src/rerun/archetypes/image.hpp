@@ -4,11 +4,13 @@
 #pragma once
 
 #include "../arrow.hpp"
+#include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -26,10 +28,25 @@ namespace rerun {
             /// The image data. Should always be a rank-2 or rank-3 tensor.
             rerun::components::TensorData data;
 
+            /// An optional floating point value that specifies the 2D drawing order.
+            /// Objects with higher values are drawn on top of those with lower values.
+            ///
+            /// The default for 2D points is -10.0.
+            std::optional<rerun::components::DrawOrder> draw_order;
+
           public:
             Image() = default;
 
             Image(rerun::components::TensorData _data) : data(std::move(_data)) {}
+
+            /// An optional floating point value that specifies the 2D drawing order.
+            /// Objects with higher values are drawn on top of those with lower values.
+            ///
+            /// The default for 2D points is -10.0.
+            Image& with_draw_order(rerun::components::DrawOrder _draw_order) {
+                draw_order = std::move(_draw_order);
+                return *this;
+            }
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

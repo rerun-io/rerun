@@ -3,16 +3,25 @@
 
 #include "image.hpp"
 
+#include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 
 namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> Image::to_data_cells() const {
             std::vector<rerun::DataCell> cells;
-            cells.reserve(1);
+            cells.reserve(2);
 
             {
                 const auto result = rerun::components::TensorData::to_data_cell(&data, 1);
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
+            }
+            if (draw_order.has_value()) {
+                const auto& value = draw_order.value();
+                const auto result = rerun::components::DrawOrder::to_data_cell(&value, 1);
                 if (result.is_err()) {
                     return result.error;
                 }
