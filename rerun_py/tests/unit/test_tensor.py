@@ -4,6 +4,7 @@ import uuid
 from typing import Any
 
 import numpy as np
+import pytest
 import rerun.experimental as rr2
 from rerun.experimental import cmp as rrc
 from rerun.experimental import dt as rrd
@@ -62,3 +63,59 @@ def test_tensor() -> None:
         arch = rr2.Tensor(data=input)
 
         compare_tensors(arch.data, expected, check_fields)
+
+
+def test_bad_tensors() -> None:
+    import rerun as rr
+
+    rr.set_strict_mode(True)
+
+    # No buffers
+    with pytest.raises(ValueError):
+        rrd.TensorData(),
+
+    # Buffer with no indication of shape
+    with pytest.raises(ValueError):
+        rrd.TensorData(
+            buffer=RANDOM_TENSOR_SOURCE,
+        ),
+
+    # Both array and buffer
+    with pytest.raises(ValueError):
+        rrd.TensorData(
+            array=RANDOM_TENSOR_SOURCE,
+            buffer=RANDOM_TENSOR_SOURCE,
+        ),
+
+    # Wrong size buffer for dimensions
+    with pytest.raises(ValueError):
+        rrd.TensorData(
+            shape=[
+                rrd.TensorDimension(8, name="a"),
+                rrd.TensorDimension(6, name="b"),
+                rrd.TensorDimension(3, name="c"),
+                rrd.TensorDimension(4, name="d"),
+            ],
+            buffer=RANDOM_TENSOR_SOURCE,
+        ),
+
+    # TODO(jleibs) send_warning bottoms out in TypeError but these ought to be ValueErrors
+
+    # Wrong number of names
+    with pytest.raises(TypeError):
+        rrd.TensorData(
+            names=["a", "b", "c"],
+            array=RANDOM_TENSOR_SOURCE,
+        ),
+
+    # Shape disagrees with array
+    with pytest.raises(TypeError):
+        rrd.TensorData(
+            shape=[
+                rrd.TensorDimension(8, name="a"),
+                rrd.TensorDimension(6, name="b"),
+                rrd.TensorDimension(5, name="c"),
+                rrd.TensorDimension(3, name="d"),
+            ],
+            array=RANDOM_TENSOR_SOURCE,
+        ),

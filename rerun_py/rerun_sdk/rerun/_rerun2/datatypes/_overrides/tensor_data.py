@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import collections
 import uuid
-from typing import TYPE_CHECKING, Final, Sequence
+from math import prod
+from typing import TYPE_CHECKING, Any, Final, Protocol, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +13,35 @@ from rerun.log.error_utils import _send_warning
 
 if TYPE_CHECKING:
     from .. import TensorBufferLike, TensorData, TensorDataArrayLike, TensorDimension, TensorDimensionLike, TensorIdLike
+
+
+################################################################################
+# Torch-like array converters
+################################################################################
+
+
+class TorchTensorLike(Protocol):
+    """Describes what is need from a Torch Tensor to be loggable to Rerun."""
+
+    def numpy(self, force: bool) -> npt.NDArray[Any]:
+        ...
+
+
+Tensor = Union[npt.ArrayLike, TorchTensorLike]
+"""Type helper for a tensor-like object that can be logged to Rerun."""
+
+
+def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
+    # isinstance is 4x faster than catching AttributeError
+    if isinstance(tensor, np.ndarray):
+        return tensor
+
+    try:
+        # Make available to the cpu
+        return tensor.numpy(force=True)  # type: ignore[union-attr]
+    except AttributeError:
+        return np.array(tensor, copy=False)
+
 
 ################################################################################
 # Init overrides
@@ -23,17 +54,7 @@ def tensordata_init(
     id: TensorIdLike | None = None,
     shape: Sequence[TensorDimensionLike] | None = None,
     buffer: TensorBufferLike | None = None,
-    array: npt.NDArray[np.float32]
-    | npt.NDArray[np.float64]
-    | npt.NDArray[np.int16]
-    | npt.NDArray[np.int32]
-    | npt.NDArray[np.int64]
-    | npt.NDArray[np.int8]
-    | npt.NDArray[np.uint16]
-    | npt.NDArray[np.uint32]
-    | npt.NDArray[np.uint64]
-    | npt.NDArray[np.uint8]
-    | None = None,
+    array: Tensor | None = None,
     names: Sequence[str] | None = None,
 ) -> None:
     if array is None and buffer is None:
@@ -61,23 +82,34 @@ def tensordata_init(
 
     # Figure out the shape
     if array is not None:
+        array = _to_numpy(array)
+
         # If a shape we provided, it must match the array
         if resolved_shape:
             shape_tuple = tuple(d.size for d in resolved_shape)
             if shape_tuple != array.shape:
-                raise ValueError(f"Provided array ({array.shape}) does not match shape argument ({shape_tuple}).")
-        elif names:
-            if len(array.shape) != len(names):
                 _send_warning(
                     (
-                        f"len(array.shape) = {len(array.shape)} != "
-                        + f"len(names) = {len(names)}. Dropping tensor dimension names."
+                        f"Provided array ({array.shape}) does not match shape argument ({shape_tuple}). "
+                        + "Ignoring shape argument."
                     ),
                     2,
                 )
-            resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, names)]
-        else:
-            resolved_shape = [TensorDimension(size) for size in array.shape]
+            resolved_shape = None
+
+        if resolved_shape is None:
+            if names:
+                if len(array.shape) != len(names):
+                    _send_warning(
+                        (
+                            f"len(array.shape) = {len(array.shape)} != "
+                            + f"len(names) = {len(names)}. Dropping tensor dimension names."
+                        ),
+                        2,
+                    )
+                resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, names)]
+            else:
+                resolved_shape = [TensorDimension(size) for size in array.shape]
 
     if resolved_shape is not None:
         self.shape = resolved_shape
@@ -90,6 +122,13 @@ def tensordata_init(
     elif array is not None:
         self.buffer = TensorBuffer(array.flatten())
 
+    expected_buffer_size = prod(d.size for d in self.shape)
+
+    if len(self.buffer.inner) != expected_buffer_size:
+        raise ValueError(
+            f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
+        )
+
 
 ################################################################################
 # Arrow converters
@@ -97,21 +136,24 @@ def tensordata_init(
 
 
 def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-    from .. import TensorData, TensorDimension
+    from .. import TensorData
 
-    if isinstance(data, np.ndarray):
-        tensor_id = _build_tensorid(uuid.uuid4())
-        shape = [TensorDimension(d) for d in data.shape]
-        shape = _build_shape_array(shape).cast(data_type.field("shape").type)
-        buffer = _build_buffer_array(data)
+    # If it's a sequence, grab the first one
+    if isinstance(data, collections.abc.Sequence):
+        if len(data) != 1:
+            raise ValueError("Tensors do not support batches")
+        data = data[0]
 
-    elif isinstance(data, TensorData):
-        tensor_id = _build_tensorid(data.id)
-        shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
-        buffer = _build_buffer_array(data.buffer)
+    # If it's not a TensorData, it should be an NDArray-like. coerce it into TensorData with the
+    # constructor.
+    if not isinstance(data, TensorData):
+        array = _to_numpy(data)
+        data = TensorData(array=array)
 
-    else:
-        raise ValueError("Unsupported TensorData source")
+    # Now build the actual arrow fields
+    tensor_id = _build_tensorid(data.id)
+    shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
+    buffer = _build_buffer_array(data.buffer)
 
     return pa.StructArray.from_arrays(
         [

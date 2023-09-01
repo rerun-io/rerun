@@ -3,23 +3,23 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pytest
 import rerun.experimental as rr2
 from rerun.experimental import cmp as rrc
 from rerun.experimental import dt as rrd
 
 rng = np.random.default_rng(12345)
-RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
+RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
 
 
-IMAGE_DATA_INPUTS: list[rrd.TensorDataArrayLike | None] = [
+IMAGE_INPUTS: list[rrd.TensorDataArrayLike | None] = [
     # Full explicit construction
     rrd.TensorData(
         id=rrd.TensorId(uuid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
         shape=[
-            rrd.TensorDimension(8),
-            rrd.TensorDimension(6),
+            rrd.TensorDimension(10),
+            rrd.TensorDimension(20),
             rrd.TensorDimension(3),
-            rrd.TensorDimension(5),
         ],
         buffer=rrd.TensorBuffer(RANDOM_IMAGE_SOURCE),
     ),
@@ -27,24 +27,65 @@ IMAGE_DATA_INPUTS: list[rrd.TensorDataArrayLike | None] = [
     RANDOM_IMAGE_SOURCE,
 ]
 
-CHECK_IMAGE_ID: list[bool] = [True, False]
+# 0 = id
+# 1 = shape
+# 2 = buffer
+CHECK_FIELDS: list[list[int]] = [
+    [0, 1, 2],
+    [2],
+]
 
 
 def tensor_data_expected() -> Any:
-    return rrc.TensorDataArray.from_similar(IMAGE_DATA_INPUTS[0])
+    return rrc.TensorDataArray.from_similar(IMAGE_INPUTS[0])
 
 
-def compare_tensors(left: Any, right: Any, check_id: bool) -> None:
-    if check_id:
-        assert left.storage.field(0) == right.storage.field(0)
-    assert left.storage.field(1) == right.storage.field(1)
-    assert left.storage.field(2) == right.storage.field(2)
+def compare_images(left: Any, right: Any, check_fields: list[int]) -> None:
+    for field in check_fields:
+        assert left.storage.field(field) == right.storage.field(field)
 
 
 def test_image() -> None:
     expected = tensor_data_expected()
 
-    for input, check_id in zip(IMAGE_DATA_INPUTS, CHECK_IMAGE_ID):
+    for input, check_fields in zip(IMAGE_INPUTS, CHECK_FIELDS):
         arch = rr2.Image(data=input)
 
-        compare_tensors(arch.data, expected, check_id)
+        compare_images(arch.data, expected, check_fields)
+
+
+GOOD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike | None] = [
+    # Mono
+    rng.uniform(0.0, 1.0, (10, 20)),
+    # RGB
+    rng.uniform(0.0, 1.0, (10, 20, 3)),
+    # RGBA
+    rng.uniform(0.0, 1.0, (10, 20, 4)),
+    # Assorted Extra Dimensions
+    rng.uniform(0.0, 1.0, (1, 10, 20)),
+    rng.uniform(0.0, 1.0, (1, 10, 20, 3)),
+    rng.uniform(0.0, 1.0, (1, 10, 20, 4)),
+    rng.uniform(0.0, 1.0, (10, 20, 1)),
+    rng.uniform(0.0, 1.0, (10, 20, 3, 1)),
+    rng.uniform(0.0, 1.0, (10, 20, 4, 1)),
+]
+
+BAD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike | None] = [
+    rng.uniform(0.0, 1.0, (10,)),
+    rng.uniform(0.0, 1.0, (10, 20, 2)),
+    rng.uniform(0.0, 1.0, (10, 20, 5)),
+    rng.uniform(0.0, 1.0, (10, 20, 3, 2)),
+]
+
+
+def test_image_shapes() -> None:
+    import rerun as rr
+
+    rr.set_strict_mode(True)
+
+    for img in GOOD_IMAGE_INPUTS:
+        rr2.Image(img)
+
+    for img in BAD_IMAGE_INPUTS:
+        with pytest.raises(TypeError):
+            rr2.Image(img)
