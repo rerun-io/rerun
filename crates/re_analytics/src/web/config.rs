@@ -64,6 +64,13 @@ impl Config {
         }
     }
 
+    pub fn load_or_default() -> Result<Config, ConfigError> {
+        match Self::load()? {
+            Some(config) => Ok(config),
+            None => Config::new(),
+        }
+    }
+
     #[allow(clippy::map_err_ignore)]
     pub fn save(&self) -> Result<(), ConfigError> {
         let storage = get_local_storage()?;

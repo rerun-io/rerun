@@ -36,7 +36,7 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(naviga
   <p>
       <a href="#" id="try_anyways">Try anyways</a>
   </p>`);
-  document.querySelector('#try_anyways').addEventListener('click', function (event) {
+  document.querySelector("#try_anyways").addEventListener("click", function (event) {
     event.preventDefault();
     load_wasm();
   });
@@ -56,12 +56,12 @@ function load_wasm() {
   <p class="subdued" id="status">
   </p>`;
 
-  const status_element = document.getElementById('status');
+  const status_element = document.getElementById("status");
   function progress({ loaded, total_bytes }) {
     if (total_bytes != null) {
-      status_element.innerHTML = Math.round(Math.min(loaded / total_bytes * 100, 100)) + '%';
+      status_element.innerHTML = Math.round(Math.min((loaded / total_bytes) * 100, 100)) + "%";
     } else {
-      status_element.innerHTML = (loaded / (1024 * 1024)).toFixed(1) + 'MiB'
+      status_element.innerHTML = (loaded / (1024 * 1024)).toFixed(1) + "MiB";
     }
   }
 
@@ -71,55 +71,57 @@ function load_wasm() {
   }, 1500);
 
   async function wasm_with_progress() {
-    const response = await fetch('./re_viewer_bg.wasm');
+    const response = await fetch("./re_viewer_bg.wasm");
     // Use the uncompressed size
     var content_length;
     var content_multiplier = 1;
     // If the content is gzip encoded, try to get the uncompressed size.
-    if (response.headers.get('content-encoding') == 'gzip') {
-      content_length = response.headers.get('x-goog-meta-uncompressed-size');
+    if (response.headers.get("content-encoding") == "gzip") {
+      content_length = response.headers.get("x-goog-meta-uncompressed-size");
 
       // If the uncompressed size wasn't found 3 seems to be a very good approximation
       if (content_length == null) {
-        content_length = response.headers.get('content-length');
+        content_length = response.headers.get("content-length");
         content_multiplier = 3;
       }
     } else {
-      content_length = response.headers.get('content-length');
+      content_length = response.headers.get("content-length");
     }
 
     const total_bytes = parseInt(content_length, 10) * content_multiplier;
     let loaded = 0;
 
-    const res = new Response(new ReadableStream({
-      async start(controller) {
-        const reader = response.body.getReader();
-        for (; ;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          loaded += value.byteLength;
-          progress({ loaded, total_bytes })
-          controller.enqueue(value);
-        }
-        controller.close();
-      },
-    }));
+    const res = new Response(
+      new ReadableStream({
+        async start(controller) {
+          const reader = response.body.getReader();
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            loaded += value.byteLength;
+            progress({ loaded, total_bytes });
+            controller.enqueue(value);
+          }
+          controller.close();
+        },
+      })
+    );
     const wasm = await res.blob();
 
     // Don't fade in the progress bar if we haven't hit it already.
     clearTimeout(timeoutId);
 
-    wasm_bindgen(URL.createObjectURL(wasm))
-      .then(on_wasm_loaded)
-      .catch(on_wasm_error);
+    wasm_bindgen(URL.createObjectURL(wasm)).then(on_wasm_loaded).catch(on_wasm_error);
   }
 
   wasm_with_progress();
 }
 
 function on_wasm_loaded() {
+  window.set_email = (value) => wasm_bindgen.set_email(value);
+
   // WebGPU version is currently only supported on browsers with WebGPU support, there is no dynamic fallback to WebGL.
-  if (wasm_bindgen.is_webgpu_build() && typeof navigator.gpu === 'undefined') {
+  if (wasm_bindgen.is_webgpu_build() && typeof navigator.gpu === "undefined") {
     console.debug("`navigator.gpu` is undefined. This indicates lack of WebGPU support.");
     show_center_html(`
                   <p class="strong">
@@ -173,8 +175,6 @@ function on_app_started(handle) {
 
   hide_center_html();
   show_canvas();
-
-
 
   if (window.location !== window.parent.location) {
     window.parent.postMessage("READY", "*");

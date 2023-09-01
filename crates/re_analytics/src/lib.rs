@@ -11,12 +11,16 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(not(target_arch = "wasm32"))]
-use native::{Config, ConfigError, Pipeline, PipelineError};
+pub use native::{Config, ConfigError};
+#[cfg(not(target_arch = "wasm32"))]
+use native::{Pipeline, PipelineError};
 
 #[cfg(target_arch = "wasm32")]
 mod web;
 #[cfg(target_arch = "wasm32")]
-use web::{Config, ConfigError, Pipeline, PipelineError};
+pub use web::{Config, ConfigError};
+#[cfg(target_arch = "wasm32")]
+use web::{Pipeline, PipelineError};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
