@@ -1,3 +1,4 @@
+use egui::NumExt;
 use re_data_store::{EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
 use re_types::ComponentName;
@@ -43,6 +44,37 @@ impl DataUi for EntityComponentWithInstances {
             UiVerbosity::Reduced | UiVerbosity::All => false,
         };
 
+        // in some cases, we don't want to display all instances
+        let max_row = match verbosity {
+            UiVerbosity::Small => 0,
+            UiVerbosity::Reduced => num_instances.at_most(4), // includes "…x more" if any
+            UiVerbosity::All => num_instances,
+        };
+
+        // Here we enforce that exactly `max_row` rows are displayed, which means that:
+        // - For `num_instances == max_row`, then `max_row` rows are displayed.
+        // - For `num_instances == max_row + 1`, then `max_row-1` rows are displayed and "…2 more"
+        //   is appended.
+        //
+        // ┏━━━┳━━━┳━━━┳━━━┓
+        // ┃ 3 ┃ 4 ┃ 5 ┃ 6 ┃ <- num_instances
+        // ┗━━━┻━━━┻━━━┻━━━┛
+        // ┌───┬───┬───┬───┐ ┐
+        // │ x │ x │ x │ x │ │
+        // ├───┼───┼───┼───┤ │
+        // │ x │ x │ x │ x │ │
+        // ├───┼───┼───┼───┤ ├─ max_row == 4
+        // │ x │ x │ x │ x │ │
+        // ├───┼───┼───┼───┤ │
+        // │   │ x │…+2│…+3│ │
+        // └───┴───┴───┴───┘ ┘
+        let displayed_row = if num_instances <= max_row {
+            num_instances
+        } else {
+            // this accounts for the "…x more" using a row and handles `num_instances == 0`
+            max_row.saturating_sub(1)
+        };
+
         if num_instances == 0 {
             ui.weak("(empty)");
         } else if num_instances == 1 {
@@ -68,7 +100,7 @@ impl DataUi for EntityComponentWithInstances {
             egui_extras::TableBuilder::new(ui)
                 .resizable(false)
                 .vscroll(true)
-                .auto_shrink([false, true])
+                .auto_shrink([true, true])
                 .max_scroll_height(100.0)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                 .columns(egui_extras::Column::auto(), 2)
@@ -84,7 +116,7 @@ impl DataUi for EntityComponentWithInstances {
                 .body(|mut body| {
                     re_ui::ReUi::setup_table_body(&mut body);
                     let row_height = re_ui::ReUi::table_line_height();
-                    body.rows(row_height, num_instances, |index, mut row| {
+                    body.rows(row_height, displayed_row, |index, mut row| {
                         if let Some(instance_key) = instance_keys.get(index) {
                             row.col(|ui| {
                                 let instance_path =
@@ -111,6 +143,12 @@ impl DataUi for EntityComponentWithInstances {
                         }
                     });
                 });
+            if num_instances > displayed_row {
+                ui.label(format!(
+                    "…and {} more.",
+                    re_format::format_large_number((num_instances - displayed_row) as _)
+                ));
+            }
         }
     }
 }
