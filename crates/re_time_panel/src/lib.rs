@@ -409,7 +409,7 @@ impl TimePanel {
             format!("{last_path_part}/") // show we have children with a /
         };
 
-        let collapsing_header_id = ui.make_persistent_id(ui.id().with(&tree.path));
+        let collapsing_header_id = ui.make_persistent_id(&tree.path);
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
 
         let item = Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone()));

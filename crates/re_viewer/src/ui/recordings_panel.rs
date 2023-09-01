@@ -80,7 +80,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         } else {
             ctx.re_ui.list_item(app_id).active(false).show_collapsing(
                 ui,
-                ui.make_persistent_id(ui.id().with(app_id)),
+                ui.make_persistent_id(app_id),
                 true,
                 |_, ui| {
                     for store_db in store_dbs {
