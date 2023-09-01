@@ -21,11 +21,48 @@ pub struct ShowCollapsingResponse<R> {
 #[derive(Default, Clone, Copy, Debug)]
 pub enum WidthAllocationMode {
     /// Allocate the full available width. Useful for fixed-width container.
+    ///
+    /// Examples of resulting layouts:
+    /// ```text
+    ///                      ◀──────available width────▶
+    ///
+    ///                      ┌─────────────────────────┐
+    ///              normal: │▼ □ label                │
+    ///                      └─────────────────────────┘
+    ///                      ┌─────────────────────────┐
+    ///             hovered: │▼ □ label             ■ ■│
+    ///                      └─────────────────────────┘
+    ///                      ┌─────────────────────────┐
+    ///  normal, long label: │▼ □ a very very long lab…│
+    ///                      └─────────────────────────┘
+    ///                      ┌─────────────────────────┐
+    /// hovered, long label: │▼ □ a very very long… ■ ■│
+    ///                      └─────────────────────────┘
+    /// ```
+    /// The allocated size is always the same, and the label is truncated depending on the available
+    /// space, which is further reduced whenever buttons are displayed.
     #[default]
     Available,
 
     /// Allocate the width needed for the text and icon(s) (if any). If buttons are used, the label
     /// will get truncated to display them.
+    ///
+    /// Examples of resulting layouts:
+    /// ```text
+    ///                      ┌─────────┐
+    ///              normal: │▼ □ label│
+    ///                      └─────────┘
+    ///                      ┌─────────┐
+    ///             hovered: │▼ □ … ■ ■│
+    ///                      └─────────┘
+    ///                      ┌──────────────────────────┐
+    ///  normal, long label: │▼ □ a very very long label│
+    ///                      └──────────────────────────┘
+    ///                      ┌──────────────────────────┐
+    /// hovered, long label: │▼ □ a very very long … ■ ■│
+    ///                      └──────────────────────────┘
+    /// ```
+    /// The buttons _always_ truncate the label.
     Fit,
 }
 
