@@ -11,7 +11,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{StringExt as _, AUTOGEN_WARNING},
+    codegen::{autogen_warning, StringExt as _},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
 };
@@ -200,14 +200,15 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
     code += &unindent::unindent(&format!(
         r#"
-        # {AUTOGEN_WARNING}
+        # {autogen_warning}
 
         from __future__ import annotations
 
         __all__ = [{manifest}]
 
         from .archetypes import {archetype_names}
-        "#
+        "#,
+        autogen_warning = autogen_warning!()
     ));
 
     code
@@ -273,7 +274,7 @@ fn quote_objects(
             .extend(names.iter().cloned());
 
         let mut code = String::new();
-        code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
+        code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
 
         let manifest = quote_manifest(names);
 
@@ -378,7 +379,7 @@ fn quote_objects(
 
         let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
 
-        code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
+        code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
         code.push_unindented_text(
             "
             from __future__ import annotations
