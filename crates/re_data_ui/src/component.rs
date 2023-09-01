@@ -98,7 +98,7 @@ impl DataUi for EntityComponentWithInstances {
                             // last row, suggest that there is more.
                             row.col(|ui| {
                                 ui.label(format!(
-                                    "{} more…",
+                                    "… and {} more.",
                                     re_format::format_large_number(
                                         (num_instances - max_row + 1) as _
                                     )
