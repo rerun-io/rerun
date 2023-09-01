@@ -568,7 +568,7 @@ fn quote_arrow_field_serializer(
                     .map(|datum| {
                         datum
                             .map(|datum| {
-                                let #quoted_binding = datum.clone();
+                                let #quoted_binding = datum;
                                 #quoted_data_dst
                             })
                             .unwrap_or_default()
