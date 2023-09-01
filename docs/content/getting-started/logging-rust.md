@@ -34,18 +34,15 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    components::{Color, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
+    archetypes::{LineStrips3D, Points3D, Transform3D},
+    components::{Color, Point3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
-    time::{Time, TimeType, Timeline},
-    transform, MsgSender,
+    RecordingStream, RecordingStreamResult,
 };
 ```
 
-Already you can see the two most important types we'll interact with:
-- [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html), our entrypoint into the logging SDK.
-- [`MsgSender`](https://docs.rs/rerun/latest/rerun/struct.MsgSender.html), a builder-like type that we'll use to pack our data in order to prep it for logging.
-
+Already you can see the most important type we'll interact with: [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html), our entrypoint into the logging SDK.
 
 ## Starting the viewer
 Just run `rerun` to start the [Rerun Viewer](../reference/viewer/overview.md). It will wait for your application to log some data to it. This viewer is in fact a server that's ready to accept data over TCP (it's listening on `0.0.0.0:9876` by default).
@@ -83,17 +80,18 @@ const NUM_POINTS: usize = 100;
 let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
 let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
-MsgSender::new("dna/structure/left")
-    .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
-    .with_component(&colors1.iter().copied().map(Color::from).collect_vec())?
-    .with_splat(Radius(0.08))?
-    .send(&recording)?;
-
-MsgSender::new("dna/structure/right")
-    .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
-    .with_component(&colors2.iter().copied().map(Color::from).collect_vec())?
-    .with_splat(Radius(0.08))?
-    .send(&recording)?;
+rec.log(
+    "dna/structure/left",
+    &Points3D::new(points1.iter().copied())
+        .with_colors(colors1)
+        .with_radii([0.08]),
+)?;
+rec.log(
+    "dna/structure/right",
+    &Points3D::new(points2.iter().copied())
+        .with_colors(colors2)
+        .with_radii([0.08]),
+)?;
 ```
 
 Run your program with `cargo run` and you should now see this scene in the viewer:
@@ -109,7 +107,7 @@ Although there's not that much code yet, there's already quite a lot that's happ
 
 #### `Entities & hierarchies`
 
-Note the two strings we're passing in when creating our `MsgSender`s: `"dna/structure/left"` & `"dna/structure/right"`.
+Note the two strings we're passing in when logging our data: `"dna/structure/left"` & `"dna/structure/right"`.
 
 These are [Entity Paths](../concepts/entity-component.md), which uniquely identify each Entity in our scene. Every Entity is made up of a path and one or more Components.
 [Entity paths typically form a hierarchy](../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
@@ -122,7 +120,7 @@ In particular, when using the Rust SDK, you work directly with [`components`](ht
 By logging multiple components to an Entity, one can build up Primitives that can later be visualized in the viewer.
 For more information on how the rerun data model works, refer to our section on [entities and components](../concepts/entity-component.md).
 
-Logging components is a only a matter of calling [`MsgSender::with_component`](https://docs.rs/rerun/latest/rerun/struct.MsgSender.html#method.with_component) using any type that implements the [`Component` trait](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html). We provide [a few of those](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html#implementors)).
+Logging components is a only a matter of calling [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) using any type that implements the [`Component` trait](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html). We provide [a few of those](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html#implementors)).
 
 #### `Batches`
 
@@ -139,17 +137,19 @@ Good news is: once you've digested all of the above, logging any other Component
 
 We can represent the scaffolding using a batch of 3D line segments:
 ```rust
-let all_points = points1.iter().interleave(points2.iter()).copied();
-let scaffolding = all_points
-    .map(Vec3D::from)
+let points_interleaved: Vec<[glam::Vec3; 2]> = points1
+    .into_iter()
+    .interleave(points2)
     .chunks(2)
     .into_iter()
-    .map(|positions| LineStrip3D(positions.collect_vec()))
+    .map(|chunk| chunk.into_iter().collect_vec().try_into().unwrap())
     .collect_vec();
-MsgSender::new("dna/structure/scaffolding")
-    .with_component(&scaffolding)?
-    .with_splat(Color::from([128, 128, 128, 255]))?
-    .send(&recording)?;
+
+rec.log(
+    "dna/structure/scaffolding",
+    &LineStrips3D::new(points_interleaved.iter().cloned())
+        .with_colors([Color::from([128, 128, 128, 255])]),
+)?;
 ```
 
 Which only leaves the beads:
@@ -158,27 +158,22 @@ use rand::Rng as _;
 let mut rng = rand::thread_rng();
 let offsets = (0..NUM_POINTS).map(|_| rng.gen::<f32>()).collect_vec();
 
-let (beads, colors): (Vec<_>, Vec<_>) = points1
+let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
     .iter()
-    .interleave(points2.iter())
-    .copied()
-    .chunks(2)
-    .into_iter()
     .enumerate()
-    .map(|(n, mut points)| {
-        let (p1, p2) = (points.next().unwrap(), points.next().unwrap());
-        let c = bounce_lerp(80.0, 230.0, offsets[n] * 2.0) as u8;
+    .map(|(n, &[p1, p2])| {
+        let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
         (
-            Point3D::from(bounce_lerp(p1, p2, offsets[n])),
+            Point3D::from(bounce_lerp(p1, p2, times[n])),
             Color::from_rgb(c, c, c),
         )
     })
     .unzip();
-MsgSender::new("dna/structure/scaffolding/beads")
-    .with_component(&beads)?
-    .with_component(&colors)?
-    .with_splat(Radius(0.06))?
-    .send(&recording)?;
+
+rec.log(
+    "dna/structure/scaffolding/beads",
+    &Points3D::new(beads).with_colors(colors).with_radii([0.06]),
+)?;
 ```
 
 Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about building out vectors of [`Component`s](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html) and feeding them to the Rerun API.
@@ -208,15 +203,10 @@ for i in 0..400 {
     rec.set_time_seconds("stable_time", time as f64);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
-    let (beads, colors): (Vec<_>, Vec<_>) = points1
+    let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
         .iter()
-        .interleave(points2.iter())
-        .copied()
-        .chunks(2)
-        .into_iter()
         .enumerate()
-        .map(|(n, mut points)| {
-            let (p1, p2) = (points.next().unwrap(), points.next().unwrap());
+        .map(|(n, &[p1, p2])| {
             let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
             (
                 Point3D::from(bounce_lerp(p1, p2, times[n])),
@@ -225,11 +215,10 @@ for i in 0..400 {
         })
         .unzip();
 
-    MsgSender::new("dna/structure/scaffolding/beads")
-        .with_component(&beads)?
-        .with_component(&colors)?
-        .with_splat(Radius(0.06))?
-        .send(&recording)?;
+    rec.log(
+        "dna/structure/scaffolding/beads",
+        &Points3D::new(beads).with_colors(colors).with_radii([0.06]),
+    )?;
 }
 ```
 
@@ -268,12 +257,14 @@ Expand the previous loop to also include:
 ```rust
 for i in 0..400 {
     // ...everything else...
-    MsgSender::new("dna/structure")
-        .with_component(&[Transform3D::new(transform::RotationAxisAngle::new(
+
+    rec.log(
+        "dna/structure",
+        &Transform3D::new(rerun::transform::RotationAxisAngle::new(
             glam::Vec3::Z,
             rerun::transform::Angle::Radians(time / 4.0 * TAU),
-        ))])?
-        .send(&recording)?;
+        )),
+    )?;
 }
 ```
 
