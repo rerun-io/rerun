@@ -57,7 +57,7 @@ impl Config {
         let storage = get_local_storage()?;
         let value = storage
             .get_item(Self::STORAGE_KEY)
-            .map_err(|_| ConfigError::Storage(format!("failed to get `{}`", Self::STORAGE_KEY)))?;
+            .map_err(|_| ConfigError::Storage(format!("failed to get {:?}", Self::STORAGE_KEY)))?;
         match value {
             Some(value) => Ok(Some(serde_json::from_str(&value)?)),
             None => Ok(None),
@@ -77,7 +77,7 @@ impl Config {
         let string = serde_json::to_string(self)?;
         storage
             .set_item(Self::STORAGE_KEY, &string)
-            .map_err(|_| ConfigError::Storage(format!("failed to set `{}`", Self::STORAGE_KEY)))
+            .map_err(|_| ConfigError::Storage(format!("failed to set {:?}", Self::STORAGE_KEY)))
     }
 
     pub fn is_first_run(&self) -> bool {
