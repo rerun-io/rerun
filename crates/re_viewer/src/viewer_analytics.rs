@@ -20,9 +20,13 @@ pub struct ViewerAnalytics {
     analytics: Option<Analytics>,
 }
 
+#[cfg(feature = "analytics")]
 impl ViewerAnalytics {
-    #[cfg(feature = "analytics")]
-    pub fn new() -> Self {
+    pub fn new(disabled: bool) -> Self {
+        if disabled {
+            return Self { analytics: None };
+        }
+
         let analytics = match Analytics::new(std::time::Duration::from_secs(2)) {
             Ok(analytics) => Some(analytics),
             Err(err) => {
@@ -34,7 +38,6 @@ impl ViewerAnalytics {
         Self { analytics }
     }
 
-    #[cfg(feature = "analytics")]
     fn record(&self, event: Event) {
         if let Some(analytics) = &self.analytics {
             analytics.record(event);
@@ -42,7 +45,6 @@ impl ViewerAnalytics {
     }
 
     /// Register a property that will be included in all append-events.
-    #[cfg(feature = "analytics")]
     fn register(&mut self, name: &'static str, property: impl Into<Property>) {
         if let Some(analytics) = &mut self.analytics {
             analytics.register_append_property(name, property);
@@ -50,7 +52,6 @@ impl ViewerAnalytics {
     }
 
     /// Deregister a property.
-    #[cfg(feature = "analytics")]
     fn deregister(&mut self, name: &'static str) {
         if let Some(analytics) = &mut self.analytics {
             analytics.deregister_append_property(name);
@@ -217,7 +218,7 @@ impl ViewerAnalytics {
 
 #[cfg(not(feature = "analytics"))]
 impl ViewerAnalytics {
-    pub fn new() -> Self {
+    pub fn new(_disabled: bool) -> Self {
         Self {}
     }
 

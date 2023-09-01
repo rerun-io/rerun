@@ -419,6 +419,7 @@ async fn run_impl(
                 .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
         }),
         persist_state: args.persist_state,
+        is_in_notebook: false,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
         skip_welcome_screen: args.skip_welcome_screen,
