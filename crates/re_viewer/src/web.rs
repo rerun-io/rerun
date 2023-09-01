@@ -211,7 +211,7 @@ fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
 }
 
 fn get_query_bool(info: &eframe::IntegrationInfo, key: &str, default: bool) -> bool {
-    let default_int = i32::from(default);
+    let default_int = default as i32;
     match info
         .web_info
         .location
