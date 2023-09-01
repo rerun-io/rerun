@@ -72,8 +72,8 @@ impl DataUi for EntityComponentWithInstances {
         let displayed_row = if num_instances <= max_row {
             num_instances
         } else {
-            // this accounts for the "…x more" using a row
-            max_row - 1
+            // this accounts for the "…x more" using a row and handles `num_instances == 0`
+            max_row.saturating_sub(1)
         };
 
         if num_instances == 0 {
