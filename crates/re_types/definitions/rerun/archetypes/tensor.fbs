@@ -6,7 +6,7 @@ include "rerun/components.fbs";
 namespace rerun.archetypes;
 
 
-/// A generic n-dimensional Tensor
+/// A generic n-dimensional Tensor.
 ///
 /// \rs ## Example
 /// \rs
