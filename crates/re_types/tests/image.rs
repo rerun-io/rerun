@@ -31,6 +31,7 @@ fn image_roundtrip() {
             buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
         }
         .into(),
+        draw_order: None,
     }];
 
     let all_arch_serialized = [Image::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
