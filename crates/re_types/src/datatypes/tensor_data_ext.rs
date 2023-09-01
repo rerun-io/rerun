@@ -11,6 +11,7 @@ use super::{TensorBuffer, TensorData, TensorDimension, TensorId};
 // ----------------------------------------------------------------------------
 
 impl TensorData {
+    #[inline]
     pub fn new(id: TensorId, shape: Vec<TensorDimension>, buffer: TensorBuffer) -> Self {
         Self { id, shape, buffer }
     }
@@ -76,6 +77,7 @@ impl TensorData {
     }
 
     /// Returns true if the tensor can be interpreted as an image.
+    #[inline]
     pub fn is_shaped_like_an_image(&self) -> bool {
         self.image_height_width_channels().is_some()
     }
@@ -161,10 +163,12 @@ impl TensorData {
         }
     }
 
+    #[inline]
     pub fn dtype(&self) -> TensorDataType {
         self.buffer.dtype()
     }
 
+    #[inline]
     pub fn size_in_bytes(&self) -> usize {
         self.buffer.size_in_bytes()
     }
@@ -384,6 +388,7 @@ impl TensorData {
     ///
     /// Requires the `image` feature.
     #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
     pub fn from_jpeg_file(path: &std::path::Path) -> Result<Self, TensorImageLoadError> {
         re_tracing::profile_function!(path.to_string_lossy());
         let jpeg_bytes = {
@@ -395,6 +400,7 @@ impl TensorData {
 
     #[deprecated = "Renamed 'from_jpeg_file'"]
     #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
     pub fn tensor_from_jpeg_file(
         image_path: impl AsRef<std::path::Path>,
     ) -> Result<Self, TensorImageLoadError> {
@@ -407,6 +413,7 @@ impl TensorData {
     /// Other images types will be decoded directly.
     ///
     /// Requires the `image` feature.
+    #[inline]
     pub fn from_image_bytes(
         bytes: Vec<u8>,
         format: image::ImageFormat,
@@ -445,6 +452,7 @@ impl TensorData {
 
     #[deprecated = "Renamed 'from_jpeg_bytes'"]
     #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
     pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
         Self::from_jpeg_bytes(jpeg_bytes)
     }
@@ -454,6 +462,7 @@ impl TensorData {
     /// Requires the `image` feature.
     ///
     /// This is a convenience function that calls [`DecodedTensor::from_image`].
+    #[inline]
     pub fn from_image(
         image: impl Into<image::DynamicImage>,
     ) -> Result<TensorData, TensorImageLoadError> {
@@ -465,6 +474,7 @@ impl TensorData {
     /// Requires the `image` feature.
     ///
     /// This is a convenience function that calls [`DecodedTensor::from_dynamic_image`].
+    #[inline]
     pub fn from_dynamic_image(
         image: image::DynamicImage,
     ) -> Result<TensorData, TensorImageLoadError> {
@@ -472,6 +482,7 @@ impl TensorData {
     }
 
     /// Predicts if [`Self::to_dynamic_image`] is likely to succeed, without doing anything expensive
+    #[inline]
     pub fn could_be_dynamic_image(&self) -> bool {
         self.is_shaped_like_an_image()
             && matches!(
