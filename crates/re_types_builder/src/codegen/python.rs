@@ -437,25 +437,23 @@ impl QuotedObject {
                 let (default_converter, converter_function) =
                     quote_field_converter_from_field(obj, objects, field);
 
-                let converter = if *kind == ObjectKind::Archetype {
+                // components and datatypes have converters only if manually provided
+                let override_name = format!(
+                    "{}_{}_converter",
+                    name.to_lowercase(),
+                    field.name.to_lowercase()
+                );
+                let converter = if overrides.contains(&override_name) {
+                    format!("converter={override_name}")
+                } else if *kind == ObjectKind::Archetype {
                     let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
                     // archetype always delegate field init to the component array object
                     format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                } else if !default_converter.is_empty() {
+                    code.push_text(&converter_function, 1, 0);
+                    format!("converter={default_converter}")
                 } else {
-                    // components and datatypes have converters only if manually provided
-                    let override_name = format!(
-                        "{}_{}_converter",
-                        name.to_lowercase(),
-                        field.name.to_lowercase()
-                    );
-                    if overrides.contains(&override_name) {
-                        format!("converter={override_name}")
-                    } else if !default_converter.is_empty() {
-                        code.push_text(&converter_function, 1, 0);
-                        format!("converter={default_converter}")
-                    } else {
-                        String::new()
-                    }
+                    String::new()
                 };
                 field_converters.insert(field.fqname.clone(), converter);
             }

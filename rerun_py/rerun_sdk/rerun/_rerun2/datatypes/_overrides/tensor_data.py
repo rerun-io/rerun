@@ -1,14 +1,131 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, Sequence
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from rerun.log.error_utils import _send_warning
+
 if TYPE_CHECKING:
-    from .. import TensorBufferLike, TensorDataArrayLike, TensorDimension, TensorIdLike
+    from .. import TensorBufferLike, TensorData, TensorDataArrayLike, TensorDimension, TensorDimensionLike, TensorIdLike
+
+################################################################################
+# Init overrides
+################################################################################
+
+
+def tensordata_init(
+    self: TensorData,
+    *,
+    id: TensorIdLike | None = None,
+    shape: Sequence[TensorDimensionLike] | None = None,
+    buffer: TensorBufferLike | None = None,
+    array: npt.NDArray[np.float32]
+    | npt.NDArray[np.float64]
+    | npt.NDArray[np.int16]
+    | npt.NDArray[np.int32]
+    | npt.NDArray[np.int64]
+    | npt.NDArray[np.int8]
+    | npt.NDArray[np.uint16]
+    | npt.NDArray[np.uint32]
+    | npt.NDArray[np.uint64]
+    | npt.NDArray[np.uint8]
+    | None = None,
+    names: Sequence[str] | None = None,
+) -> None:
+    if array is None and buffer is None:
+        raise ValueError("Must provide one of 'array' or 'buffer'")
+    if array is not None and buffer is not None:
+        raise ValueError("Can only provide one of 'array' or 'buffer'")
+    if buffer is not None and shape is None:
+        raise ValueError("If 'buffer' is provided, 'shape' is also required")
+    if shape is not None and names is not None:
+        raise ValueError("Can only provide one of 'shape' or 'names'")
+
+    from .. import TensorBuffer, TensorDimension
+    from ..tensor_data import _tensordata_buffer_converter, _tensordata_id_converter
+
+    # Assign an id if one wasn't provided
+    if id:
+        self.id = _tensordata_id_converter(id)
+    else:
+        self.id = _tensordata_id_converter(uuid.uuid4())
+
+    if shape:
+        resolved_shape = list(shape)
+    else:
+        resolved_shape = None
+
+    # Figure out the shape
+    if array is not None:
+        # If a shape we provided, it must match the array
+        if resolved_shape:
+            shape_tuple = tuple(d.size for d in resolved_shape)
+            if shape_tuple != array.shape:
+                raise ValueError(f"Provided array ({array.shape}) does not match shape argument ({shape_tuple}).")
+        elif names:
+            if len(array.shape) != len(names):
+                _send_warning(
+                    (
+                        f"len(array.shape) = {len(array.shape)} != "
+                        + f"len(names) = {len(names)}. Dropping tensor dimension names."
+                    ),
+                    2,
+                )
+            resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, names)]
+        else:
+            resolved_shape = [TensorDimension(size) for size in array.shape]
+
+    if resolved_shape is not None:
+        self.shape = resolved_shape
+    else:
+        # This shouldn't be possible but typing can't figure it out
+        raise ValueError("No shape provided.")
+
+    if buffer is not None:
+        self.buffer = _tensordata_buffer_converter(buffer)
+    elif array is not None:
+        self.buffer = TensorBuffer(array.flatten())
+
+
+################################################################################
+# Arrow converters
+################################################################################
+
+
+def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
+    from .. import TensorData, TensorDimension
+
+    if isinstance(data, np.ndarray):
+        tensor_id = _build_tensorid(uuid.uuid4())
+        shape = [TensorDimension(d) for d in data.shape]
+        shape = _build_shape_array(shape).cast(data_type.field("shape").type)
+        buffer = _build_buffer_array(data)
+
+    elif isinstance(data, TensorData):
+        tensor_id = _build_tensorid(data.id)
+        shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
+        buffer = _build_buffer_array(data.buffer)
+
+    else:
+        raise ValueError("Unsupported TensorData source")
+
+    return pa.StructArray.from_arrays(
+        [
+            tensor_id,
+            shape,
+            buffer,
+        ],
+        fields=[data_type.field("id"), data_type.field("shape"), data_type.field("buffer")],
+    ).cast(data_type)
+
+
+################################################################################
+# Internal construction helpers
+################################################################################
 
 
 # TODO(jleibs): Move this somewhere common
@@ -109,30 +226,3 @@ def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
         discriminant=DTYPE_MAP[buffer.dtype.type],
         child=data_inner,
     )
-
-
-def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-    from .. import TensorData, TensorDimension
-
-    if isinstance(data, np.ndarray):
-        tensor_id = _build_tensorid(uuid.uuid4())
-        shape = [TensorDimension(d) for d in data.shape]
-        shape = _build_shape_array(shape).cast(data_type.field("shape").type)
-        buffer = _build_buffer_array(data)
-
-    elif isinstance(data, TensorData):
-        tensor_id = _build_tensorid(data.id)
-        shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
-        buffer = _build_buffer_array(data.buffer)
-
-    else:
-        raise ValueError("Unsupported TensorData source")
-
-    return pa.StructArray.from_arrays(
-        [
-            tensor_id,
-            shape,
-            buffer,
-        ],
-        fields=[data_type.field("id"), data_type.field("shape"), data_type.field("buffer")],
-    ).cast(data_type)

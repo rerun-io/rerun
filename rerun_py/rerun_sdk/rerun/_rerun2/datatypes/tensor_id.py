@@ -14,16 +14,14 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from .._converters import (
-    to_np_uint8,
-)
+from ._overrides import tensorid_uuid_converter  # noqa: F401
 
 __all__ = ["TensorId", "TensorIdArray", "TensorIdArrayLike", "TensorIdLike", "TensorIdType"]
 
 
 @define
 class TensorId:
-    uuid: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    uuid: npt.NDArray[np.uint8] = field(converter=tensorid_uuid_converter)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.uuid, dtype=dtype)

@@ -8,6 +8,7 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
+from ._overrides import image_data_converter  # noqa: F401
 
 __all__ = ["Image"]
 
@@ -25,10 +26,7 @@ class Image(Archetype):
     The viewer has limited support for ignoring extra empty dimensions.
     """
 
-    data: components.TensorDataArray = field(
-        metadata={"component": "primary"},
-        converter=components.TensorDataArray.from_similar,  # type: ignore[misc]
-    )
+    data: components.TensorDataArray = field(metadata={"component": "primary"}, converter=image_data_converter)
     """
     The image data. Should always be a rank-2 or rank-3 tensor.
     """

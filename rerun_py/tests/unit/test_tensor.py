@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 import numpy as np
@@ -16,36 +17,48 @@ TENSOR_DATA_INPUTS: list[rrd.TensorDataArrayLike | None] = [
     rrd.TensorData(
         id=rrd.TensorId(uuid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
         shape=[
-            rrd.TensorDimension(8),
-            rrd.TensorDimension(6),
-            rrd.TensorDimension(3),
-            rrd.TensorDimension(5),
+            rrd.TensorDimension(8, name="a"),
+            rrd.TensorDimension(6, name="b"),
+            rrd.TensorDimension(3, name="c"),
+            rrd.TensorDimension(5, name="d"),
         ],
         buffer=rrd.TensorBuffer(RANDOM_TENSOR_SOURCE),
     ),
     # Implicit construction from ndarray
     RANDOM_TENSOR_SOURCE,
+    # Explicit construction from array
+    rrd.TensorData(array=RANDOM_TENSOR_SOURCE),
+    # Explicit construction from array
+    rrd.TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
+    # Explicit construction from array
+    rrd.TensorData(id=uuid.uuid4(), array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
 ]
 
-CHECK_TENSOR_ID: list[bool] = [True, False]
+# 0 = id
+# 1 = shape
+# 2 = buffer
+CHECK_FIELDS: list[list[int]] = [
+    [0, 1, 2],
+    [2],
+    [2],
+    [1, 2],
+    [1, 2],
+]
 
 
 def tensor_data_expected() -> Any:
     return rrc.TensorDataArray.from_similar(TENSOR_DATA_INPUTS[0])
 
 
-def compare_tensors(left: Any, right: Any, check_id: bool) -> None:
-    # Skip tensor_id
-    if check_id:
-        assert left.storage.field(0) == right.storage.field(0)
-    assert left.storage.field(1) == right.storage.field(1)
-    assert left.storage.field(2) == right.storage.field(2)
+def compare_tensors(left: Any, right: Any, check_fields: list[int]) -> None:
+    for field in check_fields:
+        assert left.storage.field(field) == right.storage.field(field)
 
 
 def test_tensor() -> None:
     expected = tensor_data_expected()
 
-    for input, check_id in zip(TENSOR_DATA_INPUTS, CHECK_TENSOR_ID):
+    for input, check_fields in zip(TENSOR_DATA_INPUTS, CHECK_FIELDS):
         arch = rr2.Tensor(data=input)
 
-        compare_tensors(arch.data, expected, check_id)
+        compare_tensors(arch.data, expected, check_fields)

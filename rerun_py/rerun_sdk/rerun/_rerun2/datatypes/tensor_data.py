@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import tensordata_native_to_pa_array  # noqa: F401
+from ._overrides import tensordata_init, tensordata_native_to_pa_array  # noqa: F401
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
@@ -33,7 +33,7 @@ def _tensordata_buffer_converter(x: datatypes.TensorBufferLike) -> datatypes.Ten
         return datatypes.TensorBuffer(x)
 
 
-@define
+@define(init=False)
 class TensorData:
     """
     A multi-dimensional `Tensor` of data.
@@ -45,6 +45,9 @@ class TensorData:
     These dimensions are combined with an index to look up values from the `buffer` field,
     which stores a contiguous array of typed values.
     """
+
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        tensordata_init(self, *args, **kwargs)
 
     id: datatypes.TensorId = field(converter=_tensordata_id_converter)
     shape: list[datatypes.TensorDimension] = field()
