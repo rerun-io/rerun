@@ -310,6 +310,9 @@ impl Analytics {
     }
 }
 
+/// The "public" API key can be obtained at <https://eu.posthog.com/project/settings#project-api-key>.
+/// Make sure you are logged in to the right organization and have the correct project open.
+/// Unfortunately that stuff is client-side routed, and there's no way to link directly to the right place.
 const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_sgKidIE4WYYFSJHd8LEYY1UZqASpnfQKeMqlJfSXwqg";
 
 #[derive(Debug, serde::Serialize)]
