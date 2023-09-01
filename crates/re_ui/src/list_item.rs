@@ -20,7 +20,10 @@ pub struct ShowCollapsingResponse<R> {
 /// Specification of how the width of the [`ListItem`] must be allocated.
 #[derive(Default, Clone, Copy, Debug)]
 pub enum WidthAllocationMode {
-    /// Allocate the full available width. Useful for fixed-width container.
+    /// Allocate the full available width.
+    ///
+    /// This mode is useful for fixed-width container, but should be avoided for dynamically-sized
+    /// containers as they will immediately grow to their max width.
     ///
     /// Examples of resulting layouts:
     /// ```text
@@ -44,8 +47,10 @@ pub enum WidthAllocationMode {
     #[default]
     Available,
 
-    /// Allocate the width needed for the text and icon(s) (if any). If buttons are used, the label
-    /// will get truncated to display them.
+    /// Allocate the width needed for the text and icon(s) (if any).
+    ///
+    /// This mode doesn't account for buttons (if any). If buttons are enabled, the label will get
+    /// truncated when they are displayed.
     ///
     /// Examples of resulting layouts:
     /// ```text
@@ -62,7 +67,6 @@ pub enum WidthAllocationMode {
     /// hovered, long label: │▼ □ a very very long … ■ ■│
     ///                      └──────────────────────────┘
     /// ```
-    /// The buttons _always_ truncate the label.
     Fit,
 }
 
