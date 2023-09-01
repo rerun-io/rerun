@@ -110,7 +110,7 @@ class TranslationAndMat3x3Array(BaseExtensionArray[TranslationAndMat3x3ArrayLike
 
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError
+        raise NotImplementedError  # You need to implement "translationandmat3x3_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_and_mat3x3.py
 
 
 TranslationAndMat3x3Type._ARRAY_TYPE = TranslationAndMat3x3Array

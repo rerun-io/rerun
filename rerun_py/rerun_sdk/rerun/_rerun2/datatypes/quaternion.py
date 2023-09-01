@@ -62,7 +62,7 @@ class QuaternionArray(BaseExtensionArray[QuaternionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: QuaternionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError
+        raise NotImplementedError  # You need to implement "quaternion_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/quaternion.py
 
 
 QuaternionType._ARRAY_TYPE = QuaternionArray

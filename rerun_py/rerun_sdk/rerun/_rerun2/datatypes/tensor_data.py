@@ -176,7 +176,7 @@ class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError
+        raise NotImplementedError  # You need to implement "tensordata_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_data.py
 
 
 TensorDataType._ARRAY_TYPE = TensorDataArray

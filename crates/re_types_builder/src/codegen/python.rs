@@ -1305,7 +1305,12 @@ fn quote_arrow_support_from_obj(
     let override_ = if overrides.contains(&override_name) {
         format!("return {name_lower}_native_to_pa_array(data, data_type)")
     } else {
-        "raise NotImplementedError".to_owned()
+        let override_file_path = format!(
+            "rerun_py/rerun_sdk/rerun/_rerun2/{}/_overrides/{}.py",
+            obj.kind.plural_snake_case(),
+            obj.snake_case_name()
+        );
+        format!("raise NotImplementedError # You need to implement {override_name:?} in {override_file_path}")
     };
 
     unindent::unindent(&format!(
