@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.slice_mut(s![50..150, 50..120]).fill(1);
     image.slice_mut(s![100..180, 130..280]).fill(2);
 
+    // TODO(#2792): SegmentationImage archetype
     let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::ClassId;
 

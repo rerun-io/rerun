@@ -15,73 +15,92 @@
 use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools;
-use rerun::{
-    archetypes::{AnnotationContext, LineStrips2D, LineStrips3D, Points2D, Transform3D},
-    components::{
-        Box3D, Color, DrawOrder, Label, Point3D, Radius, Rect2D, Tensor, TensorDataMeaning,
-        TextEntry, ViewCoordinates,
-    },
-    coordinates::SignedAxis3,
-    datatypes::{
-        self, Angle, AnnotationInfo, RotationAxisAngle, TranslationRotationScale3D, Vec3D,
-    },
-    external::re_log,
-    EntityPath, MsgSender, RecordingStream,
-};
+use rerun::{external::re_log, EntityPath, RecordingStream};
 
 // --- Rerun logging ---
 
 fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
+    use rerun::{
+        archetypes::Transform3D,
+        components::{Box3D, Color, Label, Radius},
+        datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D},
+    };
+
     rec.set_time_seconds("sim_time", 0f64);
-    MsgSender::new("bbox_test/bbox")
-        .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Color::from(0x00ff0000)])?
-        .with_component(&[Radius(0.005)])?
-        .with_component(&[Label("box/t0".into())])?
-        .send(rec)?;
-    MsgSender::from_archetype(
+    // TODO(#2786): Box3D archetype
+    rec.log_component_lists(
         "bbox_test/bbox",
-        &Transform3D::new(RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0))),
-    )?
-    .send(rec)?;
+        false,
+        1,
+        [
+            &Box3D::new(1.0, 0.5, 0.25) as _,
+            &Color::from(0x00FF00FF) as _,
+            &Radius(0.005) as _,
+            &Label("box/t0".into()) as _,
+        ],
+    )?;
+    rec.log(
+        "bbox_test/bbox",
+        &Transform3D::new(TranslationRotationScale3D::rigid(
+            glam::Vec3::ZERO,
+            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
+        )),
+    )?;
 
     rec.set_time_seconds("sim_time", 1f64);
-    MsgSender::new("bbox_test/bbox")
-        .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Color::from_rgb(255, 255, 0)])?
-        .with_component(&[Radius(0.01)])?
-        .with_component(&[Label("box/t1".into())])?
-        .send(rec)?;
-    MsgSender::from_archetype(
+    rec.log_component_lists(
         "bbox_test/bbox",
-        &Transform3D::new(RotationAxisAngle::new(
+        false,
+        1,
+        [
+            &Box3D::new(1.0, 0.5, 0.25) as _,
+            &Color::from_rgb(255, 255, 0) as _,
+            &Radius(0.01) as _,
+            &Label("box/t1".into()) as _,
+        ],
+    )?;
+    rec.log(
+        "bbox_test/bbox",
+        &Transform3D::new(TranslationRotationScale3D::rigid(
             [1.0, 0.0, 0.0],
-            Angle::Degrees(180.0),
+            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
         )),
-    )?
-    .send(rec)?;
+    )?;
 
     Ok(())
 }
 
 fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
-    // TODO(cmc): need abstractions for this
+    use rerun::components::{Color, Label, Rect2D};
+
+    // TODO(#3023): Cleared archetype
     fn log_cleared(rec: &RecordingStream, ent_path: impl Into<EntityPath>, recursive: bool) {
         use rerun::external::re_log_types::PathOp;
         rec.record_path_op(PathOp::clear(recursive, ent_path.into()));
     }
 
     rec.set_time_seconds("sim_time", 1f64);
-    MsgSender::new("null_test/rect/0")
-        .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[Color::from(0xff000000)])?
-        .with_component(&[Label("Rect1".into())])?
-        .send(rec)?;
-    MsgSender::new("null_test/rect/1")
-        .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[Color::from(0x00ff0000)])?
-        .with_component(&[Label("Rect2".into())])?
-        .send(rec)?;
+    // TODO(#2786): Rect2D archetype
+    rec.log_component_lists(
+        "null_test/rect/0",
+        false,
+        1,
+        [
+            &Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0) as _,
+            &Color::from(0xFF0000FF) as _,
+            &Label("Rect1".into()) as _,
+        ],
+    )?;
+    rec.log_component_lists(
+        "null_test/rect/1",
+        false,
+        1,
+        [
+            &Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0) as _,
+            &Color::from(0x00FF00FF) as _,
+            &Label("Rect2".into()) as _,
+        ],
+    )?;
 
     rec.set_time_seconds("sim_time", 2f64);
     log_cleared(rec, "null_test/rect/0", false);
@@ -90,29 +109,40 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     log_cleared(rec, "null_test/rect", true);
 
     rec.set_time_seconds("sim_time", 4f64);
-    MsgSender::new("null_test/rect/0")
-        .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
-        .send(rec)?;
+    rec.log_component_lists(
+        "null_test/rect/0",
+        false,
+        1,
+        [&Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0) as _],
+    )?;
 
     rec.set_time_seconds("sim_time", 5f64);
-    MsgSender::new("null_test/rect/1")
-        .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
-        .send(rec)?;
+    rec.log_component_lists(
+        "null_test/rect/1",
+        false,
+        1,
+        [&Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0) as _],
+    )?;
 
     Ok(())
 }
 
 fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
+    use rerun::{
+        archetypes::Points3D,
+        components::{Color, Label, Point3D, Radius},
+    };
+
     rec.set_time_seconds("sim_time", 1f64);
 
-    MsgSender::new("3d_points/single_point_unlabeled")
-        .with_component(&[Point3D::new(10.0, 0.0, 0.0)])?
-        .send(rec)?;
-
-    MsgSender::new("3d_points/single_point_labeled")
-        .with_component(&[Point3D::new(0.0, 0.0, 0.0)])?
-        .with_component(&[Label("labeled point".into())])?
-        .send(rec)?;
+    rec.log(
+        "3d_points/single_point_unlabeled",
+        &Points3D::new([(10.0, 0.0, 0.0)]),
+    )?;
+    rec.log(
+        "3d_points/single_point_labeled",
+        &Points3D::new([(0.0, 0.0, 0.0)]).with_labels(["labeled point"]),
+    )?;
 
     fn create_points(
         n: usize,
@@ -136,58 +166,64 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
 
     let (labels, points, radii, _) =
         create_points(9, |x| x * 5.0, |y| y * 5.0 + 10.0, |z| z * 4.0 - 5.0);
-    MsgSender::new("3d_points/spiral_small")
-        .with_component(&points)?
-        .with_component(&labels)?
-        .with_component(&radii)?
-        .send(rec)?;
+    rec.log(
+        "3d_points/spiral_small",
+        &Points3D::new(points).with_labels(labels).with_radii(radii),
+    )?;
 
     let (labels, points, _, colors) =
         create_points(100, |x| x * 5.0, |y| y * 5.0 - 10.0, |z| z * 0.4 - 5.0);
-    MsgSender::new("3d_points/spiral_big")
-        .with_component(&points)?
-        .with_component(&labels)?
-        .with_component(&colors)?
-        .send(rec)?;
+    rec.log(
+        "3d_points/spiral_big",
+        &Points3D::new(points)
+            .with_labels(labels)
+            .with_colors(colors),
+    )?;
 
     Ok(())
 }
 
+// TODO(#2786): Rect2D archetype
 fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
     use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
 
+    use rerun::{
+        archetypes::Tensor,
+        components::{Color, Rect2D},
+    };
+
     // Add an image
     rec.set_time_seconds("sim_time", 1f64);
     let img = Array::<u8, _>::from_elem((1024, 1024, 3, 1).f(), 128);
-    MsgSender::new("rects_test/img")
-        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
-        .send(rec)?;
+    rec.log(
+        "rects_test/img",
+        &Tensor::try_from(img.as_standard_layout().view())?,
+    )?;
 
     // 20 random rectangles
-    // TODO(cmc): shouldn't have to collect, need to fix the "must have a ref" thingy
     let rects_xy = Array::random((20, 2), Uniform::new(0.0, 1.0)) * 1024.0f32;
     let rects_wh = Array::random((20, 2), Uniform::new(0.0, 1.0)) * (1024.0 - &rects_xy + 1.0);
     let rects = ndarray::concatenate(Axis(1), &[rects_xy.view(), rects_wh.view()])?
         .axis_iter(Axis(0))
         .map(|r| Rect2D::from_xywh(r[0], r[1], r[2], r[3]))
-        .collect::<Vec<_>>();
+        .collect_vec();
     let colors = Array::random((20, 3), Uniform::new(0, 255))
         .axis_iter(Axis(0))
         .map(|c| Color::from_rgb(c[0], c[1], c[2]))
-        .collect::<Vec<_>>();
+        .collect_vec();
 
     rec.set_time_seconds("sim_time", 2f64);
-    MsgSender::new("rects_test/rects")
-        .with_component(&rects)?
-        .with_component(&colors)?
-        .send(rec)?;
+    rec.log_component_lists(
+        "rects_test/rects",
+        false,
+        rects.len() as _,
+        [&rects as _, &colors as _],
+    )?;
 
     // Clear the rectangles by logging an empty set
     rec.set_time_seconds("sim_time", 3f64);
-    MsgSender::new("rects_test/rects")
-        .with_component(&Vec::<Rect2D>::new())?
-        .send(rec)?;
+    rec.log_component_lists("rects_test/rects", false, 0, [&Vec::<Rect2D>::new() as _])?;
 
     Ok(())
 }
@@ -210,72 +246,91 @@ fn colored_tensor<F: Fn(usize, usize) -> [u8; 3]>(
 fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
 
+    use rerun::{
+        archetypes::{Image, LineStrips2D, Points2D},
+        components::{DrawOrder, Rect2D},
+    };
+
     rec.set_time_seconds("sim_time", 1f64);
 
     // Add several overlapping images.
     // Large dark gray in the background
+    // TODO: Not sure why I need to_owned here?
     let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64);
-    MsgSender::new("2d_layering/background")
-        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
-        .with_component(&[DrawOrder(0.0)])?
-        .send(rec)?;
+    rec.log(
+        "2d_layering/background",
+        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(0.0),
+    )?;
     // Smaller gradient in the middle
     let img = colored_tensor(256, 256, |x, y| [x as u8, y as u8, 0]);
-    MsgSender::new("2d_layering/middle_gradient")
-        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
-        .with_component(&[DrawOrder(1.0)])?
-        .send(rec)?;
+    rec.log(
+        "2d_layering/middle_gradient",
+        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(1.0),
+    )?;
     // Slightly smaller blue in the middle, on the same layer as the previous.
     let img = colored_tensor(192, 192, |_, _| [0, 0, 255]);
-    MsgSender::new("2d_layering/middle_blue")
-        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
-        .with_component(&[DrawOrder(1.0)])?
-        .send(rec)?;
+    rec.log(
+        "2d_layering/middle_blue",
+        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(1.0),
+    )?;
     // Small white on top.
     let img = Array::<u8, _>::from_elem((128, 128, 1).f(), 255);
-    MsgSender::new("2d_layering/top")
-        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
-        .with_component(&[DrawOrder(2.0)])?
-        .send(rec)?;
+    rec.log(
+        "2d_layering/top",
+        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(2.0),
+    )?;
 
     // Rectangle in between the top and the middle.
-    MsgSender::new("2d_layering/rect_between_top_and_middle")
-        .with_component(&[Rect2D::from_xywh(64.0, 64.0, 256.0, 256.0)])?
-        .with_component(&[DrawOrder(1.5)])?
-        .send(rec)?;
+    rec.log_component_lists(
+        "2d_layering/rect_between_top_and_middle",
+        false,
+        1,
+        [
+            &Rect2D::from_xywh(64.0, 64.0, 256.0, 256.0) as _,
+            &DrawOrder(1.5) as _,
+        ],
+    )?;
 
     // Lines behind the rectangle.
-    MsgSender::from_archetype(
+    rec.log(
         "2d_layering/lines_behind_rect",
         &LineStrips2D::new([(0..20).map(|i| ((i * 20) as f32, (i % 2 * 100 + 100) as f32))])
             .with_draw_order(1.25),
-    )?
-    .send(rec)?;
+    )?;
 
     // And some points in front of the rectangle.
-    MsgSender::from_archetype(
+    rec.log(
         "2d_layering/points_between_top_and_middle",
         &Points2D::new(
             (0..256).map(|i| (32.0 + (i / 16) as f32 * 16.0, 64.0 + (i % 16) as f32 * 16.0)),
         )
         .with_draw_order(1.51),
-    )?
-    .send(rec)?;
+    )?;
 
     Ok(())
 }
 
 fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
+    use rerun::{
+        archetypes::{AnnotationContext, Points2D},
+        components::{Tensor, TensorDataMeaning, TextEntry},
+        datatypes::{self, AnnotationInfo},
+    };
+
     // TODO(cmc): All of these text logs should really be going through `re_log` and automagically
     // fed back into rerun via a `tracing` backend. At the _very_ least we should have a helper
     // available for this.
     // In either case, this raises the question of tracking time at the SDK level, akin to what the
     // python SDK does.
     fn log_info(rec: &RecordingStream, text: &str) -> anyhow::Result<()> {
-        MsgSender::new("logs/seg_test_log")
-            .with_component(&[TextEntry::new(text, Some("INFO".into()))])?
-            .send(rec)
-            .map_err(Into::into)
+        // TODO(#2793): TextLog archetype
+        rec.log_component_lists(
+            "logs/seg_test_log",
+            false,
+            1,
+            [&TextEntry::new(text, Some("INFO".into())) as _],
+        )
+        .map_err(Into::into)
     }
 
     // Log an image before we have set up our labels
@@ -287,43 +342,37 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
 
     rec.set_time_seconds("sim_time", 1f64);
 
+    // TODO(#2792): SegmentationImage archetype
     let mut tensor = Tensor::try_from(segmentation_img.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::ClassId;
-    MsgSender::new("seg_test/img")
-        .with_component(&[tensor])?
-        .send(rec)?;
+    rec.log_component_lists("seg_test/img", false, 1, [&tensor as _])?;
 
     // Log a bunch of classified 2D points
-    MsgSender::from_archetype(
+    rec.log(
         "seg_test/single_point",
         &Points2D::new([(64.0, 64.0)]).with_class_ids([13]),
-    )?
-    .send(rec)?;
-    MsgSender::from_archetype(
+    )?;
+    rec.log(
         "seg_test/single_point_labeled",
         &Points2D::new([(90.0, 50.0)])
             .with_class_ids([13])
             .with_labels(["labeled point"]),
-    )?
-    .send(rec)?;
-    MsgSender::from_archetype(
+    )?;
+    rec.log(
         "seg_test/several_points0",
         &Points2D::new([(20.0, 50.0), (100.0, 70.0), (60.0, 30.0)]).with_class_ids([42]),
-    )?
-    .send(rec)?;
-    MsgSender::from_archetype(
+    )?;
+    rec.log(
         "seg_test/several_points1",
         &Points2D::new([(40.0, 50.0), (120.0, 70.0), (80.0, 30.0)]).with_class_ids([13, 42, 99]),
-    )?
-    .send(rec)?;
-    MsgSender::from_archetype(
+    )?;
+    rec.log(
         "seg_test/many points",
         &Points2D::new(
             (0..25).map(|i| (100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0)),
         )
         .with_class_ids([42]),
-    )?
-    .send(rec)?;
+    )?;
     log_info(
         rec,
         "no rects, default colored points, a single point has a label",
@@ -331,11 +380,10 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
 
     rec.set_time_seconds("sim_time", 2f64);
 
-    MsgSender::from_archetype(
+    rec.log(
         "seg_test",
         &AnnotationContext::new([(13, "label1"), (42, "label2"), (99, "label3")]),
-    )?
-    .send(rec)?;
+    )?;
     log_info(
         rec,
         "default colored rects, default colored points, all points except the \
@@ -345,33 +393,31 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time_seconds("sim_time", 3f64);
 
     // Log an updated segmentation map with specific colors
-    MsgSender::from_archetype(
+    rec.log(
         "seg_test",
         &AnnotationContext::new([
-            (13, "label1", datatypes::Color::from(0xff000000)),
-            (42, "label2", datatypes::Color::from(0x00ff0000)),
+            (13, "label1", datatypes::Color::from(0xFF0000FF)),
+            (42, "label2", datatypes::Color::from(0x00FF00FF)),
             (99, "label3", datatypes::Color::from_rgb(0, 0, 255)),
         ]),
-    )?
-    .send(rec)?;
+    )?;
     log_info(rec, "points/rects with user specified colors")?;
 
     rec.set_time_seconds("sim_time", 4f64);
 
     // Log with a mixture of set and unset colors / labels
-    MsgSender::from_archetype(
+    rec.log(
         "seg_test",
         &AnnotationContext::new([
             AnnotationInfo {
                 id: 13,
                 label: None,
-                color: Some(datatypes::Color::from(0xff000000)),
+                color: Some(datatypes::Color::from(0xFF0000FF)),
             },
-            (42, "label2", datatypes::Color::from(0x00ff0000)).into(),
+            (42, "label2", datatypes::Color::from(0x00FF00FF)).into(),
             (99, "label3").into(),
         ]),
-    )?
-    .send(rec)?;
+    )?;
     log_info(
         rec,
         "label1 disappears and everything with label3 is now default colored again",
@@ -381,27 +427,42 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
 }
 
 fn test_text_logs(rec: &RecordingStream) -> anyhow::Result<()> {
+    use rerun::components::{Color, TextEntry};
+
     // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
     rec.set_time_seconds("sim_time", 0f64);
 
-    MsgSender::new("logs")
-        .with_component(&[TextEntry::new("Text with explicitly set color", None)])?
-        .with_component(&[Color::from_rgb(255, 215, 0)])?
-        .send(rec)?;
+    // TODO(#2793): TextLog archetype
+    rec.log_component_lists(
+        "logs",
+        false,
+        1,
+        [
+            &TextEntry::new("Text with explicitly set color", None) as _,
+            &Color::from_rgb(255, 215, 0) as _,
+        ],
+    )?;
 
-    MsgSender::new("logs")
-        .with_component(&[TextEntry::new(
-            "this entry has loglevel TRACE",
-            Some("TRACE".into()),
-        )])?
-        .send(rec)?;
+    rec.log_component_lists(
+        "logs",
+        false,
+        1,
+        [&TextEntry::new("this entry has loglevel TRACE", Some("TRACE".into())) as _],
+    )?;
 
     Ok(())
 }
 
 fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
+    use rerun::{
+        archetypes::{LineStrips3D, Points3D, Transform3D},
+        components::{Color, Point3D, ViewCoordinates},
+        coordinates::SignedAxis3,
+        datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
+    };
+
     let sun_to_planet_distance = 6.0;
     let planet_to_moon_distance = 3.0;
     let rotation_speed_planet = 2.0;
@@ -412,16 +473,18 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
         rec: &RecordingStream,
         ent_path: impl Into<EntityPath>,
     ) -> anyhow::Result<()> {
+        // TODO(#2816): Pinhole archetype
         let view_coords = ViewCoordinates::from_up_and_handedness(
             SignedAxis3::POSITIVE_Z,
             rerun::coordinates::Handedness::Right,
         );
-        MsgSender::new(ent_path.into())
-            .with_timeless(true)
-            .with_component(&[view_coords])?
-            .with_component(&[Color::from_rgb(255, 215, 0)])?
-            .send(rec)
-            .map_err(Into::into)
+        rec.log_component_lists(
+            ent_path,
+            true,
+            1,
+            [&view_coords as _, &Color::from_rgb(255, 215, 0) as _],
+        )
+        .map_err(Into::into)
     }
     log_coordinate_space(rec, "transforms3d")?;
     log_coordinate_space(rec, "transforms3d/sun")?;
@@ -437,12 +500,13 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
         radius: f32,
         color: [u8; 3],
     ) -> anyhow::Result<()> {
-        MsgSender::new(ent_path.into())
-            .with_component(&[Point3D::ZERO])?
-            .with_component(&[Radius(radius)])?
-            .with_component(&[Color::from_rgb(color[0], color[1], color[2])])?
-            .send(rec)
-            .map_err(Into::into)
+        rec.log(
+            ent_path,
+            &Points3D::new([Point3D::ZERO])
+                .with_radii([radius])
+                .with_colors([Color::from_rgb(color[0], color[1], color[2])]),
+        )
+        .map_err(Into::into)
     }
     log_point(rec, "transforms3d/sun", 1.0, [255, 200, 10])?;
     log_point(rec, "transforms3d/sun/planet", 0.4, [40, 80, 200])?;
@@ -464,11 +528,12 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     })
     .take(200)
     .collect::<Vec<_>>();
-    MsgSender::new("transforms3d/sun/planet/dust")
-        .with_component(&points)?
-        .with_splat(Radius(0.025))?
-        .with_splat(Color::from_rgb(80, 80, 80))?
-        .send(rec)?;
+    rec.log(
+        "transforms3d/sun/planet/dust",
+        &Points3D::new(points)
+            .with_radii([0.025])
+            .with_colors([Color::from_rgb(80, 80, 80)]),
+    )?;
 
     // paths where the planet & moon move
     let create_path = |distance: f32| {
@@ -477,23 +542,21 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
             (angle.sin() * distance, angle.cos() * distance, 0.0)
         })])
     };
-    MsgSender::from_archetype(
+    rec.log(
         "transforms3d/sun/planet_path",
         &create_path(sun_to_planet_distance),
-    )?
-    .send(rec)?;
-    MsgSender::from_archetype(
+    )?;
+    rec.log(
         "transforms3d/sun/planet/moon_path",
         &create_path(planet_to_moon_distance),
-    )?
-    .send(rec)?;
+    )?;
 
     for i in 0..6 * 120 {
         let time = i as f32 / 120.0;
 
         rec.set_time_seconds("sim_time", Some(time as f64));
 
-        MsgSender::from_archetype(
+        rec.log(
             "transforms3d/sun/planet",
             &Transform3D::new(rerun::datatypes::TranslationRotationScale3D::rigid(
                 [
@@ -503,10 +566,9 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
                 ],
                 RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
             )),
-        )?
-        .send(rec)?;
+        )?;
 
-        MsgSender::from_archetype(
+        rec.log(
             "transforms3d/sun/planet/moon",
             &Transform3D::new(
                 TranslationRotationScale3D::from(Vec3D::new(
@@ -516,8 +578,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
                 ))
                 .from_parent(),
             ),
-        )?
-        .send(rec)?;
+        )?;
     }
 
     Ok(())
