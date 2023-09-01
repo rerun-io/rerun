@@ -43,7 +43,7 @@ impl ViewerAnalytics {
 
         #[cfg(target_arch = "wasm32")]
         if let Some(url) = analytics_url {
-            analytics.register("url", url)
+            analytics.register("url", url);
         }
 
         analytics

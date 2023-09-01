@@ -149,7 +149,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
 pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
-    config.save().unwrap()
+    config.save().unwrap();
 }
 
 #[wasm_bindgen]
