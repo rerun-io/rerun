@@ -90,6 +90,16 @@ from .rotation_axis_angle import (
     RotationAxisAngleType,
 )
 from .scale3d import Scale3D, Scale3DArray, Scale3DArrayLike, Scale3DLike, Scale3DType
+from .tensor_buffer import TensorBuffer, TensorBufferArray, TensorBufferArrayLike, TensorBufferLike, TensorBufferType
+from .tensor_data import TensorData, TensorDataArray, TensorDataArrayLike, TensorDataLike, TensorDataType
+from .tensor_dimension import (
+    TensorDimension,
+    TensorDimensionArray,
+    TensorDimensionArrayLike,
+    TensorDimensionLike,
+    TensorDimensionType,
+)
+from .tensor_id import TensorId, TensorIdArray, TensorIdArrayLike, TensorIdLike, TensorIdType
 from .transform3d import Transform3D, Transform3DArray, Transform3DArrayLike, Transform3DLike, Transform3DType
 from .translation_and_mat3x3 import (
     TranslationAndMat3x3,
@@ -230,6 +240,26 @@ __all__ = [
     "StringComponentArrayLike",
     "StringComponentLike",
     "StringComponentType",
+    "TensorBuffer",
+    "TensorBufferArray",
+    "TensorBufferArrayLike",
+    "TensorBufferLike",
+    "TensorBufferType",
+    "TensorData",
+    "TensorDataArray",
+    "TensorDataArrayLike",
+    "TensorDataLike",
+    "TensorDataType",
+    "TensorDimension",
+    "TensorDimensionArray",
+    "TensorDimensionArrayLike",
+    "TensorDimensionLike",
+    "TensorDimensionType",
+    "TensorId",
+    "TensorIdArray",
+    "TensorIdArrayLike",
+    "TensorIdLike",
+    "TensorIdType",
     "Transform3D",
     "Transform3DArray",
     "Transform3DArrayLike",

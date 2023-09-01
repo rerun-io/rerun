@@ -31,6 +31,9 @@ ecolor = ["dep:ecolor"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["dep:glam", "dep:macaw"]
 
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
+image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
+
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_string_interner/serde"]
 
@@ -41,6 +44,7 @@ testing = []
 [dependencies]
 # Rerun
 re_error.workspace = true
+re_log.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true
 
@@ -57,16 +61,22 @@ backtrace = "0.3"
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"
 itertools.workspace = true
+half.workspace = true
+ndarray.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
+uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 # External (optional)
 ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
+image = { workspace = true, optional = true, default-features = false }
 macaw = { workspace = true, optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
+zune-core = { version = "0.2", optional = true }
+zune-jpeg = { version = "0.3", optional = true }
 
 
 [dev-dependencies]

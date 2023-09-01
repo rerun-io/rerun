@@ -51,7 +51,7 @@ pub fn quote_arrow_deserializer(
     obj: &Object,
 ) -> TokenStream {
     // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
-    let data_src = format_ident!("data");
+    let data_src = format_ident!("arrow_data");
 
     let datatype = &arrow_registry.get(&obj.fqname);
     let quoted_datatype = quote! { Self::arrow_datatype() };
@@ -849,7 +849,7 @@ pub fn quote_arrow_deserializer_buffer_slice(
     obj: &Object,
 ) -> TokenStream {
     // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
-    let data_src = format_ident!("data");
+    let data_src = format_ident!("arrow_data");
 
     let datatype = &arrow_registry.get(&obj.fqname);
 

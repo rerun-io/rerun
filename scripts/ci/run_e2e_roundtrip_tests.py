@@ -20,11 +20,12 @@ from os.path import isfile, join
 
 ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
-# TODO(andreas): Remove these
-cpp_opt_out = [
-    "line_strips2d",  # TODO(#2786): Needs rect
-    "points2d",  # TODO(#2786): Needs rect
-]
+opt_out = {
+    "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
+    "points2d": ["cpp"],  # TODO(#2786): Needs rect
+    "image": ["cpp", "py", "rust"],
+    "tensor": ["cpp", "py", "rust"],
+}
 
 
 def main() -> None:
@@ -89,13 +90,18 @@ def main() -> None:
     archetypes = [filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"]
 
     for arch in archetypes:
-        python_output_path = run_roundtrip_python(arch)
-        rust_output_path = run_roundtrip_rust(arch, args.release, args.target, args.target_dir)
-        run_comparison(python_output_path, rust_output_path, args.full_dump)
+        arch_opt_out = opt_out.get(arch, [])
 
-        if arch not in cpp_opt_out:
-            cpp_output_path = run_roundtrip_cpp(arch, args.release)
-            run_comparison(rust_output_path, cpp_output_path, args.full_dump)
+        if "rust" not in arch_opt_out:
+            rust_output_path = run_roundtrip_rust(arch, args.release, args.target, args.target_dir)
+
+            if "py" not in arch_opt_out:
+                python_output_path = run_roundtrip_python(arch)
+                run_comparison(python_output_path, rust_output_path, args.full_dump)
+
+            if "cpp" not in arch_opt_out:
+                cpp_output_path = run_roundtrip_cpp(arch, args.release)
+                run_comparison(rust_output_path, cpp_output_path, args.full_dump)
 
 
 def roundtrip_env() -> dict[str, str]:

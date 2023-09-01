@@ -155,6 +155,7 @@ pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
 
 pub const ATTR_RUST_CUSTOM_CLAUSE: &str = "attr.rust.custom_clause";
 pub const ATTR_RUST_DERIVE: &str = "attr.rust.derive";
+pub const ATTR_RUST_DERIVE_ONLY: &str = "attr.rust.derive_only";
 pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
 pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 

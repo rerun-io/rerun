@@ -137,7 +137,7 @@ impl crate::Loggable for Mat3x3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -145,7 +145,7 @@ impl crate::Loggable for Mat3x3 {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
@@ -159,25 +159,25 @@ impl crate::Loggable for Mat3x3 {
                             }),
                             9usize,
                         ),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.Mat3x3#coeffs")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
                 let offsets = (0..)
                     .step_by(9usize)
-                    .zip((9usize..).step_by(9usize).take(data.len()));
-                let data_inner = {
-                    let data_inner = &**data.values();
-                    data_inner
+                    .zip((9usize..).step_by(9usize).take(arrow_data.len()));
+                let arrow_data_inner = {
+                    let arrow_data_inner = &**arrow_data.values();
+                    arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::Float32,
-                                data_inner.data_type().clone(),
+                                arrow_data_inner.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.Mat3x3#coeffs")?
@@ -185,27 +185,30 @@ impl crate::Loggable for Mat3x3 {
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())
-                    .map(|elem| {
-                        elem.map(|(start, end)| {
-                            debug_assert!(end - start == 9usize);
-                            if end as usize > data_inner.len() {
-                                return Err(crate::DeserializationError::offset_slice_oob(
-                                    (start, end),
-                                    data_inner.len(),
-                                ));
-                            }
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets,
+                    arrow_data.validity(),
+                )
+                .map(|elem| {
+                    elem.map(|(start, end)| {
+                        debug_assert!(end - start == 9usize);
+                        if end as usize > arrow_data_inner.len() {
+                            return Err(crate::DeserializationError::offset_slice_oob(
+                                (start, end),
+                                arrow_data_inner.len(),
+                            ));
+                        }
 
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data =
-                                unsafe { data_inner.get_unchecked(start as usize..end as usize) };
-                            let data = data.iter().cloned().map(Option::unwrap_or_default);
-                            let arr = array_init::from_iter(data).unwrap();
-                            Ok(arr)
-                        })
-                        .transpose()
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data =
+                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data.iter().cloned().map(Option::unwrap_or_default);
+                        let arr = array_init::from_iter(data).unwrap();
+                        Ok(arr)
                     })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }

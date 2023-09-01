@@ -291,7 +291,7 @@ impl crate::Loggable for ClassDescription {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -299,7 +299,7 @@ impl crate::Loggable for ClassDescription {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
@@ -334,18 +334,19 @@ impl crate::Loggable for ClassDescription {
                                 metadata: [].into(),
                             },
                         ]),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.ClassDescription")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays) = (data.fields(), data.values());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                let (arrow_data_fields, arrow_data_arrays) =
+                    (arrow_data.fields(), arrow_data.values());
+                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
                     .map(|field| field.name.as_str())
-                    .zip(data_arrays)
+                    .zip(arrow_data_arrays)
                     .collect();
                 let info = {
                     if !arrays_by_name.contains_key("info") {
@@ -355,8 +356,8 @@ impl crate::Loggable for ClassDescription {
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
                     }
-                    let data = &**arrays_by_name["info"];
-                    crate::datatypes::AnnotationInfo::try_from_arrow_opt(data)
+                    let arrow_data = &**arrays_by_name["info"];
+                    crate::datatypes::AnnotationInfo::try_from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.ClassDescription#info")?
                         .into_iter()
                 };
@@ -368,9 +369,9 @@ impl crate::Loggable for ClassDescription {
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
                     }
-                    let data = &**arrays_by_name["keypoint_annotations"];
+                    let arrow_data = &**arrays_by_name["keypoint_annotations"];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -382,43 +383,45 @@ impl crate::Loggable for ClassDescription {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context(
                                 "rerun.datatypes.ClassDescription#keypoint_annotations",
                             )?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                crate::datatypes::AnnotationInfo::try_from_arrow_opt(data_inner)
-                                    .with_context(
-                                        "rerun.datatypes.ClassDescription#keypoint_annotations",
-                                    )?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                crate::datatypes::AnnotationInfo::try_from_arrow_opt(
+                                    arrow_data_inner,
+                                )
+                                .with_context(
+                                    "rerun.datatypes.ClassDescription#keypoint_annotations",
+                                )?
+                                .into_iter()
+                                .collect::<Vec<_>>()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner.get_unchecked(start as usize..end as usize)
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data
                                         .iter()
@@ -442,9 +445,9 @@ impl crate::Loggable for ClassDescription {
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
                     }
-                    let data = &**arrays_by_name["keypoint_connections"];
+                    let arrow_data = &**arrays_by_name["keypoint_connections"];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
@@ -456,43 +459,43 @@ impl crate::Loggable for ClassDescription {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     })),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context(
                                 "rerun.datatypes.ClassDescription#keypoint_connections",
                             )?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                crate::datatypes::KeypointPair::try_from_arrow_opt(data_inner)
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                crate::datatypes::KeypointPair::try_from_arrow_opt(arrow_data_inner)
                                     .with_context(
                                         "rerun.datatypes.ClassDescription#keypoint_connections",
                                     )?
                                     .into_iter()
                                     .collect::<Vec<_>>()
                             };
-                            let offsets = data.offsets();
+                            let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets.iter().zip(offsets.lengths()),
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, len)| {
                                     let start = *start as usize;
                                     let end = start + len;
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner.get_unchecked(start as usize..end as usize)
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data
                                         .iter()
@@ -510,7 +513,7 @@ impl crate::Loggable for ClassDescription {
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(info, keypoint_annotations, keypoint_connections),
-                    data.validity(),
+                    arrow_data.validity(),
                 )
                 .map(|opt| {
                     opt.map(|(info, keypoint_annotations, keypoint_connections)| {

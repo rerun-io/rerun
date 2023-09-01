@@ -177,7 +177,7 @@ impl crate::Loggable for KeypointPair {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -185,7 +185,7 @@ impl crate::Loggable for KeypointPair {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
@@ -204,18 +204,19 @@ impl crate::Loggable for KeypointPair {
                                 metadata: [].into(),
                             },
                         ]),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.KeypointPair")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays) = (data.fields(), data.values());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                let (arrow_data_fields, arrow_data_arrays) =
+                    (arrow_data.fields(), arrow_data.values());
+                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
                     .map(|field| field.name.as_str())
-                    .zip(data_arrays)
+                    .zip(arrow_data_arrays)
                     .collect();
                 let keypoint0 = {
                     if !arrays_by_name.contains_key("keypoint0") {
@@ -225,13 +226,14 @@ impl crate::Loggable for KeypointPair {
                         ))
                         .with_context("rerun.datatypes.KeypointPair");
                     }
-                    let data = &**arrays_by_name["keypoint0"];
-                    data.as_any()
+                    let arrow_data = &**arrays_by_name["keypoint0"];
+                    arrow_data
+                        .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::UInt16,
-                                data.data_type().clone(),
+                                arrow_data.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint0")?
@@ -247,13 +249,14 @@ impl crate::Loggable for KeypointPair {
                         ))
                         .with_context("rerun.datatypes.KeypointPair");
                     }
-                    let data = &**arrays_by_name["keypoint1"];
-                    data.as_any()
+                    let arrow_data = &**arrays_by_name["keypoint1"];
+                    arrow_data
+                        .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::UInt16,
-                                data.data_type().clone(),
+                                arrow_data.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint1")?
@@ -263,7 +266,7 @@ impl crate::Loggable for KeypointPair {
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(keypoint0, keypoint1),
-                    data.validity(),
+                    arrow_data.validity(),
                 )
                 .map(|opt| {
                     opt.map(|(keypoint0, keypoint1)| {

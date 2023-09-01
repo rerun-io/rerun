@@ -23,7 +23,7 @@ use crate::{
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_CUSTOM_CLAUSE,
-    ATTR_RUST_DERIVE, ATTR_RUST_REPR,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_REPR,
 };
 
 use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
@@ -287,9 +287,9 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
     // This is difficult to do with regex, because the patterns with newlines overlap.
 
     let start_pattern = "# [doc = \"";
-    let end_pattern = "\"]"; // assues there is no escaped quote followed by a bracket
+    let end_pattern = "\"]\n"; // assues there is no escaped quote followed by a bracket
 
-    let problematic = r#"\"]"#;
+    let problematic = r#"\"]\n"#;
     assert!(
         !code.contains(problematic),
         "The codegen cannot handle the string {problematic} yet"
@@ -378,8 +378,18 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
-        let quoted_derive_clone_debug = quote_derive_clone_debug();
-        let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
+
+        let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+        let quoted_derive_clone_debug = if derive_only {
+            quote!()
+        } else {
+            quote_derive_clone_debug()
+        };
+        let quoted_derive_clause = if derive_only {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        } else {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        };
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
         let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
@@ -448,8 +458,17 @@ impl QuotedObject {
         let name = format_ident!("{name}");
 
         let quoted_doc = quote_doc_from_docs(docs);
-        let quoted_derive_clone_debug = quote_derive_clone_debug();
-        let quoted_derive_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive");
+        let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+        let quoted_derive_clone_debug = if derive_only {
+            quote!()
+        } else {
+            quote_derive_clone_debug()
+        };
+        let quoted_derive_clause = if derive_only {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        } else {
+            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        };
         let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
         let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
@@ -783,7 +802,7 @@ fn quote_trait_impls_from_obj(
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    fn try_from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
@@ -791,7 +810,7 @@ fn quote_trait_impls_from_obj(
 
                         // This code-path cannot have null fields. If it does have a validity mask
                         // all bits must indicate valid data.
-                        if let Some(validity) = data.validity() {
+                        if let Some(validity) = arrow_data.validity() {
                             if validity.unset_bits() != 0 {
                                 return Err(crate::DeserializationError::missing_data());
                             }
@@ -840,7 +859,7 @@ fn quote_trait_impls_from_obj(
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
+                    fn try_from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
@@ -1131,11 +1150,11 @@ fn quote_trait_impls_from_obj(
 
                     #[inline]
                     fn try_from_arrow(
-                        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
+                        arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
                         use crate::{Loggable as _, ResultExt as _};
 
-                        let arrays_by_name: ::std::collections::HashMap<_, _> = data
+                        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
                             .into_iter()
                             .map(|(field, array)| (field.name, array))
                             .collect();

@@ -298,7 +298,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -306,7 +306,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
@@ -331,18 +331,19 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 metadata: [].into(),
                             },
                         ]),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.TranslationAndMat3x3")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays) = (data.fields(), data.values());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                let (arrow_data_fields, arrow_data_arrays) =
+                    (arrow_data.fields(), arrow_data.values());
+                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
                     .map(|field| field.name.as_str())
-                    .zip(data_arrays)
+                    .zip(arrow_data_arrays)
                     .collect();
                 let translation = {
                     if !arrays_by_name.contains_key("translation") {
@@ -352,9 +353,9 @@ impl crate::Loggable for TranslationAndMat3x3 {
                         ))
                         .with_context("rerun.datatypes.TranslationAndMat3x3");
                     }
-                    let data = &**arrays_by_name["translation"];
+                    let arrow_data = &**arrays_by_name["translation"];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
@@ -368,25 +369,25 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                         }),
                                         3usize,
                                     ),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TranslationAndMat3x3#translation")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
                             let offsets = (0..)
                                 .step_by(3usize)
-                                .zip((3usize..).step_by(3usize).take(data.len()));
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                                .zip((3usize..).step_by(3usize).take(arrow_data.len()));
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Float32,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context(
@@ -398,21 +399,21 @@ impl crate::Loggable for TranslationAndMat3x3 {
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets,
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 3usize);
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner.get_unchecked(start as usize..end as usize)
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
                                     let arr = array_init::from_iter(data).unwrap();
@@ -438,9 +439,9 @@ impl crate::Loggable for TranslationAndMat3x3 {
                         ))
                         .with_context("rerun.datatypes.TranslationAndMat3x3");
                     }
-                    let data = &**arrays_by_name["matrix"];
+                    let arrow_data = &**arrays_by_name["matrix"];
                     {
-                        let data = data
+                        let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
@@ -454,25 +455,25 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                         }),
                                         9usize,
                                     ),
-                                    data.data_type().clone(),
+                                    arrow_data.data_type().clone(),
                                 )
                             })
                             .with_context("rerun.datatypes.TranslationAndMat3x3#matrix")?;
-                        if data.is_empty() {
+                        if arrow_data.is_empty() {
                             Vec::new()
                         } else {
                             let offsets = (0..)
                                 .step_by(9usize)
-                                .zip((9usize..).step_by(9usize).take(data.len()));
-                            let data_inner = {
-                                let data_inner = &**data.values();
-                                data_inner
+                                .zip((9usize..).step_by(9usize).take(arrow_data.len()));
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
                                         crate::DeserializationError::datatype_mismatch(
                                             DataType::Float32,
-                                            data_inner.data_type().clone(),
+                                            arrow_data_inner.data_type().clone(),
                                         )
                                     })
                                     .with_context("rerun.datatypes.TranslationAndMat3x3#matrix")?
@@ -482,21 +483,21 @@ impl crate::Loggable for TranslationAndMat3x3 {
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets,
-                                data.validity(),
+                                arrow_data.validity(),
                             )
                             .map(|elem| {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 9usize);
-                                    if end as usize > data_inner.len() {
+                                    if end as usize > arrow_data_inner.len() {
                                         return Err(crate::DeserializationError::offset_slice_oob(
                                             (start, end),
-                                            data_inner.len(),
+                                            arrow_data_inner.len(),
                                         ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        data_inner.get_unchecked(start as usize..end as usize)
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
                                     let arr = array_init::from_iter(data).unwrap();
@@ -522,13 +523,14 @@ impl crate::Loggable for TranslationAndMat3x3 {
                         ))
                         .with_context("rerun.datatypes.TranslationAndMat3x3");
                     }
-                    let data = &**arrays_by_name["from_parent"];
-                    data.as_any()
+                    let arrow_data = &**arrays_by_name["from_parent"];
+                    arrow_data
+                        .as_any()
                         .downcast_ref::<BooleanArray>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::Boolean,
-                                data.data_type().clone(),
+                                arrow_data.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.TranslationAndMat3x3#from_parent")?
@@ -536,7 +538,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(translation, matrix, from_parent),
-                    data.validity(),
+                    arrow_data.validity(),
                 )
                 .map(|opt| {
                     opt.map(|(translation, matrix, from_parent)| {

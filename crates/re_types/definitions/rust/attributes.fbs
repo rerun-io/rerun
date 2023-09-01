@@ -7,9 +7,18 @@ attribute "attr.rust.tuple_struct";
 
 /// Apply to any object to generate a #derive clause.
 ///
+/// This always automatically includes `Debug` & `Clone`, see `attr.rust.derive_only` if you
+/// don't want those for any reason.
+///
 /// The value of the attribute will be trimmed out but otherwise left as-is.
 /// E.g. "attr.rust.derive": "Copy"`.
 attribute "attr.rust.derive";
+
+/// Apply to any object to generate a #derive clause.
+///
+/// The value of the attribute will be trimmed out but otherwise left as-is.
+/// E.g. "attr.rust.derive": "Copy"`.
+attribute "attr.rust.derive_only";
 
 /// Apply to any object to generate an arbitrary clause.
 ///

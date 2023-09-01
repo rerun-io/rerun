@@ -41,7 +41,7 @@ fn arrow_array_builder_type_and_declaration(
                 Type::UInt64 => "UInt64",
                 Type::Float16 => "Float16",
                 Type::Float32 => "Float",
-                Type::Float64 => "Float64",
+                Type::Float64 => "Double",
                 _ => {
                     unreachable!();
                 }

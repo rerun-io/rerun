@@ -61,3 +61,9 @@ impl From<&str> for ArrowString {
         Self(value.as_bytes().to_vec().into())
     }
 }
+
+impl std::fmt::Display for ArrowString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}

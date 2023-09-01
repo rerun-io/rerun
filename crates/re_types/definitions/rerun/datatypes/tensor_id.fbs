@@ -1,0 +1,15 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+// A unique id per [`Tensor`].
+struct TensorId (
+  order: 100,
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, Default, Eq, PartialEq"
+) {
+  uuid: [ubyte:16] (order: 100);
+}

@@ -170,7 +170,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -178,7 +178,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
@@ -197,18 +197,19 @@ impl crate::Loggable for ClassDescriptionMapElem {
                                 metadata: [].into(),
                             },
                         ]),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.ClassDescriptionMapElem")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (data_fields, data_arrays) = (data.fields(), data.values());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                let (arrow_data_fields, arrow_data_arrays) =
+                    (arrow_data.fields(), arrow_data.values());
+                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
                     .map(|field| field.name.as_str())
-                    .zip(data_arrays)
+                    .zip(arrow_data_arrays)
                     .collect();
                 let class_id = {
                     if !arrays_by_name.contains_key("class_id") {
@@ -218,13 +219,14 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
                     }
-                    let data = &**arrays_by_name["class_id"];
-                    data.as_any()
+                    let arrow_data = &**arrays_by_name["class_id"];
+                    arrow_data
+                        .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::UInt16,
-                                data.data_type().clone(),
+                                arrow_data.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_id")?
@@ -240,14 +242,14 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
                     }
-                    let data = &**arrays_by_name["class_description"];
-                    crate::datatypes::ClassDescription::try_from_arrow_opt(data)
+                    let arrow_data = &**arrays_by_name["class_description"];
+                    crate::datatypes::ClassDescription::try_from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_description")?
                         .into_iter()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(class_id, class_description),
-                    data.validity(),
+                    arrow_data.validity(),
                 )
                 .map(|opt| {
                     opt.map(|(class_id, class_description)| {

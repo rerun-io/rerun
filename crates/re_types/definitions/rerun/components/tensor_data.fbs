@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+// A Multi-dimensional `Tensor` of data.
+table TensorData (
+  "attr.arrow.transparent",
+  order: 100,
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  data: rerun.datatypes.TensorData (order: 100);
+}

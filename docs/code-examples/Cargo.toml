@@ -48,6 +48,10 @@ name = "image_simple"
 path = "image_simple.rs"
 
 [[bin]]
+name = "image_simple_v2"
+path = "image_simple_v2.rs"
+
+[[bin]]
 name = "line_segments2d_simple"
 path = "line_segments2d_simple.rs"
 
@@ -146,6 +150,10 @@ path = "tensor_one_dim.rs"
 [[bin]]
 name = "tensor_simple"
 path = "tensor_simple.rs"
+
+[[bin]]
+name = "tensor_simple_v2"
+path = "tensor_simple_v2.rs"
 
 [[bin]]
 name = "text_entry_simple"

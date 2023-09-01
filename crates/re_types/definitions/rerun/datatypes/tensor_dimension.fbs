@@ -1,0 +1,16 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A single dimension within a multi-dimensional tensor.
+// TODO(jleibs): Support for stride.
+table TensorDimension (
+  order: 100,
+  "attr.rust.derive_only": "Clone, Default, Eq, PartialEq"
+) {
+  size: ulong (order: 100);
+  name: string (order: 200, nullable);
+}

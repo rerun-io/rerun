@@ -449,6 +449,9 @@ pub enum DeserializationError {
 
     #[error("Datacell deserialization Failed: {0}")]
     DataCellError(String),
+
+    #[error("Validation Error: {0}")]
+    ValidationError(String),
 }
 
 impl DeserializationError {
@@ -535,7 +538,8 @@ impl DeserializationError {
                 Some(backtrace.clone())
             }
             DeserializationError::ArrowConvertFailure(_)
-            | DeserializationError::DataCellError(_) => None,
+            | DeserializationError::DataCellError(_)
+            | DeserializationError::ValidationError(_) => None,
         }
     }
 }
@@ -626,6 +630,11 @@ mod arrow_buffer;
 mod arrow_string;
 pub use arrow_buffer::ArrowBuffer;
 pub use arrow_string::ArrowString;
+
+// TODO(jleibs): Should all of this go into `tensor_data_ext`? Don't have a good way to export
+// additional helpers yet.
+pub mod image;
+pub mod tensor_data;
 
 #[cfg(feature = "testing")]
 pub mod testing;
