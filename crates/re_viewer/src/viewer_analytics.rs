@@ -13,6 +13,8 @@
 use re_analytics::{Analytics, Event, Property};
 use re_log_types::StoreSource;
 
+use crate::StartupOptions;
+
 pub struct ViewerAnalytics {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
@@ -23,11 +25,8 @@ pub struct ViewerAnalytics {
 #[cfg(feature = "analytics")]
 impl ViewerAnalytics {
     #[allow(unused_mut, clippy::let_and_return)]
-    pub fn new(
-        disabled: bool,
-        #[cfg(target_arch = "wasm32")] analytics_url: Option<String>,
-    ) -> Self {
-        if disabled {
+    pub fn new(startup_options: &StartupOptions) -> Self {
+        if startup_options.is_in_notebook {
             return Self { analytics: None };
         }
 
@@ -42,8 +41,10 @@ impl ViewerAnalytics {
         let mut analytics = Self { analytics };
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(url) = analytics_url {
-            analytics.register("url", url);
+        if let Some(location) = startup_options.location.as_ref() {
+            if location.hostname.contains("rerun.io") {
+                analytics.register("url", location.url.clone());
+            }
         }
 
         analytics
@@ -229,10 +230,7 @@ impl ViewerAnalytics {
 
 #[cfg(not(feature = "analytics"))]
 impl ViewerAnalytics {
-    pub fn new(
-        _disabled: bool,
-        #[cfg(target_arch = "wasm32")] _analytics_url: Option<String>,
-    ) -> Self {
+    pub fn new(_startup_options: &StartupOptions) -> Self {
         Self {}
     }
 
@@ -243,5 +241,5 @@ impl ViewerAnalytics {
     ) {
     }
 
-    pub fn on_open_recording(&mut self, store_db: &re_data_store::StoreDb) {}
+    pub fn on_open_recording(&mut self, _store_db: &re_data_store::StoreDb) {}
 }

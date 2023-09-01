@@ -85,7 +85,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
             // On wasm32 we only have 4GB of memory to play around with.
             limit: Some(2_500_000_000),
         },
-        analytics_url: Some(get_location_url(&cc.integration_info)),
+        location: Some(cc.integration_info.web_info.location.clone()),
         persist_state: get_persist_state(&cc.integration_info),
         is_in_notebook: is_in_notebook(&cc.integration_info),
         skip_welcome_screen: false,
@@ -201,10 +201,6 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
     } else {
         url
     }
-}
-
-fn get_location_url(info: &eframe::IntegrationInfo) -> String {
-    info.web_info.location.url.clone()
 }
 
 fn is_in_notebook(info: &eframe::IntegrationInfo) -> bool {

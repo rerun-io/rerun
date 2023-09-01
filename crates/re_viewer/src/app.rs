@@ -45,7 +45,7 @@ pub struct StartupOptions {
 
     /// Set to identify the web page the viewer is running on.
     #[cfg(target_arch = "wasm32")]
-    pub analytics_url: Option<String>,
+    pub location: Option<eframe::Location>,
 
     /// Take a screenshot of the app and quit.
     /// We use this to generate screenshots of our exmples.
@@ -67,7 +67,7 @@ impl Default for StartupOptions {
             is_in_notebook: false,
 
             #[cfg(target_arch = "wasm32")]
-            analytics_url: None,
+            location: None,
 
             #[cfg(not(target_arch = "wasm32"))]
             screenshot_to_path_then_quit: None,
@@ -179,11 +179,7 @@ impl App {
             AppState::default()
         };
 
-        let mut analytics = ViewerAnalytics::new(
-            startup_options.is_in_notebook,
-            #[cfg(target_arch = "wasm32")]
-            startup_options.analytics_url.clone(),
-        );
+        let mut analytics = ViewerAnalytics::new(&startup_options);
         analytics.on_viewer_started(&build_info, app_env);
 
         let mut space_view_class_registry = SpaceViewClassRegistry::default();
