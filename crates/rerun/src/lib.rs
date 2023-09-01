@@ -40,19 +40,17 @@
 //! let colors: Vec<rerun::components::Color> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
-//! rerun::MsgSender::new("points")
-//!     .with_component(&points)?
-//!     .with_component(&colors)?
-//!     .send(&rec)?;
+//! rec.log("points", rerun::archetypes::Points3D::new(points).with_colors(color))?;
 //!
-//! rerun::MsgSender::new("image")
-//!     .with_component(&[rerun::components::Tensor::from_image(image)?])?
-//!     .send(&rec)?;
+//! rec.log(
+//!     "image",
+//!     &rerun::archetypes::Image::new(rerun::components::Tensor::from_image(image)?)
+//! )?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
-//! See [`RecordingStream`] and [`MsgSender`] for details.
+//! See [`RecordingStream`] for details.
 //!
 //! #### Streaming
 //! To stream log data to an awaiting `rerun` process, you can do this:
