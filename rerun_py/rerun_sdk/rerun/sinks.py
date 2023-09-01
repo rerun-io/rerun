@@ -11,7 +11,7 @@ from rerun.recording_stream import RecordingStream
 
 
 def connect(
-    addr: str | None = None, flush_timeout_sec: float | None = 2.0, recording: RecordingStream | None = None
+    addr: str | None = None, *, flush_timeout_sec: float | None = 2.0, recording: RecordingStream | None = None
 ) -> None:
     """
     Connect to a remote Rerun Viewer on the given ip:port.
@@ -109,6 +109,7 @@ def memory_recording(recording: RecordingStream | None = None) -> MemoryRecordin
 
 
 def serve(
+    *,
     open_browser: bool = True,
     web_port: int | None = None,
     ws_port: int | None = None,
@@ -141,7 +142,9 @@ def serve(
     bindings.serve(open_browser, web_port, ws_port, recording=recording)
 
 
-def spawn(port: int = 9876, connect: bool = True, recording: RecordingStream | None = None) -> None:
+def spawn(
+    *, port: int = 9876, connect: bool = True, memory_limit: str = "75%", recording: RecordingStream | None = None
+) -> None:
     """
     Spawn a Rerun Viewer, listening on the given port.
 
@@ -156,7 +159,11 @@ def spawn(port: int = 9876, connect: bool = True, recording: RecordingStream | N
         The port to listen on.
     connect
         also connect to the viewer and stream logging data to it.
-    recording:
+    memory_limit
+        An upper limit on how much memory the Rerun Viewer should use.
+        When this limit is reached, Rerun will drop the oldest data.
+        Example: `16GB` or `50%` (of system total).
+    recording
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
@@ -180,7 +187,7 @@ def spawn(port: int = 9876, connect: bool = True, recording: RecordingStream | N
     # start_new_session=True ensures the spawned process does NOT die when
     # we hit ctrl-c in the terminal running the parent Python process.
     subprocess.Popen(
-        [python_executable, "-m", "rerun", "--port", str(port), "--skip-welcome-screen"],
+        [python_executable, "-m", "rerun", f"--port={port}", f"--memory-limit={memory_limit}", "--skip-welcome-screen"],
         env=new_env,
         start_new_session=True,
     )

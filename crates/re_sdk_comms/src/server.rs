@@ -147,7 +147,7 @@ fn spawn_client(
                     return;
                 }
             }
-            re_log::warn!("Closing connection to client at {addr_string}: {err}");
+            re_log::warn_once!("Closing connection to client at {addr_string}: {err}");
             let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.to_string().into();
             tx.quit(Some(err)).ok(); // best-effort at this point
         }

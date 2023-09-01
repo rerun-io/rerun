@@ -1,20 +1,5 @@
 #!/usr/bin/env python3
-"""
-A minimal example of streaming frames live from an Intel RealSense depth sensor.
-
-NOTE: this example currently runs forever and will eventually exhaust your
-system memory. It is advised you run an independent rerun viewer with a memory
-limit:
-```
-rerun --memory-limit 4GB
-```
-
-And then connect using:
-```
-python examples/python/live_depth_sensor/main.py --connect
-```
-
-"""
+"""A minimal example of streaming frames live from an Intel RealSense depth sensor."""
 from __future__ import annotations
 
 import argparse
@@ -107,25 +92,6 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.script_setup(args, "rerun_example_live_depth_sensor")
-
-    if not args.connect:
-        print(
-            """
-################################################################################
-NOTE: this example currently runs forever and will eventually exhaust your
-system memory. It is advised you run an independent rerun viewer with a memory
-limit:
-```
-rerun --memory-limit 4GB
-```
-
-And then connect using:
-```
-python examples/python/live_depth_sensor/main.py --connect
-```
-################################################################################
-        """
-        )
 
     run_realsense(args.num_frames)
 

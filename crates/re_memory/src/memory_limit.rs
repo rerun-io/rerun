@@ -9,10 +9,37 @@ pub struct MemoryLimit {
 }
 
 impl MemoryLimit {
+    /// The limit can either be absolute (e.g. "16GB") or relative (e.g. "50%").
     pub fn parse(limit: &str) -> Result<Self, String> {
-        re_format::parse_bytes(limit)
-            .map(|limit| Self { limit: Some(limit) })
-            .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))
+        if let Some(percentage) = limit.strip_suffix('%') {
+            let percentage = percentage
+                .parse::<f32>()
+                .map_err(|_err| format!("expected e.g. '50%', got {limit:?}"))?;
+
+            let total_memory = crate::total_ram_in_bytes();
+            if total_memory == 0 {
+                re_log::info!(
+                    "Couldn't determine total available memory. Setting no memory limit."
+                );
+                Ok(Self { limit: None })
+            } else {
+                let limit = (total_memory as f64 * (percentage as f64 / 100.0)).round();
+
+                re_log::debug!(
+                    "Setting memory limit to {}, which is {percentage}% of total available memory ({}).",
+                    re_format::format_bytes(limit),
+                    re_format::format_bytes(total_memory as _),
+            );
+
+                Ok(Self {
+                    limit: Some(limit as _),
+                })
+            }
+        } else {
+            re_format::parse_bytes(limit)
+                .map(|limit| Self { limit: Some(limit) })
+                .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))
+        }
     }
 
     /// Returns how large fraction of memory we should free to go down to the exact limit.

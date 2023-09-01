@@ -779,6 +779,11 @@ impl App {
         let mem_use_before = MemoryUse::capture();
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
+            re_log::info_once!(
+                "Reached memory limit of {}, dropping oldest data.",
+                format_limit(limit.limit)
+            );
+
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
             re_log::trace!("RAM limit: {}", format_limit(limit.limit));

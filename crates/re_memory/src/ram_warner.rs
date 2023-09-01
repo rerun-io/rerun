@@ -6,14 +6,7 @@ pub fn total_ram_in_bytes() -> u64 {
     let mut sys = sysinfo::System::new_all();
     sys.refresh_all();
 
-    let total_memory = sys.total_memory();
-
-    re_log::debug!(
-        "Total RAM: {}",
-        re_format::format_bytes(sys.total_memory() as _)
-    );
-
-    total_memory
+    sys.total_memory()
 }
 
 /// Amount of available RAM on this machine.
@@ -26,7 +19,7 @@ pub fn total_ram_in_bytes() -> u64 {
 
 pub struct RamLimitWarner {
     total_ram_in_bytes: u64,
-    limit: u64,
+    warn_limit: u64,
     has_warned: bool,
 }
 
@@ -36,7 +29,7 @@ impl RamLimitWarner {
         let limit = (fraction as f64 * total_ram_in_bytes as f64).round() as _;
         Self {
             total_ram_in_bytes,
-            limit,
+            warn_limit: limit,
             has_warned: false,
         }
     }
@@ -47,7 +40,7 @@ impl RamLimitWarner {
             let used = crate::MemoryUse::capture();
             let used = used.counted.or(used.resident);
             if let Some(used) = used {
-                if 0 <= used && self.limit <= used as u64 {
+                if 0 <= used && self.warn_limit <= used as u64 {
                     self.has_warned = true;
                     re_log::warn!(
                         "RAM usage is {} (with a total of {} system RAM). You may want to start Rerun with the --memory-limit flag to limit RAM usage.",

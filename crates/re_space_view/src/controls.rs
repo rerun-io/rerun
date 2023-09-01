@@ -1,3 +1,5 @@
+use egui::{os::OperatingSystem, Modifiers};
+
 /// Modifier to press for scroll to zoom.
 pub const ZOOM_SCROLL_MODIFIER: egui::Modifiers = egui::Modifiers::COMMAND;
 
@@ -35,11 +37,19 @@ pub const ROLL_MOUSE_MODIFIER: egui::Modifiers = egui::Modifiers::ALT;
 /// Which modifier speeds up the 3D camera movement.
 pub const SPEED_UP_3D_MODIFIER: egui::Modifiers = egui::Modifiers::SHIFT;
 
-/// Which modifier slows down the 3D camera movement.
-pub const SLOW_DOWN_3D_MODIFIER: egui::Modifiers = egui::Modifiers::CTRL;
-
 /// Key to restore the camera.
 pub const TRACKED_CAMERA_RESTORE_KEY: egui::Key = egui::Key::Escape;
 
 /// Description text for which action resets a space view.
 pub const RESET_VIEW_BUTTON_TEXT: &str = "double click";
+
+pub struct RuntimeModifiers {}
+
+impl RuntimeModifiers {
+    pub fn slow_down(os: &OperatingSystem) -> Modifiers {
+        match os {
+            egui::os::OperatingSystem::Mac => egui::Modifiers::CTRL,
+            _ => egui::Modifiers::ALT,
+        }
+    }
+}

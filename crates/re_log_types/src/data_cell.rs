@@ -389,7 +389,7 @@ impl DataCell {
         };
 
         if iter.next().is_some() {
-            re_log::warn_once!("Unexpected batch for {}", C::name());
+            re_log::warn_once!("Expected only one {}, got {}", C::name(), iter.count() + 2);
         }
 
         result
