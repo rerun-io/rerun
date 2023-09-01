@@ -426,7 +426,7 @@ impl TimePanel {
             item_response: response,
             body_response,
         } = ListItem::new(ctx.re_ui, text)
-            .width_allocation_mode(WidthAllocationMode::Fit)
+            .width_allocation_mode(WidthAllocationMode::Compact)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
@@ -534,7 +534,7 @@ impl TimePanel {
 
                 let response = ListItem::new(ctx.re_ui, component_name)
                     .selected(ctx.selection().contains(&item))
-                    .width_allocation_mode(WidthAllocationMode::Fit)
+                    .width_allocation_mode(WidthAllocationMode::Compact)
                     .force_hovered(
                         ctx.selection_state().highlight_for_ui_element(&item)
                             == HoverHighlight::Hovered,

@@ -67,25 +67,27 @@ pub enum WidthAllocationMode {
     /// hovered, long label: │▼ □ a very very long … ■ ■│
     ///                      └──────────────────────────┘
     /// ```
-    Fit,
+    Compact,
 }
 
 /// Generic widget for use in lists.
 ///
 /// Layout:
 /// ```text
-/// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-/// ┃┌──────┐ ┌──────┐                           ┌──────┐┌──────┐┃
-/// ┃│  __  │ │      │                           │      ││      │┃
-/// ┃│  \/  │ │ icon │  label                    │ btns ││ btns │┃
-/// ┃│      │ │      │                           │      ││      │┃
-/// ┃└──────┘ └──────┘                           └──────┘└──────┘┃
-/// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+/// ┌───┬────────────────────────────────────────────────────────────┬───┐
+/// │   │┌──────┐ ┌──────┐                           ┌──────┐┌──────┐│   │
+/// │   ││  __  │ │      │                           │      ││      ││   │
+/// │   ││  \/  │ │ icon │  label                    │ btns ││ btns ││   │
+/// │   ││      │ │      │                           │      ││      ││   │
+/// │   │└──────┘ └──────┘                           └──────┘└──────┘│   │
+/// └───┴────────────────────────────────────────────────────────────┴───┘
+///     ◀───────────── allocated width (used for layout) ───────────▶
+/// ◀────────────── clip rectangle (used for highlighting) ─────────────▶
 /// ```
 ///
 /// Features:
 /// - selectable
-/// - full span highlighting
+/// - full span highlighting based on clip rectangle
 /// - optional icon
 /// - optional on-hover buttons on the right
 /// - optional collapsing behavior for trees
@@ -266,7 +268,7 @@ impl<'a> ListItem<'a> {
 
         /// Compute the "ideal" desired width of the item, accounting for text and icon(s) (but not
         /// buttons).
-        fn fit_width(
+        fn icons_and_label_width(
             ui: &mut egui::Ui,
             item: &ListItem<'_>,
             collapse_extra: f32,
@@ -287,7 +289,9 @@ impl<'a> ListItem<'a> {
 
         let desired_width = match self.width_allocation_mode {
             WidthAllocationMode::Available => ui.available_width(),
-            WidthAllocationMode::Fit => fit_width(ui, &self, collapse_extra, icon_extra),
+            WidthAllocationMode::Compact => {
+                icons_and_label_width(ui, &self, collapse_extra, icon_extra)
+            }
         };
 
         let desired_size = egui::vec2(desired_width, ReUi::list_item_height());
