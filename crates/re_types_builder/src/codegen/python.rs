@@ -437,7 +437,6 @@ impl QuotedObject {
                 let (default_converter, converter_function) =
                     quote_field_converter_from_field(obj, objects, field);
 
-                // components and datatypes have converters only if manually provided
                 let override_name = format!(
                     "{}_{}_converter",
                     name.to_lowercase(),
@@ -446,6 +445,7 @@ impl QuotedObject {
                 let converter = if overrides.contains(&override_name) {
                     format!("converter={override_name}")
                 } else if *kind == ObjectKind::Archetype {
+                    // Archetypes default to using `from_similar` from the Component
                     let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
                     // archetype always delegate field init to the component array object
                     format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
