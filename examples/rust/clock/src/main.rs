@@ -10,10 +10,11 @@
 use std::f32::consts::TAU;
 
 use rerun::{
-    components::{Box3D, Color, Point3D, Radius, Vector3D, ViewCoordinates},
+    archetypes::{Arrows3D, Points3D},
+    components::{Box3D, Color, ViewCoordinates},
     coordinates::SignedAxis3,
     external::re_log,
-    MsgSender, RecordingStream,
+    RecordingStream,
 };
 
 #[derive(Debug, clap::Parser)]
@@ -34,19 +35,20 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     const WIDTH_M: f32 = 0.4;
     const WIDTH_H: f32 = 0.6;
 
+    // TODO(#2816): ViewCoordinates archetype
     let view_coords = ViewCoordinates::from_up_and_handedness(
         SignedAxis3::POSITIVE_Y,
         rerun::coordinates::Handedness::Right,
     );
-    MsgSender::new("world")
-        .with_timeless(true)
-        .with_component(&[view_coords])?
-        .send(rec)?;
+    rec.log_component_lists("world", true, 1, [&view_coords as _])?;
 
-    MsgSender::new("world/frame")
-        .with_timeless(true)
-        .with_component(&[Box3D::new(LENGTH_S, LENGTH_S, 1.0)])?
-        .send(rec)?;
+    // TODO(#2786): Box3D archetype
+    rec.log_component_lists(
+        "world/frame",
+        true,
+        1,
+        [&Box3D::new(LENGTH_S, LENGTH_S, 1.0) as _],
+    )?;
 
     fn pos(angle: f32, length: f32) -> [f32; 3] {
         [length * angle.sin(), length * angle.cos(), 0.0]
@@ -67,20 +69,20 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         blue: u8,
     ) -> anyhow::Result<()> {
         let pos = pos(angle * TAU, length);
-        let point: Point3D = pos.into();
         let color = color(angle, blue);
 
         rec.set_time_seconds("sim_time", step as f64);
 
-        MsgSender::new(format!("world/{name}_pt"))
-            .with_component(&[point])?
-            .with_component(&[color])?
-            .send(rec)?;
-        MsgSender::new(format!("world/{name}_hand"))
-            .with_component(&[Vector3D::from(pos)])?
-            .with_component(&[color])?
-            .with_component(&[Radius(width * 0.5)])?
-            .send(rec)?;
+        rec.log(
+            format!("world/{name}_pt"),
+            &Points3D::new([pos]).with_colors([color]),
+        )?;
+        rec.log(
+            format!("world/{name}_hand"),
+            &Arrows3D::new([pos])
+                .with_colors([color])
+                .with_radii([width * 0.5]),
+        )?;
 
         Ok(())
     }

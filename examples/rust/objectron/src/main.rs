@@ -19,9 +19,11 @@ use std::{
 use anyhow::{anyhow, Context as _};
 
 use rerun::{
+    archetypes::{LineStrips2D, Points2D, Points3D, Transform3D},
+    datatypes::TranslationRotationScale3D,
     external::re_log,
     time::{Time, TimePoint, TimeType, Timeline},
-    MsgSender, RecordingStream,
+    ComponentList, RecordingStream,
 };
 
 // --- Rerun logging ---
@@ -77,13 +79,11 @@ fn log_coordinate_space(
     ent_path: impl Into<rerun::EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
+    // TODO(#2816): ViewCoordinates archetype
     let view_coords: rerun::components::ViewCoordinates = axes
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
-    MsgSender::new(ent_path)
-        .with_timeless(true)
-        .with_component(&[view_coords])?
-        .send(rec)
+    rec.log_component_lists(ent_path, true, 1, [&view_coords as _])
         .map_err(Into::into)
 }
 
@@ -137,13 +137,17 @@ fn log_baseline_objects(
     });
 
     for (id, bbox, transform, label) in boxes {
-        MsgSender::new(format!("world/annotations/box-{id}"))
-            .with_timeless(true)
-            .with_component(&[bbox])?
-            .with_component(&[transform])?
-            .with_component(&[label])?
-            .with_splat(Color::from_rgb(160, 230, 130))?
-            .send(rec)?;
+        rec.log_component_lists(
+            format!("world/annotations/box-{id}"),
+            true,
+            1,
+            [
+                &bbox as &dyn ComponentList,
+                &transform,
+                &label,
+                &Color::from_rgb(160, 230, 130),
+            ],
+        )?;
     }
 
     Ok(())
@@ -153,12 +157,9 @@ fn log_video_frame(rec: &RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
     let tensor = rerun::components::Tensor::from_jpeg_file(&image_path)?;
 
-    MsgSender::new("world/camera")
-        .with_timepoint(ar_frame.timepoint.clone())
-        .with_component(&[tensor])?
-        .send(rec)?;
-
-    Ok(())
+    rec.set_timepoint(ar_frame.timepoint.clone());
+    rec.log_component_lists("world/camera", false, 1, [&tensor as _])
+        .map_err(Into::into)
 }
 
 fn log_ar_camera(
@@ -189,22 +190,23 @@ fn log_ar_camera(
     // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);
 
-    use rerun::components::{Pinhole, Transform3D};
-    use rerun::transform::TranslationRotationScale3D;
-    MsgSender::new("world/camera")
-        .with_timepoint(timepoint.clone())
-        .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
-            translation,
-            rot,
-        ))])?
-        .send(rec)?;
-    MsgSender::new("world/camera")
-        .with_timepoint(timepoint)
-        .with_component(&[Pinhole {
+    rec.set_timepoint(timepoint);
+
+    rec.log(
+        "world/camera",
+        &Transform3D::new(TranslationRotationScale3D::rigid(translation, rot)),
+    )?;
+
+    // TODO(#2816): Pinhole archetype
+    rec.log_component_lists(
+        "world/camera",
+        false,
+        1,
+        [&rerun::components::Pinhole {
             image_from_cam: intrinsics.into(),
             resolution: Some(resolution.into()),
-        }])?
-        .send(rec)?;
+        } as _],
+    )?;
 
     Ok(())
 }
@@ -214,30 +216,24 @@ fn log_feature_points(
     timepoint: TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
-    use rerun::components::{Color, InstanceKey, Point3D};
+    use rerun::components::{Color, InstanceKey};
 
     let ids = points.identifier.iter();
     let points = points.point.iter();
-    let (ids, points): (Vec<_>, Vec<_>) = ids
-        .zip(points)
-        .map(|(id, p)| {
-            (
-                InstanceKey(*id as _),
-                Point3D::new(
-                    p.x.unwrap_or_default(),
-                    p.y.unwrap_or_default(),
-                    p.z.unwrap_or_default(),
-                ),
-            )
-        })
-        .unzip();
 
-    MsgSender::new("world/points")
-        .with_timepoint(timepoint)
-        .with_component(&points)?
-        .with_component(&ids)?
-        .with_splat(Color::from_rgb(255, 255, 255))?
-        .send(rec)?;
+    rec.set_timepoint(timepoint);
+    rec.log(
+        "world/points",
+        &Points3D::new(points.map(|p| {
+            (
+                p.x.unwrap_or_default(),
+                p.y.unwrap_or_default(),
+                p.z.unwrap_or_default(),
+            )
+        }))
+        .with_instance_keys(ids.map(|id| InstanceKey(*id as _)))
+        .with_colors([Color::from_rgb(255, 255, 255)]),
+    )?;
 
     Ok(())
 }
@@ -247,7 +243,7 @@ fn log_frame_annotations(
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
-    use rerun::components::{Color, InstanceKey, LineStrip2D, Point2D};
+    use rerun::components::{Color, InstanceKey};
 
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
@@ -262,49 +258,53 @@ fn log_frame_annotations(
             })
             .unzip();
 
-        let mut msg = MsgSender::new(format!("world/camera/estimates/box-{}", ann.object_id))
-            .with_timepoint(timepoint.clone())
-            .with_splat(Color::from_rgb(130, 160, 250))?;
+        rec.set_timepoint(timepoint.clone());
 
+        let ent_path = format!("world/camera/estimates/box-{}", ann.object_id);
         if points.len() == 9 {
             // Build the preprojected bounding box out of 2D line segments.
             #[rustfmt::skip]
-            fn linestrips(points: &[[f32; 2]]) -> Vec<LineStrip2D> {
-                vec![
-                    vec![
+            fn linestrips(points: &[[f32; 2]]) -> [[[f32; 2]; 8]; 4] {
+                [
+                    [
                          points[2], points[1],
                          points[3], points[4],
                          points[4], points[2],
                          points[4], points[3],
-                    ].into(),
-                    vec![
+                    ],
+                    [
                          points[5], points[6],
                          points[5], points[7],
                          points[8], points[6],
                          points[8], points[7],
-                    ].into(),
-                    vec![
+                    ],
+                    [
                          points[1], points[5],
                          points[1], points[3],
                          points[3], points[7],
                          points[5], points[7],
-                    ].into(),
-                    vec![
+                    ],
+                    [
                          points[2], points[6],
                          points[2], points[4],
                          points[4], points[8],
                          points[6], points[8],
-                    ].into(),
+                    ],
                 ]
             }
-            msg = msg.with_component(&linestrips(&points))?;
+            rec.log(
+                ent_path,
+                &LineStrips2D::new(linestrips(&points))
+                    .with_colors([Color::from_rgb(130, 160, 250)]),
+            )?;
         } else {
-            msg = msg
-                .with_component(&ids)?
-                .with_component(&points.into_iter().map(Point2D::from).collect::<Vec<_>>())?;
+            rec.log(
+                ent_path,
+                &Points2D::new(points)
+                    .with_instance_keys(ids)
+                    .with_colors([Color::from_rgb(130, 160, 250)]),
+            )?;
         }
-
-        msg.send(rec)?;
     }
 
     Ok(())

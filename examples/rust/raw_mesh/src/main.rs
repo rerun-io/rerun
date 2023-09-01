@@ -17,7 +17,7 @@ use rerun::{
     datatypes::Vec4D,
     external::{re_log, re_memory::AccountingAllocator},
     transform::TranslationRotationScale3D,
-    EntityPath, MsgSender, RecordingStream,
+    EntityPath, RecordingStream,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -66,21 +66,28 @@ impl From<GltfTransform> for Transform3D {
 
 /// Log a glTF node with Rerun.
 fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
-    let ent_path = EntityPath::from(node.name.as_str());
+    rec.set_time_sequence("keyframe", 0);
+
+    if let Some(transform) = node.transform.map(Transform3D::from) {
+        rec.log(
+            node.name.as_str(),
+            &rerun::archetypes::Transform3D::new(transform),
+        )?;
+    }
 
     // Convert glTF objects into Rerun components.
-    let transform = node.transform.map(Transform3D::from);
+    // TODO(#2788): Mesh archetype
     let primitives = node
         .primitives
         .into_iter()
         .map(Mesh3D::from)
         .collect::<Vec<_>>();
-
-    rec.set_time_sequence("keyframe", 0);
-    MsgSender::new(ent_path)
-        .with_component(&primitives)?
-        .with_component(transform.as_ref())?
-        .send(rec)?;
+    rec.log_component_lists(
+        node.name.as_str(),
+        false,
+        primitives.len() as _,
+        [&primitives as _],
+    )?;
 
     // Recurse through all of the node's children!
     for mut child in node.children {
@@ -96,14 +103,12 @@ fn log_coordinate_space(
     ent_path: impl Into<EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
+    // TODO(#2816): ViewCoordinates archetype
     let view_coords: ViewCoordinates = axes
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
 
-    MsgSender::new(ent_path)
-        .with_timeless(true)
-        .with_component(&[view_coords])?
-        .send(rec)
+    rec.log_component_lists(ent_path, true, 1, [&view_coords as _])
         .map_err(Into::into)
 }
 

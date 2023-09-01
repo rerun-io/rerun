@@ -5,8 +5,7 @@ use rerun::{
     datatypes::Float32,
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    Archetype, ArchetypeName, ComponentList, ComponentName, Loggable, MsgSender,
-    RecordingStreamBuilder,
+    Archetype, ArchetypeName, ComponentList, ComponentName, Loggable, RecordingStreamBuilder,
 };
 
 // ---
@@ -95,23 +94,21 @@ impl Loggable for Confidence {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_custom_data").memory()?;
 
-    MsgSender::from_archetype(
+    rec.log(
         "left/my_confident_point_cloud",
         &CustomPoints3D {
             points3d: Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
             confidences: Some(vec![42f32.into()]),
         },
-    )?
-    .send(&rec)?;
+    )?;
 
-    MsgSender::from_archetype(
+    rec.log(
         "right/my_polarized_point_cloud",
         &CustomPoints3D {
             points3d: Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
             confidences: Some((0..1000).map(|i| i as f32).map(Into::into).collect()),
         },
-    )?
-    .send(&rec)?;
+    )?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())
