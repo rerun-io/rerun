@@ -147,7 +147,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum.clone();
+                                            let crate::datatypes::Vec3D(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()

@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A generic n-dimensional Tensor
+/// A generic n-dimensional Tensor.
 ///
 /// ## Example
 ///

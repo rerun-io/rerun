@@ -139,7 +139,7 @@ impl crate::Loggable for TensorData {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::TensorId { uuid } = datum.clone();
+                                            let crate::datatypes::TensorId { uuid } = datum;
                                             uuid
                                         })
                                         .unwrap_or_default()

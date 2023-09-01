@@ -141,7 +141,7 @@ impl crate::Loggable for Rotation3D {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::Quaternion(data0) = datum.clone();
+                                            let crate::datatypes::Quaternion(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()

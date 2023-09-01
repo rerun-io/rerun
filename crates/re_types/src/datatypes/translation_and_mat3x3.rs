@@ -138,7 +138,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum.clone();
+                                            let crate::datatypes::Vec3D(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -212,7 +212,7 @@ impl crate::Loggable for TranslationAndMat3x3 {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::Mat3x3(data0) = datum.clone();
+                                            let crate::datatypes::Mat3x3(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
