@@ -7,10 +7,12 @@ __all__ = [
     "AnnotationContext",
     "Arrows3D",
     "DisconnectedSpace",
+    "Image",
     "LineStrips2D",
     "LineStrips3D",
     "Points2D",
     "Points3D",
+    "Tensor",
     "Transform3D",
 ]
 
@@ -19,9 +21,11 @@ from .archetypes import (
     AnnotationContext,
     Arrows3D,
     DisconnectedSpace,
+    Image,
     LineStrips2D,
     LineStrips3D,
     Points2D,
     Points3D,
+    Tensor,
     Transform3D,
 )

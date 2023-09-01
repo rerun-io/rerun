@@ -180,10 +180,12 @@ impl crate::Archetype for Transform3D {
 
     #[inline]
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
     ) -> crate::DeserializationResult<Self> {
         use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = data
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();

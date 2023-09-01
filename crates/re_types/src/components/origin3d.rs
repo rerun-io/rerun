@@ -149,7 +149,7 @@ impl crate::Loggable for Origin3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -157,7 +157,7 @@ impl crate::Loggable for Origin3D {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
@@ -171,25 +171,25 @@ impl crate::Loggable for Origin3D {
                             }),
                             3usize,
                         ),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.components.Origin3D#origin")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
                 let offsets = (0..)
                     .step_by(3usize)
-                    .zip((3usize..).step_by(3usize).take(data.len()));
-                let data_inner = {
-                    let data_inner = &**data.values();
-                    data_inner
+                    .zip((3usize..).step_by(3usize).take(arrow_data.len()));
+                let arrow_data_inner = {
+                    let arrow_data_inner = &**arrow_data.values();
+                    arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::Float32,
-                                data_inner.data_type().clone(),
+                                arrow_data_inner.data_type().clone(),
                             )
                         })
                         .with_context("rerun.components.Origin3D#origin")?
@@ -197,30 +197,33 @@ impl crate::Loggable for Origin3D {
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, data.validity())
-                    .map(|elem| {
-                        elem.map(|(start, end)| {
-                            debug_assert!(end - start == 3usize);
-                            if end as usize > data_inner.len() {
-                                return Err(crate::DeserializationError::offset_slice_oob(
-                                    (start, end),
-                                    data_inner.len(),
-                                ));
-                            }
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets,
+                    arrow_data.validity(),
+                )
+                .map(|elem| {
+                    elem.map(|(start, end)| {
+                        debug_assert!(end - start == 3usize);
+                        if end as usize > arrow_data_inner.len() {
+                            return Err(crate::DeserializationError::offset_slice_oob(
+                                (start, end),
+                                arrow_data_inner.len(),
+                            ));
+                        }
 
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data =
-                                unsafe { data_inner.get_unchecked(start as usize..end as usize) };
-                            let data = data.iter().cloned().map(Option::unwrap_or_default);
-                            let arr = array_init::from_iter(data).unwrap();
-                            Ok(arr)
-                        })
-                        .transpose()
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data =
+                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data.iter().cloned().map(Option::unwrap_or_default);
+                        let arr = array_init::from_iter(data).unwrap();
+                        Ok(arr)
                     })
-                    .map(|res_or_opt| {
-                        res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Vec3D(v)))
-                    })
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .transpose()
+                })
+                .map(|res_or_opt| {
+                    res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Vec3D(v)))
+                })
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
@@ -233,19 +236,21 @@ impl crate::Loggable for Origin3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+    fn try_from_arrow(
+        arrow_data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = data.validity() {
+        if let Some(validity) = arrow_data.validity() {
             if validity.unset_bits() != 0 {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
@@ -259,19 +264,19 @@ impl crate::Loggable for Origin3D {
                             }),
                             3usize,
                         ),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.components.Origin3D#origin")?;
-            let data_inner = &**data.values();
+            let arrow_data_inner = &**arrow_data.values();
             bytemuck::cast_slice::<_, [_; 3usize]>(
-                data_inner
+                arrow_data_inner
                     .as_any()
                     .downcast_ref::<Float32Array>()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
                             DataType::Float32,
-                            data_inner.data_type().clone(),
+                            arrow_data_inner.data_type().clone(),
                         )
                     })
                     .with_context("rerun.components.Origin3D#origin")?

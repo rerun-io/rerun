@@ -138,7 +138,7 @@ impl crate::Loggable for AnnotationContext {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -146,7 +146,7 @@ impl crate::Loggable for AnnotationContext {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
@@ -158,39 +158,39 @@ impl crate::Loggable for AnnotationContext {
                             is_nullable: false,
                             metadata: [].into(),
                         })),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.components.AnnotationContext#class_map")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let data_inner = {
-                    let data_inner = &**data.values();
-                    crate::datatypes::ClassDescriptionMapElem::try_from_arrow_opt(data_inner)
+                let arrow_data_inner = {
+                    let arrow_data_inner = &**arrow_data.values();
+                    crate::datatypes::ClassDescriptionMapElem::try_from_arrow_opt(arrow_data_inner)
                         .with_context("rerun.components.AnnotationContext#class_map")?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
-                let offsets = data.offsets();
+                let offsets = arrow_data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     offsets.iter().zip(offsets.lengths()),
-                    data.validity(),
+                    arrow_data.validity(),
                 )
                 .map(|elem| {
                     elem.map(|(start, len)| {
                         let start = *start as usize;
                         let end = start + len;
-                        if end as usize > data_inner.len() {
+                        if end as usize > arrow_data_inner.len() {
                             return Err(crate::DeserializationError::offset_slice_oob(
                                 (start, end),
-                                data_inner.len(),
+                                arrow_data_inner.len(),
                             ));
                         }
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         let data =
-                            unsafe { data_inner.get_unchecked(start as usize..end as usize) };
+                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
                         let data = data
                             .iter()
                             .cloned()

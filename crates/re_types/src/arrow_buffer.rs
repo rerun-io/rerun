@@ -27,6 +27,12 @@ impl<T> ArrowBuffer<T> {
     }
 
     #[inline]
+    /// The number of bytes stored in this buffer
+    pub fn size_in_bytes(&self) -> usize {
+        self.0.len() * std::mem::size_of::<T>()
+    }
+
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

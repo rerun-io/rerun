@@ -197,7 +197,7 @@ impl crate::Loggable for Angle {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_from_arrow_opt(
-        data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
@@ -205,7 +205,7 @@ impl crate::Loggable for Angle {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let data = data
+            let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
                 .ok_or_else(|| {
@@ -234,41 +234,43 @@ impl crate::Loggable for Angle {
                             Some(vec![0i32, 1i32, 2i32]),
                             UnionMode::Dense,
                         ),
-                        data.data_type().clone(),
+                        arrow_data.data_type().clone(),
                     )
                 })
                 .with_context("rerun.datatypes.Angle")?;
-            if data.is_empty() {
+            if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (data_types, data_arrays) = (data.types(), data.fields());
-                let data_offsets = data
+                let (arrow_data_types, arrow_data_arrays) =
+                    (arrow_data.types(), arrow_data.fields());
+                let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
-                            data.data_type().clone(),
+                            arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.datatypes.Angle")?;
-                if data_types.len() != data_offsets.len() {
+                if arrow_data_types.len() != arrow_data_offsets.len() {
                     return Err(crate::DeserializationError::offset_slice_oob(
-                        (0, data_types.len()),
-                        data_offsets.len(),
+                        (0, arrow_data_types.len()),
+                        arrow_data_offsets.len(),
                     ))
                     .with_context("rerun.datatypes.Angle");
                 }
                 let radians = {
-                    if 1usize >= data_arrays.len() {
+                    if 1usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[1usize];
-                    data.as_any()
+                    let arrow_data = &*arrow_data_arrays[1usize];
+                    arrow_data
+                        .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::Float32,
-                                data.data_type().clone(),
+                                arrow_data.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.Angle#Radians")?
@@ -277,16 +279,17 @@ impl crate::Loggable for Angle {
                         .collect::<Vec<_>>()
                 };
                 let degrees = {
-                    if 2usize >= data_arrays.len() {
+                    if 2usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let data = &*data_arrays[2usize];
-                    data.as_any()
+                    let arrow_data = &*arrow_data_arrays[2usize];
+                    arrow_data
+                        .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
                                 DataType::Float32,
-                                data.data_type().clone(),
+                                arrow_data.data_type().clone(),
                             )
                         })
                         .with_context("rerun.datatypes.Angle#Degrees")?
@@ -294,11 +297,11 @@ impl crate::Loggable for Angle {
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
-                data_types
+                arrow_data_types
                     .iter()
                     .enumerate()
                     .map(|(i, typ)| {
-                        let offset = data_offsets[i];
+                        let offset = arrow_data_offsets[i];
                         if *typ == 0 {
                             Ok(None)
                         } else {
