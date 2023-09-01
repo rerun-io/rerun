@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, LegacyComponent, RowId};
-use re_types::{components::InstanceKey, ComponentName, Loggable};
-use re_types::{Archetype, Component};
+use re_types::{components::InstanceKey, Archetype, Component, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
@@ -217,7 +216,7 @@ pub fn query_archetype<A: Archetype>(
     //
     // `query_archetype` is currently run for every archetype on every path in the view
     // each path that's missing the primary is then ignored rather than being visited.
-    for (name, c) in itertools::izip!(A::required_components(), &required_components) {
+    for (name, c) in itertools::izip!(A::required_components().iter(), &required_components) {
         if c.is_none() {
             return crate::Result::Err(QueryError::PrimaryNotFound(*name));
         }
