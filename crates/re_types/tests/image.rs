@@ -57,7 +57,7 @@ fn image_roundtrip() {
             }
         }
 
-        let deserialized = Image::from_arrow(serialized);
+        let deserialized = Image::try_from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
@@ -68,7 +68,7 @@ macro_rules! check_image_array {
 
         let arrow = <$img>::try_from(arr.clone()).unwrap().to_arrow();
 
-        let img = <$img>::from_arrow(arrow);
+        let img = <$img>::try_from_arrow(arrow).unwrap();
 
         let color_dim = img
             .data

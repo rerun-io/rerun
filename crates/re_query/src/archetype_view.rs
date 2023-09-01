@@ -38,20 +38,16 @@ impl ComponentWithInstances {
         self.values.is_empty()
     }
 
-    /// Iterate over the [`InstanceKey`]s.
+    /// Returns the array of [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(
-        &self,
-    ) -> impl Iterator<Item = re_types::components::InstanceKey> + '_ {
+    pub fn instance_keys(&self) -> Vec<re_types::components::InstanceKey> {
         re_tracing::profile_function!();
         self.instance_keys.to_native::<InstanceKey>()
     }
 
-    /// Iterate over the values and convert them to a native [`Component`]
+    /// Returns the array of values as native [`Component`]s.
     #[inline]
-    pub fn iter_values<'a, C: Component + 'a>(
-        &'a self,
-    ) -> crate::Result<impl Iterator<Item = Option<C>> + 'a> {
+    pub fn values<'a, C: Component + 'a>(&'a self) -> crate::Result<Vec<Option<C>>> {
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
                 actual: self.name(),
@@ -112,8 +108,8 @@ impl ComponentWithInstances {
         instance_keys: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, InstanceKey>>>,
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
     ) -> ComponentWithInstances {
-        let instance_keys = InstanceKey::to_arrow(instance_keys, None);
-        let values = C::to_arrow(values, None);
+        let instance_keys = InstanceKey::to_arrow(instance_keys);
+        let values = C::to_arrow(values);
         ComponentWithInstances {
             instance_keys: DataCell::from_arrow(InstanceKey::name(), instance_keys),
             values: DataCell::from_arrow(C::name(), values),
@@ -266,12 +262,12 @@ impl<A: Archetype> ArchetypeView<A> {
         &self.components[&first_required]
     }
 
-    /// Iterate over the [`InstanceKey`]s.
+    /// Returns an iterator over [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> {
         re_tracing::profile_function!();
         // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
-        self.required_comp().iter_instance_keys()
+        self.required_comp().instance_keys().into_iter()
     }
 
     /// Check if the entity has a component and its not empty
@@ -296,7 +292,8 @@ impl<A: Archetype> ArchetypeView<A> {
             let component_value_iter = component
                 .values
                 .try_to_native()
-                .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
+                .map_err(|err| DeserializationError::DataCellError(err.to_string()))?
+                .into_iter();
 
             Ok(component_value_iter)
         } else {
@@ -306,7 +303,7 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
-    /// Iterate over the values of an optional `Component`.
+    /// Iterate over optional values as native [`Component`]s.
     ///
     /// Always produces an iterator that matches the length of a primary
     /// component by joining on the `InstanceKey` values.
@@ -321,7 +318,7 @@ impl<A: Archetype> ArchetypeView<A> {
         if let Some(component) = component {
             let primary_instance_key_iter = self.iter_instance_keys();
 
-            let mut component_instance_key_iter = component.iter_instance_keys();
+            let mut component_instance_key_iter = component.instance_keys().into_iter();
 
             let component_value_iter = {
                 re_tracing::profile_scope!("try_from_arrow_opt", C::name());
@@ -383,7 +380,7 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
     let expected_point = [points[2]];
-    let expected_arrow = Point2D::to_arrow(expected_point, None);
+    let expected_arrow = Point2D::to_arrow(expected_point);
 
     assert_eq!(expected_arrow, value);
 
@@ -403,7 +400,7 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
     let expected_point = [points[3]];
-    let expected_arrow = Point2D::to_arrow(expected_point, None);
+    let expected_arrow = Point2D::to_arrow(expected_point);
 
     assert_eq!(expected_arrow, value);
 

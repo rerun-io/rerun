@@ -318,7 +318,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = AffixFuzzer1::from_arrow(serialized);
+    let deserialized = AffixFuzzer1::try_from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(arch, deserialized);
 }
 

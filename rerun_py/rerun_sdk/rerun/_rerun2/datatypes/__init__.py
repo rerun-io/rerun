@@ -89,6 +89,7 @@ from .rotation_axis_angle import (
     RotationAxisAngleLike,
     RotationAxisAngleType,
 )
+from .scalars import Float32, Float32Array, Float32ArrayLike, Float32Like, Float32Type
 from .scale3d import Scale3D, Scale3DArray, Scale3DArrayLike, Scale3DLike, Scale3DType
 from .tensor_buffer import TensorBuffer, TensorBufferArray, TensorBufferArrayLike, TensorBufferLike, TensorBufferType
 from .tensor_data import TensorData, TensorDataArray, TensorDataArrayLike, TensorDataLike, TensorDataType
@@ -185,6 +186,11 @@ __all__ = [
     "FlattenedScalarArrayLike",
     "FlattenedScalarLike",
     "FlattenedScalarType",
+    "Float32",
+    "Float32Array",
+    "Float32ArrayLike",
+    "Float32Like",
+    "Float32Type",
     "KeypointId",
     "KeypointIdArray",
     "KeypointIdArrayLike",

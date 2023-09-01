@@ -410,9 +410,6 @@ macro_rules! component_legacy_shim {
 
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;
-            type Item<'a> = <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::Item;
-            type Iter<'a> =
-                <&'a <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter;
 
             #[inline]
             fn name() -> Self::Name {
@@ -423,15 +420,12 @@ macro_rules! component_legacy_shim {
 
             #[inline]
             fn arrow_datatype() -> arrow2::datatypes::DataType {
-                <Self as re_log_types::LegacyComponent>::field()
-                    .data_type()
-                    .clone()
+                <Self as re_log_types::LegacyComponent>::field().data_type
             }
 
             #[inline]
             fn try_to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-                _extension_wrapper: Option<&str>,
             ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
             where
                 Self: Clone + 'a,
@@ -451,26 +445,22 @@ macro_rules! component_legacy_shim {
                 Ok(arrow)
             }
 
-
             #[inline]
-            fn try_iter_from_arrow(
-                data: &dyn arrow2::array::Array,
-            ) -> re_types::DeserializationResult<Self::Iter<'_>>
+            fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
             where
-                Self: Sized,
+                Self: Sized
             {
-                let native =
-                       <<Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray>::iter_from_array_ref(data);
-                Ok(native)
-            }
-
-            #[inline]
-            fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-                <Self as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(item)
+                let native = <
+                    <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray
+                >::iter_from_array_ref(data);
+                Ok(
+                    native
+                        .into_iter()
+                        .map(|item| <Self as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(item))
+                        .collect()
+                )
             }
         }
-
-        impl re_types::Component for $entity {}
 
         impl<'a> From<$entity> for ::std::borrow::Cow<'a, $entity> {
             #[inline]

@@ -75,8 +75,8 @@ macro_rules! create_visitor {
             re_tracing::profile_function!();
 
             ::itertools::izip!(
-                self.primary.iter_instance_keys(),
-                self.primary.iter_values::<Primary>()?,
+                self.primary.instance_keys(),
+                self.primary.values::<Primary>()?,
                 $(
                     self.iter_component::<$CC>()?,
                 )*

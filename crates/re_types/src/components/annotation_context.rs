@@ -46,8 +46,6 @@ impl<'a> From<&'a AnnotationContext> for ::std::borrow::Cow<'a, AnnotationContex
 
 impl crate::Loggable for AnnotationContext {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -69,7 +67,6 @@ impl crate::Loggable for AnnotationContext {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -110,23 +107,12 @@ impl crate::Loggable for AnnotationContext {
                 .unwrap()
                 .into();
                 ListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.components.AnnotationContext".to_owned(),
-                            Box::new(Self::arrow_datatype()),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
+                    Self::arrow_datatype(),
                     offsets,
                     {
                         _ = data0_inner_bitmap;
-                        _ = extension_wrapper;
                         crate::datatypes::ClassDescriptionMapElem::try_to_arrow_opt(
                             data0_inner_data,
-                            Some("rerun.components.AnnotationContext"),
                         )?
                     },
                     data0_bitmap,
@@ -210,21 +196,4 @@ impl crate::Loggable for AnnotationContext {
         .with_context("rerun.components.AnnotationContext#class_map")
         .with_context("rerun.components.AnnotationContext")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Component for AnnotationContext {}

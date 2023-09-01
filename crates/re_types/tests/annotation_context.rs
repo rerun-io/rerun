@@ -40,7 +40,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = AnnotationContext::from_arrow(serialized);
+    let deserialized = AnnotationContext::try_from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(arch, deserialized);
 }
 

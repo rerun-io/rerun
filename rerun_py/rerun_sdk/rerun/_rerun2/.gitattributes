@@ -50,6 +50,7 @@ datatypes/mat4x4.py linguist-generated=true
 datatypes/quaternion.py linguist-generated=true
 datatypes/rotation3d.py linguist-generated=true
 datatypes/rotation_axis_angle.py linguist-generated=true
+datatypes/scalars.py linguist-generated=true
 datatypes/scale3d.py linguist-generated=true
 datatypes/tensor_buffer.py linguist-generated=true
 datatypes/tensor_data.py linguist-generated=true
