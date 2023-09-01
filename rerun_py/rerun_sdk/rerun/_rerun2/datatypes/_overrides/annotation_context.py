@@ -140,7 +140,7 @@ def keypointpair_native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.D
 
 
 def annotationinfo_native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-    from .. import AnnotationInfo, ColorType, LabelType
+    from .. import AnnotationInfo, ColorType, Utf8Type
 
     if isinstance(data, AnnotationInfo):
         data = [data]
@@ -155,7 +155,7 @@ def annotationinfo_native_to_pa_array(data: AnnotationInfoArrayLike, data_type: 
 
     # Note: we can't use from_similar here because we need to handle optional values
     # fortunately these are fairly simple types
-    label_array = pa.array(labels, type=LabelType().storage_type)
+    label_array = pa.array(labels, type=Utf8Type().storage_type)
     color_array = pa.array(colors, type=ColorType().storage_type)
 
     return pa.StructArray.from_arrays(

@@ -165,10 +165,10 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     );
                 }
                 THEN("several components with a mix of vector, array and c-array can be logged") {
-                    rrc::Label c_style_array[3] = {
-                        rrc::Label("hello"),
-                        rrc::Label("friend"),
-                        rrc::Label("yo"),
+                    rrc::Text c_style_array[3] = {
+                        rrc::Text("hello"),
+                        rrc::Text("friend"),
+                        rrc::Text("yo"),
                     };
                     stream.log_components(
                         "as-mix",

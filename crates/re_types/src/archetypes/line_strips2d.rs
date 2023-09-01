@@ -91,7 +91,7 @@ pub struct LineStrips2D {
     pub colors: Option<Vec<crate::components::Color>>,
 
     /// Optional text labels for the line strips.
-    pub labels: Option<Vec<crate::components::Label>>,
+    pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
     /// Objects with higher values are drawn on top of those with lower values.
@@ -274,10 +274,10 @@ impl crate::Archetype for LineStrips2D {
                 self.labels
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Label>::try_to_arrow(many.iter());
+                        let array = <crate::components::Text>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Label".into(),
+                                "rerun.components.Text".into(),
                                 Box::new(array.data_type().clone()),
                                 Some("rerun.label".into()),
                             );
@@ -425,7 +425,7 @@ impl crate::Archetype for LineStrips2D {
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
             Some({
-                <crate::components::Label>::try_from_arrow_opt(&**array)
+                <crate::components::Text>::try_from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -517,7 +517,7 @@ impl LineStrips2D {
 
     pub fn with_labels(
         mut self,
-        labels: impl IntoIterator<Item = impl Into<crate::components::Label>>,
+        labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
         self.labels = Some(labels.into_iter().map(Into::into).collect());
         self

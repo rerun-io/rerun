@@ -1,20 +1,20 @@
-#include "label.hpp"
+#include "utf8.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
 namespace rerun {
-    namespace components {
+    namespace datatypes {
 
 #ifdef EDIT_EXTENSION
-        struct LabelExt {
+        struct Utf8Ext {
             std::string value;
-#define Label LabelExt
+#define Utf8 Utf8Ext
 
             // [CODEGEN COPY TO HEADER START]
 
-            /// Construct Label from c string.
-            Label(const char* str) : value(str) {}
+            /// Construct a `Utf8` from null-terminated UTF-8.
+            Utf8(const char* str) : value(str) {}
 
             const char* c_str() const {
                 return value.c_str();
@@ -23,5 +23,5 @@ namespace rerun {
             // [CODEGEN COPY TO HEADER END]
         };
 #endif
-    } // namespace components
+    } // namespace datatypes
 } // namespace rerun

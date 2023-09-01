@@ -112,6 +112,10 @@ name = "tensor_simple"
 path = "tensor_simple.rs"
 
 [[bin]]
+name = "text_document"
+path = "text_document.rs"
+
+[[bin]]
 name = "text_entry_simple"
 path = "text_entry_simple.rs"
 

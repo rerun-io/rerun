@@ -1,6 +1,6 @@
 use re_log_types::{DataRow, DataRowError, EntityPath, RowId, TimePoint};
 use re_types::{
-    components::{Color, Label, Point2D},
+    components::{Color, Point2D, Text},
     Loggable as _,
 };
 
@@ -12,7 +12,7 @@ fn data_row_error_num_instances() {
     let num_instances = 2;
     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
     let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
-    let labels: &[Label] = &[];
+    let labels: &[Text] = &[];
 
     // 0 = clear: legal
     DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, labels).unwrap();

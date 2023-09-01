@@ -12,32 +12,32 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A String label component.
+/// A string of text, e.g. for labels and text documents
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Label(pub crate::datatypes::Label);
+pub struct Text(pub crate::datatypes::Utf8);
 
-impl<T: Into<crate::datatypes::Label>> From<T> for Label {
+impl<T: Into<crate::datatypes::Utf8>> From<T> for Text {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
+impl<'a> From<Text> for ::std::borrow::Cow<'a, Text> {
     #[inline]
-    fn from(value: Label) -> Self {
+    fn from(value: Text) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Label> for ::std::borrow::Cow<'a, Label> {
+impl<'a> From<&'a Text> for ::std::borrow::Cow<'a, Text> {
     #[inline]
-    fn from(value: &'a Label) -> Self {
+    fn from(value: &'a Text) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Label {
+impl crate::Loggable for Text {
     type Name = crate::ComponentName;
 
     #[inline]
@@ -82,7 +82,7 @@ impl crate::Loggable for Label {
                     .iter()
                     .flatten()
                     .flat_map(|datum| {
-                        let crate::datatypes::Label(data0) = datum;
+                        let crate::datatypes::Utf8(data0) = datum;
                         data0.0.clone()
                     })
                     .collect();
@@ -90,7 +90,7 @@ impl crate::Loggable for Label {
                     ::arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
                         opt.as_ref()
                             .map(|datum| {
-                                let crate::datatypes::Label(data0) = datum;
+                                let crate::datatypes::Utf8(data0) = datum;
                                 data0.0.len()
                             })
                             .unwrap_or_default()
@@ -131,7 +131,7 @@ impl crate::Loggable for Label {
                         arrow_data.data_type().clone(),
                     )
                 })
-                .with_context("rerun.components.Label#value")?;
+                .with_context("rerun.components.Text#value")?;
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -157,17 +157,17 @@ impl crate::Loggable for Label {
             })
             .map(|res_or_opt| {
                 res_or_opt.map(|res_or_opt| {
-                    res_or_opt.map(|v| crate::datatypes::Label(crate::ArrowString(v)))
+                    res_or_opt.map(|v| crate::datatypes::Utf8(crate::ArrowString(v)))
                 })
             })
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.Label#value")?
+            .with_context("rerun.components.Text#value")?
             .into_iter()
         }
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.components.Label#value")
-        .with_context("rerun.components.Label")?)
+        .with_context("rerun.components.Text#value")
+        .with_context("rerun.components.Text")?)
     }
 }

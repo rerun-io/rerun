@@ -50,7 +50,7 @@ table Points2D (
   // --- Optional ---
 
   /// Optional text labels for the points.
-  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3000);
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// An optional floating point value that specifies the 2D drawing order.
   /// Objects with higher values are drawn on top of those with lower values.

@@ -65,7 +65,7 @@ table LineStrips3D (
   // --- Optional ---
 
   /// Optional text labels for the line strips.
-  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3000);
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// Optional `ClassId`s for the lines.
   ///

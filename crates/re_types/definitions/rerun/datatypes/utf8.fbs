@@ -7,8 +7,10 @@ namespace rerun.datatypes;
 
 // ---
 
-/// A String label datatype.
-table Label (
+/// A string of text, encoded as UTF-8.
+//
+// NOTE: Apache Arrow uses UTF-8 encoding of its String type, as does Rust.
+table Utf8 (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",

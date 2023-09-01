@@ -9,8 +9,8 @@ namespace rerun.components;
 
 // ---
 
-/// A String label component.
-table Label (
+/// A string of text, e.g. for labels and text documents
+table Text (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
@@ -19,5 +19,5 @@ table Label (
   "attr.rust.repr": "transparent",
   order: 100
 ) {
-  value: rerun.datatypes.Label (order: 100);
+  value: rerun.datatypes.Utf8 (order: 100);
 }

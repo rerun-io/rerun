@@ -51,7 +51,7 @@ As of writing we have:
 * Bar Chart
 * Tensor
 * Text
-* Text Box
+* Text Document
 * Time Series
 
 #### Future Space View Class distinction

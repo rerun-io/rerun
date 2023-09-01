@@ -49,7 +49,7 @@ KEYPOINT_CONNECTIONS_INPUTS: list[Sequence[rr_dt.KeypointPairLike] | None] = [
 def assert_correct_class_description(desc: rr_dt.ClassDescription) -> None:
     assert desc.info.id == 1
     if desc.info.label:
-        assert desc.info.label == rr_dt.Label("label")
+        assert desc.info.label == rr_dt.Utf8("label")
     if desc.info.color:
         assert desc.info.color == rr_dt.Color([1, 2, 3])
     if desc.keypoint_annotations:

@@ -8,9 +8,9 @@
 #include "../components/draw_order.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
-#include "../components/label.hpp"
 #include "../components/point2d.hpp"
 #include "../components/radius.hpp"
+#include "../components/text.hpp"
 
 namespace rerun {
     namespace archetypes {
@@ -47,7 +47,7 @@ namespace rerun {
             if (labels.has_value()) {
                 const auto& value = labels.value();
                 const auto result =
-                    rerun::components::Label::to_data_cell(value.data(), value.size());
+                    rerun::components::Text::to_data_cell(value.data(), value.size());
                 if (result.is_err()) {
                     return result.error;
                 }

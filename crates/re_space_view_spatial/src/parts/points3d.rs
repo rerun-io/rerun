@@ -2,7 +2,7 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Points3D,
-    components::{Label, Point3D},
+    components::{Point3D, Text},
     Archetype as _,
 };
 use re_viewer_context::{
@@ -50,7 +50,7 @@ impl Points3DPart {
         let labels = itertools::izip!(
             annotation_infos.iter(),
             arch_view.iter_required_component::<Point3D>()?,
-            arch_view.iter_optional_component::<Label>()?,
+            arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
         )

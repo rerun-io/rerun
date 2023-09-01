@@ -56,6 +56,7 @@ class LineStrips3D(Archetype):
 
     Many individual segments:
     ```python
+    #!/usr/bin/env python3
     import numpy as np
     import rerun as rr
     import rerun.experimental as rr2
@@ -104,10 +105,10 @@ class LineStrips3D(Archetype):
     Optional colors for the line strips.
     """
 
-    labels: components.LabelArray | None = field(
+    labels: components.TextArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.LabelArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the line strips.

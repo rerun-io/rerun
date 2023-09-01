@@ -122,7 +122,7 @@ def log_obb(
         instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if label:
-        instanced["rerun.label"] = rrc.LabelArray.from_similar([label]).storage
+        instanced["rerun.label"] = rrc.TextArray.from_similar([label]).storage
 
     if class_id:
         class_ids = _normalize_ids([class_id])
@@ -248,7 +248,7 @@ def log_obbs(
 
     if len(labels):
         is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = rrc.LabelArray.from_similar(labels).storage
+        comps[is_splat]["rerun.label"] = rrc.TextArray.from_similar(labels).storage
 
     if len(class_ids):
         is_splat = len(class_ids) == 1

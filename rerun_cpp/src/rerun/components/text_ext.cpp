@@ -1,20 +1,20 @@
-#include "label.hpp"
+#include "text.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
 namespace rerun {
-    namespace datatypes {
+    namespace components {
 
 #ifdef EDIT_EXTENSION
-        struct LabelExt {
+        struct TextExt {
             std::string value;
-#define Label LabelExt
+#define Text TextExt
 
             // [CODEGEN COPY TO HEADER START]
 
-            /// Construct Label from c string.
-            Label(const char* str) : value(str) {}
+            /// Construct `Text` from a zero-terminaded UTF8 string.
+            Text(const char* str) : value(str) {}
 
             const char* c_str() const {
                 return value.c_str();
@@ -23,5 +23,5 @@ namespace rerun {
             // [CODEGEN COPY TO HEADER END]
         };
 #endif
-    } // namespace datatypes
+    } // namespace components
 } // namespace rerun

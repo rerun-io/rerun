@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Arrows3D,
-    components::{ClassId, Color, InstanceKey, Label, Origin3D, Radius, Vector3D},
+    components::{ClassId, Color, InstanceKey, Origin3D, Radius, Vector3D},
     datatypes::Vec3D,
     Archetype as _,
 };
@@ -27,8 +27,8 @@ fn roundtrip() {
             Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
-            Label::from("hello"),  //
-            Label::from("friend"), //
+            "hello".into(),  //
+            "friend".into(), //
         ]),
         class_ids: Some(vec![
             ClassId::from(126), //
@@ -53,7 +53,7 @@ fn roundtrip() {
         ("arrows", vec!["rerun.components.Arrow3D"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
-        ("labels", vec!["rerun.components.Label"]),
+        ("labels", vec!["rerun.components.Text"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("instance_keys", vec!["rerun.components.InstanceKey"]),
     ]

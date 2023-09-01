@@ -77,7 +77,6 @@ from .fuzzy_deps import (
 )
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArray, KeypointPairArrayLike, KeypointPairLike, KeypointPairType
-from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
 from .mat3x3 import Mat3x3, Mat3x3Array, Mat3x3ArrayLike, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4Array, Mat4x4ArrayLike, Mat4x4Like, Mat4x4Type
 from .quaternion import Quaternion, QuaternionArray, QuaternionArrayLike, QuaternionLike, QuaternionType
@@ -115,6 +114,7 @@ from .translation_rotation_scale3d import (
     TranslationRotationScale3DLike,
     TranslationRotationScale3DType,
 )
+from .utf8 import Utf8, Utf8Array, Utf8ArrayLike, Utf8Like, Utf8Type
 from .vec2d import Vec2D, Vec2DArray, Vec2DArrayLike, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArray, Vec3DArrayLike, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArray, Vec4DArrayLike, Vec4DLike, Vec4DType
@@ -200,11 +200,6 @@ __all__ = [
     "KeypointPairArrayLike",
     "KeypointPairLike",
     "KeypointPairType",
-    "Label",
-    "LabelArray",
-    "LabelArrayLike",
-    "LabelLike",
-    "LabelType",
     "Mat3x3",
     "Mat3x3Array",
     "Mat3x3ArrayLike",
@@ -275,6 +270,11 @@ __all__ = [
     "TranslationRotationScale3DArrayLike",
     "TranslationRotationScale3DLike",
     "TranslationRotationScale3DType",
+    "Utf8",
+    "Utf8Array",
+    "Utf8ArrayLike",
+    "Utf8Like",
+    "Utf8Type",
     "Vec2D",
     "Vec2DArray",
     "Vec2DArrayLike",

@@ -53,7 +53,7 @@ def test_points2d() -> None:
         points = cast(rrd.Vec2DArrayLike, points)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.LabelArrayLike], labels)
+        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
         draw_order = cast(Optional[rrc.DrawOrderArrayLike], draw_order)
         class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
         keypoint_ids = cast(Optional[rrd.KeypointIdArrayLike], keypoint_ids)

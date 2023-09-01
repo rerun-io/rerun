@@ -29,9 +29,9 @@ use rerun::{
 pub use rerun::{
     components::{
         AnnotationContext, Box3D, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
-        InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D,
-        Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps,
-        Tensor, TensorData, TensorDimension, TextEntry, Transform3D, Vector3D, ViewCoordinates,
+        InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D, Pinhole,
+        Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Tensor,
+        TensorData, TensorDimension, Text, TextEntry, Transform3D, Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},

@@ -12,26 +12,26 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A String label datatype.
+/// A string of text, encoded as UTF-8.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct Label(pub crate::ArrowString);
+pub struct Utf8(pub crate::ArrowString);
 
-impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
+impl<'a> From<Utf8> for ::std::borrow::Cow<'a, Utf8> {
     #[inline]
-    fn from(value: Label) -> Self {
+    fn from(value: Utf8) -> Self {
         std::borrow::Cow::Owned(value)
     }
 }
 
-impl<'a> From<&'a Label> for ::std::borrow::Cow<'a, Label> {
+impl<'a> From<&'a Utf8> for ::std::borrow::Cow<'a, Utf8> {
     #[inline]
-    fn from(value: &'a Label) -> Self {
+    fn from(value: &'a Utf8) -> Self {
         std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl crate::Loggable for Label {
+impl crate::Loggable for Utf8 {
     type Name = crate::DatatypeName;
 
     #[inline]
@@ -115,7 +115,7 @@ impl crate::Loggable for Label {
                         arrow_data.data_type().clone(),
                     )
                 })
-                .with_context("rerun.datatypes.Label#value")?;
+                .with_context("rerun.datatypes.Utf8#value")?;
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -143,13 +143,13 @@ impl crate::Loggable for Label {
                 res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
             })
             .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.datatypes.Label#value")?
+            .with_context("rerun.datatypes.Utf8#value")?
             .into_iter()
         }
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.datatypes.Label#value")
-        .with_context("rerun.datatypes.Label")?)
+        .with_context("rerun.datatypes.Utf8#value")
+        .with_context("rerun.datatypes.Utf8")?)
     }
 }

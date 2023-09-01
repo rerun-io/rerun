@@ -86,7 +86,7 @@ pub struct LineStrips3D {
     pub colors: Option<Vec<crate::components::Color>>,
 
     /// Optional text labels for the line strips.
-    pub labels: Option<Vec<crate::components::Label>>,
+    pub labels: Option<Vec<crate::components::Text>>,
 
     /// Optional `ClassId`s for the lines.
     ///
@@ -258,10 +258,10 @@ impl crate::Archetype for LineStrips3D {
                 self.labels
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Label>::try_to_arrow(many.iter());
+                        let array = <crate::components::Text>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Label".into(),
+                                "rerun.components.Text".into(),
                                 Box::new(array.data_type().clone()),
                                 Some("rerun.label".into()),
                             );
@@ -389,7 +389,7 @@ impl crate::Archetype for LineStrips3D {
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
             Some({
-                <crate::components::Label>::try_from_arrow_opt(&**array)
+                <crate::components::Text>::try_from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -466,7 +466,7 @@ impl LineStrips3D {
 
     pub fn with_labels(
         mut self,
-        labels: impl IntoIterator<Item = impl Into<crate::components::Label>>,
+        labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
         self.labels = Some(labels.into_iter().map(Into::into).collect());
         self

@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Sequence
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from .. import LabelArrayLike
+    from .. import Utf8ArrayLike
 
 
-def label_native_to_pa_array(data: LabelArrayLike, data_type: pa.DataType) -> pa.Array:
+def utf8_native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
     if isinstance(data, str):
         array = [data]
     elif isinstance(data, Sequence):

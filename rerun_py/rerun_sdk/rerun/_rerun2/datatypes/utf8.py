@@ -11,14 +11,14 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import label_native_to_pa_array  # noqa: F401
+from ._overrides import utf8_native_to_pa_array  # noqa: F401
 
-__all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
+__all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
 
 
 @define
-class Label:
-    """A String label datatype."""
+class Utf8:
+    """A string of text, encoded as UTF-8."""
 
     value: str = field(converter=str)
 
@@ -27,31 +27,31 @@ class Label:
 
 
 if TYPE_CHECKING:
-    LabelLike = Union[Label, str]
+    Utf8Like = Union[Utf8, str]
 else:
-    LabelLike = Any
+    Utf8Like = Any
 
-LabelArrayLike = Union[Label, Sequence[LabelLike], str, Sequence[str]]
+Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str]]
 
 
 # --- Arrow support ---
 
 
-class LabelType(BaseExtensionType):
+class Utf8Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(self, pa.utf8(), "rerun.label")
 
 
-class LabelArray(BaseExtensionArray[LabelArrayLike]):
+class Utf8Array(BaseExtensionArray[Utf8ArrayLike]):
     _EXTENSION_NAME = "rerun.label"
-    _EXTENSION_TYPE = LabelType
+    _EXTENSION_TYPE = Utf8Type
 
     @staticmethod
-    def _native_to_pa_array(data: LabelArrayLike, data_type: pa.DataType) -> pa.Array:
-        return label_native_to_pa_array(data, data_type)
+    def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
+        return utf8_native_to_pa_array(data, data_type)
 
 
-LabelType._ARRAY_TYPE = LabelArray
+Utf8Type._ARRAY_TYPE = Utf8Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(LabelType())
+# pa.register_extension_type(Utf8Type())

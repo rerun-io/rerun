@@ -23,13 +23,13 @@ __all__ = [
 ]
 
 
-def _annotationinfo_label_converter(x: datatypes.LabelLike | None) -> datatypes.Label | None:
+def _annotationinfo_label_converter(x: datatypes.Utf8Like | None) -> datatypes.Utf8 | None:
     if x is None:
         return None
-    elif isinstance(x, datatypes.Label):
+    elif isinstance(x, datatypes.Utf8):
         return x
     else:
-        return datatypes.Label(x)
+        return datatypes.Utf8(x)
 
 
 def _annotationinfo_color_converter(x: datatypes.ColorLike | None) -> datatypes.Color | None:
@@ -55,7 +55,7 @@ class AnnotationInfo:
     `ClassId` or `KeypointId` to which this annotation info belongs.
     """
 
-    label: datatypes.Label | None = field(default=None, converter=_annotationinfo_label_converter)
+    label: datatypes.Utf8 | None = field(default=None, converter=_annotationinfo_label_converter)
     """
     The label that will be shown in the UI.
     """

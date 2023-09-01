@@ -2,7 +2,7 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips3D,
-    components::{Label, LineStrip3D},
+    components::{LineStrip3D, Text},
     Archetype as _,
 };
 use re_viewer_context::{
@@ -49,7 +49,7 @@ impl Lines3DPart {
         let labels = itertools::izip!(
             annotation_infos.iter(),
             arch_view.iter_required_component::<LineStrip3D>()?,
-            arch_view.iter_optional_component::<Label>()?,
+            arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
         )

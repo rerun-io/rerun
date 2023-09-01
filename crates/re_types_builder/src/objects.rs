@@ -192,7 +192,7 @@ impl Objects {
 /// # let objects = Objects::default();
 /// let obj = &objects["rerun.datatypes.Vec3D"];
 /// let obj = &objects["rerun.datatypes.Angle"];
-/// let obj = &objects["rerun.components.Label"];
+/// let obj = &objects["rerun.components.Text"];
 /// let obj = &objects["rerun.archetypes.Point2D"];
 /// ```
 impl std::ops::Index<&str> for Objects {
