@@ -110,6 +110,16 @@ impl ReUi {
         egui::TextStyle::Name("welcome-screen-body".into())
     }
 
+    pub fn welcome_screen_tab_bar_style(ui: &mut egui::Ui) {
+        ui.spacing_mut().item_spacing.x = 16.0;
+        ui.visuals_mut().selection.bg_fill = egui::Color32::TRANSPARENT;
+        ui.visuals_mut().selection.stroke = ui.visuals().widgets.active.fg_stroke;
+        ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+        ui.visuals_mut().widgets.hovered.fg_stroke = ui.visuals().widgets.active.fg_stroke;
+        ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+        ui.visuals_mut().widgets.inactive.fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
+    }
+
     /// Margin on all sides of views.
     pub fn view_padding() -> f32 {
         12.0

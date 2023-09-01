@@ -84,7 +84,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // TODO(ab): font sizes should come from design tokens
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(42.0));
+        .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(28.0));
     egui_style
         .text_styles
         .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(24.0)); //TODO(ab): thin variant

@@ -30,6 +30,9 @@ pub struct AppState {
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
 
+    #[serde(skip)]
+    welcome_screen: crate::ui::WelcomeScreen,
+
     // TODO(jleibs): This is sort of a weird place to put this but makes more
     // sense than the blueprint
     #[serde(skip)]
@@ -90,6 +93,7 @@ impl AppState {
             recording_configs,
             selection_panel,
             time_panel,
+            welcome_screen,
             viewport_state,
         } = self;
 
@@ -189,7 +193,7 @@ impl AppState {
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
                         if show_welcome {
-                            crate::ui::welcome_ui(re_ui, ui, rx, command_sender);
+                            welcome_screen.ui(re_ui, ui, rx, command_sender);
                         } else {
                             viewport.viewport_ui(ui, &mut ctx);
                         }
