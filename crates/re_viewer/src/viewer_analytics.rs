@@ -22,7 +22,11 @@ pub struct ViewerAnalytics {
 
 #[cfg(feature = "analytics")]
 impl ViewerAnalytics {
-    pub fn new(disabled: bool) -> Self {
+    #[allow(unused_mut, clippy::let_and_return)]
+    pub fn new(
+        disabled: bool,
+        #[cfg(target_arch = "wasm32")] analytics_url: Option<String>,
+    ) -> Self {
         if disabled {
             return Self { analytics: None };
         }
@@ -35,7 +39,14 @@ impl ViewerAnalytics {
             }
         };
 
-        Self { analytics }
+        let mut analytics = Self { analytics };
+
+        #[cfg(target_arch = "wasm32")]
+        if let Some(url) = analytics_url {
+            analytics.register("url", url)
+        }
+
+        analytics
     }
 
     fn record(&self, event: Event) {
@@ -218,7 +229,10 @@ impl ViewerAnalytics {
 
 #[cfg(not(feature = "analytics"))]
 impl ViewerAnalytics {
-    pub fn new(_disabled: bool) -> Self {
+    pub fn new(
+        _disabled: bool,
+        #[cfg(target_arch = "wasm32")] _analytics_url: Option<String>,
+    ) -> Self {
         Self {}
     }
 
