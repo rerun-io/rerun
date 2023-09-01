@@ -14,6 +14,12 @@ namespace rerun.archetypes;
 /// - A `HxWx4` tensor, treated as an RGBA image.
 ///
 /// The viewer has limited support for ignoring extra empty dimensions.
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/image_simple_v2.rs
+/// \rs ```
 table Image (
   "attr.rust.derive": "PartialEq",
   order: 100
