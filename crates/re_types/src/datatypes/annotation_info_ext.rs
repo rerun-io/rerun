@@ -1,21 +1,31 @@
 use super::{AnnotationInfo, Color};
 
-impl From<(u16, &str)> for AnnotationInfo {
-    fn from(value: (u16, &str)) -> Self {
+impl From<u16> for AnnotationInfo {
+    fn from(id: u16) -> Self {
         Self {
-            id: value.0,
-            label: Some(value.1.into()),
+            id,
+            label: None,
+            color: None,
+        }
+    }
+}
+
+impl From<(u16, &str)> for AnnotationInfo {
+    fn from((id, label): (u16, &str)) -> Self {
+        Self {
+            id,
+            label: Some(label.into()),
             color: None,
         }
     }
 }
 
 impl From<(u16, &str, Color)> for AnnotationInfo {
-    fn from(value: (u16, &str, Color)) -> Self {
+    fn from((id, label, color): (u16, &str, Color)) -> Self {
         Self {
-            id: value.0,
-            label: Some(value.1.into()),
-            color: Some(value.2),
+            id,
+            label: Some(label.into()),
+            color: Some(color),
         }
     }
 }
