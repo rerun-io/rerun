@@ -69,9 +69,25 @@ pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeS
     re_tracing::profile_function!();
     for entry in std::fs::read_dir(folder_path).unwrap().flatten() {
         let filepath = Utf8PathBuf::try_from(entry.path()).unwrap();
-        if filepath.as_str().ends_with("_ext.rs") || filepath.as_str().ends_with("_ext.cpp") {
+
+        if let Some(stem) = filepath.as_str().strip_suffix("_ext.rs") {
+            let generated_path = Utf8PathBuf::try_from(format!("{stem}.rs")).unwrap();
+            assert!(
+                filepath.exists(),
+                "Found orphaned {filepath} with no matching {generated_path}"
+            );
             continue;
         }
+
+        if let Some(stem) = filepath.as_str().strip_suffix("_ext.cpp") {
+            let generated_hpp_path = Utf8PathBuf::try_from(format!("{stem}.hpp")).unwrap();
+            assert!(
+                filepath.exists(),
+                "Found orphaned {filepath} with no matching {generated_hpp_path}"
+            );
+            continue;
+        }
+
         if !filepaths.contains(&filepath) {
             re_log::info!("Removing {filepath:?}");
             std::fs::remove_file(filepath).ok();
