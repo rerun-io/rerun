@@ -144,6 +144,11 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
     app
 }
 
+/// Used to set the "email" property in the analytics config,
+/// in the same way as `rerun analytics email YOURNAME@rerun.io`.
+///
+/// This one just panics when it fails, as it's only ever really run
+/// by rerun employees manually in `app.rerun.io` and `demo.rerun.io`.
 #[cfg(feature = "analytics")]
 #[wasm_bindgen]
 pub fn set_email(email: String) {
