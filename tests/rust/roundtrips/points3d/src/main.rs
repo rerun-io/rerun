@@ -1,6 +1,6 @@
 //! Logs a `Points3D` archetype for roundtrip checks.
 
-use rerun::{archetypes::Points3D, external::re_log, MsgSender, RecordingStream};
+use rerun::{archetypes::Points3D, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -10,7 +10,7 @@ struct Args {
 }
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    MsgSender::from_archetype(
+    rec.log(
         "points3d",
         &Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
             .with_radii([0.42, 0.43])
@@ -19,10 +19,8 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_class_ids([126, 127])
             .with_keypoint_ids([2, 3])
             .with_instance_keys([66, 666]),
-    )?
-    .send(rec)?;
-
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 fn main() -> anyhow::Result<()> {

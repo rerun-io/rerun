@@ -1,8 +1,6 @@
 //! Logs a `Points2D` archetype for roundtrip checks.
 
-use rerun::{
-    archetypes::Points2D, components::Rect2D, external::re_log, MsgSender, RecordingStream,
-};
+use rerun::{archetypes::Points2D, components::Rect2D, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -12,7 +10,7 @@ struct Args {
 }
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    MsgSender::from_archetype(
+    rec.log(
         "points2d",
         &Points2D::new([(1.0, 2.0), (3.0, 4.0)])
             .with_radii([0.42, 0.43])
@@ -22,13 +20,16 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_class_ids([126, 127])
             .with_keypoint_ids([2, 3])
             .with_instance_keys([66, 666]),
-    )?
-    .send(rec)?;
+    )?;
 
     // Hack to establish 2d view bounds
-    MsgSender::new("rect")
-        .with_component(&[Rect2D::from_xywh(0.0, 0.0, 4.0, 6.0)])?
-        .send(rec)?;
+    // TODO(#2786): Rect2D archetype
+    rec.log_component_lists(
+        "rect",
+        false,
+        1,
+        [&Rect2D::from_xywh(0.0, 0.0, 4.0, 6.0) as _],
+    )?;
 
     Ok(())
 }

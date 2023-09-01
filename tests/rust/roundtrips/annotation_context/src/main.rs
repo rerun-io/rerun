@@ -4,7 +4,7 @@ use rerun::{
     archetypes::AnnotationContext,
     datatypes::{ClassDescription, Color, KeypointPair},
     external::re_log,
-    MsgSender, RecordingStream,
+    RecordingStream,
 };
 
 #[derive(Debug, clap::Parser)]
@@ -15,7 +15,7 @@ struct Args {
 }
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    MsgSender::from_archetype(
+    rec.log(
         "annotation_context",
         &AnnotationContext::new([
             (1, "hello").into(),
@@ -25,10 +25,8 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
                 keypoint_connections: KeypointPair::vec_from([(1, 2), (3, 4)]),
             },
         ]),
-    )?
-    .send(rec)?;
-
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 fn main() -> anyhow::Result<()> {

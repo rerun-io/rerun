@@ -1,8 +1,6 @@
 //! Logs a `LineStrips2D` archetype for roundtrip checks.
 
-use rerun::{
-    archetypes::LineStrips2D, components::Rect2D, external::re_log, MsgSender, RecordingStream,
-};
+use rerun::{archetypes::LineStrips2D, components::Rect2D, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -13,7 +11,7 @@ struct Args {
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-    MsgSender::from_archetype(
+    rec.log(
         "line_strips2d",
         &LineStrips2D::new(points.chunks(2))
             .with_radii([0.42, 0.43])
@@ -22,13 +20,16 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_draw_order(300.0)
             .with_class_ids([126, 127])
             .with_instance_keys([66, 666]),
-    )?
-    .send(rec)?;
+    )?;
 
     // Hack to establish 2d view bounds
-    MsgSender::new("rect")
-        .with_component(&[Rect2D::from_xywh(-10.0, -10.0, 20.0, 20.0)])?
-        .send(rec)?;
+    // TODO(#2786): Rect2D archetype
+    rec.log_component_lists(
+        "rect",
+        false,
+        1,
+        [&Rect2D::from_xywh(-10.0, -10.0, 20.0, 20.0) as _],
+    )?;
 
     Ok(())
 }
