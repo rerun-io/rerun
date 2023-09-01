@@ -152,7 +152,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = Transform3D::from_arrow(serialized);
+        let deserialized = Transform3D::try_from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

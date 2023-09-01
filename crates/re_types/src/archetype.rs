@@ -40,26 +40,31 @@ pub trait Archetype {
 
     /// Returns the names of all components that _must_ be provided by the user when constructing
     /// this archetype.
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]>;
+    fn required_components() -> std::borrow::Cow<'static, [ComponentName]>;
 
     /// Returns the names of all components that _should_ be provided by the user when constructing
     /// this archetype.
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
-        ::std::borrow::Cow::Borrowed(&[])
+    fn recommended_components() -> std::borrow::Cow<'static, [ComponentName]> {
+        std::borrow::Cow::Borrowed(&[])
     }
 
     /// Returns the names of all components that _may_ be provided by the user when constructing
     /// this archetype.
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
-        ::std::borrow::Cow::Borrowed(&[])
+    fn optional_components() -> std::borrow::Cow<'static, [ComponentName]> {
+        std::borrow::Cow::Borrowed(&[])
     }
 
     /// Returns the names of all components that must, should and may be provided by the user when
     /// constructing this archetype.
+    ///
+    /// The default implementation always does the right thing, at the cost of some runtime
+    /// allocations.
+    /// If you know all your components statically, you can override this method to get rid of the
+    /// extra allocations.
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> std::borrow::Cow<'static, [ComponentName]> {
         [
             Self::required_components().into_owned(),
             Self::recommended_components().into_owned(),
@@ -171,24 +176,6 @@ pub trait Archetype {
             backtrace: _Backtrace::new_unresolved(),
         })
     }
-
-    /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
-    /// into this archetype.
-    ///
-    /// Panics on failure.
-    /// For the fallible version, see [`Archetype::try_from_arrow`].
-    ///
-    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
-    /// logged to stderr.
-    #[inline]
-    fn from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    ) -> Self
-    where
-        Self: Sized,
-    {
-        Self::try_from_arrow(data).detailed_unwrap()
-    }
 }
 
 // ---
@@ -210,12 +197,17 @@ impl ArchetypeName {
     /// Returns the unqualified name, e.g. `Points3D`.
     ///
     /// Used for most UI elements.
+    ///
+    /// ```
+    /// # use re_types::ArchetypeName;
+    /// assert_eq!(ArchetypeName::from("rerun.archetypes.Points3D").short_name(), "Points3D");
+    /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
         let full_name = self.0.as_str();
-        if let Some(short_name) = full_name.strip_prefix("rerun.") {
+        if let Some(short_name) = full_name.strip_prefix("rerun.archetypes.") {
             short_name
-        } else if let Some(short_name) = full_name.strip_prefix("rerun.archetypes.") {
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
         } else {
             full_name

@@ -128,9 +128,6 @@ impl MsgSender {
                 return Err(MsgSenderError::MissingExtensionMetadata);
             };
             this = this.with_cell(DataCell::from_arrow(
-                // NOTE: Unwrapping is safe as we always include the legacy fqname into the Field's
-                // metadata while migrating towards HOPE.
-                //legacy_fqname.as_deref().unwrap().into(),
                 legacy_fqname.unwrap_or(fqname).into(),
                 array,
             ))?;

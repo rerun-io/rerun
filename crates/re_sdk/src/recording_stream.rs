@@ -42,7 +42,7 @@ pub enum RecordingStreamError {
     WebSink(anyhow::Error),
 }
 
-#[allow(missing_docs)]
+/// Results that can occur when creating/manipulating a [`RecordingStream`].
 pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 
 // ---

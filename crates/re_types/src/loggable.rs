@@ -30,10 +30,13 @@ pub trait Loggable: Clone + Sized {
     /// [`Loggable`], serializes them into an Arrow array.
     /// The Arrow array's datatype will match [`Loggable::arrow_field`].
     ///
-    /// This will _never_ fail for Rerun's built-in [`Loggable`].
+    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
+    /// 2^63 for large arrays).
+    ///
     /// For the non-fallible version, see [`Loggable::to_arrow_opt`].
     fn try_to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a;
@@ -56,7 +59,8 @@ pub trait Loggable: Clone + Sized {
     /// The underlying [`arrow2::datatypes::Field`], including datatype extensions.
     ///
     /// The default implementation will simply wrap [`Self::extended_arrow_datatype`] in a
-    /// [`arrow2::datatypes::Field`], which is what you want in most cases.
+    /// [`arrow2::datatypes::Field`], which is what you want in most cases (e.g. because you want
+    /// to declare the field as nullable).
     #[inline]
     fn arrow_field() -> arrow2::datatypes::Field {
         arrow2::datatypes::Field::new(
@@ -73,12 +77,14 @@ pub trait Loggable: Clone + Sized {
     /// The Arrow array's datatype will match [`Loggable::arrow_field`].
     ///
     /// Panics on failure.
-    /// This will _never_ fail for Rerun's built-in [`Loggable`]s.
+    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
+    /// 2^63 for large arrays).
     ///
     /// For the fallible version, see [`Loggable::try_to_arrow`].
     #[inline]
     fn to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> Box<dyn ::arrow2::array::Array>
     where
         Self: 'a,
@@ -90,11 +96,14 @@ pub trait Loggable: Clone + Sized {
     /// them into an Arrow array.
     /// The Arrow array's datatype will match [`Loggable::arrow_field`].
     ///
-    /// This will _never_ fail for Rerun's built-in [`Loggable`].
+    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
+    /// 2^63 for large arrays).
+    ///
     /// For the non-fallible version, see [`Loggable::to_arrow`].
     #[inline]
     fn try_to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a,
@@ -107,12 +116,14 @@ pub trait Loggable: Clone + Sized {
     /// The Arrow array's datatype will match [`Loggable::arrow_field`].
     ///
     /// Panics on failure.
-    /// This will _never_ fail for Rerun's built-in [`Loggable`].
+    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
+    /// 2^63 for large arrays).
     ///
     /// For the fallible version, see [`Loggable::try_to_arrow_opt`].
     #[inline]
     fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> Box<dyn ::arrow2::array::Array>
     where
         Self: 'a,
@@ -121,15 +132,6 @@ pub trait Loggable: Clone + Sized {
     }
 
     // --- Optional deserialization methods ---
-
-    /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
-    ///
-    /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
-    /// For the non-fallible version, see [`Loggable::try_from_arrow`].
-    #[inline]
-    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self> {
-        Self::try_from_arrow(data).detailed_unwrap()
-    }
 
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
     ///
@@ -207,15 +209,20 @@ impl ComponentName {
         self.0.as_str()
     }
 
-    /// Returns the unqualified name, e.g. `Vec2D`.
+    /// Returns the unqualified name, e.g. `Point2D`.
     ///
     /// Used for most UI elements.
+    ///
+    /// ```
+    /// # use re_types::ComponentName;
+    /// assert_eq!(ComponentName::from("rerun.components.Point2D").short_name(), "Point2D");
+    /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
         let full_name = self.0.as_str();
-        if let Some(short_name) = full_name.strip_prefix("rerun.") {
+        if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
             short_name
-        } else if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
         } else {
             full_name
@@ -249,12 +256,17 @@ impl DatatypeName {
     /// Returns the unqualified name, e.g. `Vec2D`.
     ///
     /// Used for most UI elements.
+    ///
+    /// ```
+    /// # use re_types::DatatypeName;
+    /// assert_eq!(DatatypeName::from("rerun.datatypes.Vec2D").short_name(), "Vec2D");
+    /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
         let full_name = self.0.as_str();
-        if let Some(short_name) = full_name.strip_prefix("rerun.") {
+        if let Some(short_name) = full_name.strip_prefix("rerun.datatypes.") {
             short_name
-        } else if let Some(short_name) = full_name.strip_prefix("rerun.datatypes.") {
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
         } else {
             full_name
