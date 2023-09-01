@@ -1167,12 +1167,42 @@ impl RecordingStream {
     }
 
     /// Set the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_sequence`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
+    ///
+    /// See also:
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::reset_time`]
+    pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
+        let Some(this) = &*self.inner else {
+            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
+            return;
+        };
+
+        let timepoint = timepoint.into();
+
+        for (timeline, time) in timepoint {
+            ThreadInfo::set_thread_time(&this.info.store_id, timeline, Some(time));
+        }
+    }
+
+    /// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
     ///
     /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::reset_time`]
     pub fn set_time_sequence(
         &self,
         timeline: impl Into<TimelineName>,
@@ -1191,12 +1221,19 @@ impl RecordingStream {
     }
 
     /// Set the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_seconds`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: &str, seconds: impl Into<Option<f64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
@@ -1213,12 +1250,19 @@ impl RecordingStream {
     }
 
     /// Set the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_nanos`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_nanos)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::reset_time`]
     pub fn set_time_nanos(&self, timeline: &str, ns: impl Into<Option<i64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
@@ -1233,10 +1277,17 @@ impl RecordingStream {
     }
 
     /// Clears out the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_sequence`]/[`Self::set_time_seconds`]/[`Self::set_time_nanos`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.reset_time()`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
     pub fn reset_time(&self) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to reset_time() ignored");
