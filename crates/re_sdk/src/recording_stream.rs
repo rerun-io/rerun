@@ -556,7 +556,7 @@ impl RecordingStream {
     /// Logs the contents of an [`Archetype`] into Rerun.
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
-    /// See [`RecordingStream::set_time`] for more information.
+    /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -581,7 +581,7 @@ impl RecordingStream {
     ///
     /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
     /// internal clock.
-    /// See [`RecordingStream::set_time`] for more information.
+    /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -675,7 +675,7 @@ impl RecordingStream {
     ///
     /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
     /// internal clock.
-    /// See [`RecordingStream::set_time`] for more information.
+    /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
     /// `num_instances` specify the expected number of component instances present in each list.
     /// Each can have either:
