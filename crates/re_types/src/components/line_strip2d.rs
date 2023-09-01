@@ -49,8 +49,6 @@ impl<'a> From<&'a LineStrip2D> for ::std::borrow::Cow<'a, LineStrip2D> {
 
 impl crate::Loggable for LineStrip2D {
     type Name = crate::ComponentName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -72,7 +70,6 @@ impl crate::Loggable for LineStrip2D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -113,16 +110,7 @@ impl crate::Loggable for LineStrip2D {
                 .unwrap()
                 .into();
                 ListArray::new(
-                    {
-                        _ = extension_wrapper;
-                        DataType::Extension(
-                            "rerun.components.LineStrip2D".to_owned(),
-                            Box::new(Self::arrow_datatype()),
-                            None,
-                        )
-                        .to_logical_type()
-                        .clone()
-                    },
+                    Self::arrow_datatype(),
                     offsets,
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -149,35 +137,17 @@ impl crate::Loggable for LineStrip2D {
                                     .into()
                             });
                         FixedSizeListArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Extension(
-                                    "rerun.components.LineStrip2D".to_owned(),
-                                    Box::new(DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        2usize,
-                                    )),
-                                    None,
-                                )
-                                .to_logical_type()
-                                .clone()
-                            },
+                            DataType::FixedSizeList(
+                                Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                2usize,
+                            ),
                             PrimitiveArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::Extension(
-                                        "rerun.components.LineStrip2D".to_owned(),
-                                        Box::new(DataType::Float32),
-                                        None,
-                                    )
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::Float32,
                                 data0_inner_data_inner_data
                                     .into_iter()
                                     .map(|v| v.unwrap_or_default())
@@ -341,21 +311,4 @@ impl crate::Loggable for LineStrip2D {
         .with_context("rerun.components.LineStrip2D#points")
         .with_context("rerun.components.LineStrip2D")?)
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Component for LineStrip2D {}

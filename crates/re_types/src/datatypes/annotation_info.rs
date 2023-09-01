@@ -44,8 +44,6 @@ impl<'a> From<&'a AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
 
 impl crate::Loggable for AnnotationInfo {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -81,7 +79,6 @@ impl crate::Loggable for AnnotationInfo {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -101,17 +98,7 @@ impl crate::Loggable for AnnotationInfo {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::AnnotationInfo>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::AnnotationInfo>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                 vec![
                     {
                         let (somes, id): (Vec<_>, Vec<_>) = data
@@ -129,10 +116,7 @@ impl crate::Loggable for AnnotationInfo {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::UInt16.to_logical_type().clone()
-                            },
+                            DataType::UInt16,
                             id.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             id_bitmap,
                         )
@@ -181,10 +165,7 @@ impl crate::Loggable for AnnotationInfo {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Utf8.to_logical_type().clone()
-                                    },
+                                    DataType::Utf8,
                                     offsets,
                                     inner_data,
                                     label_bitmap,
@@ -212,10 +193,7 @@ impl crate::Loggable for AnnotationInfo {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::UInt32.to_logical_type().clone()
-                            },
+                            DataType::UInt32,
                             color
                                 .into_iter()
                                 .map(|datum| {
@@ -407,21 +385,4 @@ impl crate::Loggable for AnnotationInfo {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for AnnotationInfo {}

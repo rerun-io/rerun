@@ -38,8 +38,6 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
 
 impl crate::Loggable for Transform3D {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -79,7 +77,6 @@ impl crate::Loggable for Transform3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -95,17 +92,7 @@ impl crate::Loggable for Transform3D {
                 })
                 .collect();
             UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::Transform3D>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::Transform3D>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::Transform3D>::arrow_datatype(),
                 data.iter()
                     .map(|a| match a.as_deref() {
                         None => 0,
@@ -139,10 +126,8 @@ impl crate::Loggable for Transform3D {
                         };
                         {
                             _ = translation_and_mat_3_x_3_bitmap;
-                            _ = extension_wrapper;
                             crate::datatypes::TranslationAndMat3x3::try_to_arrow_opt(
                                 translation_and_mat_3_x_3,
-                                None::<&str>,
                             )?
                         }
                     },
@@ -171,10 +156,8 @@ impl crate::Loggable for Transform3D {
                         };
                         {
                             _ = translation_rotation_scale_bitmap;
-                            _ = extension_wrapper;
                             crate::datatypes::TranslationRotationScale3D::try_to_arrow_opt(
                                 translation_rotation_scale,
-                                None::<&str>,
                             )?
                         }
                     },
@@ -350,21 +333,4 @@ impl crate::Loggable for Transform3D {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for Transform3D {}

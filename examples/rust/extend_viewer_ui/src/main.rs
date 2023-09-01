@@ -174,7 +174,7 @@ fn component_ui(
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 // Iterate over all the instances (e.g. all the points in the point cloud):
-                for instance_key in component.iter_instance_keys() {
+                for instance_key in component.instance_keys() {
                     if let Some(value) = component.lookup_arrow(&instance_key) {
                         ui.label(format_arrow(&*value));
                     }

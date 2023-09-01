@@ -46,8 +46,6 @@ impl<'a> From<&'a TensorBuffer> for ::std::borrow::Cow<'a, TensorBuffer> {
 
 impl crate::Loggable for TensorBuffer {
     type Name = crate::DatatypeName;
-    type Item<'a> = Option<Self>;
-    type Iter<'a> = <Vec<Self::Item<'a>> as IntoIterator>::IntoIter;
 
     #[inline]
     fn name() -> Self::Name {
@@ -198,7 +196,6 @@ impl crate::Loggable for TensorBuffer {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -214,17 +211,7 @@ impl crate::Loggable for TensorBuffer {
                 })
                 .collect();
             UnionArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::datatypes::TensorBuffer>::arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::datatypes::TensorBuffer>::arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
+                <crate::datatypes::TensorBuffer>::arrow_datatype(),
                 data.iter()
                     .map(|a| match a.as_deref() {
                         None => 0,
@@ -280,23 +267,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt8.to_logical_type().clone()
-                                    },
+                                    DataType::UInt8,
                                     u_8_inner_data,
                                     u_8_inner_bitmap,
                                 )
@@ -342,23 +321,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt16.to_logical_type().clone()
-                                    },
+                                    DataType::UInt16,
                                     u_16_inner_data,
                                     u_16_inner_bitmap,
                                 )
@@ -404,23 +375,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt32.to_logical_type().clone()
-                                    },
+                                    DataType::UInt32,
                                     u_32_inner_data,
                                     u_32_inner_bitmap,
                                 )
@@ -466,23 +429,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt64.to_logical_type().clone()
-                                    },
+                                    DataType::UInt64,
                                     u_64_inner_data,
                                     u_64_inner_bitmap,
                                 )
@@ -528,23 +483,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int8.to_logical_type().clone()
-                                    },
+                                    DataType::Int8,
                                     i_8_inner_data,
                                     i_8_inner_bitmap,
                                 )
@@ -590,23 +537,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int16.to_logical_type().clone()
-                                    },
+                                    DataType::Int16,
                                     i_16_inner_data,
                                     i_16_inner_bitmap,
                                 )
@@ -652,23 +591,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int32.to_logical_type().clone()
-                                    },
+                                    DataType::Int32,
                                     i_32_inner_data,
                                     i_32_inner_bitmap,
                                 )
@@ -714,23 +645,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Int64.to_logical_type().clone()
-                                    },
+                                    DataType::Int64,
                                     i_64_inner_data,
                                     i_64_inner_bitmap,
                                 )
@@ -776,23 +699,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
+                                    DataType::Float32,
                                     f_32_inner_data,
                                     f_32_inner_bitmap,
                                 )
@@ -838,23 +753,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float64.to_logical_type().clone()
-                                    },
+                                    DataType::Float64,
                                     f_64_inner_data,
                                     f_64_inner_bitmap,
                                 )
@@ -900,23 +807,15 @@ impl crate::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 offsets,
                                 PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::UInt8.to_logical_type().clone()
-                                    },
+                                    DataType::UInt8,
                                     jpeg_inner_data,
                                     jpeg_inner_bitmap,
                                 )
@@ -2157,21 +2056,4 @@ impl crate::Loggable for TensorBuffer {
             }
         })
     }
-
-    #[inline]
-    fn try_iter_from_arrow(
-        data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Self::Iter<'_>>
-    where
-        Self: Sized,
-    {
-        Ok(Self::try_from_arrow_opt(data)?.into_iter())
-    }
-
-    #[inline]
-    fn convert_item_to_opt_self(item: Self::Item<'_>) -> Option<Self> {
-        item
-    }
 }
-
-impl crate::Datatype for TensorBuffer {}

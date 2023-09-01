@@ -24,15 +24,7 @@ pub fn quote_arrow_serializer(
         unreachable!()
     };
     let fqname_use = quote_fqname_as_type_path(fqname);
-    let quoted_datatype = quote! {
-        (if let Some(ext) = extension_wrapper {
-            DataType::Extension(ext.to_owned(), Box::new(<#fqname_use>::arrow_datatype()), None)
-        } else {
-            <#fqname_use>::arrow_datatype()
-        })
-        // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
-        .to_logical_type().clone()
-    };
+    let quoted_datatype = quote!(<#fqname_use>::arrow_datatype());
 
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
@@ -84,7 +76,6 @@ pub fn quote_arrow_serializer(
 
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
-            Some(obj.fqname.as_str()),
             datatype,
             &quoted_datatype,
             obj_field.is_nullable,
@@ -135,7 +126,6 @@ pub fn quote_arrow_serializer(
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
-                        None,
                         inner_datatype,
                         &quoted_inner_datatype,
                         obj_field.is_nullable,
@@ -202,7 +192,6 @@ pub fn quote_arrow_serializer(
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
-                        None,
                         inner_datatype,
                         &quoted_inner_datatype,
                         obj_field.is_nullable,
@@ -341,7 +330,6 @@ enum InnerRepr {
 #[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
-    extension_wrapper: Option<&str>,
     datatype: &DataType,
     quoted_datatype: &dyn quote::ToTokens,
     is_nullable: bool,
@@ -349,19 +337,6 @@ fn quote_arrow_field_serializer(
     data_src: &proc_macro2::Ident,
     inner_repr: InnerRepr,
 ) -> TokenStream {
-    let quoted_datatype = if let Some(ext) = extension_wrapper {
-        quote!(DataType::Extension(#ext.to_owned(), Box::new(#quoted_datatype), None))
-    } else {
-        quote!(#quoted_datatype)
-    };
-    let quoted_datatype = quote! {{
-        // NOTE: This is a field, it's never going to need the runtime one.
-        _ = extension_wrapper;
-        #quoted_datatype
-            // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
-            .to_logical_type().clone()
-    }};
-
     let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
         Some(&objects[fqname])
     } else {
@@ -537,7 +512,6 @@ fn quote_arrow_field_serializer(
 
             let quoted_inner = quote_arrow_field_serializer(
                 objects,
-                extension_wrapper,
                 inner_datatype,
                 &quoted_inner_datatype,
                 inner.is_nullable,
@@ -689,12 +663,9 @@ fn quote_arrow_field_serializer(
                 unreachable!()
             };
             let fqname_use = quote_fqname_as_type_path(fqname);
-            let quoted_extension_wrapper =
-                extension_wrapper.map_or_else(|| quote!(None::<&str>), |ext| quote!(Some(#ext)));
             quote! {{
                 _ = #bitmap_src;
-                _ = extension_wrapper;
-                #fqname_use::try_to_arrow_opt(#data_src, #quoted_extension_wrapper)?
+                #fqname_use::try_to_arrow_opt(#data_src)?
             }}
         }
 
