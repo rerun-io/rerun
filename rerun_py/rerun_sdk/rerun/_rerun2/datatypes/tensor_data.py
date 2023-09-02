@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
-import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
@@ -55,20 +54,7 @@ class TensorData:
 
 
 TensorDataLike = TensorData
-TensorDataArrayLike = Union[
-    TensorData,
-    Sequence[TensorDataLike],
-    npt.NDArray[np.uint8]
-    | npt.NDArray[np.uint16]
-    | npt.NDArray[np.uint32]
-    | npt.NDArray[np.uint64]
-    | npt.NDArray[np.int8]
-    | npt.NDArray[np.int16]
-    | npt.NDArray[np.int32]
-    | npt.NDArray[np.int64]
-    | npt.NDArray[np.float32]
-    | npt.NDArray[np.float64],
-]
+TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
 
 
 # --- Arrow support ---

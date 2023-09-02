@@ -19,8 +19,8 @@ namespace rerun.datatypes;
 /// which stores a contiguous array of typed values.
 table TensorData (
   order: 100,
-  "attr.python.array_aliases": "npt.NDArray[np.uint8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[np.uint64] | npt.NDArray[np.int8] | npt.NDArray[np.int16] | npt.NDArray[np.int32] | npt.NDArray[np.int64] | npt.NDArray[np.float32] | npt.NDArray[np.float64]",
-  "attr.rust.derive": "PartialEq"
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rust.derive": "PartialEq,"
 ) {
   id: rerun.datatypes.TensorId (order: 100);
   shape: [rerun.datatypes.TensorDimension] (order: 200);
