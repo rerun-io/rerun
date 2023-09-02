@@ -47,6 +47,10 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
 # Init overrides
 ################################################################################
 
+# TODO(jleibs): Should also provide custom converters for shape / buffer
+# assignment that prevent the user from putting the TensorData into an
+# inconsistent state.
+
 
 def tensordata_init(
     self: TensorData,
@@ -57,6 +61,34 @@ def tensordata_init(
     array: Tensor | None = None,
     names: Sequence[str] | None = None,
 ) -> None:
+    """
+    Construct a `TensorData` object.
+
+    The `TensorData` object is internally represented by three fields: `id`, `shape`, and `buffer`.
+
+    This constructor provides additional arguments 'array', and 'names'. When passing in a
+    multi-dimensional array such as a `np.ndarray`, the `shape` and `buffer` fields will be
+    populated automagically.
+
+    Parameters
+    ----------
+    self: TensorData
+        The TensorData object to construct.
+    id: TensorIdLike | None
+        The id of the tensor. If None, a random id will be generated.
+    shape: Sequence[TensorDimensionLike] | None
+        The shape of the tensor. If None, and an array is proviced, the shape will be inferred
+        from the shape of the array.
+    buffer: TensorBufferLike | None
+        The buffer of the tensor. If None, and an array is provided, the buffer will be generated
+        from the array.
+    array: Tensor | None
+        A numpy array (or The array of the tensor. If None, the array will be inferred from the buffer.
+    names: Sequence[str] | None
+        The names of the tensor dimensions when generating the shape from an array.
+    """
+    # TODO(jleibs): Need to figure out how to get the above docstring to show up in the TensorData class
+    # documentation.
     if array is None and buffer is None:
         raise ValueError("Must provide one of 'array' or 'buffer'")
     if array is not None and buffer is not None:
@@ -138,16 +170,18 @@ def tensordata_init(
 def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import TensorData
 
-    # If it's a sequence, grab the first one
+    # If it's a sequence of a single TensorData, grab the first one
     if isinstance(data, collections.abc.Sequence):
-        if len(data) != 1:
-            raise ValueError("Tensors do not support batches")
-        data = data[0]
+        if len(data) > 0:
+            if isinstance(data[0], TensorData):
+                if len(data) > 1:
+                    raise ValueError("Tensors do not support batches")
+                data = data[0]
 
     # If it's not a TensorData, it should be an NDArray-like. coerce it into TensorData with the
     # constructor.
     if not isinstance(data, TensorData):
-        array = _to_numpy(data)
+        array = _to_numpy(data)  # type: ignore[arg-type]
         data = TensorData(array=array)
 
     # Now build the actual arrow fields
