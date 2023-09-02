@@ -33,7 +33,7 @@ class Image(Archetype):
     import rerun as rr
     import rerun.experimental as rr2
 
-    # Create an image with Pillow
+    # Create an image with numpy
     image = np.zeros((200, 300, 3), dtype=np.uint8)
     image[:, :, 0] = 255
     image[50:150, 50:150] = (0, 255, 0)

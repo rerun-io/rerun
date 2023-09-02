@@ -13,7 +13,7 @@ rng = np.random.default_rng(12345)
 RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
 
 
-TENSOR_DATA_INPUTS: list[rrd.TensorDataArrayLike | None] = [
+TENSOR_DATA_INPUTS: list[rrd.TensorDataArrayLike] = [
     # Full explicit construction
     rrd.TensorData(
         id=rrd.TensorId(uuid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
