@@ -19,7 +19,7 @@ def image_data_converter(data: TensorDataArrayLike) -> TensorDataArray:
     non_empty_dims = [d for d in shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 
-    # TODO(jleibs) how do we send warnings form down inside these converters?
+    # TODO(jleibs): What `recording` should we be passing here? How should we be getting it?
     if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
         _send_warning(f"Expected image, got array of shape {shape}", 1, recording=None)
 
