@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, LegacyComponent, RowId};
-use re_types::{components::InstanceKey, ComponentName, Loggable};
-use re_types::{Archetype, Component};
+use re_types::{components::InstanceKey, Archetype, Component, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 
@@ -130,7 +129,7 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
     re_tracing::profile_function!();
 
     let (row_id, primary) = get_component_with_instances(store, query, ent_path, Primary::name())
-        .ok_or(QueryError::PrimaryNotFound)?;
+        .ok_or(QueryError::PrimaryNotFound(Primary::name()))?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
@@ -217,8 +216,10 @@ pub fn query_archetype<A: Archetype>(
     //
     // `query_archetype` is currently run for every archetype on every path in the view
     // each path that's missing the primary is then ignored rather than being visited.
-    if required_components.iter().any(|c| c.is_none()) {
-        return crate::Result::Err(QueryError::PrimaryNotFound);
+    for (name, c) in itertools::izip!(A::required_components().iter(), &required_components) {
+        if c.is_none() {
+            return crate::Result::Err(QueryError::PrimaryNotFound(*name));
+        }
     }
 
     let (row_ids, required_components): (Vec<_>, Vec<_>) =

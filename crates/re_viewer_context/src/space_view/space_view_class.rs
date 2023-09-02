@@ -218,12 +218,12 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
             re_tracing::profile_scope!("ViewPartSystem::execute");
             let mut parts = systems.new_part_collection();
             let mut draw_data = Vec::new();
-            for (_name, part) in &mut parts.systems {
-                re_tracing::profile_scope!(_name.as_str());
+            for (name, part) in &mut parts.systems {
+                re_tracing::profile_scope!(name.as_str());
                 match part.execute(ctx, query, &view_ctx) {
                     Ok(part_draw_data) => draw_data.extend(part_draw_data),
                     Err(err) => {
-                        re_log::error_once!("Error executing view part system: {err}");
+                        re_log::error_once!("Error executing view part system {name:?}: {err}");
                     }
                 }
             }

@@ -52,7 +52,7 @@ impl ViewPartSystem for TextBoxSystem {
                     }
                     Ok(())
                 }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
                 Err(_) => {
                     re_log::warn_once!("text-box query failed for {ent_path:?}");
                 }

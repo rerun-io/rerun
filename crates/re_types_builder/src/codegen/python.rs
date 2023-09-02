@@ -11,7 +11,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{StringExt as _, AUTOGEN_WARNING},
+    codegen::{autogen_warning, StringExt as _},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
 };
@@ -69,6 +69,8 @@ impl PythonCodeGenerator {
 
 /// Inspect `_overrides` sub-packages for manual override of the generated code.
 ///
+/// Returns function names.
+///
 /// This is the hacky way. We extract all identifiers from `__init__.py` which contains, but don't
 /// start with, a underscore (`_`).
 fn load_overrides(path: &Utf8Path) -> HashSet<String> {
@@ -93,54 +95,59 @@ impl CodeGenerator for PythonCodeGenerator {
     ) -> BTreeSet<Utf8PathBuf> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
-        let datatypes_path = self.pkg_path.join(ObjectKind::Datatype.plural_snake_case());
-        let datatype_overrides = load_overrides(&datatypes_path);
-        files_to_write.extend(
-            quote_objects(
-                &datatypes_path,
+        {
+            let kind = ObjectKind::Datatype;
+            let kind_path = self.pkg_path.join(kind.plural_snake_case());
+            let overrides = load_overrides(&kind_path);
+            files_to_write.extend(
+                quote_objects(
+                    &kind_path,
+                    arrow_registry,
+                    &overrides,
+                    objs,
+                    kind,
+                    &objs.ordered_objects(kind.into()),
+                )
+                .0,
+            );
+        }
+
+        {
+            let kind = ObjectKind::Component;
+            let kind_path = self.pkg_path.join(kind.plural_snake_case());
+            let overrides = load_overrides(&kind_path);
+            files_to_write.extend(
+                quote_objects(
+                    &kind_path,
+                    arrow_registry,
+                    &overrides,
+                    objs,
+                    kind,
+                    &objs.ordered_objects(kind.into()),
+                )
+                .0,
+            );
+        }
+
+        {
+            let kind = ObjectKind::Archetype;
+            let kind_path = self.pkg_path.join(kind.plural_snake_case());
+            let overrides = load_overrides(&kind_path);
+            let (paths, archetype_names) = quote_objects(
+                &kind_path,
                 arrow_registry,
-                &datatype_overrides,
+                &overrides,
                 objs,
-                ObjectKind::Datatype,
-                &objs.ordered_objects(ObjectKind::Datatype.into()),
-            )
-            .0,
-        );
+                kind,
+                &objs.ordered_objects(kind.into()),
+            );
+            files_to_write.extend(paths);
 
-        let components_path = self
-            .pkg_path
-            .join(ObjectKind::Component.plural_snake_case());
-        let component_overrides = load_overrides(&components_path);
-        files_to_write.extend(
-            quote_objects(
-                &components_path,
-                arrow_registry,
-                &component_overrides,
-                objs,
-                ObjectKind::Component,
-                &objs.ordered_objects(ObjectKind::Component.into()),
-            )
-            .0,
-        );
-
-        let archetypes_path = self
-            .pkg_path
-            .join(ObjectKind::Archetype.plural_snake_case());
-        let archetype_overrides = load_overrides(&archetypes_path);
-        let (paths, archetype_names) = quote_objects(
-            &archetypes_path,
-            arrow_registry,
-            &archetype_overrides,
-            objs,
-            ObjectKind::Archetype,
-            &objs.ordered_objects(ObjectKind::Archetype.into()),
-        );
-        files_to_write.extend(paths);
-
-        files_to_write.insert(
-            self.pkg_path.join("__init__.py"),
-            lib_source_code(&archetype_names),
-        );
+            files_to_write.insert(
+                self.pkg_path.join("__init__.py"),
+                lib_source_code(&archetype_names),
+            );
+        }
 
         write_files(&files_to_write);
 
@@ -193,14 +200,15 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
     code += &unindent::unindent(&format!(
         r#"
-        # {AUTOGEN_WARNING}
+        # {autogen_warning}
 
         from __future__ import annotations
 
         __all__ = [{manifest}]
 
         from .archetypes import {archetype_names}
-        "#
+        "#,
+        autogen_warning = autogen_warning!()
     ));
 
     code
@@ -266,7 +274,7 @@ fn quote_objects(
             .extend(names.iter().cloned());
 
         let mut code = String::new();
-        code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
+        code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
 
         let manifest = quote_manifest(names);
 
@@ -371,7 +379,7 @@ fn quote_objects(
 
         let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
 
-        code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
+        code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
         code.push_unindented_text(
             "
             from __future__ import annotations
@@ -1297,7 +1305,12 @@ fn quote_arrow_support_from_obj(
     let override_ = if overrides.contains(&override_name) {
         format!("return {name_lower}_native_to_pa_array(data, data_type)")
     } else {
-        "raise NotImplementedError".to_owned()
+        let override_file_path = format!(
+            "rerun_py/rerun_sdk/rerun/_rerun2/{}/_overrides/{}.py",
+            obj.kind.plural_snake_case(),
+            obj.snake_case_name()
+        );
+        format!("raise NotImplementedError # You need to implement {override_name:?} in {override_file_path}")
     };
 
     unindent::unindent(&format!(
