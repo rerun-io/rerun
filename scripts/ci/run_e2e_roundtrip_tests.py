@@ -24,6 +24,7 @@ opt_out = {
     "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
     "points2d": ["cpp"],  # TODO(#2786): Needs rect
     "image": ["cpp", "py", "rust"],
+    "tensor": ["cpp"],
 }
 
 
