@@ -26,6 +26,8 @@ pub struct ViewerAnalytics {
 impl ViewerAnalytics {
     #[allow(unused_mut, clippy::let_and_return)]
     pub fn new(startup_options: &StartupOptions) -> Self {
+        // We only want to have analytics on `*.rerun.io`,
+        // so we early-out if we detect we're running in a notebook.
         if startup_options.is_in_notebook {
             return Self { analytics: None };
         }
@@ -40,9 +42,10 @@ impl ViewerAnalytics {
 
         let mut analytics = Self { analytics };
 
+        // We only want to send `url` if we're on a `rerun.io` domain.
         #[cfg(target_arch = "wasm32")]
         if let Some(location) = startup_options.location.as_ref() {
-            if location.hostname.contains("rerun.io") {
+            if location.hostname == "rerun.io" || location.hostname.ends_with(".rerun.io") {
                 analytics.register("url", location.url.clone());
             }
         }
