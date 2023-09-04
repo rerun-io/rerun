@@ -99,7 +99,7 @@ class MemoryRecording:
             }}()));
         </script>
         <iframe id="{presentation_id}_iframe" width="{width}" height="{height}"
-            src="{app_url}?url=web_event://&persist=0"
+            src="{app_url}?url=web_event://&persist=0&notebook=1"
             frameborder="0" style="display: none;" allowfullscreen=""></iframe>
         """
 

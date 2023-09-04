@@ -11,15 +11,22 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(not(target_arch = "wasm32"))]
-use native::{Config, ConfigError, Pipeline, PipelineError};
+pub use native::{Config, ConfigError};
+#[cfg(not(target_arch = "wasm32"))]
+use native::{Pipeline, PipelineError};
 
 #[cfg(target_arch = "wasm32")]
 mod web;
 #[cfg(target_arch = "wasm32")]
-use web::{Config, ConfigError, Pipeline, PipelineError};
+pub use web::{Config, ConfigError};
+#[cfg(target_arch = "wasm32")]
+use web::{Pipeline, PipelineError};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
+
+mod event;
+use event::{PostHogBatch, PostHogEvent};
 
 // ----------------------------------------------------------------------------
 
@@ -185,6 +192,7 @@ impl From<&str> for Property {
 
 // ---
 
+#[cfg(not(target_arch = "wasm32"))]
 const DISCLAIMER: &str = "
     Welcome to Rerun!
 
@@ -231,19 +239,54 @@ pub struct Analytics {
     event_id: AtomicU64,
 }
 
-impl Analytics {
-    pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
-        let config = Config::load()?;
-        re_log::trace!(?config, ?tick, "loaded analytics config");
+fn load_config() -> Result<Config, ConfigError> {
+    let config = match Config::load() {
+        Ok(config) => config,
+        #[allow(unused_variables)]
+        Err(err) => {
+            // NOTE: This will cause the first run disclaimer to show up again on native,
+            //       and analytics will be disabled for the rest of the session.
+            #[cfg(not(target_arch = "wasm32"))]
+            re_log::warn!("failed to load analytics config file: {err}");
+            None
+        }
+    };
 
+    if let Some(config) = config {
+        re_log::trace!(?config, "loaded analytics config");
+
+        Ok(config)
+    } else {
+        re_log::trace!(?config, "initialized analytics config");
+
+        // NOTE: If this fails, we give up, because we can't produce
+        //       a config on native any other way.
+        let config = Config::new()?;
+
+        #[cfg(not(target_arch = "wasm32"))]
         if config.is_first_run() {
             eprintln!("{DISCLAIMER}");
 
             config.save()?;
-            re_log::trace!(?config, ?tick, "saved analytics config");
+            re_log::trace!(?config, "saved analytics config");
         }
 
+        #[cfg(target_arch = "wasm32")]
+        {
+            // always save the config on web, without printing a disclaimer.
+            config.save()?;
+            re_log::trace!(?config, "saved analytics config");
+        }
+
+        Ok(config)
+    }
+}
+
+impl Analytics {
+    pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
+        let config = load_config()?;
         let pipeline = Pipeline::new(&config, tick)?;
+        re_log::trace!("initialized analytics pipeline");
 
         Ok(Self {
             config,

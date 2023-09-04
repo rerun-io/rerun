@@ -13,7 +13,7 @@ use rayon::prelude::*;
 
 use crate::codegen::common::write_file;
 use crate::{
-    codegen::AUTOGEN_WARNING, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
+    codegen::autogen_warning, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
 };
 use crate::{Object, ObjectSpecifics};
@@ -51,9 +51,9 @@ fn quote_doc_comment(text: &str) -> TokenStream {
 
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
     let mut code = String::new();
-    code.push_str(&format!("// {AUTOGEN_WARNING}\n"));
+    code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {source_path:?}\n"));
+        code.push_str(&format!("// Based on {source_path:?}.\n"));
     }
 
     code.push('\n');

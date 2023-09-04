@@ -230,6 +230,7 @@ def render_manifest(examples: list[Example]) -> None:
         index.append(
             {
                 "name": example.name,
+                "title": example.title,
                 "description": example.description,
                 "tags": example.tags,
                 "demo_url": example.demo_url,

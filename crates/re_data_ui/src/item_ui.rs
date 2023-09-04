@@ -2,6 +2,7 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use egui::Ui;
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
@@ -94,31 +95,11 @@ pub fn instance_path_button_to(
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
     let item = Item::InstancePath(space_view_id, instance_path.clone());
-    let subtype_string = if instance_path.instance_key.is_splat() {
-        "Entity"
-    } else {
-        "Entity Instance"
-    };
 
     let response = ui
         .selectable_label(ctx.selection().contains(&item), text)
         .on_hover_ui(|ui| {
-            ui.strong(subtype_string);
-            ui.label(format!("Path: {instance_path}"));
-
-            // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
-            // Then we can move the size view into `data_ui`.
-            let query = ctx.current_query();
-
-            if instance_path.instance_key.is_splat() {
-                let store = &ctx.store_db.entity_db.data_store;
-                let stats = store.entity_stats(query.timeline, instance_path.entity_path.hash());
-                entity_stats_ui(ui, &query.timeline, &stats);
-            } else {
-                // TODO(emilk): per-component stats
-            }
-
-            instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
+            instance_hover_card_ui(ui, ctx, instance_path);
         });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -245,19 +226,9 @@ pub fn data_blueprint_button_to(
     let response = ui
         .selectable_label(ctx.selection().contains(&item), text)
         .on_hover_ui(|ui| {
-            data_blueprint_tooltip(ui, ctx, entity_path);
+            entity_hover_card_ui(ui, ctx, entity_path);
         });
     cursor_interact_with_selectable(ctx, response, item)
-}
-
-pub fn data_blueprint_tooltip(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    entity_path: &EntityPath,
-) {
-    ui.strong("Space View Entity");
-    ui.label(format!("Path: {entity_path}"));
-    entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
 }
 
 pub fn time_button(
@@ -343,4 +314,45 @@ pub fn select_hovered_on_click(
                 .set_selection(items.iter().cloned());
         }
     }
+}
+
+/// Displays the "hover card" (i.e. big tooltip) for an instance or an entity.
+///
+/// The entity hover card is displayed the provided instance path is a splat.
+pub fn instance_hover_card_ui(
+    ui: &mut Ui,
+    ctx: &mut ViewerContext<'_>,
+    instance_path: &InstancePath,
+) {
+    let subtype_string = if instance_path.instance_key.is_splat() {
+        "Entity"
+    } else {
+        "Entity Instance"
+    };
+    ui.strong(subtype_string);
+    ui.label(format!("Path: {instance_path}"));
+
+    // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
+    // Then we can move the size view into `data_ui`.
+    let query = ctx.current_query();
+
+    if instance_path.instance_key.is_splat() {
+        let store = &ctx.store_db.entity_db.data_store;
+        let stats = store.entity_stats(query.timeline, instance_path.entity_path.hash());
+        entity_stats_ui(ui, &query.timeline, &stats);
+    } else {
+        // TODO(emilk): per-component stats
+    }
+
+    instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
+}
+
+/// Displays the "hover card" (i.e. big tooltip) for an entity.
+pub fn entity_hover_card_ui(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    entity_path: &EntityPath,
+) {
+    let instance_path = InstancePath::entity_splat(entity_path.clone());
+    instance_hover_card_ui(ui, ctx, &instance_path);
 }

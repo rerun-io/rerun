@@ -1,7 +1,7 @@
 use arrow2::buffer::Buffer;
 
 /// Convenience-wrapper around an arrow [`Buffer`] that is known to contain a
-/// string.
+/// UTF-8 encoded string.
 ///
 /// The arrow2 [`Buffer`] object is internally reference-counted and can be
 /// easily converted back to a `&str` referencing the underlying storage.
@@ -44,7 +44,7 @@ impl std::hash::Hash for ArrowString {
 impl ArrowString {
     #[inline]
     pub fn as_str(&self) -> &str {
-        std::str::from_utf8(self.0.as_ref()).unwrap()
+        std::str::from_utf8(self.0.as_ref()).unwrap_or("INVALID UTF-8")
     }
 }
 
