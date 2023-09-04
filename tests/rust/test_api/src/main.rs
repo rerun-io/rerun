@@ -255,7 +255,6 @@ fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
 
     // Add several overlapping images.
     // Large dark gray in the background
-    // TODO: Not sure why I need to_owned here?
     let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64);
     rec.log(
         "2d_layering/background",

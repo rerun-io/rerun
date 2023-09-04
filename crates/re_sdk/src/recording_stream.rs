@@ -634,8 +634,9 @@ impl RecordingStream {
             }
         }
 
-        // TODO: not sure about this though
-        let timepoint = TimePoint::default();
+        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
+        // internal clock.
+        let timepoint = TimePoint::timeless();
 
         let instanced = (!instanced.is_empty()).then(|| {
             DataRow::from_cells(
@@ -737,8 +738,9 @@ impl RecordingStream {
             }
         }
 
-        // TODO: not sure about this though
-        let timepoint = TimePoint::default();
+        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
+        // internal clock.
+        let timepoint = TimePoint::timeless();
 
         let instanced = (!instanced.is_empty()).then(|| {
             DataRow::from_cells(
