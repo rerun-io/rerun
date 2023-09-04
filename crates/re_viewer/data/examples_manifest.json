@@ -2,7 +2,7 @@
   {
     "name": "arkit_scenes",
     "title": "ARKit Scenes",
-    "description": "Visualize the ARKitScenes dataset using the Rerun SDK. The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.",
+    "description": "Visualize the ARKitScenes dataset, which contains color+depth images, the reconstructed mesh and labeled bounding boxes.",
     "tags": [
       "2D",
       "3D",
@@ -22,7 +22,7 @@
   {
     "name": "structure_from_motion",
     "title": "Structure From Motion",
-    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline. A short video clip has been processed offline by the COLMAP pipeline, and we use Rerun to visualize the individual camera frames, estimated camera poses, and resulting point clouds over time.",
+    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline.",
     "tags": [
       "2D",
       "3D",
@@ -76,7 +76,7 @@
   {
     "name": "plots",
     "title": "Plots",
-    "description": "Simple example of plots and charts.",
+    "description": "Demonstration of various plots and charts supported by Rerun.",
     "tags": [],
     "demo_url": "https://demo.rerun.io/commit/a451825/examples/plots/",
     "rrd_url": "https://demo.rerun.io/commit/a451825/examples/plots/data.rrd",
@@ -89,7 +89,7 @@
   {
     "name": "detect_and_track_objects",
     "title": "Detect and Track Objects",
-    "description": "Applying simple object detection and segmentation on a video using the Huggingface `transformers` library. Tracking across frames is performed using CSRT from OpenCV.",
+    "description": "Visualize object detection and segmentation using the Huggingface `transformers` library.",
     "tags": [
       "2D",
       "huggingface",

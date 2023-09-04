@@ -1,5 +1,5 @@
 use super::large_text_button;
-use egui::{NumExt, Ui};
+use egui::Ui;
 use re_ui::ReUi;
 use re_viewer_context::{CommandSender, SystemCommandSender};
 use std::collections::HashMap;
