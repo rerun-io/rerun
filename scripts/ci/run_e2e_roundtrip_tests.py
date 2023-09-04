@@ -23,7 +23,7 @@ ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 opt_out = {
     "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
     "points2d": ["cpp"],  # TODO(#2786): Needs rect
-    "image": ["cpp", "py", "rust"],
+    "image": ["cpp"],
     "tensor": ["cpp"],
 }
 
