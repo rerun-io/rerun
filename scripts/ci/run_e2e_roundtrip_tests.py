@@ -24,7 +24,6 @@ opt_out = {
     "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
     "points2d": ["cpp"],  # TODO(#2786): Needs rect
     "image": ["cpp", "py", "rust"],
-    "tensor": ["cpp"],
 }
 
 
@@ -89,7 +88,7 @@ def main() -> None:
 
     files = [f for f in listdir(ARCHETYPES_PATH) if isfile(join(ARCHETYPES_PATH, f))]
 
-    if args.archetype is not None:
+    if len(args.archetype) > 0:
         archetypes = args.archetype
     else:
         archetypes = [
