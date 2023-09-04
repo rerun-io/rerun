@@ -9,7 +9,6 @@ import http.server
 import json
 import logging
 import os
-import re
 import shutil
 import subprocess
 import threading
@@ -60,8 +59,6 @@ class Example:
     def __init__(
         self,
         name: str,
-        title: str,
-        description: str,
         commit: str,
         build_args: list[str],
     ):
@@ -82,23 +79,18 @@ class Example:
         else:
             thumbnail = None
 
-        description_html = "".join([f"<p>{segment}</p>" for segment in description.split("\n\n")])
-
-        description = extract_text_from_html(description)
-        description = re.sub(r"[\n\s]+", " ", description)
-        description = description.strip()
-
         self.path = os.path.join("examples/python", name, "main.py")
         self.name = name
-        self.title = title
-        self.description = description
+        self.title = readme.get("title")
+        self.description = readme.get("description")
+        self.summary = readme.get("summary")
         self.tags = readme.get("tags", [])
         self.demo_url = f"https://demo.rerun.io/commit/{commit}/examples/{name}/"
         self.rrd_url = f"https://demo.rerun.io/commit/{commit}/examples/{name}/data.rrd"
         self.source_url = f"https://github.com/rerun-io/rerun/tree/{commit}/examples/python/{name}/main.py"
         self.thumbnail = thumbnail
         self.build_args = build_args
-        self.description_html = description_html
+        self.description_html = "".join([f"<p>{segment}</p>" for segment in self.description.split("\n\n")])
 
     def save(self) -> None:
         in_path = os.path.abspath(self.path)
@@ -188,8 +180,6 @@ def collect_examples() -> list[Example]:
     for name in EXAMPLES.keys():
         example = Example(
             name,
-            title=EXAMPLES[name]["title"],
-            description=EXAMPLES[name]["description"],
             commit=commit,
             build_args=EXAMPLES[name]["build_args"],
         )
@@ -311,66 +301,24 @@ SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 # When adding examples, add their requirements to `requirements-web-demo.txt`
 EXAMPLES: dict[str, Any] = {
     "arkit_scenes": {
-        "title": "ARKit Scenes",
-        "description": """
-        Visualizes the <a href="https://github.com/apple/ARKitScenes/" target="_blank">ARKitScenes dataset</a>
-        using the Rerun SDK.
-        The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.
-        """,
         "build_args": [],
     },
     "structure_from_motion": {
-        "title": "Structure From Motion",
-        "description": """
-        An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.
-
-        <a href="https://colmap.github.io/index.html" target="_blank">COLMAP</a>
-        is a general-purpose Structure-from-Motion (SfM)
-        and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface.
-
-        In this example a short video clip has been processed offline by the COLMAP pipeline,
-        and we use Rerun to visualize the individual camera frames, estimated camera poses,
-        and resulting point clouds over time.
-        """,
         "build_args": ["--dataset=colmap_fiat", "--resize=800x600"],
     },
     "dicom_mri": {
-        "title": "Dicom MRI",
-        "description": """
-        Example using a <a href="https://en.wikipedia.org/wiki/DICOM" target="_blank">DICOM</a> MRI scan.
-        This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
-        """,
         "build_args": [],
     },
     "human_pose_tracking": {
-        "title": "Human Pose Tracking",
-        "description": """
-        Use the <a href="https://google.github.io/mediapipe/" target="_blank">MediaPipe</a> Pose
-        solution to detect and track a human pose in video.
-        """,
         "build_args": [],
     },
     "plots": {
-        "title": "Plots",
-        "description": """
-        Simple example of plots and charts.
-        """,
         "build_args": [],
     },
     "detect_and_track_objects": {
-        "title": "Detect and Track Objects",
-        "description": """
-        Applying simple object detection and segmentation on a video using the Huggingface `transformers` library.
-        Tracking across frames is performed using
-        <a href="https://arxiv.org/pdf/1611.08461.pdf" target="_blank">CSRT</a> from OpenCV.
-        """,
         "build_args": [],
     },
     "dna": {
-        "title": "Helix",
-        "description": """
-        Simple example of logging line primitives to draw a 3D helix.
-        """,
         "build_args": [],
     },
 }

@@ -11,3 +11,4 @@ Pillow # for scripts/upload_image.py
 tqdm
 requests
 gitignore_parser  # handle .gitignore
+python-frontmatter==1.0.0
