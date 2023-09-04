@@ -1,6 +1,5 @@
 use super::large_text_button;
-use egui::Ui;
-use egui_extras::Size;
+use egui::{NumExt, Ui};
 use re_ui::ReUi;
 use re_viewer_context::{CommandSender, SystemCommandSender};
 use std::collections::HashMap;
@@ -116,57 +115,57 @@ pub(super) fn example_page_ui(
 
             ui.add_space(20.0);
 
-            ui.spacing_mut().item_spacing = egui::vec2(16.0, 16.0);
+            // vertical spacing isn't homogeneous so it's handled manually
+            let spacing = egui::vec2(22.0, 0.0);
 
-            // account for margin between the two columns
-            let available_width = ui.available_width() - ui.spacing().item_spacing.x;
+            const MIN_COLUMN_WIDTH: f32 = 220.0;
+            const MAX_COLUMN_COUNT: usize = 4;
 
-            let first_column_width =
-                egui::remap_clamp(available_width, 390.0..=780.0, 150.0..=300.0).floor();
-            let second_column_width =
-                egui::remap_clamp(available_width, 390.0..=780.0, 240.0..=480.0).floor();
+            let column_count = (((ui.available_width() + spacing.x)
+                / (MIN_COLUMN_WIDTH + spacing.x))
+                .floor() as usize)
+                .at_most(MAX_COLUMN_COUNT);
+            let column_width =
+                ((ui.available_width() + spacing.x) / column_count as f32 - spacing.x).floor();
 
-            // compute all row heights based on the thumbnail size.
-            let heights = EXAMPLE_MANIFEST
-                .iter()
-                .map(|e| {
-                    let thumbnail = e
-                        .thumbnail
-                        .as_ref()
-                        .expect("examples without thumbnails are filtered out");
-                    let width = thumbnail.width as f32;
-                    let height = thumbnail.height as f32;
-                    height * second_column_width / width
-                })
-                .collect::<Vec<_>>();
+            egui::Grid::new("example_page_grid")
+                .spacing(spacing)
+                .min_col_width(column_width)
+                .max_col_width(column_width)
+                .show(ui, |ui| {
+                    EXAMPLE_MANIFEST.chunks(column_count).for_each(|examples| {
+                        for example in examples {
+                            let thumbnail = example
+                                .thumbnail
+                                .as_ref()
+                                .expect("examples without thumbnails are filtered out");
+                            let width = thumbnail.width as f32;
+                            let height = thumbnail.height as f32;
+                            ui.vertical(|ui| {
+                                example_thumbnail(
+                                    re_ui,
+                                    ui,
+                                    example,
+                                    egui::vec2(column_width, height * column_width / width),
+                                );
 
-            let mut strip_builder = egui_extras::StripBuilder::new(ui);
-            for height in &heights {
-                strip_builder = strip_builder.size(Size::exact(*height));
-            }
-            strip_builder.vertical(|mut strip| {
-                for (example, height) in EXAMPLE_MANIFEST.iter().zip(heights) {
-                    strip.strip(|builder| {
-                        builder
-                            .size(Size::exact(first_column_width))
-                            .size(Size::exact(second_column_width))
-                            .horizontal(|mut strip| {
-                                strip.cell(|ui| {
-                                    example_description(ui, example, command_sender);
-                                });
-
-                                strip.cell(|ui| {
-                                    example_thumbnail(
-                                        re_ui,
-                                        ui,
-                                        example,
-                                        egui::vec2(second_column_width, height),
-                                    );
-                                });
+                                ui.add_space(10.0);
                             });
+                        }
+
+                        ui.end_row();
+
+                        for example in examples {
+                            ui.vertical(|ui| {
+                                example_description(ui, example, command_sender);
+
+                                ui.add_space(40.0);
+                            });
+                        }
+
+                        ui.end_row();
                     });
-                }
-            });
+                });
 
             ui.add_space(20.0);
         });
@@ -177,16 +176,12 @@ fn example_description(ui: &mut Ui, example: &ExampleDesc, command_sender: &Comm
     ui.label(
         egui::RichText::new(example.title.clone())
             .strong()
-            .text_style(re_ui::ReUi::welcome_screen_h3()),
+            .text_style(re_ui::ReUi::welcome_screen_body()),
     );
 
-    ui.add(
-        egui::Label::new(
-            egui::RichText::new(example.description.clone())
-                .text_style(re_ui::ReUi::welcome_screen_body()),
-        )
-        .wrap(true),
-    );
+    ui.add(egui::Label::new(example.description.clone()).wrap(true));
+
+    ui.add_space(4.0);
 
     if large_text_button(ui, "Launch example")
         .on_hover_text(format!("Download and open the {} example", &example.title))
