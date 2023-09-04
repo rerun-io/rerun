@@ -15,6 +15,13 @@ namespace rerun.archetypes;
 ///
 /// The viewer has limited support for ignoring extra empty dimensions.
 ///
+/// \py Example
+/// \py -------
+/// \py
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/image_simple_v2.py
+/// \py ```
+///
 /// \rs ## Example
 /// \rs
 /// \rs ```ignore

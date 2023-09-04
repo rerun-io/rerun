@@ -8,6 +8,7 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
+from ._overrides import image_data_converter  # noqa: F401
 
 __all__ = ["Image"]
 
@@ -23,12 +24,27 @@ class Image(Archetype):
     - A `HxWx4` tensor, treated as an RGBA image.
 
     The viewer has limited support for ignoring extra empty dimensions.
+
+    Example
+    -------
+    ```python
+
+    import numpy as np
+    import rerun as rr
+    import rerun.experimental as rr2
+
+    # Create an image with numpy
+    image = np.zeros((200, 300, 3), dtype=np.uint8)
+    image[:, :, 0] = 255
+    image[50:150, 50:150] = (0, 255, 0)
+
+    rr.init("rerun_example_images", spawn=True)
+
+    rr2.log("simple", rr2.Image(image))
+    ```
     """
 
-    data: components.TensorDataArray = field(
-        metadata={"component": "primary"},
-        converter=components.TensorDataArray.from_similar,  # type: ignore[misc]
-    )
+    data: components.TensorDataArray = field(metadata={"component": "primary"}, converter=image_data_converter)
     """
     The image data. Should always be a rank-2 or rank-3 tensor.
     """
