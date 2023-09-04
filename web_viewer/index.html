@@ -280,6 +280,8 @@
 
 
         function on_wasm_loaded() {
+            window.set_email = (value) => wasm_bindgen.set_email(value);
+
             // WebGPU version is currently only supported on browsers with WebGPU support, there is no dynamic fallback to WebGL.
             if (wasm_bindgen.is_webgpu_build() && typeof navigator.gpu === 'undefined') {
                 console.debug("`navigator.gpu` is undefined. This indicates lack of WebGPU support.");

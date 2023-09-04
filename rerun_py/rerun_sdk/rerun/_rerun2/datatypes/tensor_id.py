@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+import uuid
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -13,22 +14,24 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from .._converters import (
-    to_np_uint8,
-)
+from ._overrides import tensorid_uuid_converter  # noqa: F401
 
 __all__ = ["TensorId", "TensorIdArray", "TensorIdArrayLike", "TensorIdLike", "TensorIdType"]
 
 
 @define
 class TensorId:
-    uuid: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    uuid: npt.NDArray[np.uint8] = field(converter=tensorid_uuid_converter)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         return np.asarray(self.uuid, dtype=dtype)
 
 
-TensorIdLike = TensorId
+if TYPE_CHECKING:
+    TensorIdLike = Union[TensorId, uuid.UUID]
+else:
+    TensorIdLike = Any
+
 TensorIdArrayLike = Union[
     TensorId,
     Sequence[TensorIdLike],

@@ -14,11 +14,6 @@ use super::sink::PostHogSink;
 use super::AbortSignal;
 use crate::{Config, Event};
 
-// TODO(cmc): abstract away the concept of a `Pipeline` behind an actual trait when comes the time
-// to support more than just PostHog.
-
-// ---
-
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
     #[error(transparent)]

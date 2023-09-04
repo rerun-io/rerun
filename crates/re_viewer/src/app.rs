@@ -40,6 +40,13 @@ pub struct StartupOptions {
 
     pub persist_state: bool,
 
+    /// Whether or not the app is running in the context of a Jupyter Notebook.
+    pub is_in_notebook: bool,
+
+    /// Set to identify the web page the viewer is running on.
+    #[cfg(target_arch = "wasm32")]
+    pub location: Option<eframe::Location>,
+
     /// Take a screenshot of the app and quit.
     /// We use this to generate screenshots of our exmples.
     #[cfg(not(target_arch = "wasm32"))]
@@ -57,6 +64,10 @@ impl Default for StartupOptions {
         Self {
             memory_limit: re_memory::MemoryLimit::default(),
             persist_state: true,
+            is_in_notebook: false,
+
+            #[cfg(target_arch = "wasm32")]
+            location: None,
 
             #[cfg(not(target_arch = "wasm32"))]
             screenshot_to_path_then_quit: None,
@@ -168,7 +179,7 @@ impl App {
             AppState::default()
         };
 
-        let mut analytics = ViewerAnalytics::new();
+        let mut analytics = ViewerAnalytics::new(&startup_options);
         analytics.on_viewer_started(&build_info, app_env);
 
         let mut space_view_class_registry = SpaceViewClassRegistry::default();

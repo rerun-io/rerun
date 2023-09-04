@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -12,6 +13,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import tensordata_init, tensordata_native_to_pa_array  # noqa: F401
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
@@ -30,7 +32,7 @@ def _tensordata_buffer_converter(x: datatypes.TensorBufferLike) -> datatypes.Ten
         return datatypes.TensorBuffer(x)
 
 
-@define
+@define(init=False)
 class TensorData:
     """
     A multi-dimensional `Tensor` of data.
@@ -43,16 +45,16 @@ class TensorData:
     which stores a contiguous array of typed values.
     """
 
+    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        tensordata_init(self, *args, **kwargs)
+
     id: datatypes.TensorId = field(converter=_tensordata_id_converter)
     shape: list[datatypes.TensorDimension] = field()
     buffer: datatypes.TensorBuffer = field(converter=_tensordata_buffer_converter)
 
 
 TensorDataLike = TensorData
-TensorDataArrayLike = Union[
-    TensorData,
-    Sequence[TensorDataLike],
-]
+TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
 
 
 # --- Arrow support ---
@@ -176,7 +178,7 @@ class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "tensordata_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_data.py
+        return tensordata_native_to_pa_array(data, data_type)
 
 
 TensorDataType._ARRAY_TYPE = TensorDataArray
