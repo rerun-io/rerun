@@ -18,9 +18,9 @@ static THUMBNAIL_CACHE: once_cell::sync::Lazy<HashMap<&'static str, re_ui::icons
     once_cell::sync::Lazy::new(|| {
         [
             re_ui::icons::Icon::new(
-                "04a244d056f9cfb2ac496830392916d613902def_detect_and_track_objects_480w.png",
+                "efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
                 include_bytes!(
-                    "../../../data/example_thumbnails/04a244d056f9cfb2ac496830392916d613902def\
+                    "../../../data/example_thumbnails/efb301d64eef6f25e8f6ae29294bd003c0cda3a7\
                     _detect_and_track_objects_480w.png"
                 ),
             ),
