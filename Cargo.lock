@@ -5134,6 +5134,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_tensor"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "ndarray",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_transform3d"
 version = "0.9.0-alpha.3"
 dependencies = [
