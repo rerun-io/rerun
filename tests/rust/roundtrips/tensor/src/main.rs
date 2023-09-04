@@ -12,7 +12,7 @@ struct Args {
 }
 
 fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    let tensor = ndarray::Array::from_shape_vec((3, 4, 5, 6), (0..360).collect())?;
+    let tensor = ndarray::Array::from_shape_vec((3, 4, 5, 6), (0..360).collect::<Vec<i32>>())?;
 
     // Need a deterministic id for round-trip tests. Used (10..26)
     let id = TensorId {
