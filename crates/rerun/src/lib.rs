@@ -40,12 +40,9 @@
 //! let colors: Vec<rerun::components::Color> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
-//! rec.log("points", rerun::archetypes::Points3D::new(points).with_colors(color))?;
+//! rec.log("points", &rerun::archetypes::Points3D::new(points).with_colors(colors))?;
 //!
-//! rec.log(
-//!     "image",
-//!     &rerun::archetypes::Image::new(rerun::components::Tensor::from_image(image)?)
-//! )?;
+//! rec.log_component_lists("image", false, 1, [&rerun::components::Tensor::from_image(image)? as _])?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
