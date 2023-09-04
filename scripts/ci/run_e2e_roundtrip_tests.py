@@ -44,6 +44,7 @@ def main() -> None:
     )
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
+    parser.add_argument("archetype", nargs="*", type=str, default=None, help="Run only the specified archetypes")
 
     args = parser.parse_args()
 
@@ -87,7 +88,13 @@ def main() -> None:
         print("")
 
     files = [f for f in listdir(ARCHETYPES_PATH) if isfile(join(ARCHETYPES_PATH, f))]
-    archetypes = [filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"]
+
+    if args.archetype is not None:
+        archetypes = args.archetype
+    else:
+        archetypes = [
+            filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"
+        ]
 
     for arch in archetypes:
         arch_opt_out = opt_out.get(arch, [])
