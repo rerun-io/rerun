@@ -255,28 +255,31 @@ fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
 
     // Add several overlapping images.
     // Large dark gray in the background
-    let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64);
+    let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64)
+        .as_standard_layout()
+        .view()
+        .to_owned();
     rec.log(
         "2d_layering/background",
-        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(0.0),
+        &Image::try_from(img)?.with_draw_order(0.0),
     )?;
     // Smaller gradient in the middle
     let img = colored_tensor(256, 256, |x, y| [x as u8, y as u8, 0]);
     rec.log(
         "2d_layering/middle_gradient",
-        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(1.0),
+        &Image::try_from(img)?.with_draw_order(1.0),
     )?;
     // Slightly smaller blue in the middle, on the same layer as the previous.
     let img = colored_tensor(192, 192, |_, _| [0, 0, 255]);
     rec.log(
         "2d_layering/middle_blue",
-        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(1.0),
+        &Image::try_from(img)?.with_draw_order(1.0),
     )?;
     // Small white on top.
     let img = Array::<u8, _>::from_elem((128, 128, 1).f(), 255);
     rec.log(
         "2d_layering/top",
-        &Image::try_from(img.as_standard_layout().view().to_owned())?.with_draw_order(2.0),
+        &Image::try_from(img)?.with_draw_order(2.0),
     )?;
 
     // Rectangle in between the top and the middle.
