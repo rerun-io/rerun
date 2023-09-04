@@ -290,7 +290,15 @@ impl App {
             SystemCommand::LoadRrd(path) => {
                 let with_notification = true;
                 if let Some(rrd) = crate::loading::load_file_path(&path, with_notification) {
+                    let new_recording_id = rrd
+                        .recordings()
+                        .next()
+                        .map(|store| store.store_id())
+                        .cloned();
                     store_hub.add_bundle(rrd);
+                    if let Some(id) = new_recording_id {
+                        store_hub.set_recording_id(id);
+                    }
                 }
             }
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
