@@ -124,7 +124,7 @@ pub(super) fn example_page_ui(
             let column_count = (((ui.available_width() + spacing.x)
                 / (MIN_COLUMN_WIDTH + spacing.x))
                 .floor() as usize)
-                .at_most(MAX_COLUMN_COUNT);
+                .clamp(1, MAX_COLUMN_COUNT);
             let column_width =
                 ((ui.available_width() + spacing.x) / column_count as f32 - spacing.x).floor();
 
