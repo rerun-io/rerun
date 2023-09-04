@@ -12,6 +12,7 @@
 - Fix crash when trying to render too many line segments [#3093](https://github.com/rerun-io/rerun/pull/3093)
 - Handle serde-field that fails to deserialize [#3130](https://github.com/rerun-io/rerun/pull/3130)
 - GC the blueprints before saving while preserving the current state [#3148](https://github.com/rerun-io/rerun/pull/3148)
+- Activate new recording when opening via file dialog [#3199](https://github.com/rerun-io/rerun/pull/3199)
 
 #### 🧑‍🏫 Examples
 - Make `custom_space_view` example more verbose [#3123](https://github.com/rerun-io/rerun/pull/3123)
