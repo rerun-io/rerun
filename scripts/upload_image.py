@@ -65,6 +65,8 @@ SIZES = [
     1200,
 ]
 
+ASPECT_RATIO_RANGE = (1.6, 1.8)
+
 
 def image_from_clipboard() -> Image:
     """
@@ -98,10 +100,29 @@ def image_from_clipboard() -> Image:
 
 
 class Uploader:
-    def __init__(self, pngcrush: bool):
+    def __init__(self, pngcrush: bool, auto_accept: bool):
         gcs = storage.Client("rerun-open")
         self.bucket = gcs.bucket("rerun-static-img")
         self.run_pngcrush = pngcrush
+        self.auto_accept = auto_accept
+
+    def _check_aspect_ratio(self, image: Path | Image):
+        if isinstance(image, Path):
+            image = PIL.Image.open(image)
+        aspect_ratio = image.width / image.height
+
+        if not (self.auto_accept or (ASPECT_RATIO_RANGE[0] < aspect_ratio < ASPECT_RATIO_RANGE[1])):
+            logging.warning(
+                f"Aspect ratio is {aspect_ratio:.2f} but should be between {ASPECT_RATIO_RANGE[0]} and "
+                f"{ASPECT_RATIO_RANGE[1]}."
+            )
+            if (
+                input(
+                    "The image aspect ratio is outside the range recommended for example screenshots. Continue? [y/N] "
+                ).lower()
+                != "y"
+            ):
+                sys.exit(1)
 
     def upload_file(self, path: Path) -> str:
         """
@@ -117,6 +138,8 @@ class Uploader:
         str
             The name of the uploaded file.
         """
+
+        self._check_aspect_ratio(path)
 
         image_data = path.read_bytes()
         digest = data_hash(image_data)
@@ -144,6 +167,8 @@ class Uploader:
             The `<picture>` tag for the image stack.
         """
         image = PIL.Image.open(image_path)
+        self._check_aspect_ratio(image)
+
         content_type, _ = mimetypes.guess_type(image_path)
 
         return self.upload_stack(
@@ -172,6 +197,8 @@ class Uploader:
         clipboard = image_from_clipboard()
         if isinstance(clipboard, PIL.Image.Image):
             image = clipboard
+            self._check_aspect_ratio(image)
+
             return self.upload_stack(
                 image,
                 name=name,
@@ -337,7 +364,7 @@ def run(args) -> None:
         if shutil.which("pngcrush") is None and not args.skip_pngcrush:
             raise RuntimeError("pngcrush is not installed, consider using --skip-pngcrush")
 
-        uploader = Uploader(not args.skip_pngcrush)
+        uploader = Uploader(not args.skip_pngcrush, args.auto_accept)
 
         if args.single:
             object_name = uploader.upload_file(args.path)
@@ -363,6 +390,7 @@ Example screenshots
 To make example screenshots, follow these steps:
 1. Run the example.
 2. Resize the Rerun window to an approximate 16:9 aspect ratio and a width of ~1500px.
+   Note: you will get a warning and a confirmation prompt if the aspect ratio is not within ~10% of 16:9.
 3. Groom the blueprints and panel visibility to your liking.
 4. Take a screenshot using the command palette.
 5. Run: just upload --name <name_of_example>
@@ -387,6 +415,7 @@ def main() -> None:
     )
     parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
     parser.add_argument("--skip-pngcrush", action="store_true", help="Skip PNGCrush.")
+    parser.add_argument("--auto-accept", action="store_true", help="Auto-accept the aspect ratio confirmation prompt")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
 
