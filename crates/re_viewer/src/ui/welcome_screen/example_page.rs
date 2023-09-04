@@ -59,6 +59,13 @@ static THUMBNAIL_CACHE: once_cell::sync::Lazy<HashMap<&'static str, re_ui::icons
                     _plots_480w.png"
                 ),
             ),
+            re_ui::icons::Icon::new(
+                "ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e_helix_480w.png",
+                include_bytes!(
+                    "../../../data/example_thumbnails/ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e\
+                    _helix_480w.png"
+                ),
+            ),
         ]
         .into_iter()
         .map(|icon| (icon.id, icon))
