@@ -109,9 +109,10 @@ class Uploader:
     def _check_aspect_ratio(self, image: Path | Image):
         if isinstance(image, Path):
             image = PIL.Image.open(image)
-        aspect_ratio = image.width / image.height
 
+        aspect_ratio = image.width / image.height
         aspect_ok = ASPECT_RATIO_RANGE[0] < aspect_ratio < ASPECT_RATIO_RANGE[1]
+
         if not aspect_ok and not self.auto_accept:
             logging.warning(
                 f"Aspect ratio is {aspect_ratio:.2f} but should be between {ASPECT_RATIO_RANGE[0]} and "
