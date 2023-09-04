@@ -313,7 +313,7 @@ EXAMPLES: dict[str, Any] = {
     "arkit_scenes": {
         "title": "ARKit Scenes",
         "description": """
-        Visualizes the <a href="https://github.com/apple/ARKitScenes/" target="_blank">ARKitScenes dataset</a>
+        Visualize the <a href="https://github.com/apple/ARKitScenes/" target="_blank">ARKitScenes dataset</a>
         using the Rerun SDK.
         The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.
         """,
@@ -322,13 +322,10 @@ EXAMPLES: dict[str, Any] = {
     "structure_from_motion": {
         "title": "Structure From Motion",
         "description": """
-        An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.
+        Visualize a sparse reconstruction by <a href="https://colmap.github.io/index.html" target="_blank">COLMAP</a>,
+        a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline.
 
-        <a href="https://colmap.github.io/index.html" target="_blank">COLMAP</a>
-        is a general-purpose Structure-from-Motion (SfM)
-        and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface.
-
-        In this example a short video clip has been processed offline by the COLMAP pipeline,
+        A short video clip has been processed offline by the COLMAP pipeline,
         and we use Rerun to visualize the individual camera frames, estimated camera poses,
         and resulting point clouds over time.
         """,

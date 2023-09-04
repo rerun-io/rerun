@@ -2,7 +2,7 @@
   {
     "name": "arkit_scenes",
     "title": "ARKit Scenes",
-    "description": "Visualizes the ARKitScenes dataset using the Rerun SDK. The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.",
+    "description": "Visualize the ARKitScenes dataset using the Rerun SDK. The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.",
     "tags": [
       "2D",
       "3D",
@@ -22,7 +22,7 @@
   {
     "name": "structure_from_motion",
     "title": "Structure From Motion",
-    "description": "An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction. COLMAP is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface. In this example a short video clip has been processed offline by the COLMAP pipeline, and we use Rerun to visualize the individual camera frames, estimated camera poses, and resulting point clouds over time.",
+    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline. A short video clip has been processed offline by the COLMAP pipeline, and we use Rerun to visualize the individual camera frames, estimated camera poses, and resulting point clouds over time.",
     "tags": [
       "2D",
       "3D",
