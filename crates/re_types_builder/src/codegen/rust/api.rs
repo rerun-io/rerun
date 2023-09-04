@@ -9,6 +9,7 @@ use rayon::prelude::*;
 
 use crate::{
     codegen::{
+        autogen_warning,
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -18,7 +19,7 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
         },
-        StringExt as _, AUTOGEN_WARNING,
+        StringExt as _,
     },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
@@ -161,7 +162,7 @@ fn create_files(
         let mut code = String::new();
         #[rustfmt::skip]
         {
-            code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
+            code.push_text(format!("// {}", autogen_warning!()), 2, 0);
             code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
             code.push_text("#![allow(unused_parens)]", 2, 0);
             code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
@@ -213,7 +214,7 @@ fn create_files(
 
         let mut code = String::new();
 
-        code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
+        code.push_text(format!("// {}", autogen_warning!()), 2, 0);
 
         for module in mods.keys() {
             code.push_text(format!("mod {module};"), 1, 0);

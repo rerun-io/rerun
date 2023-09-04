@@ -31,8 +31,8 @@ pub enum QueryError {
     #[error("Tried to access a column that doesn't exist")]
     BadAccess,
 
-    #[error("Could not find primary")]
-    PrimaryNotFound,
+    #[error("Could not find primary component: {0}")]
+    PrimaryNotFound(re_types::ComponentName),
 
     #[error("Could not find required component: {0}")]
     RequiredComponentNotFound(re_log_types::ComponentName),

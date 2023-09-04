@@ -264,7 +264,7 @@ impl ViewportBlueprint<'_> {
                 })
                 .show(ui)
                 .on_hover_ui(|ui| {
-                    re_data_ui::item_ui::data_blueprint_tooltip(ui, ctx, entity_path);
+                    re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, entity_path);
                 });
 
             item_ui::select_hovered_on_click(ctx, &response, &[item]);

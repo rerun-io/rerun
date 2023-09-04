@@ -37,7 +37,10 @@ impl Image {
             _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
         };
 
-        Ok(Self { data: data.into() })
+        Ok(Self {
+            data: data.into(),
+            draw_order: None,
+        })
     }
 
     pub fn with_id(self, id: crate::datatypes::TensorId) -> Self {
@@ -48,6 +51,7 @@ impl Image {
                 buffer: self.data.0.buffer,
             }
             .into(),
+            draw_order: None,
         }
     }
 }
