@@ -20,7 +20,7 @@ pub enum CliError {
 }
 
 pub fn clear() -> Result<(), CliError> {
-    let config = Config::load()?;
+    let config = Config::load_or_default()?;
 
     fn delete_dir(dir: &Path) -> Result<(), CliError> {
         eprint!("Are you sure you want to delete directory {dir:?}? [y/N]: ",);
@@ -50,13 +50,13 @@ pub fn clear() -> Result<(), CliError> {
 }
 
 pub fn set(props: impl IntoIterator<Item = (String, Property)>) -> Result<(), CliError> {
-    let mut config = Config::load()?;
+    let mut config = Config::load_or_default()?;
     config.opt_in_metadata.extend(props);
     config.save().map_err(Into::into)
 }
 
 pub fn opt(enabled: bool) -> Result<(), CliError> {
-    let mut config = Config::load()?;
+    let mut config = Config::load_or_default()?;
     config.analytics_enabled = enabled;
     config.save()?;
 

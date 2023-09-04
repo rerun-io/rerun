@@ -80,13 +80,14 @@ impl WebHandle {
 fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web;
-    let persist_state = get_persist_state(&cc.integration_info);
     let startup_options = crate::StartupOptions {
         memory_limit: re_memory::MemoryLimit {
             // On wasm32 we only have 4GB of memory to play around with.
             limit: Some(2_500_000_000),
         },
-        persist_state,
+        location: Some(cc.integration_info.web_info.location.clone()),
+        persist_state: get_persist_state(&cc.integration_info),
+        is_in_notebook: is_in_notebook(&cc.integration_info),
         skip_welcome_screen: false,
     };
     let re_ui = crate::customize_eframe(cc);
@@ -143,6 +144,19 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
     app
 }
 
+/// Used to set the "email" property in the analytics config,
+/// in the same way as `rerun analytics email YOURNAME@rerun.io`.
+///
+/// This one just panics when it fails, as it's only ever really run
+/// by rerun employees manually in `app.rerun.io` and `demo.rerun.io`.
+#[cfg(feature = "analytics")]
+#[wasm_bindgen]
+pub fn set_email(email: String) {
+    let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
+    config.opt_in_metadata.insert("email".into(), email.into());
+    config.save().unwrap();
+}
+
 #[wasm_bindgen]
 pub fn is_webgpu_build() -> bool {
     !cfg!(feature = "webgl")
@@ -194,22 +208,31 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
     }
 }
 
+fn is_in_notebook(info: &eframe::IntegrationInfo) -> bool {
+    get_query_bool(info, "notebook", false)
+}
+
 fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
+    get_query_bool(info, "persist", true)
+}
+
+fn get_query_bool(info: &eframe::IntegrationInfo, key: &str, default: bool) -> bool {
+    let default_int = default as i32;
     match info
         .web_info
         .location
         .query_map
-        .get("persist")
+        .get(key)
         .map(String::as_str)
     {
         Some("0") => false,
         Some("1") => true,
         Some(other) => {
             re_log::warn!(
-                "Unexpected value for 'persist' query: {other:?}. Expected either '0' or '1'. Defaulting to '1'."
+                "Unexpected value for '{key}' query: {other:?}. Expected either '0' or '1'. Defaulting to '{default_int}'."
             );
-            true
+            default
         }
-        _ => true,
+        _ => default,
     }
 }
