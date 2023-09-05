@@ -37,4 +37,4 @@ screenshot*.png
 web_demo
 
 .nox/
-out.rrd
+*.rrd
