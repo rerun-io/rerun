@@ -13,6 +13,7 @@ import re
 import sys
 from typing import Any, Iterator
 
+import frontmatter
 from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
@@ -428,6 +429,35 @@ def test_lint_forbidden_widgets() -> None:
     assert _index_to_line_nr(should_fail_two_times, res[1][1]) == 5
 
 
+def lint_example_description(filepath: str, fm: frontmatter.Post) -> list[str]:
+    # only applies to examples' readme
+
+    if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
+        return []
+
+    desc = fm.get("description", "")
+    if len(desc) > 130:
+        return [f"Frontmatter: description is too long ({len(desc)} > 130)"]
+    else:
+        return []
+
+
+def lint_frontmatter(filepath: str, content: str) -> list[str]:
+    """Only for Markdown files."""
+
+    errors = []
+    if not filepath.endswith(".md"):
+        return errors
+
+    fm = frontmatter.loads(content)
+
+    errors += lint_example_description(filepath, fm)
+
+    # TODO(ab): check for missing fields (when descriptions are populated everywhere)
+
+    return errors
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -528,6 +558,14 @@ def lint_file(filepath: str, args: Any) -> int:
 
         if args.fix:
             source.rewrite(lines_out)
+
+    # Markdown-specific lints
+    if filepath.endswith(".md"):
+        errors = lint_frontmatter(filepath, source.content)
+
+        for error in errors:
+            print(source.error(error))
+        num_errors += len(errors)
 
     return num_errors
 
