@@ -2,7 +2,7 @@ use super::{button_centered_label, large_text_button, status_strings, url_large_
 use egui::Ui;
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
-use re_ui::ReUi;
+use re_ui::{ReUi, UICommandSender};
 
 const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 400.0;
@@ -155,19 +155,11 @@ fn onboarding_content_ui(
             url_large_text_button(re_ui, ui, "Rust", RUST_QUICKSTART);
         });
 
-        {
-            use re_ui::UICommandSender as _;
-            ui.horizontal(|ui| {
-                if large_text_button(ui, "Open file…").clicked() {
-                    command_sender.send_ui(re_ui::UICommand::Open);
-                }
-                button_centered_label(ui, "Or drop a file anywhere!");
-            });
-        }
-
-        #[cfg(target_arch = "wasm32")]
         ui.horizontal(|ui| {
-            button_centered_label(ui, "Drop a file anywhere!");
+            if large_text_button(ui, "Open file…").clicked() {
+                command_sender.send_ui(re_ui::UICommand::Open);
+            }
+            button_centered_label(ui, "Or drop a file anywhere!");
         });
 
         ui.horizontal(|ui| {
