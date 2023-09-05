@@ -1,7 +1,7 @@
 //! Logs an `Image` archetype for roundtrip checks.
 
 use image::{Rgb, RgbImage};
-use rerun::{archetypes::Image, datatypes::TensorId, external::re_log, MsgSender, RecordingStream};
+use rerun::{archetypes::Image, datatypes::TensorId, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -10,7 +10,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     // Need a deterministic id for round-trip tests. Used (10..26)
     let id = TensorId {
         uuid: core::array::from_fn(|i| (i + 10) as u8),
@@ -25,7 +25,7 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         }
     }
 
-    MsgSender::from_archetype("image", &Image::try_from(img)?.with_id(id))?.send(rec_stream)?;
+    rec.log("image", &Image::try_from(img)?.with_id(id))?;
 
     Ok(())
 }
@@ -40,8 +40,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_image",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

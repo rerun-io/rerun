@@ -6,8 +6,8 @@
 namespace rr = rerun;
 
 int main(int argc, char** argv) {
-    auto rec_stream = rr::RecordingStream("rerun_example_roundtrip_points3d");
-    rec_stream.save(argv[1]).throw_on_failure();
+    auto rec = rr::RecordingStream("rerun_example_roundtrip_tensor");
+    rec.save(argv[1]).throw_on_failure();
 
     uint8_t id[16] = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
 
@@ -15,8 +15,7 @@ int main(int argc, char** argv) {
         rr::datatypes::TensorDimension{3, std::nullopt},
         rr::datatypes::TensorDimension{4, std::nullopt},
         rr::datatypes::TensorDimension{5, std::nullopt},
-        rr::datatypes::TensorDimension{6, std::nullopt}
-    };
+        rr::datatypes::TensorDimension{6, std::nullopt}};
 
     std::vector<int32_t> data;
     for (auto i = 0; i < 360; ++i) {
@@ -25,12 +24,11 @@ int main(int argc, char** argv) {
 
     // TODO(jleibs) Tensor data can't actually be logged yet because C++ Unions
     // don't supported nested list-types.
-    rec_stream.log(
+    rec.log(
         "tensor",
         rr::archetypes::Tensor(rr::datatypes::TensorData{
             rr::datatypes::TensorId(id),
             dimensions,
-            rr::datatypes::TensorBuffer::i32(data)
-        })
+            rr::datatypes::TensorBuffer::i32(data)})
     );
 }
