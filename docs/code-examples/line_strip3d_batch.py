@@ -5,7 +5,7 @@ import rerun.experimental as rr2
 rr.init("rerun_example_line_strip3d", spawn=True)
 
 rr2.log(
-    "batch",
+    "strips",
     rr2.LineStrips3D(
         [
             [

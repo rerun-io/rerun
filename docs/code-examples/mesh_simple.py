@@ -1,4 +1,5 @@
 """Log a simple colored triangle."""
+import numpy as np
 import rerun as rr
 
 rr.init("rerun_example_mesh", spawn=True)
@@ -21,4 +22,5 @@ rr.log_mesh(
         [0, 255, 0],
         [0, 0, 255],
     ],
+    mesh_id=np.repeat(0, 16).astype(np.uint8),
 )

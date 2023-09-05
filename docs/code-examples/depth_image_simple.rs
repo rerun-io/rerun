@@ -3,6 +3,7 @@
 use ndarray::{s, Array, ShapeBuilder};
 use rerun::{
     components::{Tensor, TensorDataMeaning},
+    external::uuid,
     RecordingStreamBuilder,
 };
 
@@ -15,6 +16,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::Depth;
+    tensor.meter = Some(10000.);
+    tensor.tensor_id = uuid::Uuid::nil().into();
 
     // TODO(#2792): Image archetype
     rec.log_component_lists("depth", false, 1, [&tensor as _])?;
