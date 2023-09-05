@@ -60,6 +60,8 @@ fn onboarding_content_ui(
     ui: &mut Ui,
     command_sender: &re_viewer_context::CommandSender,
 ) -> bool {
+    // The panel data is stored in this ad hoc structure such that it can easily be iterated over
+    // in chunks, to make the layout grid code simpler.
     let panels = [
         WelcomePagePanel {
             title: "Connect to live data",
