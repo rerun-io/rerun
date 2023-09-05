@@ -24,7 +24,8 @@ jobs:
       short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
       full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
       - name: "Set short-sha"
         id: get-short-sha
         run: |
