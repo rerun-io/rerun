@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     needs: [get-commit-sha]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release-commit }}
 

@@ -35,7 +35,7 @@ jobs:
       image: rerunio/ci_docker:0.9
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Download Wheel
         uses: actions/download-artifact@v3
@@ -79,3 +79,4 @@ jobs:
           path: "/tmp/cube.html"
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/notebooks"
           parent: false
+
