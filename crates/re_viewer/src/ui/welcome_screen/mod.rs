@@ -66,16 +66,17 @@ impl WelcomeScreen {
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
 
-        egui::ScrollArea::new([
-            matches!(self.current_page, WelcomeScreenPage::Welcome),
-            true,
-        ])
-        .id_source(("welcome_screen_page", &self.current_page))
-        .auto_shrink([false, false])
-        .show(ui, |ui| match self.current_page {
-            WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
-            WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
-        });
+        egui::ScrollArea::vertical()
+            .id_source(("welcome_screen_page", &self.current_page))
+            .auto_shrink([false, false])
+            .show(ui, |ui| match self.current_page {
+                WelcomeScreenPage::Welcome => {
+                    if welcome_page_ui(re_ui, ui, rx, command_sender) {
+                        self.current_page = WelcomeScreenPage::Examples;
+                    }
+                }
+                WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
+            });
     }
 }
 
@@ -112,15 +113,8 @@ pub fn loading_ui(ui: &mut egui::Ui, rx: &ReceiveSet<LogMsg>) {
     });
 }
 
-fn button_centered_label(ui: &mut egui::Ui, label: impl Into<egui::WidgetText>) {
-    ui.vertical(|ui| {
-        ui.add_space(9.0);
-        ui.label(label);
-    });
-}
-
 fn set_large_button_style(ui: &mut egui::Ui) {
-    ui.style_mut().spacing.button_padding = egui::vec2(12.0, 9.0);
+    ui.style_mut().spacing.button_padding = egui::vec2(10.0, 7.0);
     let visuals = ui.visuals_mut();
     visuals.widgets.hovered.expansion = 0.0;
     visuals.widgets.active.expansion = 0.0;
