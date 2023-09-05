@@ -155,6 +155,7 @@ impl ExamplePage {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
+        rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) {
         let mut margin = egui::Margin::same(MARGINS);
@@ -217,16 +218,30 @@ impl ExamplePage {
                                         let width = thumbnail.width as f32;
                                         let height = thumbnail.height as f32;
                                         ui.vertical(|ui| {
-                                            example_thumbnail(
-                                                re_ui,
-                                                ui,
-                                                &example.desc,
-                                                egui::vec2(
-                                                    column_width,
-                                                    height * column_width / width,
-                                                ),
-                                                example.hovered(ui, self.id),
-                                            );
+                                            let is_loading = rx.sources().iter().any(|s| {
+                                                if let re_smart_channel::SmartChannelSource::RrdHttpStream { url } = s.as_ref()
+                                                {
+                                                    url == &example.desc.rrd_url
+                                                } else {
+                                                    false
+                                                }
+                                            });
+
+                                            let size = egui::vec2(column_width, height * column_width / width);
+
+                                            if is_loading {
+                                                ui.centered_and_justified(|ui| {
+                                                    ui.add(egui::Spinner::new().size(size.min_elem()));
+                                                });
+                                            } else {
+                                                example_thumbnail(
+                                                    re_ui,
+                                                    ui,
+                                                    &example.desc,
+                                                    size,
+                                                    example.hovered(ui, self.id),
+                                                );
+                                            }
 
                                             ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
                                         });

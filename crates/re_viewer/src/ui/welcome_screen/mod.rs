@@ -82,7 +82,7 @@ impl WelcomeScreen {
         .auto_shrink([false, false])
         .show(ui, |ui| match self.current_page {
             WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
-            WelcomeScreenPage::Examples => self.example_page.ui(re_ui, ui, command_sender),
+            WelcomeScreenPage::Examples => self.example_page.ui(re_ui, ui, rx, command_sender),
         });
     }
 }
