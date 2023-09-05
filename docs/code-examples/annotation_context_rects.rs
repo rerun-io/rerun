@@ -1,44 +1,48 @@
 //! Log rectangles with different colors and labels using annotation context
+
 use rerun::{
     archetypes::AnnotationContext,
     components::{ClassId, Rect2D},
-    datatypes::{AnnotationInfo, Color, Label, Vec4D},
-    MsgSender, RecordingStreamBuilder,
+    datatypes::{Color, Vec4D},
+    RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
+    let (rec, storage) =
         RecordingStreamBuilder::new("rerun_example_annotation_context_rects").memory()?;
 
     // Log an annotation context to assign a label and color to each class
-    let annotation = AnnotationContext::new([
-        AnnotationInfo {
-            id: 1,
-            label: Some(Label("red".into())),
-            color: Some(Color::from(0xff000000)),
-        },
-        AnnotationInfo {
-            id: 2,
-            label: Some(Label("green".into())),
-            color: Some(Color::from(0x00ff0000)),
-        },
-    ]);
-
-    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
+    rec.log(
+        "/",
+        &AnnotationContext::new([
+            (1, "red", Color::from(0xFF0000FF)),
+            (2, "green", Color::from(0x00FF00FF)),
+        ]),
+    )?;
 
     // Log a batch of 2 rectangles with different class IDs
-    MsgSender::new("detections")
-        .with_component(&[
-            Rect2D::XYWH(Vec4D([-2., -2., 3., 3.]).into()),
-            Rect2D::XYWH(Vec4D([0., 0., 2., 2.]).into()),
-        ])?
-        .with_component(&[ClassId::from(1), ClassId::from(2)])?
-        .send(&rec_stream)?;
+    // TODO(#2786): Rect2D archetype
+    rec.log_component_lists(
+        "detections",
+        false,
+        2,
+        [
+            &[
+                Rect2D::XYWH(Vec4D([-2., -2., 3., 3.]).into()),
+                Rect2D::XYWH(Vec4D([0., 0., 2., 2.]).into()),
+            ] as _,
+            &[ClassId::from(1), ClassId::from(2)] as _,
+        ],
+    )?;
 
     // Log an extra rect to set the view bounds
-    MsgSender::new("bounds")
-        .with_component(&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 5.0, 5.0]).into())])?
-        .send(&rec_stream)?;
+    // TODO(#2786): Rect2D archetype
+    rec.log_component_lists(
+        "bounds",
+        false,
+        2,
+        [&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 5.0, 5.0]).into())] as _],
+    )?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

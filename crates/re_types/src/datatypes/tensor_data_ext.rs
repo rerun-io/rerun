@@ -603,3 +603,24 @@ impl TensorData {
         dyn_img_result.ok_or(TensorImageSaveError::BadData)
     }
 }
+
+#[cfg(feature = "image")]
+impl TryFrom<image::DynamicImage> for TensorData {
+    type Error = TensorImageLoadError;
+
+    fn try_from(value: image::DynamicImage) -> Result<Self, Self::Error> {
+        Self::from_image(value)
+    }
+}
+
+#[cfg(feature = "image")]
+impl<P: image::Pixel, S> TryFrom<image::ImageBuffer<P, S>> for TensorData
+where
+    image::DynamicImage: std::convert::From<image::ImageBuffer<P, S>>,
+{
+    type Error = TensorImageLoadError;
+
+    fn try_from(value: image::ImageBuffer<P, S>) -> Result<Self, Self::Error> {
+        Self::from_image(value)
+    }
+}

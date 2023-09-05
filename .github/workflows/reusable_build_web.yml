@@ -41,7 +41,7 @@ jobs:
       image: rerunio/ci_docker:0.9
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust

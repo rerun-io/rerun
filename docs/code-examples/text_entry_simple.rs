@@ -1,23 +1,23 @@
 //! Log some text entries
 use rerun::components::TextEntry;
-use rerun::{MsgSender, RecordingStreamBuilder};
+use rerun::RecordingStreamBuilder;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_text_entry").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_text_entry").memory()?;
 
-    MsgSender::new("logs")
-        .with_component(&[TextEntry::new(
-            "this entry as loglevel TRACE",
-            Some("TRACE".into()),
-        )])?
-        .send(&rec_stream)?;
-
-    MsgSender::new("logs")
-        .with_component(&[TextEntry::new(
-            "this other entry as loglevel INFO",
-            Some("INFO".into()),
-        )])?
-        .send(&rec_stream)?;
+    // TODO(#2793): TextLog archetype
+    rec.log_component_lists(
+        "logs",
+        false,
+        1,
+        [&TextEntry::new("this entry as loglevel TRACE", Some("TRACE".into())) as _],
+    )?;
+    rec.log_component_lists(
+        "logs",
+        false,
+        1,
+        [&TextEntry::new("this other entry as loglevel INFO", Some("INFO".into())) as _],
+    )?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

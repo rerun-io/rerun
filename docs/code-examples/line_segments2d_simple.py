@@ -1,11 +1,20 @@
 """Log a simple set of line segments."""
+import numpy as np
 import rerun as rr
+import rerun.experimental as rr2
 
 rr.init("rerun_example_line_segments2d", spawn=True)
 
-rr.log_line_segments(
-    "simple",
-    [[0, 0], [2, 1], [4, -1], [6, 0]],
+rr2.log(
+    "segments",
+    rr2.LineStrips2D(
+        np.array(
+            [
+                [[0, 0], [2, 1]],
+                [[4, -1], [6, 0]],
+            ]
+        )
+    ),
 )
 
 # Log an extra rect to set the view bounds

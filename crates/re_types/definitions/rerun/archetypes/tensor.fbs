@@ -11,7 +11,7 @@ namespace rerun.archetypes;
 /// \rs ## Example
 /// \rs
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/tensor_simple_v2.rs
+/// \rs \include:../../../../../docs/code-examples/tensor_simple.rs
 /// \rs ```
 ///
 table Tensor (

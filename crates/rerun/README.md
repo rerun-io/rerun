@@ -19,15 +19,10 @@ Rerun is an SDK for logging computer vision and robotics data paired with a visu
 cargo add rerun
 ````
 
-``` rust
-rerun::MsgSender::new("points")
-    .with_component(&points)?
-    .with_component(&colors)?
-    .send(&mut rerun::global_session())?;
-
-rerun::MsgSender::new("image")
-    .with_component(&[rerun::components::Tensor::from_image(image)?])?
-    .send(&mut rerun::global_session())?;
+```rust
+let rec = rerun::RecordingStream::global(rerun::StoreKind::Recording)?;
+rec.log("points", &rerun::archetypes::Points3D::new(points).with_colors(colors))?;
+rec.log("image", &rerun::archetypes::Image::new(image))?;
 ```
 
 <p align="center">

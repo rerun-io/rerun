@@ -11,13 +11,11 @@
 
 mod global;
 mod log_sink;
-mod msg_sender;
 mod recording_stream;
 
 // -------------
 // Public items:
 
-pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
@@ -69,7 +67,7 @@ pub mod time {
 /// These are the different _components_ you can log.
 ///
 /// They all implement the [`Component`][`re_types::Component`] trait,
-/// and can be used in [`MsgSender::with_component`].
+/// and can be used in [`RecordingStream::log_component_lists`].
 pub mod components {
     pub use re_components::{
         Box3D, EncodedMesh3D, Mesh3D, MeshFormat, MeshId, Pinhole, Quaternion, RawMesh3D, Rect2D,

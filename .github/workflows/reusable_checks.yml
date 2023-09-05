@@ -51,7 +51,7 @@ jobs:
     name: Python lints (black, mypy, flake8)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: extractions/setup-just@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -84,7 +84,7 @@ jobs:
     name: Test Python Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -112,7 +112,7 @@ jobs:
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -195,7 +195,7 @@ jobs:
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -226,7 +226,7 @@ jobs:
     name: Lint TOML files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
@@ -243,7 +243,7 @@ jobs:
     name: Rerun lints
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -252,7 +252,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install gitignore_parser
+          pip install gitignore_parser python-frontmatter
 
       - name: Rerun lints
         run: |
@@ -273,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check spelling of entire workspace
         uses: crate-ci/typos@master
@@ -286,7 +286,7 @@ jobs:
     container:
       image: rerunio/ci_docker:0.9
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Cargo Deny
         shell: bash
@@ -299,7 +299,7 @@ jobs:
     name: C++ formatting check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Run clang format on all relevant files
         uses: jidicula/clang-format-action@v4.11.0
@@ -316,7 +316,7 @@ jobs:
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -338,4 +338,3 @@ jobs:
       - name: Build code examples
         shell: bash
         run: ./tests/cpp/build_all_doc_examples.sh --werror
-

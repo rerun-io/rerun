@@ -3,7 +3,11 @@
 use mimalloc::MiMalloc;
 
 use re_memory::AccountingAllocator;
-use rerun::external::{image, re_memory, re_viewer};
+use rerun::{
+    archetypes::Image,
+    datatypes::TensorData,
+    external::{image, re_memory, re_viewer},
+};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc);
@@ -14,13 +18,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let store_info = rerun::new_store_info("test_image_memory_rs");
-    rerun::native_viewer::spawn(store_info, Default::default(), |rec_stream| {
-        log_images(&rec_stream).unwrap();
+    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
+        log_images(&rec).unwrap();
     })?;
     Ok(())
 }
 
-fn log_images(rec_stream: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
+fn log_images(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
     let (w, h) = (2048, 1024);
     let n = 100;
 
@@ -31,15 +35,12 @@ fn log_images(rec_stream: &rerun::RecordingStream) -> Result<(), Box<dyn std::er
             image::Rgba([255, 255, 255, 255])
         }
     });
-    let tensor = rerun::components::Tensor::from_image(image)?;
 
     for _ in 0..n {
-        rerun::MsgSender::new("image")
-            .with_component(&[tensor.clone()])?
-            .send(rec_stream)?;
+        rec.log("image", &Image::new(TensorData::from_image(image.clone())?))?;
     }
 
-    rec_stream.flush_blocking();
+    rec.flush_blocking();
 
     eprintln!(
         "Logged {n} {w}x{h} RGBA images = {}",

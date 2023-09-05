@@ -2,6 +2,7 @@
 title: Detect and Track Objects
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and_track_objects/main.py
 tags: [2D, huggingface, object-detection, object-tracking, opencv]
+description: "Visualize object detection and segmentation using the Huggingface `transformers` library."
 thumbnail: https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png
 ---
 

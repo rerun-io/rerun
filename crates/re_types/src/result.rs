@@ -10,16 +10,31 @@ pub enum SerializationError {
         source: Box<SerializationError>,
     },
 
+    #[error("Trying to serialize a field lacking extension metadata: {fqname:?}")]
+    MissingExtensionMetadata {
+        fqname: String,
+        backtrace: _Backtrace,
+    },
+
     #[error("arrow2-convert serialization Failed: {0}")]
     ArrowConvertFailure(String),
 }
 
 impl SerializationError {
+    #[inline]
+    pub fn missing_extension_metadata(fqname: impl AsRef<str>) -> Self {
+        Self::MissingExtensionMetadata {
+            fqname: fqname.as_ref().into(),
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
     /// Returns the _unresolved_ backtrace associated with this error, if it exists.
     ///
     /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
     pub fn backtrace(&self) -> Option<_Backtrace> {
         match self {
+            Self::MissingExtensionMetadata { backtrace, .. } => Some(backtrace.clone()),
             SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => None,
         }
     }

@@ -63,6 +63,74 @@ fn image_roundtrip() {
     }
 }
 
+#[test]
+#[cfg(feature = "image")]
+fn dynamic_image_roundtrip() {
+    use image::{Rgb, RgbImage};
+
+    let all_expected = [Image {
+        data: TensorData {
+            id: some_id(0),
+            shape: vec![
+                TensorDimension {
+                    size: 2,
+                    name: Some("height".into()),
+                },
+                TensorDimension {
+                    size: 3,
+                    name: Some("width".into()),
+                },
+                TensorDimension {
+                    size: 3,
+                    name: Some("depth".into()),
+                },
+            ],
+            buffer: TensorBuffer::U8(
+                vec![
+                    0, 0, 128, 1, 0, 128, 2, 0, 128, //
+                    0, 1, 128, 1, 1, 128, 2, 1, 128, //
+                ]
+                .into(),
+            ),
+        }
+        .into(),
+        draw_order: None,
+    }];
+
+    let mut img = RgbImage::new(3, 2);
+
+    for x in 0..3 {
+        for y in 0..2 {
+            img.put_pixel(x, y, Rgb([x as u8, y as u8, 128]));
+        }
+    }
+
+    let all_arch_serialized = [Image::try_from(img).unwrap().with_id(some_id(0)).to_arrow()];
+
+    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
+
+    for (expected, serialized) in all_expected.into_iter().zip(all_arch_serialized) {
+        for (field, array) in &serialized {
+            // NOTE: Keep those around please, very useful when debugging.
+            // eprintln!("field = {field:#?}");
+            // eprintln!("array = {array:#?}");
+            eprintln!("{} = {array:#?}", field.name);
+
+            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // has been fully replaced.
+            if false {
+                util::assert_extensions(
+                    &**array,
+                    expected_extensions[field.name.as_str()].as_slice(),
+                );
+            }
+        }
+
+        let deserialized = Image::try_from_arrow(serialized).unwrap();
+        similar_asserts::assert_eq!(expected, deserialized);
+    }
+}
+
 macro_rules! check_image_array {
     ($img:ty, $typ:ty, $arr:expr, $color_dim:expr) => {{
         let arr = $arr;
@@ -77,7 +145,7 @@ macro_rules! check_image_array {
             .shape
             .iter()
             .enumerate()
-            .find(|(_, dim)| dim.name.as_ref().map(|n| n.as_str()) == Some("color"))
+            .find(|(_, dim)| dim.name.as_ref().map(|n| n.as_str()) == Some("depth"))
             .map(|(ind, _)| ind as i32)
             .unwrap_or(-1);
 

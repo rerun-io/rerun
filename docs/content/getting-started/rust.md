@@ -21,29 +21,23 @@ Add the following code to your `main.rs`
 (This example also lives in the `rerun` source tree [example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/minimal/src/main.rs))
 ```rust
 use rerun::{
-    components::{Color, Point3D, Radius},
-    demo_util::grid,
-    external::glam,
-    MsgSender, RecordingStreamBuilder,
+    archetypes::Points3D, components::Color, demo_util::grid, external::glam,
+    RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let recording =
-        RecordingStreamBuilder::new("rerun_example_minimal").connect(rerun::default_server_addr())?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
 
-    let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)
-        .map(Point3D::from)
-        .collect::<Vec<_>>();
+    let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
     let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)
-        .map(|v| Color::from_rgb(v.x as u8, v.y as u8, v.z as u8))
-        .collect::<Vec<_>>();
+        .map(|v| Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
 
-    MsgSender::new("my_points")
-        .with_component(&points)?
-        .with_component(&colors)?
-        .with_splat(Radius(0.5))?
-        .send(&recording)?;
+    rec.log(
+        "my_points",
+        &Points3D::new(points).with_colors(colors).with_radii([0.5]),
+    )?;
 
+    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }
 ```

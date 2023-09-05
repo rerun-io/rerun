@@ -1,6 +1,6 @@
 //! Logs a `DisconnectedSpace` archetype for roundtrip checks.
 
-use rerun::{archetypes::DisconnectedSpace, external::re_log, MsgSender, RecordingStream};
+use rerun::{archetypes::DisconnectedSpace, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -9,11 +9,9 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    MsgSender::from_archetype("disconnected_space", &DisconnectedSpace::new(true))?
-        .send(rec_stream)?;
-
-    Ok(())
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+    rec.log("disconnected_space", &DisconnectedSpace::new(true))
+        .map_err(Into::into)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -26,8 +24,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_disconnected_space",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

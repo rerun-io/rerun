@@ -5,10 +5,11 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::{
-    ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    ApplicationId, DataCell, DataCellError, DataRow, DataTable, DataTableBatcher,
+    DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
+    StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
+use re_types::{components::InstanceKey, Archetype, ComponentList, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -29,6 +30,14 @@ pub enum RecordingStreamError {
     /// Error within the underlying table batcher.
     #[error("Failed to spawn the underlying batcher: {0}")]
     DataTableBatcher(#[from] DataTableBatcherError),
+
+    /// Error within the underlying data cell.
+    #[error("Failed to instantiate data cell: {0}")]
+    DataCell(#[from] DataCellError),
+
+    /// Error within the underlying serializer.
+    #[error("Failed to serialize component data: {0}")]
+    Serialization(#[from] SerializationError),
 
     /// Error spawning one of the background threads.
     #[error("Failed to spawn background thread '{name}': {err}")]
@@ -51,7 +60,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 ///
 /// ``` no_run
 /// # use re_sdk::RecordingStreamBuilder;
-/// let rec_stream = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
+/// let rec = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Debug)]
@@ -76,7 +85,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// # use re_sdk::RecordingStreamBuilder;
-    /// let rec_stream = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
+    /// let rec = RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     //
@@ -166,7 +175,7 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
@@ -191,9 +200,9 @@ impl RecordingStreamBuilder {
     /// ```
     /// # fn log_data(_: &re_sdk::RecordingStream) { }
     ///
-    /// let (rec_stream, storage) = re_sdk::RecordingStreamBuilder::new("rerun_example_app").memory()?;
+    /// let (rec, storage) = re_sdk::RecordingStreamBuilder::new("rerun_example_app").memory()?;
     ///
-    /// log_data(&rec_stream);
+    /// log_data(&rec);
     ///
     /// let data = storage.take();
     ///
@@ -207,9 +216,9 @@ impl RecordingStreamBuilder {
 
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            RecordingStream::new(store_info, batcher_config, Box::new(sink)).map(|rec_stream| {
-                storage.rec_stream = Some(rec_stream.clone());
-                (rec_stream, storage)
+            RecordingStream::new(store_info, batcher_config, Box::new(sink)).map(|rec| {
+                storage.rec = Some(rec.clone());
+                (rec, storage)
             })
         } else {
             re_log::debug!("Rerun disabled - call to memory() ignored");
@@ -227,7 +236,7 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
     ///     .connect(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
@@ -255,7 +264,7 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").save("my_recording.rrd")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
@@ -301,7 +310,7 @@ impl RecordingStreamBuilder {
     /// };
     /// let _tokio_runtime_guard = tokio_runtime_handle.enter();
     ///
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
     ///     .serve("0.0.0.0", Default::default(), Default::default(), true)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
@@ -540,6 +549,226 @@ impl RecordingStream {
         Self {
             inner: Arc::new(None),
         }
+    }
+}
+
+impl RecordingStream {
+    /// Logs the contents of an [`Archetype`] into Rerun.
+    ///
+    /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
+    /// See `RecordingStream::set_time_*` family of methods for more information.
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    #[inline]
+    pub fn log(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        self.log_timeless(ent_path, false, arch)
+    }
+
+    /// Logs the contents of an [`Archetype`] into Rerun.
+    ///
+    /// If `timeless` is set to `true`, all timestamp data associated with this message will be
+    /// dropped right before sending it to Rerun.
+    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
+    /// into the past.
+    ///
+    /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
+    /// internal clock.
+    /// See `RecordingStream::set_time_*` family of methods for more information.
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    #[inline]
+    pub fn log_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timeless: bool,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        // TODO(#3159): This is what we're supposed to do, but we need indicator to be first-class
+        // for that.
+        // self.log_component_lists(
+        //     ent_path,
+        //     timeless,
+        //     arch.num_instances() as u32,
+        //     arch.as_component_lists(),
+        // )
+
+        // NOTE: All of this disappears with #3159
+        let ent_path = ent_path.into();
+        let num_instances = arch.num_instances() as _;
+        let cells: Result<Vec<_>, _> = arch
+            .try_to_arrow()?
+            .into_iter()
+            .map(|(field, array)| {
+                // NOTE: Unreachable, a top-level Field will always be a component, and thus an
+                // extension.
+                use re_log_types::external::arrow2::datatypes::DataType;
+                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
+                    return Err(SerializationError::missing_extension_metadata(field.name))
+                        .map_err(Into::into);
+                };
+                DataCell::try_from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
+            })
+            .collect();
+        let cells = cells?;
+
+        let mut instanced: Vec<DataCell> = Vec::new();
+        let mut splatted: Vec<DataCell> = Vec::new();
+
+        for cell in cells {
+            if num_instances > 1 && cell.num_instances() == 1 {
+                splatted.push(cell);
+            } else {
+                instanced.push(cell);
+            }
+        }
+
+        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
+        // internal clock.
+        let timepoint = TimePoint::timeless();
+
+        let instanced = (!instanced.is_empty()).then(|| {
+            DataRow::from_cells(
+                RowId::random(),
+                timepoint.clone(),
+                ent_path.clone(),
+                num_instances,
+                instanced,
+            )
+        });
+
+        // TODO(#1629): unsplit splats once new data cells are in
+        let splatted = (!splatted.is_empty()).then(|| {
+            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
+            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
+        });
+
+        if let Some(splatted) = splatted {
+            self.record_row(splatted, !timeless);
+        }
+
+        // Always the primary component last so range-based queries will include the other data.
+        // Since the primary component can't be splatted it must be in here, see(#1215).
+        if let Some(instanced) = instanced {
+            self.record_row(instanced, !timeless);
+        }
+
+        Ok(())
+    }
+
+    /// Logs a set of [`ComponentList`]s into Rerun.
+    ///
+    /// If `timeless` is set to `false`, all timestamp data associated with this message will be
+    /// dropped right before sending it to Rerun.
+    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
+    /// into the past.
+    ///
+    /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
+    /// internal clock.
+    /// See `RecordingStream::set_time_*` family of methods for more information.
+    ///
+    /// `num_instances` specify the expected number of component instances present in each list.
+    /// Each can have either:
+    /// - exactly `num_instances` instances,
+    /// - a single instance (splat),
+    /// - or zero instance (clear).
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    pub fn log_component_lists<'a>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timeless: bool,
+        num_instances: u32,
+        comp_lists: impl IntoIterator<Item = &'a dyn ComponentList>,
+    ) -> RecordingStreamResult<()> {
+        if !self.is_enabled() {
+            return Ok(()); // silently drop the message
+        }
+
+        let ent_path = ent_path.into();
+
+        let comp_lists: Result<Vec<_>, _> = comp_lists
+            .into_iter()
+            .map(|comp_list| {
+                comp_list
+                    .try_to_arrow()
+                    .map(|array| (comp_list.arrow_field(), array))
+            })
+            .collect();
+        let comp_lists = comp_lists?;
+
+        let cells: Result<Vec<_>, _> = comp_lists
+            .into_iter()
+            .map(|(field, array)| {
+                // NOTE: Unreachable, a top-level Field will always be a component, and thus an
+                // extension.
+                use re_log_types::external::arrow2::datatypes::DataType;
+                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
+                    return Err(SerializationError::missing_extension_metadata(field.name))
+                        .map_err(Into::into);
+                };
+                DataCell::try_from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
+            })
+            .collect();
+        let cells = cells?;
+
+        let mut instanced: Vec<DataCell> = Vec::new();
+        let mut splatted: Vec<DataCell> = Vec::new();
+
+        for cell in cells {
+            if num_instances > 1 && cell.num_instances() == 1 {
+                splatted.push(cell);
+            } else {
+                instanced.push(cell);
+            }
+        }
+
+        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
+        // internal clock.
+        let timepoint = TimePoint::timeless();
+
+        let instanced = (!instanced.is_empty()).then(|| {
+            DataRow::from_cells(
+                RowId::random(),
+                timepoint.clone(),
+                ent_path.clone(),
+                num_instances,
+                instanced,
+            )
+        });
+
+        // TODO(#1629): unsplit splats once new data cells are in
+        let splatted = (!splatted.is_empty()).then(|| {
+            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
+            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
+        });
+
+        if let Some(splatted) = splatted {
+            self.record_row(splatted, !timeless);
+        }
+
+        // Always the primary component last so range-based queries will include the other data.
+        // Since the primary component can't be splatted it must be in here, see(#1215).
+        if let Some(instanced) = instanced {
+            self.record_row(instanced, !timeless);
+        }
+
+        Ok(())
     }
 }
 
@@ -1003,12 +1232,42 @@ impl RecordingStream {
     }
 
     /// Set the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_sequence`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
+    ///
+    /// See also:
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::reset_time`]
+    pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
+        let Some(this) = &*self.inner else {
+            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
+            return;
+        };
+
+        let timepoint = timepoint.into();
+
+        for (timeline, time) in timepoint {
+            ThreadInfo::set_thread_time(&this.info.store_id, timeline, Some(time));
+        }
+    }
+
+    /// Set the current time of the recording, for the current calling thread.
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
     ///
     /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::reset_time`]
     pub fn set_time_sequence(
         &self,
         timeline: impl Into<TimelineName>,
@@ -1027,12 +1286,19 @@ impl RecordingStream {
     }
 
     /// Set the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_seconds`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: &str, seconds: impl Into<Option<f64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
@@ -1049,12 +1315,19 @@ impl RecordingStream {
     }
 
     /// Set the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_nanos`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_nanos)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::reset_time`]
     pub fn set_time_nanos(&self, timeline: &str, ns: impl Into<Option<i64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
@@ -1069,10 +1342,17 @@ impl RecordingStream {
     }
 
     /// Clears out the current time of the recording, for the current calling thread.
-    /// Used for all subsequent logging performed from this same thread, until the next call to
-    /// [`Self::set_time_sequence`]/[`Self::set_time_seconds`]/[`Self::set_time_nanos`].
+    ///
+    /// Used for all subsequent logging performed from this same thread, until the next call
+    /// to one of the time setting methods.
     ///
     /// For example: `rec.reset_time()`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
     pub fn reset_time(&self) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to reset_time() ignored");
@@ -1100,21 +1380,21 @@ mod tests {
 
     #[test]
     fn never_flush() {
-        let rec_stream = RecordingStreamBuilder::new("rerun_example_never_flush")
+        let rec = RecordingStreamBuilder::new("rerun_example_never_flush")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::NEVER)
             .buffered()
             .unwrap();
 
-        let store_info = rec_stream.store_info().cloned().unwrap();
+        let store_info = rec.store_info().cloned().unwrap();
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row, false);
+            rec.record_row(row, false);
         }
 
-        let storage = rec_stream.memory();
+        let storage = rec.memory();
         let mut msgs = {
             let mut msgs = storage.take();
             msgs.reverse();
@@ -1165,21 +1445,21 @@ mod tests {
 
     #[test]
     fn always_flush() {
-        let rec_stream = RecordingStreamBuilder::new("rerun_example_always_flush")
+        let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::ALWAYS)
             .buffered()
             .unwrap();
 
-        let store_info = rec_stream.store_info().cloned().unwrap();
+        let store_info = rec.store_info().cloned().unwrap();
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row, false);
+            rec.record_row(row, false);
         }
 
-        let storage = rec_stream.memory();
+        let storage = rec.memory();
         let mut msgs = {
             let mut msgs = storage.take();
             msgs.reverse();
@@ -1245,18 +1525,18 @@ mod tests {
 
     #[test]
     fn flush_hierarchy() {
-        let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_flush_hierarchy")
+        let (rec, storage) = RecordingStreamBuilder::new("rerun_example_flush_hierarchy")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::NEVER)
             .memory()
             .unwrap();
 
-        let store_info = rec_stream.store_info().cloned().unwrap();
+        let store_info = rec.store_info().cloned().unwrap();
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row, false);
+            rec.record_row(row, false);
         }
 
         {
@@ -1301,7 +1581,7 @@ mod tests {
 
     #[test]
     fn disabled() {
-        let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
+        let (rec, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
             .enabled(false)
             .batcher_config(DataTableBatcherConfig::ALWAYS)
             .memory()
@@ -1310,7 +1590,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row, false);
+            rec.record_row(row, false);
         }
 
         let mut msgs = {
