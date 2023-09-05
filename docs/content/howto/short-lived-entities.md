@@ -10,13 +10,13 @@ The most straight forward option is to log that an entity has been cleared. For 
 ```python
 ...
 for frame in sensors.read():
-    # Associate the following logs with frame = frame.id
+    # Associate the following logs with `frame == frame.id`
     rr.set_time_sequence("frame", frame.id)
     # Do the actual tracking update
     tracker.update(frame)
     if tracker.is_lost:
-        # Clear everything on or below f"tracked/{tracker.id}"
-        # and that happened on or before frame == frame.id.
+        # Clear everything on or below `tracked/{tracker.id}`
+        # and that happened on or before `frame == frame.id`
         rr.log(f"tracked/{tracker.id}", rr.ClearEntity(recursive=True))
     else:
         # Log data to the main entity and a child entity
@@ -30,7 +30,7 @@ In some cases, the best approach may be to rethink how you log data to better ex
 ```python
 ...
 for frame in sensors.read():
-    # Associate the following logs with frame = frame.id
+    # Associate the following logs with `frame = frame.id`
     rr.set_time_sequence("frame", frame.id)
     # Log every image that comes in
     rr.log("input/image", rr.Image(frame.image))
@@ -48,7 +48,7 @@ class Detector:
     ...
     def detect(self, frame):
         downscaled = self.downscale(frame.image)
-        # Log the downscaled image-
+        # Log the downscaled image
         rr.log("downscaled/rgb", rr.Image(downscaled))
         result = self.model(downscaled)
         detection = self.post_process(result)
@@ -58,7 +58,7 @@ class Detector:
         return detection
 ...
 for frame in sensors.read():
-    # Associate the following logs with frame = frame.id
+    # Associate the following logs with `frame = frame.id`
     rr.set_time_sequence("frame", frame.id)
     # Log every image that comes in
     rr.log("input/image", rr.Image(frame.image))
