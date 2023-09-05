@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 import numpy as np
@@ -16,7 +15,6 @@ RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
 TENSOR_DATA_INPUTS: list[rrd.TensorDataArrayLike] = [
     # Full explicit construction
     rrd.TensorData(
-        id=rrd.TensorId(uuid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
         shape=[
             rrd.TensorDimension(8, name="a"),
             rrd.TensorDimension(6, name="b"),
@@ -32,18 +30,17 @@ TENSOR_DATA_INPUTS: list[rrd.TensorDataArrayLike] = [
     # Explicit construction from array
     rrd.TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
     # Explicit construction from array
-    rrd.TensorData(id=uuid.uuid4(), array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
+    rrd.TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
 ]
 
-# 0 = id
-# 1 = shape
-# 2 = buffer
+# 0 = shape
+# 1 = buffer
 CHECK_FIELDS: list[list[int]] = [
-    [0, 1, 2],
-    [2],
-    [2],
-    [1, 2],
-    [1, 2],
+    [0, 1],
+    [1],
+    [1],
+    [0, 1],
+    [0, 1],
 ]
 
 
