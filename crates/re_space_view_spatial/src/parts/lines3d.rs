@@ -155,7 +155,7 @@ impl Lines3DPart {
             }
 
             for p in strip.0 {
-                bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
+                bounding_box.extend(p.into());
             }
         }
 
