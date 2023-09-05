@@ -1,7 +1,7 @@
 //! Logs an `Image` archetype for roundtrip checks.
 
 use image::{Rgb, RgbImage};
-use rerun::{archetypes::Image, datatypes::TensorId, external::re_log, RecordingStream};
+use rerun::{archetypes::Image, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -11,11 +11,6 @@ struct Args {
 }
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    // Need a deterministic id for round-trip tests. Used (10..26)
-    let id = TensorId {
-        uuid: core::array::from_fn(|i| (i + 10) as u8),
-    };
-
     let mut img = RgbImage::new(3, 2);
 
     // 2x3x3 image. Red channel = x. Green channel = y. Blue channel = 128.
@@ -25,7 +20,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         }
     }
 
-    rec.log("image", &Image::try_from(img)?.with_id(id))?;
+    rec.log("image", &Image::try_from(img)?)?;
 
     Ok(())
 }

@@ -2,24 +2,17 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Tensor,
-    datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId},
+    datatypes::{TensorBuffer, TensorData, TensorDimension},
     tensor_data::TensorCastError,
     Archetype as _,
 };
 
 mod util;
 
-fn some_id(x: u8) -> TensorId {
-    TensorId {
-        uuid: [x, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    }
-}
-
 #[test]
 fn tensor_roundtrip() {
     let all_expected = [Tensor {
         data: TensorData {
-            id: some_id(0),
             shape: vec![
                 TensorDimension {
                     size: 2,
@@ -37,7 +30,6 @@ fn tensor_roundtrip() {
 
     let all_arch_serialized = [Tensor::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
         .unwrap()
-        .with_id(some_id(0))
         .to_arrow()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
@@ -67,7 +59,6 @@ fn tensor_roundtrip() {
 #[test]
 fn convert_tensor_to_ndarray_u8() {
     let t = TensorData::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -84,7 +75,6 @@ fn convert_tensor_to_ndarray_u8() {
 #[test]
 fn convert_tensor_to_ndarray_u16() {
     let t = TensorData::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -101,7 +91,6 @@ fn convert_tensor_to_ndarray_u16() {
 #[test]
 fn convert_tensor_to_ndarray_f32() {
     let t = TensorData::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -138,7 +127,6 @@ fn convert_ndarray_slice_to_tensor() {
 #[test]
 fn check_slices() {
     let t = TensorData::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -178,7 +166,6 @@ fn check_slices() {
 #[test]
 fn check_tensor_shape_error() {
     let t = TensorData::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -200,7 +187,6 @@ fn check_tensor_shape_error() {
 #[test]
 fn check_tensor_type_error() {
     let t = TensorData::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),

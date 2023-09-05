@@ -2,22 +2,16 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Image,
-    datatypes::{TensorBuffer, TensorData, TensorDimension, TensorId},
+    datatypes::{TensorBuffer, TensorData, TensorDimension},
     Archetype as _,
 };
 
 mod util;
 
-fn some_id(x: u8) -> TensorId {
-    TensorId {
-        uuid: [x, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    }
-}
 #[test]
 fn image_roundtrip() {
     let all_expected = [Image {
         data: TensorData {
-            id: some_id(0),
             shape: vec![
                 TensorDimension {
                     size: 2,
@@ -36,7 +30,6 @@ fn image_roundtrip() {
 
     let all_arch_serialized = [Image::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
         .unwrap()
-        .with_id(some_id(0))
         .to_arrow()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
@@ -70,7 +63,6 @@ fn dynamic_image_roundtrip() {
 
     let all_expected = [Image {
         data: TensorData {
-            id: some_id(0),
             shape: vec![
                 TensorDimension {
                     size: 2,
@@ -105,7 +97,7 @@ fn dynamic_image_roundtrip() {
         }
     }
 
-    let all_arch_serialized = [Image::try_from(img).unwrap().with_id(some_id(0)).to_arrow()];
+    let all_arch_serialized = [Image::try_from(img).unwrap().to_arrow()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 

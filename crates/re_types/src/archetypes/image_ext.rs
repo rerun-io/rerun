@@ -42,18 +42,6 @@ impl Image {
             draw_order: None,
         })
     }
-
-    pub fn with_id(self, id: crate::datatypes::TensorId) -> Self {
-        Self {
-            data: TensorData {
-                id,
-                shape: self.data.0.shape,
-                buffer: self.data.0.buffer,
-            }
-            .into(),
-            draw_order: None,
-        }
-    }
 }
 
 // Returns the indices of an appropriate set of non-empty dimensions
