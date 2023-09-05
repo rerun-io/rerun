@@ -14,6 +14,8 @@ pub enum UiVerbosity {
     Small,
 
     /// Display a reduced set, used for hovering.
+    ///
+    /// Keep it under a half-dozen lines.
     Reduced,
 
     /// Display everything, as large as you want. Used for selection panel.

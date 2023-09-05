@@ -104,10 +104,15 @@ impl DataUi for AnnotationContext {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
-            UiVerbosity::Small => {
-                ui.label(format!("AnnotationContext with {} classes", self.0.len()));
+            UiVerbosity::Small | UiVerbosity::Reduced => {
+                if self.0.len() == 1 {
+                    let descr = &self.0[0].class_description;
+                    ui.label(format!("AnnotationContext with one class containing {} keypoints and {} connections", descr.keypoint_annotations.len(), descr.keypoint_connections.len()));
+                } else {
+                    ui.label(format!("AnnotationContext with {} classes", self.0.len()));
+                }
             }
-            UiVerbosity::All | UiVerbosity::Reduced => {
+            UiVerbosity::All => {
                 ui.vertical(|ui| {
                     annotation_info_table_ui(
                         ui,
@@ -204,7 +209,7 @@ fn class_description_ui(
                                             .get(id)
                                             .and_then(|info| info.label.as_ref())
                                             .map_or_else(
-                                                || format!("id {id:?}"),
+                                                || format!("id {}", id.0),
                                                 |label| label.0.as_str().to_owned(),
                                             ),
                                     );
