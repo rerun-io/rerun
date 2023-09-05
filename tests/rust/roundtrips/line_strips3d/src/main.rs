@@ -1,6 +1,6 @@
 //! Logs a `LineStrips3D` archetype for roundtrip checks.
 
-use rerun::{archetypes::LineStrips3D, external::re_log, MsgSender, RecordingStream};
+use rerun::{archetypes::LineStrips3D, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -9,9 +9,9 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     let points = [[0., 0., 0.], [2., 1., -1.], [4., -1., 3.], [6., 0., 1.5]];
-    MsgSender::from_archetype(
+    rec.log(
         "line_strips3d",
         &LineStrips3D::new(points.chunks(2))
             .with_radii([0.42, 0.43])
@@ -19,10 +19,8 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_labels(["hello", "friend"])
             .with_class_ids([126, 127])
             .with_instance_keys([66, 666]),
-    )?
-    .send(rec_stream)?;
-
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -35,8 +33,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_line_strips3d",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

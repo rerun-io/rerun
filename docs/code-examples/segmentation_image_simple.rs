@@ -1,12 +1,15 @@
 //! Create and log a segmentation image.
+
 use ndarray::{s, Array, ShapeBuilder};
-use rerun::archetypes::AnnotationContext;
-use rerun::components::{Tensor, TensorDataMeaning};
-use rerun::datatypes::{AnnotationInfo, ClassDescription, Color, Label};
-use rerun::{MsgSender, RecordingStreamBuilder};
+use rerun::{
+    archetypes::AnnotationContext,
+    components::{Tensor, TensorDataMeaning},
+    datatypes::Color,
+    RecordingStreamBuilder,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
+    let (rec, storage) =
         RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
 
     // create a segmentation image
@@ -14,35 +17,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.slice_mut(s![50..150, 50..120]).fill(1);
     image.slice_mut(s![100..180, 130..280]).fill(2);
 
+    // TODO(#2792): SegmentationImage archetype
     let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::ClassId;
 
     // create an annotation context to describe the classes
     let annotation = AnnotationContext::new([
-        ClassDescription {
-            info: AnnotationInfo {
-                id: 1,
-                label: Some(Label("red".into())),
-                color: Some(Color::from(0xff000000)),
-            },
-            ..Default::default()
-        },
-        ClassDescription {
-            info: AnnotationInfo {
-                id: 2,
-                label: Some(Label("green".into())),
-                color: Some(Color::from(0x00ff0000)),
-            },
-            ..Default::default()
-        },
+        (1, "red", Color::from(0xFF0000FF)),
+        (2, "green", Color::from(0x00FF00FF)),
     ]);
 
     // log the annotation and the image
-    MsgSender::from_archetype("/", &annotation)?.send(&rec_stream)?;
+    rec.log("/", &annotation)?;
 
-    MsgSender::new("image")
-        .with_component(&[tensor])?
-        .send(&rec_stream)?;
+    // TODO(#2792): SegmentationImage archetype
+    rec.log_component_lists("image", false, 1, [&tensor as _])?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

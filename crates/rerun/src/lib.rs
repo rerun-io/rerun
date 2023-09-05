@@ -34,25 +34,20 @@
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Point3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::components::Color> { Default::default() }
-//! let rec_stream = rerun::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
+//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
 //!
 //! let points: Vec<rerun::components::Point3D> = positions();
 //! let colors: Vec<rerun::components::Color> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
-//! rerun::MsgSender::new("points")
-//!     .with_component(&points)?
-//!     .with_component(&colors)?
-//!     .send(&rec_stream)?;
+//! rec.log("points", &rerun::archetypes::Points3D::new(points).with_colors(colors))?;
 //!
-//! rerun::MsgSender::new("image")
-//!     .with_component(&[rerun::components::Tensor::from_image(image)?])?
-//!     .send(&rec_stream)?;
+//! rec.log_component_lists("image", false, 1, [&rerun::components::Tensor::from_image(image)? as _])?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
-//! See [`RecordingStream`] and [`MsgSender`] for details.
+//! See [`RecordingStream`] for details.
 //!
 //! #### Streaming
 //! To stream log data to an awaiting `rerun` process, you can do this:
@@ -61,17 +56,17 @@
 //! Then do this:
 //!
 //! ```no_run
-//! let rec_stream = rerun::RecordingStreamBuilder::new("rerun_example_app")
+//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app")
 //!     .connect(rerun::default_server_addr(), rerun::default_flush_timeout());
 //! ```
 //!
 //! #### Buffering
 //!
 //! ```no_run
-//! # fn log_using(rec_stream: &rerun::RecordingStream) {}
+//! # fn log_using(rec: &rerun::RecordingStream) {}
 //!
-//! let (rec_stream, storage) = rerun::RecordingStreamBuilder::new("rerun_example_app").memory()?;
-//! log_using(&rec_stream);
+//! let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_app").memory()?;
+//! log_using(&rec);
 //! rerun::native_viewer::show(storage.take());
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())

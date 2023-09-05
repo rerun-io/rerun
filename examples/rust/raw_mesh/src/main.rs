@@ -17,7 +17,7 @@ use rerun::{
     datatypes::Vec4D,
     external::{re_log, re_memory::AccountingAllocator},
     transform::TranslationRotationScale3D,
-    EntityPath, MsgSender, RecordingStream,
+    EntityPath, RecordingStream,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -65,45 +65,50 @@ impl From<GltfTransform> for Transform3D {
 }
 
 /// Log a glTF node with Rerun.
-fn log_node(rec_stream: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
-    let ent_path = EntityPath::from(node.name.as_str());
+fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
+    rec.set_time_sequence("keyframe", 0);
+
+    if let Some(transform) = node.transform.map(Transform3D::from) {
+        rec.log(
+            node.name.as_str(),
+            &rerun::archetypes::Transform3D::new(transform),
+        )?;
+    }
 
     // Convert glTF objects into Rerun components.
-    let transform = node.transform.map(Transform3D::from);
+    // TODO(#2788): Mesh archetype
     let primitives = node
         .primitives
         .into_iter()
         .map(Mesh3D::from)
         .collect::<Vec<_>>();
-
-    rec_stream.set_time_sequence("keyframe", 0);
-    MsgSender::new(ent_path)
-        .with_component(&primitives)?
-        .with_component(transform.as_ref())?
-        .send(rec_stream)?;
+    rec.log_component_lists(
+        node.name.as_str(),
+        false,
+        primitives.len() as _,
+        [&primitives as _],
+    )?;
 
     // Recurse through all of the node's children!
     for mut child in node.children {
         child.name = [node.name.as_str(), child.name.as_str()].join("/");
-        log_node(rec_stream, child)?;
+        log_node(rec, child)?;
     }
 
     Ok(())
 }
 
 fn log_coordinate_space(
-    rec_stream: &RecordingStream,
+    rec: &RecordingStream,
     ent_path: impl Into<EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
+    // TODO(#2816): ViewCoordinates archetype
     let view_coords: ViewCoordinates = axes
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
 
-    MsgSender::new(ent_path)
-        .with_timeless(true)
-        .with_component(&[view_coords])?
-        .send(rec_stream)
+    rec.log_component_lists(ent_path, true, 1, [&view_coords as _])
         .map_err(Into::into)
 }
 
@@ -168,7 +173,7 @@ impl Args {
     }
 }
 
-fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Read glTF scene
     let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
     let nodes = load_gltf(&doc, &buffers);
@@ -176,8 +181,8 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        log_coordinate_space(rec_stream, root.name.as_str(), "RUB")?;
-        log_node(rec_stream, root)?;
+        log_coordinate_space(rec, root.name.as_str(), "RUB")?;
+        log_node(rec, root)?;
     }
 
     Ok(())
@@ -190,13 +195,11 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let default_enabled = true;
-    args.rerun.clone().run(
-        "rerun_example_raw_mesh_rs",
-        default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
-        },
-    )
+    args.rerun
+        .clone()
+        .run("rerun_example_raw_mesh_rs", default_enabled, move |rec| {
+            run(&rec, &args).unwrap();
+        })
 }
 
 // --- glTF parsing ---

@@ -10,6 +10,17 @@ impl TranslationRotationScale3D {
         from_parent: false,
     };
 
+    /// From a translation.
+    #[inline]
+    pub fn translation<T: Into<Vec3D>>(translation: T) -> Self {
+        Self {
+            translation: Some(translation.into()),
+            rotation: None,
+            scale: None,
+            from_parent: false,
+        }
+    }
+
     /// From a translation applied after a rotation, known as a rigid transformation.
     #[inline]
     pub fn rigid<T: Into<Vec3D>, R: Into<Rotation3D>>(translation: T, rotation: R) -> Self {

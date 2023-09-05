@@ -9,15 +9,15 @@ int main(void) {
         .application_id = "c-example-app",
         .store_kind = RERUN_STORE_KIND_RECORDING,
     };
-    rr_recording_stream rec_stream = rr_recording_stream_new(&store_info, &error);
-    rr_recording_stream_connect(rec_stream, "127.0.0.1:9876", 2.0, &error);
+    rr_recording_stream rec = rr_recording_stream_new(&store_info, &error);
+    rr_recording_stream_connect(rec, "127.0.0.1:9876", 2.0, &error);
 
     if (error.code != 0) {
         printf("Error occurred: %s\n", error.description);
         return 1;
     }
 
-    printf("rec_stream: %d\n", rec_stream);
+    printf("rec: %d\n", rec);
 
-    rr_recording_stream_free(rec_stream);
+    rr_recording_stream_free(rec);
 }

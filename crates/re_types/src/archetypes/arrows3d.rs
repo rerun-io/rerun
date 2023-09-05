@@ -24,11 +24,11 @@
 /// use rerun::{
 ///    archetypes::Arrows3D,
 ///    components::{Color, Vector3D},
-///    MsgSender, RecordingStreamBuilder,
+///    RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
+///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 ///
 ///    let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
 ///        .map(|i| {
@@ -42,8 +42,7 @@
 ///        })
 ///        .unzip();
 ///
-///    MsgSender::from_archetype("arrows", &Arrows3D::new(vectors).with_colors(colors))?
-///        .send(&rec_stream)?;
+///    rec.log("arrows", &Arrows3D::new(vectors).with_colors(colors))?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
 ///    Ok(())
@@ -90,7 +89,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -103,7 +102,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -290,7 +289,7 @@ impl crate::Archetype for Arrows3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.ClassId".into()),
+                                Some("rerun.class_id".into()),
                             );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),

@@ -4,7 +4,7 @@ use rerun::{
     archetypes::AnnotationContext,
     datatypes::{ClassDescription, Color, KeypointPair},
     external::re_log,
-    MsgSender, RecordingStream,
+    RecordingStream,
 };
 
 #[derive(Debug, clap::Parser)]
@@ -14,8 +14,8 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    MsgSender::from_archetype(
+fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
+    rec.log(
         "annotation_context",
         &AnnotationContext::new([
             (1, "hello").into(),
@@ -25,10 +25,8 @@ fn run(rec_stream: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
                 keypoint_connections: KeypointPair::vec_from([(1, 2), (3, 4)]),
             },
         ]),
-    )?
-    .send(rec_stream)?;
-
-    Ok(())
+    )
+    .map_err(Into::into)
 }
 
 fn main() -> anyhow::Result<()> {
@@ -41,8 +39,8 @@ fn main() -> anyhow::Result<()> {
     args.rerun.clone().run(
         "rerun_example_roundtrip_annotation_context",
         default_enabled,
-        move |rec_stream| {
-            run(&rec_stream, &args).unwrap();
+        move |rec| {
+            run(&rec, &args).unwrap();
         },
     )
 }

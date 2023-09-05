@@ -4,10 +4,10 @@
 namespace rr = rerun;
 
 int main(int argc, char** argv) {
-    auto rec_stream = rr::RecordingStream("rerun_example_roundtrip_annotation_context");
-    rec_stream.save(argv[1]).throw_on_failure();
+    auto rec = rr::RecordingStream("rerun_example_roundtrip_annotation_context");
+    rec.save(argv[1]).throw_on_failure();
 
-    rec_stream.log(
+    rec.log(
         "annotation_context",
         rr::archetypes::AnnotationContext({
             rr::datatypes::ClassDescription({1, "hello"}),

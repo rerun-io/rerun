@@ -1,25 +1,23 @@
 //! Log a simple line strip.
 
 use rerun::{
-    components::{LineStrip2D, Rect2D},
-    datatypes::Vec4D,
-    MsgSender, RecordingStreamBuilder,
+    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec_stream, storage) =
-        RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
 
-    let points = vec![[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-
-    MsgSender::new("simple")
-        .with_component(&[LineStrip2D(points.into_iter().map(Into::into).collect())])?
-        .send(&rec_stream)?;
+    let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
+    rec.log("strip", &LineStrips2D::new([points]))?;
 
     // Log an extra rect to set the view bounds
-    MsgSender::new("bounds")
-        .with_component(&[Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]).into())])?
-        .send(&rec_stream)?;
+    // TODO(#2786): Rect2D archetype
+    rec.log_component_lists(
+        "bounds",
+        false,
+        1,
+        [&Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]).into()) as _],
+    )?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

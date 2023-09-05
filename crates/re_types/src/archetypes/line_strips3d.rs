@@ -20,11 +20,10 @@
 /// ```ignore
 /// //! Log a batch of 2d line strips.
 ///
-/// use rerun::{archetypes::LineStrips3D, MsgSender, RecordingStreamBuilder};
+/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) =
-///        RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
+///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
 ///
 ///    let strip1 = [[0., 0., 2.], [1., 0., 2.], [1., 1., 2.], [0., 1., 2.]];
 ///    let strip2 = [
@@ -37,14 +36,13 @@
 ///        [0., 1., 0.],
 ///        [0., 1., 1.],
 ///    ];
-///    MsgSender::from_archetype(
+///    rec.log(
 ///        "strips",
 ///        &LineStrips3D::new([strip1.to_vec(), strip2.to_vec()])
 ///            .with_colors([0xFF0000FF, 0x00FF00FF])
 ///            .with_radii([0.025, 0.005])
-///            .with_labels(["one strip here", "and one strip there" /**/]),
-///    )?
-///    .send(&rec_stream)?;
+///            .with_labels(["one strip here", "and one strip there"]),
+///    )?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
 ///    Ok(())
@@ -54,11 +52,11 @@
 /// Many individual segments:
 /// ```ignore
 /// //! Log a simple set of line segments.
-/// use rerun::{archetypes::LineStrips3D, MsgSender, RecordingStreamBuilder};
+///
+/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec_stream, storage) =
-///        RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
+///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
 ///
 ///    let points = [
 ///        [0., 0., 0.],
@@ -70,9 +68,7 @@
 ///        [0., 1., 0.],
 ///        [0., 1., 1.],
 ///    ];
-///
-///    MsgSender::from_archetype("segments", &LineStrips3D::new(points.chunks(2)))?
-///        .send(&rec_stream)?;
+///    rec.log("segments", &LineStrips3D::new(points.chunks(2)))?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
 ///    Ok(())
@@ -111,7 +107,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.label".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -123,7 +119,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 6usize]> =
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.class_id".into(),
             "rerun.instance_key".into(),
         ]
     });
@@ -287,7 +283,7 @@ impl crate::Archetype for LineStrips3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.ClassId".into()),
+                                Some("rerun.class_id".into()),
                             );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),
