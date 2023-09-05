@@ -1,4 +1,6 @@
 use egui::{NumExt, Ui};
+use re_log_types::LogMsg;
+use re_smart_channel::ReceiveSet;
 use re_ui::ReUi;
 use re_viewer_context::SystemCommandSender;
 use std::collections::HashMap;
@@ -218,21 +220,15 @@ impl ExamplePage {
                                         let width = thumbnail.width as f32;
                                         let height = thumbnail.height as f32;
                                         ui.vertical(|ui| {
-                                            let is_loading = rx.sources().iter().any(|s| {
-                                                if let re_smart_channel::SmartChannelSource::RrdHttpStream { url } = s.as_ref()
-                                                {
-                                                    url == &example.desc.rrd_url
-                                                } else {
-                                                    false
-                                                }
-                                            });
+                                            let is_loading = is_loading(rx, &example.desc);
 
-                                            let size = egui::vec2(column_width, height * column_width / width);
+                                            let size = egui::vec2(
+                                                column_width,
+                                                height * column_width / width,
+                                            );
 
                                             if is_loading {
-                                                ui.centered_and_justified(|ui| {
-                                                    ui.add(egui::Spinner::new().size(size.min_elem()));
-                                                });
+                                                spinner_ui(ui, size);
                                             } else {
                                                 example_thumbnail(
                                                     re_ui,
@@ -295,6 +291,22 @@ impl ExamplePage {
             });
         });
     }
+}
+
+fn is_loading(rx: &ReceiveSet<LogMsg>, example: &ExampleDesc) -> bool {
+    rx.sources().iter().any(|s| {
+        if let re_smart_channel::SmartChannelSource::RrdHttpStream { url } = s.as_ref() {
+            url == &example.rrd_url
+        } else {
+            false
+        }
+    })
+}
+
+fn spinner_ui(ui: &mut Ui, size: egui::Vec2) {
+    ui.centered_and_justified(|ui| {
+        ui.add(egui::Spinner::new().size(size.min_elem()));
+    });
 }
 
 fn example_thumbnail(
