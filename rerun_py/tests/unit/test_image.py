@@ -17,9 +17,9 @@ IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
     rrd.TensorData(
         id=rrd.TensorId(uuid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
         shape=[
-            rrd.TensorDimension(10),
-            rrd.TensorDimension(20),
-            rrd.TensorDimension(3),
+            rrd.TensorDimension(10, "height"),
+            rrd.TensorDimension(20, "width"),
+            rrd.TensorDimension(3, "depth"),
         ],
         buffer=rrd.TensorBuffer(RANDOM_IMAGE_SOURCE),
     ),

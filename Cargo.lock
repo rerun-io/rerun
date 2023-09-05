@@ -5098,6 +5098,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_image"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "image",
+ "ndarray",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_line_strips2d"
 version = "0.9.0-alpha.3"
 dependencies = [
@@ -5130,6 +5141,16 @@ version = "0.9.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
+ "rerun",
+]
+
+[[package]]
+name = "roundtrip_tensor"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "ndarray",
  "rerun",
 ]
 

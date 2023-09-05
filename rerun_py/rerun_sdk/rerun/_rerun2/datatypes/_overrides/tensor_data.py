@@ -102,12 +102,12 @@ def tensordata_init(
     from ..tensor_data import _tensordata_buffer_converter, _tensordata_id_converter
 
     # Assign an id if one wasn't provided
-    if id:
+    if id is not None:
         self.id = _tensordata_id_converter(id)
     else:
         self.id = _tensordata_id_converter(uuid.uuid4())
 
-    if shape:
+    if shape is not None:
         resolved_shape = list(shape)
     else:
         resolved_shape = None

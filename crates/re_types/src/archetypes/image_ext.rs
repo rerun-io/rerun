@@ -30,7 +30,7 @@ impl Image {
                 3 | 4 => {
                     data.shape[non_empty_dim_inds[0]].name = Some("height".into());
                     data.shape[non_empty_dim_inds[1]].name = Some("width".into());
-                    data.shape[non_empty_dim_inds[2]].name = Some("color".into());
+                    data.shape[non_empty_dim_inds[2]].name = Some("depth".into());
                 }
                 _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
             },
