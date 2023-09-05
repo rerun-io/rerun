@@ -74,13 +74,16 @@ impl WelcomeScreen {
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
 
-        egui::ScrollArea::both()
-            .id_source(&self.current_page)
-            .auto_shrink([false, false])
-            .show(ui, |ui| match self.current_page {
-                WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
-                WelcomeScreenPage::Examples => self.example_page.ui(re_ui, ui, command_sender),
-            });
+        egui::ScrollArea::new([
+            matches!(self.current_page, WelcomeScreenPage::Welcome),
+            true,
+        ])
+        .id_source(&self.current_page)
+        .auto_shrink([false, false])
+        .show(ui, |ui| match self.current_page {
+            WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
+            WelcomeScreenPage::Examples => self.example_page.ui(re_ui, ui, command_sender),
+        });
     }
 }
 

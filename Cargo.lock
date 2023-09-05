@@ -1366,7 +1366,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1375,7 +1375,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1407,13 +1407,14 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
  "epaint",
  "log",
  "nohash-hasher",
+ "puffin",
  "ron",
  "serde",
 ]
@@ -1421,7 +1422,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1436,16 +1437,16 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "arboard",
  "egui",
- "instant",
  "log",
  "puffin",
  "raw-window-handle",
  "serde",
  "smithay-clipboard",
+ "web-time 0.1.0",
  "webbrowser",
  "winit",
 ]
@@ -1453,7 +1454,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "egui",
  "log",
@@ -1463,7 +1464,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1479,7 +1480,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "egui",
 ]
@@ -1521,7 +1522,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1602,7 +1603,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=70bfc7e09f1b1f794a77064b62a4932f9e60ef15#70bfc7e09f1b1f794a77064b62a4932f9e60ef15"
+source = "git+https://github.com/emilk/egui?rev=46ea72abe48e212e4c89b340e73e0300d09e6d4c#46ea72abe48e212e4c89b340e73e0300d09e6d4c"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.3",
@@ -4187,7 +4188,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time",
+ "web-time 0.2.0",
 ]
 
 [[package]]
@@ -4222,7 +4223,7 @@ dependencies = [
  "time",
  "typenum",
  "uuid",
- "web-time",
+ "web-time 0.2.0",
 ]
 
 [[package]]
@@ -4242,7 +4243,7 @@ dependencies = [
  "smallvec",
  "sysinfo",
  "wasm-bindgen",
- "web-time",
+ "web-time 0.2.0",
 ]
 
 [[package]]
@@ -4314,7 +4315,7 @@ dependencies = [
  "walkdir",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time",
+ "web-time 0.2.0",
  "wgpu",
  "wgpu-core",
  "winit",
@@ -4375,7 +4376,7 @@ dependencies = [
  "crossbeam",
  "parking_lot 0.12.1",
  "re_tracing",
- "web-time",
+ "web-time 0.2.0",
 ]
 
 [[package]]
@@ -4598,7 +4599,7 @@ dependencies = [
  "getrandom",
  "once_cell",
  "serde",
- "web-time",
+ "web-time 0.2.0",
 ]
 
 [[package]]
@@ -4738,7 +4739,7 @@ dependencies = [
  "time",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time",
+ "web-time 0.2.0",
  "wgpu",
  "winapi",
 ]
@@ -6490,6 +6491,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b85cbef8c220a6abc02aefd892dfc0fc23afb1c6a426316ec33253a3877249b"
 dependencies = [
  "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa75ec260dcf59cc310827bae1d7f629809b173dbfe808a633e19754dd4282a5"
+dependencies = [
+ "js-sys",
+ "once_cell",
  "wasm-bindgen",
 ]
 

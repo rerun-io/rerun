@@ -87,7 +87,7 @@ eframe = { version = "0.22.0", default-features = false, features = [
 ] }
 egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
 egui_extras = { version = "0.22.0", features = ["log"] }
-egui_plot = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
+egui_plot = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
 egui_tiles = { version = "0.2" }
 egui-wgpu = "0.22.0"
 ehttp = { version = "0.3" }
@@ -160,14 +160,14 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # Temporary patch until next egui release
-ecolor = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
-eframe = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
-egui = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
-emath = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
-epaint = { git = "https://github.com/emilk/egui", rev = "70bfc7e09f1b1f794a77064b62a4932f9e60ef15" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
+eframe = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
+egui = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
+emath = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
+epaint = { git = "https://github.com/emilk/egui", rev = "46ea72abe48e212e4c89b340e73e0300d09e6d4c" }
 
 # Temporary patch until next egui_tiles release
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f835c4df1cc260a58122a8d37c7c3738902b9643" }

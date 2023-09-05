@@ -320,7 +320,7 @@ fn example_description(ui: &mut Ui, example: &ExampleDesc, hovered: bool) {
             .text_style(re_ui::ReUi::welcome_screen_body()),
     );
 
-    let mut desc_text = egui::RichText::new(example.description.clone());
+    let mut desc_text = egui::RichText::new(example.description.clone()).line_height(Some(19.0));
     if hovered {
         desc_text = desc_text.strong();
     }
