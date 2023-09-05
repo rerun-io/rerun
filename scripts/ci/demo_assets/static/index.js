@@ -104,14 +104,20 @@ function load_wasm() {
           }
           controller.close();
         },
-      })
+      }),
+      {
+        status: response.status,
+        statusText: response.statusText,
+      }
     );
-    const wasm = await res.blob();
 
-    // Don't fade in the progress bar if we haven't hit it already.
-    clearTimeout(timeoutId);
+    for (const [key, value] of response.headers.entries()) {
+      res.headers.set(key, value);
+    }
 
-    wasm_bindgen(URL.createObjectURL(wasm)).then(on_wasm_loaded).catch(on_wasm_error);
+    wasm_bindgen(res)
+      .then(() => (clearTimeout(timeoutId), on_wasm_loaded()))
+      .catch(on_wasm_error);
   }
 
   wasm_with_progress();
