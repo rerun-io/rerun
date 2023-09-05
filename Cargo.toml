@@ -75,7 +75,7 @@ arrow2_convert = "0.5.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 camino = "1.1"
 cfg-if = "1.0"
-clap = "4.0"
+clap = "=4.3.0" # Leter versions require Rust 1.70
 comfy-table = { version = "6.1", default-features = false }
 crossbeam = "0.8"
 ecolor = "0.22.0"
