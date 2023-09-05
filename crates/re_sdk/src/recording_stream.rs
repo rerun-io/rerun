@@ -569,12 +569,12 @@ impl RecordingStream {
         ent_path: impl Into<EntityPath>,
         arch: &impl Archetype,
     ) -> RecordingStreamResult<()> {
-        self.log_archetype(ent_path, false, arch)
+        self.log_timeless(ent_path, false, arch)
     }
 
     /// Logs the contents of an [`Archetype`] into Rerun.
     ///
-    /// If `timeless` is set to `false`, all timestamp data associated with this message will be
+    /// If `timeless` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
     /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
     /// into the past.
@@ -589,7 +589,7 @@ impl RecordingStream {
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     #[inline]
-    pub fn log_archetype(
+    pub fn log_timeless(
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
