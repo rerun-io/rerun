@@ -160,7 +160,7 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
           ref: ${{ inputs.release-commit }}

@@ -14,7 +14,7 @@ jobs:
     name: Spellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: streetsidesoftware/cspell-action@v2
         with:
           config: "docs/cspell.json"
@@ -23,7 +23,7 @@ jobs:
     name: linkinator
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: jprochazk/linkinator-action@main
         with:
           paths: "docs/**/*.md"
