@@ -44,7 +44,9 @@ for frame in sensors.read():
         # same frequency as the input data and thus look strange
         rr.log("input/detections", rr.Rect2D(detection.bounds))
 ```
-You could fix this example by logging `rr.ClearEntity`, but in this case it makes more sense to change what you log to better express what is happening. Here is an example fix:
+You could fix this example by logging `rr.ClearEntity`, but in this case it makes more sense to change what you log to better express what is happening. Re-logging the image to another namespace on only the frames where the detection runs makes it explicit which frame was used as the input to the detector. This will create a second view in the viewer that always allows you to see the frame that was used for the current detection input.
+
+Here is an example fix:
 ```python
 class Detector:
     ...
