@@ -1145,8 +1145,8 @@ impl DataTable {
                             c1.datatype() == c2.datatype(),
                             "Found discrepancy in row #{ri}: cells' datatypes don't match!\n{}",
                             similar_asserts::SimpleDiff::from_str(
-                                &format!("{:?}", c1.datatype()),
-                                &format!("{:?}", c2.datatype()),
+                                &format!("{:?}:{:?}", c1.component_name(), c1.datatype()),
+                                &format!("{:?}:{:?}", c2.component_name(), c2.datatype()),
                                 "cell1",
                                 "cell2"
                             )
