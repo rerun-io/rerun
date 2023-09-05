@@ -87,6 +87,7 @@ fn load_example_manifest() -> Vec<ExampleDesc> {
         .expect("Failed to parse data/examples_manifest.json")
 }
 
+// TODO(ab): use design tokens
 const MARGINS: f32 = 40.0;
 const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 340.0;
@@ -99,9 +100,9 @@ const ROW_VSPACE: f32 = 40.0;
 
 /// Structure to track both an example description and its layout in the grid.
 ///
-/// For layout purposes, each example spans multiple cells in the grid. This makes tracking the
-/// hover/click area a bit more complicated. This structure is used to store the rectangle that
-/// spans the block of cells used for the corresponding example.
+/// For layout purposes, each example spans multiple cells in the grid. This structure is used to
+/// track the rectangle that spans the block of cells used for the corresponding example, so hover/
+/// click can be detected.
 #[derive(Debug)]
 struct ExampleDescLayout {
     desc: ExampleDesc,
@@ -110,12 +111,12 @@ struct ExampleDescLayout {
 
 impl ExampleDescLayout {
     /// Saves the top left corner of the hover/click area for this example.
-    fn register_top_left(&mut self, pos: egui::Pos2) {
+    fn update_top_left(&mut self, pos: egui::Pos2) {
         self.rect.min = pos;
     }
 
     /// Saves the bottom right corner of the hover/click area for this example.
-    fn register_bottom_right(&mut self, pos: egui::Pos2) {
+    fn update_bottom_right(&mut self, pos: egui::Pos2) {
         self.rect.max = pos;
     }
 
@@ -185,23 +186,17 @@ impl ExamplePage {
                 ui.add_space(centering_space);
 
                 ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.add(
-                            egui::Label::new(
-                                egui::RichText::new("Examples.")
-                                    .strong()
-                                    .text_style(re_ui::ReUi::welcome_screen_h1()),
-                            )
-                            .wrap(false),
-                        );
+                    ui.horizontal_wrapped(|ui| {
+                        ui.add(egui::Label::new(
+                            egui::RichText::new("Examples.")
+                                .strong()
+                                .text_style(re_ui::ReUi::welcome_screen_h1()),
+                        ));
 
-                        ui.add(
-                            egui::Label::new(
-                                egui::RichText::new("Learn from the community.")
-                                    .text_style(re_ui::ReUi::welcome_screen_h1()),
-                            )
-                            .wrap(false),
-                        );
+                        ui.add(egui::Label::new(
+                            egui::RichText::new("Learn from the community.")
+                                .text_style(re_ui::ReUi::welcome_screen_h1()),
+                        ));
                     });
 
                     ui.add_space(TITLE_TO_GRID_VSPACE);
@@ -216,7 +211,7 @@ impl ExamplePage {
                                 .for_each(|example_layouts| {
                                     for example in &mut *example_layouts {
                                         // this is the beginning of the first cell for this example
-                                        example.register_top_left(ui.cursor().min);
+                                        example.update_top_left(ui.cursor().min);
 
                                         let thumbnail = &example.desc.thumbnail;
                                         let width = thumbnail.width as f32;
@@ -258,7 +253,7 @@ impl ExamplePage {
                                             example_tags(ui, &example.desc);
 
                                             // this is the end of the last cell for this example
-                                            example.register_bottom_right(egui::pos2(
+                                            example.update_bottom_right(egui::pos2(
                                                 ui.cursor().min.x + column_width,
                                                 ui.cursor().min.y,
                                             ));
