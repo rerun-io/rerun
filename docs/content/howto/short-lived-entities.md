@@ -42,7 +42,7 @@ for frame in sensors.read():
         # same frequency as the input data and thus look strange
         rr.log("input/detections", rr.Rect2D(detection.bounds))
 ```
-You could fix this example by logging `rr.ClearEntity`, but in this case it makes more sense to change what you log to better express what is happing. Here is an example fix:
+You could fix this example by logging `rr.ClearEntity`, but in this case it makes more sense to change what you log to better express what is happening. Here is an example fix:
 ```python
 class Detector:
     ...
