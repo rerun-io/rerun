@@ -9,8 +9,6 @@ int main(int argc, char** argv) {
     auto rec = rr::RecordingStream("rerun_example_roundtrip_tensor");
     rec.save(argv[1]).throw_on_failure();
 
-    uint8_t id[16] = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
-
     std::vector<rr::datatypes::TensorDimension> dimensions{
         rr::datatypes::TensorDimension{3, std::nullopt},
         rr::datatypes::TensorDimension{4, std::nullopt},
@@ -26,9 +24,8 @@ int main(int argc, char** argv) {
     // don't supported nested list-types.
     rec.log(
         "tensor",
-        rr::archetypes::Tensor(rr::datatypes::TensorData{
-            rr::datatypes::TensorId(id),
-            dimensions,
-            rr::datatypes::TensorBuffer::i32(data)})
+        rr::archetypes::Tensor(
+            rr::datatypes::TensorData{dimensions, rr::datatypes::TensorBuffer::i32(data)}
+        )
     );
 }
