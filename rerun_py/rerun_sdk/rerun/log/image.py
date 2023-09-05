@@ -130,6 +130,7 @@ def log_depth_image(
     *,
     draw_order: float | None = None,
     meter: float | None = None,
+    tensor_id: npt.NDArray[np.uint8] | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -157,6 +158,9 @@ def log_depth_image(
         How long is a meter in the given dtype?
         For instance: with uint16, perhaps meter=1000 which would mean
         you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
+    tensor_id:
+        A unique UUID for this tensor.
+        Leave empty to autogenerate a random one.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -195,6 +199,7 @@ def log_depth_image(
             image,
             draw_order=draw_order,
             meter=meter,
+            tensor_id=tensor_id,
             ext=ext,
             timeless=timeless,
             meaning=bindings.TensorDataMeaning.Depth,
@@ -208,6 +213,7 @@ def log_segmentation_image(
     image: npt.ArrayLike,
     *,
     draw_order: float | None = None,
+    tensor_id: npt.NDArray[np.uint8] | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -234,6 +240,9 @@ def log_segmentation_image(
         An optional floating point value that specifies the 2D drawing order.
         Objects with higher values are drawn on top of those with lower values.
         The default for images is -10.0.
+    tensor_id:
+        A unique UUID for this tensor.
+        Leave empty to autogenerate a random one.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -263,6 +272,7 @@ def log_segmentation_image(
             entity_path,
             tensor=image,
             draw_order=draw_order,
+            tensor_id=tensor_id,
             ext=ext,
             timeless=timeless,
             recording=recording,
@@ -276,6 +286,7 @@ def log_segmentation_image(
             tensor=image,
             draw_order=draw_order,
             meaning=bindings.TensorDataMeaning.ClassId,
+            tensor_id=tensor_id,
             ext=ext,
             timeless=timeless,
             recording=recording,
