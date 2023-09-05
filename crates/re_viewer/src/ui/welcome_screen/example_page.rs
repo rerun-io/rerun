@@ -1,17 +1,7 @@
-use super::large_text_button;
 use egui::{NumExt, Ui};
 use re_ui::ReUi;
-use re_viewer_context::{CommandSender, SystemCommandSender};
+use re_viewer_context::SystemCommandSender;
 use std::collections::HashMap;
-
-static EXAMPLE_MANIFEST: once_cell::sync::Lazy<Vec<ExampleDesc>> =
-    once_cell::sync::Lazy::new(|| {
-        // keep only examples with thumbnails
-        load_example_manifest()
-            .into_iter()
-            .filter(|e| e.thumbnail.is_some())
-            .collect::<Vec<_>>()
-    });
 
 // TODO(emilk/egui#3291): replace this by loading image from the web
 static THUMBNAIL_CACHE: once_cell::sync::Lazy<HashMap<&'static str, re_ui::icons::Icon>> =
@@ -88,7 +78,7 @@ struct ExampleDesc {
     tags: Vec<String>,
     demo_url: String,
     rrd_url: String,
-    thumbnail: Option<ExampleThumbnail>,
+    thumbnail: ExampleThumbnail,
 }
 
 // TODO(#3190): we should attempt to update the manifest based on the online version
@@ -102,140 +92,210 @@ const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 340.0;
 const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 22.0;
-const TITLE_TO_GRID_VSPACE: f32 = 20.0;
+const TITLE_TO_GRID_VSPACE: f32 = 30.0;
 const THUMBNAIL_TO_DESCRIPTION_VSPACE: f32 = 10.0;
-const DESCRIPTION_TO_BUTTON_VSPACE: f32 = 4.0;
+const DESCRIPTION_TO_TAGS_VSPACE: f32 = 4.0;
 const ROW_VSPACE: f32 = 40.0;
 
-pub(super) fn example_page_ui(
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    command_sender: &re_viewer_context::CommandSender,
-) {
-    //TODO(ab): deduplicate from welcome screen
-    let mut margin = egui::Margin::same(MARGINS);
-    margin.bottom = MARGINS - ROW_VSPACE;
-    egui::Frame {
-        inner_margin: margin,
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        // vertical spacing isn't homogeneous so it's handled manually
-
-        let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
-        let column_count = (((ui.available_width() + grid_spacing.x)
-            / (MIN_COLUMN_WIDTH + grid_spacing.x))
-            .floor() as usize)
-            .clamp(1, MAX_COLUMN_COUNT);
-        let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
-            - grid_spacing.x)
-            .floor()
-            .at_most(MAX_COLUMN_WIDTH);
-
-        // this space is added on the left so that the grid is centered
-        let centering_space = (ui.available_width()
-            - column_count as f32 * column_width
-            - (column_count - 1) as f32 * grid_spacing.x)
-            .max(0.0)
-            / 2.0;
-
-        ui.horizontal(|ui| {
-            ui.add_space(centering_space);
-
-            ui.vertical(|ui| {
-                ui.horizontal(|ui| {
-                    ui.add(
-                        egui::Label::new(
-                            egui::RichText::new("Examples.")
-                                .strong()
-                                .text_style(re_ui::ReUi::welcome_screen_h1()),
-                        )
-                        .wrap(false),
-                    );
-
-                    ui.add(
-                        egui::Label::new(
-                            egui::RichText::new("Learn from the community.")
-                                .text_style(re_ui::ReUi::welcome_screen_h1()),
-                        )
-                        .wrap(false),
-                    );
-                });
-
-                ui.add_space(TITLE_TO_GRID_VSPACE);
-
-                egui::Grid::new("example_page_grid")
-                    .spacing(grid_spacing)
-                    .min_col_width(column_width)
-                    .max_col_width(column_width)
-                    .show(ui, |ui| {
-                        EXAMPLE_MANIFEST.chunks(column_count).for_each(|examples| {
-                            for example in examples {
-                                let thumbnail = example
-                                    .thumbnail
-                                    .as_ref()
-                                    .expect("examples without thumbnails are filtered out");
-                                let width = thumbnail.width as f32;
-                                let height = thumbnail.height as f32;
-                                ui.vertical(|ui| {
-                                    example_thumbnail(
-                                        re_ui,
-                                        ui,
-                                        example,
-                                        egui::vec2(column_width, height * column_width / width),
-                                    );
-
-                                    ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
-                                });
-                            }
-
-                            ui.end_row();
-
-                            for example in examples {
-                                ui.vertical(|ui| {
-                                    example_description(ui, example);
-
-                                    ui.add_space(DESCRIPTION_TO_BUTTON_VSPACE);
-                                });
-                            }
-
-                            ui.end_row();
-
-                            for example in examples {
-                                ui.vertical(|ui| {
-                                    example_tags(ui, example);
-
-                                    ui.add_space(DESCRIPTION_TO_BUTTON_VSPACE);
-                                });
-                            }
-
-                            ui.end_row();
-
-                            for example in examples {
-                                ui.vertical(|ui| {
-                                    example_button(ui, example, command_sender);
-
-                                    ui.add_space(ROW_VSPACE);
-                                });
-                            }
-
-                            ui.end_row();
-                        });
-                    });
-            });
-        });
-    });
+/// Structure to track both an example description and its layout in the grid.
+///
+/// For layout purposes, each example spans multiple cells in the grid. This makes tracking the
+/// hover/click area a bit more complicated. This structure is used to store the rectangle that
+/// spans the block of cells used for the corresponding example.
+#[derive(Debug)]
+struct ExampleDescLayout {
+    desc: ExampleDesc,
+    rect: egui::Rect,
 }
 
-fn example_thumbnail(re_ui: &ReUi, ui: &mut Ui, example: &ExampleDesc, size: egui::Vec2) {
+impl ExampleDescLayout {
+    /// Saves the top left corner of the hover/click area for this example.
+    fn register_top_left(&mut self, pos: egui::Pos2) {
+        self.rect.min = pos;
+    }
+
+    /// Saves the bottom right corner of the hover/click area for this example.
+    fn register_bottom_right(&mut self, pos: egui::Pos2) {
+        self.rect.max = pos;
+    }
+
+    fn clicked(&self, ui: &egui::Ui, id: egui::Id) -> bool {
+        ui.interact(self.rect, id.with(&self.desc.name), egui::Sense::click())
+            .clicked()
+    }
+
+    fn hovered(&self, ui: &egui::Ui, id: egui::Id) -> bool {
+        ui.interact(self.rect, id.with(&self.desc.name), egui::Sense::hover())
+            .hovered()
+    }
+}
+
+#[derive(Debug)]
+pub(super) struct ExamplePage {
+    id: egui::Id,
+    examples: Vec<ExampleDescLayout>,
+}
+
+impl ExamplePage {
+    pub(crate) fn new() -> Self {
+        Self {
+            examples: load_example_manifest()
+                .into_iter()
+                .map(|e| ExampleDescLayout {
+                    desc: e,
+                    rect: egui::Rect::NOTHING,
+                })
+                .collect(),
+            id: egui::Id::new("example_page"),
+        }
+    }
+
+    pub(super) fn ui(
+        &mut self,
+        re_ui: &re_ui::ReUi,
+        ui: &mut egui::Ui,
+        command_sender: &re_viewer_context::CommandSender,
+    ) {
+        let mut margin = egui::Margin::same(MARGINS);
+        margin.bottom = MARGINS - ROW_VSPACE;
+        egui::Frame {
+            inner_margin: margin,
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            // vertical spacing isn't homogeneous so it's handled manually
+            let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
+            let column_count = (((ui.available_width() + grid_spacing.x)
+                / (MIN_COLUMN_WIDTH + grid_spacing.x))
+                .floor() as usize)
+                .clamp(1, MAX_COLUMN_COUNT);
+            let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
+                - grid_spacing.x)
+                .floor()
+                .at_most(MAX_COLUMN_WIDTH);
+
+            // this space is added on the left so that the grid is centered
+            let centering_space = (ui.available_width()
+                - column_count as f32 * column_width
+                - (column_count - 1) as f32 * grid_spacing.x)
+                .max(0.0)
+                / 2.0;
+
+            ui.horizontal(|ui| {
+                ui.add_space(centering_space);
+
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new("Examples.")
+                                    .strong()
+                                    .text_style(re_ui::ReUi::welcome_screen_h1()),
+                            )
+                            .wrap(false),
+                        );
+
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new("Learn from the community.")
+                                    .text_style(re_ui::ReUi::welcome_screen_h1()),
+                            )
+                            .wrap(false),
+                        );
+                    });
+
+                    ui.add_space(TITLE_TO_GRID_VSPACE);
+
+                    egui::Grid::new("example_page_grid")
+                        .spacing(grid_spacing)
+                        .min_col_width(column_width)
+                        .max_col_width(column_width)
+                        .show(ui, |ui| {
+                            self.examples
+                                .chunks_mut(column_count)
+                                .for_each(|example_layouts| {
+                                    for example in &mut *example_layouts {
+                                        // this is the beginning of the first cell for this example
+                                        example.register_top_left(ui.cursor().min);
+
+                                        let thumbnail = &example.desc.thumbnail;
+                                        let width = thumbnail.width as f32;
+                                        let height = thumbnail.height as f32;
+                                        ui.vertical(|ui| {
+                                            example_thumbnail(
+                                                re_ui,
+                                                ui,
+                                                &example.desc,
+                                                egui::vec2(
+                                                    column_width,
+                                                    height * column_width / width,
+                                                ),
+                                                example.hovered(ui, self.id),
+                                            );
+
+                                            ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
+                                        });
+                                    }
+
+                                    ui.end_row();
+
+                                    for example in &mut *example_layouts {
+                                        ui.vertical(|ui| {
+                                            example_description(
+                                                ui,
+                                                &example.desc,
+                                                example.hovered(ui, self.id),
+                                            );
+
+                                            ui.add_space(DESCRIPTION_TO_TAGS_VSPACE);
+                                        });
+                                    }
+
+                                    ui.end_row();
+
+                                    for example in &mut *example_layouts {
+                                        ui.vertical(|ui| {
+                                            example_tags(ui, &example.desc);
+
+                                            // this is the end of the last cell for this example
+                                            example.register_bottom_right(egui::pos2(
+                                                ui.cursor().min.x + column_width,
+                                                ui.cursor().min.y,
+                                            ));
+
+                                            ui.add_space(ROW_VSPACE);
+                                        });
+                                    }
+
+                                    ui.end_row();
+                                });
+                        });
+
+                    self.examples.iter().for_each(|example| {
+                        if example.clicked(ui, self.id) {
+                            let data_source = re_data_source::DataSource::RrdHttpUrl(
+                                example.desc.rrd_url.clone(),
+                            );
+                            command_sender.send_system(
+                                re_viewer_context::SystemCommand::LoadDataSource(data_source),
+                            );
+                        }
+                    });
+                });
+            });
+        });
+    }
+}
+
+fn example_thumbnail(
+    re_ui: &ReUi,
+    ui: &mut Ui,
+    example: &ExampleDesc,
+    size: egui::Vec2,
+    hovered: bool,
+) {
     // TODO(emilk/egui#3291): pull from web rather than cache
-    let file_name = example
-        .thumbnail
-        .as_ref()
-        .expect("examples without thumbnails are filtered out")
-        .url
-        .split('/')
-        .last();
+    let file_name = example.thumbnail.url.split('/').last();
 
     if let Some(file_name) = file_name {
         if let Some(icon) = THUMBNAIL_CACHE.get(file_name) {
@@ -245,24 +305,32 @@ fn example_thumbnail(re_ui: &ReUi, ui: &mut Ui, example: &ExampleDesc, size: egu
             let rounding = egui::Rounding::same(8.);
             let resp = ui.add(egui::Image::new(texture_id, size).rounding(rounding));
 
-            ui.painter().rect_stroke(
-                resp.rect,
-                rounding,
-                // TODO(ab): use design tokens
-                (1.0, egui::Color32::from_gray(44)),
-            );
+            // TODO(ab): use design tokens
+            let border_color = if hovered {
+                ui.visuals_mut().widgets.hovered.fg_stroke.color
+            } else {
+                egui::Color32::from_gray(44)
+            };
+
+            ui.painter()
+                .rect_stroke(resp.rect, rounding, (1.0, border_color));
         }
     }
 }
 
-fn example_description(ui: &mut Ui, example: &ExampleDesc) {
+fn example_description(ui: &mut Ui, example: &ExampleDesc, hovered: bool) {
     ui.label(
         egui::RichText::new(example.title.clone())
             .strong()
             .text_style(re_ui::ReUi::welcome_screen_body()),
     );
 
-    ui.add(egui::Label::new(example.description.clone()).wrap(true));
+    let mut desc_text = egui::RichText::new(example.description.clone());
+    if hovered {
+        desc_text = desc_text.strong();
+    }
+
+    ui.add(egui::Label::new(desc_text).wrap(true));
 }
 
 fn example_tags(ui: &mut Ui, example: &ExampleDesc) {
@@ -282,19 +350,4 @@ fn example_tags(ui: &mut Ui, example: &ExampleDesc) {
             );
         }
     });
-}
-
-fn example_button(ui: &mut Ui, example: &ExampleDesc, command_sender: &CommandSender) {
-    if large_text_button(ui, "Load example recording")
-        .on_hover_text(format!(
-            "Download and open the {} example's recording",
-            &example.title
-        ))
-        .clicked()
-    {
-        let data_source = re_data_source::DataSource::RrdHttpUrl(example.rrd_url.clone());
-        command_sender.send_system(re_viewer_context::SystemCommand::LoadDataSource(
-            data_source,
-        ));
-    }
 }

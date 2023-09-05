@@ -2,7 +2,6 @@ mod example_page;
 mod welcome_page;
 
 use egui::Widget;
-use example_page::example_page_ui;
 use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::ReUi;
@@ -24,9 +23,20 @@ impl Hash for WelcomeScreenPage {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct WelcomeScreen {
     current_page: WelcomeScreenPage,
+
+    example_page: example_page::ExamplePage,
+}
+
+impl Default for WelcomeScreen {
+    fn default() -> Self {
+        Self {
+            current_page: WelcomeScreenPage::Welcome,
+            example_page: example_page::ExamplePage::new(),
+        }
+    }
 }
 
 impl WelcomeScreen {
@@ -69,7 +79,7 @@ impl WelcomeScreen {
             .auto_shrink([false, false])
             .show(ui, |ui| match self.current_page {
                 WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
-                WelcomeScreenPage::Examples => example_page_ui(re_ui, ui, command_sender),
+                WelcomeScreenPage::Examples => self.example_page.ui(re_ui, ui, command_sender),
             });
     }
 }
