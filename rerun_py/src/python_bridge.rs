@@ -806,6 +806,7 @@ fn log_meshes(
     index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
     normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
+    mesh_ids: Vec<Option<numpy::PyReadonlyArray1<'_, u8>>>,
     timeless: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
@@ -822,24 +823,26 @@ fn log_meshes(
         || position_buffers.len() != albedo_factors.len()
     {
         return Err(PyTypeError::new_err(format!(
-            "Top-level position/index/normal/albedo buffer arrays must be same the length, \
-                got positions={}, vertex_colors={}, indices={}, normals={}, albedo={} instead",
+            "Top-level position/index/normal/albedo/id buffer arrays must be same the length, \
+                got positions={}, vertex_colors={}, indices={}, normals={}, albedo={}, mesh_id={} instead",
             position_buffers.len(),
             vertex_color_buffers.len(),
             index_buffers.len(),
             normal_buffers.len(),
             albedo_factors.len(),
+            mesh_ids.len(),
         )));
     }
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
 
-    for (vertex_positions, vertex_colors, indices, normals, albedo_factor) in izip!(
+    for (vertex_positions, vertex_colors, indices, normals, albedo_factor, mesh_id) in izip!(
         position_buffers,
         vertex_color_buffers,
         index_buffers,
         normal_buffers,
         albedo_factors,
+        mesh_ids,
     ) {
         let albedo_factor =
             if let Some(v) = albedo_factor.map(|albedo_factor| albedo_factor.as_array().to_vec()) {
