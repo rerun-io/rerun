@@ -57,6 +57,7 @@ tokio = { workspace = true, default-features = false, features = [
 
 # Only needed for for main.rs:
 clap = { workspace = true, features = ["derive"] }
+clap_lex = "=0.5.0"                                # Need to pin, because 0.5.1 requires rustc 1.70.0
 webbrowser = "0.8.3"
 
 # Optional dependencies:

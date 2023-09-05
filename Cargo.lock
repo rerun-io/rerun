@@ -4747,6 +4747,7 @@ name = "re_web_viewer_server"
 version = "0.8.2"
 dependencies = [
  "clap",
+ "clap_lex",
  "document-features",
  "futures-util",
  "hyper",
@@ -4844,6 +4845,7 @@ version = "0.8.2"
 dependencies = [
  "anyhow",
  "clap",
+ "clap_lex",
  "document-features",
  "itertools 0.11.0",
  "puffin",
