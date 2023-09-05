@@ -252,7 +252,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install gitignore_parser
+          pip install gitignore_parser python-frontmatter
 
       - name: Rerun lints
         run: |
@@ -338,4 +338,3 @@ jobs:
       - name: Build code examples
         shell: bash
         run: ./tests/cpp/build_all_doc_examples.sh --werror
-
