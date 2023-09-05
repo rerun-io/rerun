@@ -51,7 +51,7 @@ class Detector:
     def detect(self, frame):
         downscaled = self.downscale(frame.image)
         # Log the downscaled image
-        rr.log("downscaled/rgb", rr.Image(downscaled))
+        rr.log("detections/source", rr.Image(downscaled))
         result = self.model(downscaled)
         detection = self.post_process(result)
         # Log the detections together with the downscaled image
