@@ -1,7 +1,6 @@
 include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
 
-include "./tensor_id.fbs";
 include "./tensor_dimension.fbs";
 include "./tensor_data.fbs";
 
@@ -22,7 +21,6 @@ table TensorData (
   "attr.python.array_aliases": "npt.ArrayLike",
   "attr.rust.derive": "PartialEq,"
 ) {
-  id: rerun.datatypes.TensorId (order: 100);
   shape: [rerun.datatypes.TensorDimension] (order: 200);
   buffer: rerun.datatypes.TensorBuffer (order: 300);
 }

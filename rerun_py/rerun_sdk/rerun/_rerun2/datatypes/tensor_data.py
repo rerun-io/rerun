@@ -18,13 +18,6 @@ from ._overrides import tensordata_init, tensordata_native_to_pa_array  # noqa: 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
 
-def _tensordata_id_converter(x: datatypes.TensorIdLike) -> datatypes.TensorId:
-    if isinstance(x, datatypes.TensorId):
-        return x
-    else:
-        return datatypes.TensorId(x)
-
-
 def _tensordata_buffer_converter(x: datatypes.TensorBufferLike) -> datatypes.TensorBuffer:
     if isinstance(x, datatypes.TensorBuffer):
         return x
@@ -48,7 +41,6 @@ class TensorData:
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         tensordata_init(self, *args, **kwargs)
 
-    id: datatypes.TensorId = field(converter=_tensordata_id_converter)
     shape: list[datatypes.TensorDimension] = field()
     buffer: datatypes.TensorBuffer = field(converter=_tensordata_buffer_converter)
 
@@ -66,12 +58,6 @@ class TensorDataType(BaseExtensionType):
             self,
             pa.struct(
                 [
-                    pa.field(
-                        "id",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16),
-                        nullable=False,
-                        metadata={},
-                    ),
                     pa.field(
                         "shape",
                         pa.list_(

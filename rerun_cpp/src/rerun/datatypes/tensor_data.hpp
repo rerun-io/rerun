@@ -6,7 +6,6 @@
 #include "../result.hpp"
 #include "tensor_buffer.hpp"
 #include "tensor_dimension.hpp"
-#include "tensor_id.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -29,8 +28,6 @@ namespace rerun {
         /// These dimensions are combined with an index to look up values from the `buffer` field,
         /// which stores a contiguous array of typed values.
         struct TensorData {
-            rerun::datatypes::TensorId id;
-
             std::vector<rerun::datatypes::TensorDimension> shape;
 
             rerun::datatypes::TensorBuffer buffer;

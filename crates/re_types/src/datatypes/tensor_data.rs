@@ -22,7 +22,6 @@
 /// which stores a contiguous array of typed values.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TensorData {
-    pub id: crate::datatypes::TensorId,
     pub shape: Vec<crate::datatypes::TensorDimension>,
     pub buffer: crate::datatypes::TensorBuffer,
 }
@@ -54,12 +53,6 @@ impl crate::Loggable for TensorData {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
-            Field {
-                name: "id".to_owned(),
-                data_type: <crate::datatypes::TensorId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
             Field {
                 name: "shape".to_owned(),
                 data_type: DataType::List(Box::new(Field {
@@ -104,69 +97,6 @@ impl crate::Loggable for TensorData {
             StructArray::new(
                 <crate::datatypes::TensorData>::arrow_datatype(),
                 vec![
-                    {
-                        let (somes, id): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { id, .. } = &**datum;
-                                    id.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let id_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let id_inner_data: Vec<_> = id
-                                .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::TensorId { uuid } = datum;
-                                            uuid
-                                        })
-                                        .unwrap_or_default()
-                                })
-                                .flatten()
-                                .map(Some)
-                                .collect();
-                            let id_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
-                                id_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
-                                        .iter()
-                                        .map(|i| std::iter::repeat(i).take(16usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
-                            FixedSizeListArray::new(
-                                DataType::FixedSizeList(
-                                    Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    16usize,
-                                ),
-                                PrimitiveArray::new(
-                                    DataType::UInt8,
-                                    id_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
-                                    id_inner_bitmap,
-                                )
-                                .boxed(),
-                                id_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
                     {
                         let (somes, shape): (Vec<_>, Vec<_>) = data
                             .iter()
@@ -263,12 +193,6 @@ impl crate::Loggable for TensorData {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
-                                name: "id".to_owned(),
-                                data_type: <crate::datatypes::TensorId>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
                                 name: "shape".to_owned(),
                                 data_type: DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
@@ -301,90 +225,6 @@ impl crate::Loggable for TensorData {
                     .map(|field| field.name.as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let id = {
-                    if !arrays_by_name.contains_key("id") {
-                        return Err(crate::DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "id",
-                        ))
-                        .with_context("rerun.datatypes.TensorData");
-                    }
-                    let arrow_data = &**arrays_by_name["id"];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::UInt8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        16usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TensorData#id")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let offsets = (0..)
-                                .step_by(16usize)
-                                .zip((16usize..).step_by(16usize).take(arrow_data.len()));
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::UInt8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TensorData#id")?
-                                    .into_iter()
-                                    .map(|opt| opt.copied())
-                                    .collect::<Vec<_>>()
-                            };
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets,
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, end)| {
-                                    debug_assert!(end - start == 16usize);
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                    };
-                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|uuid| crate::datatypes::TensorId { uuid })
-                                })
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                };
                 let shape = {
                     if !arrays_by_name.contains_key("shape") {
                         return Err(crate::DeserializationError::missing_struct_field(
@@ -471,15 +311,12 @@ impl crate::Loggable for TensorData {
                         .into_iter()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(id, shape, buffer),
+                    ::itertools::izip!(shape, buffer),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(id, shape, buffer)| {
+                    opt.map(|(shape, buffer)| {
                         Ok(Self {
-                            id: id
-                                .ok_or_else(crate::DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.TensorData#id")?,
                             shape: shape
                                 .ok_or_else(crate::DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.TensorData#shape")?,

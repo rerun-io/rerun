@@ -50,12 +50,6 @@ impl crate::Loggable for TensorData {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
-                name: "id".to_owned(),
-                data_type: <crate::datatypes::TensorId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
                 name: "shape".to_owned(),
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),

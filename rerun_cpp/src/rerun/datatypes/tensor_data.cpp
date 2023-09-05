@@ -5,7 +5,6 @@
 
 #include "tensor_buffer.hpp"
 #include "tensor_dimension.hpp"
-#include "tensor_id.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -14,7 +13,6 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &TensorData::arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("id", rerun::datatypes::TensorId::arrow_datatype(), false),
                 arrow::field(
                     "shape",
                     arrow::list(arrow::field(
@@ -40,7 +38,6 @@ namespace rerun {
                 arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rerun::datatypes::TensorId::new_arrow_array_builder(memory_pool).value,
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
                         rerun::datatypes::TensorDimension::new_arrow_array_builder(memory_pool)
@@ -65,19 +62,7 @@ namespace rerun {
             }
 
             {
-                auto field_builder =
-                    static_cast<arrow::FixedSizeListBuilder *>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::TensorId::fill_arrow_array_builder(
-                        field_builder,
-                        &elements[elem_idx].id,
-                        1
-                    ));
-                }
-            }
-            {
-                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(1));
+                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(0));
                 auto value_builder =
                     static_cast<arrow::StructBuilder *>(field_builder->value_builder());
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
@@ -99,7 +84,7 @@ namespace rerun {
             }
             {
                 auto field_builder =
-                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(2));
+                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(1));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     RR_RETURN_NOT_OK(rerun::datatypes::TensorBuffer::fill_arrow_array_builder(
