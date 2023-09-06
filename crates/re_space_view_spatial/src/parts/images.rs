@@ -15,9 +15,9 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::{DepthImage, Image},
-    components::{Color, DepthMeter, DrawOrder, InstanceKey, TensorData},
+    components::{Color, DepthMeter, DrawOrder, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Archetype, Loggable as _,
+    Archetype as _,
 };
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,

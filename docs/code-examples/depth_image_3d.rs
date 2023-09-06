@@ -15,8 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.slice_mut(s![50..150, 50..150]).fill(20000);
     image.slice_mut(s![130..180, 100..280]).fill(45000);
 
-    let mut depth_image =
-        DepthImage::try_from(image.as_standard_layout().view())?.with_meter(10000);
+    let depth_image = DepthImage::try_from(image.clone())?.with_meter(10000.0);
 
     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
     // TODO(#2816): Pinhole archetype
@@ -38,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } as _],
     )?;
 
-    rec.log("world/camera/depth", &depth_image);
+    rec.log("world/camera/depth", &depth_image)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

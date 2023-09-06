@@ -1,4 +1,5 @@
-use half::f16;
+// TODO(jleibs): F16 SUpport
+//use half::f16;
 
 use crate::datatypes::{TensorBuffer, TensorData};
 
@@ -415,7 +416,7 @@ impl DecodedTensor {
 
 // Backwards comparabillity shim
 // TODO(jleibs): fully express this in terms of indicator components
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,

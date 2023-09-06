@@ -14,7 +14,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.map_inplace(|x| *x = rand::random());
 
     // TODO(#2816): Pinhole archetype
-    // TODO(#2792): Image archetype
     rec.log_component_lists(
         "world/image",
         false,
@@ -27,6 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &Tensor::try_from(image.as_standard_layout().view())? as _,
         ],
     )?;
+    rec.log("world/image", &Image::try_from(image));
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

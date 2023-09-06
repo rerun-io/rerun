@@ -5,10 +5,7 @@ use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, Entity
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::TimeType;
 use re_types::{
-    archetypes::DepthImage,
-    components::{TensorData, Transform3D},
-    tensor_data::TensorDataMeaning,
-    Archetype,
+    archetypes::DepthImage, components::Transform3D, tensor_data::TensorDataMeaning, Archetype,
 };
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use re_viewport::{Viewport, ViewportBlueprint};

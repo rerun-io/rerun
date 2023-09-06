@@ -8,7 +8,7 @@ use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::archetypes::{DepthImage, Image};
+use re_types::archetypes::DepthImage;
 use re_types::components::{DepthMeter, InstanceKey, TensorData};
 use re_types::tensor_data::TensorDataMeaning;
 use re_types::Archetype;
