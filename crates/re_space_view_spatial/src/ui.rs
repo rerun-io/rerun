@@ -654,6 +654,7 @@ pub fn picking(
         } else {
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
+                hit_ui(ui, hit);
                 item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance_path);
                 instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
             })
@@ -692,4 +693,11 @@ pub fn picking(
     ctx.selection_state_mut().set_hovered_space(hovered_space);
 
     Ok(response)
+}
+
+fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
+    if hit.hit_type == PickingHitType::GpuPickingResult {
+        let glam::Vec3 { x, y, z } = hit.space_position;
+        ui.label(format!("Picking position: [{x:.5}, {y:.5}, {z:.5})"));
+    }
 }
