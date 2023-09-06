@@ -17,7 +17,7 @@ use re_types::{
     archetypes::Image,
     components::{Color, DrawOrder, InstanceKey, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Loggable as _,
+    Archetype, Loggable as _,
 };
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
@@ -421,12 +421,7 @@ impl NamedViewSystem for ImagesPart {
 
 impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![
-            TensorData::name(),
-            InstanceKey::name(),
-            Color::name(),
-            DrawOrder::name(),
-        ]
+        Image::all_components().try_into().unwrap()
     }
 
     fn queries_any_components_of(

@@ -1,7 +1,7 @@
 use egui::util::hash;
-use re_components::TensorData;
 use re_log_types::EntityPath;
 use re_space_view::controls;
+use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
@@ -122,41 +122,44 @@ impl SpaceViewClass for BarChartSpaceView {
                     }
 
                     for (ent_path, tensor) in charts {
-                        let chart = match &tensor.data {
-                            TensorData::U8(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                        let chart = match &tensor.buffer {
+                            TensorBuffer::U8(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::U16(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                            TensorBuffer::U16(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::U32(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                            TensorBuffer::U32(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::U64(data) => {
-                                create_bar_chart(ent_path, data.iter().copied().map(|v| v as f64))
+                            TensorBuffer::U64(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied().map(|v| v as f64))
                             }
-                            TensorData::I8(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                            TensorBuffer::I8(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::I16(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                            TensorBuffer::I16(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::I32(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                            TensorBuffer::I32(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::I64(data) => {
-                                create_bar_chart(ent_path, data.iter().copied().map(|v| v as f64))
+                            TensorBuffer::I64(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied().map(|v| v as f64))
                             }
-                            TensorData::F16(data) => {
-                                create_bar_chart(ent_path, data.iter().map(|f| f.to_f32()))
+                            // TODO(jleibs): F16 Support
+                            /*
+                            TensorBuffer::F16(data) => {
+                                create_bar_chart(ent_path, data.0.iter().map(|f| f.to_f32()))
                             }
-                            TensorData::F32(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                            */
+                            TensorBuffer::F32(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::F64(data) => {
-                                create_bar_chart(ent_path, data.iter().copied())
+                            TensorBuffer::F64(data) => {
+                                create_bar_chart(ent_path, data.0.iter().copied())
                             }
-                            TensorData::JPEG(_) => {
+                            TensorBuffer::Jpeg(_) => {
                                 re_log::warn_once!(
                                     "trying to display JPEG data as a bar chart ({:?})",
                                     ent_path

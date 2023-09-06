@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-from io import BytesIO
 from typing import Any
 
-import numpy as np
 import numpy.typing as npt
-from PIL import Image
 
-from rerun import bindings
+from rerun._rerun2.datatypes.tensor_data import TensorDataLike
 from rerun.log.error_utils import _send_warning
-from rerun.log.file import ImageFormat, log_image_file
 from rerun.log.log_decorator import log_decorator
-from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 from rerun.recording_stream import RecordingStream
 
 __all__ = [
@@ -24,7 +19,7 @@ __all__ = [
 @log_decorator
 def log_image(
     entity_path: str,
-    image: Tensor,
+    image: TensorDataLike,
     *,
     draw_order: float | None = None,
     ext: dict[str, Any] | None = None,
@@ -75,52 +70,15 @@ def log_image(
 
     """
 
-    recording = RecordingStream.to_native(recording)
+    from rerun.experimental import Image, dt, log
 
-    image = _to_numpy(image)
+    tensor_data = dt.TensorData(array=image)
 
-    shape = image.shape
-    non_empty_dims = [d for d in shape if d != 1]
-    num_non_empty_dims = len(non_empty_dims)
-
-    interpretable_as_image = True
-    # Catch some errors early:
-    if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
-        _send_warning(f"Expected image, got array of shape {shape}", 1, recording=recording)
-        interpretable_as_image = False
-
-    if num_non_empty_dims == 3:
-        depth = shape[-1]
-        if depth not in (1, 3, 4):
-            _send_warning(
-                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {shape}",
-                1,
-                recording=recording,
-            )
-            interpretable_as_image = False
-
-    # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions
-    if interpretable_as_image and num_non_empty_dims != len(shape):
-        image = np.squeeze(image)
-
+    # TODO(jleibs): Support for jpeg_quality
     if jpeg_quality is not None:
-        # TODO(emilk): encode JPEG in background thread instead
+        raise ValueError("jpeg_quality not supported yet")
 
-        if image.dtype not in ["uint8", "sint32", "float32"]:
-            # Convert to a format supported by Image.fromarray
-            image = image.astype("float32")
-
-        pil_image = Image.fromarray(image)
-        output = BytesIO()
-        pil_image.save(output, format="JPEG", quality=jpeg_quality)
-        jpeg_bytes = output.getvalue()
-        output.close()
-
-        # TODO(emilk): pass draw_order too
-        log_image_file(entity_path=entity_path, img_bytes=jpeg_bytes, img_format=ImageFormat.JPEG, timeless=timeless)
-        return
-
-    _log_tensor(entity_path, image, draw_order=draw_order, ext=ext, timeless=timeless, recording=recording)
+    log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -168,38 +126,8 @@ def log_depth_image(
 
     """
 
-    recording = RecordingStream.to_native(recording)
-
-    image = _to_numpy(image)
-
-    # TODO(#635): Remove when issue with displaying f64 depth images is fixed.
-    if image.dtype == np.float64:
-        image = image.astype(np.float32)
-
-    shape = image.shape
-    non_empty_dims = [d for d in shape if d != 1]
-    num_non_empty_dims = len(non_empty_dims)
-
-    # Catch some errors early:
-    if num_non_empty_dims != 2:
-        _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1, recording=recording)
-        _log_tensor(
-            entity_path, image, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth, recording=recording
-        )
-    else:
-        # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
-        if num_non_empty_dims != len(shape):
-            image = np.squeeze(image)
-        _log_tensor(
-            entity_path,
-            image,
-            draw_order=draw_order,
-            meter=meter,
-            ext=ext,
-            timeless=timeless,
-            meaning=bindings.TensorDataMeaning.Depth,
-            recording=recording,
-        )
+    # TODO(jleibs): Support for depth images
+    raise NotImplementedError("Depth images not supported yet")
 
 
 @log_decorator
@@ -244,39 +172,5 @@ def log_segmentation_image(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    recording = RecordingStream.to_native(recording)
-
-    image = np.array(image, copy=False)
-    if image.dtype not in (np.dtype("uint8"), np.dtype("uint16")):
-        image = np.require(image, np.uint16)
-    non_empty_dims = [d for d in image.shape if d != 1]
-    num_non_empty_dims = len(non_empty_dims)
-
-    # Catch some errors early:
-    if num_non_empty_dims != 2:
-        _send_warning(
-            f"Expected single channel image, got array of shape {image.shape}. Can't interpret as segmentation image.",
-            1,
-            recording=recording,
-        )
-        _log_tensor(
-            entity_path,
-            tensor=image,
-            draw_order=draw_order,
-            ext=ext,
-            timeless=timeless,
-            recording=recording,
-        )
-    else:
-        # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
-        if num_non_empty_dims != len(image.shape):
-            image = np.squeeze(image)
-        _log_tensor(
-            entity_path,
-            tensor=image,
-            draw_order=draw_order,
-            meaning=bindings.TensorDataMeaning.ClassId,
-            ext=ext,
-            timeless=timeless,
-            recording=recording,
-        )
+    # TODO(jleibs): Support for segmentation images
+    raise NotImplementedError("Segmentation images not supported yet")

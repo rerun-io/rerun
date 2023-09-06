@@ -20,6 +20,7 @@ use re_viewport::{
 
 use re_log_types::{DataRow, StoreKind};
 use rerun::{
+    datatypes::TensorData,
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::TimePoint,
@@ -31,7 +32,7 @@ pub use rerun::{
         AnnotationContext, Box3D, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
         InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D,
         Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps,
-        Tensor, TensorData, TensorDimension, TextEntry, Transform3D, Vector3D, ViewCoordinates,
+        TextEntry, Transform3D, Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},
@@ -1042,8 +1043,10 @@ fn log_image_file(
         }
     };
 
-    let tensor = Tensor::from_image_bytes(img_bytes, img_format)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    let tensor = rerun::components::TensorData(
+        TensorData::from_image_bytes(img_bytes, img_format)
+            .map_err(|err| PyTypeError::new_err(err.to_string()))?,
+    );
 
     let row = DataRow::from_cells1(
         RowId::random(),

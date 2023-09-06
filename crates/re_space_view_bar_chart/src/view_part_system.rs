@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::Tensor;
 use re_data_store::EntityPath;
 use re_log_types::{TimeInt, Timeline};
-use re_types::{ComponentName, Loggable as _};
+use re_types::{
+    archetypes::Tensor, datatypes::TensorData, Archetype, ComponentName, Loggable as _,
+};
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,
@@ -13,7 +14,7 @@ use re_viewer_context::{
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartViewPartSystem {
-    pub charts: BTreeMap<EntityPath, Tensor>,
+    pub charts: BTreeMap<EntityPath, TensorData>,
 }
 
 impl NamedViewSystem for BarChartViewPartSystem {
@@ -24,7 +25,7 @@ impl NamedViewSystem for BarChartViewPartSystem {
 
 impl ViewPartSystem for BarChartViewPartSystem {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Tensor::name()]
+        Tensor::all_components().try_into().unwrap()
     }
 
     fn queries_any_components_of(
@@ -33,15 +34,15 @@ impl ViewPartSystem for BarChartViewPartSystem {
         ent_path: &EntityPath,
         components: &[ComponentName],
     ) -> bool {
-        if !components.contains(&Tensor::name()) {
+        if !components.contains(&re_types::components::TensorData::name()) {
             return false;
         }
 
-        if let Some(tensor) = store.query_latest_component::<Tensor>(
+        if let Some(tensor) = store.query_latest_component::<re_types::components::TensorData>(
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
-            tensor.is_vector()
+            tensor.0.is_vector()
         } else {
             false
         }
@@ -63,11 +64,13 @@ impl ViewPartSystem for BarChartViewPartSystem {
             }
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            let tensor = store.query_latest_component::<Tensor>(ent_path, &query);
+            let tensor =
+                store.query_latest_component::<re_types::components::TensorData>(ent_path, &query);
 
             if let Some(tensor) = tensor {
-                if tensor.is_vector() {
-                    self.charts.insert(ent_path.clone(), tensor.value.clone()); // shallow clones
+                if tensor.0.is_vector() {
+                    self.charts.insert(ent_path.clone(), tensor.value.0.clone());
+                    // shallow clones
                 }
             }
         }

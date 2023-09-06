@@ -18,7 +18,7 @@ namespace rerun.datatypes;
 /// which stores a contiguous array of typed values.
 table TensorData (
   order: 100,
-  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.python.aliases": "npt.ArrayLike",
   "attr.rust.derive": "Default, PartialEq,"
 ) {
   shape: [rerun.datatypes.TensorDimension] (order: 200);

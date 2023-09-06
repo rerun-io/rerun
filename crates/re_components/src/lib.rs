@@ -27,8 +27,6 @@ mod pinhole;
 mod quaternion;
 mod rect;
 mod scalar;
-mod tensor;
-mod tensor_data;
 mod text_box;
 mod text_entry;
 mod vec;
@@ -52,16 +50,9 @@ pub use self::{
     quaternion::Quaternion,
     rect::Rect2D,
     scalar::{Scalar, ScalarPlotProps},
-    tensor::{
-        DecodedTensor, Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension,
-    },
-    tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
     text_box::TextBox,
     text_entry::TextEntry,
 };
-
-#[cfg(feature = "image")]
-pub use self::tensor::{TensorImageLoadError, TensorImageSaveError};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path};
@@ -83,7 +74,8 @@ pub mod external {
 
 use re_types::components::{
     AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-    Label, LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
+    Label, LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, TensorData, Transform3D,
+    Vector3D,
 };
 
 lazy_static! {
@@ -97,7 +89,6 @@ lazy_static! {
         <Rect2D as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
-        <Tensor as LegacyComponent>::field(),
         <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
@@ -115,6 +106,7 @@ lazy_static! {
         Point2D::arrow_field(),
         Point3D::arrow_field(),
         Radius::arrow_field(),
+        TensorData::arrow_field(),
         Transform3D::arrow_field(),
         Vector3D::arrow_field(),
     ];

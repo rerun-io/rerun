@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy.typing as npt
 import pyarrow as pa
@@ -45,8 +45,15 @@ class TensorData:
     buffer: datatypes.TensorBuffer = field(converter=_tensordata_buffer_converter)
 
 
-TensorDataLike = TensorData
-TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
+if TYPE_CHECKING:
+    TensorDataLike = Union[TensorData, npt.ArrayLike]
+else:
+    TensorDataLike = Any
+
+TensorDataArrayLike = Union[
+    TensorData,
+    Sequence[TensorDataLike],
+]
 
 
 # --- Arrow support ---
