@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use re_components::{Mesh3D, MeshId};
+use re_components::Mesh3D;
+use re_data_store::VersionedInstancePathHash;
 use re_renderer::RenderContext;
 use re_viewer_context::Cache;
 
@@ -8,22 +9,23 @@ use crate::mesh_loader::LoadedMesh;
 
 // ----------------------------------------------------------------------------
 
+/// Caches meshes based on their [`VersionedInstancePathHash`], i.e. a specific instance of a specific
+/// entity path for a specific row in the store.
 #[derive(Default)]
-pub struct MeshCache(nohash_hasher::IntMap<MeshId, Option<Arc<LoadedMesh>>>);
+pub struct MeshCache(ahash::HashMap<VersionedInstancePathHash, Option<Arc<LoadedMesh>>>);
 
 impl MeshCache {
     pub fn entry(
         &mut self,
         name: &str,
+        key: VersionedInstancePathHash,
         mesh: &Mesh3D,
         render_ctx: &RenderContext,
     ) -> Option<Arc<LoadedMesh>> {
         re_tracing::profile_function!();
 
-        let mesh_id = mesh.mesh_id();
-
         self.0
-            .entry(mesh_id)
+            .entry(key)
             .or_insert_with(|| {
                 re_log::debug!("Loading CPU mesh {name:?}…");
 
