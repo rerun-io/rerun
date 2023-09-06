@@ -1,9 +1,9 @@
 use std::hash::Hash;
 
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::{EntityPath, EntityPathHash, RowId};
 use re_types::components::InstanceKey;
 
-use crate::store_db::EntityDb;
+use crate::{store_db::EntityDb, VersionedInstancePath, VersionedInstancePathHash};
 
 // ----------------------------------------------------------------------------
 
@@ -49,6 +49,15 @@ impl InstancePath {
         self.instance_key.is_splat()
     }
 
+    /// Versions this instance path by stamping it with the specified [`RowId`].
+    #[inline]
+    pub fn versioned(&self, row_id: RowId) -> VersionedInstancePath {
+        VersionedInstancePath {
+            instance_path: self.clone(),
+            row_id,
+        }
+    }
+
     #[inline]
     pub fn hash(&self) -> InstancePathHash {
         InstancePathHash {
@@ -88,15 +97,25 @@ pub struct InstancePathHash {
 impl std::hash::Hash for InstancePathHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.entity_path_hash.hash64());
-        state.write_u64(self.instance_key.0);
+        let Self {
+            entity_path_hash,
+            instance_key,
+        } = self;
+
+        state.write_u64(entity_path_hash.hash64());
+        state.write_u64(instance_key.0);
     }
 }
 
 impl std::cmp::PartialEq for InstancePathHash {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.entity_path_hash == other.entity_path_hash && self.instance_key == other.instance_key
+        let Self {
+            entity_path_hash,
+            instance_key,
+        } = self;
+
+        entity_path_hash == &other.entity_path_hash && instance_key == &other.instance_key
     }
 }
 
@@ -135,6 +154,15 @@ impl InstancePathHash {
     #[inline]
     pub fn is_none(&self) -> bool {
         self.entity_path_hash.is_none()
+    }
+
+    /// Versions this hashed instance path by stamping it with the specified [`RowId`].
+    #[inline]
+    pub fn versioned(&self, row_id: RowId) -> VersionedInstancePathHash {
+        VersionedInstancePathHash {
+            instance_path_hash: *self,
+            row_id,
+        }
     }
 
     pub fn resolve(&self, entity_db: &EntityDb) -> Option<InstancePath> {
