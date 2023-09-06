@@ -157,13 +157,11 @@ fn update_depth_cloud_property_heuristics(
             continue;
         };
 
-        let entity_components = ctx
-            .store_db
-            .store()
-            .all_components(&ctx.current_query().timeline, ent_path)
-            .unwrap_or_default();
-
-        let meaning = if entity_components.contains(&DepthImage::indicator_component()) {
+        let meaning = if store.entity_has_component(
+            &ctx.current_query().timeline,
+            ent_path,
+            &DepthImage::indicator_component(),
+        ) {
             TensorDataMeaning::Depth
         } else {
             TensorDataMeaning::Unknown

@@ -537,19 +537,17 @@ pub fn picking(
             continue;
         }
 
-        let entity_components = ctx
-            .store_db
-            .store()
-            .all_components(&ctx.current_query().timeline, &instance_path.entity_path)
-            .unwrap_or_default();
-
         // Special hover ui for images.
         let is_depth_cloud = images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords =
             if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                let meaning = if entity_components.contains(&DepthImage::indicator_component()) {
+                let meaning = if ctx.store_db.store().entity_has_component(
+                    &ctx.current_query().timeline,
+                    &instance_path.entity_path,
+                    &DepthImage::indicator_component(),
+                ) {
                     TensorDataMeaning::Depth
                 } else {
                     TensorDataMeaning::Unknown

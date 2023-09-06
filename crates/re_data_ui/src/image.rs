@@ -4,9 +4,11 @@ use itertools::Itertools as _;
 use re_data_store::{InstancePathHash, VersionedInstancePathHash};
 use re_log_types::RowId;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::ClassId;
+use re_types::archetypes::DepthImage;
+use re_types::components::{ClassId, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
+use re_types::Archetype;
 use re_ui::ReUi;
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiVerbosity,
@@ -82,8 +84,24 @@ fn tensor_ui(
     let debug_name = entity_path.to_string();
 
     // TODO(jleibs): These need to come from additional queries
-    let meaning = TensorDataMeaning::Unknown;
-    let meter = None;
+    let store = ctx.store_db.store();
+    let timeline = &ctx.current_query().timeline;
+
+    let meaning =
+        if store.entity_has_component(timeline, entity_path, &DepthImage::indicator_component()) {
+            TensorDataMeaning::Depth
+        } else {
+            TensorDataMeaning::Unknown
+        };
+
+    let meter = if meaning == TensorDataMeaning::Depth {
+        ctx.store_db
+            .store()
+            .query_latest_component::<DepthMeter>(entity_path, &ctx.current_query())
+            .map(|meter| meter.value.0)
+    } else {
+        None
+    };
 
     let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,

@@ -205,7 +205,7 @@ impl ImagesPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         transforms: &TransformContext,
-        ent_props: &EntityProperties,
+        _ent_props: &EntityProperties,
         arch_view: &ArchetypeView<Image>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -216,13 +216,11 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx
-            .store_db
-            .store()
-            .all_components(&ctx.current_query().timeline, ent_path)
-            .unwrap_or_default()
-            .contains(&Image::indicator_component())
-        {
+        if !ctx.store_db.store().entity_has_component(
+            &ctx.current_query().timeline,
+            ent_path,
+            &Image::indicator_component(),
+        ) {
             return Ok(());
         }
         // Unknown is currently interpretted as "Some Color" in most cases.
@@ -318,13 +316,11 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx
-            .store_db
-            .store()
-            .all_components(&ctx.current_query().timeline, ent_path)
-            .unwrap_or_default()
-            .contains(&DepthImage::indicator_component())
-        {
+        if !ctx.store_db.store().entity_has_component(
+            &ctx.current_query().timeline,
+            ent_path,
+            &DepthImage::indicator_component(),
+        ) {
             return Ok(());
         }
         let meaning = TensorDataMeaning::Depth;
