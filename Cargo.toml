@@ -86,7 +86,12 @@ eframe = { version = "0.22.0", default-features = false, features = [
   "x11",
 ] }
 egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
-egui_extras = { version = "0.22.0", features = ["log", "image", "http", "puffin"] }
+egui_extras = { version = "0.22.0", features = [
+  "log",
+  "image",
+  "http",
+  "puffin",
+] }
 egui_plot = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
 egui_tiles = { version = "0.2" }
 egui-wgpu = "0.22.0"

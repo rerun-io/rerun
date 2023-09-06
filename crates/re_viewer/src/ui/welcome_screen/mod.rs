@@ -70,7 +70,7 @@ impl WelcomeScreen {
             matches!(self.current_page, WelcomeScreenPage::Welcome),
             true,
         ])
-        .id_source(egui::Id::new("welcome_screen_page").with(&self.current_page))
+        .id_source(("welcome_screen_page", &self.current_page))
         .auto_shrink([false, false])
         .show(ui, |ui| match self.current_page {
             WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
