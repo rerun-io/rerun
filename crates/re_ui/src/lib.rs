@@ -68,6 +68,8 @@ pub struct ReUi {
 impl ReUi {
     /// Create [`ReUi`] and apply style to the given egui context.
     pub fn load_and_apply(egui_ctx: &egui::Context) -> Self {
+        egui_extras::loaders::install(egui_ctx);
+
         Self {
             egui_ctx: egui_ctx.clone(),
             design_tokens: DesignTokens::load_and_apply(egui_ctx),
@@ -108,6 +110,16 @@ impl ReUi {
     #[inline]
     pub fn welcome_screen_body() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-body".into())
+    }
+
+    pub fn welcome_screen_tab_bar_style(ui: &mut egui::Ui) {
+        ui.spacing_mut().item_spacing.x = 16.0;
+        ui.visuals_mut().selection.bg_fill = egui::Color32::TRANSPARENT;
+        ui.visuals_mut().selection.stroke = ui.visuals().widgets.active.fg_stroke;
+        ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+        ui.visuals_mut().widgets.hovered.fg_stroke = ui.visuals().widgets.active.fg_stroke;
+        ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+        ui.visuals_mut().widgets.inactive.fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
     }
 
     /// Margin on all sides of views.

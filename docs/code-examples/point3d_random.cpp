@@ -8,8 +8,8 @@
 namespace rr = rerun;
 
 int main() {
-    auto rr_stream = rr::RecordingStream("rerun_example_points3d_random");
-    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
+    auto rec = rr::RecordingStream("rerun_example_points3d_random");
+    rec.connect("127.0.0.1:9876").throw_on_failure();
 
     std::default_random_engine gen;
     std::uniform_real_distribution<float> dist_pos(-5.0, 5.0);
@@ -27,5 +27,5 @@ int main() {
     std::vector<rr::components::Radius> radii(10);
     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
 
-    rr_stream.log("random", rr::Points3D(points3d).with_colors(colors).with_radii(radii));
+    rec.log("random", rr::Points3D(points3d).with_colors(colors).with_radii(radii));
 }

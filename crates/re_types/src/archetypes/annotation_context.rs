@@ -65,7 +65,7 @@
 ///    rec.log_component_lists(
 ///        "bounds",
 ///        false,
-///        2,
+///        1,
 ///        [&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 5.0, 5.0]).into())] as _],
 ///    )?;
 ///

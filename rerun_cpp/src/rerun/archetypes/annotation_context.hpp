@@ -32,11 +32,11 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rr_stream = rr::RecordingStream("rerun_example_annotation_context_rects");
-        ///    rr_stream.connect("127.0.0.1:9876").throw_on_failure();
+        ///    auto rec = rr::RecordingStream("rerun_example_annotation_context_rects");
+        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///    // Log an annotation context to assign a label and color to each class
-        ///    rr_stream.log(
+        ///    rec.log(
         ///        "/",
         ///        rr::AnnotationContext({
         ///            rr::datatypes::AnnotationInfo(1, "red", rr::datatypes::Color(255, 0, 0)),
@@ -45,7 +45,7 @@ namespace rerun {
         ///    );
         ///
         ///    // Log a batch of 2 arrows with different `class_ids`
-        ///    rr_stream.log(
+        ///    rec.log(
         ///        "arrows",
         ///        rr::Arrows3D({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}).with_class_ids({1, 2})
         ///    );

@@ -337,4 +337,4 @@ jobs:
 
       - name: Build code examples
         shell: bash
-        run: ./tests/cpp/build_all_doc_examples.sh --werror
+        run: ./docs/code-examples/build_all.sh --werror
