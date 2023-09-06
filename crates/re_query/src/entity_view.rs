@@ -13,7 +13,7 @@ use crate::{archetype_view::ComponentJoinedIterator, ComponentWithInstances};
 /// the primary component using instance keys.
 #[derive(Clone, Debug)]
 pub struct EntityView<Primary: Component> {
-    pub(crate) row_id: RowId,
+    pub(crate) primary_row_id: RowId,
     pub(crate) primary: ComponentWithInstances,
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
     pub(crate) phantom: PhantomData<Primary>,
@@ -43,8 +43,8 @@ where
     }
 
     #[inline]
-    pub fn row_id(&self) -> RowId {
-        self.row_id
+    pub fn primary_row_id(&self) -> RowId {
+        self.primary_row_id
     }
 }
 
@@ -115,7 +115,7 @@ where
         // Need to convert to new-style keys
         let primary = ComponentWithInstances::from_native(c0.0, c0.1);
         Self {
-            row_id: RowId::ZERO,
+            primary_row_id: RowId::ZERO,
             primary,
             components: Default::default(),
             phantom: PhantomData,
@@ -138,7 +138,7 @@ where
         let components = [(component_c1.name(), component_c1)].into();
 
         Self {
-            row_id: RowId::ZERO,
+            primary_row_id: RowId::ZERO,
             primary,
             components,
             phantom: PhantomData,

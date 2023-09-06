@@ -148,7 +148,7 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
         .collect();
 
     Ok(EntityView {
-        row_id,
+        primary_row_id: row_id,
         primary,
         components,
         phantom: std::marker::PhantomData,
