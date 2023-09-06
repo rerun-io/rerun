@@ -76,7 +76,7 @@ def log_image(
 
     # TODO(jleibs): Support for jpeg_quality
     if jpeg_quality is not None:
-        raise ValueError("jpeg_quality not supported yet")
+        _send_warning("jpeg_quality not supported yet", 1)
 
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
