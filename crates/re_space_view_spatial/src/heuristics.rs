@@ -5,7 +5,12 @@ use egui::NumExt as _;
 use re_components::Pinhole;
 use re_data_store::EditableAutoValue;
 use re_log_types::EntityPath;
-use re_types::{components::TensorData, tensor_data::TensorDataMeaning};
+use re_types::{
+    archetypes::DepthImage,
+    components::{DepthMeter, TensorData},
+    tensor_data::TensorDataMeaning,
+    Archetype,
+};
 use re_viewer_context::{
     AutoSpawnHeuristic, NamedViewSystem, PerSystemEntities, SpaceViewClassName, ViewerContext,
 };
@@ -155,18 +160,18 @@ fn update_depth_cloud_property_heuristics(
         let entity_components = ctx
             .store_db
             .store()
-            .all_components(&ctx.current_query().timeline, ent_path)
+            .all_components(&ctx.current_query().timeline, &ent_path)
             .unwrap_or_default();
-        // TODO(jleibs): Support DepthImage
-        /*
+
         let meaning = if entity_components.contains(&DepthImage::indicator_component()) {
             TensorDataMeaning::Depth
         } else {
             TensorDataMeaning::Unknown
         };
-        */
-        let meaning = TensorDataMeaning::Unknown;
-        let meter = None;
+
+        let meter = store
+            .query_latest_component::<DepthMeter>(ent_path, &ctx.current_query())
+            .map(|meter| meter.value.0);
 
         let mut properties = entity_properties.get(ent_path);
         if properties.backproject_depth.is_auto() {

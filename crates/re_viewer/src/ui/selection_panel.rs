@@ -5,8 +5,10 @@ use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, Entity
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::TimeType;
 use re_types::{
+    archetypes::DepthImage,
     components::{TensorData, Transform3D},
     tensor_data::TensorDataMeaning,
+    Archetype,
 };
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use re_viewport::{Viewport, ViewportBlueprint};
@@ -483,25 +485,22 @@ fn depth_props_ui(
 
     let query = ctx.current_query();
     let store = &ctx.store_db.entity_db.data_store;
-    let tensor = store.query_latest_component::<TensorData>(entity_path, &query)?;
 
-    // TODO(jleibs): Support for DepthImage
-    /*
+    // TODO(jleibs): Pull this out as a helper function on the store?
+    let entity_components = store
+        .all_components(&ctx.current_query().timeline, entity_path)
+        .unwrap_or_default();
+
     let meaning = if entity_components.contains(&DepthImage::indicator_component()) {
         TensorDataMeaning::Depth
     } else {
         TensorDataMeaning::Unknown
     };
-    */
-    let meaning = TensorDataMeaning::Depth;
 
     if meaning != TensorDataMeaning::Depth {
         return Some(());
     }
-    let pinhole_ent_path = ctx
-        .store_db
-        .entity_db
-        .data_store
+    let pinhole_ent_path = store
         .query_latest_component_at_closest_ancestor::<Pinhole>(entity_path, &query)?
         .0;
 

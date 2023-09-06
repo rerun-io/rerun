@@ -8,8 +8,8 @@ use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::archetypes::Image;
-use re_types::components::{InstanceKey, TensorData};
+use re_types::archetypes::{DepthImage, Image};
+use re_types::components::{DepthMeter, InstanceKey, TensorData};
 use re_types::tensor_data::TensorDataMeaning;
 use re_types::Archetype;
 use re_viewer_context::{
@@ -549,15 +549,11 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords =
             if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                // TODO(jleibs): Support for DepthImage
-                /*
                 let meaning = if entity_components.contains(&DepthImage::indicator_component()) {
                     TensorDataMeaning::Depth
                 } else {
                     TensorDataMeaning::Unknown
                 };
-                */
-                let meaning = TensorDataMeaning::Unknown;
 
                 ctx.store_db
                     .store()
@@ -606,20 +602,29 @@ pub fn picking(
         response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
             picked_image_with_coords
         {
-            // TODO(jleibs): Support for DepthImage
-            /*
-            if let Some(meter) = tensor.meter {
-                if let Some(raw_value) = tensor.get(&[
-                    picking_context.pointer_in_space2d.y.round() as _,
-                    picking_context.pointer_in_space2d.x.round() as _,
-                ]) {
-                    let raw_value = raw_value.as_f64();
-                    let depth_in_meters = raw_value / meter as f64;
-                    depth_at_pointer = Some(depth_in_meters as f32);
+            let meter = ctx
+                .store_db
+                .store()
+                .query_latest_component::<DepthMeter>(
+                    &instance_path.entity_path,
+                    &ctx.current_query(),
+                )
+                .map(|meter| meter.value.0);
+
+            // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
+            // thing as an up-front archetype query somewhere.
+            if meaning == TensorDataMeaning::Depth {
+                if let Some(meter) = meter {
+                    if let Some(raw_value) = tensor.0.get(&[
+                        picking_context.pointer_in_space2d.y.round() as _,
+                        picking_context.pointer_in_space2d.x.round() as _,
+                    ]) {
+                        let raw_value = raw_value.as_f64();
+                        let depth_in_meters = raw_value / meter as f64;
+                        depth_at_pointer = Some(depth_in_meters as f32);
+                    }
                 }
             }
-            */
-            let meter = None;
 
             response
                 .on_hover_cursor(egui::CursorIcon::Crosshair)

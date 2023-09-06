@@ -126,8 +126,17 @@ def log_depth_image(
 
     """
 
-    # TODO(jleibs): Support for depth images
-    raise NotImplementedError("Depth images not supported yet")
+    from rerun.experimental import DepthImage, dt, log
+
+    tensor_data = dt.TensorData(array=image)
+
+    log(
+        entity_path,
+        DepthImage(tensor_data, draw_order=draw_order, meter=meter),
+        ext=ext,
+        timeless=timeless,
+        recording=recording,
+    )
 
 
 @log_decorator
