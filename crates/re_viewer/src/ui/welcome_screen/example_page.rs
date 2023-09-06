@@ -194,13 +194,13 @@ impl ExamplePage {
                         ui.add(egui::Label::new(
                             egui::RichText::new("Examples.")
                                 .strong()
-                                .line_height(Some(22.0))
+                                .line_height(Some(32.0))
                                 .text_style(re_ui::ReUi::welcome_screen_h1()),
                         ));
 
                         ui.add(egui::Label::new(
                             egui::RichText::new("Learn from the community.")
-                                .line_height(Some(22.0))
+                                .line_height(Some(32.0))
                                 .text_style(re_ui::ReUi::welcome_screen_h1()),
                         ));
                     });
