@@ -14,41 +14,59 @@ from os import listdir
 from os.path import isfile, join
 
 # fmt: off
+
+# These entries won't run at all.
+#
+# You should only ever use this if the test isn't implemented and cannot yet be implemented
+# for one or more specific SDKs.
 opt_out_entirely = {
     "annotation_context_arrows": ["py", "rust"], # TODO(#3207): should be rects, but not available in cpp yet
     "annotation_context_connections": ["cpp"],
     "annotation_context_rects": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
-    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "box3d_batch": ["cpp", "rust"],
     "box3d_simple": ["cpp"],
     "depth_image_3d": ["cpp"],
     "depth_image_simple": ["cpp"],
     "image_advanced": ["cpp", "rust"],
     "image_simple": ["cpp"],
-    "line_segments2d_simple": ["cpp"], # TODO(#2786): working nicely, but we need rect2d bounds!
-    "line_strip2d_batch": ["cpp"], # TODO(#2786): working nicely, but we need rect2d bounds!
-    "line_strip2d_simple": ["cpp"], # TODO(#2786): working nicely, but we need rect2d bounds!
     "mesh_simple": ["cpp"],
-    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point2d_simple": ["cpp"],
-    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "pinhole_simple": ["cpp"],
+    "point2d_random": ["cpp"],
     "rect2d_simple": ["cpp"],
-    "scalar_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "segmentation_image_simple": ["cpp"],
-    "tensor_one_dim": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "scalar_simple": ["cpp"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "tensor_one_dim": ["cpp"],
+    "tensor_simple": ["cpp"],
     "text_log_integration": ["cpp", "rust"],
     "text_entry_simple": ["cpp"],
-    # TODO(#3207): two issues:
-    #   - cpp sends an identity transform for no reason
-    #   - python has a crazy indicator component out of nowhere
-    "transform3d_simple": ["cpp", "py", "rust"],
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
 }
+
+# These entries will run but their results won't be compared to the baseline.
+#
+# You should only ever use this if the test cannot yet be implemented in a way that yields the right
+# data, but you still want to check whether the test runs properly and outputs _something_.
+opt_out_compare = {
+    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "line_segments2d_simple": ["cpp"],
+    "line_strip2d_batch": ["cpp"],
+    "line_strip2d_simple": ["cpp"],
+    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "point2d_random": ["py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "point2d_simple": ["cpp"],
+    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "scalar_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "tensor_one_dim": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    # TODO(#3207): two issues:
+    #   - cpp sends an identity transform for no reason
+    #   - python has a crazy indicator component out of nowhere
+    "transform3d_simple": ["cpp", "py", "rust"],
+}
+
 # fmt: on
 
 
@@ -126,17 +144,25 @@ def main() -> None:
     examples.sort()
 
     for example in examples:
-        example_opt_out = opt_out_entirely.get(example, [])
+        example_opt_out_entirely = opt_out_entirely.get(example, [])
+        example_opt_out_compare = opt_out_compare.get(example, [])
 
-        if "rust" not in example_opt_out:
+        rust_output_path = None
+
+        if "rust" not in example_opt_out_entirely:
             rust_output_path = run_roundtrip_rust(example, args.release, args.target, args.target_dir)
+            check_non_empty_rrd(rust_output_path)
 
-            if "py" not in example_opt_out:
-                python_output_path = run_roundtrip_python(example)
+        if "py" not in example_opt_out_entirely:
+            python_output_path = run_roundtrip_python(example)
+            check_non_empty_rrd(python_output_path)
+            if rust_output_path is not None and "py" not in example_opt_out_compare:
                 run_comparison(python_output_path, rust_output_path, args.full_dump)
 
-            if "cpp" not in example_opt_out:
-                cpp_output_path = run_roundtrip_cpp(example, args.release)
+        if "cpp" not in example_opt_out_entirely:
+            cpp_output_path = run_roundtrip_cpp(example, args.release)
+            check_non_empty_rrd(cpp_output_path)
+            if rust_output_path is not None and "cpp" not in example_opt_out_compare:
                 run_comparison(rust_output_path, cpp_output_path, args.full_dump)
 
 
@@ -244,6 +270,12 @@ def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
     comparison_process = subprocess.Popen(cmd, env=roundtrip_env())
     returncode = comparison_process.wait(timeout=30)
     assert returncode == 0, f"comparison process exited with error code {returncode}"
+
+
+def check_non_empty_rrd(path: str) -> None:
+    from pathlib import Path
+
+    assert Path(path).stat().st_size > 0
 
 
 if __name__ == "__main__":
