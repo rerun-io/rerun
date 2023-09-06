@@ -12,9 +12,16 @@ export RUSTFLAGS="--deny warnings"
 # https://github.com/ericseppanen/cargo-cranky/issues/8
 export RUSTDOCFLAGS="--deny warnings --deny rustdoc::missing_crate_level_docs"
 
+# Fast things first:
+typos
+cargo fmt --all -- --check
+./scripts/lint.py
+./scripts/ci/cargo_deny.sh
+./examples/cpp/minimal/build_and_run.sh --werror
+just py-lint
+
 cargo check --all-targets --all-features
 cargo check -p re_viewer --all-features --target wasm32-unknown-unknown --target-dir target_wasm
-cargo fmt --all -- --check
 cargo cranky --all-targets --all-features -- --deny warnings
 cargo test --all-targets --all-features
 cargo test --doc --all-features # checks all doc-tests
@@ -37,19 +44,5 @@ cargo doc --document-private-items --no-deps --all-features
 (cd examples/rust/objectron && cargo check --all-features)
 
 cargo run -p re_build_web_viewer -- --debug
-
-./scripts/lint.py
-
-cargo deny --all-features --log-level error --target aarch64-apple-darwin check
-cargo deny --all-features --log-level error --target i686-pc-windows-gnu check
-cargo deny --all-features --log-level error --target i686-pc-windows-msvc check
-cargo deny --all-features --log-level error --target i686-unknown-linux-gnu check
-cargo deny --all-features --log-level error --target wasm32-unknown-unknown check
-cargo deny --all-features --log-level error --target x86_64-apple-darwin check
-cargo deny --all-features --log-level error --target x86_64-pc-windows-gnu check
-cargo deny --all-features --log-level error --target x86_64-pc-windows-msvc check
-cargo deny --all-features --log-level error --target x86_64-unknown-linux-gnu check
-cargo deny --all-features --log-level error --target x86_64-unknown-linux-musl check
-cargo deny --all-features --log-level error --target x86_64-unknown-redox check
 
 echo "All checks passed!"
