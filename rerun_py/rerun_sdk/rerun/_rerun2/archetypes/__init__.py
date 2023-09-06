@@ -12,6 +12,7 @@ from .line_strips2d import LineStrips2D
 from .line_strips3d import LineStrips3D
 from .points2d import Points2D
 from .points3d import Points3D
+from .segmentation_image import SegmentationImage
 from .tensor import Tensor
 from .transform3d import Transform3D
 
@@ -26,6 +27,7 @@ __all__ = [
     "LineStrips3D",
     "Points2D",
     "Points3D",
+    "SegmentationImage",
     "Tensor",
     "Transform3D",
 ]

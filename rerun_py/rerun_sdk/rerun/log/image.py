@@ -84,7 +84,7 @@ def log_image(
 @log_decorator
 def log_depth_image(
     entity_path: str,
-    image: Tensor,
+    image: TensorDataLike,
     *,
     draw_order: float | None = None,
     meter: float | None = None,
@@ -181,5 +181,14 @@ def log_segmentation_image(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    # TODO(jleibs): Support for segmentation images
-    raise NotImplementedError("Segmentation images not supported yet")
+    from rerun.experimental import SegmentationImage, dt, log
+
+    tensor_data = dt.TensorData(array=image)
+
+    log(
+        entity_path,
+        SegmentationImage(tensor_data, draw_order=draw_order),
+        ext=ext,
+        timeless=timeless,
+        recording=recording,
+    )

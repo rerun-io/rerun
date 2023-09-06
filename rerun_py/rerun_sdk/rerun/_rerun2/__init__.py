@@ -13,6 +13,7 @@ __all__ = [
     "LineStrips3D",
     "Points2D",
     "Points3D",
+    "SegmentationImage",
     "Tensor",
     "Transform3D",
 ]
@@ -28,6 +29,7 @@ from .archetypes import (
     LineStrips3D,
     Points2D,
     Points3D,
+    SegmentationImage,
     Tensor,
     Transform3D,
 )

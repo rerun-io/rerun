@@ -13,6 +13,7 @@ archetypes/line_strips2d.py linguist-generated=true
 archetypes/line_strips3d.py linguist-generated=true
 archetypes/points2d.py linguist-generated=true
 archetypes/points3d.py linguist-generated=true
+archetypes/segmentation_image.py linguist-generated=true
 archetypes/tensor.py linguist-generated=true
 archetypes/transform3d.py linguist-generated=true
 components/__init__.py linguist-generated=true
