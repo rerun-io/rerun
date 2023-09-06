@@ -252,7 +252,7 @@ impl TransformContext {
                 t * store
                     .query_latest_component::<Transform3D>(ent_path, query)
                     .map_or(glam::Affine3A::IDENTITY, |transform| {
-                        transform.into_parent_from_child_transform()
+                        transform.value.into_parent_from_child_transform()
                     })
             })
         } else {
@@ -299,7 +299,7 @@ fn transform_at(
 
     let transform3d = store
         .query_latest_component::<Transform3D>(entity_path, query)
-        .map(|transform| transform.into_parent_from_child_transform());
+        .map(|transform| transform.value.into_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
@@ -367,5 +367,5 @@ pub fn pinhole_camera_view_coordinates(
 ) -> ViewCoordinates {
     store
         .query_latest_component(entity_path, query)
-        .unwrap_or(ViewCoordinates::RDF)
+        .map_or(ViewCoordinates::RDF, |c| c.value)
 }

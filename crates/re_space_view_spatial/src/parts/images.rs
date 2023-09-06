@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
 use re_components::{DecodedTensor, Pinhole, Tensor, TensorDataMeaning};
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
 use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
 use re_query::{EntityView, QueryError};
 use re_renderer::{
@@ -52,6 +52,7 @@ fn to_textured_rect(
     ctx: &mut ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     multiplicative_tint: egui::Rgba,
 ) -> Option<re_renderer::renderer::TexturedRect> {
@@ -62,11 +63,14 @@ fn to_textured_rect(
     };
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
+    let tensor_stats = ctx
+        .cache
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
+        tensor_path_hash,
         tensor,
         &tensor_stats,
         &ent_context.annotations,
@@ -219,7 +223,13 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor)) {
+            // NOTE: Tensors don't support batches at the moment so always splat.
+            let tensor_path_hash =
+                InstancePathHash::entity_splat(ent_path).versioned(ent_view.primary_row_id());
+            let tensor = match ctx
+                .cache
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor))
+            {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
@@ -239,6 +249,7 @@ impl ImagesPart {
                         transforms,
                         ent_context,
                         ent_props,
+                        tensor_path_hash,
                         &tensor,
                         ent_path,
                         parent_pinhole_path,
@@ -266,9 +277,14 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-            if let Some(textured_rect) =
-                to_textured_rect(ctx, ent_path, ent_context, &tensor, color.into())
-            {
+            if let Some(textured_rect) = to_textured_rect(
+                ctx,
+                ent_path,
+                ent_context,
+                tensor_path_hash,
+                &tensor,
+                color.into(),
+            ) {
                 {
                     let top_left = textured_rect.top_left_corner_position;
                     self.data.bounding_box.extend(top_left);
@@ -296,11 +312,13 @@ impl ImagesPart {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
         ctx: &mut ViewerContext<'_>,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
+        tensor_path_hash: VersionedInstancePathHash,
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
@@ -337,10 +355,13 @@ impl ImagesPart {
         let dimensions = glam::UVec2::new(width as _, height as _);
 
         let debug_name = ent_path.to_string();
-        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
+        let tensor_stats = ctx
+            .cache
+            .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
         let depth_texture = re_viewer_context::gpu_bridge::depth_tensor_to_gpu(
             ctx.render_ctx,
             &debug_name,
+            tensor_path_hash,
             tensor,
             &tensor_stats,
         )?;

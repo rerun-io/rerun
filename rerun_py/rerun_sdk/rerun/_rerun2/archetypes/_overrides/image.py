@@ -69,12 +69,10 @@ def image_data_converter(data: TensorDataArrayLike) -> TensorDataArray:
             TensorDataArray._EXTENSION_TYPE().wrap_array(
                 pa.StructArray.from_arrays(
                     [
-                        tensor_data.storage.field(0),
                         new_shape,
-                        tensor_data.storage.field(2),
+                        tensor_data.storage.field(1),
                     ],
                     fields=[
-                        tensor_data_type.field("id"),
                         tensor_data_type.field("shape"),
                         tensor_data_type.field("buffer"),
                     ],

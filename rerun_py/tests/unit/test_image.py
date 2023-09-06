@@ -15,7 +15,6 @@ RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
 IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
     # Full explicit construction
     rrd.TensorData(
-        id=rrd.TensorId(uuid=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
         shape=[
             rrd.TensorDimension(10, "height"),
             rrd.TensorDimension(20, "width"),
@@ -27,12 +26,11 @@ IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
     RANDOM_IMAGE_SOURCE,
 ]
 
-# 0 = id
-# 1 = shape
-# 2 = buffer
+# 0 = shape
+# 1 = buffer
 CHECK_FIELDS: list[list[int]] = [
-    [0, 1, 2],
-    [2],
+    [0, 1],
+    [1],
 ]
 
 

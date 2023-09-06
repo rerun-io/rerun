@@ -73,7 +73,7 @@ impl ViewPartSystem for TextSystem {
                         let re_components::TextEntry { body, level } = text_entry;
 
                         self.text_entries.push(TextEntry {
-                            row_id: ent_view.row_id(),
+                            row_id: ent_view.primary_row_id(),
                             entity_path: ent_path.clone(),
                             time: time.map(|time| time.as_i64()),
                             color: color.map(|c| c.to_array()),

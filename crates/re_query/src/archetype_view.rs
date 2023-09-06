@@ -221,7 +221,7 @@ where
 /// the required [`Component`]s using [`InstanceKey`] values.
 #[derive(Clone, Debug)]
 pub struct ArchetypeView<A: Archetype> {
-    pub(crate) row_id: RowId,
+    pub(crate) primary_row_id: RowId,
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
     pub(crate) phantom: PhantomData<A>,
 }
@@ -248,9 +248,15 @@ impl<A: Archetype> ArchetypeView<A> {
         self.required_comp().len()
     }
 
+    /// Returns the [`RowId`] associated with the _primary_ component that was used to drive this
+    /// entire query.
+    ///
+    /// Beware: when using this [`RowId`] for caching/versioning purposes, make sure the component
+    /// you are about to cache is in fact the primary component of the query!
+    /// See also <https://github.com/rerun-io/rerun/issues/3232>.
     #[inline]
-    pub fn row_id(&self) -> RowId {
-        self.row_id
+    pub fn primary_row_id(&self) -> RowId {
+        self.primary_row_id
     }
 }
 
@@ -348,7 +354,7 @@ impl<A: Archetype> ArchetypeView<A> {
         components: impl IntoIterator<Item = ComponentWithInstances>,
     ) -> Self {
         Self {
-            row_id,
+            primary_row_id: row_id,
             components: components
                 .into_iter()
                 .map(|comp| (comp.name(), comp))

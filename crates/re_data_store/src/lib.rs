@@ -11,12 +11,14 @@ pub mod entity_tree;
 mod instance_path;
 pub mod store_db;
 mod util;
+mod versioned_instance_path;
 
-pub use entity_properties::*;
-pub use entity_tree::*;
-pub use instance_path::*;
-pub use store_db::StoreDb;
-pub use util::*;
+pub use self::entity_properties::*;
+pub use self::entity_tree::*;
+pub use self::instance_path::{InstancePath, InstancePathHash};
+pub use self::store_db::StoreDb;
+pub use self::util::*;
+pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
 
 #[cfg(feature = "serde")]
 pub use editable_auto_value::EditableAutoValue;

@@ -134,7 +134,7 @@ pub fn range_entity_with_primary<
                 let (row_id, cwi) = state[primary_col].clone().unwrap(); // shallow
 
                 let ent_view = EntityView {
-                    row_id,
+                    primary_row_id: row_id,
                     primary: cwi,
                     components: components
                         .iter()

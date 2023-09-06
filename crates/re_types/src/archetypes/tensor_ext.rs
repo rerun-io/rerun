@@ -1,5 +1,5 @@
 use crate::{
-    datatypes::{TensorData, TensorDimension, TensorId},
+    datatypes::{TensorData, TensorDimension},
     ArrowString,
 };
 
@@ -19,18 +19,6 @@ impl Tensor {
         Ok(Self { data: data.into() })
     }
 
-    /// Replace the `id` of the contained [`TensorData`] with a new [`TensorId`]
-    pub fn with_id(self, id: TensorId) -> Self {
-        Self {
-            data: TensorData {
-                id,
-                shape: self.data.0.shape,
-                buffer: self.data.0.buffer,
-            }
-            .into(),
-        }
-    }
-
     /// Update the `names` of the contained [`TensorData`] dimensions.
     ///
     /// Any existing Dimension names will be be overwritten.
@@ -48,7 +36,6 @@ impl Tensor {
         }
         Self {
             data: crate::datatypes::TensorData {
-                id: self.data.0.id,
                 shape: self
                     .data
                     .0

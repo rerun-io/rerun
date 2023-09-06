@@ -3,7 +3,7 @@ use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 #[cfg(feature = "image")]
 use crate::tensor_data::{DecodedTensor, TensorImageLoadError, TensorImageSaveError};
 
-use super::{TensorBuffer, TensorData, TensorDimension, TensorId};
+use super::{TensorBuffer, TensorData, TensorDimension};
 
 // Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
 // will eventually go away as the Tensor migration is completed.
@@ -12,13 +12,8 @@ use super::{TensorBuffer, TensorData, TensorDimension, TensorId};
 
 impl TensorData {
     #[inline]
-    pub fn new(id: TensorId, shape: Vec<TensorDimension>, buffer: TensorBuffer) -> Self {
-        Self { id, shape, buffer }
-    }
-
-    #[inline]
-    pub fn id(&self) -> TensorId {
-        self.id
+    pub fn new(shape: Vec<TensorDimension>, buffer: TensorBuffer) -> Self {
+        Self { shape, buffer }
     }
 
     #[inline]
@@ -210,12 +205,10 @@ macro_rules! tensor_type {
 
                 match view.to_slice() {
                     Some(slice) => Ok(TensorData {
-                        id: TensorId::random(),
                         shape,
                         buffer: TensorBuffer::$variant(Vec::from(slice).into()),
                     }),
                     None => Ok(TensorData {
-                        id: TensorId::random(),
                         shape,
                         buffer: TensorBuffer::$variant(
                             view.iter().cloned().collect::<Vec<_>>().into(),
@@ -241,7 +234,6 @@ macro_rules! tensor_type {
                 value
                     .is_standard_layout()
                     .then(|| TensorData {
-                        id: TensorId::random(),
                         shape,
                         buffer: TensorBuffer::$variant(value.to_owned().into_raw_vec().into()),
                     })
@@ -304,12 +296,10 @@ impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>
             .collect();
         match view.to_slice() {
             Some(slice) => Ok(TensorData {
-                uuid: TensorId::random(),
                 shape,
                 buffer: TensorBuffer::F16(Vec::from(bytemuck::cast_slice(slice)).into()),
             }),
             None => Ok(TensorData {
-                uuid: TensorId::random(),
                 shape,
                 buffer: TensorBuffer::F16(
                     view.iter()
@@ -337,7 +327,6 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
         value
             .is_standard_layout()
             .then(|| TensorData {
-                tensor_id: TensorId::random(),
                 shape,
                 data: TensorBuffer::F16(
                     bytemuck::cast_slice(value.into_raw_vec().as_slice())
@@ -440,7 +429,6 @@ impl TensorData {
         let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode_headers
 
         Ok(Self {
-            id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),

@@ -250,10 +250,12 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole = store.query_latest_component::<Pinhole>(
-        query.space_origin,
-        &ctx.rec_cfg.time_ctrl.current_query(),
-    );
+    let pinhole = store
+        .query_latest_component::<Pinhole>(
+            query.space_origin,
+            &ctx.rec_cfg.time_ctrl.current_query(),
+        )
+        .map(|c| c.value);
     let canvas_rect = pinhole
         .and_then(|p| p.resolution())
         .map_or(scene_rect_accum, |res| {

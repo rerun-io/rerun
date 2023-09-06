@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from typing import Final, Iterable, Union, cast
 
 import numpy as np
@@ -54,8 +53,6 @@ class TensorArray(pa.ExtensionArray):  # type: ignore[misc]
         meter: float | None = None,
     ) -> TensorArray:
         """Build a `TensorArray` from an numpy array."""
-        # Build a random tensor_id
-        tensor_id = pa.repeat(pa.scalar(uuid.uuid4().bytes, type=TensorType.storage_type["tensor_id"].type), 1)
 
         if not names:
             names = [None] * len(array.shape)
@@ -96,7 +93,6 @@ class TensorArray(pa.ExtensionArray):  # type: ignore[misc]
 
         storage = pa.StructArray.from_arrays(
             [
-                tensor_id,
                 shape,
                 data,
                 meaning,

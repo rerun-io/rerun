@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_components::{DecodedTensor, Tensor};
-use re_data_store::{EntityPath, EntityProperties, InstancePath};
-use re_log_types::{TimeInt, Timeline};
+use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
+use re_log_types::{RowId, TimeInt, Timeline};
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
@@ -10,7 +10,7 @@ use re_viewer_context::{
 
 #[derive(Default)]
 pub struct TensorSystem {
-    pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
+    pub tensors: std::collections::BTreeMap<InstancePath, (RowId, DecodedTensor)>,
 }
 
 impl NamedViewSystem for TensorSystem {
@@ -59,7 +59,7 @@ impl ViewPartSystem for TensorSystem {
 
             if let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &timeline_query)
             {
-                self.load_tensor_entity(ctx, ent_path, &props, tensor);
+                self.load_tensor_entity(ctx, ent_path, tensor.row_id, &props, tensor.value);
             }
         }
 
@@ -76,14 +76,20 @@ impl TensorSystem {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ent_path: &EntityPath,
+        row_id: RowId,
         _props: &EntityProperties,
         tensor: Tensor,
     ) {
         if !tensor.is_shaped_like_an_image() {
-            match ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor)) {
+            // NOTE: Tensors don't support batches at the moment so always splat.
+            let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
+            match ctx
+                .cache
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor))
+            {
                 Ok(tensor) => {
                     let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
-                    self.tensors.insert(instance_path, tensor);
+                    self.tensors.insert(instance_path, (row_id, tensor));
                 }
                 Err(err) => {
                     re_log::warn_once!(

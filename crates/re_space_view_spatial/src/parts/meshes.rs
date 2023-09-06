@@ -37,6 +37,7 @@ impl MeshPart {
     ) -> Result<(), QueryError> {
         let _default_color = DefaultColor::EntityPath(ent_path);
 
+        let primary_row_id = ent_view.primary_row_id();
         let visitor = |instance_key: InstanceKey,
                        mesh: re_components::Mesh3D,
                        _color: Option<Color>| {
@@ -45,9 +46,14 @@ impl MeshPart {
 
             let outline_mask_ids = ent_context.highlight.index_outline_mask(instance_key);
 
-            let mesh = ctx
-                .cache
-                .entry(|c: &mut MeshCache| c.entry(&ent_path.to_string(), &mesh, ctx.render_ctx));
+            let mesh = ctx.cache.entry(|c: &mut MeshCache| {
+                c.entry(
+                    &ent_path.to_string(),
+                    picking_instance_hash.versioned(primary_row_id),
+                    &mesh,
+                    ctx.render_ctx,
+                )
+            });
             if let Some(mesh) = mesh {
                 instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                     MeshInstance {

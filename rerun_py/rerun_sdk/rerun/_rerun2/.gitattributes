@@ -55,7 +55,6 @@ datatypes/scale3d.py linguist-generated=true
 datatypes/tensor_buffer.py linguist-generated=true
 datatypes/tensor_data.py linguist-generated=true
 datatypes/tensor_dimension.py linguist-generated=true
-datatypes/tensor_id.py linguist-generated=true
 datatypes/transform3d.py linguist-generated=true
 datatypes/translation_and_mat3x3.py linguist-generated=true
 datatypes/translation_rotation_scale3d.py linguist-generated=true

@@ -26,7 +26,7 @@ def main() -> None:
         image[i, :, 1] = i
     image[:, :, 2] = 128
 
-    image = rr2.dt.TensorData(array=image, id=np.arange(10, 26))
+    image = rr2.dt.TensorData(array=image)
 
     rr2.log("image", rr2.Image(image))
 

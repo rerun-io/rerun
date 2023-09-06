@@ -1,4 +1,5 @@
 use re_components::{DecodedTensor, TensorCastError, TensorDataType};
+use re_data_store::VersionedInstancePathHash;
 use re_renderer::{
     renderer::ColormappedTexture,
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
@@ -24,6 +25,7 @@ pub enum TensorUploadError {
 
 pub fn colormapped_texture(
     render_ctx: &mut re_renderer::RenderContext,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     state: &PerTensorState,
@@ -32,7 +34,7 @@ pub fn colormapped_texture(
 
     let range = tensor_data_range_heuristic(tensor_stats, tensor.dtype())
         .map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
-    let texture = upload_texture_slice_to_gpu(render_ctx, tensor, state.slice())?;
+    let texture = upload_texture_slice_to_gpu(render_ctx, tensor_path_hash, tensor, state.slice())?;
 
     let color_mapping = state.color_mapping();
 
@@ -50,10 +52,11 @@ pub fn colormapped_texture(
 
 fn upload_texture_slice_to_gpu(
     render_ctx: &mut re_renderer::RenderContext,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     slice_selection: &SliceSelection,
 ) -> Result<GpuTexture2D, TextureManager2DError<TensorUploadError>> {
-    let id = egui::util::hash((tensor.id(), slice_selection));
+    let id = egui::util::hash((tensor_path_hash, slice_selection));
 
     gpu_bridge::try_get_or_create_texture(render_ctx, id, || {
         texture_desc_from_tensor(tensor, slice_selection)

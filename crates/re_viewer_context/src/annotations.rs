@@ -28,7 +28,7 @@ impl Annotations {
             .ok()
             .and_then(|mut iter| iter.next())
             .map(|ctx| Self {
-                row_id: view.row_id(),
+                row_id: view.primary_row_id(),
                 class_map: ctx
                     .0
                     .into_iter()

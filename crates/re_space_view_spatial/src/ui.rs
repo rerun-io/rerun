@@ -125,7 +125,8 @@ impl SpatialSpaceViewState {
         let view_coordinates = ctx
             .store_db
             .store()
-            .query_latest_component(space_origin, &ctx.current_query());
+            .query_latest_component(space_origin, &ctx.current_query())
+            .map(|c| c.value);
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
@@ -554,11 +555,12 @@ pub fn picking(
                         None
                     } else {
                         tensor.image_height_width_channels().map(|[_, w, _]| {
+                            let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id);
                             let coordinates = hit
                                 .instance_path_hash
                                 .instance_key
                                 .to_2d_image_coordinate(w);
-                            (tensor, coordinates)
+                            (tensor_path_hash, tensor.value, coordinates)
                         })
                     }
                 })
@@ -581,7 +583,7 @@ pub fn picking(
             instance_path.clone(),
         ));
 
-        response = if let Some((tensor, coords)) = picked_image_with_coords {
+        response = if let Some((tensor_path_hash, tensor, coords)) = picked_image_with_coords {
             if let Some(meter) = tensor.meter {
                 if let Some(raw_value) = tensor.get(&[
                     picking_context.pointer_in_space2d.y.round() as _,
@@ -627,14 +629,15 @@ pub fn picking(
 
                                 let tensor_name = instance_path.to_string();
 
-                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor));
+                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor));
                                 match decoded_tensor {
                                     Ok(decoded_tensor) => {
                                         let annotations = annotations.0.find(&instance_path.entity_path);
-                                        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(&decoded_tensor));
+                                        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, &decoded_tensor));
                                         show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
+                                            tensor_path_hash,
                                             &decoded_tensor,
                                             &tensor_stats,
                                             &annotations,

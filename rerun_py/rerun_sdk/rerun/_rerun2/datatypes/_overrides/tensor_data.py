@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import uuid
 from math import prod
 from typing import TYPE_CHECKING, Any, Final, Protocol, Sequence, Union
 
@@ -12,7 +11,7 @@ import pyarrow as pa
 from rerun.log.error_utils import _send_warning
 
 if TYPE_CHECKING:
-    from .. import TensorBufferLike, TensorData, TensorDataArrayLike, TensorDimension, TensorDimensionLike, TensorIdLike
+    from .. import TensorBufferLike, TensorData, TensorDataArrayLike, TensorDimension, TensorDimensionLike
 
 
 ################################################################################
@@ -55,7 +54,6 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
 def tensordata_init(
     self: TensorData,
     *,
-    id: TensorIdLike | None = None,
     shape: Sequence[TensorDimensionLike] | None = None,
     buffer: TensorBufferLike | None = None,
     array: Tensor | None = None,
@@ -64,7 +62,7 @@ def tensordata_init(
     """
     Construct a `TensorData` object.
 
-    The `TensorData` object is internally represented by three fields: `id`, `shape`, and `buffer`.
+    The `TensorData` object is internally represented by three fields: `shape` and `buffer`.
 
     This constructor provides additional arguments 'array', and 'names'. When passing in a
     multi-dimensional array such as a `np.ndarray`, the `shape` and `buffer` fields will be
@@ -74,8 +72,6 @@ def tensordata_init(
     ----------
     self: TensorData
         The TensorData object to construct.
-    id: TensorIdLike | None
-        The id of the tensor. If None, a random id will be generated.
     shape: Sequence[TensorDimensionLike] | None
         The shape of the tensor. If None, and an array is proviced, the shape will be inferred
         from the shape of the array.
@@ -99,13 +95,7 @@ def tensordata_init(
         raise ValueError("Can only provide one of 'shape' or 'names'")
 
     from .. import TensorBuffer, TensorDimension
-    from ..tensor_data import _tensordata_buffer_converter, _tensordata_id_converter
-
-    # Assign an id if one wasn't provided
-    if id is not None:
-        self.id = _tensordata_id_converter(id)
-    else:
-        self.id = _tensordata_id_converter(uuid.uuid4())
+    from ..tensor_data import _tensordata_buffer_converter
 
     if shape is not None:
         resolved_shape = list(shape)
@@ -185,17 +175,15 @@ def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataT
         data = TensorData(array=array)
 
     # Now build the actual arrow fields
-    tensor_id = _build_tensorid(data.id)
     shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
     buffer = _build_buffer_array(data.buffer)
 
     return pa.StructArray.from_arrays(
         [
-            tensor_id,
             shape,
             buffer,
         ],
-        fields=[data_type.field("id"), data_type.field("shape"), data_type.field("buffer")],
+        fields=[data_type.field("shape"), data_type.field("buffer")],
     ).cast(data_type)
 
 
@@ -233,21 +221,6 @@ def _build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: p
 
     except ValueError as e:
         raise ValueError(e.args)
-
-
-def _build_tensorid(id: TensorIdLike) -> pa.Array:
-    from .. import TensorId, TensorIdType
-
-    if isinstance(id, uuid.UUID):
-        array = np.asarray(list(id.bytes), dtype=np.uint8)
-    elif isinstance(id, TensorId):
-        array = id.uuid
-    else:
-        raise ValueError("Unsupported TensorId input")
-
-    data_type = TensorIdType().storage_type
-
-    return pa.FixedSizeListArray.from_arrays(array, type=data_type)
 
 
 def _build_shape_array(dims: list[TensorDimension]) -> pa.Array:

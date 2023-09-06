@@ -50,7 +50,6 @@ src/datatypes/scale3d.rs linguist-generated=true
 src/datatypes/tensor_buffer.rs linguist-generated=true
 src/datatypes/tensor_data.rs linguist-generated=true
 src/datatypes/tensor_dimension.rs linguist-generated=true
-src/datatypes/tensor_id.rs linguist-generated=true
 src/datatypes/transform3d.rs linguist-generated=true
 src/datatypes/translation_and_mat3x3.rs linguist-generated=true
 src/datatypes/translation_rotation_scale3d.rs linguist-generated=true

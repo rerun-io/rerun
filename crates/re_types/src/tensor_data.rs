@@ -3,7 +3,7 @@ use half::f16;
 use crate::datatypes::{TensorBuffer, TensorData};
 
 #[cfg(feature = "image")]
-use crate::datatypes::{TensorDimension, TensorId};
+use crate::datatypes::TensorDimension;
 
 // Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
 // will eventually go away as the Tensor migration is completed.
@@ -489,7 +489,6 @@ impl DecodedTensor {
             }
         };
         let tensor = TensorData {
-            id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
@@ -575,7 +574,6 @@ impl DecodedTensor {
         }
 
         let tensor = TensorData {
-            id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h),
                 TensorDimension::width(w),

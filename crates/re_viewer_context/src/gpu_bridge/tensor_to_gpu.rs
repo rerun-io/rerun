@@ -1,6 +1,7 @@
 //! Upload [`Tensor`] to [`re_renderer`].
 
 use anyhow::Context;
+use re_data_store::VersionedInstancePathHash;
 use re_types::components::ClassId;
 
 use std::borrow::Cow;
@@ -32,6 +33,7 @@ use super::{get_or_create_texture, try_get_or_create_texture};
 pub fn tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
@@ -46,15 +48,28 @@ pub fn tensor_to_gpu(
     use re_components::TensorDataMeaning;
 
     match tensor.meaning {
-        TensorDataMeaning::Unknown => {
-            color_tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats)
-        }
-        TensorDataMeaning::ClassId => {
-            class_id_tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)
-        }
-        TensorDataMeaning::Depth => {
-            depth_tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats)
-        }
+        TensorDataMeaning::Unknown => color_tensor_to_gpu(
+            render_ctx,
+            debug_name,
+            tensor_path_hash,
+            tensor,
+            tensor_stats,
+        ),
+        TensorDataMeaning::ClassId => class_id_tensor_to_gpu(
+            render_ctx,
+            debug_name,
+            tensor_path_hash,
+            tensor,
+            tensor_stats,
+            annotations,
+        ),
+        TensorDataMeaning::Depth => depth_tensor_to_gpu(
+            render_ctx,
+            debug_name,
+            tensor_path_hash,
+            tensor,
+            tensor_stats,
+        ),
     }
 }
 
@@ -64,12 +79,13 @@ pub fn tensor_to_gpu(
 fn color_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
     let [height, width, depth] = height_width_depth(tensor)?;
 
-    let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
+    let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
         let (data, format) = match (depth, &tensor.data) {
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
             // Why? Because premul must happen _before_ sRGB decode, so we can't
@@ -144,6 +160,7 @@ fn color_tensor_to_gpu(
 fn class_id_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
@@ -194,7 +211,7 @@ fn class_id_tensor_to_gpu(
         })
         .context("Failed to create class_id_colormap.")?;
 
-    let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
+    let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })
     .map_err(|err| anyhow::anyhow!("Failed to create texture for class id tensor: {err}"))?;
@@ -215,6 +232,7 @@ fn class_id_tensor_to_gpu(
 pub fn depth_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
@@ -226,7 +244,7 @@ pub fn depth_tensor_to_gpu(
     );
     let (min, max) = depth_tensor_range(tensor, tensor_stats)?;
 
-    let texture = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
+    let texture = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })
     .map_err(|err| anyhow::anyhow!("Failed to create depth tensor texture: {err}"))?;

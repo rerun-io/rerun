@@ -100,7 +100,6 @@ from .tensor_dimension import (
     TensorDimensionLike,
     TensorDimensionType,
 )
-from .tensor_id import TensorId, TensorIdArray, TensorIdArrayLike, TensorIdLike, TensorIdType
 from .transform3d import Transform3D, Transform3DArray, Transform3DArrayLike, Transform3DLike, Transform3DType
 from .translation_and_mat3x3 import (
     TranslationAndMat3x3,
@@ -261,11 +260,6 @@ __all__ = [
     "TensorDimensionArrayLike",
     "TensorDimensionLike",
     "TensorDimensionType",
-    "TensorId",
-    "TensorIdArray",
-    "TensorIdArrayLike",
-    "TensorIdLike",
-    "TensorIdType",
     "Transform3D",
     "Transform3DArray",
     "Transform3DArrayLike",

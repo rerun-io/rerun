@@ -6,8 +6,35 @@ use crate::{DataStore, LatestAtQuery};
 
 // --- Read ---
 
+/// A [`Component`] versioned with a specific [`RowId`].
+///
+/// This is not enough to globally, uniquely identify an instance of a component.
+/// For that you will need to combine the `InstancePath` that was used to query
+/// the versioned component with the returned [`RowId`], therefore creating a
+/// `VersionedInstancePath`.
+#[derive(Debug, Clone)]
+pub struct VersionedComponent<C: Component> {
+    pub row_id: RowId,
+    pub value: C,
+}
+
+impl<C: Component> From<(RowId, C)> for VersionedComponent<C> {
+    #[inline]
+    fn from((row_id, value): (RowId, C)) -> Self {
+        Self { row_id, value }
+    }
+}
+
+impl<C: Component> std::ops::Deref for VersionedComponent<C> {
+    type Target = C;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
 impl DataStore {
-    /// Get the latest value for a given [`re_types::Component`].
+    /// Get the latest value for a given [`re_types::Component`] and the associated [`RowId`].
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -19,10 +46,10 @@ impl DataStore {
         &self,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<C> {
+    ) -> Option<VersionedComponent<C>> {
         re_tracing::profile_function!();
 
-        let (_, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
+        let (row_id, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
         let cell = cells.get(0)?.as_ref()?;
 
         cell.try_to_native_mono::<C>()
@@ -61,27 +88,28 @@ impl DataStore {
                 err
             })
             .ok()?
+            .map(|c| (row_id, c).into())
     }
 
-    /// Call `query_latest_component` at the given path, walking up the hierarchy until an instance is found.
+    /// Call [`Self::query_latest_component`] at the given path, walking up the hierarchy until an instance is found.
     pub fn query_latest_component_at_closest_ancestor<C: Component>(
         &self,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<(EntityPath, C)> {
+    ) -> Option<(EntityPath, VersionedComponent<C>)> {
         re_tracing::profile_function!();
 
         let mut cur_path = Some(entity_path.clone());
         while let Some(path) = cur_path {
-            if let Some(component) = self.query_latest_component::<C>(&path, query) {
-                return Some((path, component));
+            if let Some(c) = self.query_latest_component::<C>(&path, query) {
+                return Some((path, c));
             }
             cur_path = path.parent();
         }
         None
     }
 
-    /// Get the latest value for a given [`re_types::Component`], assuming it is timeless.
+    /// Get the latest value for a given [`re_types::Component`] and the associated [`RowId`], assuming it is timeless.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -89,7 +117,10 @@ impl DataStore {
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
-    pub fn query_timeless_component<C: Component>(&self, entity_path: &EntityPath) -> Option<C> {
+    pub fn query_timeless_component<C: Component>(
+        &self,
+        entity_path: &EntityPath,
+    ) -> Option<VersionedComponent<C>> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());

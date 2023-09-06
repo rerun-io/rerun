@@ -151,14 +151,15 @@ pub struct TextureManager2D {
 
 #[derive(Default)]
 struct Inner {
-    // Cache the texture using a user-provided u64 id. This is expected
-    // to be derived from the `TensorId` which isn't available here for
-    // dependency reasons.
-    // TODO(jleibs): Introduce a proper key here.
-    //
-    // Any texture which wasn't accessed on the previous frame
-    // is ejected from the cache during [`begin_frame`].
+    /// Caches textures using a `VersionedInstancePathHash`, i.e. a specific instance of a specific
+    /// entity path for a specific row in the store.
+    ///
+    /// For dependency reasons, the versioned path has to be provided pre-hashed as a u64 by the user.
+    ///
+    /// Any texture which wasn't accessed on the previous frame is ejected from the cache
+    /// during [`Self::begin_frame`].
     texture_cache: HashMap<u64, GpuTexture2D>,
+
     accessed_textures: HashSet<u64>,
 }
 
