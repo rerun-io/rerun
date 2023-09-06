@@ -12,5 +12,5 @@ image[50:150, 50:150] = (0, 255, 0)
 
 rr.init("rerun_example_image_simple", spawn=True)
 
-image = rrd.TensorData(array=image, id=np.repeat(0, 16).astype(np.uint8))
+image = rrd.TensorData(array=image)
 rr2.log("image", rr2.Image(image))
