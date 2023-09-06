@@ -25,7 +25,7 @@ namespace rerun {
     ) {
         arrow::MemoryPool* pool = arrow::default_memory_pool();
         auto builder = std::make_shared<arrow::NullBuilder>(pool);
-        ARROW_RETURN_NOT_OK(builder->AppendNulls(static_cast<uint64_t>(num_instances)));
+        ARROW_RETURN_NOT_OK(builder->AppendNulls(static_cast<int64_t>(num_instances)));
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
