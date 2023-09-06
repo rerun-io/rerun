@@ -1,76 +1,7 @@
-use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
 use arrow2::buffer::Buffer;
-use arrow2_convert::deserialize::ArrowDeserialize;
-use arrow2_convert::field::ArrowField;
-use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::{TensorDataType, TensorElement};
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`Tensor`].
-///
-/// TODO(emilk): this should be a hash of the tensor (CAS).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TensorId(pub uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for TensorId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derived_hash_with_manual_eq)]
-impl std::hash::Hash for TensorId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
-impl TensorId {
-    #[inline]
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
-impl ArrowField for TensorId {
-    type Type = Self;
-
-    #[inline]
-    fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::FixedSizeBinary(16)
-    }
-}
-
-//TODO(https://github.com/DataEngineeringLabs/arrow2-convert/issues/79#issue-1415520918)
-impl ArrowSerialize for TensorId {
-    type MutableArrayType = MutableFixedSizeBinaryArray;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        MutableFixedSizeBinaryArray::new(16)
-    }
-
-    #[inline]
-    fn arrow_serialize(
-        v: &<Self as arrow2_convert::field::ArrowField>::Type,
-        array: &mut Self::MutableArrayType,
-    ) -> arrow2::error::Result<()> {
-        array.try_push(Some(v.0.as_bytes()))
-    }
-}
-
-impl ArrowDeserialize for TensorId {
-    type ArrayType = FixedSizeBinaryArray;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        v.and_then(|bytes| uuid::Uuid::from_slice(bytes).ok())
-            .map(Self)
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -352,7 +283,6 @@ pub enum TensorDataMeaning {
 /// assert_eq!(
 ///     Tensor::data_type(),
 ///     DataType::Struct(vec![
-///         Field::new("tensor_id", DataType::FixedSizeBinary(16), false),
 ///         Field::new(
 ///             "shape",
 ///             DataType::List(Box::new(Field::new(
@@ -382,9 +312,6 @@ pub enum TensorDataMeaning {
 /// ```
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Tensor {
-    /// Unique identifier for the tensor
-    pub tensor_id: TensorId,
-
     /// Dimensionality and length
     pub shape: Vec<TensorDimension>,
 
@@ -400,11 +327,6 @@ pub struct Tensor {
 }
 
 impl Tensor {
-    #[inline]
-    pub fn id(&self) -> TensorId {
-        self.tensor_id
-    }
-
     #[inline]
     pub fn shape(&self) -> &[TensorDimension] {
         self.shape.as_slice()
@@ -613,14 +535,12 @@ macro_rules! tensor_type {
 
                 match view.to_slice() {
                     Some(slice) => Ok(Tensor {
-                        tensor_id: TensorId::random(),
                         shape,
                         data: TensorData::$variant(Vec::from(slice).into()),
                         meaning: TensorDataMeaning::Unknown,
                         meter: None,
                     }),
                     None => Ok(Tensor {
-                        tensor_id: TensorId::random(),
                         shape,
                         data: TensorData::$variant(view.iter().cloned().collect::<Vec<_>>().into()),
                         meaning: TensorDataMeaning::Unknown,
@@ -645,7 +565,6 @@ macro_rules! tensor_type {
                 value
                     .is_standard_layout()
                     .then(|| Tensor {
-                        tensor_id: TensorId::random(),
                         shape,
                         data: TensorData::$variant(value.into_raw_vec().into()),
                         meaning: TensorDataMeaning::Unknown,
@@ -706,14 +625,12 @@ impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>
             .collect();
         match view.to_slice() {
             Some(slice) => Ok(Tensor {
-                tensor_id: TensorId::random(),
                 shape,
                 data: TensorData::F16(Vec::from(bytemuck::cast_slice(slice)).into()),
                 meaning: TensorDataMeaning::Unknown,
                 meter: None,
             }),
             None => Ok(Tensor {
-                tensor_id: TensorId::random(),
                 shape,
                 data: TensorData::F16(
                     view.iter()
@@ -743,7 +660,6 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
         value
             .is_standard_layout()
             .then(|| Tensor {
-                tensor_id: TensorId::random(),
                 shape,
                 data: TensorData::F16(
                     bytemuck::cast_slice(value.into_raw_vec().as_slice())
@@ -814,14 +730,12 @@ pub enum TensorImageSaveError {
 
 impl Tensor {
     pub fn new(
-        tensor_id: TensorId,
         shape: Vec<TensorDimension>,
         data: TensorData,
         meaning: TensorDataMeaning,
         meter: Option<f32>,
     ) -> Self {
         Self {
-            tensor_id,
             shape,
             data,
             meaning,
@@ -913,7 +827,6 @@ impl Tensor {
         let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode_headers
 
         Ok(Self {
-            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
@@ -1165,7 +1078,6 @@ impl DecodedTensor {
             }
         };
         let tensor = Tensor {
-            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
@@ -1252,7 +1164,6 @@ impl DecodedTensor {
         }
 
         let tensor = Tensor {
-            tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h),
                 TensorDimension::width(w),
@@ -1299,7 +1210,6 @@ re_log_types::component_legacy_shim!(Tensor);
 #[test]
 fn test_ndarray() {
     let t0 = Tensor {
-        tensor_id: TensorId::random(),
         shape: vec![
             TensorDimension {
                 size: 2,
@@ -1328,7 +1238,6 @@ fn test_arrow() {
 
     let tensors_in = vec![
         Tensor {
-            tensor_id: TensorId(std::default::Default::default()),
             shape: vec![TensorDimension {
                 size: 4,
                 name: None,
@@ -1338,7 +1247,6 @@ fn test_arrow() {
             meter: Some(1000.0),
         },
         Tensor {
-            tensor_id: TensorId(std::default::Default::default()),
             shape: vec![TensorDimension {
                 size: 2,
                 name: None,
@@ -1365,7 +1273,6 @@ fn test_tensor_shape_utilities() {
         let data = (0..num_elements).map(|i| i as u32).collect::<Vec<_>>();
 
         Tensor {
-            tensor_id: TensorId(std::default::Default::default()),
             shape,
             data: TensorData::U32(data.into()),
             meaning: TensorDataMeaning::Unknown,

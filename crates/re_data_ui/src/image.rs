@@ -2,6 +2,8 @@ use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
 use re_components::{DecodedTensor, Tensor, TensorDataMeaning, TensorElement};
+use re_data_store::{InstancePathHash, VersionedInstancePathHash};
+use re_log_types::RowId;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::ClassId;
 use re_ui::ReUi;
@@ -27,9 +29,21 @@ impl EntityDataUi for Tensor {
     ) {
         re_tracing::profile_function!();
 
+        let row_id = ctx
+            .store_db
+            .entity_db
+            .data_store
+            .query_latest_component_and_row_id::<re_types::components::TensorData>(
+                entity_path,
+                query,
+            )
+            .map_or(RowId::ZERO, |(row_id, _)| row_id);
+
+        // NOTE: Tensors don't support batches at the moment so always splat.
+        let tensor_path_hash = InstancePathHash::entity_splat(entity_path).versioned(row_id);
         let decoded = ctx
             .cache
-            .entry(|c: &mut TensorDecodeCache| c.entry(self.clone()));
+            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, self.clone()));
         match decoded {
             Ok(decoded) => {
                 let annotations = crate::annotations(ctx, query, entity_path);
@@ -39,6 +53,7 @@ impl EntityDataUi for Tensor {
                     verbosity,
                     entity_path,
                     &annotations,
+                    tensor_path_hash,
                     self,
                     &decoded,
                 );
@@ -50,22 +65,27 @@ impl EntityDataUi for Tensor {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn tensor_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     entity_path: &re_data_store::EntityPath,
     annotations: &Annotations,
+    tensor_path_hash: VersionedInstancePathHash,
     original_tensor: &Tensor,
     tensor: &DecodedTensor,
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
-    let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
+    let tensor_stats = ctx
+        .cache
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
     let debug_name = entity_path.to_string();
     let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
+        tensor_path_hash,
         tensor,
         &tensor_stats,
         annotations,
@@ -141,6 +161,7 @@ fn tensor_ui(
                             ctx.render_ctx,
                             ui,
                             response,
+                            tensor_path_hash,
                             tensor,
                             &tensor_stats,
                             annotations,
@@ -217,7 +238,6 @@ pub fn tensor_summary_ui_grid_contents(
     tensor_stats: &TensorStats,
 ) {
     let Tensor {
-        tensor_id: _,
         shape,
         data: _,
         meaning,
@@ -334,6 +354,7 @@ fn show_zoomed_image_region_tooltip(
     render_ctx: &mut re_renderer::RenderContext,
     parent_ui: &mut egui::Ui,
     response: egui::Response,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
@@ -365,6 +386,7 @@ fn show_zoomed_image_region_tooltip(
                     show_zoomed_image_region(
                         render_ctx,
                         ui,
+                        tensor_path_hash,
                         tensor,
                         tensor_stats,
                         annotations,
@@ -419,6 +441,7 @@ pub fn show_zoomed_image_region_area_outline(
 pub fn show_zoomed_image_region(
     render_ctx: &mut re_renderer::RenderContext,
     ui: &mut egui::Ui,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
@@ -429,6 +452,7 @@ pub fn show_zoomed_image_region(
     if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
         ui,
+        tensor_path_hash,
         tensor,
         tensor_stats,
         annotations,
@@ -445,6 +469,7 @@ pub fn show_zoomed_image_region(
 fn try_show_zoomed_image_region(
     render_ctx: &mut re_renderer::RenderContext,
     ui: &mut egui::Ui,
+    tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
@@ -456,8 +481,14 @@ fn try_show_zoomed_image_region(
         return Ok(());
     };
 
-    let texture =
-        gpu_bridge::tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)?;
+    let texture = gpu_bridge::tensor_to_gpu(
+        render_ctx,
+        debug_name,
+        tensor_path_hash,
+        tensor,
+        tensor_stats,
+        annotations,
+    )?;
 
     const POINTS_PER_TEXEL: f32 = 5.0;
     let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);

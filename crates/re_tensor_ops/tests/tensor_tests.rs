@@ -1,13 +1,10 @@
 #![allow(clippy::unwrap_used)]
 
-use re_components::{
-    Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId,
-};
+use re_components::{Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension};
 
 #[test]
 fn convert_tensor_to_ndarray_u8() {
     let t = Tensor::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -26,7 +23,6 @@ fn convert_tensor_to_ndarray_u8() {
 #[test]
 fn convert_tensor_to_ndarray_u16() {
     let t = Tensor::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -45,7 +41,6 @@ fn convert_tensor_to_ndarray_u16() {
 #[test]
 fn convert_tensor_to_ndarray_f32() {
     let t = Tensor::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -84,7 +79,6 @@ fn convert_ndarray_slice_to_tensor() {
 #[test]
 fn check_slices() {
     let t = Tensor::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -126,7 +120,6 @@ fn check_slices() {
 #[test]
 fn check_tensor_shape_error() {
     let t = Tensor::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),
@@ -150,7 +143,6 @@ fn check_tensor_shape_error() {
 #[test]
 fn check_tensor_type_error() {
     let t = Tensor::new(
-        TensorId::random(),
         vec![
             TensorDimension::unnamed(3),
             TensorDimension::unnamed(4),

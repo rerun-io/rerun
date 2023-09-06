@@ -54,7 +54,6 @@ pub use self::{
     scalar::{Scalar, ScalarPlotProps},
     tensor::{
         DecodedTensor, Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension,
-        TensorId,
     },
     tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
     text_box::TextBox,
