@@ -1,16 +1,21 @@
 """Log a batch of oriented bounding boxes."""
 import rerun as rr
+import rerun.experimental as rr2
+from rerun.experimental import dt as rrd
 from scipy.spatial.transform import Rotation
 
 rr.init("rerun_example_box3d", spawn=True)
 
-rr.log_annotation_context(
+rr2.log(
     "/",
-    [
-        rr.ClassDescription(info=rr.AnnotationInfo(1, "red", (255, 0, 0))),
-        rr.ClassDescription(info=rr.AnnotationInfo(2, "green", (0, 255, 0))),
-    ],
+    rr2.AnnotationContext(
+        [
+            rrd.ClassDescription(info=(1, "red", (255, 0, 0))),
+            rrd.ClassDescription(info=(2, "green", (0, 255, 0))),
+        ]
+    ),
 )
+
 rr.log_obbs(
     "batch",
     half_sizes=[[2.0, 2.0, 1.0], [1.0, 1.0, 0.5]],

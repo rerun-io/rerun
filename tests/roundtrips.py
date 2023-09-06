@@ -20,6 +20,7 @@ from os.path import isfile, join
 
 ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
+# TODO(#3207): implement missing cpp roundtrips
 opt_out = {
     "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
     "points2d": ["cpp"],  # TODO(#2786): Needs rect

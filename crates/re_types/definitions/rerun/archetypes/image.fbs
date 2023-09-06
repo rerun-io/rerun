@@ -19,7 +19,7 @@ namespace rerun.archetypes;
 /// \py -------
 /// \py
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/image_simple_v2.py
+/// \py \include:../../../../../docs/code-examples/image_simple.py
 /// \py ```
 ///
 /// \rs ## Example

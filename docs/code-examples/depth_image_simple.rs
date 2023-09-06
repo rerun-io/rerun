@@ -15,6 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::Depth;
+    tensor.meter = Some(10000.);
 
     // TODO(#2792): Image archetype
     rec.log_component_lists("depth", false, 1, [&tensor as _])?;

@@ -177,6 +177,10 @@ def spawn(
 
     # Let the spawned rerun process know it's just an app
     new_env = os.environ.copy()
+    # NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
+    # what, thus spawning a viewer is pointless (and probably not intended).
+    if os.environ.get("_RERUN_TEST_FORCE_SAVE") is not None:
+        return
     new_env["RERUN_APP_ONLY"] = "true"
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter

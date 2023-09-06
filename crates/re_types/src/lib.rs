@@ -136,6 +136,7 @@ pub use self::arrow_string::ArrowString;
 
 pub mod external {
     pub use arrow2;
+    pub use uuid;
 }
 
 // TODO(jleibs): Should all of this go into `tensor_data_ext`? Don't have a good way to export

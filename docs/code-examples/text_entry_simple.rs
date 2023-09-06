@@ -10,13 +10,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "logs",
         false,
         1,
-        [&TextEntry::new("this entry as loglevel TRACE", Some("TRACE".into())) as _],
+        [&TextEntry::new("this entry has loglevel TRACE", Some("TRACE".into())) as _],
     )?;
     rec.log_component_lists(
         "logs",
         false,
         1,
-        [&TextEntry::new("this other entry as loglevel INFO", Some("INFO".into())) as _],
+        [&TextEntry::new("this other entry has loglevel INFO", Some("INFO".into())) as _],
     )?;
 
     rerun::native_viewer::show(storage.take())?;

@@ -822,7 +822,7 @@ fn log_meshes(
         || position_buffers.len() != albedo_factors.len()
     {
         return Err(PyTypeError::new_err(format!(
-            "Top-level position/index/normal/albedo buffer arrays must be same the length, \
+            "Top-level position/index/normal/albedo/id buffer arrays must be same the length, \
                 got positions={}, vertex_colors={}, indices={}, normals={}, albedo={} instead",
             position_buffers.len(),
             vertex_color_buffers.len(),

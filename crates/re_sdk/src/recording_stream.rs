@@ -20,6 +20,25 @@ use crate::sink::{LogSink, MemorySinkStorage};
 
 // ---
 
+/// Private environment variable meant for tests.
+///
+/// When set, all recording streams will write to disk at the path indicated by the env-var rather
+/// than doing what they were asked to do (`connect()`, `buffered()`, even `save()`..!).
+const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
+
+/// If private environment variable `_RERUN_TEST_FORCE_SAVE` is set, this will return a `FileSink`
+/// pointing at the path that the env-var is set to.
+///
+/// Useful to save the result of any Rerun snippet to an rrd file, whether it supports it or not.
+fn forced_sink() -> RecordingStreamResult<Option<Box<dyn LogSink>>> {
+    Ok(if let Ok(path) = std::env::var(ENV_FORCE_SAVE) {
+        re_log::warn!(?path, "forcing FileSink");
+        Some(Box::new(crate::sink::FileSink::new(path)?) as Box<dyn LogSink>)
+    } else {
+        None
+    })
+}
+
 /// Errors that can occur when creating/manipulating a [`RecordingStream`].
 #[derive(thiserror::Error, Debug)]
 pub enum RecordingStreamError {
@@ -184,7 +203,11 @@ impl RecordingStreamBuilder {
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::log_sink::BufferedSink::new()),
+                if let Some(sink) = forced_sink()? {
+                    sink
+                } else {
+                    Box::new(crate::log_sink::BufferedSink::new())
+                },
             )
         } else {
             re_log::debug!("Rerun disabled - call to buffered() ignored");
@@ -216,7 +239,18 @@ impl RecordingStreamBuilder {
 
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            RecordingStream::new(store_info, batcher_config, Box::new(sink)).map(|rec| {
+            RecordingStream::new(
+                store_info,
+                batcher_config,
+                // NOTE: We still have to return a `MemorySinkStorage` that will never get written
+                // to.. beware!
+                if let Some(sink) = forced_sink()? {
+                    sink
+                } else {
+                    Box::new(sink)
+                },
+            )
+            .map(|rec| {
                 storage.rec = Some(rec.clone());
                 (rec, storage)
             })
@@ -250,7 +284,11 @@ impl RecordingStreamBuilder {
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)),
+                if let Some(sink) = forced_sink()? {
+                    sink
+                } else {
+                    Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout))
+                },
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -278,7 +316,11 @@ impl RecordingStreamBuilder {
             RecordingStream::new(
                 store_info,
                 batcher_config,
-                Box::new(crate::sink::FileSink::new(path)?),
+                if let Some(sink) = forced_sink()? {
+                    sink
+                } else {
+                    Box::new(crate::sink::FileSink::new(path)?)
+                },
             )
         } else {
             re_log::debug!("Rerun disabled - call to save() ignored");
@@ -324,8 +366,12 @@ impl RecordingStreamBuilder {
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)
-                .map_err(RecordingStreamError::WebSink)?;
+            let sink = if let Some(sink) = forced_sink()? {
+                sink
+            } else {
+                crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)
+                    .map_err(RecordingStreamError::WebSink)?
+            };
             RecordingStream::new(store_info, batcher_config, sink)
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");
@@ -536,6 +582,7 @@ impl RecordingStream {
         batcher_config: DataTableBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
+        let sink = forced_sink()?.unwrap_or(sink);
         RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
             inner: Arc::new(Some(inner)),
         })
@@ -1097,7 +1144,12 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self, addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) {
-        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)));
+        // NOTE: `forced_sink` is only used for tests, it's ok to unwrap.
+        self.set_sink(if let Some(sink) = forced_sink().unwrap() {
+            sink
+        } else {
+            Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout))
+        });
     }
 
     /// Swaps the underlying sink for a [`crate::sink::MemorySink`] sink and returns the associated
@@ -1109,7 +1161,14 @@ impl RecordingStream {
     pub fn memory(&self) -> MemorySinkStorage {
         let sink = crate::sink::MemorySink::default();
         let buffer = sink.buffer();
-        self.set_sink(Box::new(sink));
+
+        // NOTE: `forced_sink` is only used for tests, it's ok to unwrap.
+        self.set_sink(if let Some(sink) = forced_sink().unwrap() {
+            sink
+        } else {
+            Box::new(sink)
+        });
+
         buffer
     }
 
@@ -1123,7 +1182,14 @@ impl RecordingStream {
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
         let sink = crate::sink::FileSink::new(path)?;
-        self.set_sink(Box::new(sink));
+
+        // NOTE: `forced_sink` is only used for tests, it's ok to unwrap.
+        self.set_sink(if let Some(sink) = forced_sink().unwrap() {
+            sink
+        } else {
+            Box::new(sink)
+        });
+
         Ok(())
     }
 

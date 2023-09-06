@@ -27,7 +27,7 @@ class LineStrips3D(Archetype):
     rr.init("rerun_example_line_strip3d", spawn=True)
 
     rr2.log(
-       "batch",
+       "strips",
        rr2.LineStrips3D(
            [
                [

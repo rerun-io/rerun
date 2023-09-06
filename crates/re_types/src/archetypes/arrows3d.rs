@@ -34,9 +34,9 @@
 ///        .map(|i| {
 ///            let angle = TAU * i as f32 * 0.01;
 ///            let length = ((i + 1) as f32).log2();
-///            let c = (angle / TAU * 255.0) as u8;
+///            let c = (angle / TAU * 255.0).round() as u8;
 ///            (
-///                Vector3D::from([length * angle.sin(), 0.0, length * angle.cos()]),
+///                Vector3D::from([(length * angle.sin()), 0.0, (length * angle.cos())]),
 ///                Color::from_unmultiplied_rgba(255 - c, c, 128, 128),
 ///            )
 ///        })

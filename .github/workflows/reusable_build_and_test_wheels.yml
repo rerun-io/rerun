@@ -258,8 +258,9 @@ jobs:
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache... even though this is the target anyhow...
         # --no-py-build because rerun-sdk is already built and installed
-        # NOTE: run with --release so we can reuse some of the "Build Wheel"'s job artifacts, hopefully
-        run: RUST_LOG=debug scripts/ci/run_e2e_roundtrip_tests.py --release --target x86_64-unknown-linux-gnu --no-py-build
+        run: |
+          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Cache RRD dataset
         if: needs.set-config.outputs.RUN_TESTS == 'true'

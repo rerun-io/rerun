@@ -4,7 +4,7 @@ use ndarray::{s, Array, ShapeBuilder};
 use rerun::{archetypes::Image, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_image_simple").memory()?;
 
     let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
     image.slice_mut(s![.., .., 0]).fill(255);

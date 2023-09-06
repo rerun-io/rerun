@@ -20,6 +20,8 @@ class Transform3D(Archetype):
     Example
     -------
     ```python
+    from math import pi
+
     import rerun as rr
     import rerun.experimental as rr2
     from rerun.experimental import dt as rrd
@@ -38,7 +40,7 @@ class Transform3D(Archetype):
     rr2.log(
        "base/rotated_scaled",
        rrd.TranslationRotationScale3D(
-           rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], angle=rrd.Angle(rad=3.14 / 4)),
+           rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], angle=rrd.Angle(rad=pi / 4)),
            scale=2,
        ),
     )
