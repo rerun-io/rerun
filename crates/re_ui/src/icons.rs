@@ -109,7 +109,7 @@ pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons
 
 pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
     "welcome_screen_configure",
-    include_bytes!("../data/images/onboarding-configure.jpg"),
+    include_bytes!("../data/images/onboarding-configure.png"),
 );
 
 pub const WELCOME_SCREEN_LIVE_DATA: Icon = Icon::new(
