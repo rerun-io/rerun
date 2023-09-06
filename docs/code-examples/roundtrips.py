@@ -19,6 +19,7 @@ opt_out_entirely = {
     "annotation_context_connections": ["cpp"],
     "annotation_context_rects": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
+    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "box3d_batch": ["cpp", "rust"],
     "box3d_simple": ["cpp"],
     "depth_image_3d": ["cpp"],

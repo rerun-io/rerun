@@ -7,8 +7,8 @@ import rerun.experimental as rr2
 
 rr.init("rerun_example_arrow3d", spawn=True)
 
-lengths = np.round(np.log2(np.arange(0, 100) + 1), 2)
-angles = np.round(np.arange(start=0, stop=tau, step=tau * 0.01), 2)
+lengths = np.log2(np.arange(0, 100) + 1)
+angles = np.arange(start=0, stop=tau, step=tau * 0.01)
 vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angles) * lengths])
 colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
