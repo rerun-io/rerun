@@ -117,7 +117,6 @@ pub fn data_cell_from_mesh_file_contents(
     format: crate::MeshFormat,
 ) -> Result<DataCell, FromFileError> {
     let mesh = crate::EncodedMesh3D {
-        mesh_id: crate::MeshId::random(),
         format,
         bytes: bytes.into(),
         transform: [

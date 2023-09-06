@@ -47,7 +47,7 @@ pub use self::{
     bbox::Box3D,
     coordinates::ViewCoordinates,
     mat::LegacyMat3x3,
-    mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D},
+    mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D},
     pinhole::Pinhole,
     quaternion::Quaternion,
     rect::Rect2D,

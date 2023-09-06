@@ -29,10 +29,10 @@ use rerun::{
 pub use rerun::{
     components::{
         AnnotationContext, Box3D, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
-        InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, MeshId,
-        Origin3D, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar,
-        ScalarPlotProps, Tensor, TensorData, TensorDimension, TensorId, TextEntry, Transform3D,
-        Vector3D, ViewCoordinates,
+        InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D,
+        Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps,
+        Tensor, TensorData, TensorDimension, TensorId, TextEntry, Transform3D, Vector3D,
+        ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},
@@ -883,7 +883,6 @@ fn log_meshes(
         };
 
         let raw = RawMesh3D {
-            mesh_id: MeshId::random(),
             vertex_positions: vertex_positions.as_array().to_vec().into(),
             vertex_colors,
             indices: indices.map(|indices| indices.as_array().to_vec().into()),
@@ -981,7 +980,6 @@ fn log_mesh_file(
     };
 
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
-        mesh_id: MeshId::random(),
         format,
         bytes: mesh_bytes.into(),
         transform,

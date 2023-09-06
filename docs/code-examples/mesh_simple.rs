@@ -1,7 +1,7 @@
 //! Log a simple colored triangle.
 
 use rerun::{
-    components::{Mesh3D, MeshId, RawMesh3D},
+    components::{Mesh3D, RawMesh3D},
     RecordingStreamBuilder,
 };
 
@@ -9,7 +9,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_mesh").memory()?;
 
     let mesh = RawMesh3D {
-        mesh_id: MeshId::random(),
         vertex_positions: [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
             .into_iter()
             .flatten()

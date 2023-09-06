@@ -60,7 +60,6 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
         let EncodedMesh3D {
-            mesh_id: _,
             format,
             bytes,
             transform,
@@ -93,7 +92,6 @@ impl LoadedMesh {
         // Rust. Need to clean all of that up later.
 
         let RawMesh3D {
-            mesh_id: _,
             vertex_positions,
             vertex_colors,
             vertex_normals,

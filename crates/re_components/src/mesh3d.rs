@@ -1,4 +1,3 @@
-use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
 use arrow2::buffer::Buffer;
 use arrow2::datatypes::DataType;
 use arrow2_convert::arrow_enable_vec_for_type;
@@ -7,71 +6,6 @@ use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use super::{FieldError, LegacyVec4D};
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`Mesh3D`].
-///
-/// TODO(emilk): this should be a hash of the mesh (CAS).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MeshId(pub uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for MeshId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derived_hash_with_manual_eq)]
-impl std::hash::Hash for MeshId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
-impl MeshId {
-    #[inline]
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
-impl ArrowField for MeshId {
-    type Type = Self;
-
-    #[inline]
-    fn data_type() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::FixedSizeBinary(16)
-    }
-}
-
-impl ArrowSerialize for MeshId {
-    type MutableArrayType = MutableFixedSizeBinaryArray;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        MutableFixedSizeBinaryArray::new(16)
-    }
-
-    #[inline]
-    fn arrow_serialize(
-        v: &<Self as arrow2_convert::field::ArrowField>::Type,
-        array: &mut Self::MutableArrayType,
-    ) -> arrow2::error::Result<()> {
-        array.try_push(Some(v.0.as_bytes()))
-    }
-}
-
-impl ArrowDeserialize for MeshId {
-    type ArrayType = FixedSizeBinaryArray;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        v.and_then(|bytes| uuid::Uuid::from_slice(bytes).ok())
-            .map(Self)
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -113,7 +47,6 @@ pub enum RawMeshError {
 /// assert_eq!(
 ///     RawMesh3D::data_type(),
 ///     DataType::Struct(vec![
-///         Field::new("mesh_id", DataType::FixedSizeBinary(16), false),
 ///         Field::new("vertex_positions", DataType::List(Box::new(
 ///             Field::new("item", DataType::Float32, false)),
 ///         ), false),
@@ -135,8 +68,6 @@ pub enum RawMeshError {
 /// ```
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, PartialEq)]
 pub struct RawMesh3D {
-    pub mesh_id: MeshId,
-
     /// The flattened vertex positions array of this mesh.
     ///
     /// The length of this vector should always be divisible by three (since this is a 3D mesh).
@@ -239,7 +170,6 @@ impl RawMesh3D {
 /// assert_eq!(
 ///     EncodedMesh3D::data_type(),
 ///     DataType::Struct(vec![
-///         Field::new("mesh_id", DataType::FixedSizeBinary(16), false),
 ///         Field::new("format", DataType::Union(vec![
 ///             Field::new("Gltf", DataType::Boolean, false),
 ///             Field::new("Glb", DataType::Boolean, false),
@@ -255,8 +185,6 @@ impl RawMesh3D {
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct EncodedMesh3D {
-    pub mesh_id: MeshId,
-
     pub format: MeshFormat,
 
     pub bytes: Buffer<u8>,
@@ -268,8 +196,6 @@ pub struct EncodedMesh3D {
 /// Helper struct for converting `EncodedMesh3D` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct EncodedMesh3DArrow {
-    pub mesh_id: MeshId,
-
     pub format: MeshFormat,
 
     pub bytes: Buffer<u8>,
@@ -281,13 +207,11 @@ pub struct EncodedMesh3DArrow {
 impl From<&EncodedMesh3D> for EncodedMesh3DArrow {
     fn from(v: &EncodedMesh3D) -> Self {
         let EncodedMesh3D {
-            mesh_id,
             format,
             bytes,
             transform,
         } = v;
         Self {
-            mesh_id: *mesh_id,
             format: *format,
             bytes: bytes.clone(),
             transform: transform.iter().flat_map(|c| c.iter().cloned()).collect(),
@@ -300,14 +224,12 @@ impl TryFrom<EncodedMesh3DArrow> for EncodedMesh3D {
 
     fn try_from(v: EncodedMesh3DArrow) -> super::Result<Self> {
         let EncodedMesh3DArrow {
-            mesh_id,
             format,
             bytes,
             transform,
         } = v;
 
         Ok(Self {
-            mesh_id,
             format,
             bytes,
             transform: [
@@ -414,23 +336,12 @@ impl re_log_types::LegacyComponent for Mesh3D {
     }
 }
 
-impl Mesh3D {
-    #[inline]
-    pub fn mesh_id(&self) -> MeshId {
-        match self {
-            Mesh3D::Encoded(mesh) => mesh.mesh_id,
-            Mesh3D::Raw(mesh) => mesh.mesh_id,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn example_raw_mesh() -> RawMesh3D {
         let mesh = RawMesh3D {
-            mesh_id: MeshId::random(),
             vertex_positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0].into(),
             vertex_colors: Some(vec![0xff0000ff, 0x00ff00ff, 0x0000ffff].into()),
             indices: Some(vec![0, 1, 2].into()),
@@ -451,7 +362,6 @@ mod tests {
         // Encoded
         {
             let mesh_in = vec![Mesh3D::Encoded(EncodedMesh3D {
-                mesh_id: MeshId::random(),
                 format: MeshFormat::Glb,
                 bytes: vec![5, 9, 13, 95, 38, 42, 98, 17].into(),
                 transform: [
