@@ -15,13 +15,13 @@ namespace rerun.archetypes;
 /// \py -------
 /// \py
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/image_simple_v2.py
+/// \py \include:../../../../../docs/code-examples/depth_image_simple.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/image_simple.rs
+/// \rs \include:../../../../../docs/code-examples/depth_image_simple.rs
 /// \rs ```
 table DepthImage (
   "attr.rust.derive": "PartialEq",

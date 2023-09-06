@@ -1,10 +1,7 @@
 //! Create and log a depth image.
 
 use ndarray::{s, Array, ShapeBuilder};
-use rerun::{
-    components::{Tensor, TensorDataMeaning},
-    RecordingStreamBuilder,
-};
+use rerun::{archetypes::DepthImage, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
@@ -13,11 +10,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.slice_mut(s![50..150, 50..150]).fill(20000);
     image.slice_mut(s![130..180, 100..280]).fill(45000);
 
-    let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
-    tensor.meaning = TensorDataMeaning::Depth;
+    let depth_image = DepthImage::try_from(image)?;
 
-    // TODO(#2792): Image archetype
-    rec.log_component_lists("depth", false, 1, [&tensor as _])?;
+    rec.log("depth", &depth_image)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

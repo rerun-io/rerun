@@ -20,20 +20,21 @@
 /// ## Example
 ///
 /// ```ignore
-/// //! Create and log an image
+/// //! Create and log a depth image.
 ///
 /// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::{archetypes::Image, RecordingStreamBuilder};
+/// use rerun::{archetypes::DepthImage, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
 ///
-///    let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
-///    image.slice_mut(s![.., .., 0]).fill(255);
-///    image.slice_mut(s![50..150, 50..150, 0]).fill(0);
-///    image.slice_mut(s![50..150, 50..150, 1]).fill(255);
+///    let mut image = Array::<u16, _>::from_elem((200, 300).f(), 65535);
+///    image.slice_mut(s![50..150, 50..150]).fill(20000);
+///    image.slice_mut(s![130..180, 100..280]).fill(45000);
 ///
-///    rec.log("image", &Image::try_from(image)?)?;
+///    let depth_image = DepthImage::try_from(image)?;
+///
+///    rec.log("depth", &depth_image)?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
 ///    Ok(())

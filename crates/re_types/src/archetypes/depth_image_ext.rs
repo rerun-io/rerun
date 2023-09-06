@@ -6,12 +6,12 @@ use crate::{
 use super::DepthImage;
 
 impl DepthImage {
-    /// Try to construct an [`Image`] from anything that can be converted into [`TensorData`]
+    /// Try to construct a [`DepthImage`] from anything that can be converted into [`TensorData`]
     ///
     /// Will return an [`ImageConstructionError`] if the shape of the tensor data is invalid
     /// for treating as an image.
     ///
-    /// This is useful for constructing an [`Image`] from an ndarray.
+    /// This is useful for constructing an [`DepthImage`] from an ndarray.
     pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, ImageConstructionError<T>> {
         let mut data: TensorData = data
             .try_into()

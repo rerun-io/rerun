@@ -1,7 +1,8 @@
 //! Create and log a depth image.
 use ndarray::{s, Array, ShapeBuilder};
 use rerun::{
-    components::{Pinhole, Tensor, TensorDataMeaning},
+    archetypes::DepthImage,
+    components::Pinhole,
     datatypes::{Mat3x3, Vec2D},
     RecordingStreamBuilder,
 };
@@ -13,9 +14,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut image = Array::<u16, _>::from_elem((200, 300).f(), 65535);
     image.slice_mut(s![50..150, 50..150]).fill(20000);
     image.slice_mut(s![130..180, 100..280]).fill(45000);
-    let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
-    tensor.meaning = TensorDataMeaning::Depth;
-    tensor.meter = Some(10000.);
+
+    let mut depth_image =
+        DepthImage::try_from(image.as_standard_layout().view())?.with_meter(10000);
 
     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
     // TODO(#2816): Pinhole archetype
@@ -37,8 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } as _],
     )?;
 
-    // TODO(#2792): Image archetype
-    rec.log_component_lists("world/camera/depth", false, 1, [&tensor as _])?;
+    rec.log("world/camera/depth", &depth_image);
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())
