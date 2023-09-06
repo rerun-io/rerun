@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .annotation_context import AnnotationContext
 from .arrows3d import Arrows3D
+from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
 from .fuzzy import AffixFuzzer1
 from .image import Image
@@ -18,6 +19,7 @@ __all__ = [
     "AffixFuzzer1",
     "AnnotationContext",
     "Arrows3D",
+    "DepthImage",
     "DisconnectedSpace",
     "Image",
     "LineStrips2D",

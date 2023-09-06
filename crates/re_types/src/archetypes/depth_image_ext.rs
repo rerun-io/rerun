@@ -3,9 +3,9 @@ use crate::{
     image::{find_non_empty_dim_indices, ImageConstructionError},
 };
 
-use super::Image;
+use super::DepthImage;
 
-impl Image {
+impl DepthImage {
     /// Try to construct an [`Image`] from anything that can be converted into [`TensorData`]
     ///
     /// Will return an [`ImageConstructionError`] if the shape of the tensor data is invalid
@@ -24,20 +24,13 @@ impl Image {
                 data.shape[non_empty_dim_inds[0]].name = Some("height".into());
                 data.shape[non_empty_dim_inds[1]].name = Some("width".into());
             }
-            3 => match data.shape[non_empty_dim_inds[2]].size {
-                3 | 4 => {
-                    data.shape[non_empty_dim_inds[0]].name = Some("height".into());
-                    data.shape[non_empty_dim_inds[1]].name = Some("width".into());
-                    data.shape[non_empty_dim_inds[2]].name = Some("depth".into());
-                }
-                _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
-            },
             _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
         };
 
         Ok(Self {
             data: data.into(),
             draw_order: None,
+            meter: None,
         })
     }
 }
@@ -58,19 +51,19 @@ macro_rules! forward_array_views {
     };
 }
 
-forward_array_views!(u8, Image);
-forward_array_views!(u16, Image);
-forward_array_views!(u32, Image);
-forward_array_views!(u64, Image);
+forward_array_views!(u8, DepthImage);
+forward_array_views!(u16, DepthImage);
+forward_array_views!(u32, DepthImage);
+forward_array_views!(u64, DepthImage);
 
-forward_array_views!(i8, Image);
-forward_array_views!(i16, Image);
-forward_array_views!(i32, Image);
-forward_array_views!(i64, Image);
+forward_array_views!(i8, DepthImage);
+forward_array_views!(i16, DepthImage);
+forward_array_views!(i32, DepthImage);
+forward_array_views!(i64, DepthImage);
 
 // TODO(jleibs): F16 Support
 //forward_array_views!(half::f16, Image);
-forward_array_views!(f32, Image);
-forward_array_views!(f64, Image);
+forward_array_views!(f32, DepthImage);
+forward_array_views!(f64, DepthImage);
 
 // ----------------------------------------------------------------------------

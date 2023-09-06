@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 src/archetypes/annotation_context.rs linguist-generated=true
 src/archetypes/arrows3d.rs linguist-generated=true
+src/archetypes/depth_image.rs linguist-generated=true
 src/archetypes/disconnected_space.rs linguist-generated=true
 src/archetypes/image.rs linguist-generated=true
 src/archetypes/line_strips2d.rs linguist-generated=true
@@ -15,6 +16,7 @@ src/archetypes/transform3d.rs linguist-generated=true
 src/components/annotation_context.rs linguist-generated=true
 src/components/class_id.rs linguist-generated=true
 src/components/color.rs linguist-generated=true
+src/components/depth_meter.rs linguist-generated=true
 src/components/disconnected_space.rs linguist-generated=true
 src/components/draw_order.rs linguist-generated=true
 src/components/instance_key.rs linguist-generated=true

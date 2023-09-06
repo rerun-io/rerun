@@ -12,6 +12,7 @@ from rerun.log.experimental.text import log_text_box
 __all__ = [
     "AnnotationContext",
     "Arrows3D",
+    "DepthImage",
     "DisconnectedSpace",
     "Image",
     "LineStrips2D",
@@ -39,6 +40,7 @@ from ._rerun2 import datatypes as dt
 from ._rerun2.archetypes import (
     AnnotationContext,
     Arrows3D,
+    DepthImage,
     DisconnectedSpace,
     Image,
     LineStrips2D,

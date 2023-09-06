@@ -11,6 +11,7 @@ from .annotation_context import (
 )
 from .class_id import ClassIdArray, ClassIdType
 from .color import ColorArray, ColorType
+from .depth_meter import DepthMeter, DepthMeterArray, DepthMeterArrayLike, DepthMeterLike, DepthMeterType
 from .disconnected_space import (
     DisconnectedSpace,
     DisconnectedSpaceArray,
@@ -184,6 +185,11 @@ __all__ = [
     "ClassIdType",
     "ColorArray",
     "ColorType",
+    "DepthMeter",
+    "DepthMeterArray",
+    "DepthMeterArrayLike",
+    "DepthMeterLike",
+    "DepthMeterType",
     "DisconnectedSpace",
     "DisconnectedSpaceArray",
     "DisconnectedSpaceArrayLike",
