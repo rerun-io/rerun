@@ -157,7 +157,7 @@ struct Inner {
     /// For dependency reasons, the versioned path has to be provided pre-hashed as a u64 by the user.
     ///
     /// Any texture which wasn't accessed on the previous frame is ejected from the cache
-    /// during [`begin_frame`].
+    /// during [`Self::begin_frame`].
     texture_cache: HashMap<u64, GpuTexture2D>,
 
     accessed_textures: HashSet<u64>,
