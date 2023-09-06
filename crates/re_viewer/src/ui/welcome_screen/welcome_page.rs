@@ -79,8 +79,9 @@ fn onboarding_content_ui(
         },
         WelcomePagePanel {
             title: "Load recorded data",
-            body: "Open and visualize recorded data from previous Rerun sessions (.rrd) as well \
-                as data in formats like .gltf and .jpg.",
+            body:
+                "Open and visualize recorded data from previous Rerun sessions (.rrd) as well as \
+                data in other formats like .gltf and .jpg. Files can be local or remote.",
             image: &re_ui::icons::WELCOME_SCREEN_RECORDED_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
                 if large_text_button(ui, "Open file…").clicked() {
@@ -91,8 +92,8 @@ fn onboarding_content_ui(
             }),
         },
         WelcomePagePanel {
-            title: "Configure your views",
-            body: "Add and rearrange views, and configure what data is shown and how. Configure \
+            title: "Build your views",
+            body: "Add and rearrange views. Configure what data is shown and how. Design \
                 interactively in the viewer or (coming soon) directly from code in the SDK.",
             image: &re_ui::icons::WELCOME_SCREEN_CONFIGURE,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
@@ -103,14 +104,16 @@ fn onboarding_content_ui(
         },
         WelcomePagePanel {
             title: "Start with an example",
-            body: "Our community examples contain interesting projects with real data, artificial \
-                data, and examples from the latest papers.",
+            body: "Load pre-built examples to explore what you can build with Rerun. Each example \
+                comes with easy to run code so you can see how it's done.",
             image: &re_ui::icons::WELCOME_SCREEN_EXAMPLES,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
                 large_text_button(ui, "View Examples").clicked()
             }),
         },
     ];
+
+    let panel_count = panels.len();
 
     const MAX_COLUMN_WIDTH: f32 = 255.0;
     const MIN_COLUMN_WIDTH: f32 = 164.0;
@@ -169,7 +172,7 @@ fn onboarding_content_ui(
                 let mut show_example = false;
 
                 for panels in panels.chunks(column_count) {
-                    if column_count == panels.len() {
+                    if column_count == panel_count {
                         for panel in panels {
                             image_banner(re_ui, ui, panel.image, column_width);
                         }

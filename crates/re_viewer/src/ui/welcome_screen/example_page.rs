@@ -145,7 +145,7 @@ impl ExamplePage {
                         ));
 
                         ui.add(egui::Label::new(
-                            egui::RichText::new("Learn from the community.")
+                            egui::RichText::new("Explore what you can build.")
                                 .line_height(Some(32.0))
                                 .text_style(re_ui::ReUi::welcome_screen_h1()),
                         ));
