@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Logs a `DepthImage` archetype for roundtrip checks."""
+"""Logs a `SegmentationImage` archetype for roundtrip checks."""
 
 from __future__ import annotations
 
@@ -16,14 +16,14 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_roundtrip_depth_image")
+    rr.script_setup(args, "rerun_example_roundtrip_segmentation_image")
 
     # 3x2 image. Each pixel is i*j
     image = np.zeros((2, 3), dtype=np.uint8)
     image[0, :] = [0, 1, 2]
     image[1, :] = [3, 4, 5]
 
-    rr2.log("depth_image", rr2.DepthImage(data=image, meter=1000))
+    rr2.log("segmentation_image", rr2.SegmentationImage(data=image))
 
     rr.script_teardown(args)
 

@@ -1,7 +1,7 @@
-//! Logs a `DepthImage` archetype for roundtrip checks.
+//! Logs a `SegmentationImage` archetype for roundtrip checks.
 
 use image::GrayImage;
-use rerun::{archetypes::DepthImage, external::re_log, RecordingStream};
+use rerun::{archetypes::SegmentationImage, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -20,10 +20,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         }
     }
 
-    rec.log(
-        "depth_image",
-        &DepthImage::try_from(img)?.with_meter(1000.0),
-    )?;
+    rec.log("segmentation_image", &SegmentationImage::try_from(img)?)?;
 
     Ok(())
 }
@@ -36,7 +33,7 @@ fn main() -> anyhow::Result<()> {
 
     let default_enabled = true;
     args.rerun.clone().run(
-        "rerun_example_roundtrip_depth_image",
+        "rerun_example_roundtrip_segmentation_image",
         default_enabled,
         move |rec| {
             run(&rec, &args).unwrap();

@@ -21,11 +21,12 @@ from os.path import isfile, join
 ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
 opt_out = {
-    "depth_image": ["cpp"],
+    "depth_image": ["cpp"],  # TODO(#2792)
     "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
     "points2d": ["cpp"],  # TODO(#2786): Needs rect
-    "image": ["cpp"],
-    "tensor": ["cpp"],
+    "image": ["cpp"],  # TODO(#2792)
+    "segmentation_image": ["cpp"],  # TODO(#2792)
+    "tensor": ["cpp"],  # TODO(#2792)
 }
 
 
