@@ -2,8 +2,7 @@
 
 use ndarray::{s, Array, ShapeBuilder};
 use rerun::{
-    archetypes::AnnotationContext,
-    components::{Tensor, TensorDataMeaning},
+    archetypes::{AnnotationContext, SegmentationImage},
     datatypes::Color,
     RecordingStreamBuilder,
 };
@@ -17,10 +16,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.slice_mut(s![50..150, 50..120]).fill(1);
     image.slice_mut(s![100..180, 130..280]).fill(2);
 
-    // TODO(#2792): SegmentationImage archetype
-    let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
-    tensor.meaning = TensorDataMeaning::ClassId;
-
     // create an annotation context to describe the classes
     let annotation = AnnotationContext::new([
         (1, "red", Color::from(0xFF0000FF)),
@@ -30,8 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // log the annotation and the image
     rec.log("/", &annotation)?;
 
-    // TODO(#2792): SegmentationImage archetype
-    rec.log_component_lists("image", false, 1, [&tensor as _])?;
+    rec.log("image", &SegmentationImage::try_from(image)?)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

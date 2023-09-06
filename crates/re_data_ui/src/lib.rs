@@ -13,6 +13,7 @@ mod component_ui_registry;
 mod data;
 mod entity_path;
 mod image;
+mod image_meaning;
 mod instance_path;
 mod item;
 pub mod item_ui;
@@ -25,6 +26,7 @@ pub use crate::image::{
     tensor_summary_ui_grid_contents,
 };
 pub use component_ui_registry::create_component_ui_registry;
+pub use image_meaning::image_meaning_for_entity;
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {

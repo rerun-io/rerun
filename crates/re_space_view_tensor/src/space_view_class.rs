@@ -804,8 +804,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut PerTensorState, tensor: &TensorDa
                 let name = dim
                     .name
                     .clone()
-                    .map(|name| name.to_string())
-                    .unwrap_or_else(|| selector.dim_idx.to_string());
+                    .map_or_else(|| selector.dim_idx.to_string(), |name| name.to_string());
 
                 let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
                 ui.label(&name).on_hover_text(&slider_tooltip);

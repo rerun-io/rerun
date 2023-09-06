@@ -2,11 +2,9 @@ use egui::NumExt as _;
 
 use re_components::Pinhole;
 use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
-use re_types::{
-    archetypes::DepthImage, components::Transform3D, tensor_data::TensorDataMeaning, Archetype,
-};
+use re_types::{components::Transform3D, tensor_data::TensorDataMeaning};
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use re_viewport::{Viewport, ViewportBlueprint};
 
@@ -483,16 +481,7 @@ fn depth_props_ui(
     let query = ctx.current_query();
     let store = &ctx.store_db.entity_db.data_store;
 
-    // TODO(jleibs): Pull this out as a helper function on the store?
-    let entity_components = store
-        .all_components(&ctx.current_query().timeline, entity_path)
-        .unwrap_or_default();
-
-    let meaning = if entity_components.contains(&DepthImage::indicator_component()) {
-        TensorDataMeaning::Depth
-    } else {
-        TensorDataMeaning::Unknown
-    };
+    let meaning = image_meaning_for_entity(entity_path, ctx);
 
     if meaning != TensorDataMeaning::Depth {
         return Some(());

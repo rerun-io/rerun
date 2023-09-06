@@ -3,15 +3,13 @@ use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_store::EntityPath;
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::archetypes::DepthImage;
 use re_types::components::{DepthMeter, InstanceKey, TensorData};
 use re_types::tensor_data::TensorDataMeaning;
-use re_types::Archetype;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
     SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
@@ -543,15 +541,7 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords =
             if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                let meaning = if ctx.store_db.store().entity_has_component(
-                    &ctx.current_query().timeline,
-                    &instance_path.entity_path,
-                    &DepthImage::indicator_component(),
-                ) {
-                    TensorDataMeaning::Depth
-                } else {
-                    TensorDataMeaning::Unknown
-                };
+                let meaning = image_meaning_for_entity(&instance_path.entity_path, ctx);
 
                 ctx.store_db
                     .store()

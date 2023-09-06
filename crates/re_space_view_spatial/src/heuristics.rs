@@ -4,12 +4,11 @@ use egui::NumExt as _;
 
 use re_components::Pinhole;
 use re_data_store::EditableAutoValue;
+use re_data_ui::image_meaning_for_entity;
 use re_log_types::EntityPath;
 use re_types::{
-    archetypes::DepthImage,
     components::{DepthMeter, TensorData},
     tensor_data::TensorDataMeaning,
-    Archetype,
 };
 use re_viewer_context::{
     AutoSpawnHeuristic, NamedViewSystem, PerSystemEntities, SpaceViewClassName, ViewerContext,
@@ -157,15 +156,7 @@ fn update_depth_cloud_property_heuristics(
             continue;
         };
 
-        let meaning = if store.entity_has_component(
-            &ctx.current_query().timeline,
-            ent_path,
-            &DepthImage::indicator_component(),
-        ) {
-            TensorDataMeaning::Depth
-        } else {
-            TensorDataMeaning::Unknown
-        };
+        let meaning = image_meaning_for_entity(ent_path, ctx);
 
         let meter = store
             .query_latest_component::<DepthMeter>(ent_path, &ctx.current_query())
