@@ -698,6 +698,6 @@ pub fn picking(
 fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
     if hit.hit_type == PickingHitType::GpuPickingResult {
         let glam::Vec3 { x, y, z } = hit.space_position;
-        ui.label(format!("Picking position: [{x:.5}, {y:.5}, {z:.5}]"));
+        ui.label(format!("Hover position: [{x:.5}, {y:.5}, {z:.5}]"));
     }
 }
