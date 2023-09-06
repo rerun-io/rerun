@@ -91,7 +91,7 @@ impl DataStore {
             .map(|c| (row_id, c).into())
     }
 
-    /// Call [`Self::query_latest_component_and_row_id`] at the given path, walking up the hierarchy until an instance is found.
+    /// Call [`Self::query_latest_component`] at the given path, walking up the hierarchy until an instance is found.
     pub fn query_latest_component_at_closest_ancestor<C: Component>(
         &self,
         entity_path: &EntityPath,
