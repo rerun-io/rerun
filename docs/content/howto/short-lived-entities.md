@@ -84,5 +84,7 @@ rr.set_time_seconds("time", start_time)
 rr.log("short_lived", rr.Tensor(one_second_tensor))
 # Associate the following clear with `start_time + 1.0` on the `time` timeline
 rr.set_time_seconds("time", start_time + 1.0)
+# Set the time back so other data isn't accidentally logged in the future.
+rr.set_time_seconds("time", start_time)
 rr.log("short_lived", rr.ClearEntity())
 ```
