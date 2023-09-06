@@ -68,6 +68,8 @@ pub struct ReUi {
 impl ReUi {
     /// Create [`ReUi`] and apply style to the given egui context.
     pub fn load_and_apply(egui_ctx: &egui::Context) -> Self {
+        egui_extras::loaders::install(egui_ctx);
+
         Self {
             egui_ctx: egui_ctx.clone(),
             design_tokens: DesignTokens::load_and_apply(egui_ctx),

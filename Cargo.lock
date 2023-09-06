@@ -1366,7 +1366,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1375,7 +1375,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1408,7 +1408,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
@@ -1423,7 +1423,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1438,7 +1438,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "arboard",
  "egui",
@@ -1455,17 +1455,20 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "egui",
+ "ehttp",
+ "image",
  "log",
+ "puffin",
  "serde",
 ]
 
 [[package]]
 name = "egui_glow"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1481,7 +1484,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "egui",
 ]
@@ -1523,7 +1526,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1604,7 +1607,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=707ca04c081c1fa7d00c9d8d88f33ad5bb218714#707ca04c081c1fa7d00c9d8d88f33ad5bb218714"
+source = "git+https://github.com/emilk/egui?rev=2338a854f932658ad0548aa4f00874b3427970c1#2338a854f932658ad0548aa4f00874b3427970c1"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.3",

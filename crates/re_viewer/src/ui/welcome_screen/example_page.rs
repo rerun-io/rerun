@@ -1,68 +1,8 @@
-use egui::{NumExt, Ui};
+use egui::load::TexturePoll;
+use egui::{NumExt, TextureOptions, Ui};
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
-use re_ui::ReUi;
 use re_viewer_context::SystemCommandSender;
-use std::collections::HashMap;
-
-// TODO(emilk/egui#3291): replace this by loading image from the web
-static THUMBNAIL_CACHE: once_cell::sync::Lazy<HashMap<&'static str, re_ui::icons::Icon>> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            re_ui::icons::Icon::new(
-                "efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
-                include_bytes!(
-                    "../../../data/example_thumbnails/efb301d64eef6f25e8f6ae29294bd003c0cda3a7\
-                    _detect_and_track_objects_480w.png"
-                ),
-            ),
-            re_ui::icons::Icon::new(
-                "8b90a80c72b27fad289806b7e5dff0c9ac97e87c_arkit_scenes_480w.png",
-                include_bytes!(
-                    "../../../data/example_thumbnails/8b90a80c72b27fad289806b7e5dff0c9ac97e87c\
-                    _arkit_scenes_480w.png"
-                ),
-            ),
-            re_ui::icons::Icon::new(
-                "033edff752f86bcdc9a81f7877e0b4411ff4e6c5_structure_from_motion_480w.png",
-                include_bytes!(
-                    "../../../data/example_thumbnails/033edff752f86bcdc9a81f7877e0b4411ff4e6c5\
-                    _structure_from_motion_480w.png"
-                ),
-            ),
-            re_ui::icons::Icon::new(
-                "277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
-                include_bytes!(
-                    "../../../data/example_thumbnails/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa\
-                    _human_pose_tracking_480w.png"
-                ),
-            ),
-            re_ui::icons::Icon::new(
-                "b8b25dd01e892e6daf5177e6fc05ff5feb19ee8d_dicom_mri_480w.png",
-                include_bytes!(
-                    "../../../data/example_thumbnails/b8b25dd01e892e6daf5177e6fc05ff5feb19ee8d\
-                    _dicom_mri_480w.png"
-                ),
-            ),
-            re_ui::icons::Icon::new(
-                "ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4_plots_480w.png",
-                include_bytes!(
-                    "../../../data/example_thumbnails/ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4\
-                    _plots_480w.png"
-                ),
-            ),
-            re_ui::icons::Icon::new(
-                "ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e_helix_480w.png",
-                include_bytes!(
-                    "../../../data/example_thumbnails/ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e\
-                    _helix_480w.png"
-                ),
-            ),
-        ]
-        .into_iter()
-        .map(|icon| (icon.id, icon))
-        .collect()
-    });
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -72,7 +12,6 @@ struct ExampleThumbnail {
 }
 
 #[derive(Debug, serde::Deserialize)]
-#[allow(unused)]
 struct ExampleDesc {
     // snake_case version of the example name
     name: String,
@@ -82,7 +21,10 @@ struct ExampleDesc {
 
     description: String,
     tags: Vec<String>,
+
+    #[allow(unused)]
     demo_url: String,
+
     rrd_url: String,
     thumbnail: ExampleThumbnail,
 }
@@ -160,7 +102,6 @@ impl ExamplePage {
 
     pub(super) fn ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
@@ -233,7 +174,6 @@ impl ExamplePage {
                                             );
 
                                             example_thumbnail(
-                                                re_ui,
                                                 ui,
                                                 rx,
                                                 &example.desc,
@@ -306,29 +246,41 @@ fn is_loading(rx: &ReceiveSet<LogMsg>, example: &ExampleDesc) -> bool {
 }
 
 fn example_thumbnail(
-    re_ui: &ReUi,
     ui: &mut Ui,
     rx: &ReceiveSet<LogMsg>,
     example: &ExampleDesc,
     size: egui::Vec2,
     hovered: bool,
 ) {
-    // TODO(emilk/egui#3291): pull from web rather than cache
-    let file_name = example.thumbnail.url.split('/').last();
-
-    let Some(file_name) = file_name else {
-        return;
-    };
-
-    let Some(icon) = THUMBNAIL_CACHE.get(file_name) else {
-        return;
-    };
-
-    let image = re_ui.icon_image(icon);
-    let texture_id = image.texture_id(ui.ctx());
-
     let rounding = egui::Rounding::same(THUMBNAIL_RADIUS);
-    let resp = ui.add(egui::Image::new(texture_id, size).rounding(rounding));
+
+    let resp = match ui.ctx().try_load_texture(
+        example.thumbnail.url.as_str(),
+        TextureOptions::LINEAR,
+        egui::SizeHint::from(size),
+    ) {
+        Ok(TexturePoll::Ready { texture }) => {
+            ui.add(egui::Image::new(texture.id, size).rounding(rounding))
+        }
+        Ok(TexturePoll::Pending { .. }) => {
+            ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.cursor().min, size), |ui| {
+                // add some space before the spinner
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(4.0);
+                    ui.spinner()
+                        .on_hover_text(format!("Loading thumbnail for {} example…", example.title));
+                });
+
+                // Eat all available space so the spinner container has the same size as the
+                // thumbnail itself.
+                ui.allocate_exact_size(ui.max_rect().max - ui.cursor().min, egui::Sense::hover());
+            })
+            .response
+        }
+
+        Err(err) => ui.colored_label(ui.visuals().error_fg_color, err.to_string()),
+    };
 
     // TODO(ab): use design tokens
     let border_color = if hovered {
