@@ -14,7 +14,7 @@ from os import listdir
 from os.path import isfile, join
 
 # fmt: off
-opt_out = {
+opt_out_entirely = {
     "annotation_context_arrows": ["py", "rust"], # TODO(#3207): should be rects, but not available in cpp yet
     "annotation_context_connections": ["cpp"],
     "annotation_context_rects": ["cpp"],
@@ -125,7 +125,7 @@ def main() -> None:
     examples.sort()
 
     for example in examples:
-        example_opt_out = opt_out.get(example, [])
+        example_opt_out = opt_out_entirely.get(example, [])
 
         if "rust" not in example_opt_out:
             rust_output_path = run_roundtrip_rust(example, args.release, args.target, args.target_dir)
@@ -196,12 +196,12 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
 
 
 def run_roundtrip_cpp(example: str, release: bool) -> str:
-    target_name = f"doc_example_{example}"
+    target_name = f"{example}"
     output_path = f"docs/code-examples/{example}_cpp.rrd"
 
     cmake_build(target_name, release)
 
-    cmd = [f"./build/docs/code-examples/doc_example_{example}"]
+    cmd = [f"./build/docs/code-examples/{example}"]
     env = roundtrip_env(save_path=output_path)
     print(f"\n> _RERUN_TEST_FORCE_SAVE={env['_RERUN_TEST_FORCE_SAVE']} {subprocess.list2cmdline(cmd)}")
     roundtrip_process = subprocess.Popen(cmd, env=env)

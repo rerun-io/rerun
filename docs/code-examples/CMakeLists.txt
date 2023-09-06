@@ -12,7 +12,7 @@ foreach(SOURCE_PATH ${sources_list})
         CONTINUE()
     endif()
 
-    set(EXAMPLE_TARGET doc_example_${SOURCE_NAME})
+    set(EXAMPLE_TARGET ${SOURCE_NAME})
 
     add_executable(${EXAMPLE_TARGET} ${SOURCE_PATH})
 

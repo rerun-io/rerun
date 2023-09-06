@@ -14,7 +14,7 @@ You can run each example individually using the following:
 - **C++**:
   - `./docs/code-examples/build_all.sh` to compile all examples
   - start a Rerun Viewer listening on the default port: `rerun`
-  - `./build/docs/code-examples/doc_example_<example_name>` to run, e.g.  `./build/docs/code-examples/doc_example_point3d_random`
+  - `./build/docs/code-examples/<example_name>` to run, e.g.  `./build/docs/code-examples/point3d_random`
 
 ## Roundtrips
 
