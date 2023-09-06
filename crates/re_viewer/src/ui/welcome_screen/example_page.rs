@@ -94,11 +94,12 @@ const MARGINS: f32 = 40.0;
 const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 340.0;
 const MAX_COLUMN_COUNT: usize = 3;
-const COLUMN_HSPACE: f32 = 22.0;
-const TITLE_TO_GRID_VSPACE: f32 = 30.0;
+const COLUMN_HSPACE: f32 = 24.0;
+const TITLE_TO_GRID_VSPACE: f32 = 32.0;
 const THUMBNAIL_TO_DESCRIPTION_VSPACE: f32 = 10.0;
-const DESCRIPTION_TO_TAGS_VSPACE: f32 = 4.0;
-const ROW_VSPACE: f32 = 40.0;
+const DESCRIPTION_TO_TAGS_VSPACE: f32 = 10.0;
+const ROW_VSPACE: f32 = 32.0;
+const THUMBNAIL_RADIUS: f32 = 4.0;
 
 /// Structure to track both an example description and its layout in the grid.
 ///
@@ -193,11 +194,13 @@ impl ExamplePage {
                         ui.add(egui::Label::new(
                             egui::RichText::new("Examples.")
                                 .strong()
+                                .line_height(Some(22.0))
                                 .text_style(re_ui::ReUi::welcome_screen_h1()),
                         ));
 
                         ui.add(egui::Label::new(
                             egui::RichText::new("Learn from the community.")
+                                .line_height(Some(22.0))
                                 .text_style(re_ui::ReUi::welcome_screen_h1()),
                         ));
                     });
@@ -220,24 +223,19 @@ impl ExamplePage {
                                         let width = thumbnail.width as f32;
                                         let height = thumbnail.height as f32;
                                         ui.vertical(|ui| {
-                                            let is_loading = is_loading(rx, &example.desc);
-
                                             let size = egui::vec2(
                                                 column_width,
                                                 height * column_width / width,
                                             );
 
-                                            if is_loading {
-                                                spinner_ui(ui, size);
-                                            } else {
-                                                example_thumbnail(
-                                                    re_ui,
-                                                    ui,
-                                                    &example.desc,
-                                                    size,
-                                                    example.hovered(ui, self.id),
-                                                );
-                                            }
+                                            example_thumbnail(
+                                                re_ui,
+                                                ui,
+                                                rx,
+                                                &example.desc,
+                                                size,
+                                                example.hovered(ui, self.id),
+                                            );
 
                                             ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
                                         });
@@ -303,15 +301,10 @@ fn is_loading(rx: &ReceiveSet<LogMsg>, example: &ExampleDesc) -> bool {
     })
 }
 
-fn spinner_ui(ui: &mut Ui, size: egui::Vec2) {
-    ui.centered_and_justified(|ui| {
-        ui.add(egui::Spinner::new().size(size.min_elem()));
-    });
-}
-
 fn example_thumbnail(
     re_ui: &ReUi,
     ui: &mut Ui,
+    rx: &ReceiveSet<LogMsg>,
     example: &ExampleDesc,
     size: egui::Vec2,
     hovered: bool,
@@ -324,7 +317,7 @@ fn example_thumbnail(
             let image = re_ui.icon_image(icon);
             let texture_id = image.texture_id(ui.ctx());
 
-            let rounding = egui::Rounding::same(8.);
+            let rounding = egui::Rounding::same(THUMBNAIL_RADIUS);
             let resp = ui.add(egui::Image::new(texture_id, size).rounding(rounding));
 
             // TODO(ab): use design tokens
@@ -336,6 +329,24 @@ fn example_thumbnail(
 
             ui.painter()
                 .rect_stroke(resp.rect, rounding, (1.0, border_color));
+
+            // spinner overlay
+            if is_loading(rx, example) {
+                ui.painter().rect_filled(
+                    resp.rect,
+                    rounding,
+                    egui::Color32::BLACK.gamma_multiply(0.75),
+                );
+
+                let spinner_size = resp.rect.size().min_elem().at_most(72.0);
+                let spinner_rect = egui::Rect::from_center_size(
+                    resp.rect.center(),
+                    egui::Vec2::splat(spinner_size),
+                );
+                ui.allocate_ui_at_rect(spinner_rect, |ui| {
+                    ui.add(egui::Spinner::new().size(spinner_size));
+                });
+            }
         }
     }
 }
@@ -344,8 +355,11 @@ fn example_description(ui: &mut Ui, example: &ExampleDesc, hovered: bool) {
     ui.label(
         egui::RichText::new(example.title.clone())
             .strong()
+            .line_height(Some(22.0))
             .text_style(re_ui::ReUi::welcome_screen_body()),
     );
+
+    ui.add_space(4.0);
 
     let mut desc_text = egui::RichText::new(example.description.clone()).line_height(Some(19.0));
     if hovered {
@@ -359,10 +373,12 @@ fn example_tags(ui: &mut Ui, example: &ExampleDesc) {
     // TODO(ab): use design tokens
     ui.horizontal_wrapped(|ui| {
         ui.style_mut().spacing.button_padding = egui::vec2(4.0, 2.0);
+        ui.style_mut().spacing.item_spacing = egui::vec2(4.0, 4.0);
         for tag in &example.tags {
             ui.add(
                 egui::Button::new(tag)
                     .sense(egui::Sense::hover())
+                    .rounding(6.0)
                     .fill(egui::Color32::from_rgb(26, 29, 30))
                     .stroke(egui::Stroke::new(
                         1.0,

@@ -87,13 +87,13 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(28.0));
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(24.0)); //TODO(ab): thin variant
+        .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(24.0));
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_h3(), egui::FontId::proportional(18.0));
+        .insert(ReUi::welcome_screen_h3(), egui::FontId::proportional(15.0));
     egui_style.text_styles.insert(
         ReUi::welcome_screen_body(),
-        egui::FontId::proportional(14.0),
+        egui::FontId::proportional(13.0),
     );
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
