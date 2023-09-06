@@ -204,8 +204,10 @@ impl ViewPartSystem for CamerasPart {
                     shared_render_builders,
                     ent_path,
                     &props,
-                    pinhole,
-                    store.query_latest_component::<Transform3D>(ent_path, &time_query),
+                    pinhole.value,
+                    store
+                        .query_latest_component::<Transform3D>(ent_path, &time_query)
+                        .map(|c| c.value),
                     pinhole_view_coordinates,
                     entity_highlight,
                 );

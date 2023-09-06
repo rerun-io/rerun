@@ -54,7 +54,7 @@ impl ViewContextSystem for EntityDepthOffsets {
                 &ctx.rec_cfg.time_ctrl.current_query(),
             ) {
                 entities_per_draw_order
-                    .entry(draw_order)
+                    .entry(draw_order.value)
                     .or_default()
                     .insert(DrawOrderTarget::Entity(ent_path.hash()));
             }

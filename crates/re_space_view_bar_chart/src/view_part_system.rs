@@ -67,7 +67,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
-                    self.charts.insert(ent_path.clone(), tensor.clone()); // shallow clones
+                    self.charts.insert(ent_path.clone(), tensor.value.clone()); // shallow clones
                 }
             }
         }

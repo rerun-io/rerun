@@ -126,8 +126,12 @@ impl SpaceInfoCollection {
         ) {
             // Determine how the paths are connected.
             let store = &entity_db.data_store;
-            let transform3d = store.query_latest_component::<Transform3D>(&tree.path, query);
-            let pinhole = store.query_latest_component::<Pinhole>(&tree.path, query);
+            let transform3d = store
+                .query_latest_component::<Transform3D>(&tree.path, query)
+                .map(|c| c.value);
+            let pinhole = store
+                .query_latest_component::<Pinhole>(&tree.path, query)
+                .map(|c| c.value);
 
             let connection = if transform3d.is_some() || pinhole.is_some() {
                 Some(SpaceInfoConnection::Connected {

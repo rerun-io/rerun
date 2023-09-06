@@ -33,11 +33,8 @@ impl EntityDataUi for Tensor {
             .store_db
             .entity_db
             .data_store
-            .query_latest_component_and_row_id::<re_types::components::TensorData>(
-                entity_path,
-                query,
-            )
-            .map_or(RowId::ZERO, |(row_id, _)| row_id);
+            .query_latest_component::<re_types::components::TensorData>(entity_path, query)
+            .map_or(RowId::ZERO, |tensor| tensor.row_id);
 
         // NOTE: Tensors don't support batches at the moment so always splat.
         let tensor_path_hash = InstancePathHash::entity_splat(entity_path).versioned(row_id);

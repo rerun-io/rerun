@@ -57,10 +57,9 @@ impl ViewPartSystem for TensorSystem {
         for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some((row_id, tensor)) =
-                store.query_latest_component_and_row_id::<Tensor>(ent_path, &timeline_query)
+            if let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &timeline_query)
             {
-                self.load_tensor_entity(ctx, ent_path, row_id, &props, tensor);
+                self.load_tensor_entity(ctx, ent_path, tensor.row_id, &props, tensor.value);
             }
         }
 

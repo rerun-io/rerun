@@ -91,7 +91,7 @@ fn annotation_info(
         .data_store
         .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
-    let class = annotations.resolved_class_description(Some(class_id));
+    let class = annotations.resolved_class_description(Some(*class_id));
     class.keypoint_map?.get(&keypoint_id).cloned()
 }
 
