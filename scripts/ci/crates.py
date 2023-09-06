@@ -42,8 +42,11 @@ CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 
 
-def cargo(args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}) -> Any:
-    subprocess.check_output([CARGO_PATH] + args.split(), cwd=cwd, env=env)
+def cargo(dry_run: bool, args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}) -> Any:
+    cmd = [CARGO_PATH] + args.split()
+    # print(f"> {subprocess.list2cmdline(cmd)}")
+    if not dry_run:
+        subprocess.check_output(cmd, cwd=cwd, env=env)
 
 
 class Crate:
@@ -201,10 +204,10 @@ class Context:
                 print(error)
             exit(1)
         else:
-            if dry_run:
-                print("The following operations will be performed:")
+            print("The following operations will be performed:")
             for op in self.ops:
                 print(op)
+            print()
 
 
 def bump_package_version(
@@ -294,7 +297,7 @@ def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> N
         for name, crate in crates.items():
             with Path(f"{crate.path}/Cargo.toml").open("w") as f:
                 tomlkit.dump(crate.manifest, f)
-        cargo("update --workspace")
+    cargo(dry_run, "update --workspace")
 
 
 def is_already_uploaded(version: str, crate: Crate) -> bool:
@@ -315,7 +318,7 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
     return False
 
 
-def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
+def publish_crate(dry_run: bool, crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
     package = crate.manifest["package"]
     name = package["name"]
     crate_version = crate.manifest["package"].get("version") or version
@@ -325,15 +328,14 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     if is_already_uploaded(crate_version, crate.manifest["package"]["name"]):
         print(f"{Fore.GREEN}Already published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
     else:
-        print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-        cargo("publish --quiet --dry-run", cwd=crate.path, env=env)
-        print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+        print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}…")
         try:
-            cargo(f"publish --token {token}", cwd=crate.path, env=env)
+            cargo(dry_run, f"publish --quiet --token {token}", cwd=crate.path, env=env)
             print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
         except:
             print(f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}")
             raise
+    print()
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -341,6 +343,7 @@ def publish(dry_run: bool, token: str) -> None:
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     version = root["workspace"]["package"]["version"]
+    print("Gather publishable crates…")
     crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
 
     for name in crates.keys():
@@ -351,7 +354,7 @@ def publish(dry_run: bool, token: str) -> None:
         env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
         for crate in crates.values():
             start_s = time()
-            publish_crate(crate, token, version, env)
+            publish_crate(dry_run, crate, token, version, env)
             elapsed_s = time() - start_s
             if elapsed_s < 1:
                 sleep(1 - elapsed_s)
