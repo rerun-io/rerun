@@ -513,14 +513,19 @@ impl DecodedTensor {
                 ));
             }
         };
-        let tensor = TensorData {
-            shape: vec![
+        let shape = if depth != 1 {
+            vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
                 TensorDimension::depth(depth),
-            ],
-            buffer,
+            ]
+        } else {
+            vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+            ]
         };
+        let tensor = TensorData { shape, buffer };
         Ok(DecodedTensor(tensor))
     }
 

@@ -35,7 +35,7 @@ impl crate::Loggable for DepthMeter {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.radius".into()
+        "rerun.components.DepthMeter".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

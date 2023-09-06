@@ -44,11 +44,11 @@ DepthMeterArrayLike = Union[DepthMeter, Sequence[DepthMeterLike], float, npt.NDA
 
 class DepthMeterType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), "rerun.radius")
+        pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.DepthMeter")
 
 
 class DepthMeterArray(BaseExtensionArray[DepthMeterArrayLike]):
-    _EXTENSION_NAME = "rerun.radius"
+    _EXTENSION_NAME = "rerun.components.DepthMeter"
     _EXTENSION_TYPE = DepthMeterType
 
     @staticmethod

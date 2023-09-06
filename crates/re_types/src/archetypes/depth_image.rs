@@ -64,13 +64,18 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usi
     once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.radius".into(), "rerun.draw_order".into()]);
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.DepthMeter".into(),
+            "rerun.draw_order".into(),
+        ]
+    });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
-            "rerun.radius".into(),
+            "rerun.components.DepthMeter".into(),
             "rerun.draw_order".into(),
         ]
     });
@@ -165,7 +170,7 @@ impl crate::Archetype for DepthImage {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DepthMeter".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.radius".into()),
+                                Some("rerun.components.DepthMeter".into()),
                             );
                             (
                                 ::arrow2::datatypes::Field::new("meter", datatype, false),

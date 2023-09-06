@@ -11,7 +11,7 @@
 
 namespace rerun {
     namespace components {
-        const char* DepthMeter::NAME = "rerun.radius";
+        const char* DepthMeter::NAME = "rerun.components.DepthMeter";
 
         const std::shared_ptr<arrow::DataType>& DepthMeter::arrow_datatype() {
             static const auto datatype = arrow::float32();
