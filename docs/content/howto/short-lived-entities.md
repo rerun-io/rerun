@@ -75,7 +75,7 @@ for frame in sensors.read():
 ## Log data with spans instead of timepoints
 In some cases you already know how long a piece of data will be valid at the time of logging. Rerun does **not yet support** associating logged data with spans like `(from_timepoint, to_timepoint)` or `(timepoint, time-to-live)`.
 
-Related issue: https://github.com/rerun-io/rerun/issues/3008
+Follow the issue [here](https://github.com/rerun-io/rerun/issues/3008).
 
 ### Workaround by manually clearing entities
 For now the best workaround is to manually clear data when it is no longer valid.
