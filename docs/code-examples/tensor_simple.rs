@@ -4,7 +4,7 @@ use ndarray::{Array, ShapeBuilder};
 use rerun::{archetypes::Tensor, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new(env!("CARGO_BIN_NAME")).memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_tensor_simple").memory()?;
 
     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
     data.map_inplace(|x| *x = rand::random());
