@@ -17,7 +17,7 @@ use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
     components::{Color, DepthMeter, DrawOrder, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Archetype as _,
+    Archetype as _, Loggable,
 };
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
@@ -632,9 +632,13 @@ impl NamedViewSystem for ImagesPart {
 
 impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        Image::all_components().try_into().unwrap()
+        // TODO(jleibs): Figure out the right thing to do here.
+        // What this actually wnats to do is indicate that it is interested
+        // in all 3 indicator archetypes.
+        vec1::vec1![TensorData::name()]
     }
 
+    // TODO(jleibs): Once the above is working properly this can go away all together.
     fn queries_any_components_of(
         &self,
         store: &re_arrow_store::DataStore,
