@@ -22,5 +22,4 @@ rr.log_mesh(
         [0, 255, 0],
         [0, 0, 255],
     ],
-    mesh_id=np.repeat(0, 16).astype(np.uint8),
 )

@@ -94,7 +94,6 @@ def _log_tensor(
     names: Iterable[str | None] | None = None,
     meter: float | None = None,
     meaning: bindings.TensorDataMeaning = None,
-    tensor_id: npt.NDArray[np.uint8] | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -140,7 +139,7 @@ def _log_tensor(
     instanced: dict[str, Any] = {}
     splats: dict[str, Any] = {}
 
-    instanced["rerun.tensor"] = TensorArray.from_numpy(tensor, names, meaning, meter, tensor_id=tensor_id)
+    instanced["rerun.tensor"] = TensorArray.from_numpy(tensor, names, meaning, meter)
 
     if draw_order is not None:
         instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)

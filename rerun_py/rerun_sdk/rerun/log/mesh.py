@@ -25,7 +25,6 @@ def log_mesh(
     normals: Any | None = None,
     albedo_factor: Any | None = None,
     vertex_colors: Colors | None = None,
-    mesh_id: npt.NDArray[np.uint8] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -74,9 +73,6 @@ def log_mesh(
     vertex_colors:
         Optional array of RGB(A) vertex colors, in sRGB gamma space, either as 0-1 floats or 0-255 integers.
         If specified, the alpha is considered separate (unmultiplied).
-    mesh_id:
-        A unique UUID for this mesh.
-        Leave empty to autogenerate a random one.
     timeless:
         If true, the mesh will be timeless (default: False)
     recording:
@@ -97,8 +93,6 @@ def log_mesh(
         albedo_factor = np.asarray(albedo_factor, dtype=np.float32).flatten()
     if vertex_colors is not None:
         vertex_colors = _normalize_colors(vertex_colors)
-    if mesh_id is not None:
-        mesh_id = np.asarray(mesh_id, dtype=np.uint8)
 
     # Mesh arrow handling happens inside the python bridge
     bindings.log_meshes(
@@ -108,7 +102,6 @@ def log_mesh(
         index_buffers=[indices],
         normal_buffers=[normals],
         albedo_factors=[albedo_factor],
-        mesh_ids=[mesh_id],
         timeless=timeless,
         recording=recording,
     )

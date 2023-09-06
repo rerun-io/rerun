@@ -5,7 +5,6 @@ use rerun::{
     archetypes::AnnotationContext,
     components::{Tensor, TensorDataMeaning},
     datatypes::Color,
-    external::uuid,
     RecordingStreamBuilder,
 };
 
@@ -20,7 +19,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut image = Tensor::try_from(data.as_standard_layout().view())?;
     image.meaning = TensorDataMeaning::ClassId;
-    image.tensor_id = uuid::Uuid::nil().into();
 
     // create an annotation context to describe the classes
     rec.log(

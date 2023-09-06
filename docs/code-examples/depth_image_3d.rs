@@ -3,7 +3,6 @@ use ndarray::{s, Array, ShapeBuilder};
 use rerun::{
     components::{Pinhole, Tensor, TensorDataMeaning},
     datatypes::Mat3x3,
-    external::uuid,
     RecordingStreamBuilder,
 };
 
@@ -18,7 +17,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::Depth;
     tensor.meter = Some(10000.);
-    tensor.tensor_id = uuid::Uuid::nil().into();
 
     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
     // TODO(#2816): Pinhole archetype

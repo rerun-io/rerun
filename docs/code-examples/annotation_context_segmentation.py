@@ -12,4 +12,4 @@ image[100:180, 130:280] = 2
 # Log an annotation context to assign a label and color to each class
 rr2.log("segmentation", rr2.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
 
-rr.log_segmentation_image("segmentation/image", np.array(image), tensor_id=np.repeat(0, 16).astype(np.uint8))
+rr.log_segmentation_image("segmentation/image", np.array(image))

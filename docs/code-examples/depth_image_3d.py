@@ -20,4 +20,4 @@ rr.log_pinhole(
 )
 
 # Log the tensor, assigning names to each dimension
-rr.log_depth_image("world/camera/depth", image, tensor_id=np.repeat(0, 16).astype(np.uint8), meter=10000.0)
+rr.log_depth_image("world/camera/depth", image, meter=10000.0)

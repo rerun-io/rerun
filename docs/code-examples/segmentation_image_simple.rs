@@ -5,7 +5,6 @@ use rerun::{
     archetypes::AnnotationContext,
     components::{Tensor, TensorDataMeaning},
     datatypes::Color,
-    external::uuid,
     RecordingStreamBuilder,
 };
 
@@ -21,7 +20,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // TODO(#2792): SegmentationImage archetype
     let mut tensor = Tensor::try_from(image.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::ClassId;
-    tensor.tensor_id = uuid::Uuid::nil().into();
 
     // create an annotation context to describe the classes
     let annotation = AnnotationContext::new([
