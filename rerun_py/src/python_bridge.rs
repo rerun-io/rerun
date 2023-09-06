@@ -1048,15 +1048,13 @@ fn log_image_file(
             .map_err(|err| PyTypeError::new_err(err.to_string()))?,
     );
 
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [tensor].as_slice(),
-    );
-
-    recording.record_row(row, !timeless);
+    recording
+        .log_timeless(
+            entity_path,
+            timeless,
+            &rerun::archetypes::Image::new(tensor),
+        )
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
 
     Ok(())
 }
