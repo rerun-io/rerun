@@ -24,7 +24,6 @@ impl MeshCache {
     ) -> Option<Arc<LoadedMesh>> {
         re_tracing::profile_function!();
 
-        let key = (path_hash, row_id);
         self.0
             .entry(key)
             .or_insert_with(|| {

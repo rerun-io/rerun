@@ -1,16 +1,19 @@
-use re_components::{Tensor, TensorId};
+use re_components::Tensor;
+use re_data_store::VersionedInstancePathHash;
 
 use super::TensorStats;
 use crate::Cache;
 
+/// Caches tensor stats using a [`VersionedInstancePathHash`], i.e. a specific instance of
+/// a specific entity path for a specific row in the store.
 #[derive(Default)]
-pub struct TensorStatsCache(nohash_hasher::IntMap<TensorId, TensorStats>);
+pub struct TensorStatsCache(ahash::HashMap<VersionedInstancePathHash, TensorStats>);
 
 impl TensorStatsCache {
-    pub fn entry(&mut self, tensor: &Tensor) -> TensorStats {
+    pub fn entry(&mut self, key: VersionedInstancePathHash, tensor: &Tensor) -> TensorStats {
         *self
             .0
-            .entry(tensor.tensor_id)
+            .entry(key)
             .or_insert_with(|| TensorStats::new(tensor))
     }
 }

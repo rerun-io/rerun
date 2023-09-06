@@ -1,4 +1,5 @@
-use re_components::{DecodedTensor, Tensor, TensorId, TensorImageLoadError};
+use re_components::{DecodedTensor, Tensor, TensorImageLoadError};
+use re_data_store::VersionedInstancePathHash;
 
 use crate::Cache;
 
@@ -13,10 +14,11 @@ struct DecodedTensorResult {
     last_use_generation: u64,
 }
 
-/// A cache of decoded [`Tensor`] entities, indexed by `TensorId`.
+/// Caches decoded tensors using a [`VersionedInstancePathHash`], i.e. a specific instance of
+/// a specific entity path for a specific row in the store.
 #[derive(Default)]
 pub struct TensorDecodeCache {
-    cache: nohash_hasher::IntMap<TensorId, DecodedTensorResult>,
+    cache: ahash::HashMap<VersionedInstancePathHash, DecodedTensorResult>,
     memory_used: u64,
     generation: u64,
 }
@@ -30,6 +32,7 @@ impl TensorDecodeCache {
     /// Currently supports JPEG encoded tensors.
     pub fn entry(
         &mut self,
+        key: VersionedInstancePathHash,
         maybe_encoded_tensor: Tensor,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!();
@@ -38,7 +41,7 @@ impl TensorDecodeCache {
             Ok(decoded_tensor) => Ok(decoded_tensor),
 
             Err(encoded_tensor) => {
-                let lookup = self.cache.entry(encoded_tensor.id()).or_insert_with(|| {
+                let lookup = self.cache.entry(key).or_insert_with(|| {
                     let tensor_result = DecodedTensor::try_decode(encoded_tensor);
                     let memory_used = match &tensor_result {
                         Ok(tensor) => tensor.size_in_bytes() as u64,

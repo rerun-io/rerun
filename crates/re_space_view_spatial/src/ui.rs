@@ -538,33 +538,36 @@ pub fn picking(
         let is_depth_cloud = images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
-        let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
-            || is_depth_cloud
-        {
-            ctx.store_db
-                .store()
-                .query_latest_component::<Tensor>(&instance_path.entity_path, &ctx.current_query())
-                .and_then(|tensor| {
-                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                    // (the back-projection property may be true despite this not being a depth image!)
-                    if hit.hit_type != PickingHitType::TexturedRect
-                        && is_depth_cloud
-                        && tensor.meaning != TensorDataMeaning::Depth
-                    {
-                        None
-                    } else {
-                        tensor.image_height_width_channels().map(|[_, w, _]| {
-                            let coordinates = hit
-                                .instance_path_hash
-                                .instance_key
-                                .to_2d_image_coordinate(w);
-                            (tensor, coordinates)
-                        })
-                    }
-                })
-        } else {
-            None
-        };
+        let picked_image_with_coords =
+            if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
+                ctx.store_db
+                    .store()
+                    .query_latest_component_and_row_id::<Tensor>(
+                        &instance_path.entity_path,
+                        &ctx.current_query(),
+                    )
+                    .and_then(|(row_id, tensor)| {
+                        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                        // (the back-projection property may be true despite this not being a depth image!)
+                        if hit.hit_type != PickingHitType::TexturedRect
+                            && is_depth_cloud
+                            && tensor.meaning != TensorDataMeaning::Depth
+                        {
+                            None
+                        } else {
+                            tensor.image_height_width_channels().map(|[_, w, _]| {
+                                let tensor_path_hash = hit.instance_path_hash.versioned(row_id);
+                                let coordinates = hit
+                                    .instance_path_hash
+                                    .instance_key
+                                    .to_2d_image_coordinate(w);
+                                (tensor_path_hash, tensor, coordinates)
+                            })
+                        }
+                    })
+            } else {
+                None
+            };
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
             instance_path.instance_key = InstanceKey::SPLAT;
@@ -581,7 +584,7 @@ pub fn picking(
             instance_path.clone(),
         ));
 
-        response = if let Some((tensor, coords)) = picked_image_with_coords {
+        response = if let Some((tensor_path_hash, tensor, coords)) = picked_image_with_coords {
             if let Some(meter) = tensor.meter {
                 if let Some(raw_value) = tensor.get(&[
                     picking_context.pointer_in_space2d.y.round() as _,
@@ -627,14 +630,15 @@ pub fn picking(
 
                                 let tensor_name = instance_path.to_string();
 
-                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor));
+                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor));
                                 match decoded_tensor {
                                     Ok(decoded_tensor) => {
                                         let annotations = annotations.0.find(&instance_path.entity_path);
-                                        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(&decoded_tensor));
+                                        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, &decoded_tensor));
                                         show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
+                                            tensor_path_hash,
                                             &decoded_tensor,
                                             &tensor_stats,
                                             &annotations,
