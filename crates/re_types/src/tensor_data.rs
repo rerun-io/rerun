@@ -1,4 +1,4 @@
-// TODO(jleibs): F16 SUpport
+// TODO(jleibs): F16 Support
 //use half::f16;
 
 use crate::datatypes::{TensorBuffer, TensorData};

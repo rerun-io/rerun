@@ -223,7 +223,7 @@ impl ImagesPart {
         ) {
             return Ok(());
         }
-        // Unknown is currently interpretted as "Some Color" in most cases.
+        // Unknown is currently interpreted as "Some Color" in most cases.
         // TODO(jleibs): Make this more explicit
         let meaning = TensorDataMeaning::Unknown;
 
@@ -633,7 +633,7 @@ impl NamedViewSystem for ImagesPart {
 impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         // TODO(jleibs): Figure out the right thing to do here.
-        // What this actually wnats to do is indicate that it is interested
+        // What this actually wants to do is indicate that it is interested
         // in all 3 indicator archetypes.
         vec1::vec1![TensorData::name()]
     }

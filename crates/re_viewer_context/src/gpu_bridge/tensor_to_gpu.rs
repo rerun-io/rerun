@@ -435,7 +435,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                     TextureFormat::Rgba32Float,
                 ),
 
-                // TOOD(jleibs): F16 Support
+                // TODO(jleibs): F16 Support
                 /*
                 TensorBuffer::F16(buf) => (
                     pad_and_cast(
