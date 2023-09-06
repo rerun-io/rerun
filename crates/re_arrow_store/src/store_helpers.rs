@@ -7,7 +7,7 @@ use crate::{DataStore, LatestAtQuery};
 // --- Read ---
 
 impl DataStore {
-    /// Get the latest value for a given [`re_types::Component`].
+    /// Get the latest value for a given [`re_types::Component`] and the associated [`RowId`].
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -15,14 +15,14 @@ impl DataStore {
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
-    pub fn query_latest_component<C: Component>(
+    pub fn query_latest_component_and_row_id<C: Component>(
         &self,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<C> {
+    ) -> Option<(RowId, C)> {
         re_tracing::profile_function!();
 
-        let (_, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
+        let (row_id, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
         let cell = cells.get(0)?.as_ref()?;
 
         cell.try_to_native_mono::<C>()
@@ -61,27 +61,55 @@ impl DataStore {
                 err
             })
             .ok()?
+            .map(|c| (row_id, c))
     }
 
-    /// Call `query_latest_component` at the given path, walking up the hierarchy until an instance is found.
-    pub fn query_latest_component_at_closest_ancestor<C: Component>(
+    /// Get the latest value for a given [`re_types::Component`].
+    ///
+    /// Helper for [`Self::query_latest_component_and_row_id`].
+    #[inline]
+    pub fn query_latest_component<C: Component>(
         &self,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<(EntityPath, C)> {
+    ) -> Option<C> {
+        self.query_latest_component_and_row_id(entity_path, query)
+            .map(|(_, data)| data)
+    }
+
+    /// Call [`Self::query_latest_component_and_row_id`] at the given path, walking up the hierarchy until an instance is found.
+    pub fn query_latest_component_and_row_id_at_closest_ancestor<C: Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &LatestAtQuery,
+    ) -> Option<(RowId, EntityPath, C)> {
         re_tracing::profile_function!();
 
         let mut cur_path = Some(entity_path.clone());
         while let Some(path) = cur_path {
-            if let Some(component) = self.query_latest_component::<C>(&path, query) {
-                return Some((path, component));
+            if let Some((row_id, component)) =
+                self.query_latest_component_and_row_id::<C>(&path, query)
+            {
+                return Some((row_id, path, component));
             }
             cur_path = path.parent();
         }
         None
     }
 
-    /// Get the latest value for a given [`re_types::Component`], assuming it is timeless.
+    /// Call [`Self::query_latest_component`] at the given path, walking up the hierarchy until an instance is found.
+    ///
+    /// Helper for [`Self::query_latest_component_and_row_id_at_closest_ancestor`].
+    pub fn query_latest_component_at_closest_ancestor<C: Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &LatestAtQuery,
+    ) -> Option<(EntityPath, C)> {
+        self.query_latest_component_and_row_id_at_closest_ancestor(entity_path, query)
+            .map(|(_, path, data)| (path, data))
+    }
+
+    /// Get the latest value for a given [`re_types::Component`] and the associated [`RowId`], assuming it is timeless.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -89,11 +117,22 @@ impl DataStore {
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
-    pub fn query_timeless_component<C: Component>(&self, entity_path: &EntityPath) -> Option<C> {
+    pub fn query_timeless_component_and_row_id<C: Component>(
+        &self,
+        entity_path: &EntityPath,
+    ) -> Option<(RowId, C)> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
-        self.query_latest_component(entity_path, &query)
+        self.query_latest_component_and_row_id(entity_path, &query)
+    }
+
+    /// Get the latest value for a given [`re_types::Component`], assuming it is timeless.
+    ///
+    /// Helper for [`Self::query_timeless_component`].
+    pub fn query_timeless_component<C: Component>(&self, entity_path: &EntityPath) -> Option<C> {
+        self.query_timeless_component_and_row_id(entity_path)
+            .map(|(_, data)| data)
     }
 }
 
