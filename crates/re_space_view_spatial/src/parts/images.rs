@@ -14,8 +14,8 @@ use re_renderer::{
     Colormap,
 };
 use re_types::{
-    archetypes::Image,
-    components::{Color, DrawOrder, InstanceKey, TensorData},
+    archetypes::{DepthImage, Image},
+    components::{Color, DepthMeter, DrawOrder, InstanceKey, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype, Loggable as _,
 };
@@ -201,10 +201,9 @@ impl ImagesPart {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn process_arch_view(
+    fn process_image_arch_view(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
         arch_view: &ArchetypeView<Image>,
@@ -215,7 +214,19 @@ impl ImagesPart {
 
         let parent_pinhole_path = transforms.parent_pinhole(ent_path);
 
-        // TODO(jleibs): Fetch meaning from indicator component
+        // If this isn't an image, return
+        // TODO(jleibs): The ArchetypeView should probably to this for us.
+        if !ctx
+            .store_db
+            .store()
+            .all_components(&ctx.current_query().timeline, ent_path)
+            .unwrap_or_default()
+            .contains(&Image::indicator_component())
+        {
+            return Ok(());
+        }
+        // Unknown is currently interpretted as "Some Color" in most cases.
+        // TODO(jleibs): Make this more explicit
         let meaning = TensorDataMeaning::Unknown;
 
         // Instance ids of tensors refer to entries inside the tensor.
@@ -246,7 +257,111 @@ impl ImagesPart {
                 }
             };
 
-            if *ent_props.backproject_depth && meaning == TensorDataMeaning::Depth {
+            let color = ent_context
+                .annotations
+                .resolved_class_description(None)
+                .annotation_info()
+                .color(
+                    color.map(|c| c.to_array()).as_ref(),
+                    DefaultColor::OpaqueWhite,
+                );
+
+            if let Some(textured_rect) = to_textured_rect(
+                ctx,
+                ent_path,
+                ent_context,
+                tensor_path_hash,
+                &tensor,
+                meaning,
+                color.into(),
+            ) {
+                {
+                    let top_left = textured_rect.top_left_corner_position;
+                    self.data.bounding_box.extend(top_left);
+                    self.data
+                        .bounding_box
+                        .extend(top_left + textured_rect.extent_u);
+                    self.data
+                        .bounding_box
+                        .extend(top_left + textured_rect.extent_v);
+                    self.data
+                        .bounding_box
+                        .extend(top_left + textured_rect.extent_v + textured_rect.extent_u);
+                }
+
+                self.images.push(ViewerImage {
+                    ent_path: ent_path.clone(),
+                    tensor,
+                    meaning,
+                    textured_rect,
+                    parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
+                    draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn process_depth_image_arch_view(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        depth_clouds: &mut Vec<DepthCloud>,
+        transforms: &TransformContext,
+        ent_props: &EntityProperties,
+        arch_view: &ArchetypeView<DepthImage>,
+        ent_path: &EntityPath,
+        ent_context: &SpatialSceneEntityContext<'_>,
+    ) -> Result<(), QueryError> {
+        re_tracing::profile_function!();
+
+        // If this isn't an image, return
+        // TODO(jleibs): The ArchetypeView should probably to this for us.
+        if !ctx
+            .store_db
+            .store()
+            .all_components(&ctx.current_query().timeline, ent_path)
+            .unwrap_or_default()
+            .contains(&DepthImage::indicator_component())
+        {
+            return Ok(());
+        }
+        let meaning = TensorDataMeaning::Depth;
+
+        let parent_pinhole_path = transforms.parent_pinhole(ent_path);
+
+        // Instance ids of tensors refer to entries inside the tensor.
+        for (tensor, color, _meter, draw_order) in itertools::izip!(
+            arch_view.iter_required_component::<TensorData>()?,
+            arch_view.iter_optional_component::<Color>()?,
+            arch_view.iter_optional_component::<DepthMeter>()?,
+            arch_view.iter_optional_component::<DrawOrder>()?
+        ) {
+            // TODO(jleibs): Why is meter not used here?
+            re_tracing::profile_scope!("loop_iter");
+
+            if !tensor.0.is_shaped_like_an_image() {
+                return Ok(());
+            }
+
+            // NOTE: Tensors don't support batches at the moment so always splat.
+            let tensor_path_hash =
+                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
+            let tensor = match ctx
+                .cache
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+            {
+                Ok(tensor) => tensor,
+                Err(err) => {
+                    re_log::warn_once!(
+                        "Encountered problem decoding tensor at path {ent_path}: {err}"
+                    );
+                    continue;
+                }
+            };
+
+            if *ent_props.backproject_depth {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(ent_path) {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
@@ -456,7 +571,25 @@ impl ViewPartSystem for ImagesPart {
             view_ctx.get::<EntityDepthOffsets>()?.image,
             |ctx, ent_path, ent_view, ent_context| {
                 let ent_props = query.entity_props_map.get(ent_path);
-                self.process_arch_view(
+                self.process_image_arch_view(
+                    ctx,
+                    transforms,
+                    &ent_props,
+                    &ent_view,
+                    ent_path,
+                    ent_context,
+                )
+            },
+        )?;
+
+        process_archetype_views::<ImagesPart, DepthImage, { DepthImage::NUM_COMPONENTS }, _>(
+            ctx,
+            query,
+            view_ctx,
+            view_ctx.get::<EntityDepthOffsets>()?.image,
+            |ctx, ent_path, ent_view, ent_context| {
+                let ent_props = query.entity_props_map.get(ent_path);
+                self.process_depth_image_arch_view(
                     ctx,
                     &mut depth_clouds,
                     transforms,
