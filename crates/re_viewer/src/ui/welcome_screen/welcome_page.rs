@@ -115,7 +115,7 @@ fn onboarding_content_ui(
     const MAX_COLUMN_WIDTH: f32 = 255.0;
     const MIN_COLUMN_WIDTH: f32 = 164.0;
 
-    let grid_spacing = egui::vec2(12.0, 12.0);
+    let grid_spacing = egui::vec2(12.0, 16.0);
 
     let mut column_count = (((ui.available_width() + grid_spacing.x)
         / (MIN_COLUMN_WIDTH + grid_spacing.x))
@@ -147,16 +147,18 @@ fn onboarding_content_ui(
                 ui.add(egui::Label::new(
                     egui::RichText::new("Welcome.")
                         .strong()
+                        .line_height(Some(32.0))
                         .text_style(re_ui::ReUi::welcome_screen_h1()),
                 ));
 
                 ui.add(egui::Label::new(
                     egui::RichText::new("Visualize multimodal data.")
+                        .line_height(Some(32.0))
                         .text_style(re_ui::ReUi::welcome_screen_h1()),
                 ));
             });
 
-            ui.add_space(20.0);
+            ui.add_space(32.0);
 
             let grid = egui::Grid::new("welcome_screen_grid")
                 .spacing(grid_spacing)
@@ -181,8 +183,13 @@ fn onboarding_content_ui(
 
                     ui.end_row();
 
-                    for panel in panels {
+                    for (idx, panel) in panels.iter().enumerate() {
                         ui.vertical(|ui| {
+                            // don't let the text get too close to the right-hand content, if any
+                            if (idx + 1) % column_count != 0 {
+                                ui.set_max_width(column_width - 8.0);
+                            }
+
                             ui.label(
                                 egui::RichText::new(panel.title)
                                     .strong()
@@ -196,6 +203,7 @@ fn onboarding_content_ui(
 
                     for panel in panels {
                         ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 4.0;
                             if (panel.add_buttons)(ui) {
                                 show_example = true;
                             }

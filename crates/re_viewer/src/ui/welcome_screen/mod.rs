@@ -142,7 +142,6 @@ fn url_large_text_button(
         if egui::Button::image_and_text(texture_id, ReUi::small_icon_size(), text)
             .ui(ui)
             .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .on_hover_text(url)
             .clicked()
         {
             ui.ctx().output_mut(|o| {
