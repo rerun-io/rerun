@@ -22,6 +22,12 @@ pub struct WelcomeScreen {
     example_page: example_page::ExamplePage,
 }
 
+#[derive(Default)]
+#[must_use]
+pub(super) struct WelcomeScreenResponse {
+    pub go_to_example_page: bool,
+}
+
 impl Default for WelcomeScreen {
     fn default() -> Self {
         Self {
@@ -66,17 +72,18 @@ impl WelcomeScreen {
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
 
-        egui::ScrollArea::vertical()
+        let response: WelcomeScreenResponse = egui::ScrollArea::vertical()
             .id_source(("welcome_screen_page", &self.current_page))
             .auto_shrink([false, false])
             .show(ui, |ui| match self.current_page {
-                WelcomeScreenPage::Welcome => {
-                    if welcome_page_ui(re_ui, ui, rx, command_sender) {
-                        self.current_page = WelcomeScreenPage::Examples;
-                    }
-                }
+                WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
                 WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
-            });
+            })
+            .inner;
+
+        if response.go_to_example_page {
+            self.current_page = WelcomeScreenPage::Examples;
+        }
     }
 }
 

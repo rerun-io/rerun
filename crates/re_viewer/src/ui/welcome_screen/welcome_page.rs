@@ -1,4 +1,4 @@
-use super::{large_text_button, status_strings, url_large_text_button};
+use super::{large_text_button, status_strings, url_large_text_button, WelcomeScreenResponse};
 use egui::{NumExt, Ui};
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
@@ -17,7 +17,7 @@ pub(super) fn welcome_page_ui(
     ui: &mut egui::Ui,
     rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
-) -> bool {
+) -> WelcomeScreenResponse {
     let mut margin = egui::Margin::same(40.0);
     margin.bottom = 0.0;
     egui::Frame {
@@ -25,9 +25,8 @@ pub(super) fn welcome_page_ui(
         ..Default::default()
     }
     .show(ui, |ui| {
-        let mut show_example = false;
         ui.vertical(|ui| {
-            show_example = onboarding_content_ui(re_ui, ui, command_sender);
+            let show_example = onboarding_content_ui(re_ui, ui, command_sender);
 
             for status_strings in status_strings(rx) {
                 if status_strings.long_term {
@@ -41,9 +40,10 @@ pub(super) fn welcome_page_ui(
                     });
                 }
             }
-        });
 
-        show_example
+            show_example
+        })
+        .inner
     })
     .inner
 }
@@ -59,7 +59,7 @@ fn onboarding_content_ui(
     re_ui: &ReUi,
     ui: &mut Ui,
     command_sender: &re_viewer_context::CommandSender,
-) -> bool {
+) -> WelcomeScreenResponse {
     // The panel data is stored in this ad hoc structure such that it can easily be iterated over
     // in chunks, to make the layout grid code simpler.
     let panels = [
@@ -122,7 +122,7 @@ fn onboarding_content_ui(
         .floor() as usize)
         .clamp(1, panels.len());
 
-    // disallow 3 columns
+    // we either display 4, 2, or a single column as 3 column would be ugly with 4 panels
     if column_count == 3 {
         column_count = 2;
     }
@@ -169,7 +169,7 @@ fn onboarding_content_ui(
                 let mut show_example = false;
 
                 for panels in panels.chunks(column_count) {
-                    if column_count == 4 {
+                    if column_count == panels.len() {
                         for panel in panels {
                             image_banner(re_ui, ui, panel.image, column_width);
                         }
@@ -183,12 +183,10 @@ fn onboarding_content_ui(
 
                     ui.end_row();
 
-                    for (idx, panel) in panels.iter().enumerate() {
+                    for panel in panels {
                         ui.vertical(|ui| {
-                            // don't let the text get too close to the right-hand content, if any
-                            if (idx + 1) % column_count != 0 {
-                                ui.set_max_width(column_width - 8.0);
-                            }
+                            // don't let the text get too close to the right-hand content
+                            ui.set_max_width(column_width - 8.0);
 
                             ui.label(
                                 egui::RichText::new(panel.title)
@@ -212,7 +210,10 @@ fn onboarding_content_ui(
 
                     ui.end_row();
                 }
-                show_example
+
+                WelcomeScreenResponse {
+                    go_to_example_page: show_example,
+                }
             })
             .inner
         })
