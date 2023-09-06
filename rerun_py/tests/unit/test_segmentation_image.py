@@ -11,7 +11,7 @@ rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.integers(0, 255, size=(10, 20))
 
 
-IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
+IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     # Full explicit construction
     rrd.TensorData(
         shape=[
@@ -38,7 +38,7 @@ def test_image() -> None:
         assert arch == expected
 
 
-GOOD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
+GOOD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     # Mono
     rng.integers(0, 255, (10, 20)),
     # Assorted Extra Dimensions
@@ -46,7 +46,7 @@ GOOD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
     rng.integers(0, 255, (10, 20, 1)),
 ]
 
-BAD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
+BAD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     rng.integers(0, 255, (10, 20, 3)),
     rng.integers(0, 255, (10, 20, 4)),
     rng.integers(0, 255, (10,)),

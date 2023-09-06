@@ -50,10 +50,7 @@ if TYPE_CHECKING:
 else:
     TensorDataLike = Any
 
-TensorDataArrayLike = Union[
-    TensorData,
-    Sequence[TensorDataLike],
-]
+TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
 
 
 # --- Arrow support ---
