@@ -248,6 +248,12 @@ impl<A: Archetype> ArchetypeView<A> {
         self.required_comp().len()
     }
 
+    /// Returns the [`RowId`] associated with the _primary_ component that was used to drive this
+    /// entire query.
+    ///
+    /// Beware: when using this [`RowId`] for caching/versioning purposes, make sure the component
+    /// you are about to cache is in fact the primary component of the query!
+    /// See also <https://github.com/rerun-io/rerun/issues/3232>.
     #[inline]
     pub fn primary_row_id(&self) -> RowId {
         self.primary_row_id
