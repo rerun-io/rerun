@@ -74,8 +74,12 @@ struct ExampleThumbnail {
 #[derive(Debug, serde::Deserialize)]
 #[allow(unused)]
 struct ExampleDesc {
+    // snake_case version of the example name
     name: String,
+
+    // human readable version of the example name
     title: String,
+
     description: String,
     tags: Vec<String>,
     demo_url: String,
@@ -114,12 +118,12 @@ struct ExampleDescLayout {
 
 impl ExampleDescLayout {
     /// Saves the top left corner of the hover/click area for this example.
-    fn update_top_left(&mut self, pos: egui::Pos2) {
+    fn set_top_left(&mut self, pos: egui::Pos2) {
         self.rect.min = pos;
     }
 
     /// Saves the bottom right corner of the hover/click area for this example.
-    fn update_bottom_right(&mut self, pos: egui::Pos2) {
+    fn set_bottom_right(&mut self, pos: egui::Pos2) {
         self.rect.max = pos;
     }
 
@@ -217,7 +221,7 @@ impl ExamplePage {
                                 .for_each(|example_layouts| {
                                     for example in &mut *example_layouts {
                                         // this is the beginning of the first cell for this example
-                                        example.update_top_left(ui.cursor().min);
+                                        example.set_top_left(ui.cursor().min);
 
                                         let thumbnail = &example.desc.thumbnail;
                                         let width = thumbnail.width as f32;
@@ -262,7 +266,7 @@ impl ExamplePage {
                                             example_tags(ui, &example.desc);
 
                                             // this is the end of the last cell for this example
-                                            example.update_bottom_right(egui::pos2(
+                                            example.set_bottom_right(egui::pos2(
                                                 ui.cursor().min.x + column_width,
                                                 ui.cursor().min.y,
                                             ));
@@ -312,42 +316,44 @@ fn example_thumbnail(
     // TODO(emilk/egui#3291): pull from web rather than cache
     let file_name = example.thumbnail.url.split('/').last();
 
-    if let Some(file_name) = file_name {
-        if let Some(icon) = THUMBNAIL_CACHE.get(file_name) {
-            let image = re_ui.icon_image(icon);
-            let texture_id = image.texture_id(ui.ctx());
+    let Some(file_name) = file_name else {
+        return;
+    };
 
-            let rounding = egui::Rounding::same(THUMBNAIL_RADIUS);
-            let resp = ui.add(egui::Image::new(texture_id, size).rounding(rounding));
+    let Some(icon) = THUMBNAIL_CACHE.get(file_name) else {
+        return;
+    };
 
-            // TODO(ab): use design tokens
-            let border_color = if hovered {
-                ui.visuals_mut().widgets.hovered.fg_stroke.color
-            } else {
-                egui::Color32::from_gray(44)
-            };
+    let image = re_ui.icon_image(icon);
+    let texture_id = image.texture_id(ui.ctx());
 
-            ui.painter()
-                .rect_stroke(resp.rect, rounding, (1.0, border_color));
+    let rounding = egui::Rounding::same(THUMBNAIL_RADIUS);
+    let resp = ui.add(egui::Image::new(texture_id, size).rounding(rounding));
 
-            // spinner overlay
-            if is_loading(rx, example) {
-                ui.painter().rect_filled(
-                    resp.rect,
-                    rounding,
-                    egui::Color32::BLACK.gamma_multiply(0.75),
-                );
+    // TODO(ab): use design tokens
+    let border_color = if hovered {
+        ui.visuals_mut().widgets.hovered.fg_stroke.color
+    } else {
+        egui::Color32::from_gray(44)
+    };
 
-                let spinner_size = resp.rect.size().min_elem().at_most(72.0);
-                let spinner_rect = egui::Rect::from_center_size(
-                    resp.rect.center(),
-                    egui::Vec2::splat(spinner_size),
-                );
-                ui.allocate_ui_at_rect(spinner_rect, |ui| {
-                    ui.add(egui::Spinner::new().size(spinner_size));
-                });
-            }
-        }
+    ui.painter()
+        .rect_stroke(resp.rect, rounding, (1.0, border_color));
+
+    // spinner overlay
+    if is_loading(rx, example) {
+        ui.painter().rect_filled(
+            resp.rect,
+            rounding,
+            egui::Color32::BLACK.gamma_multiply(0.75),
+        );
+
+        let spinner_size = resp.rect.size().min_elem().at_most(72.0);
+        let spinner_rect =
+            egui::Rect::from_center_size(resp.rect.center(), egui::Vec2::splat(spinner_size));
+        ui.allocate_ui_at_rect(spinner_rect, |ui| {
+            ui.add(egui::Spinner::new().size(spinner_size));
+        });
     }
 }
 

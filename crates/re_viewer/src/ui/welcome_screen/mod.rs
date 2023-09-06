@@ -5,22 +5,14 @@ use egui::Widget;
 use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::ReUi;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use welcome_page::welcome_page_ui;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Hash)]
 enum WelcomeScreenPage {
     #[default]
     Welcome,
     Examples,
-}
-
-// used for the top-level scroll area ID
-impl Hash for WelcomeScreenPage {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        "welcome_screen_page".hash(state);
-        std::mem::discriminant(self).hash(state);
-    }
 }
 
 #[derive(Debug)]
@@ -78,7 +70,7 @@ impl WelcomeScreen {
             matches!(self.current_page, WelcomeScreenPage::Welcome),
             true,
         ])
-        .id_source(&self.current_page)
+        .id_source(egui::Id::new("welcome_screen_page").with(&self.current_page))
         .auto_shrink([false, false])
         .show(ui, |ui| match self.current_page {
             WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
