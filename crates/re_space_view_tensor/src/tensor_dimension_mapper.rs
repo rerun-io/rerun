@@ -1,5 +1,5 @@
-use re_components::TensorDimension;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
+use re_types::datatypes::TensorDimension;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {

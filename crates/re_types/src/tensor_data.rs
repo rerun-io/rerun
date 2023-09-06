@@ -116,7 +116,8 @@ pub enum TensorDataType {
     ///
     /// Uses the standard IEEE 754-2008 binary16 format.
     /// Set <https://en.wikipedia.org/wiki/Half-precision_floating-point_format>.
-    F16,
+    // TODO(jleibs): F16 Support
+    //F16,
 
     /// 32-bit floating point number.
     F32,
@@ -140,7 +141,8 @@ impl TensorDataType {
             Self::I32 => std::mem::size_of::<i32>() as _,
             Self::I64 => std::mem::size_of::<i64>() as _,
 
-            Self::F16 => std::mem::size_of::<f16>() as _,
+            // TODO(jleibs): F16 Support
+            //Self::F16 => std::mem::size_of::<f16>() as _,
             Self::F32 => std::mem::size_of::<f32>() as _,
             Self::F64 => std::mem::size_of::<f64>() as _,
         }
@@ -162,7 +164,9 @@ impl TensorDataType {
             | Self::I16
             | Self::I32
             | Self::I64 => false,
-            Self::F16 | Self::F32 | Self::F64 => true,
+            // TODO(jleibs): F16 Support
+            // Self::F16 |
+            Self::F32 | Self::F64 => true,
         }
     }
 
@@ -179,7 +183,8 @@ impl TensorDataType {
             Self::I32 => i32::MIN as _,
             Self::I64 => i64::MIN as _,
 
-            Self::F16 => f16::MIN.into(),
+            // TODO(jleibs): F16 Support
+            //Self::F16 => f16::MIN.into(),
             Self::F32 => f32::MIN as _,
             Self::F64 => f64::MIN,
         }
@@ -198,7 +203,8 @@ impl TensorDataType {
             Self::I32 => i32::MAX as _,
             Self::I64 => i64::MAX as _,
 
-            Self::F16 => f16::MAX.into(),
+            // TODO(jleibs): F16 Support
+            //Self::F16 => f16::MAX.into(),
             Self::F32 => f32::MAX as _,
             Self::F64 => f64::MAX,
         }
@@ -218,7 +224,8 @@ impl std::fmt::Display for TensorDataType {
             Self::I32 => "int32".fmt(f),
             Self::I64 => "int64".fmt(f),
 
-            Self::F16 => "float16".fmt(f),
+            // TODO(jleibs): F16 Support
+            //Self::F16 => "float16".fmt(f),
             Self::F32 => "float32".fmt(f),
             Self::F64 => "float64".fmt(f),
         }
@@ -263,9 +270,12 @@ impl TensorDataTypeTrait for i64 {
     const DTYPE: TensorDataType = TensorDataType::I64;
 }
 
+// TODO(jleibs): F16 Support
+/*
 impl TensorDataTypeTrait for f16 {
     const DTYPE: TensorDataType = TensorDataType::F16;
 }
+*/
 
 impl TensorDataTypeTrait for f32 {
     const DTYPE: TensorDataType = TensorDataType::F32;
@@ -401,6 +411,21 @@ impl DecodedTensor {
     pub fn into_inner(self) -> TensorData {
         self.0
     }
+}
+
+// Backwards comparabillity shim
+// TODO(jleibs): fully express this in terms of indicator components
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TensorDataMeaning {
+    /// Default behavior: guess based on shape
+    Unknown,
+
+    /// The data is an annotated [`crate::ClassId`] which should be
+    /// looked up using the appropriate [`crate::AnnotationContext`]
+    ClassId,
+
+    /// Image data interpreted as depth map.
+    Depth,
 }
 
 impl TryFrom<TensorData> for DecodedTensor {

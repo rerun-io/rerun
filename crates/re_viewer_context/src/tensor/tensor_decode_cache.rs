@@ -1,5 +1,8 @@
-use re_components::{DecodedTensor, Tensor, TensorImageLoadError};
 use re_data_store::VersionedInstancePathHash;
+use re_types::{
+    datatypes::TensorData,
+    tensor_data::{DecodedTensor, TensorImageLoadError},
+};
 
 use crate::Cache;
 
@@ -33,7 +36,7 @@ impl TensorDecodeCache {
     pub fn entry(
         &mut self,
         key: VersionedInstancePathHash,
-        maybe_encoded_tensor: Tensor,
+        maybe_encoded_tensor: TensorData,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!();
 

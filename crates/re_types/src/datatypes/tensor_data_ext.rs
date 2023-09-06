@@ -477,7 +477,8 @@ impl TensorData {
                 self.dtype(),
                 TensorDataType::U8
                     | TensorDataType::U16
-                    | TensorDataType::F16
+                    // TOOD(jleibs): F16 Sypport
+                    //| TensorDataType::F16
                     | TensorDataType::F32
                     | TensorDataType::F64
             )

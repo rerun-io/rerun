@@ -20,7 +20,7 @@
 ///
 /// These dimensions are combined with an index to look up values from the `buffer` field,
 /// which stores a contiguous array of typed values.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TensorData {
     pub shape: Vec<crate::datatypes::TensorDimension>,
     pub buffer: crate::datatypes::TensorBuffer,

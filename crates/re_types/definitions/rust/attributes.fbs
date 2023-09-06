@@ -28,3 +28,6 @@ attribute "attr.rust.custom_clause";
 
 /// Apply to any object to generate a #repr clause with the specified value.
 attribute "attr.rust.repr";
+
+/// Default field for a union
+attribute "attr.rust.union_default";

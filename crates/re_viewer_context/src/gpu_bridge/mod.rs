@@ -4,7 +4,9 @@ mod re_renderer_callback;
 mod tensor_to_gpu;
 
 pub use re_renderer_callback::new_renderer_callback;
-pub use tensor_to_gpu::{depth_tensor_to_gpu, tensor_to_gpu};
+pub use tensor_to_gpu::{
+    class_id_tensor_to_gpu, color_tensor_to_gpu, depth_tensor_to_gpu, tensor_to_gpu,
+};
 
 use crate::TensorStats;
 
@@ -31,7 +33,7 @@ pub enum RangeError {
 /// Get a valid, finite range for the gpu to use.
 pub fn tensor_data_range_heuristic(
     tensor_stats: &TensorStats,
-    data_type: re_components::TensorDataType,
+    data_type: re_types::tensor_data::TensorDataType,
 ) -> Result<[f32; 2], RangeError> {
     let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
 
@@ -59,7 +61,7 @@ pub fn tensor_data_range_heuristic(
 /// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 pub fn tensor_decode_srgb_gamma_heuristic(
     tensor_stats: &TensorStats,
-    data_type: re_components::TensorDataType,
+    data_type: re_types::tensor_data::TensorDataType,
     channels: u32,
 ) -> Result<bool, RangeError> {
     if matches!(channels, 1 | 3 | 4) {

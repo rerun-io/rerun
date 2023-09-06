@@ -1,4 +1,4 @@
-use re_components::TensorDimension;
+use re_types::datatypes::TensorDimension;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DimensionSelector {
@@ -62,12 +62,12 @@ impl DimensionMapping {
                 let invert_width = shape[width]
                     .name
                     .as_ref()
-                    .map(|name| name.to_lowercase().eq("left"))
+                    .map(|name| name.as_str().to_lowercase().eq("left"))
                     .unwrap_or_default();
                 let invert_height = shape[height]
                     .name
                     .as_ref()
-                    .map(|name| name.to_lowercase().eq("up"))
+                    .map(|name| name.as_str().to_lowercase().eq("up"))
                     .unwrap_or_default();
 
                 DimensionMapping {
@@ -124,7 +124,7 @@ fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
         let lowercase = dim
             .name
             .as_ref()
-            .map(|name| name.to_lowercase())
+            .map(|name| name.as_str().to_lowercase())
             .unwrap_or_default();
         if is_name_like_width(&lowercase) {
             width = Some(i);

@@ -5,16 +5,18 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
-use re_components::{DecodedTensor, Pinhole, Tensor, TensorDataMeaning};
+use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
 use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
-use re_query::{EntityView, QueryError};
+use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
 };
 use re_types::{
-    components::{Color, DrawOrder, InstanceKey},
+    archetypes::Image,
+    components::{Color, DrawOrder, InstanceKey, TensorData},
+    tensor_data::{DecodedTensor, TensorDataMeaning},
     Loggable as _,
 };
 use re_viewer_context::{
@@ -25,15 +27,18 @@ use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
-    parts::{entity_iterator::process_entity_views, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
+    parts::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::SpatialViewPartData;
+use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
 
-pub struct Image {
+pub struct ViewerImage {
     /// Path to the image (note image instance ids would refer to pixels!)
     pub ent_path: EntityPath,
+
+    /// The meaning of the tensor stored in the image
+    pub meaning: TensorDataMeaning,
 
     pub tensor: DecodedTensor,
 
@@ -54,6 +59,7 @@ fn to_textured_rect(
     ent_context: &SpatialSceneEntityContext<'_>,
     tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
+    meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
 ) -> Option<re_renderer::renderer::TexturedRect> {
     re_tracing::profile_function!();
@@ -72,6 +78,7 @@ fn to_textured_rect(
         &debug_name,
         tensor_path_hash,
         tensor,
+        meaning,
         &tensor_stats,
         &ent_context.annotations,
     ) {
@@ -128,7 +135,7 @@ struct ImageGrouping {
 
 pub struct ImagesPart {
     pub data: SpatialViewPartData,
-    pub images: Vec<Image>,
+    pub images: Vec<ViewerImage>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
@@ -147,7 +154,7 @@ impl ImagesPart {
         re_tracing::profile_function!();
 
         // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
-        let mut image_groups: BTreeMap<ImageGrouping, Vec<Image>> = BTreeMap::new();
+        let mut image_groups: BTreeMap<ImageGrouping, Vec<ViewerImage>> = BTreeMap::new();
         for image in self.images.drain(..) {
             image_groups
                 .entry(ImageGrouping {
@@ -169,7 +176,7 @@ impl ImagesPart {
             images.sort_by_key(|image| {
                 (
                     image.textured_rect.options.depth_offset,
-                    image.tensor.meaning == TensorDataMeaning::ClassId,
+                    image.meaning == TensorDataMeaning::ClassId,
                 )
             });
 
@@ -194,13 +201,13 @@ impl ImagesPart {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn process_entity_view(
+    fn process_arch_view(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
-        ent_view: &EntityView<Tensor>,
+        arch_view: &ArchetypeView<Image>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
@@ -208,27 +215,27 @@ impl ImagesPart {
 
         let parent_pinhole_path = transforms.parent_pinhole(ent_path);
 
+        // TODO(jleibs): Fetch meaning from indicator component
+        let meaning = TensorDataMeaning::Unknown;
+
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
-            ent_view.iter_primary()?,
-            ent_view.iter_component::<Color>()?,
-            ent_view.iter_component::<DrawOrder>()?
+            arch_view.iter_required_component::<TensorData>()?,
+            arch_view.iter_optional_component::<Color>()?,
+            arch_view.iter_optional_component::<DrawOrder>()?
         ) {
             re_tracing::profile_scope!("loop_iter");
-            let Some(tensor) = tensor else {
-                continue;
-            };
 
-            if !tensor.is_shaped_like_an_image() {
+            if !tensor.0.is_shaped_like_an_image() {
                 return Ok(());
             }
 
             // NOTE: Tensors don't support batches at the moment so always splat.
             let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(ent_view.primary_row_id());
+                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
             let tensor = match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
             {
                 Ok(tensor) => tensor,
                 Err(err) => {
@@ -239,7 +246,7 @@ impl ImagesPart {
                 }
             };
 
-            if *ent_props.backproject_depth && tensor.meaning == TensorDataMeaning::Depth {
+            if *ent_props.backproject_depth && meaning == TensorDataMeaning::Depth {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(ent_path) {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
@@ -283,6 +290,7 @@ impl ImagesPart {
                 ent_context,
                 tensor_path_hash,
                 &tensor,
+                meaning,
                 color.into(),
             ) {
                 {
@@ -299,9 +307,10 @@ impl ImagesPart {
                         .extend(top_left + textured_rect.extent_v + textured_rect.extent_u);
                 }
 
-                self.images.push(Image {
+                self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
                     tensor,
+                    meaning,
                     textured_rect,
                     parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
                     draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
@@ -413,7 +422,7 @@ impl NamedViewSystem for ImagesPart {
 impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
-            Tensor::name(),
+            TensorData::name(),
             InstanceKey::name(),
             Color::name(),
             DrawOrder::name(),
@@ -426,11 +435,11 @@ impl ViewPartSystem for ImagesPart {
         ent_path: &EntityPath,
         _components: &[ComponentName],
     ) -> bool {
-        if let Some(tensor) = store.query_latest_component::<Tensor>(
+        if let Some(tensor) = store.query_latest_component::<TensorData>(
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
-            tensor.is_shaped_like_an_image() && !tensor.is_vector()
+            tensor.0.is_shaped_like_an_image() && !tensor.0.is_vector()
         } else {
             false
         }
@@ -445,15 +454,14 @@ impl ViewPartSystem for ImagesPart {
         let mut depth_clouds = Vec::new();
 
         let transforms = view_ctx.get::<TransformContext>()?;
-        process_entity_views::<ImagesPart, _, 4, _>(
+        process_archetype_views::<ImagesPart, Image, { Image::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.image,
-            self.archetype(),
             |ctx, ent_path, ent_view, ent_context| {
                 let ent_props = query.entity_props_map.get(ent_path);
-                self.process_entity_view(
+                self.process_arch_view(
                     ctx,
                     &mut depth_clouds,
                     transforms,

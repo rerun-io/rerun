@@ -17,7 +17,7 @@ all-features = true
 
 
 [dependencies]
-re_components.workspace = true
+re_types.workspace = true
 
 ahash.workspace = true
 ndarray.workspace = true

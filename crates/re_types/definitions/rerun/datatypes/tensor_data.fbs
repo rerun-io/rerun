@@ -19,7 +19,7 @@ namespace rerun.datatypes;
 table TensorData (
   order: 100,
   "attr.python.array_aliases": "npt.ArrayLike",
-  "attr.rust.derive": "PartialEq,"
+  "attr.rust.derive": "Default, PartialEq,"
 ) {
   shape: [rerun.datatypes.TensorDimension] (order: 200);
   buffer: rerun.datatypes.TensorBuffer (order: 300);

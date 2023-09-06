@@ -1,6 +1,12 @@
-use crate::tensor_data::TensorDataType;
+use crate::{tensor_data::TensorDataType, ArrowBuffer};
 
 use super::TensorBuffer;
+
+impl Default for TensorBuffer {
+    fn default() -> Self {
+        TensorBuffer::U8(ArrowBuffer::<u8>::default())
+    }
+}
 
 impl TensorBuffer {
     #[allow(clippy::match_same_arms)]

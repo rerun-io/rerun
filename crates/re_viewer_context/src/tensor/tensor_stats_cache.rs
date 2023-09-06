@@ -1,5 +1,5 @@
-use re_components::Tensor;
 use re_data_store::VersionedInstancePathHash;
+use re_types::datatypes::TensorData;
 
 use super::TensorStats;
 use crate::Cache;
@@ -10,7 +10,7 @@ use crate::Cache;
 pub struct TensorStatsCache(ahash::HashMap<VersionedInstancePathHash, TensorStats>);
 
 impl TensorStatsCache {
-    pub fn entry(&mut self, key: VersionedInstancePathHash, tensor: &Tensor) -> TensorStats {
+    pub fn entry(&mut self, key: VersionedInstancePathHash, tensor: &TensorData) -> TensorStats {
         *self
             .0
             .entry(key)
