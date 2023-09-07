@@ -36,7 +36,7 @@ namespace rerun {
             std::vector<rerun::datatypes::Vec3D> points;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             LineStrip3D() = default;

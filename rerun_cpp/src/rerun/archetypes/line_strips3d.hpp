@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../arrow.hpp"
+#include "../component_list.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -111,6 +112,10 @@ namespace rerun {
             /// Unique identifiers for each individual line strip in the batch.
             std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
 
+            /// Name of the indicator component, used to identify the archetype when converting to a
+            /// list of components.
+            static const char INDICATOR_COMPONENT_NAME[];
+
           public:
             LineStrips3D() = default;
 
@@ -190,8 +195,11 @@ namespace rerun {
                 return strips.size();
             }
 
-            /// Creates a list of Rerun DataCell from this archetype.
-            Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            /// Collections all component lists into a list of component collections. *Attention:*
+            /// The returned vector references this instance and does not take ownership of any
+            /// data. Adding any new components to this archetype will invalidate the returned
+            /// component lists!
+            std::vector<AnonymousComponentList> as_component_lists() const;
         };
     } // namespace archetypes
 } // namespace rerun

@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *Transform3D::NAME = "rerun.transform3d";
+        const char Transform3D::NAME[] = "rerun.transform3d";
 
         const std::shared_ptr<arrow::DataType> &Transform3D::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Transform3D::arrow_datatype();

@@ -31,7 +31,7 @@ namespace rerun {
             std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             // Extensions to generated type defined in 'annotation_context_ext.cpp'

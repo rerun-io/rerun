@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../arrow.hpp"
+#include "../component_list.hpp"
 #include "../components/annotation_context.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
@@ -54,6 +55,10 @@ namespace rerun {
         struct AnnotationContext {
             rerun::components::AnnotationContext context;
 
+            /// Name of the indicator component, used to identify the archetype when converting to a
+            /// list of components.
+            static const char INDICATOR_COMPONENT_NAME[];
+
           public:
             AnnotationContext() = default;
 
@@ -65,8 +70,11 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates a list of Rerun DataCell from this archetype.
-            Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            /// Collections all component lists into a list of component collections. *Attention:*
+            /// The returned vector references this instance and does not take ownership of any
+            /// data. Adding any new components to this archetype will invalidate the returned
+            /// component lists!
+            std::vector<AnonymousComponentList> as_component_lists() const;
         };
     } // namespace archetypes
 } // namespace rerun

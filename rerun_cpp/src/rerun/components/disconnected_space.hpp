@@ -27,7 +27,7 @@ namespace rerun {
             bool is_disconnected;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             DisconnectedSpace() = default;

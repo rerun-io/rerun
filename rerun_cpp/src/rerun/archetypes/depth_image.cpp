@@ -3,49 +3,29 @@
 
 #include "depth_image.hpp"
 
-#include "../components/depth_meter.hpp"
-#include "../components/draw_order.hpp"
-#include "../components/tensor_data.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> DepthImage::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
+        const char DepthImage::INDICATOR_COMPONENT_NAME[] = "rerun.components.DepthImageIndicator";
+
+        std::vector<AnonymousComponentList> DepthImage::as_component_lists() const {
+            std::vector<AnonymousComponentList> cells;
             cells.reserve(3);
 
-            {
-                const auto result = rerun::components::TensorData::to_data_cell(&data, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+            cells.emplace_back(data);
             if (meter.has_value()) {
-                const auto& value = meter.value();
-                const auto result = rerun::components::DepthMeter::to_data_cell(&value, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
+                cells.emplace_back(meter.value());
             }
             if (draw_order.has_value()) {
-                const auto& value = draw_order.value();
-                const auto result = rerun::components::DrawOrder::to_data_cell(&value, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
+                cells.emplace_back(draw_order.value());
             }
-            {
-                const auto result = create_indicator_component(
-                    "rerun.components.DepthImageIndicator",
+            cells.emplace_back(
+                ComponentList<components::IndicatorComponent<DepthImage::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
                     num_instances()
-                );
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+                )
+            );
 
             return cells;
         }

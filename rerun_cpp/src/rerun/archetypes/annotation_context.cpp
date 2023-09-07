@@ -3,31 +3,25 @@
 
 #include "annotation_context.hpp"
 
-#include "../components/annotation_context.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> AnnotationContext::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
+        const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
+            "rerun.components.AnnotationContextIndicator";
+
+        std::vector<AnonymousComponentList> AnnotationContext::as_component_lists() const {
+            std::vector<AnonymousComponentList> cells;
             cells.reserve(1);
 
-            {
-                const auto result = rerun::components::AnnotationContext::to_data_cell(&context, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                const auto result = create_indicator_component(
-                    "rerun.components.AnnotationContextIndicator",
+            cells.emplace_back(context);
+            cells.emplace_back(
+                ComponentList<
+                    components::IndicatorComponent<AnnotationContext::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
                     num_instances()
-                );
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+                )
+            );
 
             return cells;
         }

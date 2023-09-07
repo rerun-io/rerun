@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *AnnotationContext::NAME = "rerun.annotation_context";
+        const char AnnotationContext::NAME[] = "rerun.annotation_context";
 
         const std::shared_ptr<arrow::DataType> &AnnotationContext::arrow_datatype() {
             static const auto datatype = arrow::list(arrow::field(

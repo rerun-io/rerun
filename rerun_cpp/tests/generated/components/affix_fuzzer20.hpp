@@ -23,7 +23,7 @@ namespace rerun {
             rerun::datatypes::AffixFuzzer20 nested_transparent;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             AffixFuzzer20() = default;

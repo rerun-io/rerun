@@ -24,7 +24,7 @@ namespace rerun {
             std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             AffixFuzzer16() = default;

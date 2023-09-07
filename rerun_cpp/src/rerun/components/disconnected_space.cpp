@@ -11,7 +11,7 @@
 
 namespace rerun {
     namespace components {
-        const char *DisconnectedSpace::NAME = "rerun.disconnected_space";
+        const char DisconnectedSpace::NAME[] = "rerun.disconnected_space";
 
         const std::shared_ptr<arrow::DataType> &DisconnectedSpace::arrow_datatype() {
             static const auto datatype = arrow::boolean();

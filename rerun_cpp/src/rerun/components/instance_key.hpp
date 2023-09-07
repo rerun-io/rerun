@@ -27,7 +27,7 @@ namespace rerun {
             uint64_t value;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             InstanceKey() = default;
