@@ -404,40 +404,60 @@ pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
     workspace_root
 }
 
+// ---
+
 pub(crate) fn to_snake_case(s: &str) -> String {
-    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
-    let mut last_char: Option<char> = None;
+    use convert_case::{Boundary, Converter, Pattern};
 
-    let mut out = String::new();
-    for c in s.chars() {
-        if let Some(last_char) = last_char {
-            if last_char.is_lowercase() && c.is_uppercase() {
-                out.push('_');
-            }
-        }
-        out.push(c.to_ascii_lowercase());
-        last_char = Some(c);
-    }
+    let rerun_snake = Converter::new()
+        .set_boundaries(&[
+            Boundary::Hyphen,
+            Boundary::Space,
+            Boundary::Underscore,
+            Boundary::Acronym,
+            Boundary::LowerUpper,
+        ])
+        .set_pattern(Pattern::Lowercase)
+        .set_delim("_");
 
-    out
+    rerun_snake.convert(s)
 }
 
 #[test]
-fn test_snake_case() {
+fn test_to_snake_case() {
     assert_eq!(
         to_snake_case("rerun.components.Point2D"),
         "rerun.components.point2d"
     );
     assert_eq!(
+        to_snake_case("rerun.components.point2d"),
+        "rerun.components.point2d"
+    );
+
+    assert_eq!(
         to_snake_case("rerun.datatypes.Utf8"),
         "rerun.datatypes.utf8"
     );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.utf8"),
+        "rerun.datatypes.utf8"
+    );
+
     assert_eq!(
         to_snake_case("rerun.archetypes.Points2DIndicator"),
         "rerun.archetypes.points2d_indicator"
     );
     assert_eq!(
+        to_snake_case("rerun.archetypes.points2d_indicator"),
+        "rerun.archetypes.points2d_indicator"
+    );
+
+    assert_eq!(
         to_snake_case("rerun.components.TranslationAndMat3x3"),
+        "rerun.components.translation_and_mat3x3"
+    );
+    assert_eq!(
+        to_snake_case("rerun.components.translation_and_mat3x3"),
         "rerun.components.translation_and_mat3x3"
     );
 }
