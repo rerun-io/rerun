@@ -12,9 +12,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
 
     // create a segmentation image
-    let mut image = Array::<u8, _>::zeros((200, 300).f());
-    image.slice_mut(s![50..100, 50..120]).fill(1);
-    image.slice_mut(s![100..180, 130..280]).fill(2);
+    let mut image = Array::<u8, _>::zeros((8, 12).f());
+    image.slice_mut(s![0..4, 0..6]).fill(1);
+    image.slice_mut(s![4:8, 6:12]).fill(2);
 
     // create an annotation context to describe the classes
     let annotation = AnnotationContext::new([

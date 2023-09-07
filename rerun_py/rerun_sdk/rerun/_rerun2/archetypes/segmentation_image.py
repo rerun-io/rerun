@@ -33,9 +33,9 @@ class SegmentationImage(Archetype):
     import rerun.experimental as rr2
 
     # Create a segmentation image
-    image = np.zeros((200, 300), dtype=np.uint8)
-    image[50:100, 50:120] = 1
-    image[100:180, 130:280] = 2
+    image = np.zeros((8, 12), dtype=np.uint8)
+    image[0:4, 0:6] = 1
+    image[4:8, 6:12] = 2
 
     rr.init("rerun_example_segmentation_image", spawn=True)
 
