@@ -1,9 +1,8 @@
 #pragma once
 
-#include <cstddef> // size_t
-#include <cstdint> // uint32_t etc
-#include <vector>
+#include <cstdint> // uint32_t etc.
 
+#include "component_list.hpp"
 #include "data_cell.hpp"
 #include "error.hpp"
 
@@ -205,50 +204,16 @@ namespace rerun {
 
       private:
         template <typename C, typename... Ts>
-        static size_t size_of_first_collection(const std::vector<C>& first, const Ts&...) {
-            return first.size();
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static size_t size_of_first_collection(const std::array<C, N>& first, const Ts&...) {
-            return first.size();
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static size_t size_of_first_collection(const C (&)[N], const Ts&...) {
-            return N;
+        static size_t size_of_first_collection(const C& first, const Ts&...) {
+            return ComponentList(first).size;
         }
 
         template <typename C, typename... Ts>
         static Error push_data_cells(
-            std::vector<DataCell>& data_cells, const std::vector<C>& first, const Ts&... rest
+            std::vector<DataCell>& data_cells, const C& first, const Ts&... rest
         ) {
-            const auto cell_result = C::to_data_cell(first.data(), first.size());
+            const auto cell_result = ComponentList(first).to_data_cell();
             if (cell_result.is_err()) {
-                return cell_result.error;
-            }
-            data_cells.push_back(cell_result.value);
-            return push_data_cells(data_cells, rest...);
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static Error push_data_cells(
-            std::vector<DataCell>& data_cells, const std::array<C, N>& first, const Ts&... rest
-        ) {
-            const auto cell_result = C::to_data_cell(first.data(), N);
-            if (!cell_result.is_ok()) {
-                return cell_result.error;
-            }
-            data_cells.push_back(cell_result.value);
-            return push_data_cells(data_cells, rest...);
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static Error push_data_cells(
-            std::vector<DataCell>& data_cells, const C (&first)[N], const Ts&... rest
-        ) {
-            const auto cell_result = C::to_data_cell(first, N);
-            if (!cell_result.is_ok()) {
                 return cell_result.error;
             }
             data_cells.push_back(cell_result.value);
