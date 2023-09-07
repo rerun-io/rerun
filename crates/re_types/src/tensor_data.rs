@@ -514,16 +514,16 @@ impl DecodedTensor {
                 ));
             }
         };
-        let shape = if depth != 1 {
+        let shape = if depth == 1 {
             vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
-                TensorDimension::depth(depth),
             ]
         } else {
             vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
+                TensorDimension::depth(depth),
             ]
         };
         let tensor = TensorData { shape, buffer };
