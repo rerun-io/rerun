@@ -22,21 +22,21 @@ struct Args {
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
         "translation_and_mat3x3/identity",
-        &Transform3D::new(datatypes::Transform3D::TranslationAndMat3X3(
+        &Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
             TranslationAndMat3x3::IDENTITY,
         )), //
     )?;
 
     rec.log(
         "translation_and_mat3x3/translation",
-        &Transform3D::new(datatypes::Transform3D::TranslationAndMat3X3(
+        &Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
             TranslationAndMat3x3::translation([1.0, 2.0, 3.0]).from_parent(),
         )), //
     )?;
 
     rec.log(
         "translation_and_mat3x3/rotation",
-        &Transform3D::new(datatypes::Transform3D::TranslationAndMat3X3(
+        &Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
             TranslationAndMat3x3::rotation([[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]]),
         )),
     )?;

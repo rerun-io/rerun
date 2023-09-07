@@ -404,30 +404,125 @@ pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
     workspace_root
 }
 
+// ---
+
+/// Converts a snake or pascal case input into a snake case output.
+///
+/// If the input contains multiple parts separated by dots, only the last part is converted.
 pub(crate) fn to_snake_case(s: &str) -> String {
-    // Other crates (convert_case, case, heck, …) all get this wrong. See unit test.
-    let mut last_char: Option<char> = None;
+    use convert_case::{Boundary, Converter, Pattern};
 
-    let mut out = String::new();
-    for c in s.chars() {
-        if let Some(last_char) = last_char {
-            if last_char.is_lowercase() && c.is_uppercase() {
-                out.push('_');
-            }
-        }
-        out.push(c.to_ascii_lowercase());
-        last_char = Some(c);
+    let rerun_snake = Converter::new()
+        .set_boundaries(&[
+            Boundary::Hyphen,
+            Boundary::Space,
+            Boundary::Underscore,
+            Boundary::Acronym,
+            Boundary::LowerUpper,
+        ])
+        .set_pattern(Pattern::Lowercase)
+        .set_delim("_");
+
+    let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
+    if let Some(last) = parts.last_mut() {
+        *last = rerun_snake.convert(&last);
     }
-
-    out
+    parts.join(".")
 }
 
 #[test]
-fn test_snake_case() {
-    assert_eq!(to_snake_case("Point2D"), "point2d");
-    assert_eq!(to_snake_case("Utf8"), "utf8");
+fn test_to_snake_case() {
     assert_eq!(
-        to_snake_case("TranslationAndMat3x3"),
-        "translation_and_mat3x3"
+        to_snake_case("rerun.components.Point2D"),
+        "rerun.components.point2d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.components.point2d"),
+        "rerun.components.point2d"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.datatypes.Utf8"),
+        "rerun.datatypes.utf8"
+    );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.utf8"),
+        "rerun.datatypes.utf8"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.archetypes.Points2DIndicator"),
+        "rerun.archetypes.points2d_indicator"
+    );
+    assert_eq!(
+        to_snake_case("rerun.archetypes.points2d_indicator"),
+        "rerun.archetypes.points2d_indicator"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.components.TranslationAndMat3x3"),
+        "rerun.components.translation_and_mat3x3"
+    );
+    assert_eq!(
+        to_snake_case("rerun.components.translation_and_mat3x3"),
+        "rerun.components.translation_and_mat3x3"
+    );
+}
+
+/// Converts a snake or pascal case input into a pascal case output.
+///
+/// If the input contains multiple parts separated by dots, only the last part is converted.
+pub(crate) fn to_pascal_case(s: &str) -> String {
+    use convert_case::{Boundary, Converter, Pattern};
+
+    let rerun_snake = Converter::new()
+        .set_boundaries(&[
+            Boundary::Hyphen,
+            Boundary::Space,
+            Boundary::Underscore,
+            Boundary::DigitUpper,
+            Boundary::Acronym,
+            Boundary::LowerUpper,
+        ])
+        .set_pattern(Pattern::Capital);
+
+    let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
+    if let Some(last) = parts.last_mut() {
+        *last = last
+            .replace("2d", "2D")
+            .replace("3d", "3D")
+            .replace("4d", "4D");
+        *last = rerun_snake.convert(&last);
+    }
+    parts.join(".")
+}
+
+#[test]
+fn test_to_pascal_case() {
+    assert_eq!(
+        to_pascal_case("rerun.components.point2d"),
+        "rerun.components.Point2D"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.components.Point2D"),
+        "rerun.components.Point2D"
+    );
+
+    assert_eq!(
+        to_pascal_case("rerun.archetypes.points2d_indicator"),
+        "rerun.archetypes.Points2DIndicator"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.archetypes.Points2DIndicator"),
+        "rerun.archetypes.Points2DIndicator"
+    );
+
+    assert_eq!(
+        to_pascal_case("rerun.components.translation_and_mat3x3"),
+        "rerun.components.TranslationAndMat3x3"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.components.TranslationAndMat3x3"),
+        "rerun.components.TranslationAndMat3x3"
     );
 }
