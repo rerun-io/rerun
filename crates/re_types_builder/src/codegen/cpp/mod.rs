@@ -1265,7 +1265,7 @@ fn archetype_as_component_lists(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_cells)*
-            cells.emplace_back(components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>());
+            cells.emplace_back(ComponentList<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cells;

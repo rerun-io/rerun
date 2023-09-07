@@ -14,11 +14,6 @@ namespace rerun {
             IndicatorComponent() = default;
 
             /// Creates a Rerun DataCell from an array of IndicatorComponent components.
-            ///
-            /// Typically only a single indicator component is ever used. `num_instances` is merely
-            /// there to match the commonly used interface.
-            /// Since indicator components have no data, strongly typed null can be passed in
-            /// instead of a valid pointer.
             static Result<rerun::DataCell> to_data_cell(
                 const IndicatorComponent<Name>*, size_t num_instances
             ) {
