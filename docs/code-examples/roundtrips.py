@@ -149,33 +149,59 @@ def main() -> None:
     examples.sort()
 
     print("----------------------------------------------------------")
-    print(f"Running {len(examples)} examples…")
+    print(f"Building {len(examples)} examples…")
+
+    with multiprocessing.Pool() as pool:
+        jobs = []
+        for example in examples:
+            example_opt_out_entirely = opt_out_entirely.get(example, [])
+            example_opt_out_compare = opt_out_compare.get(example, [])
+            for language in ["cpp", "py", "rust"]:
+                if language in example_opt_out_entirely:
+                    continue
+                job = pool.apply_async(build_example, (example, language, args))
+                jobs.append(job)
+        print(f"Waiting for {len(jobs)} build jobs to     finish…")
+        for job in jobs:
+            job.get()
+
+    print("----------------------------------------------------------")
+    print(f"Comparing {len(examples)} examples…")
 
     for example in examples:
         print()
         print("----------------------------------------------------------")
-        print(f"Running example '{example}'…")
+        print(f"Comparing example '{example}'…")
 
         example_opt_out_entirely = opt_out_entirely.get(example, [])
         example_opt_out_compare = opt_out_compare.get(example, [])
 
-        rust_output_path = None
+        if "rust" in example_opt_out_entirely:
+            continue  # No baseline to compare against
 
-        if "rust" not in example_opt_out_entirely:
-            rust_output_path = run_roundtrip_rust(example, args.release, args.target, args.target_dir)
-            check_non_empty_rrd(rust_output_path)
+        cpp_output_path = f"docs/code-examples/{example}_cpp.rrd"
+        python_output_path = f"docs/code-examples/{example}_py.rrd"
+        rust_output_path = f"docs/code-examples/{example}_rust.rrd"
 
-        if "py" not in example_opt_out_entirely:
-            python_output_path = run_roundtrip_python(example)
-            check_non_empty_rrd(python_output_path)
-            if rust_output_path is not None and "py" not in example_opt_out_compare:
-                run_comparison(python_output_path, rust_output_path, args.full_dump)
+        if "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
+            run_comparison(python_output_path, rust_output_path, args.full_dump)
 
-        if "cpp" not in example_opt_out_entirely:
-            cpp_output_path = run_roundtrip_cpp(example, args.release)
-            check_non_empty_rrd(cpp_output_path)
-            if rust_output_path is not None and "cpp" not in example_opt_out_compare:
-                run_comparison(rust_output_path, cpp_output_path, args.full_dump)
+        if "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
+            run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+
+
+def build_example(example: str, language: str, args: argparse.Namespace) -> None:
+    if language == "cpp":
+        cpp_output_path = run_roundtrip_cpp(example, args.release)
+        check_non_empty_rrd(cpp_output_path)
+    elif language == "py":
+        python_output_path = run_roundtrip_python(example)
+        check_non_empty_rrd(python_output_path)
+    elif language == "rust":
+        rust_output_path = run_roundtrip_rust(example, args.release, args.target, args.target_dir)
+        check_non_empty_rrd(rust_output_path)
+    else:
+        assert False, f"Unknown language: {language}"
 
 
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
