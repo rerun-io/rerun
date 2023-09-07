@@ -316,13 +316,14 @@ impl ImagesPart {
         let parent_pinhole_path = transforms.parent_pinhole(ent_path);
 
         // Instance ids of tensors refer to entries inside the tensor.
-        for (tensor, color, _meter, draw_order) in itertools::izip!(
+        for (tensor, color, draw_order) in itertools::izip!(
             arch_view.iter_required_component::<TensorData>()?,
             arch_view.iter_optional_component::<Color>()?,
-            arch_view.iter_optional_component::<DepthMeter>()?,
             arch_view.iter_optional_component::<DrawOrder>()?
         ) {
-            // TODO(jleibs): Why is meter not used here?
+            // NOTE: we ignore the `DepthMeter` component here because we get it from
+            // `EntityProperties::depth_from_world_scale` instead, which is initialized to the
+            // same value, but the user may have edited it.
             re_tracing::profile_scope!("loop_iter");
 
             if !tensor.0.is_shaped_like_an_image() {
