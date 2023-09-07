@@ -1,3 +1,4 @@
+use super::WelcomeScreenResponse;
 use egui::load::TexturePoll;
 use egui::{NumExt, TextureOptions, Ui};
 use re_log_types::LogMsg;
@@ -105,7 +106,7 @@ impl ExamplePage {
         ui: &mut egui::Ui,
         rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
-    ) {
+    ) -> WelcomeScreenResponse {
         let mut margin = egui::Margin::same(MARGINS);
         margin.bottom = MARGINS - ROW_VSPACE;
         egui::Frame {
@@ -144,7 +145,7 @@ impl ExamplePage {
                         ));
 
                         ui.add(egui::Label::new(
-                            egui::RichText::new("Learn from the community.")
+                            egui::RichText::new("Explore what you can build.")
                                 .line_height(Some(32.0))
                                 .text_style(re_ui::ReUi::welcome_screen_h1()),
                         ));
@@ -232,6 +233,8 @@ impl ExamplePage {
                 });
             });
         });
+
+        WelcomeScreenResponse::default()
     }
 }
 
