@@ -82,7 +82,7 @@ pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeS
         if let Some(stem) = filepath.as_str().strip_suffix("_ext.cpp") {
             let generated_hpp_path = Utf8PathBuf::try_from(format!("{stem}.hpp")).unwrap();
             assert!(
-                filepath.exists(),
+                generated_hpp_path.exists(),
                 "Found orphaned {filepath} with no matching {generated_hpp_path}"
             );
             continue;
