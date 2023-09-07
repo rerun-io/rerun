@@ -15,7 +15,7 @@
 use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools;
-use rerun::{external::re_log, EntityPath, RecordingStream};
+use rerun::{archetypes::SegmentationImage, external::re_log, EntityPath, RecordingStream};
 
 // --- Rerun logging ---
 
@@ -315,7 +315,7 @@ fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
 fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::{AnnotationContext, Points2D},
-        components::{Tensor, TensorDataMeaning, TextEntry},
+        components::TextEntry,
         datatypes::{self, AnnotationInfo},
     };
 
@@ -344,10 +344,10 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
 
     rec.set_time_seconds("sim_time", 1f64);
 
-    // TODO(#2792): SegmentationImage archetype
-    let mut tensor = Tensor::try_from(segmentation_img.as_standard_layout().view())?;
-    tensor.meaning = TensorDataMeaning::ClassId;
-    rec.log_component_lists("seg_test/img", false, 1, [&tensor as _])?;
+    rec.log(
+        "seg_test/img",
+        &SegmentationImage::try_from(segmentation_img)?,
+    )?;
 
     // Log a bunch of classified 2D points
     rec.log(

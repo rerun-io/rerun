@@ -7,6 +7,8 @@ import pyarrow as pa
 
 from rerun.log.error_utils import _send_warning
 
+from ..._validators import find_non_empty_dim_indices
+
 if TYPE_CHECKING:
     from ...components import TensorDataArray
     from ...datatypes import TensorDataArrayLike
@@ -27,7 +29,7 @@ def image_data_converter(data: TensorDataArrayLike) -> TensorDataArray:
 
     num_non_empty_dims = len(non_empty_dims)
 
-    # TODO(jleibs): What `recording` should we be passing here? How should we be getting it?
+    # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
     if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
         _send_warning(f"Expected image, got array of shape {shape_dims}", 1, recording=None)
 
@@ -83,38 +85,3 @@ def image_data_converter(data: TensorDataArrayLike) -> TensorDataArray:
     # TODO(jleibs): Should we enforce specific names on images? Specifically, what if the existing names are wrong.
 
     return tensor_data
-
-
-# This code follows closely from `image_ext.rs`
-def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
-    """Returns the indices of an appropriate set of non-empty dimensions."""
-    if len(shape) < 2:
-        return list(range(len(shape)))
-
-    indices = list(d[0] for d in filter(lambda d: d[1] != 1, enumerate(shape)))
-
-    # 0 must be valid since shape isn't empty or we would have returned an Err above
-    first_non_empty = next(iter(indices), 0)
-    last_non_empty = next(reversed(indices), first_non_empty)
-
-    # Note, these are inclusive ranges
-
-    # First, empty inner dimensions are more likely to be intentional than empty outer dimensions.
-    # Grow to a min-size of 2.
-    # (1x1x3x1) -> 3x1 mono rather than 1x1x3 RGB
-    while (last_non_empty - first_non_empty) < 1 and last_non_empty < (len(shape) - 1):
-        print(f"{last_non_empty} {first_non_empty} {len(shape)}")
-        last_non_empty += 1
-
-    target = 1
-    if shape[last_non_empty] in (3, 4):
-        target = 2
-
-    # Next, consider empty outer dimensions if we still need them.
-    # Grow up to 3 if the inner dimension is already 3 or 4 (Color Images)
-    # Otherwise, only grow up to 2.
-    # (1x1x3) -> 1x1x3 rgb rather than 1x3 mono
-    while (last_non_empty - first_non_empty) < target and first_non_empty > 0:
-        first_non_empty -= 1
-
-    return list(range(first_non_empty, last_non_empty + 1))

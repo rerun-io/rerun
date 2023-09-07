@@ -22,6 +22,22 @@ impl<T: Into<crate::datatypes::Vec3D>> From<T> for Vector3D {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::Vec3D> for Vector3D {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::Vec3D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Vector3D {
+    type Target = crate::datatypes::Vec3D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Vec3D {
+        &self.0
+    }
+}
+
 impl<'a> From<Vector3D> for ::std::borrow::Cow<'a, Vector3D> {
     #[inline]
     fn from(value: Vector3D) -> Self {

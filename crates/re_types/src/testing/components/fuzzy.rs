@@ -21,6 +21,22 @@ impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer1 
     }
 }
 
+impl std::borrow::Borrow<crate::testing::datatypes::AffixFuzzer1> for AffixFuzzer1 {
+    #[inline]
+    fn borrow(&self) -> &crate::testing::datatypes::AffixFuzzer1 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer1 {
+    type Target = crate::testing::datatypes::AffixFuzzer1;
+
+    #[inline]
+    fn deref(&self) -> &crate::testing::datatypes::AffixFuzzer1 {
+        &self.0
+    }
+}
+
 impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
     #[inline]
     fn from(value: AffixFuzzer1) -> Self {
@@ -180,6 +196,22 @@ pub struct AffixFuzzer2(pub crate::testing::datatypes::AffixFuzzer1);
 impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer2 {
     fn from(v: T) -> Self {
         Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::testing::datatypes::AffixFuzzer1> for AffixFuzzer2 {
+    #[inline]
+    fn borrow(&self) -> &crate::testing::datatypes::AffixFuzzer1 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer2 {
+    type Target = crate::testing::datatypes::AffixFuzzer1;
+
+    #[inline]
+    fn deref(&self) -> &crate::testing::datatypes::AffixFuzzer1 {
+        &self.0
     }
 }
 
@@ -345,6 +377,22 @@ impl<T: Into<crate::testing::datatypes::AffixFuzzer1>> From<T> for AffixFuzzer3 
     }
 }
 
+impl std::borrow::Borrow<crate::testing::datatypes::AffixFuzzer1> for AffixFuzzer3 {
+    #[inline]
+    fn borrow(&self) -> &crate::testing::datatypes::AffixFuzzer1 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer3 {
+    type Target = crate::testing::datatypes::AffixFuzzer1;
+
+    #[inline]
+    fn deref(&self) -> &crate::testing::datatypes::AffixFuzzer1 {
+        &self.0
+    }
+}
+
 impl<'a> From<AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
     #[inline]
     fn from(value: AffixFuzzer3) -> Self {
@@ -504,6 +552,22 @@ pub struct AffixFuzzer4(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer4 {
     fn from(v: T) -> Self {
         Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer4 {
+    #[inline]
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer4 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer1>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
     }
 }
 
@@ -671,6 +735,22 @@ impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for Affix
     }
 }
 
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer5 {
+    #[inline]
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer5 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer1>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
+    }
+}
+
 impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     #[inline]
     fn from(value: AffixFuzzer5) -> Self {
@@ -832,6 +912,22 @@ pub struct AffixFuzzer6(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer6 {
     fn from(v: T) -> Self {
         Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer6 {
+    #[inline]
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer6 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer1>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
     }
 }
 
@@ -1616,7 +1712,7 @@ impl crate::Loggable for AffixFuzzer11 {
                 let data0_inner_data: Buffer<_> = data0
                     .iter()
                     .flatten()
-                    .map(|b| b.0.as_slice())
+                    .map(|b| b.as_slice())
                     .collect::<Vec<_>>()
                     .concat()
                     .into();
@@ -1707,7 +1803,7 @@ impl crate::Loggable for AffixFuzzer11 {
                                 .clone()
                                 .sliced_unchecked(start as usize, end - start as usize)
                         };
-                        let data = crate::ArrowBuffer(data);
+                        let data = crate::ArrowBuffer::from(data);
                         Ok(data)
                     })
                     .transpose()
@@ -2201,6 +2297,22 @@ impl<T: Into<crate::testing::datatypes::AffixFuzzer3>> From<T> for AffixFuzzer14
     }
 }
 
+impl std::borrow::Borrow<crate::testing::datatypes::AffixFuzzer3> for AffixFuzzer14 {
+    #[inline]
+    fn borrow(&self) -> &crate::testing::datatypes::AffixFuzzer3 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer14 {
+    type Target = crate::testing::datatypes::AffixFuzzer3;
+
+    #[inline]
+    fn deref(&self) -> &crate::testing::datatypes::AffixFuzzer3 {
+        &self.0
+    }
+}
+
 impl<'a> From<AffixFuzzer14> for ::std::borrow::Cow<'a, AffixFuzzer14> {
     #[inline]
     fn from(value: AffixFuzzer14) -> Self {
@@ -2338,6 +2450,22 @@ pub struct AffixFuzzer15(pub Option<crate::testing::datatypes::AffixFuzzer3>);
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer3>>> From<T> for AffixFuzzer15 {
     fn from(v: T) -> Self {
         Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer3>> for AffixFuzzer15 {
+    #[inline]
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer3> {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer15 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer3>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer3> {
+        &self.0
     }
 }
 
@@ -3021,6 +3149,22 @@ impl<T: Into<crate::testing::datatypes::AffixFuzzer5>> From<T> for AffixFuzzer19
     }
 }
 
+impl std::borrow::Borrow<crate::testing::datatypes::AffixFuzzer5> for AffixFuzzer19 {
+    #[inline]
+    fn borrow(&self) -> &crate::testing::datatypes::AffixFuzzer5 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer19 {
+    type Target = crate::testing::datatypes::AffixFuzzer5;
+
+    #[inline]
+    fn deref(&self) -> &crate::testing::datatypes::AffixFuzzer5 {
+        &self.0
+    }
+}
+
 impl<'a> From<AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
     #[inline]
     fn from(value: AffixFuzzer19) -> Self {
@@ -3115,6 +3259,22 @@ pub struct AffixFuzzer20(pub crate::testing::datatypes::AffixFuzzer20);
 impl<T: Into<crate::testing::datatypes::AffixFuzzer20>> From<T> for AffixFuzzer20 {
     fn from(v: T) -> Self {
         Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::testing::datatypes::AffixFuzzer20> for AffixFuzzer20 {
+    #[inline]
+    fn borrow(&self) -> &crate::testing::datatypes::AffixFuzzer20 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer20 {
+    type Target = crate::testing::datatypes::AffixFuzzer20;
+
+    #[inline]
+    fn deref(&self) -> &crate::testing::datatypes::AffixFuzzer20 {
+        &self.0
     }
 }
 

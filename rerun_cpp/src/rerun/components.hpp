@@ -5,6 +5,7 @@
 #include "components/annotation_context.hpp"
 #include "components/class_id.hpp"
 #include "components/color.hpp"
+#include "components/depth_meter.hpp"
 #include "components/disconnected_space.hpp"
 #include "components/draw_order.hpp"
 #include "components/instance_key.hpp"

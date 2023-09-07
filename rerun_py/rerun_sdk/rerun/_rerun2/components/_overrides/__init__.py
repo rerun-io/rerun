@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .annotation_context import annotationcontext_class_map_converter, annotationcontext_native_to_pa_array
+from .depth_meter import depthmeter_native_to_pa_array
 from .disconnected_space import disconnectedspace_native_to_pa_array
 from .draw_order import draworder_native_to_pa_array
 from .instance_key import instancekey_native_to_pa_array

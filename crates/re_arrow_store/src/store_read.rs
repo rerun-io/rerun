@@ -136,6 +136,39 @@ impl DataStore {
         Some(components)
     }
 
+    /// Check whether a given entity has a specific [`ComponentName`] on the specified timeline.
+    ///
+    /// # Temporal semantics
+    ///
+    /// In addition to the temporal results, this also checks whether the [`ComponentName`] is present
+    /// in timeless table.
+    pub fn entity_has_component(
+        &self,
+        timeline: &Timeline,
+        ent_path: &EntityPath,
+        component: &ComponentName,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let ent_path_hash = ent_path.hash();
+
+        // First see if the component exists in the timeless table
+        if self
+            .timeless_tables
+            .get(&ent_path_hash)
+            .map_or(false, |table| table.columns.contains_key(component))
+        {
+            return true;
+        }
+
+        // Otherwise see if it exists in the specified timeline
+        self.tables
+            .get(&(*timeline, ent_path_hash))
+            .map_or(false, |table| table.all_components.contains(component))
+    }
+
     /// Queries the datastore for the cells of the specified `components`, as seen from the point
     /// of view of the so-called `primary` component.
     ///

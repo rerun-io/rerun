@@ -462,7 +462,7 @@ impl crate::Loggable for AffixFuzzer1 {
                             let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -1045,7 +1045,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -2804,6 +2804,22 @@ impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer4>>> From<T> for Affix
         Self {
             single_optional_union: v.into(),
         }
+    }
+}
+
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
+    #[inline]
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
+        &self.single_optional_union
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer5 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer4>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
+        &self.single_optional_union
     }
 }
 

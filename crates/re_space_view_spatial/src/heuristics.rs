@@ -2,9 +2,14 @@ use std::collections::BTreeSet;
 
 use egui::NumExt as _;
 
-use re_components::{Pinhole, Tensor, TensorDataMeaning};
+use re_components::Pinhole;
 use re_data_store::EditableAutoValue;
+use re_data_ui::image_meaning_for_entity;
 use re_log_types::EntityPath;
+use re_types::{
+    components::{DepthMeter, TensorData},
+    tensor_data::TensorDataMeaning,
+};
 use re_viewer_context::{
     AutoSpawnHeuristic, NamedViewSystem, PerSystemEntities, SpaceViewClassName, ViewerContext,
 };
@@ -145,22 +150,28 @@ fn update_depth_cloud_property_heuristics(
         .unwrap_or(&BTreeSet::new())
     {
         let store = &ctx.store_db.entity_db.data_store;
-        let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &ctx.current_query())
+        let Some(tensor) =
+            store.query_latest_component::<TensorData>(ent_path, &ctx.current_query())
         else {
             continue;
         };
 
+        let meaning = image_meaning_for_entity(ent_path, ctx);
+
+        let meter = store
+            .query_latest_component::<DepthMeter>(ent_path, &ctx.current_query())
+            .map(|meter| meter.value.0);
+
         let mut properties = entity_properties.get(ent_path);
         if properties.backproject_depth.is_auto() {
             properties.backproject_depth = EditableAutoValue::Auto(
-                tensor.meaning == TensorDataMeaning::Depth
-                    && spatial_kind == SpatialSpaceViewKind::ThreeD,
+                meaning == TensorDataMeaning::Depth && spatial_kind == SpatialSpaceViewKind::ThreeD,
             );
         }
 
-        if tensor.meaning == TensorDataMeaning::Depth {
+        if meaning == TensorDataMeaning::Depth {
             if properties.depth_from_world_scale.is_auto() {
-                let auto = tensor.meter.unwrap_or_else(|| {
+                let auto = meter.unwrap_or_else(|| {
                     if tensor.dtype().is_integer() {
                         1000.0
                     } else {

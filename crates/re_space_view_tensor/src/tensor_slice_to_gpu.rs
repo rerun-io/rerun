@@ -1,9 +1,9 @@
-use re_components::{DecodedTensor, TensorCastError, TensorDataType};
 use re_data_store::VersionedInstancePathHash;
 use re_renderer::{
     renderer::ColormappedTexture,
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
+use re_types::tensor_data::{DecodedTensor, TensorCastError, TensorDataType};
 use re_viewer_context::{
     gpu_bridge::{self, tensor_data_range_heuristic, RangeError},
     TensorStats,
@@ -117,10 +117,13 @@ fn texture_desc_from_tensor(
                 |x: i64| x as f32,
             )
         }
+        //TODO(jleibs): F16 Support
+        /*
         TensorDataType::F16 => {
             let tensor = ndarray::ArrayViewD::<half::f16>::try_from(tensor)?;
             to_texture_desc(&tensor, slice_selection, TextureFormat::R16Float, |x| x)
         }
+        */
         TensorDataType::F32 => {
             let tensor = ndarray::ArrayViewD::<f32>::try_from(tensor)?;
             to_texture_desc(&tensor, slice_selection, TextureFormat::R32Float, |x| x)

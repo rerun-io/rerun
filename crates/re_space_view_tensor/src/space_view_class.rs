@@ -4,12 +4,16 @@ use eframe::emath::Align2;
 use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
-use re_components::{DecodedTensor, Tensor, TensorDimension};
-use re_data_store::{InstancePath, VersionedInstancePathHash};
+use re_data_store::InstancePath;
+use re_data_store::VersionedInstancePathHash;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
+use re_types::{
+    datatypes::{TensorData, TensorDimension},
+    tensor_data::{DecodedTensor, TensorDataMeaning},
+};
 use re_viewer_context::{
     gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, ViewContextCollection,
@@ -100,7 +104,18 @@ impl PerTensorState {
         ctx.re_ui
             .selection_grid(ui, "tensor_selection_ui")
             .show(ui, |ui| {
-                tensor_summary_ui_grid_contents(ctx.re_ui, ui, tensor, tensor, &tensor_stats);
+                // We are in a bare Tensor view -- meaning / meter is unknown.
+                let meaning = TensorDataMeaning::Unknown;
+                let meter = None;
+                tensor_summary_ui_grid_contents(
+                    ctx.re_ui,
+                    ui,
+                    tensor,
+                    tensor,
+                    meaning,
+                    meter,
+                    &tensor_stats,
+                );
                 self.texture_settings.ui(ctx.re_ui, ui);
                 self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
             });
@@ -765,7 +780,7 @@ fn paint_axis_names(
     }
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut PerTensorState, tensor: &Tensor) {
+fn selectors_ui(ui: &mut egui::Ui, state: &mut PerTensorState, tensor: &TensorData) {
     for selector in &state.slice.dim_mapping.selectors {
         if !selector.visible {
             continue;
@@ -789,7 +804,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut PerTensorState, tensor: &Tensor) 
                 let name = dim
                     .name
                     .clone()
-                    .unwrap_or_else(|| selector.dim_idx.to_string());
+                    .map_or_else(|| selector.dim_idx.to_string(), |name| name.to_string());
 
                 let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
                 ui.label(&name).on_hover_text(&slider_tooltip);

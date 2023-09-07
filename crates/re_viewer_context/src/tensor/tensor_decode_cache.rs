@@ -1,5 +1,8 @@
-use re_components::{DecodedTensor, Tensor, TensorImageLoadError};
 use re_data_store::VersionedInstancePathHash;
+use re_types::{
+    datatypes::TensorData,
+    tensor_data::{DecodedTensor, TensorImageLoadError},
+};
 
 use crate::Cache;
 
@@ -25,15 +28,15 @@ pub struct TensorDecodeCache {
 
 #[allow(clippy::map_err_ignore)]
 impl TensorDecodeCache {
-    /// Decode a [`Tensor`] if necessary and cache the result.
+    /// Decode some [`TensorData`] if necessary and cache the result.
     ///
-    /// This is a no-op for Tensors that are not compressed.
+    /// This is a no-op for tensors that are not compressed.
     ///
     /// Currently supports JPEG encoded tensors.
     pub fn entry(
         &mut self,
         key: VersionedInstancePathHash,
-        maybe_encoded_tensor: Tensor,
+        maybe_encoded_tensor: TensorData,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!();
 

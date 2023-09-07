@@ -22,6 +22,22 @@ impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::TensorData> for TensorData {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::TensorData {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TensorData {
+    type Target = crate::datatypes::TensorData;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::TensorData {
+        &self.0
+    }
+}
+
 impl<'a> From<TensorData> for ::std::borrow::Cow<'a, TensorData> {
     #[inline]
     fn from(value: TensorData) -> Self {

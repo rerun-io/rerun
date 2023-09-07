@@ -15,8 +15,8 @@ mod spatial_view_part;
 mod transform3d_arrows;
 
 pub use cameras::CamerasPart;
-pub use images::Image;
 pub use images::ImagesPart;
+pub use images::ViewerImage;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 

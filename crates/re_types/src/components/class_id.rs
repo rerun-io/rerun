@@ -26,6 +26,22 @@ impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::ClassId> for ClassId {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::ClassId {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ClassId {
+    type Target = crate::datatypes::ClassId;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::ClassId {
+        &self.0
+    }
+}
+
 impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
     #[inline]
     fn from(value: ClassId) -> Self {

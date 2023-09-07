@@ -612,7 +612,7 @@ fn quote_arrow_field_deserializer(
                 InnerRepr::BufferT => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
-                    let data = crate::ArrowBuffer(data);
+                    let data = crate::ArrowBuffer::from(data);
                 },
                 InnerRepr::NativeIterable => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]

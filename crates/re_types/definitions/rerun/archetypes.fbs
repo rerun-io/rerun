@@ -1,11 +1,13 @@
 include "./archetypes/annotation_context.fbs";
 include "./archetypes/arrows3d.fbs";
+include "./archetypes/depth_image.fbs";
 include "./archetypes/disconnected_space.fbs";
 include "./archetypes/image.fbs";
 include "./archetypes/line_strips2d.fbs";
 include "./archetypes/line_strips3d.fbs";
 include "./archetypes/points2d.fbs";
 include "./archetypes/points3d.fbs";
+include "./archetypes/segmentation_image.fbs";
 include "./archetypes/tensor.fbs";
 include "./archetypes/text_document.fbs";
 include "./archetypes/transform3d.fbs";

@@ -553,7 +553,7 @@ fn quote_arrow_field_serializer(
                 match inner_repr {
                     InnerRepr::ArrowBuffer => quote! {
                         .flatten()
-                        .map(|b| b.0.as_slice())
+                        .map(|b| b.as_slice())
                         .collect::<Vec<_>>()
                         .concat()
                         .into();

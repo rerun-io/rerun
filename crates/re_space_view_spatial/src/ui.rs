@@ -2,14 +2,14 @@ use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
-use re_components::{Tensor, TensorDataMeaning};
 use re_data_store::EntityPath;
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::components::InstanceKey;
+use re_types::components::{DepthMeter, InstanceKey, TensorData};
+use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
     SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
@@ -535,47 +535,48 @@ pub fn picking(
             continue;
         }
 
+        let store = ctx.store_db.store();
+
         // Special hover ui for images.
         let is_depth_cloud = images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
-        let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
-            || is_depth_cloud
-        {
-            ctx.store_db
-                .store()
-                .query_latest_component::<Tensor>(&instance_path.entity_path, &ctx.current_query())
-                .and_then(|tensor| {
-                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                    // (the back-projection property may be true despite this not being a depth image!)
-                    if hit.hit_type != PickingHitType::TexturedRect
-                        && is_depth_cloud
-                        && tensor.meaning != TensorDataMeaning::Depth
-                    {
-                        None
-                    } else {
-                        tensor.image_height_width_channels().map(|[_, w, _]| {
+        let picked_image_with_coords =
+            if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
+                let meaning = image_meaning_for_entity(&instance_path.entity_path, ctx);
+
+                store
+                    .query_latest_component::<TensorData>(
+                        &instance_path.entity_path,
+                        &ctx.current_query(),
+                    )
+                    .and_then(|tensor| {
+                        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                        // (the back-projection property may be true despite this not being a depth image!)
+                        if hit.hit_type != PickingHitType::TexturedRect
+                            && is_depth_cloud
+                            && meaning != TensorDataMeaning::Depth
+                        {
+                            None
+                        } else {
                             let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id);
-                            let coordinates = hit
-                                .instance_path_hash
-                                .instance_key
-                                .to_2d_image_coordinate(w);
-                            (tensor_path_hash, tensor.value, coordinates)
-                        })
-                    }
-                })
-        } else {
-            None
-        };
+                            tensor.image_height_width_channels().map(|[_, w, _]| {
+                                let coordinates = hit
+                                    .instance_path_hash
+                                    .instance_key
+                                    .to_2d_image_coordinate(w);
+                                (tensor_path_hash, tensor, meaning, coordinates)
+                            })
+                        }
+                    })
+            } else {
+                None
+            };
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
             instance_path.instance_key = InstanceKey::SPLAT;
         } else {
-            instance_path = resolve_mono_instance_path(
-                &ctx.current_query(),
-                ctx.store_db.store(),
-                &instance_path,
-            );
+            instance_path = resolve_mono_instance_path(&ctx.current_query(), store, &instance_path);
         }
 
         hovered_items.push(Item::InstancePath(
@@ -583,15 +584,28 @@ pub fn picking(
             instance_path.clone(),
         ));
 
-        response = if let Some((tensor_path_hash, tensor, coords)) = picked_image_with_coords {
-            if let Some(meter) = tensor.meter {
-                if let Some(raw_value) = tensor.get(&[
-                    picking_context.pointer_in_space2d.y.round() as _,
-                    picking_context.pointer_in_space2d.x.round() as _,
-                ]) {
-                    let raw_value = raw_value.as_f64();
-                    let depth_in_meters = raw_value / meter as f64;
-                    depth_at_pointer = Some(depth_in_meters as f32);
+        response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
+            picked_image_with_coords
+        {
+            let meter = store
+                .query_latest_component::<DepthMeter>(
+                    &instance_path.entity_path,
+                    &ctx.current_query(),
+                )
+                .map(|meter| meter.value.0);
+
+            // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
+            // thing as an up-front archetype query somewhere.
+            if meaning == TensorDataMeaning::Depth {
+                if let Some(meter) = meter {
+                    if let Some(raw_value) = tensor.get(&[
+                        picking_context.pointer_in_space2d.y.round() as _,
+                        picking_context.pointer_in_space2d.x.round() as _,
+                    ]) {
+                        let raw_value = raw_value.as_f64();
+                        let depth_in_meters = raw_value / meter as f64;
+                        depth_at_pointer = Some(depth_in_meters as f32);
+                    }
                 }
             }
 
@@ -621,7 +635,7 @@ pub fn picking(
                                     show_zoomed_image_region_area_outline(
                                         ui.ctx(),
                                         ui_clip_rect,
-                                        &tensor,
+                                        &tensor.0,
                                         [coords[0] as _, coords[1] as _],
                                         space_from_ui.inverse().transform_rect(rect),
                                     );
@@ -629,7 +643,7 @@ pub fn picking(
 
                                 let tensor_name = instance_path.to_string();
 
-                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor));
+                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.value.0));
                                 match decoded_tensor {
                                     Ok(decoded_tensor) => {
                                         let annotations = annotations.0.find(&instance_path.entity_path);
@@ -641,7 +655,8 @@ pub fn picking(
                                             &decoded_tensor,
                                             &tensor_stats,
                                             &annotations,
-                                            decoded_tensor.meter,
+                                            meaning,
+                                            meter,
                                             &tensor_name,
                                             [coords[0] as _, coords[1] as _],
                                         );

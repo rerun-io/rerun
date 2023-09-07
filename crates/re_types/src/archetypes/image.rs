@@ -19,7 +19,8 @@
 /// - A `HxWx3` tensor, treated as an RGB image.
 /// - A `HxWx4` tensor, treated as an RGBA image.
 ///
-/// The viewer has limited support for ignoring extra empty dimensions.
+/// Leading and trailing unit-dimensions are ignored, so that
+/// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 ///
 /// ## Example
 ///
@@ -32,10 +33,10 @@
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_image_simple").memory()?;
 ///
-///    let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
+///    let mut image = Array::<u8, _>::zeros((8, 12, 3).f());
 ///    image.slice_mut(s![.., .., 0]).fill(255);
-///    image.slice_mut(s![50..150, 50..150, 0]).fill(0);
-///    image.slice_mut(s![50..150, 50..150, 1]).fill(255);
+///    image.slice_mut(s![0..4, 0..6, 0]).fill(0);
+///    image.slice_mut(s![0..4, 0..6, 1]).fill(255);
 ///
 ///    rec.log("image", &Image::try_from(image)?)?;
 ///
@@ -50,8 +51,6 @@ pub struct Image {
 
     /// An optional floating point value that specifies the 2D drawing order.
     /// Objects with higher values are drawn on top of those with lower values.
-    ///
-    /// The default for 2D points is -10.0.
     pub draw_order: Option<crate::components::DrawOrder>,
 }
 

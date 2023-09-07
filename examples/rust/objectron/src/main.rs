@@ -19,7 +19,7 @@ use std::{
 use anyhow::{anyhow, Context as _};
 
 use rerun::{
-    archetypes::{LineStrips2D, Points2D, Points3D, Transform3D},
+    archetypes::{Image, LineStrips2D, Points2D, Points3D, Transform3D},
     datatypes::TranslationRotationScale3D,
     external::re_log,
     time::{Time, TimePoint, TimeType, Timeline},
@@ -155,10 +155,10 @@ fn log_baseline_objects(
 
 fn log_video_frame(rec: &RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
-    let tensor = rerun::components::Tensor::from_jpeg_file(&image_path)?;
+    let img = rerun::datatypes::TensorData::from_jpeg_file(&image_path)?;
 
     rec.set_timepoint(ar_frame.timepoint.clone());
-    rec.log_component_lists("world/camera", false, 1, [&tensor as _])
+    rec.log("world/camera", &Image::new(img))
         .map_err(Into::into)
 }
 

@@ -5,12 +5,8 @@ from typing import Any, Iterable, Protocol, Union
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
-from rerun.components import instance_key_splat
-from rerun.components.draw_order import DrawOrderArray
-from rerun.components.tensor import TensorArray
+from rerun._rerun2.datatypes.tensor_data import TensorDataLike
 from rerun.log.error_utils import _send_warning
-from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -45,7 +41,7 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
 @log_decorator
 def log_tensor(
     entity_path: str,
-    tensor: npt.ArrayLike,
+    tensor: TensorDataLike,
     *,
     names: Iterable[str | None] | None = None,
     meter: float | None = None,
@@ -76,11 +72,13 @@ def log_tensor(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    if meter is not None:
+        _send_warning("The `meter` argument is deprecated for use with `log_tensor`. Use `log_depth_image` instead.", 1)
+
     _log_tensor(
         entity_path,
-        tensor=_to_numpy(tensor),
+        tensor=tensor,
         names=names,
-        meter=meter,
         ext=ext,
         timeless=timeless,
         recording=recording,
@@ -89,78 +87,15 @@ def log_tensor(
 
 def _log_tensor(
     entity_path: str,
-    tensor: npt.NDArray[Any],
-    draw_order: float | None = None,
+    tensor: TensorDataLike,
     names: Iterable[str | None] | None = None,
-    meter: float | None = None,
-    meaning: bindings.TensorDataMeaning = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
+    from rerun.experimental import Tensor, dt, log
 
-    if names is not None:
-        names = list(names)
+    tensor_data = dt.TensorData(array=tensor, names=names)
 
-        if len(tensor.shape) != len(names):
-            _send_warning(
-                (
-                    f"len(tensor.shape) = len({tensor.shape}) = {len(tensor.shape)} != "
-                    + f"len(names) = len({names}) = {len(names)}. Dropping tensor dimension names."
-                ),
-                2,
-                recording=recording,
-            )
-            names = None
-
-    SUPPORTED_DTYPES: Any = [
-        np.uint8,
-        np.uint16,
-        np.uint32,
-        np.uint64,
-        np.int8,
-        np.int16,
-        np.int32,
-        np.int64,
-        np.float16,
-        np.float32,
-        np.float64,
-    ]
-
-    if tensor.dtype not in SUPPORTED_DTYPES:
-        _send_warning(
-            f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.",
-            2,
-            recording=recording,
-        )
-        return
-
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
-    instanced["rerun.tensor"] = TensorArray.from_numpy(tensor, names, meaning, meter)
-
-    if draw_order is not None:
-        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
-
-    if ext:
-        _add_extension_components(instanced, splats, ext, None)
-
-    if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
-        bindings.log_arrow_msg(
-            entity_path,
-            components=splats,
-            timeless=timeless,
-            recording=recording,
-        )
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(
-            entity_path,
-            components=instanced,
-            timeless=timeless,
-            recording=recording,
-        )
+    log(entity_path, Tensor(tensor_data), ext=ext, timeless=timeless, recording=recording)

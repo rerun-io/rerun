@@ -524,7 +524,7 @@ def run_image_tensors(experimental_api: bool) -> None:
         "int16",
         "int32",
         "int64",
-        "float16",
+        # "float16", // TODO(#2792): support f16 again
         "float32",
         "float64",
     ]

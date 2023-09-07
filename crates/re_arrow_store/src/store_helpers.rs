@@ -28,6 +28,7 @@ impl<C: Component> From<(RowId, C)> for VersionedComponent<C> {
 impl<C: Component> std::ops::Deref for VersionedComponent<C> {
     type Target = C;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.value
     }

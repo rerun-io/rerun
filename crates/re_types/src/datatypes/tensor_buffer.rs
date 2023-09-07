@@ -252,7 +252,7 @@ impl crate::Loggable for TensorBuffer {
                             let u8_inner_data: Buffer<_> = u8
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -306,7 +306,7 @@ impl crate::Loggable for TensorBuffer {
                             let u16_inner_data: Buffer<_> = u16
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -360,7 +360,7 @@ impl crate::Loggable for TensorBuffer {
                             let u32_inner_data: Buffer<_> = u32
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -414,7 +414,7 @@ impl crate::Loggable for TensorBuffer {
                             let u64_inner_data: Buffer<_> = u64
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -468,7 +468,7 @@ impl crate::Loggable for TensorBuffer {
                             let i8_inner_data: Buffer<_> = i8
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -518,7 +518,7 @@ impl crate::Loggable for TensorBuffer {
                             let i16_inner_data: Buffer<_> = i16
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -572,7 +572,7 @@ impl crate::Loggable for TensorBuffer {
                             let i32_inner_data: Buffer<_> = i32
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -626,7 +626,7 @@ impl crate::Loggable for TensorBuffer {
                             let i64_inner_data: Buffer<_> = i64
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -680,7 +680,7 @@ impl crate::Loggable for TensorBuffer {
                             let f32_inner_data: Buffer<_> = f32
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -734,7 +734,7 @@ impl crate::Loggable for TensorBuffer {
                             let f64_inner_data: Buffer<_> = f64
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -788,7 +788,7 @@ impl crate::Loggable for TensorBuffer {
                             let jpeg_inner_data: Buffer<_> = jpeg
                                 .iter()
                                 .flatten()
-                                .map(|b| b.0.as_slice())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -1141,7 +1141,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1212,7 +1212,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1283,7 +1283,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1354,7 +1354,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1425,7 +1425,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1496,7 +1496,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1567,7 +1567,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1638,7 +1638,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1709,7 +1709,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1780,7 +1780,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
@@ -1851,7 +1851,7 @@ impl crate::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer(data);
+                                    let data = crate::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()

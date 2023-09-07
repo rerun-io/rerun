@@ -71,12 +71,12 @@ pub mod time {
 pub mod components {
     pub use re_components::{
         Box3D, EncodedMesh3D, Mesh3D, MeshFormat, Pinhole, Quaternion, RawMesh3D, Rect2D, Scalar,
-        ScalarPlotProps, Tensor, TensorData, TensorDataMeaning, TensorDimension, TextEntry,
-        ViewCoordinates,
+        ScalarPlotProps, TextEntry, ViewCoordinates,
     };
     pub use re_types::components::{
         AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-        LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, Text, Transform3D, Vector3D,
+        LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, TensorData, Text,
+        Transform3D, Vector3D,
     };
 }
 

@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A component indicating how long a meter is, expressed in native units.
+struct DepthMeter (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  value: float (order: 100);
+}

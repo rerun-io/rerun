@@ -3,9 +3,9 @@ use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_components::{Pinhole, Tensor};
+use re_components::Pinhole;
 use re_data_store::EntityPath;
-use re_types::components::DisconnectedSpace;
+use re_types::components::{DisconnectedSpace, TensorData};
 use re_types::ComponentName;
 use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
@@ -126,7 +126,7 @@ fn contains_any_image(
     store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
 ) -> bool {
-    if let Some(tensor) = store.query_latest_component::<Tensor>(entity_path, query) {
+    if let Some(tensor) = store.query_latest_component::<TensorData>(entity_path, query) {
         tensor.is_shaped_like_an_image()
     } else {
         false
@@ -278,7 +278,9 @@ pub fn default_created_space_views(
 
             // For this we're only interested in the direct children.
             for entity_path in &candidate.contents.root_group().entities {
-                if let Some(tensor) = store.query_latest_component::<Tensor>(entity_path, &query) {
+                if let Some(tensor) =
+                    store.query_latest_component::<TensorData>(entity_path, &query)
+                {
                     if let Some([height, width, _]) = tensor.image_height_width_channels() {
                         if store
                             .query_latest_component::<re_types::components::DrawOrder>(

@@ -12,7 +12,7 @@ pub enum FromFileError {
 
     #[cfg(feature = "image")]
     #[error(transparent)]
-    TensorImageLoad(#[from] crate::TensorImageLoadError),
+    TensorImageLoad(#[from] re_types::tensor_data::TensorImageLoadError),
 
     #[error("Unsupported file extension '{extension}' for file {path:?}. To load image files, make sure you compile with the 'image' feature")]
     UnknownExtension {
@@ -46,7 +46,10 @@ pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell,
         #[cfg(feature = "image")]
         _ => {
             // Assume an image (there are so many image extensions):
-            let tensor = crate::Tensor::from_image_file(file_path)?;
+            // TODO(#3159): include the `ImageIndicator` component.
+            let tensor = re_types::components::TensorData(
+                re_types::datatypes::TensorData::from_image_file(file_path)?,
+            );
             Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
         }
 
@@ -81,11 +84,15 @@ pub fn data_cell_from_file_contents(
             let format = if let Some(format) = image::ImageFormat::from_extension(extension) {
                 format
             } else {
-                image::guess_format(&bytes).map_err(crate::TensorImageLoadError::from)?
+                image::guess_format(&bytes)
+                    .map_err(re_types::tensor_data::TensorImageLoadError::from)?
             };
 
             // Assume an image (there are so many image extensions):
-            let tensor = crate::Tensor::from_image_bytes(bytes, format)?;
+            // TODO(#3159): include the `ImageIndicator` component.
+            let tensor = re_types::components::TensorData(
+                re_types::datatypes::TensorData::from_image_bytes(bytes, format)?,
+            );
             Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
         }
 

@@ -4546,7 +4546,7 @@ version = "0.9.0-alpha.3"
 dependencies = [
  "ahash 0.8.3",
  "ndarray",
- "re_components",
+ "re_types",
  "serde",
 ]
 
@@ -5076,6 +5076,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_depth_image"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "image",
+ "ndarray",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_disconnected_space"
 version = "0.9.0-alpha.3"
 dependencies = [
@@ -5127,6 +5138,17 @@ version = "0.9.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
+ "rerun",
+]
+
+[[package]]
+name = "roundtrip_segmentation_image"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "image",
+ "ndarray",
  "rerun",
 ]
 

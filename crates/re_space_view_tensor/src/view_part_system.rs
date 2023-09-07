@@ -1,7 +1,8 @@
 use re_arrow_store::LatestAtQuery;
-use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
 use re_log_types::{RowId, TimeInt, Timeline};
+use re_types::components::TensorData;
+use re_types::tensor_data::DecodedTensor;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
@@ -21,7 +22,7 @@ impl NamedViewSystem for TensorSystem {
 
 impl ViewPartSystem for TensorSystem {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Tensor::name()]
+        vec1::vec1![TensorData::name()]
     }
 
     /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]
@@ -31,11 +32,13 @@ impl ViewPartSystem for TensorSystem {
         ent_path: &EntityPath,
         components: &[ComponentName],
     ) -> bool {
-        if !components.contains(&Tensor::name()) {
+        if !components.contains(&TensorData::name()) {
             return false;
         }
 
-        if let Some(tensor) = store.query_latest_component::<Tensor>(
+        // TODO(jleibs): Use indicator components
+
+        if let Some(tensor) = store.query_latest_component::<TensorData>(
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
@@ -57,7 +60,8 @@ impl ViewPartSystem for TensorSystem {
         for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &timeline_query)
+            if let Some(tensor) =
+                store.query_latest_component::<TensorData>(ent_path, &timeline_query)
             {
                 self.load_tensor_entity(ctx, ent_path, tensor.row_id, &props, tensor.value);
             }
@@ -78,14 +82,14 @@ impl TensorSystem {
         ent_path: &EntityPath,
         row_id: RowId,
         _props: &EntityProperties,
-        tensor: Tensor,
+        tensor: TensorData,
     ) {
         if !tensor.is_shaped_like_an_image() {
             // NOTE: Tensors don't support batches at the moment so always splat.
             let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
             match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
             {
                 Ok(tensor) => {
                     let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));

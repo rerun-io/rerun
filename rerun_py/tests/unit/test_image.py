@@ -12,7 +12,7 @@ rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
 
 
-IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
+IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     # Full explicit construction
     rrd.TensorData(
         shape=[
@@ -52,7 +52,7 @@ def test_image() -> None:
         compare_images(arch.data, expected, check_fields)
 
 
-GOOD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
+GOOD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     # Mono
     rng.uniform(0.0, 1.0, (10, 20)),
     # RGB
@@ -68,7 +68,7 @@ GOOD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
     rng.uniform(0.0, 1.0, (10, 20, 4, 1)),
 ]
 
-BAD_IMAGE_INPUTS: list[rrd.TensorDataArrayLike] = [
+BAD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     rng.uniform(0.0, 1.0, (10,)),
     rng.uniform(0.0, 1.0, (10, 20, 2)),
     rng.uniform(0.0, 1.0, (10, 20, 5)),

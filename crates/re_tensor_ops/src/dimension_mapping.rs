@@ -1,4 +1,4 @@
-use re_components::TensorDimension;
+use re_types::datatypes::TensorDimension;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DimensionSelector {

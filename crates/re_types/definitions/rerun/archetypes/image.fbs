@@ -13,7 +13,8 @@ namespace rerun.archetypes;
 /// - A `HxWx3` tensor, treated as an RGB image.
 /// - A `HxWx4` tensor, treated as an RGBA image.
 ///
-/// The viewer has limited support for ignoring extra empty dimensions.
+/// Leading and trailing unit-dimensions are ignored, so that
+/// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 ///
 /// \py Example
 /// \py -------
@@ -41,7 +42,5 @@ table Image (
 
   /// An optional floating point value that specifies the 2D drawing order.
   /// Objects with higher values are drawn on top of those with lower values.
-  ///
-  /// The default for 2D points is -10.0.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 }

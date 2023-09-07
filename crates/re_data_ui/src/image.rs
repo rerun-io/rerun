@@ -1,24 +1,27 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
-use re_components::{DecodedTensor, Tensor, TensorDataMeaning, TensorElement};
 use re_data_store::{InstancePathHash, VersionedInstancePathHash};
 use re_log_types::RowId;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::ClassId;
+use re_types::components::{ClassId, DepthMeter};
+use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
+use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
 use re_ui::ReUi;
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiVerbosity,
     ViewerContext,
 };
 
+use crate::image_meaning_for_entity;
+
 use super::EntityDataUi;
 
-pub fn format_tensor_shape_single_line(shape: &[re_components::TensorDimension]) -> String {
+pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
     format!("[{}]", shape.iter().join(", "))
 }
 
-impl EntityDataUi for Tensor {
+impl EntityDataUi for re_types::components::TensorData {
     fn entity_data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -40,7 +43,7 @@ impl EntityDataUi for Tensor {
         let tensor_path_hash = InstancePathHash::entity_splat(entity_path).versioned(row_id);
         let decoded = ctx
             .cache
-            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, self.clone()));
+            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, self.0.clone()));
         match decoded {
             Ok(decoded) => {
                 let annotations = crate::annotations(ctx, query, entity_path);
@@ -51,7 +54,7 @@ impl EntityDataUi for Tensor {
                     entity_path,
                     &annotations,
                     tensor_path_hash,
-                    self,
+                    &self.0,
                     &decoded,
                 );
             }
@@ -70,7 +73,7 @@ fn tensor_ui(
     entity_path: &re_data_store::EntityPath,
     annotations: &Annotations,
     tensor_path_hash: VersionedInstancePathHash,
-    original_tensor: &Tensor,
+    original_tensor: &TensorData,
     tensor: &DecodedTensor,
 ) {
     // See if we can convert the tensor to a GPU texture.
@@ -79,11 +82,24 @@ fn tensor_ui(
         .cache
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
     let debug_name = entity_path.to_string();
+
+    let meaning = image_meaning_for_entity(entity_path, ctx);
+
+    let meter = if meaning == TensorDataMeaning::Depth {
+        ctx.store_db
+            .store()
+            .query_latest_component::<DepthMeter>(entity_path, &ctx.current_query())
+            .map(|meter| meter.value.0)
+    } else {
+        None
+    };
+
     let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor_path_hash,
         tensor,
+        meaning,
         &tensor_stats,
         annotations,
     )
@@ -121,14 +137,22 @@ fn tensor_ui(
                     "{} x {}{}",
                     tensor.dtype(),
                     format_tensor_shape_single_line(tensor.shape()),
-                    if original_tensor.data.is_compressed_image() {
+                    if original_tensor.buffer.is_compressed_image() {
                         " (compressed)"
                     } else {
                         ""
                     }
                 ))
                 .on_hover_ui(|ui| {
-                    tensor_summary_ui(ctx.re_ui, ui, original_tensor, tensor, &tensor_stats);
+                    tensor_summary_ui(
+                        ctx.re_ui,
+                        ui,
+                        original_tensor,
+                        tensor,
+                        meaning,
+                        meter,
+                        &tensor_stats,
+                    );
                 });
             });
         }
@@ -136,7 +160,15 @@ fn tensor_ui(
         UiVerbosity::All | UiVerbosity::Reduced => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
-                tensor_summary_ui(ctx.re_ui, ui, original_tensor, tensor, &tensor_stats);
+                tensor_summary_ui(
+                    ctx.re_ui,
+                    ui,
+                    original_tensor,
+                    tensor,
+                    meaning,
+                    meter,
+                    &tensor_stats,
+                );
 
                 if let Some(texture) = &texture_result {
                     let max_size = ui
@@ -162,7 +194,8 @@ fn tensor_ui(
                             tensor,
                             &tensor_stats,
                             annotations,
-                            tensor.meter,
+                            meaning,
+                            meter,
                             &debug_name,
                             image_rect,
                             pointer_pos,
@@ -171,14 +204,15 @@ fn tensor_ui(
 
                     // TODO(emilk): support copying and saving images on web
                     #[cfg(not(target_arch = "wasm32"))]
-                    if original_tensor.data.is_compressed_image() || tensor.could_be_dynamic_image()
+                    if original_tensor.buffer.is_compressed_image()
+                        || tensor.could_be_dynamic_image()
                     {
                         copy_and_save_image_ui(ui, tensor, original_tensor);
                     }
 
                     if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
                         if channels == 3 {
-                            if let re_components::TensorData::U8(data) = &tensor.data {
+                            if let TensorBuffer::U8(data) = &tensor.buffer {
                                 ui.collapsing("Histogram", |ui| {
                                     rgb8_histogram_ui(ui, data.as_slice());
                                 });
@@ -230,16 +264,13 @@ fn show_image_at_max_size(
 pub fn tensor_summary_ui_grid_contents(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    original_tensor: &Tensor,
+    original_tensor: &TensorData,
     tensor: &DecodedTensor,
+    meaning: TensorDataMeaning,
+    meter: Option<f32>,
     tensor_stats: &TensorStats,
 ) {
-    let Tensor {
-        shape,
-        data: _,
-        meaning,
-        meter,
-    } = tensor.inner();
+    let TensorData { shape, buffer: _ } = tensor.inner();
 
     re_ui
         .grid_left_hand_label(ui, "Data type")
@@ -264,7 +295,7 @@ pub fn tensor_summary_ui_grid_contents(
     });
     ui.end_row();
 
-    if *meaning != TensorDataMeaning::Unknown {
+    if meaning != TensorDataMeaning::Unknown {
         re_ui.grid_left_hand_label(ui, "Meaning");
         ui.label(match meaning {
             TensorDataMeaning::Unknown => "",
@@ -282,23 +313,24 @@ pub fn tensor_summary_ui_grid_contents(
         ui.end_row();
     }
 
-    match &original_tensor.data {
-        re_components::TensorData::U8(_)
-        | re_components::TensorData::U16(_)
-        | re_components::TensorData::U32(_)
-        | re_components::TensorData::U64(_)
-        | re_components::TensorData::I8(_)
-        | re_components::TensorData::I16(_)
-        | re_components::TensorData::I32(_)
-        | re_components::TensorData::I64(_)
-        | re_components::TensorData::F16(_)
-        | re_components::TensorData::F32(_)
-        | re_components::TensorData::F64(_) => {}
-        re_components::TensorData::JPEG(jpeg_bytes) => {
+    match &original_tensor.buffer {
+        TensorBuffer::U8(_)
+        | TensorBuffer::U16(_)
+        | TensorBuffer::U32(_)
+        | TensorBuffer::U64(_)
+        | TensorBuffer::I8(_)
+        | TensorBuffer::I16(_)
+        | TensorBuffer::I32(_)
+        | TensorBuffer::I64(_)
+        // TODO(jleibs): F16 support
+        //| TensorBuffer::F16(_)
+        | TensorBuffer::F32(_)
+        | TensorBuffer::F64(_) => {}
+        TensorBuffer::Jpeg(jpeg_bytes) => {
             re_ui.grid_left_hand_label(ui, "Encoding");
             ui.label(format!(
                 "{} JPEG",
-                re_format::format_bytes(jpeg_bytes.len() as _),
+                re_format::format_bytes(jpeg_bytes.size_in_bytes() as _),
             ));
             ui.end_row();
         }
@@ -335,14 +367,24 @@ pub fn tensor_summary_ui_grid_contents(
 pub fn tensor_summary_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    original_tensor: &Tensor,
+    original_tensor: &TensorData,
     tensor: &DecodedTensor,
+    meaning: TensorDataMeaning,
+    meter: Option<f32>,
     tensor_stats: &TensorStats,
 ) {
     egui::Grid::new("tensor_summary_ui")
         .num_columns(2)
         .show(ui, |ui| {
-            tensor_summary_ui_grid_contents(re_ui, ui, original_tensor, tensor, tensor_stats);
+            tensor_summary_ui_grid_contents(
+                re_ui,
+                ui,
+                original_tensor,
+                tensor,
+                meaning,
+                meter,
+                tensor_stats,
+            );
         });
 }
 
@@ -355,6 +397,7 @@ fn show_zoomed_image_region_tooltip(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
+    meaning: TensorDataMeaning,
     meter: Option<f32>,
     debug_name: &str,
     image_rect: egui::Rect,
@@ -387,6 +430,7 @@ fn show_zoomed_image_region_tooltip(
                         tensor,
                         tensor_stats,
                         annotations,
+                        meaning,
                         meter,
                         debug_name,
                         center_texel,
@@ -402,7 +446,7 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 pub fn show_zoomed_image_region_area_outline(
     egui_ctx: &egui::Context,
     ui_clip_rect: egui::Rect,
-    tensor: &Tensor,
+    tensor: &TensorData,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
@@ -442,6 +486,7 @@ pub fn show_zoomed_image_region(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
+    meaning: TensorDataMeaning,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
@@ -453,6 +498,7 @@ pub fn show_zoomed_image_region(
         tensor,
         tensor_stats,
         annotations,
+        meaning,
         meter,
         debug_name,
         center_texel,
@@ -470,6 +516,7 @@ fn try_show_zoomed_image_region(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
+    meaning: TensorDataMeaning,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
@@ -483,6 +530,7 @@ fn try_show_zoomed_image_region(
         debug_name,
         tensor_path_hash,
         tensor,
+        meaning,
         tensor_stats,
         annotations,
     )?;
@@ -527,7 +575,7 @@ fn try_show_zoomed_image_region(
         ui.separator();
 
         ui.vertical(|ui| {
-            tensor_pixel_value_ui(ui, tensor, annotations, [x as _, y as _], meter);
+            tensor_pixel_value_ui(ui, tensor, annotations, [x as _, y as _], meaning, meter);
 
             // Show a big sample of the color of the middle texel:
             let (rect, _) =
@@ -555,9 +603,10 @@ fn try_show_zoomed_image_region(
 
 fn tensor_pixel_value_ui(
     ui: &mut egui::Ui,
-    tensor: &Tensor,
+    tensor: &TensorData,
     annotations: &Annotations,
     [x, y]: [u64; 2],
+    meaning: TensorDataMeaning,
     meter: Option<f32>,
 ) {
     egui::Grid::new("hovered pixel properties").show(ui, |ui| {
@@ -568,7 +617,7 @@ fn tensor_pixel_value_ui(
         if tensor.num_dim() == 2 {
             if let Some(raw_value) = tensor.get(&[y, x]) {
                 if let (TensorDataMeaning::ClassId, Some(u16_val)) =
-                    (tensor.meaning(), raw_value.try_as_u16())
+                    (meaning, raw_value.try_as_u16())
                 {
                     ui.label("Label:");
                     ui.label(
@@ -715,7 +764,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &Tensor) {
+fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &TensorData, _encoded_tensor: &TensorData) {
     ui.horizontal(|ui| {
         if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
             match tensor.to_dynamic_image() {
@@ -748,11 +797,9 @@ fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn save_image(tensor: &re_components::Tensor, dynamic_image: &image::DynamicImage) {
-    use re_components::TensorData;
-
-    match &tensor.data {
-        TensorData::JPEG(bytes) => {
+fn save_image(tensor: &TensorData, dynamic_image: &image::DynamicImage) {
+    match &tensor.buffer {
+        TensorBuffer::Jpeg(bytes) => {
             if let Some(path) = rfd::FileDialog::new()
                 .set_file_name("image.jpg")
                 .save_file()

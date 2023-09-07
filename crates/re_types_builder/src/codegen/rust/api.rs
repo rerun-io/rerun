@@ -1192,6 +1192,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
             };
 
             let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
+
             let quoted_binding = if obj_is_tuple_struct {
                 quote!(Self(v.into()))
             } else {
@@ -1199,10 +1200,33 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 quote!(Self { #quoted_obj_field_name: v.into() })
             };
 
+            let quoted_borrow_deref_impl = if obj_is_tuple_struct {
+                quote!(&self.0)
+            } else {
+                let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+                quote!( &self.#quoted_obj_field_name )
+            };
+
             quote! {
                 impl<T: Into<#quoted_type>> From<T> for #quoted_obj_name {
                     fn from(v: T) -> Self {
                         #quoted_binding
+                    }
+                }
+
+                impl std::borrow::Borrow<#quoted_type> for #quoted_obj_name {
+                    #[inline]
+                    fn borrow(&self) -> &#quoted_type {
+                        #quoted_borrow_deref_impl
+                    }
+                }
+
+                impl std::ops::Deref for #quoted_obj_name {
+                    type Target = #quoted_type;
+
+                    #[inline]
+                    fn deref(&self) -> &#quoted_type {
+                        #quoted_borrow_deref_impl
                     }
                 }
             }

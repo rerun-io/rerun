@@ -1,10 +1,10 @@
 use egui::NumExt as _;
 
-use re_components::{Pinhole, Tensor, TensorDataMeaning};
+use re_components::Pinhole;
 use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
-use re_types::components::Transform3D;
+use re_types::{components::Transform3D, tensor_data::TensorDataMeaning};
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use re_viewport::{Viewport, ViewportBlueprint};
 
@@ -480,14 +480,13 @@ fn depth_props_ui(
 
     let query = ctx.current_query();
     let store = &ctx.store_db.entity_db.data_store;
-    let tensor = store.query_latest_component::<Tensor>(entity_path, &query)?;
-    if tensor.meaning != TensorDataMeaning::Depth {
+
+    let meaning = image_meaning_for_entity(entity_path, ctx);
+
+    if meaning != TensorDataMeaning::Depth {
         return Some(());
     }
-    let pinhole_ent_path = ctx
-        .store_db
-        .entity_db
-        .data_store
+    let pinhole_ent_path = store
         .query_latest_component_at_closest_ancestor::<Pinhole>(entity_path, &query)?
         .0;
 

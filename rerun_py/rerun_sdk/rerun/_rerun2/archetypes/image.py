@@ -23,7 +23,8 @@ class Image(Archetype):
     - A `HxWx3` tensor, treated as an RGB image.
     - A `HxWx4` tensor, treated as an RGBA image.
 
-    The viewer has limited support for ignoring extra empty dimensions.
+    Leading and trailing unit-dimensions are ignored, so that
+    `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 
     Example
     -------
@@ -32,16 +33,14 @@ class Image(Archetype):
     import numpy as np
     import rerun as rr
     import rerun.experimental as rr2
-    from rerun.experimental import dt as rrd
 
     # Create an image with numpy
-    image = np.zeros((200, 300, 3), dtype=np.uint8)
+    image = np.zeros((8, 12, 3), dtype=np.uint8)
     image[:, :, 0] = 255
-    image[50:150, 50:150] = (0, 255, 0)
+    image[0:4, 0:6] = (0, 255, 0)
 
     rr.init("rerun_example_image_simple", spawn=True)
 
-    image = rrd.TensorData(array=image)
     rr2.log("image", rr2.Image(image))
     ```
     """
@@ -59,8 +58,6 @@ class Image(Archetype):
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.
-
-    The default for 2D points is -10.0.
     """
 
     __str__ = Archetype.__str__
