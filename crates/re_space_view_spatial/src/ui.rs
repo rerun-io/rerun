@@ -535,6 +535,8 @@ pub fn picking(
             continue;
         }
 
+        let store = ctx.store_db.store();
+
         // Special hover ui for images.
         let is_depth_cloud = images
             .depth_cloud_entities
@@ -543,8 +545,7 @@ pub fn picking(
             if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
                 let meaning = image_meaning_for_entity(&instance_path.entity_path, ctx);
 
-                ctx.store_db
-                    .store()
+                store
                     .query_latest_component::<TensorData>(
                         &instance_path.entity_path,
                         &ctx.current_query(),
@@ -575,11 +576,7 @@ pub fn picking(
             // We don't support selecting pixels yet.
             instance_path.instance_key = InstanceKey::SPLAT;
         } else {
-            instance_path = resolve_mono_instance_path(
-                &ctx.current_query(),
-                ctx.store_db.store(),
-                &instance_path,
-            );
+            instance_path = resolve_mono_instance_path(&ctx.current_query(), store, &instance_path);
         }
 
         hovered_items.push(Item::InstancePath(
@@ -590,9 +587,7 @@ pub fn picking(
         response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
             picked_image_with_coords
         {
-            let meter = ctx
-                .store_db
-                .store()
+            let meter = store
                 .query_latest_component::<DepthMeter>(
                     &instance_path.entity_path,
                     &ctx.current_query(),
