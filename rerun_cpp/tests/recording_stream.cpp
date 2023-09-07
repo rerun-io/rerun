@@ -136,6 +136,14 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
             WHEN("creating a new stream") {
                 rr::RecordingStream stream("test", kind);
 
+                THEN("single components can be logged") {
+                    stream.log_components(
+                        "single-components",
+                        rrc::Point2D{1.0, 2.0},
+                        rrc::Color(0x00FF00FF)
+                    );
+                }
+
                 THEN("components as c-array can be logged") {
                     rrc::Point2D c_style_array[2] = {
                         rr::datatypes::Vec2D{1.0, 2.0},
@@ -184,13 +192,23 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     );
                 }
 
+                THEN("components with splatting some of them can be logged") {
+                    stream.log_components(
+                        "log_components-splat",
+                        std::vector{
+                            rrc::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
+                        },
+                        rrc::Color(0xFF0000FF)
+                    );
+                }
+
                 THEN("an archetype can be logged") {
                     stream.log_archetype(
-                        "archetype",
-                        rr::archetypes::Points2D({
-                            rr::datatypes::Vec2D{1.0, 2.0},
-                            rr::datatypes::Vec2D{4.0, 5.0},
-                        })
+                        "log_archetype-splat",
+                        rr::archetypes::Points2D(
+                            {rr::datatypes::Vec2D{1.0, 2.0}, rr::datatypes::Vec2D{4.0, 5.0}}
+                        ).with_colors(rrc::Color(0xFF0000FF))
                     );
                 }
 

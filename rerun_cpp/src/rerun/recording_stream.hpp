@@ -174,29 +174,7 @@ namespace rerun {
         /// @see log_components
         Error try_log_components(
             const char* entity_path, const std::vector<AnonymousComponentList> component_lists
-        ) {
-            if (component_lists.size() == 0) {
-                return Error::ok();
-            }
-
-            // TODO: splats
-            std::vector<DataCell> data_cells;
-            data_cells.reserve(component_lists.size());
-            for (const auto& component_list : component_lists) {
-                const auto result = component_list.to_data_cell();
-                if (result.is_err()) {
-                    return result.error;
-                }
-                data_cells.push_back(result.value);
-            }
-
-            return try_log_data_row(
-                entity_path,
-                component_lists[0].size,
-                data_cells.size(),
-                data_cells.data()
-            );
-        }
+        );
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
