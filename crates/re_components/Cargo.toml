@@ -30,7 +30,13 @@ ecolor = ["dep:ecolor"]
 glam = ["dep:glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
-image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
+image = [
+  "dep:ecolor",
+  "dep:image",
+  "dep:zune-core",
+  "dep:zune-jpeg",
+  "re_types/image",
+]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "half/serde", "re_log_types/serde"]
