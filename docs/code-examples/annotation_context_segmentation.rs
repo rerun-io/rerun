@@ -21,9 +21,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // create a segmentation image
-    let mut data = Array::<u8, _>::zeros((20, 30).f());
-    data.slice_mut(s![5..15, 5..12]).fill(1);
-    data.slice_mut(s![10..18, 13..28]).fill(2);
+    let mut data = Array::<u8, _>::zeros((8, 12).f());
+    data.slice_mut(s![0..4, 0..6]).fill(1);
+    data.slice_mut(s![4..8, 6..12]).fill(2);
 
     rec.log("segmentation/image", &SegmentationImage::try_from(data)?)?;
 
