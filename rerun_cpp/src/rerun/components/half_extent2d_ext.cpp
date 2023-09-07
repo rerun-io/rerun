@@ -1,4 +1,4 @@
-#include "point2d.hpp"
+#include "half_extent2d.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
@@ -7,14 +7,14 @@ namespace rerun {
     namespace components {
 
 #ifdef EDIT_EXTENSION
-        struct Point2DExt {
+        struct HalfExtent2DExt {
             float xy[2];
-#define Point2D Point2DExt
+#define HalfExtent2D HalfExtent2DExt
 
             // [CODEGEN COPY TO HEADER START]
 
-            /// Construct Point2D from x/y values.
-            Point2D(float x, float y) : xy{x, y} {}
+            /// Construct HalfExtent2D from x/y values.
+            HalfExtent2D(float x, float y) : xy{x, y} {}
 
             float x() const {
                 return xy.x();
