@@ -21,7 +21,8 @@ namespace rerun {
         /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
         /// Each pixel corresponds to a depth value in units specified by meter.
         ///
-        /// The viewer has limited support for ignoring extra empty dimensions.
+        /// Leading and trailing unit-dimensions are ignored, so that
+        ///`1x640x480x1` is treated as a `640x480` image.
         struct SegmentationImage {
             /// The image data. Should always be a rank-2 tensor.
             rerun::components::TensorData data;

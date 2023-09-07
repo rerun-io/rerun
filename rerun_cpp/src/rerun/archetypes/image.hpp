@@ -23,7 +23,8 @@ namespace rerun {
         ///- A `HxWx3` tensor, treated as an RGB image.
         ///- A `HxWx4` tensor, treated as an RGBA image.
         ///
-        /// The viewer has limited support for ignoring extra empty dimensions.
+        /// Leading and trailing unit-dimensions are ignored, so that
+        ///`1x640x480x3x1` is treated as a `640x480x3` RGB image.
         struct Image {
             /// The image data. Should always be a rank-2 or rank-3 tensor.
             rerun::components::TensorData data;
