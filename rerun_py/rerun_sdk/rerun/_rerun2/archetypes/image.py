@@ -41,7 +41,7 @@ class Image(Archetype):
 
     rr.init("rerun_example_image_simple", spawn=True)
 
-    rr2.log("simple", rr2.Image(image))
+    rr2.log("image", rr2.Image(image))
     ```
     """
 
