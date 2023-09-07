@@ -45,7 +45,6 @@ re_tracing.workspace = true
 re_types.workspace = true
 
 # External
-ahash.workspace = true
 array-init = "2.1.0"
 arrow2.workspace = true
 arrow2_convert.workspace = true
@@ -55,9 +54,7 @@ half = { workspace = true, features = ["bytemuck"] }
 itertools = { workspace = true }
 lazy_static.workspace = true
 ndarray.workspace = true
-nohash-hasher = "0.2"
 thiserror.workspace = true
-uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 
 # Optional dependencies:

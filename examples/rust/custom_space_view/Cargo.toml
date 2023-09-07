@@ -13,7 +13,6 @@ default = []
 analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
 
 [dependencies]
-once_cell = "1.18"
 re_crash_handler = { path = "../../../crates/re_crash_handler" }
 re_viewer = { path = "../../../crates/re_viewer", default-features = false }
 

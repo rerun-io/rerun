@@ -857,7 +857,6 @@ version = "0.9.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
  "rerun",
 ]
 
@@ -896,7 +895,6 @@ dependencies = [
 name = "code_examples"
 version = "0.9.0-alpha.3"
 dependencies = [
- "ahash 0.8.3",
  "ndarray",
  "rand",
  "rand_distr",
@@ -1218,7 +1216,6 @@ name = "custom_space_view"
 version = "0.9.0-alpha.3"
 dependencies = [
  "mimalloc",
- "once_cell",
  "re_crash_handler",
  "re_sdk_comms",
  "re_viewer",
@@ -4014,7 +4011,6 @@ dependencies = [
 name = "re_components"
 version = "0.9.0-alpha.3"
 dependencies = [
- "ahash 0.8.3",
  "array-init",
  "arrow2",
  "arrow2_convert",
@@ -4028,7 +4024,6 @@ dependencies = [
  "itertools 0.11.0",
  "lazy_static",
  "ndarray",
- "nohash-hasher",
  "rand",
  "re_log",
  "re_log_types",
@@ -4038,7 +4033,6 @@ dependencies = [
  "serde",
  "similar-asserts",
  "thiserror",
- "uuid",
  "zune-core",
  "zune-jpeg",
 ]
@@ -4110,7 +4104,6 @@ dependencies = [
  "egui_plot",
  "image",
  "itertools 0.11.0",
- "nohash-hasher",
  "re_arrow_store",
  "re_components",
  "re_data_store",
@@ -4450,7 +4443,6 @@ dependencies = [
  "serde",
  "smallvec",
  "vec1",
- "wgpu",
 ]
 
 [[package]]
@@ -4471,7 +4463,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
- "re_space_view",
  "re_tensor_ops",
  "re_tracing",
  "re_types",
@@ -4488,7 +4479,6 @@ version = "0.9.0-alpha.3"
 dependencies = [
  "egui",
  "egui_extras",
- "nohash-hasher",
  "re_arrow_store",
  "re_components",
  "re_data_store",
@@ -4497,7 +4487,6 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_renderer",
- "re_space_view",
  "re_tracing",
  "re_types",
  "re_ui",
@@ -4511,11 +4500,8 @@ version = "0.9.0-alpha.3"
 dependencies = [
  "egui",
  "re_arrow_store",
- "re_components",
- "re_log",
  "re_query",
  "re_renderer",
- "re_space_view",
  "re_types",
  "re_ui",
  "re_viewer_context",
@@ -4610,7 +4596,6 @@ dependencies = [
 name = "re_types"
 version = "0.9.0-alpha.3"
 dependencies = [
- "anyhow",
  "array-init",
  "arrow2",
  "arrow2_convert",
@@ -4622,9 +4607,7 @@ dependencies = [
  "half 2.3.1",
  "image",
  "itertools 0.11.0",
- "macaw",
  "ndarray",
- "nohash-hasher",
  "once_cell",
  "rayon",
  "re_build_tools",
@@ -4696,11 +4679,9 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "cocoa",
- "directories-next",
  "eframe",
  "egui",
  "egui-wgpu",
- "egui_extras",
  "egui_plot",
  "image",
  "itertools 0.11.0",
@@ -4795,7 +4776,6 @@ dependencies = [
  "arrow2_convert",
  "egui",
  "egui_tiles",
- "enumset",
  "glam",
  "image",
  "itertools 0.11.0",
@@ -5111,7 +5091,6 @@ dependencies = [
  "anyhow",
  "clap",
  "image",
- "ndarray",
  "rerun",
 ]
 
@@ -5167,7 +5146,6 @@ version = "0.9.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "ndarray",
  "rerun",
 ]
 
