@@ -14,6 +14,7 @@ from .points2d import Points2D
 from .points3d import Points3D
 from .segmentation_image import SegmentationImage
 from .tensor import Tensor
+from .text_document import TextDocument
 from .transform3d import Transform3D
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "Points3D",
     "SegmentationImage",
     "Tensor",
+    "TextDocument",
     "Transform3D",
 ]

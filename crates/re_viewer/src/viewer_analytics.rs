@@ -11,7 +11,6 @@
 
 #[cfg(feature = "analytics")]
 use re_analytics::{Analytics, Event, Property};
-use re_log_types::StoreSource;
 
 use crate::StartupOptions;
 
@@ -142,6 +141,8 @@ impl ViewerAnalytics {
 
     /// When we have loaded the start of a new recording.
     pub fn on_open_recording(&mut self, store_db: &re_data_store::StoreDb) {
+        use re_log_types::StoreSource;
+
         if store_db.store_kind() != re_log_types::StoreKind::Recording {
             return;
         }

@@ -21,7 +21,7 @@ table AnnotationInfo (
   id: ushort (order: 100);
 
   /// The label that will be shown in the UI.
-  label: rerun.datatypes.Label (nullable, order: 200);
+  label: rerun.datatypes.Utf8 (nullable, order: 200);
 
   /// The color that will be applied to the annotated entity.
   color: rerun.datatypes.Color (nullable, order: 300);

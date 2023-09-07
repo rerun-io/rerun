@@ -285,7 +285,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Iterate over the values of a required [`Component`].
     #[inline]
-    pub fn iter_required_component<'a, C: Component + Default + 'a>(
+    pub fn iter_required_component<'a, C: Component + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
         re_tracing::profile_function!();

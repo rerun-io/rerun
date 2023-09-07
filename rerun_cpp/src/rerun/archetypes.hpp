@@ -13,4 +13,5 @@
 #include "archetypes/points3d.hpp"
 #include "archetypes/segmentation_image.hpp"
 #include "archetypes/tensor.hpp"
+#include "archetypes/text_document.hpp"
 #include "archetypes/transform3d.hpp"

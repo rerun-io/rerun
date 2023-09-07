@@ -15,6 +15,7 @@ __all__ = [
     "Points3D",
     "SegmentationImage",
     "Tensor",
+    "TextDocument",
     "Transform3D",
 ]
 
@@ -31,5 +32,6 @@ from .archetypes import (
     Points3D,
     SegmentationImage,
     Tensor,
+    TextDocument,
     Transform3D,
 )

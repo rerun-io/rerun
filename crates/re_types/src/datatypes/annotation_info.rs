@@ -22,7 +22,7 @@ pub struct AnnotationInfo {
     pub id: u16,
 
     /// The label that will be shown in the UI.
-    pub label: Option<crate::datatypes::Label>,
+    pub label: Option<crate::datatypes::Utf8>,
 
     /// The color that will be applied to the annotated entity.
     pub color: Option<crate::datatypes::Color>,
@@ -63,7 +63,7 @@ impl crate::Loggable for AnnotationInfo {
             },
             Field {
                 name: "label".to_owned(),
-                data_type: <crate::datatypes::Label>::arrow_datatype(),
+                data_type: <crate::datatypes::Utf8>::arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
@@ -145,7 +145,7 @@ impl crate::Loggable for AnnotationInfo {
                                 .iter()
                                 .flatten()
                                 .flat_map(|datum| {
-                                    let crate::datatypes::Label(data0) = datum;
+                                    let crate::datatypes::Utf8(data0) = datum;
                                     data0.0.clone()
                                 })
                                 .collect();
@@ -153,7 +153,7 @@ impl crate::Loggable for AnnotationInfo {
                                 label.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| {
-                                            let crate::datatypes::Label(data0) = datum;
+                                            let crate::datatypes::Utf8(data0) = datum;
                                             data0.0.len()
                                         })
                                         .unwrap_or_default()
@@ -240,7 +240,7 @@ impl crate::Loggable for AnnotationInfo {
                             },
                             Field {
                                 name: "label".to_owned(),
-                                data_type: <crate::datatypes::Label>::arrow_datatype(),
+                                data_type: <crate::datatypes::Utf8>::arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
@@ -333,7 +333,7 @@ impl crate::Loggable for AnnotationInfo {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| crate::datatypes::Label(crate::ArrowString(v)))
+                                res_or_opt.map(|v| crate::datatypes::Utf8(crate::ArrowString(v)))
                             })
                         })
                         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()

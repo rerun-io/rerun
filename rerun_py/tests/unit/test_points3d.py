@@ -50,7 +50,7 @@ def test_points3d() -> None:
         points = cast(rrd.Vec3DArrayLike, points)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.LabelArrayLike], labels)
+        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
         class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
         keypoint_ids = cast(Optional[rrd.KeypointIdArrayLike], keypoint_ids)
         instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)

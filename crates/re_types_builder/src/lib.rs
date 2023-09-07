@@ -425,6 +425,7 @@ pub(crate) fn to_snake_case(s: &str) -> String {
 #[test]
 fn test_snake_case() {
     assert_eq!(to_snake_case("Point2D"), "point2d");
+    assert_eq!(to_snake_case("Utf8"), "utf8");
     assert_eq!(
         to_snake_case("TranslationAndMat3x3"),
         "translation_and_mat3x3"

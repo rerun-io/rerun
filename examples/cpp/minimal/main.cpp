@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
 
     // Log points with the components api - this is the advanced way of logging components in a
     // fine-grained matter. It supports passing various types of containers.
-    rrc::Label c_style_array[3] = {rrc::Label("hello"), rrc::Label("friend"), rrc::Label("yo")};
+    rrc::Text c_style_array[3] = {rrc::Text("hello"), rrc::Text("friend"), rrc::Text("yo")};
     rr_stream.log_components(
         "2d/points",
         std::vector{rrc::Point2D(0.0f, 0.0f), rrc::Point2D(1.0f, 3.0f), rrc::Point2D(5.0f, 5.0f)},

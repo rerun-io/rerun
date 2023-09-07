@@ -127,7 +127,7 @@ def log_scalar(
     instanced["rerun.scalar"] = ScalarArray.from_numpy(np.array([scalar]))
 
     if label:
-        instanced["rerun.label"] = rrc.LabelArray.from_similar([label]).storage
+        instanced["rerun.label"] = rrc.TextArray.from_similar([label]).storage
 
     if color is not None:
         from rerun.experimental import cmp as rrc

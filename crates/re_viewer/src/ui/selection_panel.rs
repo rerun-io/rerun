@@ -425,7 +425,7 @@ fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
                     .selectable_label(current == proposed, proposed.to_string())
                     .clicked()
                 {
-                    entity_props.color_mapper = EditableAutoValue::Auto(proposed);
+                    entity_props.color_mapper = EditableAutoValue::UserEdited(proposed);
                 }
             };
 

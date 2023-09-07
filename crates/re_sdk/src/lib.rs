@@ -75,7 +75,7 @@ pub mod components {
     };
     pub use re_types::components::{
         AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-        Label, LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, TensorData,
+        LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, TensorData, Text,
         Transform3D, Vector3D,
     };
 }

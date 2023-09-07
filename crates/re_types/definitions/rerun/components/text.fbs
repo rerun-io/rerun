@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A string of text, e.g. for labels and text documents
+table Text (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.rerun.legacy_fqname": "rerun.label",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  order: 100
+) {
+  value: rerun.datatypes.Utf8 (order: 100);
+}

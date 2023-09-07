@@ -356,7 +356,7 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native<'a, C: Component + Default + 'a>(&'a self) -> DataCellResult<Vec<C>> {
+    pub fn try_to_native<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<C>> {
         re_tracing::profile_function!(C::name().as_str());
         Ok(C::try_from_arrow(self.inner.values.as_ref())?)
     }
@@ -396,7 +396,7 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native`] for a fallible alternative.
     #[inline]
-    pub fn to_native<'a, C: Component + Default + 'a>(&'a self) -> Vec<C> {
+    pub fn to_native<'a, C: Component + 'a>(&'a self) -> Vec<C> {
         self.try_to_native().unwrap()
     }
 

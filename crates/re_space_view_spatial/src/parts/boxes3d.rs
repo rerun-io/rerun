@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
-    components::{ClassId, Color, InstanceKey, Label, Radius},
+    components::{ClassId, Color, InstanceKey, Radius, Text},
     Loggable as _,
 };
 use re_viewer_context::{
@@ -50,7 +50,7 @@ impl Boxes3DPart {
                        rotation: Option<Quaternion>,
                        color: Option<Color>,
                        radius: Option<Radius>,
-                       label: Option<Label>,
+                       label: Option<Text>,
                        class_id: Option<ClassId>| {
             let class_description = ent_context.annotations.resolved_class_description(class_id);
             let annotation_info = class_description.annotation_info();
@@ -118,7 +118,7 @@ impl ViewPartSystem for Boxes3DPart {
             Quaternion::name(),  // obb.rotation
             Color::name(),
             Radius::name(), // stroke_width
-            Label::name(),
+            Text::name(),
             ClassId::name(),
         ]
     }

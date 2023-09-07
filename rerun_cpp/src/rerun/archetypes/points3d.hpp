@@ -8,9 +8,9 @@
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
-#include "../components/label.hpp"
 #include "../components/point3d.hpp"
 #include "../components/radius.hpp"
+#include "../components/text.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
@@ -50,7 +50,7 @@ namespace rerun {
             std::optional<std::vector<rerun::components::Color>> colors;
 
             /// Optional text labels for the points.
-            std::optional<std::vector<rerun::components::Label>> labels;
+            std::optional<std::vector<rerun::components::Text>> labels;
 
             /// Optional class Ids for the points.
             ///
@@ -102,13 +102,13 @@ namespace rerun {
             }
 
             /// Optional text labels for the points.
-            Points3D& with_labels(std::vector<rerun::components::Label> _labels) {
+            Points3D& with_labels(std::vector<rerun::components::Text> _labels) {
                 labels = std::move(_labels);
                 return *this;
             }
 
             /// Optional text labels for the points.
-            Points3D& with_labels(rerun::components::Label _labels) {
+            Points3D& with_labels(rerun::components::Text _labels) {
                 labels = std::vector(1, std::move(_labels));
                 return *this;
             }

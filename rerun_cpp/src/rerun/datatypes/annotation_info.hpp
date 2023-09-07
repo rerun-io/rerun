@@ -5,7 +5,7 @@
 
 #include "../result.hpp"
 #include "color.hpp"
-#include "label.hpp"
+#include "utf8.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -29,7 +29,7 @@ namespace rerun {
             uint16_t id;
 
             /// The label that will be shown in the UI.
-            std::optional<rerun::datatypes::Label> label;
+            std::optional<rerun::datatypes::Utf8> label;
 
             /// The color that will be applied to the annotated entity.
             std::optional<rerun::datatypes::Color> color;

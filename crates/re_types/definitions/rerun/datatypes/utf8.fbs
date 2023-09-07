@@ -1,0 +1,24 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A string of text, encoded as UTF-8.
+//
+// NOTE: Apache Arrow uses UTF-8 encoding of its String type, as does Rust.
+table Utf8 (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.rerun.legacy_fqname": "rerun.label",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct",
+  order: 100
+) {
+  value: string (order: 100);
+}

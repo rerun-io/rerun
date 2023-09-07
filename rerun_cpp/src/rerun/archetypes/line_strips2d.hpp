@@ -8,9 +8,9 @@
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/instance_key.hpp"
-#include "../components/label.hpp"
 #include "../components/line_strip2d.hpp"
 #include "../components/radius.hpp"
+#include "../components/text.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
@@ -90,7 +90,7 @@ namespace rerun {
             std::optional<std::vector<rerun::components::Color>> colors;
 
             /// Optional text labels for the line strips.
-            std::optional<std::vector<rerun::components::Label>> labels;
+            std::optional<std::vector<rerun::components::Text>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order of each line
             /// strip. Objects with higher values are drawn on top of those with lower values.
@@ -139,13 +139,13 @@ namespace rerun {
             }
 
             /// Optional text labels for the line strips.
-            LineStrips2D& with_labels(std::vector<rerun::components::Label> _labels) {
+            LineStrips2D& with_labels(std::vector<rerun::components::Text> _labels) {
                 labels = std::move(_labels);
                 return *this;
             }
 
             /// Optional text labels for the line strips.
-            LineStrips2D& with_labels(rerun::components::Label _labels) {
+            LineStrips2D& with_labels(rerun::components::Text _labels) {
                 labels = std::vector(1, std::move(_labels));
                 return *this;
             }

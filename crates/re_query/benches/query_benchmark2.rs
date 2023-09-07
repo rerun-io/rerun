@@ -9,7 +9,7 @@ use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeInt, Time
 use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
-    components::{Color, InstanceKey, Label, Point2D},
+    components::{Color, InstanceKey, Point2D, Text},
     Loggable as _,
 };
 
@@ -64,7 +64,7 @@ pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
     (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }
 
-pub fn build_some_strings(len: usize) -> Vec<Label> {
+pub fn build_some_strings(len: usize) -> Vec<Text> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -76,7 +76,7 @@ pub fn build_some_strings(len: usize) -> Vec<Label> {
                 .take(ilen)
                 .map(char::from)
                 .collect();
-            Label::from(s)
+            Text::from(s)
         })
         .collect()
 }
@@ -278,7 +278,7 @@ fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Sa
 }
 
 struct SaveString {
-    _label: Option<Label>,
+    _label: Option<Text>,
 }
 
 fn query_and_visit_strings(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SaveString> {
@@ -290,7 +290,7 @@ fn query_and_visit_strings(store: &mut DataStore, paths: &[EntityPath]) -> Vec<S
     for path in paths {
         let arch_view = query_archetype::<Points2D>(store, &query, path).unwrap();
         arch_view
-            .iter_optional_component::<Label>()
+            .iter_optional_component::<Text>()
             .unwrap()
             .for_each(|label| {
                 strings.push(SaveString { _label: label });

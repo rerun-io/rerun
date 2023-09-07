@@ -17,6 +17,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 use lazy_static::lazy_static;
+
 use re_types::Loggable;
 
 mod bbox;
@@ -27,7 +28,6 @@ mod pinhole;
 mod quaternion;
 mod rect;
 mod scalar;
-mod text_box;
 mod text_entry;
 mod vec;
 
@@ -50,7 +50,6 @@ pub use self::{
     quaternion::Quaternion,
     rect::Rect2D,
     scalar::{Scalar, ScalarPlotProps},
-    text_box::TextBox,
     text_entry::TextEntry,
 };
 
@@ -74,13 +73,13 @@ pub mod external {
 
 use re_types::components::{
     AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-    Label, LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, TensorData, Transform3D,
+    LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, TensorData, Text, Transform3D,
     Vector3D,
 };
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 28] = [
+    static ref FIELDS: [Field; 27] = [
         <Box3D as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
@@ -89,7 +88,6 @@ lazy_static! {
         <Rect2D as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
-        <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         AnnotationContext::arrow_field(),
@@ -99,7 +97,6 @@ lazy_static! {
         DrawOrder::arrow_field(),
         InstanceKey::arrow_field(),
         KeypointId::arrow_field(),
-        Label::arrow_field(),
         LineStrip2D::arrow_field(),
         LineStrip3D::arrow_field(),
         Origin3D::arrow_field(),
@@ -107,6 +104,7 @@ lazy_static! {
         Point3D::arrow_field(),
         Radius::arrow_field(),
         TensorData::arrow_field(),
+        Text::arrow_field(),
         Transform3D::arrow_field(),
         Vector3D::arrow_field(),
     ];

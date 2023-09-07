@@ -18,8 +18,8 @@ fn roundtrip() {
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
-            components::Label::from("hello"),  //
-            components::Label::from("friend"), //
+            "hello".into(),  //
+            "friend".into(), //
         ]),
         class_ids: Some(vec![
             components::ClassId::from(126), //
@@ -48,7 +48,7 @@ fn roundtrip() {
         ("points", vec!["rerun.components.Point3D"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
-        ("labels", vec!["rerun.components.Label"]),
+        ("labels", vec!["rerun.components.Text"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
         ("instance_keys", vec!["rerun.components.InstanceKey"]),

@@ -113,7 +113,7 @@ fn log_baseline_objects(
     rec: &RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    use rerun::components::{Box3D, Color, Label, Transform3D};
+    use rerun::components::{Box3D, Color, Text, Transform3D};
     use rerun::transform::TranslationAndMat3x3;
 
     let boxes = objects.iter().filter_map(|object| {
@@ -130,7 +130,7 @@ fn log_baseline_objects(
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
                 Transform3D::new(TranslationAndMat3x3::new(translation, rotation))
             };
-            let label = Label(object.category.clone().into());
+            let label = Text(object.category.clone().into());
 
             (object.id, box3, transform, label)
         })

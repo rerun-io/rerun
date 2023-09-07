@@ -94,7 +94,6 @@ from .fuzzy import (
 )
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointIdArray, KeypointIdType
-from .label import LabelArray, LabelType
 from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArray, LineStrip3DArrayLike, LineStrip3DLike, LineStrip3DType
 from .origin3d import Origin3DArray, Origin3DType
@@ -102,6 +101,7 @@ from .point2d import Point2DArray, Point2DType
 from .point3d import Point3DArray, Point3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
 from .tensor_data import TensorDataArray, TensorDataType
+from .text import TextArray, TextType
 from .transform3d import Transform3DArray, Transform3DType
 from .vector3d import Vector3DArray, Vector3DType
 
@@ -207,8 +207,6 @@ __all__ = [
     "InstanceKeyType",
     "KeypointIdArray",
     "KeypointIdType",
-    "LabelArray",
-    "LabelType",
     "LineStrip2D",
     "LineStrip2DArray",
     "LineStrip2DArrayLike",
@@ -232,6 +230,8 @@ __all__ = [
     "RadiusType",
     "TensorDataArray",
     "TensorDataType",
+    "TextArray",
+    "TextType",
     "Transform3DArray",
     "Transform3DType",
     "Vector3DArray",
