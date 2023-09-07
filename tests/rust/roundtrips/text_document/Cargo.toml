@@ -11,4 +11,3 @@ rerun = { path = "../../../../crates/rerun", features = ["native_viewer"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
-ndarray.workspace = true

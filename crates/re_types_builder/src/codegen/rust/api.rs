@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use convert_case::{Case, Casing as _};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use rayon::prelude::*;
@@ -489,7 +488,7 @@ impl QuotedObject {
                 datatype: _,
             } = obj_field;
 
-            let name = format_ident!("{}", name.to_case(Case::UpperCamel));
+            let name = format_ident!("{}", crate::to_pascal_case(name));
 
             let quoted_doc = quote_doc_from_docs(docs);
             let (quoted_type, _) = quote_field_type_from_field(obj_field, false);

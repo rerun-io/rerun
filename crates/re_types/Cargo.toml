@@ -29,7 +29,7 @@ all = ["ecolor", "glam", "serde"]
 ecolor = ["dep:ecolor"]
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
-glam = ["dep:glam", "dep:macaw"]
+glam = ["dep:glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
 image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
@@ -49,7 +49,6 @@ re_string_interner.workspace = true
 re_tracing.workspace = true
 
 # External
-anyhow.workspace = true
 array-init = "2.1"
 arrow2 = { workspace = true, features = [
   "io_ipc",
@@ -63,7 +62,6 @@ document-features = "0.2"
 itertools.workspace = true
 half.workspace = true
 ndarray.workspace = true
-nohash-hasher.workspace = true
 once_cell.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
@@ -73,7 +71,6 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false }
-macaw = { workspace = true, optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 zune-core = { version = "0.2", optional = true }
 zune-jpeg = { version = "0.3", optional = true }

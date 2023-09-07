@@ -38,5 +38,4 @@ egui_plot.workspace = true
 egui.workspace = true
 image.workspace = true
 itertools.workspace = true
-nohash-hasher.workspace = true
 rfd.workspace = true
