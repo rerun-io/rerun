@@ -46,7 +46,7 @@ pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell,
         #[cfg(feature = "image")]
         _ => {
             // Assume an image (there are so many image extensions):
-            // TODO(#2792): include the `ImageIndicator` component.
+            // TODO(#3159): include the `ImageIndicator` component.
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_file(file_path)?,
             );
@@ -89,7 +89,7 @@ pub fn data_cell_from_file_contents(
             };
 
             // Assume an image (there are so many image extensions):
-            // TODO(#2792): include the `ImageIndicator` component.
+            // TODO(#3159): include the `ImageIndicator` component.
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_bytes(bytes, format)?,
             );
