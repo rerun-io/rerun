@@ -29,7 +29,7 @@ def segmentationimage_data_converter(data: TensorDataArrayLike) -> TensorDataArr
 
     num_non_empty_dims = len(non_empty_dims)
 
-    # TODO(jleibs): What `recording` should we be passing here? How should we be getting it?
+    # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
     if num_non_empty_dims != 2:
         _send_warning(f"Expected segmentation image, got array of shape {shape_dims}", 1, recording=None)
 
