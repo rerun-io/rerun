@@ -70,6 +70,14 @@ opt_out_compare = {
 # fmt: on
 
 
+def run(
+    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
+) -> None:
+    print(f"> {subprocess.list2cmdline(args)}")
+    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+    assert result.returncode == 0, f"Faield to run. Output:\n{result.stdout}\n{result.stderr}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
@@ -100,8 +108,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Building rerun-sdk for Python…")
         start_time = time.time()
-        returncode = subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
-        assert returncode == 0, f"Python rerun-sdk build failed with exit code {returncode}"
+        run(["just", "py-build", "--quiet"], env=build_env)
         elapsed = time.time() - start_time
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")
@@ -117,13 +124,11 @@ def main() -> None:
         if args.release:
             build_type = "Release"
         configure_args = ["cmake", f"-DCMAKE_BUILD_TYPE={build_type}", "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON", ".."]
-        print("> ${subprocess.list2cmdline(configure_args)}")
-        returncode = subprocess.Popen(
+        run(
             configure_args,
             env=build_env,
             cwd="build",
-        ).wait()
-        assert returncode == 0, f"configuring cmake failed with exit code {returncode}"
+        )
         cmake_build("rerun_sdk", args.release)
         elapsed = time.time() - start_time
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
@@ -198,10 +203,7 @@ def run_roundtrip_python(example: str) -> str:
     cmd = [python_executable, main_path]
 
     env = roundtrip_env(save_path=output_path)
-    print(f"\n> _RERUN_TEST_FORCE_SAVE={env['_RERUN_TEST_FORCE_SAVE']} {subprocess.list2cmdline(cmd)}")
-    roundtrip_process = subprocess.Popen(cmd, env=env)
-    returncode = roundtrip_process.wait(timeout=30)
-    assert returncode == 0, f"python roundtrip process exited with error code {returncode}"
+    run(cmd, env=env, timeout=30)
 
     return output_path
 
@@ -221,10 +223,7 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
         cmd += ["--release"]
 
     env = roundtrip_env(save_path=output_path)
-    print(f"\n> _RERUN_TEST_FORCE_SAVE={env['_RERUN_TEST_FORCE_SAVE']} {subprocess.list2cmdline(cmd)}")
-    roundtrip_process = subprocess.Popen(cmd, env=env)
-    returncode = roundtrip_process.wait(timeout=12000)
-    assert returncode == 0, f"rust roundtrip process exited with error code {returncode}"
+    run(cmd, env=env, timeout=12000)
 
     return output_path
 
@@ -237,10 +236,7 @@ def run_roundtrip_cpp(example: str, release: bool) -> str:
 
     cmd = [f"./build/docs/code-examples/{example}"]
     env = roundtrip_env(save_path=output_path)
-    print(f"\n> _RERUN_TEST_FORCE_SAVE={env['_RERUN_TEST_FORCE_SAVE']} {subprocess.list2cmdline(cmd)}")
-    roundtrip_process = subprocess.Popen(cmd, env=env)
-    returncode = roundtrip_process.wait(timeout=12000)
-    assert returncode == 0, f"cpp roundtrip process exited with error code {returncode}"
+    run(cmd, env=env, timeout=12000)
 
     return output_path
 
@@ -261,10 +257,7 @@ def cmake_build(target: str, release: bool) -> None:
         "--parallel",
         str(multiprocessing.cpu_count()),
     ]
-    print(f"\n> {subprocess.list2cmdline(build_process_args)}")
-    result = subprocess.run(build_process_args, cwd="build")
-
-    assert result.returncode == 0, f"cmake build of {target} exited with error code {result.returncode}"
+    run(build_process_args, cwd="build")
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
@@ -273,10 +266,7 @@ def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
         cmd += ["--full-dump"]
     cmd += [rrd0_path, rrd1_path]
 
-    print(f"\n> {subprocess.list2cmdline(cmd)}")
-    comparison_process = subprocess.Popen(cmd, env=roundtrip_env())
-    returncode = comparison_process.wait(timeout=30)
-    assert returncode == 0, f"comparison process exited with error code {returncode}"
+    run(cmd, env=roundtrip_env(), timeout=30)
 
 
 def check_non_empty_rrd(path: str) -> None:
