@@ -424,10 +424,20 @@ pub(crate) fn to_snake_case(s: &str) -> String {
 
 #[test]
 fn test_snake_case() {
-    assert_eq!(to_snake_case("Point2D"), "point2d");
-    assert_eq!(to_snake_case("Utf8"), "utf8");
     assert_eq!(
-        to_snake_case("TranslationAndMat3x3"),
-        "translation_and_mat3x3"
+        to_snake_case("rerun.components.Point2D"),
+        "rerun.components.point2d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.Utf8"),
+        "rerun.datatypes.utf8"
+    );
+    assert_eq!(
+        to_snake_case("rerun.archetypes.Points2DIndicator"),
+        "rerun.archetypes.points2d_indicator"
+    );
+    assert_eq!(
+        to_snake_case("rerun.components.TranslationAndMat3x3"),
+        "rerun.components.translation_and_mat3x3"
     );
 }
