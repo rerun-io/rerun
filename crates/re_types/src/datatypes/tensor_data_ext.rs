@@ -547,7 +547,7 @@ impl TensorData {
                 Rgba16Image::from_raw(w, h, buf.to_vec()).map(DynamicImage::ImageRgba16)
             }
             (4, TensorBuffer::F32(buf)) => {
-                let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf.as_slice());
+                let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf);
                 let pixels: Vec<u8> = rgba
                     .iter()
                     .flat_map(|&[r, g, b, a]| {
@@ -561,7 +561,7 @@ impl TensorData {
                 RgbaImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgba8)
             }
             (4, TensorBuffer::F64(buf)) => {
-                let rgba: &[[f64; 4]] = bytemuck::cast_slice(buf.as_slice());
+                let rgba: &[[f64; 4]] = bytemuck::cast_slice(buf);
                 let pixels: Vec<u8> = rgba
                     .iter()
                     .flat_map(|&[r, g, b, a]| {
