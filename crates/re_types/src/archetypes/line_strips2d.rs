@@ -95,8 +95,6 @@ pub struct LineStrips2D {
 
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
     /// Objects with higher values are drawn on top of those with lower values.
-    ///
-    /// The default for 2D lines is 20.0.
     pub draw_order: Option<crate::components::DrawOrder>,
 
     /// Optional `ClassId`s for the lines.

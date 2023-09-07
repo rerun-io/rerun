@@ -66,8 +66,6 @@ class DepthImage(Archetype):
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.
-
-    The default for 2D points is -10.0.
     """
 
     __str__ = Archetype.__str__
