@@ -125,7 +125,7 @@ fn onboarding_content_ui(
         .floor() as usize)
         .clamp(1, panels.len());
 
-    // we either display 4, 2, or a single column as 3 column would be ugly with 4 panels
+    // we either display 4, 2, or a single column, because 3 columns is ugly with 4 panels.
     if column_count == 3 {
         column_count = 2;
     }
