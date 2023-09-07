@@ -166,28 +166,42 @@ namespace rerun {
         ///
         /// Logs any failure via `Error::log_on_failure`
         template <typename... Ts>
-        void log_components(const char* entity_path, const Ts&... component_array) {
-            try_log_components(entity_path, component_array...).log_on_failure();
+        void log_components(const char* entity_path, const Ts&... component_arrays) {
+            try_log_components(entity_path, component_arrays...).log_on_failure();
         }
 
         /// Logs a list of component arrays, returning an error on failure.
         ///
         /// @see log_components
         template <typename... Ts>
-        Error try_log_components(const char* entity_path, const Ts&... component_array) {
-            // TODO(andreas): Handle splats.
-            const size_t num_instances = size_of_first_collection(component_array...);
+        Error try_log_components(const char* entity_path, const Ts&... component_arrays) {
+            return try_log_components(entity_path, {AnonymousComponentList(component_arrays)...});
+        }
 
+        /// Logs a list of component arrays, returning an error on failure.
+        ///
+        /// @see log_components
+        Error try_log_components(
+            const char* entity_path, const std::vector<AnonymousComponentList> component_lists
+        ) {
+            if (component_lists.size() == 0) {
+                return Error::ok();
+            }
+
+            // TODO: splats
             std::vector<DataCell> data_cells;
-            data_cells.reserve(sizeof...(Ts));
-            const auto error = push_data_cells(data_cells, component_array...);
-            if (error.is_err()) {
-                return error;
+            data_cells.reserve(component_lists.size());
+            for (const auto& component_list : component_lists) {
+                const auto result = component_list.to_data_cell();
+                if (result.is_err()) {
+                    return result.error;
+                }
+                data_cells.push_back(result.value);
             }
 
             return try_log_data_row(
                 entity_path,
-                num_instances,
+                component_lists[0].size,
                 data_cells.size(),
                 data_cells.data()
             );
@@ -203,27 +217,6 @@ namespace rerun {
         );
 
       private:
-        template <typename C, typename... Ts>
-        static size_t size_of_first_collection(const C& first, const Ts&...) {
-            return ComponentList(first).size;
-        }
-
-        template <typename C, typename... Ts>
-        static Error push_data_cells(
-            std::vector<DataCell>& data_cells, const C& first, const Ts&... rest
-        ) {
-            const auto cell_result = ComponentList(first).to_data_cell();
-            if (cell_result.is_err()) {
-                return cell_result.error;
-            }
-            data_cells.push_back(cell_result.value);
-            return push_data_cells(data_cells, rest...);
-        }
-
-        static Error push_data_cells(std::vector<DataCell>&) {
-            return Error();
-        }
-
         RecordingStream(uint32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
 
         uint32_t _id;
