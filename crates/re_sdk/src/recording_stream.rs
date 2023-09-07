@@ -32,7 +32,7 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// Useful to save the result of any Rerun snippet to an rrd file, whether it supports it or not.
 fn forced_sink() -> RecordingStreamResult<Option<Box<dyn LogSink>>> {
     Ok(if let Ok(path) = std::env::var(ENV_FORCE_SAVE) {
-        re_log::warn!(?path, "forcing FileSink");
+        re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
         Some(Box::new(crate::sink::FileSink::new(path)?) as Box<dyn LogSink>)
     } else {
         None
