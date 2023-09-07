@@ -71,11 +71,7 @@ def log_image(
 
     from rerun.experimental import Image, dt, log
 
-    tensor_data = dt.TensorData(array=image)
-
-    # TODO(#2792): Support for jpeg_quality
-    if jpeg_quality is not None:
-        print("jpeg_quality not supported yet")  # should be _send_warning, but I want to merge this
+    tensor_data = dt.TensorData(array=image, jpeg_quality=jpeg_quality)
 
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import collections
+from io import BytesIO
 from math import prod
 from typing import TYPE_CHECKING, Any, Final, Protocol, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from PIL import Image
 
 from rerun.log.error_utils import _send_warning
 
@@ -58,6 +60,7 @@ def tensordata_init(
     buffer: TensorBufferLike | None = None,
     array: Tensor | None = None,
     names: Sequence[str] | None = None,
+    jpeg_quality: int | None = None,
 ) -> None:
     """
     Construct a `TensorData` object.
@@ -82,6 +85,14 @@ def tensordata_init(
         A numpy array (or The array of the tensor. If None, the array will be inferred from the buffer.
     names: Sequence[str] | None
         The names of the tensor dimensions when generating the shape from an array.
+    jpeg_quality:
+        If set, encode the image as a JPEG to save storage space.
+        Higher quality = larger file size.
+        A quality of 95 still saves a lot of space, but is visually very similar.
+        JPEG compression works best for photographs.
+        Only RGB images are supported.
+        Note that compressing to JPEG costs a bit of CPU time, both when logging
+        and later when viewing them.
     """
     # TODO(jleibs): Need to figure out how to get the above docstring to show up in the TensorData class
     # documentation.
@@ -138,6 +149,25 @@ def tensordata_init(
     else:
         # This shouldn't be possible but typing can't figure it out
         raise ValueError("No shape provided.")
+
+    if jpeg_quality is not None:
+        if array is None:
+            _send_warning("Can only compress JPEG if an array is provided", 2)
+        else:
+            if array.dtype not in ["uint8", "sint32", "float32"]:
+                # Convert to a format supported by Image.fromarray
+                array = array.astype("float32")
+
+            pil_image = Image.fromarray(array)
+            output = BytesIO()
+            pil_image.save(output, format="JPEG", quality=jpeg_quality)
+            jpeg_bytes = output.getvalue()
+            output.close()
+            jpeg_array = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+            # self.buffer = TensorBuffer(inner=jpeg_array, kind="jpeg") # TODO
+            self.buffer = TensorBuffer(jpeg_array)
+            self.buffer.kind = "jpeg"
+            return
 
     if buffer is not None:
         self.buffer = _tensordata_buffer_converter(buffer)
@@ -263,15 +293,23 @@ def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
 
     data_type = TensorBufferType().storage_type
 
+    kind = None
     if isinstance(buffer, TensorBuffer):
+        kind = buffer.kind
         buffer = buffer.inner
 
     buffer = buffer.flatten()
 
     data_inner = pa.ListArray.from_arrays(pa.array([0, len(buffer)]), buffer)
 
+    if kind == "jpeg":
+        discriminant = "JPEG"
+    else:
+        assert buffer.dtype.type in DTYPE_MAP, f"Failed to find {buffer.dtype.type} in f{DTYPE_MAP}"
+        discriminant = DTYPE_MAP[buffer.dtype.type]
+
     return _build_dense_union(
         data_type,
-        discriminant=DTYPE_MAP[buffer.dtype.type],
+        discriminant=discriminant,
         child=data_inner,
     )
