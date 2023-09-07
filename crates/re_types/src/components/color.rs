@@ -34,6 +34,22 @@ impl<T: Into<crate::datatypes::Color>> From<T> for Color {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::Color> for Color {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::Color {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Color {
+    type Target = crate::datatypes::Color;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Color {
+        &self.0
+    }
+}
+
 impl<'a> From<Color> for ::std::borrow::Cow<'a, Color> {
     #[inline]
     fn from(value: Color) -> Self {

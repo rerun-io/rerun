@@ -172,7 +172,7 @@ fn update_depth_cloud_property_heuristics(
         if meaning == TensorDataMeaning::Depth {
             if properties.depth_from_world_scale.is_auto() {
                 let auto = meter.unwrap_or_else(|| {
-                    if tensor.0.dtype().is_integer() {
+                    if tensor.dtype().is_integer() {
                         1000.0
                     } else {
                         1.0

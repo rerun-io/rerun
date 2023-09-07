@@ -42,7 +42,7 @@ impl ViewPartSystem for TensorSystem {
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
-            !tensor.0.is_shaped_like_an_image() && !tensor.0.is_vector()
+            !tensor.is_shaped_like_an_image() && !tensor.is_vector()
         } else {
             false
         }
@@ -84,7 +84,7 @@ impl TensorSystem {
         _props: &EntityProperties,
         tensor: TensorData,
     ) {
-        if !tensor.0.is_shaped_like_an_image() {
+        if !tensor.is_shaped_like_an_image() {
             // NOTE: Tensors don't support batches at the moment so always splat.
             let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
             match ctx

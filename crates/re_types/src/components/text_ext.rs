@@ -27,11 +27,3 @@ impl std::borrow::Borrow<str> for Text {
         self.as_str()
     }
 }
-
-impl std::ops::Deref for Text {
-    type Target = str;
-    #[inline]
-    fn deref(&self) -> &str {
-        self.as_str()
-    }
-}

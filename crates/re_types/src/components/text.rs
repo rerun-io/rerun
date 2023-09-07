@@ -23,6 +23,22 @@ impl<T: Into<crate::datatypes::Utf8>> From<T> for Text {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::Utf8> for Text {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::Utf8 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Text {
+    type Target = crate::datatypes::Utf8;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Utf8 {
+        &self.0
+    }
+}
+
 impl<'a> From<Text> for ::std::borrow::Cow<'a, Text> {
     #[inline]
     fn from(value: Text) -> Self {

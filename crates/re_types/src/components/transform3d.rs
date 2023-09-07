@@ -25,6 +25,22 @@ impl<T: Into<crate::datatypes::Transform3D>> From<T> for Transform3D {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::Transform3D> for Transform3D {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::Transform3D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Transform3D {
+    type Target = crate::datatypes::Transform3D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Transform3D {
+        &self.0
+    }
+}
+
 impl<'a> From<Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
     #[inline]
     fn from(value: Transform3D) -> Self {

@@ -27,6 +27,22 @@ impl<T: Into<crate::datatypes::KeypointId>> From<T> for KeypointId {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::KeypointId> for KeypointId {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::KeypointId {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for KeypointId {
+    type Target = crate::datatypes::KeypointId;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::KeypointId {
+        &self.0
+    }
+}
+
 impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
     #[inline]
     fn from(value: KeypointId) -> Self {

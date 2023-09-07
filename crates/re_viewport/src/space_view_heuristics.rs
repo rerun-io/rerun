@@ -127,7 +127,7 @@ fn contains_any_image(
     query: &LatestAtQuery,
 ) -> bool {
     if let Some(tensor) = store.query_latest_component::<TensorData>(entity_path, query) {
-        tensor.0.is_shaped_like_an_image()
+        tensor.is_shaped_like_an_image()
     } else {
         false
     }
@@ -281,7 +281,7 @@ pub fn default_created_space_views(
                 if let Some(tensor) =
                     store.query_latest_component::<TensorData>(entity_path, &query)
                 {
-                    if let Some([height, width, _]) = tensor.0.image_height_width_channels() {
+                    if let Some([height, width, _]) = tensor.image_height_width_channels() {
                         if store
                             .query_latest_component::<re_types::components::DrawOrder>(
                                 entity_path,

@@ -42,7 +42,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
-            tensor.0.is_vector()
+            tensor.is_vector()
         } else {
             false
         }
@@ -64,7 +64,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
                 store.query_latest_component::<re_types::components::TensorData>(ent_path, &query);
 
             if let Some(tensor) = tensor {
-                if tensor.0.is_vector() {
+                if tensor.is_vector() {
                     self.charts.insert(ent_path.clone(), tensor.value.0.clone());
                     // shallow clones
                 }

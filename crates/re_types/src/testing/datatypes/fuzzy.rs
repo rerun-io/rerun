@@ -2807,6 +2807,22 @@ impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer4>>> From<T> for Affix
     }
 }
 
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
+    #[inline]
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
+        &self.single_optional_union
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer5 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer4>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
+        &self.single_optional_union
+    }
+}
+
 impl<'a> From<AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     #[inline]
     fn from(value: AffixFuzzer5) -> Self {

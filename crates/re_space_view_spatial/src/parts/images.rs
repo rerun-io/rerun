@@ -235,7 +235,7 @@ impl ImagesPart {
         ) {
             re_tracing::profile_scope!("loop_iter");
 
-            if !tensor.0.is_shaped_like_an_image() {
+            if !tensor.is_shaped_like_an_image() {
                 return Ok(());
             }
 
@@ -326,7 +326,7 @@ impl ImagesPart {
             // same value, but the user may have edited it.
             re_tracing::profile_scope!("loop_iter");
 
-            if !tensor.0.is_shaped_like_an_image() {
+            if !tensor.is_shaped_like_an_image() {
                 return Ok(());
             }
 
@@ -443,7 +443,7 @@ impl ImagesPart {
         ) {
             re_tracing::profile_scope!("loop_iter");
 
-            if !tensor.0.is_shaped_like_an_image() {
+            if !tensor.is_shaped_like_an_image() {
                 return Ok(());
             }
 
@@ -626,7 +626,7 @@ impl ViewPartSystem for ImagesPart {
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
-            tensor.0.is_shaped_like_an_image() && !tensor.0.is_vector()
+            tensor.is_shaped_like_an_image() && !tensor.is_vector()
         } else {
             false
         }

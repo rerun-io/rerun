@@ -560,7 +560,7 @@ pub fn picking(
                             None
                         } else {
                             let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id);
-                            tensor.0.image_height_width_channels().map(|[_, w, _]| {
+                            tensor.image_height_width_channels().map(|[_, w, _]| {
                                 let coordinates = hit
                                     .instance_path_hash
                                     .instance_key
@@ -598,7 +598,7 @@ pub fn picking(
             // thing as an up-front archetype query somewhere.
             if meaning == TensorDataMeaning::Depth {
                 if let Some(meter) = meter {
-                    if let Some(raw_value) = tensor.0.get(&[
+                    if let Some(raw_value) = tensor.get(&[
                         picking_context.pointer_in_space2d.y.round() as _,
                         picking_context.pointer_in_space2d.x.round() as _,
                     ]) {
@@ -623,7 +623,7 @@ pub fn picking(
                             &ctx.current_query(),
                         );
 
-                        if let Some([h, w, ..]) = tensor.0.image_height_width_channels() {
+                        if let Some([h, w, ..]) = tensor.image_height_width_channels() {
                             ui.separator();
                             ui.horizontal(|ui| {
                                 let (w, h) = (w as f32, h as f32);

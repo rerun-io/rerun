@@ -22,6 +22,22 @@ impl<T: Into<crate::datatypes::Vec2D>> From<T> for Point2D {
     }
 }
 
+impl std::borrow::Borrow<crate::datatypes::Vec2D> for Point2D {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::Vec2D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Point2D {
+    type Target = crate::datatypes::Vec2D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Vec2D {
+        &self.0
+    }
+}
+
 impl<'a> From<Point2D> for ::std::borrow::Cow<'a, Point2D> {
     #[inline]
     fn from(value: Point2D) -> Self {
