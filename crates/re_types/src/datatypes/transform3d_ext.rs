@@ -11,7 +11,7 @@ impl Transform3D {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_parent(&self) -> bool {
         match self {
-            Self::TranslationAndMat3X3(t) => t.from_parent,
+            Self::TranslationAndMat3x3(t) => t.from_parent,
             Self::TranslationRotationScale(t) => t.from_parent,
         }
     }
@@ -27,7 +27,7 @@ impl Default for Transform3D {
 impl From<TranslationAndMat3x3> for Transform3D {
     #[inline]
     fn from(v: TranslationAndMat3x3) -> Self {
-        Self::TranslationAndMat3X3(v)
+        Self::TranslationAndMat3x3(v)
     }
 }
 
@@ -65,7 +65,7 @@ impl From<RotationAxisAngle> for Transform3D {
 impl From<Transform3D> for glam::Affine3A {
     fn from(value: Transform3D) -> Self {
         match value {
-            Transform3D::TranslationAndMat3X3(TranslationAndMat3x3 {
+            Transform3D::TranslationAndMat3x3(TranslationAndMat3x3 {
                 translation,
                 matrix,
                 from_parent: _,

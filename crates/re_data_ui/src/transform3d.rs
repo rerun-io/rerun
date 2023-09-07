@@ -26,7 +26,7 @@ impl DataUi for re_types::components::Transform3D {
             UiVerbosity::All | UiVerbosity::Reduced => {
                 let from_parent = match &self.0 {
                     Transform3D::TranslationRotationScale(t) => t.from_parent,
-                    Transform3D::TranslationAndMat3X3(t) => t.from_parent,
+                    Transform3D::TranslationAndMat3x3(t) => t.from_parent,
                 };
                 let dir_string = if from_parent {
                     "parent ➡ child"
@@ -63,7 +63,7 @@ impl DataUi for Transform3D {
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => match self {
-                Transform3D::TranslationAndMat3X3(translation_matrix) => {
+                Transform3D::TranslationAndMat3x3(translation_matrix) => {
                     translation_matrix.data_ui(ctx, ui, verbosity, query);
                 }
                 Transform3D::TranslationRotationScale(translation_rotation_scale) => {
