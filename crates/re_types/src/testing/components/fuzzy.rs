@@ -1616,7 +1616,7 @@ impl crate::Loggable for AffixFuzzer11 {
                 let data0_inner_data: Buffer<_> = data0
                     .iter()
                     .flatten()
-                    .map(|b| b.0.as_slice())
+                    .map(|b| b.as_slice())
                     .collect::<Vec<_>>()
                     .concat()
                     .into();
@@ -1707,7 +1707,7 @@ impl crate::Loggable for AffixFuzzer11 {
                                 .clone()
                                 .sliced_unchecked(start as usize, end - start as usize)
                         };
-                        let data = crate::ArrowBuffer(data);
+                        let data = crate::ArrowBuffer::from(data);
                         Ok(data)
                     })
                     .transpose()

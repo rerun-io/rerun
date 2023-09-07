@@ -94,13 +94,12 @@ pub fn color_tensor_to_gpu(
             // Why? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (3, TensorBuffer::U8(buf)) => (
-                pad_rgb_to_rgba(buf.0.as_slice(), u8::MAX).into(),
+                pad_rgb_to_rgba(buf.as_slice(), u8::MAX).into(),
                 TextureFormat::Rgba8Unorm,
             ),
-            (4, TensorBuffer::U8(buf)) => (
-                cast_slice_to_cow(buf.0.as_slice()),
-                TextureFormat::Rgba8Unorm,
-            ),
+            (4, TensorBuffer::U8(buf)) => {
+                (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba8Unorm)
+            }
 
             _ => {
                 // Fallback to general case:
@@ -305,43 +304,36 @@ fn general_texture_creation_desc_from_tensor<'a>(
     let (data, format) = match depth {
         1 => {
             match &tensor.buffer {
-                TensorBuffer::U8(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R8Uint)
-                }
+                TensorBuffer::U8(buf) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint),
                 TensorBuffer::U16(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R16Uint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R16Uint)
                 }
                 TensorBuffer::U32(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R32Uint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R32Uint)
                 }
-                TensorBuffer::U64(buf) => (
-                    narrow_u64_to_f32s(buf.0.as_slice()),
-                    TextureFormat::R32Float,
-                ), // narrowing to f32!
+                TensorBuffer::U64(buf) => {
+                    (narrow_u64_to_f32s(buf.as_slice()), TextureFormat::R32Float)
+                } // narrowing to f32!
 
-                TensorBuffer::I8(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R8Sint)
-                }
+                TensorBuffer::I8(buf) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Sint),
                 TensorBuffer::I16(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R16Sint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R16Sint)
                 }
                 TensorBuffer::I32(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R32Sint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R32Sint)
                 }
-                TensorBuffer::I64(buf) => (
-                    narrow_i64_to_f32s(buf.0.as_slice()),
-                    TextureFormat::R32Float,
-                ), // narrowing to f32!
+                TensorBuffer::I64(buf) => {
+                    (narrow_i64_to_f32s(buf.as_slice()), TextureFormat::R32Float)
+                } // narrowing to f32!
 
                 // TODO(jleibs): F16 Support
-                //TensorBuffer::F16(buf) => (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R16Float),
+                //TensorBuffer::F16(buf) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R16Float),
                 TensorBuffer::F32(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::R32Float)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R32Float)
                 }
-                TensorBuffer::F64(buf) => (
-                    narrow_f64_to_f32s(buf.0.as_slice()),
-                    TextureFormat::R32Float,
-                ), // narrowing to f32!
+                TensorBuffer::F64(buf) => {
+                    (narrow_f64_to_f32s(buf.as_slice()), TextureFormat::R32Float)
+                } // narrowing to f32!
 
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
@@ -352,43 +344,39 @@ fn general_texture_creation_desc_from_tensor<'a>(
             // NOTE: 2-channel images are not supported by the shader yet, but are included here for completeness:
             match &tensor.buffer {
                 TensorBuffer::U8(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::Rg8Uint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg8Uint)
                 }
                 TensorBuffer::U16(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::Rg16Uint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg16Uint)
                 }
                 TensorBuffer::U32(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::Rg32Uint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg32Uint)
                 }
-                TensorBuffer::U64(buf) => (
-                    narrow_u64_to_f32s(buf.0.as_slice()),
-                    TextureFormat::Rg32Float,
-                ), // narrowing to f32!
+                TensorBuffer::U64(buf) => {
+                    (narrow_u64_to_f32s(buf.as_slice()), TextureFormat::Rg32Float)
+                } // narrowing to f32!
 
                 TensorBuffer::I8(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::Rg8Sint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg8Sint)
                 }
                 TensorBuffer::I16(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::Rg16Sint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg16Sint)
                 }
                 TensorBuffer::I32(buf) => {
-                    (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::Rg32Sint)
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg32Sint)
                 }
-                TensorBuffer::I64(buf) => (
-                    narrow_i64_to_f32s(buf.0.as_slice()),
-                    TextureFormat::Rg32Float,
-                ), // narrowing to f32!
+                TensorBuffer::I64(buf) => {
+                    (narrow_i64_to_f32s(buf.as_slice()), TextureFormat::Rg32Float)
+                } // narrowing to f32!
 
                 // TODO(jleibs): F16 Support
-                //TensorBuffer::F16(buf) => (cast_slice_to_cow(buf.0.as_slice()), TextureFormat::Rg16Float),
-                TensorBuffer::F32(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
-                    TextureFormat::Rg32Float,
-                ),
-                TensorBuffer::F64(buf) => (
-                    narrow_f64_to_f32s(buf.0.as_slice()),
-                    TextureFormat::Rg32Float,
-                ), // narrowing to f32!
+                //TensorBuffer::F16(buf) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg16Float),
+                TensorBuffer::F32(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg32Float)
+                }
+                TensorBuffer::F64(buf) => {
+                    (narrow_f64_to_f32s(buf.as_slice()), TextureFormat::Rg32Float)
+                } // narrowing to f32!
 
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
@@ -402,36 +390,36 @@ fn general_texture_creation_desc_from_tensor<'a>(
             // TODO(emilk): tell the shader to ignore the alpha channel instead!
             match &tensor.buffer {
                 TensorBuffer::U8(buf) => (
-                    pad_rgb_to_rgba(buf.0.as_slice(), u8::MAX).into(),
+                    pad_rgb_to_rgba(buf.as_slice(), u8::MAX).into(),
                     TextureFormat::Rgba8Uint,
                 ),
                 TensorBuffer::U16(buf) => (
-                    pad_and_cast(buf.0.as_slice(), u16::MAX),
+                    pad_and_cast(buf.as_slice(), u16::MAX),
                     TextureFormat::Rgba16Uint,
                 ),
                 TensorBuffer::U32(buf) => (
-                    pad_and_cast(buf.0.as_slice(), u32::MAX),
+                    pad_and_cast(buf.as_slice(), u32::MAX),
                     TextureFormat::Rgba32Uint,
                 ),
                 TensorBuffer::U64(buf) => (
-                    pad_and_narrow_and_cast(buf.0.as_slice(), 1.0, |x: u64| x as f32),
+                    pad_and_narrow_and_cast(buf.as_slice(), 1.0, |x: u64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
                 TensorBuffer::I8(buf) => (
-                    pad_and_cast(buf.0.as_slice(), i8::MAX),
+                    pad_and_cast(buf.as_slice(), i8::MAX),
                     TextureFormat::Rgba8Sint,
                 ),
                 TensorBuffer::I16(buf) => (
-                    pad_and_cast(buf.0.as_slice(), i16::MAX),
+                    pad_and_cast(buf.as_slice(), i16::MAX),
                     TextureFormat::Rgba16Sint,
                 ),
                 TensorBuffer::I32(buf) => (
-                    pad_and_cast(buf.0.as_slice(), i32::MAX),
+                    pad_and_cast(buf.as_slice(), i32::MAX),
                     TextureFormat::Rgba32Sint,
                 ),
                 TensorBuffer::I64(buf) => (
-                    pad_and_narrow_and_cast(buf.0.as_slice(), 1.0, |x: i64| x as f32),
+                    pad_and_narrow_and_cast(buf.as_slice(), 1.0, |x: i64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
@@ -446,11 +434,11 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 ),
                 */
                 TensorBuffer::F32(buf) => (
-                    pad_and_cast(buf.0.as_slice(), 1.0),
+                    pad_and_cast(buf.as_slice(), 1.0),
                     TextureFormat::Rgba32Float,
                 ),
                 TensorBuffer::F64(buf) => (
-                    pad_and_narrow_and_cast(buf.0.as_slice(), 1.0, |x: f64| x as f32),
+                    pad_and_narrow_and_cast(buf.as_slice(), 1.0, |x: f64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
@@ -462,53 +450,47 @@ fn general_texture_creation_desc_from_tensor<'a>(
         4 => {
             // TODO(emilk): premultiply alpha, or tell the shader to assume unmultiplied alpha
             match &tensor.buffer {
-                TensorBuffer::U8(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
-                    TextureFormat::Rgba8Uint,
-                ),
-                TensorBuffer::U16(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
-                    TextureFormat::Rgba16Uint,
-                ),
-                TensorBuffer::U32(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
-                    TextureFormat::Rgba32Uint,
-                ),
+                TensorBuffer::U8(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba8Uint)
+                }
+                TensorBuffer::U16(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba16Uint)
+                }
+                TensorBuffer::U32(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba32Uint)
+                }
                 TensorBuffer::U64(buf) => (
-                    narrow_u64_to_f32s(buf.0.as_slice()),
+                    narrow_u64_to_f32s(buf.as_slice()),
                     TextureFormat::Rgba32Float,
                 ), // narrowing to f32!
 
-                TensorBuffer::I8(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
-                    TextureFormat::Rgba8Sint,
-                ),
-                TensorBuffer::I16(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
-                    TextureFormat::Rgba16Sint,
-                ),
-                TensorBuffer::I32(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
-                    TextureFormat::Rgba32Sint,
-                ),
+                TensorBuffer::I8(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba8Sint)
+                }
+                TensorBuffer::I16(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba16Sint)
+                }
+                TensorBuffer::I32(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba32Sint)
+                }
                 TensorBuffer::I64(buf) => (
-                    narrow_i64_to_f32s(buf.0.as_slice()),
+                    narrow_i64_to_f32s(buf.as_slice()),
                     TextureFormat::Rgba32Float,
                 ), // narrowing to f32!
 
                 // TODO(jleibs): F16 Support
                 /*
                 TensorBuffer::F16(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
+                    cast_slice_to_cow(buf.as_slice()),
                     TextureFormat::Rgba16Float,
                 ),
                 */
                 TensorBuffer::F32(buf) => (
-                    cast_slice_to_cow(buf.0.as_slice()),
+                    cast_slice_to_cow(buf.as_slice()),
                     TextureFormat::Rgba32Float,
                 ),
                 TensorBuffer::F64(buf) => (
-                    narrow_f64_to_f32s(buf.0.as_slice()),
+                    narrow_f64_to_f32s(buf.as_slice()),
                     TextureFormat::Rgba32Float,
                 ), // narrowing to f32!
 

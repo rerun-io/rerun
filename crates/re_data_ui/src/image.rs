@@ -330,7 +330,7 @@ pub fn tensor_summary_ui_grid_contents(
             re_ui.grid_left_hand_label(ui, "Encoding");
             ui.label(format!(
                 "{} JPEG",
-                re_format::format_bytes(jpeg_bytes.0.len() as _),
+                re_format::format_bytes(jpeg_bytes.size_in_bytes() as _),
             ));
             ui.end_row();
         }
@@ -804,7 +804,7 @@ fn save_image(tensor: &TensorData, dynamic_image: &image::DynamicImage) {
                 .set_file_name("image.jpg")
                 .save_file()
             {
-                match write_binary(&path, bytes.0.as_slice()) {
+                match write_binary(&path, bytes.as_slice()) {
                     Ok(()) => {
                         re_log::info!("Image saved to {path:?}");
                     }

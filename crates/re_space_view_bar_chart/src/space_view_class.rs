@@ -124,40 +124,40 @@ impl SpaceViewClass for BarChartSpaceView {
                     for (ent_path, tensor) in charts {
                         let chart = match &tensor.buffer {
                             TensorBuffer::U8(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::U16(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::U32(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::U64(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied().map(|v| v as f64))
+                                create_bar_chart(ent_path, data.iter().copied().map(|v| v as f64))
                             }
                             TensorBuffer::I8(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::I16(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::I32(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::I64(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied().map(|v| v as f64))
+                                create_bar_chart(ent_path, data.iter().copied().map(|v| v as f64))
                             }
                             // TODO(jleibs): F16 Support
                             /*
                             TensorBuffer::F16(data) => {
-                                create_bar_chart(ent_path, data.0.iter().map(|f| f.to_f32()))
+                                create_bar_chart(ent_path, data.iter().map(|f| f.to_f32()))
                             }
                             */
                             TensorBuffer::F32(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::F64(data) => {
-                                create_bar_chart(ent_path, data.0.iter().copied())
+                                create_bar_chart(ent_path, data.iter().copied())
                             }
                             TensorBuffer::Jpeg(_) => {
                                 re_log::warn_once!(
