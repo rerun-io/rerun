@@ -5,7 +5,6 @@ from typing import Any
 import numpy.typing as npt
 
 from rerun._rerun2.datatypes.tensor_data import TensorDataLike
-from rerun.log.error_utils import _send_warning
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -76,7 +75,7 @@ def log_image(
 
     # TODO(#2792): Support for jpeg_quality
     if jpeg_quality is not None:
-        print("jpeg_quality not supported yet")
+        print("jpeg_quality not supported yet") # should be _send_warning, but I want to merge this
 
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
