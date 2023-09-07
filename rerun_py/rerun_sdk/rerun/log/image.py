@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import numpy.typing as npt
 
 from rerun._rerun2.datatypes.tensor_data import TensorDataLike
@@ -177,6 +178,10 @@ def log_segmentation_image(
 
     """
     from rerun.experimental import SegmentationImage, dt, log
+
+    image = np.asarray(image)
+    if image.dtype not in (np.dtype("uint8"), np.dtype("uint16")):
+        image = np.require(image, np.uint16)
 
     tensor_data = dt.TensorData(array=image)
 
