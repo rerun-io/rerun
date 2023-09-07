@@ -17,12 +17,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_text_document")
 
-    rr2.log(
-        "text_document",
-        rr2.TextDocument(
-            body="Hello, TextDocument!",
-        ),
-    )
+    rr2.log("text_document", rr2.TextDocument(body="Hello, TextDocument!"))
 
     rr.script_teardown(args)
 
