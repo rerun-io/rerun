@@ -221,7 +221,7 @@ macro_rules! declare_new_type {
             }
         }
 
-        impl $crate::nohash_hasher::IsEnabled for $StructName {}
+        impl $crate::external::nohash_hasher::IsEnabled for $StructName {}
 
         impl From<&str> for $StructName {
             #[inline]
