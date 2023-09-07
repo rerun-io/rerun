@@ -75,7 +75,7 @@ def log_image(
 
     # TODO(#2792): Support for jpeg_quality
     if jpeg_quality is not None:
-        print("jpeg_quality not supported yet") # should be _send_warning, but I want to merge this
+        print("jpeg_quality not supported yet")  # should be _send_warning, but I want to merge this
 
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
