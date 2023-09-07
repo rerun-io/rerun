@@ -5077,6 +5077,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_boxes2d"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_depth_image"
 version = "0.9.0-alpha.4"
 dependencies = [
