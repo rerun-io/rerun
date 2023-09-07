@@ -28,9 +28,9 @@ pub struct TensorDecodeCache {
 
 #[allow(clippy::map_err_ignore)]
 impl TensorDecodeCache {
-    /// Decode a [`Tensor`] if necessary and cache the result.
+    /// Decode some [`TensorData`] if necessary and cache the result.
     ///
-    /// This is a no-op for Tensors that are not compressed.
+    /// This is a no-op for tensors that are not compressed.
     ///
     /// Currently supports JPEG encoded tensors.
     pub fn entry(

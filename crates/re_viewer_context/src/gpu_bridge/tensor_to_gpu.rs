@@ -1,4 +1,4 @@
-//! Upload [`Tensor`] to [`re_renderer`].
+//! Upload tensors to [`re_renderer`].
 
 use anyhow::Context;
 use re_data_store::VersionedInstancePathHash;
