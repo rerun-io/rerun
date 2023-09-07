@@ -215,7 +215,7 @@ impl ImagesPart {
         let parent_pinhole_path = transforms.parent_pinhole(ent_path);
 
         // If this isn't an image, return
-        // TODO(jleibs): The ArchetypeView should probably to this for us.
+        // TODO(jleibs): The ArchetypeView should probably do this for us.
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
