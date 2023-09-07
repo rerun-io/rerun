@@ -273,19 +273,7 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                {
-                    let top_left = textured_rect.top_left_corner_position;
-                    self.data.bounding_box.extend(top_left);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_u);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_v);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_v + textured_rect.extent_u);
-                }
+                self.extend_bbox(&textured_rect);
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -404,19 +392,7 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                {
-                    let top_left = textured_rect.top_left_corner_position;
-                    self.data.bounding_box.extend(top_left);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_u);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_v);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_v + textured_rect.extent_u);
-                }
+                self.extend_bbox(&textured_rect);
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -504,19 +480,7 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                {
-                    let top_left = textured_rect.top_left_corner_position;
-                    self.data.bounding_box.extend(top_left);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_u);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_v);
-                    self.data
-                        .bounding_box
-                        .extend(top_left + textured_rect.extent_v + textured_rect.extent_u);
-                }
+                self.extend_bbox(&textured_rect);
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -621,6 +585,18 @@ impl ImagesPart {
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
         })
+    }
+
+    fn extend_bbox(&mut self, textured_rect: &TexturedRect) {
+        let left_top = textured_rect.top_left_corner_position;
+        let extent_u = textured_rect.extent_u;
+        let extent_v = textured_rect.extent_v;
+        self.data.bounding_box.extend(left_top);
+        self.data.bounding_box.extend(left_top + extent_u);
+        self.data.bounding_box.extend(left_top + extent_v);
+        self.data
+            .bounding_box
+            .extend(left_top + extent_v + extent_u);
     }
 }
 
