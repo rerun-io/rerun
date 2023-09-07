@@ -40,6 +40,20 @@ root:
     set up in a `requirements.txt` next to the example. These are noted in the
     individual example sections below.
   children:
+    - name: recipes
+      title: Recipes
+      prelude: |
+        The following recipes are short tutorial-like examples that can easily be copy-pasted.
+        They serve as a guide of how to log common higher level primitives that are not supported
+        through a single log instruction, but can be logged by composing Rerun's built-in primitives.
+
+        For the simplest possible examples showing how to use each api,
+        check out [Loggable Data Types](/docs/reference/data_types).
+    - children:
+      - name: point_tracks
+        python: python/point_tracks
+
+
     - name: real-data
       title: Examples with Real Data
       prelude: |
