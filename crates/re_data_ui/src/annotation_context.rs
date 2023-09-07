@@ -210,7 +210,7 @@ fn class_description_ui(
                                             .and_then(|info| info.label.as_ref())
                                             .map_or_else(
                                                 || format!("id {}", id.0),
-                                                |label| label.0.as_str().to_owned(),
+                                                |label| label.to_string(),
                                             ),
                                     );
                                 });
@@ -263,7 +263,7 @@ fn annotation_info_table_ui<'a>(
                     });
                     row.col(|ui| {
                         let label = if let Some(label) = &info.label {
-                            label.0.as_str()
+                            label.as_str()
                         } else {
                             ""
                         };

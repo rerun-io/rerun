@@ -172,7 +172,7 @@ impl ResolvedAnnotationInfo {
         } else {
             self.annotation_info
                 .as_ref()
-                .and_then(|info| info.label.as_ref().map(|label| label.0.as_str().to_owned()))
+                .and_then(|info| info.label.as_ref().map(|label| label.to_string()))
         }
     }
 }
