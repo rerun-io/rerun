@@ -28,7 +28,9 @@ opt_out = {
     "points2d": ["cpp"],  # TODO(#2786): Needs rect
     "segmentation_image": ["cpp"],  # TODO(#2792)
     "tensor": ["cpp"],  # TODO(#2792)
-    "transform3d": ["cpp"],  # TODO(#2792) - `tests/roundtrips.py --release transform3d` fails on mac (but works without --release)
+    "transform3d": [
+        "cpp"
+    ],  # TODO(#2792) - `tests/roundtrips.py --release transform3d` fails on mac (but works without --release)
 }
 
 
