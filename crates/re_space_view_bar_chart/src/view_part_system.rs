@@ -57,11 +57,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
-            if !props.visible {
-                continue;
-            }
-
+        for (ent_path, _props) in query.iter_entities_for_system(Self::name()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let tensor = store.query_latest_component::<Tensor>(ent_path, &query);
 

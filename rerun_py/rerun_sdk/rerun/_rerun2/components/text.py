@@ -8,21 +8,21 @@ from .._baseclasses import (
     BaseDelegatingExtensionType,
 )
 
-__all__ = ["LabelArray", "LabelType"]
+__all__ = ["TextArray", "TextType"]
 
 
-class LabelType(BaseDelegatingExtensionType):
+class TextType(BaseDelegatingExtensionType):
     _TYPE_NAME = "rerun.label"
-    _DELEGATED_EXTENSION_TYPE = datatypes.LabelType
+    _DELEGATED_EXTENSION_TYPE = datatypes.Utf8Type
 
 
-class LabelArray(BaseDelegatingExtensionArray[datatypes.LabelArrayLike]):
+class TextArray(BaseDelegatingExtensionArray[datatypes.Utf8ArrayLike]):
     _EXTENSION_NAME = "rerun.label"
-    _EXTENSION_TYPE = LabelType
-    _DELEGATED_ARRAY_TYPE = datatypes.LabelArray
+    _EXTENSION_TYPE = TextType
+    _DELEGATED_ARRAY_TYPE = datatypes.Utf8Array
 
 
-LabelType._ARRAY_TYPE = LabelArray
+TextType._ARRAY_TYPE = TextArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(LabelType())
+# pa.register_extension_type(TextType())

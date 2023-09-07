@@ -81,7 +81,7 @@ def test_line_strips2d() -> None:
         strips = cast(rrc.LineStrip2DArrayLike, strips)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.LabelArrayLike], labels)
+        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
         draw_order = cast(Optional[rrc.DrawOrderArrayLike], draw_order)
         class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)

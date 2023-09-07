@@ -5,16 +5,16 @@ use re_viewer_context::{
     ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
-use super::view_part_system::TextBoxSystem;
+use super::view_part_system::TextDocumentSystem;
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq)]
-pub struct TextBoxSpaceViewState {
+pub struct TextDocumentSpaceViewState {
     monospace: bool,
     word_wrap: bool,
 }
 
-impl Default for TextBoxSpaceViewState {
+impl Default for TextDocumentSpaceViewState {
     fn default() -> Self {
         Self {
             monospace: false,
@@ -23,7 +23,7 @@ impl Default for TextBoxSpaceViewState {
     }
 }
 
-impl SpaceViewState for TextBoxSpaceViewState {
+impl SpaceViewState for TextDocumentSpaceViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -34,13 +34,13 @@ impl SpaceViewState for TextBoxSpaceViewState {
 }
 
 #[derive(Default)]
-pub struct TextBoxSpaceView;
+pub struct TextDocumentSpaceView;
 
-impl SpaceViewClass for TextBoxSpaceView {
-    type State = TextBoxSpaceViewState;
+impl SpaceViewClass for TextDocumentSpaceView {
+    type State = TextDocumentSpaceViewState;
 
     fn name(&self) -> SpaceViewClassName {
-        "Text Box".into()
+        "Text Document".into()
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -55,7 +55,7 @@ impl SpaceViewClass for TextBoxSpaceView {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_part_system::<TextBoxSystem>()
+        system_registry.register_part_system::<TextDocumentSystem>()
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
@@ -93,7 +93,7 @@ impl SpaceViewClass for TextBoxSpaceView {
         _query: &ViewQuery<'_>,
         _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let text_box = parts.get::<TextBoxSystem>()?;
+        let text_document = parts.get::<TextDocumentSystem>()?;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
@@ -105,8 +105,9 @@ impl SpaceViewClass for TextBoxSpaceView {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         // TODO(jleibs): better handling for multiple results
-                        if text_box.text_entries.len() == 1 {
-                            let mut text = egui::RichText::new(&text_box.text_entries[0].body);
+                        if text_document.text_entries.len() == 1 {
+                            let mut text =
+                                egui::RichText::new(text_document.text_entries[0].body.as_str());
 
                             if state.monospace {
                                 text = text.monospace();
@@ -116,7 +117,7 @@ impl SpaceViewClass for TextBoxSpaceView {
                         } else {
                             ui.label(format!(
                                 "Unexpected number of text entries: {}. Limit your query to 1.",
-                                text_box.text_entries.len()
+                                text_document.text_entries.len()
                             ));
                         }
                     })

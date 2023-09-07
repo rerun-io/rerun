@@ -5,7 +5,7 @@ use re_log_types::{
     DataRow, DataTableBatcher, DataTableBatcherConfig, RowId, SizeBytes, TimePoint, Timeline,
 };
 use re_log_types::{DataTable, TableId, Time};
-use re_types::components::{Color, Label, Point2D};
+use re_types::components::{Color, Point2D, Text};
 
 #[test]
 fn manual_trigger() {
@@ -283,7 +283,7 @@ fn create_table() -> DataTable {
         let num_instances = 2;
         let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
         let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
-        let labels: &[Label] = &[];
+        let labels: &[Text] = &[];
 
         DataRow::from_cells3(
             RowId::random(),
@@ -304,7 +304,7 @@ fn create_table() -> DataTable {
     let row2 = {
         let num_instances = 1;
         let colors: &[_] = &[Color::from_rgb(255, 255, 255)];
-        let labels: &[_] = &[Label("hey".into())];
+        let labels: &[_] = &[Text("hey".into())];
 
         DataRow::from_cells2(
             RowId::random(),

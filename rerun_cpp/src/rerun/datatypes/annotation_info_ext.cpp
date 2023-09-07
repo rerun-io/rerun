@@ -10,7 +10,7 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         struct AnnotationInfoExt {
             uint16_t id;
-            std::optional<datatypes::Label> label;
+            std::optional<datatypes::Utf8> label;
             std::optional<datatypes::Color> color;
 
 #define AnnotationInfo AnnotationInfoExt

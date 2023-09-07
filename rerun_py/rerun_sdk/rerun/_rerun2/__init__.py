@@ -13,6 +13,7 @@ __all__ = [
     "Points2D",
     "Points3D",
     "Tensor",
+    "TextDocument",
     "Transform3D",
 ]
 
@@ -27,5 +28,6 @@ from .archetypes import (
     Points2D,
     Points3D,
     Tensor,
+    TextDocument,
     Transform3D,
 )

@@ -53,7 +53,7 @@ table Arrows3D (
   colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional text labels for the arrows.
-  labels: [rerun.components.Label] ("attr.rerun.component_optional", nullable, order: 3200);
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Optional class Ids for the points.
   ///

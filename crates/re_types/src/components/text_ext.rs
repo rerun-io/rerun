@@ -1,34 +1,34 @@
-use super::Label;
+use super::Text;
 
-impl Label {
+impl Text {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }
 
-impl From<Label> for String {
+impl From<Text> for String {
     #[inline]
-    fn from(value: Label) -> Self {
+    fn from(value: Text) -> Self {
         value.as_str().to_owned()
     }
 }
 
-impl AsRef<str> for Label {
+impl AsRef<str> for Text {
     #[inline]
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl std::borrow::Borrow<str> for Label {
+impl std::borrow::Borrow<str> for Text {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
     }
 }
 
-impl std::ops::Deref for Label {
+impl std::ops::Deref for Text {
     type Target = str;
     #[inline]
     fn deref(&self) -> &str {

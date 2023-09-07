@@ -22,7 +22,7 @@ use rerun::{external::re_log, EntityPath, RecordingStream};
 fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::Transform3D,
-        components::{Box3D, Color, Label, Radius},
+        components::{Box3D, Color, Radius, Text},
         datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D},
     };
 
@@ -36,7 +36,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
             &Box3D::new(1.0, 0.5, 0.25) as _,
             &Color::from(0x00FF00FF) as _,
             &Radius(0.005) as _,
-            &Label("box/t0".into()) as _,
+            &Text("box/t0".into()) as _,
         ],
     )?;
     rec.log(
@@ -56,7 +56,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
             &Box3D::new(1.0, 0.5, 0.25) as _,
             &Color::from_rgb(255, 255, 0) as _,
             &Radius(0.01) as _,
-            &Label("box/t1".into()) as _,
+            &Text("box/t1".into()) as _,
         ],
     )?;
     rec.log(
@@ -71,7 +71,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
 }
 
 fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
-    use rerun::components::{Color, Label, Rect2D};
+    use rerun::components::{Color, Rect2D, Text};
 
     // TODO(#3023): Cleared archetype
     fn log_cleared(rec: &RecordingStream, ent_path: impl Into<EntityPath>, recursive: bool) {
@@ -88,7 +88,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
         [
             &Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0) as _,
             &Color::from(0xFF0000FF) as _,
-            &Label("Rect1".into()) as _,
+            &Text("Rect1".into()) as _,
         ],
     )?;
     rec.log_component_lists(
@@ -98,7 +98,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
         [
             &Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0) as _,
             &Color::from(0x00FF00FF) as _,
-            &Label("Rect2".into()) as _,
+            &Text("Rect2".into()) as _,
         ],
     )?;
 
@@ -130,7 +130,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
 fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::Points3D,
-        components::{Color, Label, Point3D, Radius},
+        components::{Color, Point3D, Radius, Text},
     };
 
     rec.set_time_seconds("sim_time", 1f64);
@@ -149,14 +149,14 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
         x: impl Fn(f32) -> f32,
         y: impl Fn(f32) -> f32,
         z: impl Fn(f32) -> f32,
-    ) -> (Vec<Label>, Vec<Point3D>, Vec<Radius>, Vec<Color>) {
+    ) -> (Vec<Text>, Vec<Point3D>, Vec<Radius>, Vec<Color>) {
         use rand::Rng as _;
         let mut rng = rand::thread_rng();
         itertools::multiunzip((0..n).map(|i| {
             let i = i as f32;
             let t = 1.0 - i / (n - 1) as f32;
             (
-                Label(i.to_string().into()),
+                Text(i.to_string().into()),
                 Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
                 Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
                 Color::from_rgb(rng.gen(), rng.gen(), rng.gen()),

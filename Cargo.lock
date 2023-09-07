@@ -4506,7 +4506,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_space_view_text_box"
+name = "re_space_view_text_document"
 version = "0.9.0-alpha.3"
 dependencies = [
  "egui",
@@ -4727,7 +4727,7 @@ dependencies = [
  "re_space_view_spatial",
  "re_space_view_tensor",
  "re_space_view_text",
- "re_space_view_text_box",
+ "re_space_view_text_document",
  "re_space_view_time_series",
  "re_time_panel",
  "re_tracing",
@@ -5153,6 +5153,16 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_tensor"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "ndarray",
+ "rerun",
+]
+
+[[package]]
+name = "roundtrip_text_document"
 version = "0.9.0-alpha.3"
 dependencies = [
  "anyhow",

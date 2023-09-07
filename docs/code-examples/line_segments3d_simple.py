@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Log a simple set of line segments."""
 import numpy as np
 import rerun as rr

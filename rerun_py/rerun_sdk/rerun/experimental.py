@@ -7,29 +7,27 @@ going through the normal deprecation cycle.
 from __future__ import annotations
 
 from rerun.log.experimental.blueprint import add_space_view, new_blueprint, set_auto_space_views, set_panels
-from rerun.log.experimental.text import log_text_box
 
 __all__ = [
+    "add_space_view",
     "AnnotationContext",
+    "arch",
     "Arrows3D",
+    "cmp",
     "DisconnectedSpace",
+    "dt",
     "Image",
     "LineStrips2D",
     "LineStrips3D",
+    "log",
+    "new_blueprint",
     "Points2D",
     "Points3D",
-    "Tensor",
-    "Transform3D",
-    "add_space_view",
-    "arch",
-    "cmp",
-    "dt",
-    "log",
-    "log",
-    "log_text_box",
-    "new_blueprint",
     "set_auto_space_views",
     "set_panels",
+    "Tensor",
+    "TextDocument",
+    "Transform3D",
 ]
 
 # Next-gen API imports
@@ -46,6 +44,7 @@ from ._rerun2.archetypes import (
     Points2D,
     Points3D,
     Tensor,
+    TextDocument,
     Transform3D,
 )
 from ._rerun2.log import log

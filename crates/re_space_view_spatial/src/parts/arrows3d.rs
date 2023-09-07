@@ -3,7 +3,7 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
-    components::{Label, Origin3D, Vector3D},
+    components::{Origin3D, Text, Vector3D},
     Archetype as _,
 };
 use re_viewer_context::{
@@ -48,7 +48,7 @@ impl Arrows3DPart {
             annotation_infos.iter(),
             arch_view.iter_required_component::<Vector3D>()?,
             arch_view.iter_optional_component::<Origin3D>()?,
-            arch_view.iter_optional_component::<Label>()?,
+            arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
         )

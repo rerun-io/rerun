@@ -17,6 +17,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 use lazy_static::lazy_static;
+
 use re_types::Loggable;
 
 mod bbox;
@@ -29,7 +30,6 @@ mod rect;
 mod scalar;
 mod tensor;
 mod tensor_data;
-mod text_box;
 mod text_entry;
 mod vec;
 
@@ -56,7 +56,6 @@ pub use self::{
         DecodedTensor, Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension,
     },
     tensor_data::{TensorDataType, TensorDataTypeTrait, TensorElement},
-    text_box::TextBox,
     text_entry::TextEntry,
 };
 
@@ -83,12 +82,12 @@ pub mod external {
 
 use re_types::components::{
     AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-    Label, LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, Transform3D, Vector3D,
+    LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, Text, Transform3D, Vector3D,
 };
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 28] = [
+    static ref FIELDS: [Field; 27] = [
         <Box3D as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
@@ -98,7 +97,6 @@ lazy_static! {
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
         <Tensor as LegacyComponent>::field(),
-        <TextBox as LegacyComponent>::field(),
         <TextEntry as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         AnnotationContext::arrow_field(),
@@ -108,13 +106,13 @@ lazy_static! {
         DrawOrder::arrow_field(),
         InstanceKey::arrow_field(),
         KeypointId::arrow_field(),
-        Label::arrow_field(),
         LineStrip2D::arrow_field(),
         LineStrip3D::arrow_field(),
         Origin3D::arrow_field(),
         Point2D::arrow_field(),
         Point3D::arrow_field(),
         Radius::arrow_field(),
+        Text::arrow_field(),
         Transform3D::arrow_field(),
         Vector3D::arrow_field(),
     ];

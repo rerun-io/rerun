@@ -39,4 +39,10 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error("View part system {0} not found")]
     PartSystemNotFound(&'static str),
+
+    #[error(transparent)]
+    QueryError(#[from] re_query::QueryError),
+
+    #[error(transparent)]
+    DeserializationError(#[from] re_types::DeserializationError),
 }

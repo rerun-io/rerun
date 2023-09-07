@@ -200,21 +200,21 @@ def colors_expected(empty: bool) -> Any:
     return rrc.ColorArray.from_similar([] if empty else [0xAA0000CC, 0x00BB00DD])
 
 
-labels_arrays: list[rrd.LabelArrayLike | None] = [
+labels_arrays: list[rrd.Utf8ArrayLike | None] = [
     None,
     [],
-    # LabelArrayLike: Sequence[LabelLike]: str
+    # Utf8ArrayLike: Sequence[TextLike]: str
     ["hello", "friend"],
-    # LabelArrayLike: Sequence[LabelLike]: Label
+    # Utf8ArrayLike: Sequence[TextLike]: Label
     [
-        rrd.Label("hello"),
-        rrd.Label("friend"),
+        rrd.Utf8("hello"),
+        rrd.Utf8("friend"),
     ],
 ]
 
 
 def labels_expected(empty: bool) -> Any:
-    return rrc.LabelArray.from_similar([] if empty else ["hello", "friend"])
+    return rrc.TextArray.from_similar([] if empty else ["hello", "friend"])
 
 
 draw_orders: list[rrc.DrawOrderLike | None] = [

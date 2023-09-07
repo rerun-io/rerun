@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, InstanceKey, Label, LineStrip2D, Radius},
+    components::{ClassId, Color, DrawOrder, InstanceKey, LineStrip2D, Radius},
     Archetype as _,
 };
 
@@ -23,8 +23,8 @@ fn roundtrip() {
             Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
-            Label("hello".into()),  //
-            Label("friend".into()), //
+            "hello".into(),  //
+            "friend".into(), //
         ]),
         draw_order: Some(DrawOrder(300.0)),
         class_ids: Some(vec![
@@ -55,7 +55,7 @@ fn roundtrip() {
         ("points", vec!["rerun.components.LineStrip2D"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
-        ("labels", vec!["rerun.components.Label"]),
+        ("labels", vec!["rerun.components.Text"]),
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),

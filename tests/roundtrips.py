@@ -76,7 +76,7 @@ def main() -> None:
         if args.release:
             build_type = "Release"
         configure_args = ["cmake", f"-DCMAKE_BUILD_TYPE={build_type}", "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON", ".."]
-        print("> ${subprocess.list2cmdline(configure_args)}")
+        print(f"> ${subprocess.list2cmdline(configure_args)}")
         returncode = subprocess.Popen(
             configure_args,
             env=build_env,

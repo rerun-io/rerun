@@ -88,10 +88,10 @@ class LineStrips2D(Archetype):
     Optional colors for the line strips.
     """
 
-    labels: components.LabelArray | None = field(
+    labels: components.TextArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.LabelArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the line strips.

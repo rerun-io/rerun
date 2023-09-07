@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
-    components::{ClassId, Color, InstanceKey, Label, Radius},
+    components::{ClassId, Color, InstanceKey, Radius, Text},
     Loggable as _,
 };
 use re_viewer_context::{
@@ -50,7 +50,7 @@ impl Boxes2DPart {
              rect,
              color: Option<Color>,
              radius: Option<Radius>,
-             label: Option<Label>,
+             label: Option<Text>,
              class_id: Option<ClassId>| {
                 let instance_hash =
                     re_data_store::InstancePathHash::instance(ent_path, instance_key);
@@ -121,7 +121,7 @@ impl ViewPartSystem for Boxes2DPart {
             InstanceKey::name(),
             Color::name(),
             Radius::name(),
-            Label::name(),
+            Text::name(),
             ClassId::name(),
         ]
     }

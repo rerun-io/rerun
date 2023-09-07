@@ -11,4 +11,5 @@
 #include "archetypes/points2d.hpp"
 #include "archetypes/points3d.hpp"
 #include "archetypes/tensor.hpp"
+#include "archetypes/text_document.hpp"
 #include "archetypes/transform3d.hpp"

@@ -12,6 +12,7 @@ from .line_strips3d import LineStrips3D
 from .points2d import Points2D
 from .points3d import Points3D
 from .tensor import Tensor
+from .text_document import TextDocument
 from .transform3d import Transform3D
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "Points2D",
     "Points3D",
     "Tensor",
+    "TextDocument",
     "Transform3D",
 ]

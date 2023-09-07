@@ -61,10 +61,10 @@ class Points2D(Archetype):
     As either 0-1 floats or 0-255 integers, with separate alpha.
     """
 
-    labels: components.LabelArray | None = field(
+    labels: components.TextArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.LabelArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the points.
