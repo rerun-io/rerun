@@ -11,4 +11,4 @@ image[0:4, 0:6] = (0, 255, 0)
 
 rr.init("rerun_example_image_simple", spawn=True)
 
-rr2.log("simple", rr2.Image(image))
+rr2.log("image", rr2.Image(image))
