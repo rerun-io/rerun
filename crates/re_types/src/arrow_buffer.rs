@@ -36,6 +36,11 @@ impl<T> ArrowBuffer<T> {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    #[inline]
+    pub fn as_slice(&self) -> &[T] {
+        self.0.as_slice()
+    }
 }
 
 impl<T> From<Vec<T>> for ArrowBuffer<T> {

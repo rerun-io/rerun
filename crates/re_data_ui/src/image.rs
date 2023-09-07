@@ -214,7 +214,7 @@ fn tensor_ui(
                         if channels == 3 {
                             if let TensorBuffer::U8(data) = &tensor.buffer {
                                 ui.collapsing("Histogram", |ui| {
-                                    rgb8_histogram_ui(ui, data.0.as_slice());
+                                    rgb8_histogram_ui(ui, data.as_slice());
                                 });
                             }
                         }

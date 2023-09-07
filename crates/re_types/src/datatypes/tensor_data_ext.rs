@@ -180,7 +180,7 @@ macro_rules! tensor_type {
                 let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
 
                 if let TensorBuffer::$variant(data) = &value.buffer {
-                    ndarray::ArrayViewD::from_shape(shape, data.0.as_slice())
+                    ndarray::ArrayViewD::from_shape(shape, data.as_slice())
                         .map_err(|err| TensorCastError::BadTensorShape { source: err })
                 } else {
                     Err(TensorCastError::TypeMismatch)
@@ -274,7 +274,7 @@ impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, half::f16> {
     fn try_from(value: &'a TensorData) -> Result<Self, Self::Error> {
         let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
         if let TensorBuffer::F16(data) = &value.buffer {
-            ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.0.as_slice()))
+            ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
                 .map_err(|err| TensorCastError::BadTensorShape { source: err })
         } else {
             Err(TensorCastError::TypeMismatch)
