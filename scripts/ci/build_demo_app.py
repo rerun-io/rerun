@@ -7,7 +7,6 @@ import argparse
 import html.parser
 import http.server
 import json
-import logging
 import os
 import shutil
 import subprocess
@@ -108,7 +107,7 @@ class Example:
 
         os.makedirs(out_dir, exist_ok=True)
         rrd_path = os.path.join(out_dir, "data.rrd")
-        logging.info(f"Running {self.name}, outputting to {rrd_path}")
+        print(f"Running {self.name}, outputting to {rrd_path}")
 
         args = [
             "python3",
@@ -132,7 +131,7 @@ def copy_static_assets(examples: list[Example]) -> None:
     # copy root
     src = os.path.join(SCRIPT_PATH, "demo_assets/static")
     dst = BASE_PATH
-    logging.info(f"\nCopying static assets from {src} to {dst}")
+    print(f"\nCopying static assets from {src} to {dst}")
     shutil.copytree(src, dst, dirs_exist_ok=True)
 
     # copy examples
@@ -162,7 +161,7 @@ def build_python_sdk() -> None:
 
 
 def build_wasm() -> None:
-    logging.info("")
+    print("")
     run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
 
 
@@ -178,7 +177,7 @@ def copy_wasm(examples: list[Example]) -> None:
 
 def collect_examples() -> list[Example]:
     commit = os.environ.get("COMMIT_HASH") or "main"
-    logging.info(f"Commit hash: {commit}")
+    print(f"Commit hash: {commit}")
     examples = []
     for name in EXAMPLES.keys():
         example = Example(
@@ -193,7 +192,7 @@ def collect_examples() -> list[Example]:
 
 
 def save_examples_rrd(examples: list[Example]) -> None:
-    logging.info("\nSaving examples as .rrd…")
+    print("\nSaving examples as .rrd…")
 
     print("")
     for example in examples:
@@ -202,7 +201,7 @@ def save_examples_rrd(examples: list[Example]) -> None:
 
 
 def render_examples(examples: list[Example]) -> None:
-    logging.info("Rendering examples")
+    print("Rendering examples")
 
     template_path = os.path.join(SCRIPT_PATH, "demo_assets/templates/example.html")
     with open(template_path) as f:
@@ -210,13 +209,13 @@ def render_examples(examples: list[Example]) -> None:
 
     for example in examples:
         index_path = f"{BASE_PATH}/examples/{example.name}/index.html"
-        logging.info(f"{example.name} -> {index_path}")
+        print(f"{example.name} -> {index_path}")
         with open(index_path, "w") as f:
             f.write(template.render(example=example, examples=examples))
 
 
 def render_manifest(examples: list[Example]) -> None:
-    logging.info("Rendering index")
+    print("Rendering index")
 
     index = []
     for example in examples:
@@ -240,7 +239,7 @@ def render_manifest(examples: list[Example]) -> None:
 
 def serve_files() -> None:
     def serve() -> None:
-        logging.info("\nServing examples at http://0.0.0.0:8080/")
+        print("\nServing examples at http://0.0.0.0:8080/")
         server = http.server.HTTPServer(
             server_address=("0.0.0.0", 8080),
             RequestHandlerClass=partial(
@@ -254,9 +253,6 @@ def serve_files() -> None:
 
 
 def main() -> None:
-    logging.getLogger().addHandler(logging.StreamHandler())
-    logging.getLogger().setLevel("INFO")
-
     parser = argparse.ArgumentParser(description="Build and/or serve `demo.rerun.io`")
     parser.add_argument(
         "--serve",
@@ -290,7 +286,7 @@ def main() -> None:
 
         while True:
             try:
-                logging.info("Press enter to reload static files")
+                print("Press enter to reload static files")
                 input()
                 render_examples(examples)
                 copy_static_assets(examples)
