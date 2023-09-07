@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // create a segmentation image
     let mut image = Array::<u8, _>::zeros((8, 12).f());
     image.slice_mut(s![0..4, 0..6]).fill(1);
-    image.slice_mut(s![4:8, 6:12]).fill(2);
+    image.slice_mut(s![4..8, 6..12]).fill(2);
 
     // create an annotation context to describe the classes
     let annotation = AnnotationContext::new([
