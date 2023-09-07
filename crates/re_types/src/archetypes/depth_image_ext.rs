@@ -21,8 +21,8 @@ impl DepthImage {
 
         match non_empty_dim_inds.len() {
             2 => {
-                data.shape[non_empty_dim_inds[0]].name = Some("height".into());
-                data.shape[non_empty_dim_inds[1]].name = Some("width".into());
+                assign_if_none(&mut data.shape[non_empty_dim_inds[0]].name, "height");
+                assign_if_none(&mut data.shape[non_empty_dim_inds[1]].name, "width");
             }
             _ => return Err(ImageConstructionError::BadImageShape(data.shape)),
         };
@@ -32,6 +32,12 @@ impl DepthImage {
             draw_order: None,
             meter: None,
         })
+    }
+}
+
+fn assign_if_none(name: &mut Option<crate::ArrowString>, new_name: &str) {
+    if name.is_none() {
+        *name = Some(new_name.into());
     }
 }
 
