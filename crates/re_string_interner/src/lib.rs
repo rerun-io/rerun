@@ -8,7 +8,9 @@
 //!
 //! The interned strings are never freed, so don't intern too many things.
 
-pub use nohash_hasher;
+pub mod external {
+    pub use nohash_hasher;
+}
 
 /// Fast but high quality string hash
 #[inline]
