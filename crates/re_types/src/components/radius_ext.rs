@@ -19,6 +19,6 @@ impl From<f32> for Radius {
 
 impl std::fmt::Display for Radius {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.prec$}", self.0, prec = crate::DISPLAY_PRECISION,)
+        write!(f, "{:.prec$}", self.0, prec = crate::DISPLAY_PRECISION)
     }
 }
