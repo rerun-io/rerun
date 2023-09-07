@@ -13,7 +13,7 @@ namespace rerun.components;
 table TensorData (
   "attr.arrow.transparent",
   order: 100,
-  "attr.rust.derive": "Default, PartialEq",
+  "attr.rust.derive": "PartialEq",
   "attr.rust.repr": "transparent"
 ) {
   data: rerun.datatypes.TensorData (order: 100);

@@ -20,7 +20,7 @@ table TensorData (
   order: 100,
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
-  "attr.rust.derive": "Default, PartialEq,"
+  "attr.rust.derive": "PartialEq,"
 ) {
   shape: [rerun.datatypes.TensorDimension] (order: 200);
   buffer: rerun.datatypes.TensorBuffer (order: 300);

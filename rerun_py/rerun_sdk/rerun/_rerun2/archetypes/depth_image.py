@@ -19,7 +19,7 @@ class DepthImage(Archetype):
     A depth image.
 
     The shape of the `TensorData` must be mappable to an `HxW` tensor.
-    Each pixel corresponds to a depth value in units specified by meter.
+    Each pixel corresponds to a depth value in units specified by `meter`.
 
     Example
     -------

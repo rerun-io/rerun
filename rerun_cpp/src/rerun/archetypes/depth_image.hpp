@@ -20,7 +20,7 @@ namespace rerun {
         /// A depth image.
         ///
         /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
-        /// Each pixel corresponds to a depth value in units specified by meter.
+        /// Each pixel corresponds to a depth value in units specified by `meter`.
         struct DepthImage {
             /// The depth-image data. Should always be a rank-2 tensor.
             rerun::components::TensorData data;
