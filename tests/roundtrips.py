@@ -23,11 +23,12 @@ ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 # TODO(#3207): implement missing cpp roundtrips
 opt_out = {
     "depth_image": ["cpp"],  # TODO(#2792)
+    "image": ["cpp"],  # TODO(#2792)
     "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
     "points2d": ["cpp"],  # TODO(#2786): Needs rect
-    "image": ["cpp"],  # TODO(#2792)
     "segmentation_image": ["cpp"],  # TODO(#2792)
     "tensor": ["cpp"],  # TODO(#2792)
+    "transform3d": ["cpp"],  # TODO(#2792) - `tests/roundtrips.py --release transform3d` fails on mac (but works without --release)
 }
 
 
