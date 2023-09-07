@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "../datatypes/vec2d.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// Half extent of a 2D box along its local axis, starting at its local origin.
+///
+/// The box extents both in negative and positive direction along each axis.
+/// Negative extents indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
+struct HalfExtent2D (
+  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  xy: rerun.datatypes.Vec2D (order: 100);
+}

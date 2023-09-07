@@ -1,0 +1,87 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// A batch of 2d boxes with half-extents and optional positions, rotations, rotations, colors etc.
+///
+/// \py Example
+/// \py -------
+/// \py
+/// \py Many boxes:
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/box2d_batch.py
+/// \py ```
+/// \py
+/// \py Individual boxes:
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/box2d_simple.py
+/// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs Many boxes:
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/box2d_batch.rs
+/// \rs ```
+/// \rs
+/// \rs Individual boxes:
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/box2d_simple.rs
+/// \rs ```
+///
+/// \cpp ## Example
+/// \cpp
+/// \cpp Many boxes:
+/// \cpp ```ignore
+/// \cpp \include:../../../../../docs/code-examples/box2d_batch.cpp
+/// \cpp ```
+/// \cpp
+/// \cpp Individual boxes:
+/// \cpp ```ignore
+/// \cpp \include:../../../../../docs/code-examples/box2d_simple.cpp
+/// \cpp ```
+table Boxes2D (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  // --- Required ---
+
+  /// All half-extents that make up the batch of boxes.
+  strips: [rerun.components.HalfExtent2D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional center positions of the boxes.
+  origins: [rerun.components.Origin2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // TODO(#3247): Add 2D rotation.
+  // Optional rotations of the boxes.
+  //rotations: [rerun.components.Rotation2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Optional colors for the boxes.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// Optional text labels for the boxes.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// An optional floating point value that specifies the 2D drawing order.
+  /// Objects with higher values are drawn on top of those with lower values.
+  ///
+  /// The default for 2D boxes is 10.0.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional `ClassId`s for the boxes.
+  ///
+  /// The class ID provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Unique identifiers for each individual boxes in the batch.
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
+}
