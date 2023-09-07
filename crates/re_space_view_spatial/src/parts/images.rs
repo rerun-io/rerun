@@ -15,7 +15,7 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
-    components::{Color, DepthMeter, DrawOrder, TensorData},
+    components::{Color, DrawOrder, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype as _, Loggable,
 };
