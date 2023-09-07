@@ -102,6 +102,10 @@
 //! starting it with `[CODEGEN COPY TO HEADER START]` and ending it with `[CODEGEN COPY TO HEADER END]`.
 //! Note that it is your responsibility to make sure that the cpp file is valid C++ code -
 //! the code generator & build will not adjust the extension file for you!
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 // ---
 
