@@ -75,7 +75,7 @@ def run(
 ) -> None:
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
-    assert result.returncode == 0, f"Faield to run. Output:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, f"Failed to run. Output:\n{result.stdout}\n{result.stderr}"
 
 
 def main() -> None:
