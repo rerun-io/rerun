@@ -104,7 +104,7 @@ impl crate::Loggable for Transform3D {
                     NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
                         .boxed(),
                     {
-                        let (somes, translation_and_mat_3_x_3): (Vec<_>, Vec<_>) = data
+                        let (somes, translation_and_mat3x3): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| {
                                 matches!(
@@ -120,14 +120,14 @@ impl crate::Loggable for Transform3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let translation_and_mat_3_x_3_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let translation_and_mat3x3_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = translation_and_mat_3_x_3_bitmap;
+                            _ = translation_and_mat3x3_bitmap;
                             crate::datatypes::TranslationAndMat3x3::try_to_arrow_opt(
-                                translation_and_mat_3_x_3,
+                                translation_and_mat3x3,
                             )?
                         }
                     },
@@ -163,7 +163,7 @@ impl crate::Loggable for Transform3D {
                     },
                 ],
                 Some({
-                    let mut translation_and_mat_3_x_3_offset = 0;
+                    let mut translation_and_mat3x3_offset = 0;
                     let mut translation_rotation_scale_offset = 0;
                     let mut nulls_offset = 0;
                     data.iter()
@@ -174,8 +174,8 @@ impl crate::Loggable for Transform3D {
                                 offset
                             }
                             Some(Transform3D::TranslationAndMat3X3(_)) => {
-                                let offset = translation_and_mat_3_x_3_offset;
-                                translation_and_mat_3_x_3_offset += 1;
+                                let offset = translation_and_mat3x3_offset;
+                                translation_and_mat3x3_offset += 1;
                                 offset
                             }
                             Some(Transform3D::TranslationRotationScale(_)) => {

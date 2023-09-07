@@ -232,7 +232,7 @@ impl crate::Loggable for TensorBuffer {
                     NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
                         .boxed(),
                     {
-                        let (somes, u_8): (Vec<_>, Vec<_>) = data
+                        let (somes, u8): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U8(_))))
                             .map(|datum| {
@@ -243,22 +243,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u_8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_8_inner_data: Buffer<_> = u_8
+                            let u8_inner_data: Buffer<_> = u8
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u_8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let u8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_8.iter().map(|opt| {
+                                u8.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -276,17 +276,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::UInt8,
-                                    u_8_inner_data,
-                                    u_8_inner_bitmap,
+                                    u8_inner_data,
+                                    u8_inner_bitmap,
                                 )
                                 .boxed(),
-                                u_8_bitmap,
+                                u8_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, u_16): (Vec<_>, Vec<_>) = data
+                        let (somes, u16): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U16(_))))
                             .map(|datum| {
@@ -297,22 +297,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u_16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_16_inner_data: Buffer<_> = u_16
+                            let u16_inner_data: Buffer<_> = u16
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u_16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let u16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_16.iter().map(|opt| {
+                                u16.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -330,17 +330,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::UInt16,
-                                    u_16_inner_data,
-                                    u_16_inner_bitmap,
+                                    u16_inner_data,
+                                    u16_inner_bitmap,
                                 )
                                 .boxed(),
-                                u_16_bitmap,
+                                u16_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, u_32): (Vec<_>, Vec<_>) = data
+                        let (somes, u32): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U32(_))))
                             .map(|datum| {
@@ -351,22 +351,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u_32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_32_inner_data: Buffer<_> = u_32
+                            let u32_inner_data: Buffer<_> = u32
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u_32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let u32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_32.iter().map(|opt| {
+                                u32.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -384,17 +384,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::UInt32,
-                                    u_32_inner_data,
-                                    u_32_inner_bitmap,
+                                    u32_inner_data,
+                                    u32_inner_bitmap,
                                 )
                                 .boxed(),
-                                u_32_bitmap,
+                                u32_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, u_64): (Vec<_>, Vec<_>) = data
+                        let (somes, u64): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U64(_))))
                             .map(|datum| {
@@ -405,22 +405,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u_64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let u_64_inner_data: Buffer<_> = u_64
+                            let u64_inner_data: Buffer<_> = u64
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u_64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let u64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                u_64.iter().map(|opt| {
+                                u64.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -438,17 +438,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::UInt64,
-                                    u_64_inner_data,
-                                    u_64_inner_bitmap,
+                                    u64_inner_data,
+                                    u64_inner_bitmap,
                                 )
                                 .boxed(),
-                                u_64_bitmap,
+                                u64_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, i_8): (Vec<_>, Vec<_>) = data
+                        let (somes, i8): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I8(_))))
                             .map(|datum| {
@@ -459,22 +459,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i_8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_8_inner_data: Buffer<_> = i_8
+                            let i8_inner_data: Buffer<_> = i8
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i_8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let i8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_8.iter().map(|opt| {
+                                i8.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -490,19 +490,15 @@ impl crate::Loggable for TensorBuffer {
                                     metadata: [].into(),
                                 })),
                                 offsets,
-                                PrimitiveArray::new(
-                                    DataType::Int8,
-                                    i_8_inner_data,
-                                    i_8_inner_bitmap,
-                                )
-                                .boxed(),
-                                i_8_bitmap,
+                                PrimitiveArray::new(DataType::Int8, i8_inner_data, i8_inner_bitmap)
+                                    .boxed(),
+                                i8_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, i_16): (Vec<_>, Vec<_>) = data
+                        let (somes, i16): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I16(_))))
                             .map(|datum| {
@@ -513,22 +509,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i_16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_16_inner_data: Buffer<_> = i_16
+                            let i16_inner_data: Buffer<_> = i16
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i_16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let i16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_16.iter().map(|opt| {
+                                i16.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -546,17 +542,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::Int16,
-                                    i_16_inner_data,
-                                    i_16_inner_bitmap,
+                                    i16_inner_data,
+                                    i16_inner_bitmap,
                                 )
                                 .boxed(),
-                                i_16_bitmap,
+                                i16_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, i_32): (Vec<_>, Vec<_>) = data
+                        let (somes, i32): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I32(_))))
                             .map(|datum| {
@@ -567,22 +563,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i_32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_32_inner_data: Buffer<_> = i_32
+                            let i32_inner_data: Buffer<_> = i32
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i_32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let i32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_32.iter().map(|opt| {
+                                i32.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -600,17 +596,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::Int32,
-                                    i_32_inner_data,
-                                    i_32_inner_bitmap,
+                                    i32_inner_data,
+                                    i32_inner_bitmap,
                                 )
                                 .boxed(),
-                                i_32_bitmap,
+                                i32_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, i_64): (Vec<_>, Vec<_>) = data
+                        let (somes, i64): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I64(_))))
                             .map(|datum| {
@@ -621,22 +617,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i_64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let i_64_inner_data: Buffer<_> = i_64
+                            let i64_inner_data: Buffer<_> = i64
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i_64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let i64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                i_64.iter().map(|opt| {
+                                i64.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -654,17 +650,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::Int64,
-                                    i_64_inner_data,
-                                    i_64_inner_bitmap,
+                                    i64_inner_data,
+                                    i64_inner_bitmap,
                                 )
                                 .boxed(),
-                                i_64_bitmap,
+                                i64_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, f_32): (Vec<_>, Vec<_>) = data
+                        let (somes, f32): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F32(_))))
                             .map(|datum| {
@@ -675,22 +671,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let f_32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let f32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let f_32_inner_data: Buffer<_> = f_32
+                            let f32_inner_data: Buffer<_> = f32
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let f_32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let f32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                f_32.iter().map(|opt| {
+                                f32.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -708,17 +704,17 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::Float32,
-                                    f_32_inner_data,
-                                    f_32_inner_bitmap,
+                                    f32_inner_data,
+                                    f32_inner_bitmap,
                                 )
                                 .boxed(),
-                                f_32_bitmap,
+                                f32_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, f_64): (Vec<_>, Vec<_>) = data
+                        let (somes, f64): (Vec<_>, Vec<_>) = data
                             .iter()
                             .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F64(_))))
                             .map(|datum| {
@@ -729,22 +725,22 @@ impl crate::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let f_64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let f64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let f_64_inner_data: Buffer<_> = f_64
+                            let f64_inner_data: Buffer<_> = f64
                                 .iter()
                                 .flatten()
                                 .map(|b| b.0.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let f_64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let f64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                f_64.iter().map(|opt| {
+                                f64.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -762,11 +758,11 @@ impl crate::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::Float64,
-                                    f_64_inner_data,
-                                    f_64_inner_bitmap,
+                                    f64_inner_data,
+                                    f64_inner_bitmap,
                                 )
                                 .boxed(),
-                                f_64_bitmap,
+                                f64_bitmap,
                             )
                             .boxed()
                         }
@@ -827,16 +823,16 @@ impl crate::Loggable for TensorBuffer {
                     },
                 ],
                 Some({
-                    let mut u_8_offset = 0;
-                    let mut u_16_offset = 0;
-                    let mut u_32_offset = 0;
-                    let mut u_64_offset = 0;
-                    let mut i_8_offset = 0;
-                    let mut i_16_offset = 0;
-                    let mut i_32_offset = 0;
-                    let mut i_64_offset = 0;
-                    let mut f_32_offset = 0;
-                    let mut f_64_offset = 0;
+                    let mut u8_offset = 0;
+                    let mut u16_offset = 0;
+                    let mut u32_offset = 0;
+                    let mut u64_offset = 0;
+                    let mut i8_offset = 0;
+                    let mut i16_offset = 0;
+                    let mut i32_offset = 0;
+                    let mut i64_offset = 0;
+                    let mut f32_offset = 0;
+                    let mut f64_offset = 0;
                     let mut jpeg_offset = 0;
                     let mut nulls_offset = 0;
                     data.iter()
@@ -847,53 +843,53 @@ impl crate::Loggable for TensorBuffer {
                                 offset
                             }
                             Some(TensorBuffer::U8(_)) => {
-                                let offset = u_8_offset;
-                                u_8_offset += 1;
+                                let offset = u8_offset;
+                                u8_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::U16(_)) => {
-                                let offset = u_16_offset;
-                                u_16_offset += 1;
+                                let offset = u16_offset;
+                                u16_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::U32(_)) => {
-                                let offset = u_32_offset;
-                                u_32_offset += 1;
+                                let offset = u32_offset;
+                                u32_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::U64(_)) => {
-                                let offset = u_64_offset;
-                                u_64_offset += 1;
+                                let offset = u64_offset;
+                                u64_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::I8(_)) => {
-                                let offset = i_8_offset;
-                                i_8_offset += 1;
+                                let offset = i8_offset;
+                                i8_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::I16(_)) => {
-                                let offset = i_16_offset;
-                                i_16_offset += 1;
+                                let offset = i16_offset;
+                                i16_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::I32(_)) => {
-                                let offset = i_32_offset;
-                                i_32_offset += 1;
+                                let offset = i32_offset;
+                                i32_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::I64(_)) => {
-                                let offset = i_64_offset;
-                                i_64_offset += 1;
+                                let offset = i64_offset;
+                                i64_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::F32(_)) => {
-                                let offset = f_32_offset;
-                                f_32_offset += 1;
+                                let offset = f32_offset;
+                                f32_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::F64(_)) => {
-                                let offset = f_64_offset;
-                                f_64_offset += 1;
+                                let offset = f64_offset;
+                                f64_offset += 1;
                                 offset
                             }
                             Some(TensorBuffer::Jpeg(_)) => {

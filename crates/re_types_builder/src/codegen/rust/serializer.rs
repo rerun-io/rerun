@@ -184,7 +184,7 @@ pub fn quote_arrow_serializer(
 
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
-                    let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
+                    let data_dst = format_ident!("{}", crate::to_snake_case(&obj_field.name));
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let inner_datatype = &arrow_registry.get(&obj_field.fqname);
@@ -253,13 +253,13 @@ pub fn quote_arrow_serializer(
 
                     let quoted_counters = obj.fields.iter().map(|obj_field| {
                         let quoted_obj_field_name =
-                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
+                            format_ident!("{}_offset", crate::to_snake_case(&obj_field.name));
                         quote!(let mut #quoted_obj_field_name = 0)
                     });
 
                     let quoted_branches = obj.fields.iter().map(|obj_field| {
                         let quoted_counter_name =
-                            format_ident!("{}_offset", obj_field.name.to_case(Case::Snake));
+                            format_ident!("{}_offset", crate::to_snake_case(&obj_field.name));
                         let quoted_obj_field_name =
                             format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
                         quote! {
