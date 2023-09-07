@@ -56,11 +56,7 @@ impl ViewPartSystem for TextDocumentSystem {
                 ent_path,
             )?;
 
-            // TODO(emilk): use `iter_required_component` instead, once it doesn't require Default
-            for text_entry in arch_view
-                .iter_optional_component::<re_types::components::Text>()?
-                .flatten()
-            {
+            for text_entry in arch_view.iter_required_component::<re_types::components::Text>()? {
                 let re_types::components::Text(text) = text_entry;
                 self.text_entries.push(TextDocumentEntry { body: text });
             }
