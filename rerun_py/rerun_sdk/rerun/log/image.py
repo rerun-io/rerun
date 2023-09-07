@@ -74,9 +74,9 @@ def log_image(
 
     tensor_data = dt.TensorData(array=image)
 
-    # TODO(jleibs): Support for jpeg_quality
+    # TODO(#2792): Support for jpeg_quality
     if jpeg_quality is not None:
-        _send_warning("jpeg_quality not supported yet", 1)
+        print("jpeg_quality not supported yet")
 
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
