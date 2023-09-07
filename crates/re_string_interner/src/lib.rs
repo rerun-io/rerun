@@ -8,6 +8,10 @@
 //!
 //! The interned strings are never freed, so don't intern too many things.
 
+pub mod external {
+    pub use nohash_hasher;
+}
+
 /// Fast but high quality string hash
 #[inline]
 fn hash(value: impl std::hash::Hash) -> u64 {
@@ -217,7 +221,7 @@ macro_rules! declare_new_type {
             }
         }
 
-        impl nohash_hasher::IsEnabled for $StructName {}
+        impl $crate::external::nohash_hasher::IsEnabled for $StructName {}
 
         impl From<&str> for $StructName {
             #[inline]

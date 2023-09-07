@@ -125,7 +125,6 @@ path = "transform3d_simple.rs"
 
 
 [dependencies]
-ahash.workspace = true
 ndarray.workspace = true
 rand.workspace = true
 rand_distr.workspace = true

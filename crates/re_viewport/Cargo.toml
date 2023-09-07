@@ -39,7 +39,6 @@ arrow2_convert.workspace = true
 arrow2.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
-enumset.workspace = true
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
