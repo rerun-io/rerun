@@ -75,7 +75,9 @@ def run(
 ) -> None:
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
-    assert result.returncode == 0, f"Failed to run. Output:\n{result.stdout}\n{result.stderr}"
+    assert (
+        result.returncode == 0
+    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
 
 
 def main() -> None:
@@ -155,13 +157,12 @@ def main() -> None:
         jobs = []
         for example in examples:
             example_opt_out_entirely = opt_out_entirely.get(example, [])
-            example_opt_out_compare = opt_out_compare.get(example, [])
             for language in ["cpp", "py", "rust"]:
                 if language in example_opt_out_entirely:
                     continue
                 job = pool.apply_async(build_example, (example, language, args))
                 jobs.append(job)
-        print(f"Waiting for {len(jobs)} build jobs to     finish…")
+        print(f"Waiting for {len(jobs)} build jobs to finish…")
         for job in jobs:
             job.get()
 
