@@ -29,7 +29,7 @@ It is common for points to become temporarily occluded in videos. To reflect thi
 ```
 TODO(roym899) GIF of current state
 
-This will stop updating the point position when it is not visisble, however, the point stays at the last known position. Using `rr.log_cleared` we can clear the points at each frame prior to logging the new points. This will make the points disappear when they are not visible.
+This will stop updating the point position when it is not visible, however, the point stays at the last known position. Using `rr.log_cleared` we can clear the points at each frame prior to logging the new points. This will make the points disappear when they are not visible.
 
 ```python
 # TODO(roym899) add cleared
@@ -47,7 +47,7 @@ def log_point_track(entity_path, point_track, point_visibility, time_steps):
 
     Args:
       point_track: The point track to log. Shape (num_time_steps, 2 or 3).
-      point_visbility: The visibility of each point in the point track. Shape (num_time_steps,).
+      point_visibility: The visibility of each point in the point track. Shape (num_time_steps,).
       time_steps: The time steps for each point in the point tracks. Shape (num_time_steps,).
     """
     for i, point_track in enumerate(point_tracks):
@@ -69,7 +69,7 @@ def generate_data():
     num_tracks = 10
     num_time_steps = 100
     points_dim = 2
-    # TODO generate some nice with easy to understand visibility
+    # TODO(roym899) generate some nice with easy to understand visibility
     return point_tracks, point_visibilities, time_steps
 
 rr.init("Point Tracks", spawn=True)
