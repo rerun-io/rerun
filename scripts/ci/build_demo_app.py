@@ -55,6 +55,16 @@ def extract_text_from_html(html: str) -> str:
     return extractor.get_text()
 
 
+def run(
+    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
+) -> None:
+    print(f"> {subprocess.list2cmdline(args)}")
+    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+    assert (
+        result.returncode == 0
+    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+
+
 class Example:
     def __init__(
         self,
@@ -110,13 +120,7 @@ class Example:
         # * the resulting file size is deterministic
         # * the file is chunked into small batches for better streaming
         env = {**os.environ, "RERUN_FLUSH_TICK_SECS": "1000000000", "RERUN_FLUSH_NUM_BYTES": str(128 * 1024)}
-
-        subprocess.run(
-            args + self.build_args,
-            env=env,
-            check=True,
-        )
-
+        run(args + self.build_args, env=env)
         print(f"{rrd_path}: {os.path.getsize(rrd_path) / (1024 * 1024):.1f} MiB")
 
     def supports_save(self) -> bool:
@@ -145,7 +149,7 @@ def copy_static_assets(examples: list[Example]) -> None:
 
 def build_python_sdk() -> None:
     print("Building Python SDK…")
-    returncode = subprocess.Popen(
+    run(
         [
             "maturin",
             "develop",
@@ -153,14 +157,13 @@ def build_python_sdk() -> None:
             "rerun_py/Cargo.toml",
             '--extras="tests"',
             "--quiet",
-        ],
-    ).wait()
-    assert returncode == 0, f"process exited with error code {returncode}"
+        ]
+    )
 
 
 def build_wasm() -> None:
     logging.info("")
-    subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
+    run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
 
 
 def copy_wasm(examples: list[Example]) -> None:
