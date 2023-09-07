@@ -1,5 +1,4 @@
 use arrow2::datatypes::DataType;
-use convert_case::{Case, Casing as _};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -210,7 +209,7 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_field_deserializers =
                     obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let data_dst = format_ident!("{}", obj_field.name.to_case(Case::Snake));
+                        let data_dst = format_ident!("{}", crate::to_snake_case(&obj_field.name));
 
                         let quoted_deserializer = quote_arrow_field_deserializer(
                             objects,
@@ -255,9 +254,9 @@ pub fn quote_arrow_deserializer(
 
                     let obj_field_fqname = obj_field.fqname.as_str();
                     let quoted_obj_field_name =
-                        format_ident!("{}", obj_field.name.to_case(Case::Snake));
+                        format_ident!("{}", crate::to_snake_case(&obj_field.name));
                     let quoted_obj_field_type =
-                        format_ident!("{}", obj_field.name.to_case(Case::UpperCamel));
+                        format_ident!("{}", crate::to_pascal_case(&obj_field.name));
 
                     let quoted_unwrap = if obj_field.is_nullable {
                         quote!()
