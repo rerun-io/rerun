@@ -499,87 +499,89 @@ impl TensorData {
         let w = w as u32;
         let h = h as u32;
 
-        let dyn_img_result =
-            match (channels, &self.buffer) {
-                (1, TensorBuffer::U8(buf)) => {
-                    GrayImage::from_raw(w, h, buf.as_slice().to_vec()).map(DynamicImage::ImageLuma8)
-                }
-                (1, TensorBuffer::U16(buf)) => Gray16Image::from_raw(w, h, buf.as_slice().to_vec())
-                    .map(DynamicImage::ImageLuma16),
-                // TODO(emilk) f16
-                (1, TensorBuffer::F32(buf)) => {
-                    let pixels = buf
-                        .iter()
-                        .map(|pixel| gamma_u8_from_linear_f32(*pixel))
-                        .collect();
-                    GrayImage::from_raw(w, h, pixels).map(DynamicImage::ImageLuma8)
-                }
-                (1, TensorBuffer::F64(buf)) => {
-                    let pixels = buf
-                        .iter()
-                        .map(|&pixel| gamma_u8_from_linear_f32(pixel as f32))
-                        .collect();
-                    GrayImage::from_raw(w, h, pixels).map(DynamicImage::ImageLuma8)
-                }
+        let dyn_img_result = match (channels, &self.buffer) {
+            (1, TensorBuffer::U8(buf)) => {
+                GrayImage::from_raw(w, h, buf.to_vec()).map(DynamicImage::ImageLuma8)
+            }
+            (1, TensorBuffer::U16(buf)) => {
+                Gray16Image::from_raw(w, h, buf.to_vec()).map(DynamicImage::ImageLuma16)
+            }
+            // TODO(emilk) f16
+            (1, TensorBuffer::F32(buf)) => {
+                let pixels = buf
+                    .iter()
+                    .map(|pixel| gamma_u8_from_linear_f32(*pixel))
+                    .collect();
+                GrayImage::from_raw(w, h, pixels).map(DynamicImage::ImageLuma8)
+            }
+            (1, TensorBuffer::F64(buf)) => {
+                let pixels = buf
+                    .iter()
+                    .map(|&pixel| gamma_u8_from_linear_f32(pixel as f32))
+                    .collect();
+                GrayImage::from_raw(w, h, pixels).map(DynamicImage::ImageLuma8)
+            }
 
-                (3, TensorBuffer::U8(buf)) => {
-                    RgbImage::from_raw(w, h, buf.as_slice().to_vec()).map(DynamicImage::ImageRgb8)
-                }
-                (3, TensorBuffer::U16(buf)) => Rgb16Image::from_raw(w, h, buf.as_slice().to_vec())
-                    .map(DynamicImage::ImageRgb16),
-                (3, TensorBuffer::F32(buf)) => {
-                    let pixels = buf.iter().copied().map(gamma_u8_from_linear_f32).collect();
-                    RgbImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgb8)
-                }
-                (3, TensorBuffer::F64(buf)) => {
-                    let pixels = buf
-                        .iter()
-                        .map(|&comp| gamma_u8_from_linear_f32(comp as f32))
-                        .collect();
-                    RgbImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgb8)
-                }
+            (3, TensorBuffer::U8(buf)) => {
+                RgbImage::from_raw(w, h, buf.to_vec()).map(DynamicImage::ImageRgb8)
+            }
+            (3, TensorBuffer::U16(buf)) => {
+                Rgb16Image::from_raw(w, h, buf.to_vec()).map(DynamicImage::ImageRgb16)
+            }
+            (3, TensorBuffer::F32(buf)) => {
+                let pixels = buf.iter().copied().map(gamma_u8_from_linear_f32).collect();
+                RgbImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgb8)
+            }
+            (3, TensorBuffer::F64(buf)) => {
+                let pixels = buf
+                    .iter()
+                    .map(|&comp| gamma_u8_from_linear_f32(comp as f32))
+                    .collect();
+                RgbImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgb8)
+            }
 
-                (4, TensorBuffer::U8(buf)) => {
-                    RgbaImage::from_raw(w, h, buf.as_slice().to_vec()).map(DynamicImage::ImageRgba8)
-                }
-                (4, TensorBuffer::U16(buf)) => Rgba16Image::from_raw(w, h, buf.as_slice().to_vec())
-                    .map(DynamicImage::ImageRgba16),
-                (4, TensorBuffer::F32(buf)) => {
-                    let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf.as_slice());
-                    let pixels: Vec<u8> = rgba
-                        .iter()
-                        .flat_map(|&[r, g, b, a]| {
-                            let r = gamma_u8_from_linear_f32(r);
-                            let g = gamma_u8_from_linear_f32(g);
-                            let b = gamma_u8_from_linear_f32(b);
-                            let a = linear_u8_from_linear_f32(a);
-                            [r, g, b, a]
-                        })
-                        .collect();
-                    RgbaImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgba8)
-                }
-                (4, TensorBuffer::F64(buf)) => {
-                    let rgba: &[[f64; 4]] = bytemuck::cast_slice(buf.as_slice());
-                    let pixels: Vec<u8> = rgba
-                        .iter()
-                        .flat_map(|&[r, g, b, a]| {
-                            let r = gamma_u8_from_linear_f32(r as _);
-                            let g = gamma_u8_from_linear_f32(g as _);
-                            let b = gamma_u8_from_linear_f32(b as _);
-                            let a = linear_u8_from_linear_f32(a as _);
-                            [r, g, b, a]
-                        })
-                        .collect();
-                    RgbaImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgba8)
-                }
+            (4, TensorBuffer::U8(buf)) => {
+                RgbaImage::from_raw(w, h, buf.to_vec()).map(DynamicImage::ImageRgba8)
+            }
+            (4, TensorBuffer::U16(buf)) => {
+                Rgba16Image::from_raw(w, h, buf.to_vec()).map(DynamicImage::ImageRgba16)
+            }
+            (4, TensorBuffer::F32(buf)) => {
+                let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf.as_slice());
+                let pixels: Vec<u8> = rgba
+                    .iter()
+                    .flat_map(|&[r, g, b, a]| {
+                        let r = gamma_u8_from_linear_f32(r);
+                        let g = gamma_u8_from_linear_f32(g);
+                        let b = gamma_u8_from_linear_f32(b);
+                        let a = linear_u8_from_linear_f32(a);
+                        [r, g, b, a]
+                    })
+                    .collect();
+                RgbaImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgba8)
+            }
+            (4, TensorBuffer::F64(buf)) => {
+                let rgba: &[[f64; 4]] = bytemuck::cast_slice(buf.as_slice());
+                let pixels: Vec<u8> = rgba
+                    .iter()
+                    .flat_map(|&[r, g, b, a]| {
+                        let r = gamma_u8_from_linear_f32(r as _);
+                        let g = gamma_u8_from_linear_f32(g as _);
+                        let b = gamma_u8_from_linear_f32(b as _);
+                        let a = linear_u8_from_linear_f32(a as _);
+                        [r, g, b, a]
+                    })
+                    .collect();
+                RgbaImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgba8)
+            }
 
-                (_, _) => {
-                    return Err(TensorImageSaveError::UnsupportedChannelsDtype(
-                        channels,
-                        self.buffer.dtype(),
-                    ))
-                }
-            };
+            (_, _) => {
+                return Err(TensorImageSaveError::UnsupportedChannelsDtype(
+                    channels,
+                    self.buffer.dtype(),
+                ))
+            }
+        };
 
         dyn_img_result.ok_or(TensorImageSaveError::BadData)
     }

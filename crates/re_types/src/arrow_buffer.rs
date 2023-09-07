@@ -43,6 +43,13 @@ impl<T> ArrowBuffer<T> {
     }
 }
 
+impl<T: Clone> ArrowBuffer<T> {
+    #[inline]
+    pub fn to_vec(&self) -> Vec<T> {
+        self.0.as_slice().to_vec()
+    }
+}
+
 impl<T> From<Buffer<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: Buffer<T>) -> Self {
