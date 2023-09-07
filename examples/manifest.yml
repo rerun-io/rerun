@@ -49,9 +49,9 @@ root:
 
         For the simplest possible examples showing how to use each api,
         check out [Loggable Data Types](/docs/reference/data_types).
-    - children:
-      - name: point_tracks
-        python: python/point_tracks
+      children:
+        - name: point_tracks
+          python: python/point_tracks
 
 
     - name: real-data
