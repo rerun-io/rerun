@@ -143,7 +143,14 @@ def main() -> None:
     examples = list(set(examples))
     examples.sort()
 
+    print("----------------------------------------------------------")
+    print(f"Running {len(examples)} examples…")
+
     for example in examples:
+        print()
+        print("----------------------------------------------------------")
+        print(f"Running example '{example}'…")
+
         example_opt_out_entirely = opt_out_entirely.get(example, [])
         example_opt_out_compare = opt_out_compare.get(example, [])
 
