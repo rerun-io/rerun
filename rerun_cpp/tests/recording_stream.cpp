@@ -36,14 +36,12 @@ const char* BadComponent::NAME = "bad!";
 rr::Error BadComponent::error = rr::Error(rr::ErrorCode::Unknown, "BadComponent");
 
 struct BadArchetype {
-    rr::Error error = rr::Error(rr::ErrorCode::Unknown, "BadArchetype");
-
     size_t num_instances() const {
         return 1;
     }
 
-    rr::Result<std::vector<rerun::DataCell>> to_data_cells() const {
-        return error;
+    std::vector<rerun::AnonymousComponentList> as_component_lists() const {
+        return {BadComponent()};
     }
 };
 
@@ -501,17 +499,17 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
         }
         AND_GIVEN("an archetype that fails serialization") {
             auto archetype = BadArchetype();
-            archetype.error.code =
+            BadComponent::error.code =
                 GENERATE(rr::ErrorCode::Unknown, rr::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log_archetype logs the serialization error") {
                 check_logged_error(
                     [&] { stream.log_archetype(path, archetype); },
-                    archetype.error.code
+                    BadComponent::error.code
                 );
             }
             THEN("calling log_archetype forwards the serialization error") {
-                CHECK(stream.try_log_archetype(path, archetype) == archetype.error);
+                CHECK(stream.try_log_archetype(path, archetype) == BadComponent::error);
             }
         }
     }

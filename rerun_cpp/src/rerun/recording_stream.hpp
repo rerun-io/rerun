@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint> // uint32_t etc.
+#include <vector>
 
 #include "component_list.hpp"
 #include "data_cell.hpp"
@@ -142,17 +143,7 @@ namespace rerun {
         /// @see log_archetype
         template <typename T>
         Error try_log_archetype(const char* entity_path, const T& archetype) {
-            const auto data_cells_result = archetype.to_data_cells();
-            if (data_cells_result.is_ok()) {
-                return try_log_data_row(
-                    entity_path,
-                    archetype.num_instances(),
-                    data_cells_result.value.size(),
-                    data_cells_result.value.data()
-                );
-            } else {
-                return data_cells_result.error;
-            }
+            return try_log_components(entity_path, archetype.as_component_lists());
         }
 
         /// Logs a list of component arrays.

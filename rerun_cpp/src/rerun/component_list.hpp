@@ -18,19 +18,36 @@ namespace rerun {
         size_t size;
 
       public:
+        /// Construct from a single component.
+        ///
+        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component list.
+        ComponentList(const ComponentType& one_and_only) : data(&one_and_only), size(1) {}
+
         /// Construct from a raw pointer and size.
         ComponentList(const ComponentType* _data, size_t _size) : data(_data), size(_size) {}
 
         /// Construct from an std::vector.
+        ///
+        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component list.
+        /// In particular, manipulating the passed vector after constructing the component list,
+        /// will invalidate it, similar to iterator invalidation.
         ComponentList(const std::vector<ComponentType>& _data)
             : data(_data.data()), size(_data.size()) {}
 
         /// Construct from an std::array.
+        ///
+        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component list.
         template <size_t Size>
         ComponentList(const std::array<ComponentType, Size>& _data)
             : data(_data.data()), size(Size) {}
 
         /// Construct from a C-Array.
+        ///
+        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component list.
         template <size_t Size>
         ComponentList(const ComponentType (&_data)[Size]) : data(_data), size(Size) {}
 
