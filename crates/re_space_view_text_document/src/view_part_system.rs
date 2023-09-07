@@ -27,6 +27,8 @@ impl NamedViewSystem for TextDocumentSystem {
 
 impl ViewPartSystem for TextDocumentSystem {
     fn archetype(&self) -> ArchetypeDefinition {
+        // TODO(#3159): use actual archetype definition
+        // TextDocument::all_components().try_into().unwrap()
         vec1::vec1![
             re_types::archetypes::TextDocument::indicator_component(),
             re_types::components::Text::name(),
