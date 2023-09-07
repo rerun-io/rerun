@@ -32,7 +32,7 @@
 ///    image.slice_mut(s![0..4, 0..6]).fill(20000);
 ///    image.slice_mut(s![4..8, 6..12]).fill(45000);
 ///
-///    let depth_image = DepthImage::try_from(image)?;
+///    let depth_image = DepthImage::try_from(image)?.with_meter(10_000.0);
 ///
 ///    rec.log("depth", &depth_image)?;
 ///

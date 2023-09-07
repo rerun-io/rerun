@@ -13,4 +13,4 @@ image[4:8, 6:12] = 45000
 rr.init("rerun_example_depth_image", spawn=True)
 
 # Log the tensor, assigning names to each dimension
-rr2.log("depth", rr2.DepthImage(image, meter=10000.0))
+rr2.log("depth", rr2.DepthImage(image, meter=10_000.0))
