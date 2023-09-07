@@ -67,3 +67,25 @@ impl std::fmt::Display for ArrowString {
         self.as_str().fmt(f)
     }
 }
+
+impl AsRef<str> for ArrowString {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::borrow::Borrow<str> for ArrowString {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::ops::Deref for ArrowString {
+    type Target = str;
+    #[inline]
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
