@@ -1234,8 +1234,6 @@ fn archetype_as_component_lists(
     cpp_includes.insert_rerun("indicator_component.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
-    // TODO(andreas): Splats need to be handled separately.
-
     let num_fields = quote_integer(obj.fields.len());
     let push_cells = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
