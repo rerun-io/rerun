@@ -164,7 +164,7 @@ def tensordata_init(
             jpeg_bytes = output.getvalue()
             output.close()
             jpeg_array = np.frombuffer(jpeg_bytes, dtype=np.uint8)
-            # self.buffer = TensorBuffer(inner=jpeg_array, kind="jpeg") # TODO
+            # self.buffer = TensorBuffer(inner=jpeg_array, kind="jpeg") # TODO(emilk): something like this should work?
             self.buffer = TensorBuffer(jpeg_array)
             self.buffer.kind = "jpeg"
             return
