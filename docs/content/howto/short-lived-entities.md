@@ -3,7 +3,7 @@ title: Log short lived data
 order: 5
 description: How to log data that isn't valid for the whole recording
 ---
-In order to create coherent views of streaming data, the Rerun Viewer shows the latest values for each visible entity at the current timepoint. But some data may not be valid for the entire recoding even if there are no updated values. How do you tell Rerun that something you've logged should no longer be shown?
+In order to create coherent views of streaming data, the Rerun Viewer shows the latest values for each visible entity at the current timepoint. But some data may not be valid for the entire recording even if there are no updated values. How do you tell Rerun that something you've logged should no longer be shown?
 
 ## Log entities as cleared
 The most straight forward option is to explicitly log that an entity has been cleared. Rerun allows you to do this by logging a special `ClearEntity` to any path. The timepoint at which the `ClearEntity` is logged is the time point after which that entity will no longer be visible in your views.
