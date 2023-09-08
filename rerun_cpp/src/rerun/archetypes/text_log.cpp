@@ -3,6 +3,7 @@
 
 #include "text_log.hpp"
 
+#include "../components/color.hpp"
 #include "../components/text.hpp"
 #include "../components/text_log_level.hpp"
 
@@ -10,7 +11,7 @@ namespace rerun {
     namespace archetypes {
         Result<std::vector<rerun::DataCell>> TextLog::to_data_cells() const {
             std::vector<rerun::DataCell> cells;
-            cells.reserve(2);
+            cells.reserve(3);
 
             {
                 const auto result = rerun::components::Text::to_data_cell(&body, 1);
@@ -22,6 +23,14 @@ namespace rerun {
             if (level.has_value()) {
                 const auto& value = level.value();
                 const auto result = rerun::components::TextLogLevel::to_data_cell(&value, 1);
+                if (result.is_err()) {
+                    return result.error;
+                }
+                cells.emplace_back(std::move(result.value));
+            }
+            if (color.has_value()) {
+                const auto& value = color.value();
+                const auto result = rerun::components::Color::to_data_cell(&value, 1);
                 if (result.is_err()) {
                     return result.error;
                 }

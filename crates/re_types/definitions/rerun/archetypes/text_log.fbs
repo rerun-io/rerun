@@ -15,4 +15,5 @@ table TextLog (
 ) {
   body: rerun.components.Text ("attr.rerun.component_required", order: 100);
   level: rerun.components.TextLogLevel ("attr.rerun.component_recommended", nullable, order: 200);
+  color: rerun.components.Color (nullable, order: 300);
 }

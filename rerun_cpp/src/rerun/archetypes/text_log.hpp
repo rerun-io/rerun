@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../arrow.hpp"
+#include "../components/color.hpp"
 #include "../components/text.hpp"
 #include "../components/text_log_level.hpp"
 #include "../data_cell.hpp"
@@ -22,6 +23,8 @@ namespace rerun {
 
             std::optional<rerun::components::TextLogLevel> level;
 
+            std::optional<rerun::components::Color> color;
+
           public:
             TextLog() = default;
 
@@ -29,6 +32,11 @@ namespace rerun {
 
             TextLog& with_level(rerun::components::TextLogLevel _level) {
                 level = std::move(_level);
+                return *this;
+            }
+
+            TextLog& with_color(rerun::components::Color _color) {
+                color = std::move(_color);
                 return *this;
             }
 

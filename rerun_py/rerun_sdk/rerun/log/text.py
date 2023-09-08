@@ -106,8 +106,9 @@ def log_text_entry(
     recording = RecordingStream.to_native(recording)
 
     if color is not None:
-        _normalize_colors(color)
-        # color = rrc.ColorArray.from_similar(colors).storage
+        color = _normalize_colors(color)
 
     # TODO(emilk): color
-    return log(entity_path, TextLog(body=text, level=level), ext=ext, timeless=timeless, recording=recording)
+    return log(
+        entity_path, TextLog(body=text, level=level, color=color), ext=ext, timeless=timeless, recording=recording
+    )

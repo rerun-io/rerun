@@ -408,8 +408,8 @@ fn table_ui(
                     if state.monospace {
                         text = text.monospace();
                     }
-                    if let Some([r, g, b, a]) = text_entry.color {
-                        text = text.color(egui::Color32::from_rgba_unmultiplied(r, g, b, a));
+                    if let Some(color) = text_entry.color {
+                        text = text.color(color);
                     }
 
                     ui.label(text);

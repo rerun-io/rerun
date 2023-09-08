@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::RowId;
 use re_query::{range_entity_with_primary, QueryError};
 use re_types::{
-    components::{InstanceKey, Text, TextLogLevel},
+    components::{Color, InstanceKey, Text, TextLogLevel},
     Archetype as _, Loggable as _,
 };
 use re_viewer_context::{
@@ -21,7 +21,7 @@ pub struct TextEntry {
     /// `None` for timeless data.
     pub time: Option<i64>,
 
-    pub color: Option<[u8; 4]>,
+    pub color: Option<Color>,
 
     pub body: Text,
 
@@ -48,6 +48,7 @@ impl ViewPartSystem for TextLogSystem {
             re_types::archetypes::TextLog::indicator_component(),
             Text::name(),
             TextLogLevel::name(),
+            Color::name(),
         ]
     }
 
@@ -64,21 +65,31 @@ impl ViewPartSystem for TextLogSystem {
             let timeline_query =
                 re_arrow_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
-            let components = [InstanceKey::name(), Text::name(), TextLogLevel::name()];
+            let components = [
+                InstanceKey::name(),
+                Text::name(),
+                TextLogLevel::name(),
+                Color::name(),
+            ];
             let ent_views =
-                range_entity_with_primary::<Text, 3>(store, &timeline_query, ent_path, components);
+                range_entity_with_primary::<Text, 4>(store, &timeline_query, ent_path, components);
 
             for (time, ent_view) in ent_views {
-                match ent_view.visit2(|_instance_key, body: Text, level: Option<TextLogLevel>| {
-                    self.text_entries.push(TextEntry {
-                        row_id: ent_view.primary_row_id(),
-                        entity_path: ent_path.clone(),
-                        time: time.map(|time| time.as_i64()),
-                        color: None, // TODO(emilk): add color to the `TextLog` archetype
-                        body,
-                        level,
-                    });
-                }) {
+                match ent_view.visit3(
+                    |_instance_key,
+                     body: Text,
+                     level: Option<TextLogLevel>,
+                     color: Option<Color>| {
+                        self.text_entries.push(TextEntry {
+                            row_id: ent_view.primary_row_id(),
+                            entity_path: ent_path.clone(),
+                            time: time.map(|time| time.as_i64()),
+                            color,
+                            body,
+                            level,
+                        });
+                    },
+                ) {
                     Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
                     Err(err) => {
                         re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");

@@ -17,6 +17,7 @@
 pub struct TextLog {
     pub body: crate::components::Text,
     pub level: Option<crate::components::TextLogLevel>,
+    pub color: Option<crate::components::Color>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
@@ -77,6 +78,9 @@ impl crate::Archetype for TextLog {
             self.level
                 .as_ref()
                 .map(|comp| comp as &dyn crate::ComponentList),
+            self.color
+                .as_ref()
+                .map(|comp| comp as &dyn crate::ComponentList),
         ]
         .into_iter()
         .flatten()
@@ -128,6 +132,26 @@ impl crate::Archetype for TextLog {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.TextLog#level")?
+            },
+            {
+                self.color
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::Color>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.Color".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.colorrgba".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("color", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()
+                    .with_context("rerun.archetypes.TextLog#color")?
             },
             {
                 let datatype = ::arrow2::datatypes::DataType::Extension(
@@ -192,7 +216,20 @@ impl crate::Archetype for TextLog {
         } else {
             None
         };
-        Ok(Self { body, level })
+        let color = if let Some(array) = arrays_by_name.get("color") {
+            Some({
+                <crate::components::Color>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.TextLog#color")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.TextLog#color")?
+            })
+        } else {
+            None
+        };
+        Ok(Self { body, level, color })
     }
 }
 
@@ -201,11 +238,17 @@ impl TextLog {
         Self {
             body: body.into(),
             level: None,
+            color: None,
         }
     }
 
     pub fn with_level(mut self, level: impl Into<crate::components::TextLogLevel>) -> Self {
         self.level = Some(level.into());
+        self
+    }
+
+    pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
+        self.color = Some(color.into());
         self
     }
 }
