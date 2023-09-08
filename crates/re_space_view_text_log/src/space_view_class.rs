@@ -2,13 +2,14 @@ use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_types::components::TextLogLevel;
 use re_viewer_context::{
     level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassName,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
-use super::view_part_system::{TextEntry, TextSystem};
+use super::view_part_system::{TextEntry, TextLogSystem};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default)]
@@ -41,7 +42,7 @@ impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
 
     fn name(&self) -> SpaceViewClassName {
-        "Text".into()
+        "TextLog".into()
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -49,14 +50,14 @@ impl SpaceViewClass for TextSpaceView {
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "Shows text entries over time.\nSelect the Space View for filtering options.".into()
+        "Shows TextLog entries over time.\nSelect the Space View for filtering options.".into()
     }
 
     fn on_register(
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_part_system::<TextSystem>()
+        system_registry.register_part_system::<TextLogSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -138,7 +139,7 @@ impl SpaceViewClass for TextSpaceView {
         _query: &ViewQuery<'_>,
         _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let text = parts.get::<TextSystem>()?;
+        let text = parts.get::<TextLogSystem>()?;
 
         // TODO(andreas): Should filter text entries in the part-system instead.
         // this likely requires a way to pass state into a context.
@@ -202,7 +203,7 @@ pub struct ViewTextFilters {
     pub col_log_level: bool,
 
     // Row filters: which rows should be visible?
-    pub row_log_levels: BTreeMap<String, bool>,
+    pub row_log_levels: BTreeMap<TextLogLevel, bool>,
 }
 
 impl Default for ViewTextFilters {
@@ -254,7 +255,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
     {
         Some(time_point.clone())
     } else {
-        re_log::warn_once!("Missing LogMsg for {:?}", entry.entity_path);
+        re_log::warn_once!("Missing meta-data for {:?}", entry.entity_path);
         None
     }
 }
@@ -402,7 +403,7 @@ fn table_ui(
 
                 // body
                 row.col(|ui| {
-                    let mut text = egui::RichText::new(&text_entry.body);
+                    let mut text = egui::RichText::new(text_entry.body.as_str());
 
                     if state.monospace {
                         text = text.monospace();

@@ -28,3 +28,19 @@ impl LegacyComponent for re_types::components::Point2D {
         Self::name()
     }
 }
+
+// TODO(emilk): required to use with `range_entity_with_primary`. remove once the migration is over
+impl LegacyComponent for re_types::components::Text {
+    fn legacy_name() -> ComponentName {
+        use re_types::Loggable as _;
+        Self::name()
+    }
+}
+
+// TODO(emilk): required to use with `range_entity_with_primary`. remove once the migration is over
+impl LegacyComponent for re_types::components::TextLogLevel {
+    fn legacy_name() -> ComponentName {
+        use re_types::Loggable as _;
+        Self::name()
+    }
+}

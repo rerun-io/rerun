@@ -1,6 +1,6 @@
-//! Rerun text Space View
+//! Rerun `TextLog` Space View
 //!
-//! A Space View that shows text entries in a table and scrolls with the active time.
+//! A Space View that shows `TextLog` entries in a table and scrolls with the active time.
 
 mod space_view_class;
 mod view_part_system;

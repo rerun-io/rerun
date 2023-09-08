@@ -27,3 +27,13 @@ impl std::borrow::Borrow<str> for TextLogLevel {
         self.as_str()
     }
 }
+
+// TODO(emilk): required to use with `range_entity_with_primary`. remove once the migration is over
+impl arrow2_convert::field::ArrowField for TextLogLevel {
+    type Type = Self;
+
+    fn data_type() -> arrow2::datatypes::DataType {
+        use crate::Loggable as _;
+        Self::arrow_field().data_type
+    }
+}

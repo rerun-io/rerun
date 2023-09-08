@@ -2,7 +2,10 @@ use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::RowId;
 use re_query::{range_entity_with_primary, QueryError};
-use re_types::{components::InstanceKey, Loggable as _};
+use re_types::{
+    components::{InstanceKey, Text, TextLogLevel},
+    Archetype as _, Loggable as _,
+};
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,
@@ -20,26 +23,32 @@ pub struct TextEntry {
 
     pub color: Option<[u8; 4]>,
 
-    pub level: Option<String>,
+    pub body: Text,
 
-    pub body: String,
+    pub level: Option<TextLogLevel>,
 }
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct TextSystem {
+pub struct TextLogSystem {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl NamedViewSystem for TextSystem {
+impl NamedViewSystem for TextLogSystem {
     fn name() -> re_viewer_context::ViewSystemName {
-        "Text".into()
+        "TextLog".into()
     }
 }
 
-impl ViewPartSystem for TextSystem {
+impl ViewPartSystem for TextLogSystem {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![re_components::TextEntry::name()]
+        // TODO(#3159): use actual archetype definition
+        // TextLog::all_components().try_into().unwrap()
+        vec1::vec1![
+            re_types::archetypes::TextLog::indicator_component(),
+            Text::name(),
+            TextLogLevel::name(),
+        ]
     }
 
     fn execute(
@@ -51,37 +60,25 @@ impl ViewPartSystem for TextSystem {
         let store = &ctx.store_db.entity_db.data_store;
 
         for (ent_path, _) in query.iter_entities_for_system(Self::name()) {
-            let query = re_arrow_store::RangeQuery::new(
-                query.timeline,
-                TimeRange::new(i64::MIN.into(), i64::MAX.into()),
-            );
+            // We want everything, for all times:
+            let timeline_query =
+                re_arrow_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
-            let components = [
-                InstanceKey::name(),
-                re_components::TextEntry::name(),
-                re_types::components::Color::name(),
-            ];
-            let ent_views = range_entity_with_primary::<re_components::TextEntry, 3>(
-                store, &query, ent_path, components,
-            );
+            let components = [InstanceKey::name(), Text::name(), TextLogLevel::name()];
+            let ent_views =
+                range_entity_with_primary::<Text, 3>(store, &timeline_query, ent_path, components);
 
             for (time, ent_view) in ent_views {
-                match ent_view.visit2(
-                    |_instance,
-                     text_entry: re_components::TextEntry,
-                     color: Option<re_types::components::Color>| {
-                        let re_components::TextEntry { body, level } = text_entry;
-
-                        self.text_entries.push(TextEntry {
-                            row_id: ent_view.primary_row_id(),
-                            entity_path: ent_path.clone(),
-                            time: time.map(|time| time.as_i64()),
-                            color: color.map(|c| c.to_array()),
-                            level,
-                            body,
-                        });
-                    },
-                ) {
+                match ent_view.visit2(|_instance_key, body: Text, level: Option<TextLogLevel>| {
+                    self.text_entries.push(TextEntry {
+                        row_id: ent_view.primary_row_id(),
+                        entity_path: ent_path.clone(),
+                        time: time.map(|time| time.as_i64()),
+                        color: None, // TODO(emilk): add color to the `TextLog` archetype
+                        body,
+                        level,
+                    });
+                }) {
                     Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
                     Err(err) => {
                         re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
