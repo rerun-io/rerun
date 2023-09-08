@@ -94,8 +94,8 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    Error RecordingStream::try_log_components(
-        const char* entity_path, const std::vector<AnonymousComponentBatch> component_lists
+    Error RecordingStream::try_log_component_batches(
+        const char* entity_path, const std::vector<AnonymousComponentBatch>& component_lists
     ) {
         if (component_lists.size() == 0) {
             return Error::ok();

@@ -115,11 +115,12 @@ namespace rerun {
 
         /// Logs an archetype.
         ///
-        /// Prefer this interface for ease of use over the more general `log_components` interface.
+        /// Prefer this interface for ease of use over the more general `log_component_batches`
+        /// interface.
         ///
         /// Alias for `log_archetype`.
         /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
-        /// log_components!
+        /// log_component_batches!
         ///
         /// Logs any failure via `Error::log_on_failure`
         template <typename T>
@@ -129,7 +130,8 @@ namespace rerun {
 
         /// Logs an archetype.
         ///
-        /// Prefer this interface for ease of use over the more general `log_components` interface.
+        /// Prefer this interface for ease of use over the more general `log_component_batches`
+        /// interface.
         ///
         /// Logs any failure via `Error::log_on_failure`
         template <typename T>
@@ -142,10 +144,10 @@ namespace rerun {
         /// @see log_archetype
         template <typename T>
         Error try_log_archetype(const char* entity_path, const T& archetype) {
-            return try_log_components(entity_path, archetype.as_component_batches());
+            return try_log_component_batches(entity_path, archetype.as_component_batches());
         }
 
-        /// Logs a list of component arrays.
+        /// Logs several component batches.
         ///
         /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
         /// built-in archetypes.
@@ -156,23 +158,26 @@ namespace rerun {
         ///
         /// Logs any failure via `Error::log_on_failure`
         template <typename... Ts>
-        void log_components(const char* entity_path, const Ts&... component_arrays) {
-            try_log_components(entity_path, component_arrays...).log_on_failure();
+        void log_component_batches(const char* entity_path, const Ts&... component_arrays) {
+            try_log_component_batches(entity_path, component_arrays...).log_on_failure();
         }
 
-        /// Logs a list of component arrays, returning an error on failure.
+        /// Logs several component batches, returning an error on failure.
         ///
-        /// @see log_components
+        /// @see log_component_batches
         template <typename... Ts>
-        Error try_log_components(const char* entity_path, const Ts&... component_arrays) {
-            return try_log_components(entity_path, {AnonymousComponentBatch(component_arrays)...});
+        Error try_log_component_batches(const char* entity_path, const Ts&... component_arrays) {
+            return try_log_component_batches(
+                entity_path,
+                {AnonymousComponentBatch(component_arrays)...}
+            );
         }
 
         /// Logs a list of component batches, returning an error on failure.
         ///
-        /// @see log_components
-        Error try_log_components(
-            const char* entity_path, const std::vector<AnonymousComponentBatch> component_lists
+        /// @see log_component_batches
+        Error try_log_component_batches(
+            const char* entity_path, const std::vector<AnonymousComponentBatch>& component_lists
         );
 
         /// Low level API that logs raw data cells to the recording stream.
