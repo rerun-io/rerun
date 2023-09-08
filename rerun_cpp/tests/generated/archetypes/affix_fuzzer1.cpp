@@ -8,7 +8,7 @@
 namespace rerun {
     namespace archetypes {
         const char AffixFuzzer1::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.AffixFuzzer1Indicator";
+            "rerun.testing.components.AffixFuzzer1Indicator";
 
         std::vector<AnonymousComponentBatch> AffixFuzzer1::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
