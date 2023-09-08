@@ -17,7 +17,7 @@ use std::{collections::HashSet, f32::consts::TAU};
 use itertools::Itertools;
 use rerun::{
     archetypes::{SegmentationImage, TextLog},
-    external::re_log,
+    external::{re_log, re_types::components::TextLogLevel},
     EntityPath, RecordingStream,
 };
 
@@ -328,7 +328,10 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     // In either case, this raises the question of tracking time at the SDK level, akin to what the
     // python SDK does.
     fn log_info(rec: &RecordingStream, text: &str) -> anyhow::Result<()> {
-        rec.log("logs/seg_test_log", &TextLog::new(text).with_level("INFO"))?;
+        rec.log(
+            "logs/seg_test_log",
+            &TextLog::new(text).with_level(TextLogLevel::INFO),
+        )?;
         Ok(())
     }
 
@@ -438,7 +441,7 @@ fn test_text_logs(rec: &RecordingStream) -> anyhow::Result<()> {
 
     rec.log(
         "logs",
-        &TextLog::new("this entry has loglevel TRACE").with_level("TRACE"),
+        &TextLog::new("this entry has loglevel TRACE").with_level(TextLogLevel::TRACE),
     )?;
 
     Ok(())

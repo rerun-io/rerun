@@ -1,6 +1,10 @@
 //! Logs a `Tensor` archetype for roundtrip checks.
 
-use rerun::{archetypes::TextLog, external::re_log, RecordingStream};
+use rerun::{
+    archetypes::TextLog,
+    external::{re_log, re_types::components::TextLogLevel},
+    RecordingStream,
+};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -11,7 +15,10 @@ struct Args {
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log("log", &TextLog::new("No level"))?;
-    rec.log("log", &TextLog::new("INFO level").with_level("INFO"))?;
+    rec.log(
+        "log",
+        &TextLog::new("INFO level").with_level(TextLogLevel::INFO),
+    )?;
     rec.log("log", &TextLog::new("WILD level").with_level("WILD"))?;
     Ok(())
 }
