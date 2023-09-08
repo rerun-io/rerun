@@ -15,17 +15,18 @@ namespace rerun {
     class ComponentBatch {
       public:
         const ComponentType* data;
-        size_t size;
+        size_t num_instances;
 
       public:
         /// Construct from a single component.
         ///
         /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
         /// you need to ensure that the data outlives the component list.
-        ComponentBatch(const ComponentType& one_and_only) : data(&one_and_only), size(1) {}
+        ComponentBatch(const ComponentType& one_and_only) : data(&one_and_only), num_instances(1) {}
 
         /// Construct from a raw pointer and size.
-        ComponentBatch(const ComponentType* _data, size_t _size) : data(_data), size(_size) {}
+        ComponentBatch(const ComponentType* _data, size_t _num_instances)
+            : data(_data), num_instances(_num_instances) {}
 
         /// Construct from an std::vector.
         ///
@@ -34,26 +35,27 @@ namespace rerun {
         /// In particular, manipulating the passed vector after constructing the component list,
         /// will invalidate it, similar to iterator invalidation.
         ComponentBatch(const std::vector<ComponentType>& _data)
-            : data(_data.data()), size(_data.size()) {}
+            : data(_data.data()), num_instances(_data.size()) {}
 
         /// Construct from an std::array.
         ///
         /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
         /// you need to ensure that the data outlives the component list.
-        template <size_t Size>
-        ComponentBatch(const std::array<ComponentType, Size>& _data)
-            : data(_data.data()), size(Size) {}
+        template <size_t NumInstances>
+        ComponentBatch(const std::array<ComponentType, NumInstances>& _data)
+            : data(_data.data()), num_instances(NumInstances) {}
 
         /// Construct from a C-Array.
         ///
         /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
         /// you need to ensure that the data outlives the component list.
-        template <size_t Size>
-        ComponentBatch(const ComponentType (&_data)[Size]) : data(_data), size(Size) {}
+        template <size_t NumInstances>
+        ComponentBatch(const ComponentType (&_data)[NumInstances])
+            : data(_data), num_instances(NumInstances) {}
 
         /// Creates a Rerun DataCell from this list of components.
         Result<rerun::DataCell> to_data_cell() const {
-            return ComponentType::to_data_cell(data, size);
+            return ComponentType::to_data_cell(data, num_instances);
         }
     };
 
@@ -61,7 +63,7 @@ namespace rerun {
     class AnonymousComponentBatch {
       public:
         const void* data;
-        size_t size;
+        size_t num_instances;
 
       public:
         /// Construct from any parameter that can be converted to a strongly typed component list.
@@ -73,17 +75,17 @@ namespace rerun {
         template <typename ComponentType>
         AnonymousComponentBatch(const ComponentBatch<ComponentType>& component_list)
             : data(component_list.data),
-              size(component_list.size),
-              to_data_cell_func([](const void* _data, size_t _size) {
+              num_instances(component_list.num_instances),
+              to_data_cell_func([](const void* _data, size_t _num_instances) {
                   return ComponentType::to_data_cell(
                       reinterpret_cast<const ComponentType*>(_data),
-                      _size
+                      _num_instances
                   );
               }) {}
 
         /// Creates a Rerun DataCell from this list of components.
         Result<rerun::DataCell> to_data_cell() const {
-            return to_data_cell_func(data, size);
+            return to_data_cell_func(data, num_instances);
         }
 
       private:

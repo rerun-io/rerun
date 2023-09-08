@@ -166,7 +166,7 @@ namespace rerun {
         template <typename T>
         void log_component_batch(const char* entity_path, const T& component_batch) {
             const auto batch = AnonymousComponentBatch(component_batch);
-            try_log_component_batches(entity_path, batch.size, batch).log_on_failure();
+            try_log_component_batches(entity_path, batch.num_instances, batch).log_on_failure();
         }
 
         /// Logs a single component batch.
@@ -181,7 +181,7 @@ namespace rerun {
         template <typename T>
         Error try_log_component_batch(const char* entity_path, const T& component_batch) {
             const auto batch = AnonymousComponentBatch(component_batch);
-            return try_log_component_batches(entity_path, batch.size, batch);
+            return try_log_component_batches(entity_path, batch.num_instances, batch);
         }
 
         /// Logs several component batches.

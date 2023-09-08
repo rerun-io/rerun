@@ -110,7 +110,7 @@ namespace rerun {
             if (result.is_err()) {
                 return result.error;
             }
-            if (num_instances > 1 && component_list.size == 1) {
+            if (num_instances > 1 && component_list.num_instances == 1) {
                 splatted.push_back(result.value);
             } else {
                 instanced.push_back(result.value);
