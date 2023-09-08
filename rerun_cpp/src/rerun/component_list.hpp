@@ -7,7 +7,7 @@
 #include "result.hpp"
 
 namespace rerun {
-    /// Generic list of components that are contigious in memory.
+    /// Generic list of components that are contiguous in memory.
     ///
     /// Does *not* own the data, user is responsible for the lifetime independent of how it was
     /// passed in.
