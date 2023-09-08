@@ -95,13 +95,12 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_component_batches(
-        const char* entity_path, const std::vector<AnonymousComponentBatch>& component_lists
+        const char* entity_path, size_t num_instances,
+        const std::vector<AnonymousComponentBatch>& component_lists
     ) {
-        if (component_lists.size() == 0) {
+        if (num_instances == 0) {
             return Error::ok();
         }
-
-        auto num_instances = component_lists[0].size;
 
         std::vector<DataCell> instanced;
         std::vector<DataCell> splatted;

@@ -37,6 +37,16 @@ namespace rerun {
     /// set it as a the global.
     ///
     /// Shutting down cannot ever block.
+    ///
+    /// ## Logging
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk-micro-batching) for
+    /// more information.
+    ///
+    /// The data will be timestamped automatically based on the `RecordingStream`'s
+    /// internal clock.
     class RecordingStream {
       public:
         /// Creates a new recording stream to log to.
@@ -118,22 +128,13 @@ namespace rerun {
         /// Prefer this interface for ease of use over the more general `log_component_batches`
         /// interface.
         ///
-        /// Alias for `log_archetype`.
-        /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
-        /// log_component_batches!
-        ///
         /// Logs any failure via `Error::log_on_failure`
         template <typename T>
         void log(const char* entity_path, const T& archetype) {
             log_archetype(entity_path, archetype);
         }
 
-        /// Logs an archetype.
-        ///
-        /// Prefer this interface for ease of use over the more general `log_component_batches`
-        /// interface.
-        ///
-        /// Logs any failure via `Error::log_on_failure`
+        /// @copydoc log
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
             try_log_archetype(entity_path, archetype).log_on_failure();
@@ -144,7 +145,43 @@ namespace rerun {
         /// @see log_archetype
         template <typename T>
         Error try_log_archetype(const char* entity_path, const T& archetype) {
-            return try_log_component_batches(entity_path, archetype.as_component_batches());
+            return try_log_component_batches(
+                entity_path,
+                archetype.num_instances(),
+                archetype.as_component_batches()
+            );
+        }
+
+        /// Logs a single component batch.
+        ///
+        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
+        /// built-in archetypes.
+        ///
+        /// Logs any failure via `Error::log_on_failure`
+        ///
+        /// @param component_batch
+        /// Expects component batch as std::vector, std::array or C arrays.
+        ///
+        /// @see try_log_component_batch, log_component_batches, try_log_component_batches
+        template <typename T>
+        void log_component_batch(const char* entity_path, const T& component_batch) {
+            const auto batch = AnonymousComponentBatch(component_batch);
+            try_log_component_batches(entity_path, batch.size, batch).log_on_failure();
+        }
+
+        /// Logs a single component batch.
+        ///
+        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
+        /// built-in archetypes.
+        ///
+        /// @param component_batch
+        /// Expects component batch as std::vector, std::array or C arrays.
+        ///
+        /// @see log_component_batch, log_component_batches, try_log_component_batches
+        template <typename T>
+        Error try_log_component_batch(const char* entity_path, const T& component_batch) {
+            const auto batch = AnonymousComponentBatch(component_batch);
+            return try_log_component_batches(entity_path, batch.size, batch);
         }
 
         /// Logs several component batches.
@@ -152,38 +189,59 @@ namespace rerun {
         /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
         /// built-in archetypes.
         ///
-        /// Expects component arrays as std::vector, std::array or C arrays.
-        ///
-        /// TODO(andreas): More documentation, examples etc.
-        ///
         /// Logs any failure via `Error::log_on_failure`
+        ///
+        /// @param component_batches
+        /// Expects component batches as std::vector, std::array or C arrays.
+        ///
+        /// @param num_instances
+        /// Specify the expected number of component instances present in each
+        /// list. Each can have either:
+        /// - exactly `num_instances` instances,
+        /// - a single instance (splat),
+        /// - or zero instance (clear).
+        ///
+        /// @see try_log_component_batches
         template <typename... Ts>
-        void log_component_batches(const char* entity_path, const Ts&... component_arrays) {
-            try_log_component_batches(entity_path, component_arrays...).log_on_failure();
+        void log_component_batches(
+            const char* entity_path, size_t num_instances, const Ts&... component_batches
+        ) {
+            try_log_component_batches(entity_path, num_instances, component_batches...)
+                .log_on_failure();
         }
 
         /// Logs several component batches, returning an error on failure.
         ///
+        ///
+        /// @param num_instances
+        /// Specify the expected number of component instances present in each
+        /// list. Each can have either:
+        /// - exactly `num_instances` instances,
+        /// - a single instance (splat),
+        /// - or zero instance (clear).
+        ///
         /// @see log_component_batches
         template <typename... Ts>
-        Error try_log_component_batches(const char* entity_path, const Ts&... component_arrays) {
+        Error try_log_component_batches(
+            const char* entity_path, size_t num_instances, const Ts&... component_batches
+        ) {
             return try_log_component_batches(
                 entity_path,
-                {AnonymousComponentBatch(component_arrays)...}
+                num_instances,
+                {AnonymousComponentBatch(component_batches)...}
             );
         }
 
-        /// Logs a list of component batches, returning an error on failure.
-        ///
-        /// @see log_component_batches
+        /// @copydoc try_log_component_batches
         Error try_log_component_batches(
-            const char* entity_path, const std::vector<AnonymousComponentBatch>& component_lists
+            const char* entity_path, size_t num_instances,
+            const std::vector<AnonymousComponentBatch>& component_lists
         );
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
-        /// I.e. logs a number of components arrays (each with a same number of instances) to a
-        /// single entity path.
+        /// @param num_instances
+        /// Each cell is expected to hold exactly `num_instances` instances.
         Error try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells

@@ -139,6 +139,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("single components can be logged") {
                     stream.log_component_batches(
                         "single-components",
+                        2,
                         rrc::Point2D{1.0, 2.0},
                         rrc::Color(0x00FF00FF)
                     );
@@ -150,10 +151,10 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         rr::datatypes::Vec2D{4.0, 5.0},
                     };
 
-                    stream.log_component_batches("as-carray", c_style_array);
+                    stream.log_component_batch("as-carray", c_style_array);
                 }
                 THEN("components as std::array can be logged") {
-                    stream.log_component_batches(
+                    stream.log_component_batch(
                         "as-array",
                         std::array<rrc::Point2D, 2>{
                             rr::datatypes::Vec2D{1.0, 2.0},
@@ -164,6 +165,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("components as std::vector can be logged") {
                     stream.log_component_batches(
                         "as-vector",
+                        2,
                         std::vector<rrc::Point2D>{
                             rr::datatypes::Vec2D{1.0, 2.0},
                             rr::datatypes::Vec2D{4.0, 5.0},
@@ -178,6 +180,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     };
                     stream.log_component_batches(
                         "as-mix",
+                        3,
                         std::vector{
                             rrc::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
                             rrc::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
@@ -195,6 +198,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("components with splatting some of them can be logged") {
                     stream.log_component_batches(
                         "log_component_batches-splat",
+                        2,
                         std::vector{
                             rrc::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
                             rrc::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
@@ -262,7 +266,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 
                         WHEN("logging a component to the second stream") {
                             check_logged_error([&] {
-                                stream1->log_component_batches(
+                                stream1->log_component_batch(
                                     "as-array",
                                     std::array<rrc::Point2D, 2>{
                                         rr::datatypes::Vec2D{1.0, 2.0},
@@ -321,7 +325,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
 
             WHEN("logging a component and then flushing") {
                 check_logged_error([&] {
-                    stream.log_component_batches(
+                    stream.log_component_batch(
                         "as-array",
                         std::array<rrc::Point2D, 2>{
                             rr::datatypes::Vec2D{1.0, 2.0},
@@ -391,19 +395,19 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             THEN("try_log_data_row returns the correct error") {
                 CHECK(stream.try_log_data_row(path, 0, 0, nullptr).code == error);
             }
-            THEN("try_log_component_batches returns the correct error") {
+            THEN("try_log_component_batch returns the correct error") {
                 CHECK(
-                    stream.try_log_component_batches(path, std::array<rrc::Point2D, 1>{v}).code ==
+                    stream.try_log_component_batch(path, std::array<rrc::Point2D, 1>{v}).code ==
                     error
                 );
             }
             THEN("try_log_archetypes returns the correct error") {
                 CHECK(stream.try_log_archetype(path, rr::archetypes::Points2D(v)).code == error);
             }
-            THEN("log_component_batches logs the correct error") {
+            THEN("log_component_batch logs the correct error") {
                 check_logged_error(
                     [&] {
-                        stream.log_component_batches(
+                        stream.log_component_batch(
                             std::get<0>(variant),
                             std::array<rrc::Point2D, 1>{v}
                         );
@@ -479,47 +483,45 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
             BadComponent::error.code =
                 GENERATE(rr::ErrorCode::Unknown, rr::ErrorCode::ArrowStatusCode_TypeError);
 
-            THEN("calling log_component_batches with an array logs the serialization error") {
+            THEN("calling log_component_batch with an array logs the serialization error") {
                 check_logged_error(
                     [&] {
-                        stream.log_component_batches(path, std::array{component, component});
+                        stream.log_component_batch(path, std::array{component, component});
                     },
                     component.error.code
                 );
             }
-            THEN("calling log_component_batches with a vector logs the serialization error") {
+            THEN("calling log_component_batch with a vector logs the serialization error") {
                 check_logged_error(
                     [&] {
-                        stream.log_component_batches(path, std::vector{component, component});
+                        stream.log_component_batch(path, std::vector{component, component});
                     },
                     component.error.code
                 );
             }
-            THEN("calling log_component_batches with a c array logs the serialization error") {
+            THEN("calling log_component_batch with a c array logs the serialization error") {
                 const BadComponent components[] = {component, component};
                 check_logged_error(
-                    [&] { stream.log_component_batches(path, components); },
+                    [&] { stream.log_component_batch(path, components); },
                     component.error.code
                 );
             }
-            THEN("calling try_log_component_batches with an array forwards the serialization error"
-            ) {
+            THEN("calling try_log_component_batch with an array forwards the serialization error") {
                 CHECK(
-                    stream.try_log_component_batches(path, std::array{component, component}) ==
+                    stream.try_log_component_batch(path, std::array{component, component}) ==
                     component.error
                 );
             }
-            THEN("calling try_log_component_batches with a vector forwards the serialization error"
-            ) {
+            THEN("calling try_log_component_batch with a vector forwards the serialization error") {
                 CHECK(
-                    stream.try_log_component_batches(path, std::vector{component, component}) ==
+                    stream.try_log_component_batch(path, std::vector{component, component}) ==
                     component.error
                 );
             }
-            THEN("calling try_log_component_batches with a c array forwards the serialization error"
+            THEN("calling try_log_component_batch with a c array forwards the serialization error"
             ) {
                 const BadComponent components[] = {component, component};
-                CHECK(stream.try_log_component_batches(path, components) == component.error);
+                CHECK(stream.try_log_component_batch(path, components) == component.error);
             }
         }
         AND_GIVEN("an archetype that fails serialization") {

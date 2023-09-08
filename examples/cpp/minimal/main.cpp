@@ -33,6 +33,7 @@ int main(int argc, char** argv) {
     rrc::Text c_style_array[3] = {rrc::Text("hello"), rrc::Text("friend"), rrc::Text("yo")};
     rr_stream.log_component_batches(
         "2d/points",
+        3,
         std::vector{rrc::Point2D(0.0f, 0.0f), rrc::Point2D(1.0f, 3.0f), rrc::Point2D(5.0f, 5.0f)},
         std::array{rrc::Color(0xFF0000FF), rrc::Color(0x00FF00FF), rrc::Color(0x0000FFFF)},
         c_style_array
