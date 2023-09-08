@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
 use re_query::query_archetype;
-use re_types::{Archetype as _, Loggable as _};
+use re_types::Archetype as _;
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,
@@ -27,12 +27,9 @@ impl NamedViewSystem for TextDocumentSystem {
 
 impl ViewPartSystem for TextDocumentSystem {
     fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(#3159): use actual archetype definition
-        // TextDocument::all_components().try_into().unwrap()
-        vec1::vec1![
-            re_types::archetypes::TextDocument::indicator_component(),
-            re_types::components::Text::name(),
-        ]
+        re_types::archetypes::TextDocument::all_components()
+            .try_into()
+            .unwrap()
     }
 
     fn execute(
