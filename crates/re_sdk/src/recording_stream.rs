@@ -9,7 +9,7 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::{components::InstanceKey, Archetype, ComponentList, SerializationError};
+use re_types::{components::InstanceKey, Archetype, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -642,17 +642,17 @@ impl RecordingStream {
         timeless: bool,
         arch: &impl Archetype,
     ) -> RecordingStreamResult<()> {
-        self.log_component_lists(
+        self.log_component_batches(
             ent_path,
             timeless,
             arch.num_instances() as u32,
-            arch.as_component_lists()
+            arch.as_component_batches()
                 .iter()
-                .map(|any_comp_list| any_comp_list.as_list()),
+                .map(|any_comp_batch| any_comp_batch.as_batch()),
         )
     }
 
-    /// Logs a set of [`ComponentList`]s into Rerun.
+    /// Logs a set of [`ComponentBatch`]s into Rerun.
     ///
     /// If `timeless` is set to `false`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
@@ -674,12 +674,12 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
-    pub fn log_component_lists<'a>(
+    pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
         num_instances: u32,
-        comp_lists: impl IntoIterator<Item = &'a dyn ComponentList>,
+        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             return Ok(()); // silently drop the message
@@ -687,17 +687,17 @@ impl RecordingStream {
 
         let ent_path = ent_path.into();
 
-        let comp_lists: Result<Vec<_>, _> = comp_lists
+        let comp_batches: Result<Vec<_>, _> = comp_batches
             .into_iter()
-            .map(|comp_list| {
-                comp_list
+            .map(|comp_batch| {
+                comp_batch
                     .try_to_arrow()
-                    .map(|array| (comp_list.arrow_field(), array))
+                    .map(|array| (comp_batch.arrow_field(), array))
             })
             .collect();
-        let comp_lists = comp_lists?;
+        let comp_batches = comp_batches?;
 
-        let cells: Result<Vec<_>, _> = comp_lists
+        let cells: Result<Vec<_>, _> = comp_batches
             .into_iter()
             .map(|(field, array)| {
                 // NOTE: Unreachable, a top-level Field will always be a component, and thus an

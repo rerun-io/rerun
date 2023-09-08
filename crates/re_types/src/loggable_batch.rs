@@ -7,112 +7,112 @@ use crate::Archetype;
 
 // ---
 
-/// A [`LoggableList`] represents an array's worth of [`Loggable`] instances, ready to be
+/// A [`LoggableBatch`] represents an array's worth of [`Loggable`] instances, ready to be
 /// serialized.
 ///
-/// [`LoggableList`] is carefully designed to be erasable ("object-safe"), so that it is possible
-/// to build heterogeneous collections of [`LoggableList`]s (e.g. `Vec<dyn LoggableList>`).
+/// [`LoggableBatch`] is carefully designed to be erasable ("object-safe"), so that it is possible
+/// to build heterogeneous collections of [`LoggableBatch`]s (e.g. `Vec<dyn LoggableBatch>`).
 /// This erasability is what makes extending [`Archetype`]s possible with little effort.
 ///
-/// You should almost never need to implement [`LoggableList`] manually, as it is already
+/// You should almost never need to implement [`LoggableBatch`] manually, as it is already
 /// blanket implemented for most common use cases (arrays/vectors/slices of loggables, etc).
-pub trait LoggableList {
+pub trait LoggableBatch {
     type Name;
 
     // NOTE: It'd be tempting to have the following associated type, but that'd be
     // counterproductive, the whole point of this is to allow for heterogeneous collections!
     // type Loggable: Loggable;
 
-    /// The fully-qualified name of this list, e.g. `rerun.datatypes.Vec2D`.
+    /// The fully-qualified name of this batch, e.g. `rerun.datatypes.Vec2D`.
     fn name(&self) -> Self::Name;
 
-    /// The number of component instances stored into this list.
+    /// The number of component instances stored into this batch.
     fn num_instances(&self) -> usize;
 
     /// The underlying [`arrow2::datatypes::Field`], including datatype extensions.
     fn arrow_field(&self) -> arrow2::datatypes::Field;
 
-    /// Serializes the list into an Arrow array.
+    /// Serializes the batch into an Arrow array.
     ///
-    /// This will _never_ fail for Rerun's built-in [`LoggableList`].
-    /// For the non-fallible version, see [`LoggableList::to_arrow`].
+    /// This will _never_ fail for Rerun's built-in [`LoggableBatch`].
+    /// For the non-fallible version, see [`LoggableBatch::to_arrow`].
     fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 
-    /// Serializes the list into an Arrow array.
+    /// Serializes the batch into an Arrow array.
     ///
     /// Panics on failure.
-    /// This will _never_ fail for Rerun's built-in [`LoggableList`]s.
+    /// This will _never_ fail for Rerun's built-in [`LoggableBatch`]s.
     ///
-    /// For the fallible version, see [`LoggableList::try_to_arrow`].
+    /// For the fallible version, see [`LoggableBatch::try_to_arrow`].
     fn to_arrow(&self) -> Box<dyn ::arrow2::array::Array> {
         self.try_to_arrow().detailed_unwrap()
     }
 }
 
-/// A [`DatatypeList`] represents an array's worth of [`Datatype`] instances.
+/// A [`DatatypeBatch`] represents an array's worth of [`Datatype`] instances.
 ///
-/// Any [`LoggableList`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically
-/// implements [`DatatypeList`].
-pub trait DatatypeList: LoggableList<Name = DatatypeName> {}
+/// Any [`LoggableBatch`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically
+/// implements [`DatatypeBatch`].
+pub trait DatatypeBatch: LoggableBatch<Name = DatatypeName> {}
 
-/// A [`ComponentList`] represents an array's worth of [`Component`] instances.
+/// A [`ComponentBatch`] represents an array's worth of [`Component`] instances.
 ///
-/// Any [`LoggableList`] with a [`Loggable::Name`] set to [`ComponentName`] automatically
-/// implements [`ComponentList`].
-pub trait ComponentList: LoggableList<Name = ComponentName> {}
+/// Any [`LoggableBatch`] with a [`Loggable::Name`] set to [`ComponentName`] automatically
+/// implements [`ComponentBatch`].
+pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {}
 
-/// Holds either an owned [`ComponentList`] that lives on heap, or a reference to one.
+/// Holds either an owned [`ComponentBatch`] that lives on heap, or a reference to one.
 ///
 /// This doesn't use [`std::borrow::Cow`] on purpose: `Cow` requires `Clone`, which would break
-/// object-safety, which would prevent us from erasing [`ComponentList`]s in the first place.
-pub enum AnyComponentList<'a> {
-    Owned(Box<dyn ComponentList>),
-    Ref(&'a dyn ComponentList),
+/// object-safety, which would prevent us from erasing [`ComponentBatch`]s in the first place.
+pub enum AnyComponentBatch<'a> {
+    Owned(Box<dyn ComponentBatch>),
+    Ref(&'a dyn ComponentBatch),
 }
 
-impl<'a> From<&'a dyn ComponentList> for AnyComponentList<'a> {
+impl<'a> From<&'a dyn ComponentBatch> for AnyComponentBatch<'a> {
     #[inline]
-    fn from(comp_list: &'a dyn ComponentList) -> Self {
-        Self::Ref(comp_list)
+    fn from(comp_batch: &'a dyn ComponentBatch) -> Self {
+        Self::Ref(comp_batch)
     }
 }
 
-impl From<Box<dyn ComponentList>> for AnyComponentList<'_> {
+impl From<Box<dyn ComponentBatch>> for AnyComponentBatch<'_> {
     #[inline]
-    fn from(comp_list: Box<dyn ComponentList>) -> Self {
-        Self::Owned(comp_list)
+    fn from(comp_batch: Box<dyn ComponentBatch>) -> Self {
+        Self::Owned(comp_batch)
     }
 }
 
-impl<'a> AnyComponentList<'a> {
-    /// Returns a reference to the inner [`ComponentList`], no matter where it lives.
+impl<'a> AnyComponentBatch<'a> {
+    /// Returns a reference to the inner [`ComponentBatch`], no matter where it lives.
     ///
     /// This doesn't use [`std::ops::Deref`] on purpose: it's associated `Target` type is not
     /// generic over lifetimes, which we need in this case.
     #[inline]
-    pub fn as_list(&'a self) -> &dyn ComponentList {
+    pub fn as_batch(&'a self) -> &dyn ComponentBatch {
         match self {
-            AnyComponentList::Owned(this) => &**this,
-            AnyComponentList::Ref(this) => *this,
+            AnyComponentBatch::Owned(this) => &**this,
+            AnyComponentBatch::Ref(this) => *this,
         }
     }
 }
 
 // NOTE: Cannot do this since `Deref::Target` is not generic over lifetimes.
-// impl<'a> std::ops::Deref for AnyComponentList<'a> {
-//     type Target = dyn ComponentList;
+// impl<'a> std::ops::Deref for AnyComponentBatch<'a> {
+//     type Target = dyn ComponentBatch;
 //
 //     fn deref(&self) -> &Self::Target {
 //         match self {
-//             AnyComponentList::Owned(this) => &**this,
-//             AnyComponentList::Ref(this) => *this,
+//             AnyComponentBatch::Owned(this) => &**this,
+//             AnyComponentBatch::Ref(this) => *this,
 //         }
 //     }
 // }
 
 // --- Unary ---
 
-impl<L: Clone + Loggable> LoggableList for L {
+impl<L: Clone + Loggable> LoggableBatch for L {
     type Name = L::Name;
 
     #[inline]
@@ -136,13 +136,13 @@ impl<L: Clone + Loggable> LoggableList for L {
     }
 }
 
-impl<D: Datatype> DatatypeList for D {}
+impl<D: Datatype> DatatypeBatch for D {}
 
-impl<C: Component> ComponentList for C {}
+impl<C: Component> ComponentBatch for C {}
 
 // --- Vec ---
 
-impl<L: Clone + Loggable> LoggableList for Vec<L> {
+impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
     type Name = L::Name;
 
     #[inline]
@@ -166,13 +166,13 @@ impl<L: Clone + Loggable> LoggableList for Vec<L> {
     }
 }
 
-impl<D: Datatype> DatatypeList for Vec<D> {}
+impl<D: Datatype> DatatypeBatch for Vec<D> {}
 
-impl<C: Component> ComponentList for Vec<C> {}
+impl<C: Component> ComponentBatch for Vec<C> {}
 
 // --- Vec<Option> ---
 
-impl<L: Loggable> LoggableList for Vec<Option<L>> {
+impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
     type Name = L::Name;
 
     #[inline]
@@ -199,13 +199,13 @@ impl<L: Loggable> LoggableList for Vec<Option<L>> {
     }
 }
 
-impl<D: Datatype> DatatypeList for Vec<Option<D>> {}
+impl<D: Datatype> DatatypeBatch for Vec<Option<D>> {}
 
-impl<C: Component> ComponentList for Vec<Option<C>> {}
+impl<C: Component> ComponentBatch for Vec<Option<C>> {}
 
 // --- Array ---
 
-impl<L: Loggable, const N: usize> LoggableList for [L; N] {
+impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
     type Name = L::Name;
 
     #[inline]
@@ -229,13 +229,13 @@ impl<L: Loggable, const N: usize> LoggableList for [L; N] {
     }
 }
 
-impl<D: Datatype, const N: usize> DatatypeList for [D; N] {}
+impl<D: Datatype, const N: usize> DatatypeBatch for [D; N] {}
 
-impl<C: Component, const N: usize> ComponentList for [C; N] {}
+impl<C: Component, const N: usize> ComponentBatch for [C; N] {}
 
 // --- Array<Option> ---
 
-impl<L: Loggable, const N: usize> LoggableList for [Option<L>; N] {
+impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
     type Name = L::Name;
 
     #[inline]
@@ -262,13 +262,13 @@ impl<L: Loggable, const N: usize> LoggableList for [Option<L>; N] {
     }
 }
 
-impl<D: Datatype, const N: usize> DatatypeList for [Option<D>; N] {}
+impl<D: Datatype, const N: usize> DatatypeBatch for [Option<D>; N] {}
 
-impl<C: Component, const N: usize> ComponentList for [Option<C>; N] {}
+impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {}
 
 // --- Slice ---
 
-impl<'a, L: Loggable> LoggableList for &'a [L] {
+impl<'a, L: Loggable> LoggableBatch for &'a [L] {
     type Name = L::Name;
 
     #[inline]
@@ -292,13 +292,13 @@ impl<'a, L: Loggable> LoggableList for &'a [L] {
     }
 }
 
-impl<'a, D: Datatype> DatatypeList for &'a [D] {}
+impl<'a, D: Datatype> DatatypeBatch for &'a [D] {}
 
-impl<'a, C: Component> ComponentList for &'a [C] {}
+impl<'a, C: Component> ComponentBatch for &'a [C] {}
 
 // --- Slice<Option> ---
 
-impl<'a, L: Loggable> LoggableList for &'a [Option<L>] {
+impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
     type Name = L::Name;
 
     #[inline]
@@ -325,13 +325,13 @@ impl<'a, L: Loggable> LoggableList for &'a [Option<L>] {
     }
 }
 
-impl<'a, D: Datatype> DatatypeList for &'a [Option<D>] {}
+impl<'a, D: Datatype> DatatypeBatch for &'a [Option<D>] {}
 
-impl<'a, C: Component> ComponentList for &'a [Option<C>] {}
+impl<'a, C: Component> ComponentBatch for &'a [Option<C>] {}
 
 // --- ArrayRef ---
 
-impl<'a, L: Loggable, const N: usize> LoggableList for &'a [L; N] {
+impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [L; N] {
     type Name = L::Name;
 
     #[inline]
@@ -355,13 +355,13 @@ impl<'a, L: Loggable, const N: usize> LoggableList for &'a [L; N] {
     }
 }
 
-impl<'a, D: Datatype, const N: usize> DatatypeList for &'a [D; N] {}
+impl<'a, D: Datatype, const N: usize> DatatypeBatch for &'a [D; N] {}
 
-impl<'a, C: Component, const N: usize> ComponentList for &'a [C; N] {}
+impl<'a, C: Component, const N: usize> ComponentBatch for &'a [C; N] {}
 
 // --- ArrayRef<Option> ---
 
-impl<'a, L: Loggable, const N: usize> LoggableList for &'a [Option<L>; N] {
+impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
     type Name = L::Name;
 
     #[inline]
@@ -388,6 +388,6 @@ impl<'a, L: Loggable, const N: usize> LoggableList for &'a [Option<L>; N] {
     }
 }
 
-impl<'a, D: Datatype, const N: usize> DatatypeList for &'a [Option<D>; N] {}
+impl<'a, D: Datatype, const N: usize> DatatypeBatch for &'a [Option<D>; N] {}
 
-impl<'a, C: Component, const N: usize> ComponentList for &'a [Option<C>; N] {}
+impl<'a, C: Component, const N: usize> ComponentBatch for &'a [Option<C>; N] {}

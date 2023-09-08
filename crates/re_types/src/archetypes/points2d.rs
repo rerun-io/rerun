@@ -28,7 +28,7 @@
 ///
 ///    // Log an extra rect to set the view bounds
 ///    // TODO(#2786): Rect2D archetype
-///    rec.log_component_lists(
+///    rec.log_component_batches(
 ///        "bounds",
 ///        false,
 ///        1,
@@ -154,31 +154,31 @@ impl crate::Archetype for Points2D {
         self.points.len()
     }
 
-    fn as_component_lists(&self) -> Vec<crate::AnyComponentList<'_>> {
+    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
         [
-            Some(Self::Indicator::new_list(self.num_instances() as _).into()),
-            Some((&self.points as &dyn crate::ComponentList).into()),
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.points as &dyn crate::ComponentBatch).into()),
             self.radii
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.colors
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.labels
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.draw_order
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.class_ids
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.keypoint_ids
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.instance_keys
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

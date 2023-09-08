@@ -5,7 +5,7 @@ use rerun::{
     datatypes::Float32,
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    AnyComponentList, Archetype, ArchetypeName, ComponentList, ComponentName,
+    AnyComponentBatch, Archetype, ArchetypeName, ComponentBatch, ComponentName,
     GenericIndicatorComponent, Loggable, RecordingStreamBuilder,
 };
 
@@ -48,16 +48,16 @@ impl Archetype for CustomPoints3D {
         self.points3d.num_instances()
     }
 
-    fn as_component_lists(&self) -> Vec<AnyComponentList<'_>> {
+    fn as_component_batches(&self) -> Vec<AnyComponentBatch<'_>> {
         self.points3d
-            .as_component_lists()
+            .as_component_batches()
             .into_iter()
             .chain(
                 [
-                    Some(Self::Indicator::new_list(self.num_instances()).into()),
+                    Some(Self::Indicator::batch(self.num_instances()).into()),
                     self.confidences
                         .as_ref()
-                        .map(|v| (v as &dyn ComponentList).into()),
+                        .map(|v| (v as &dyn ComponentBatch).into()),
                 ]
                 .into_iter()
                 .flatten(),

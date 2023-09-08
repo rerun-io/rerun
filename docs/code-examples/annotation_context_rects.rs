@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Log a batch of 2 rectangles with different class IDs
     // TODO(#2786): Rect2D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "detections",
         false,
         2,
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Log an extra rect to set the view bounds
     // TODO(#2786): Rect2D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "bounds",
         false,
         1,

@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.map_inplace(|x| *x = rand::random());
 
     // TODO(#2816): Pinhole archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "world/image",
         false,
         1,

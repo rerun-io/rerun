@@ -904,9 +904,9 @@ fn quote_trait_impls_from_obj(
                 .map(|field| format_ident!("{}", field.name))
                 .collect::<Vec<_>>();
 
-            let all_component_lists = {
+            let all_component_batches = {
                 std::iter::once(quote!{
-                    Some(Self::Indicator::new_list(self.num_instances() as _).into())
+                    Some(Self::Indicator::batch(self.num_instances() as _).into())
                 }).chain(obj.fields.iter().map(|obj_field| {
                     let field_name = format_ident!("{}", obj_field.name);
                     let is_plural = obj_field.typ.is_plural();
@@ -917,13 +917,13 @@ fn quote_trait_impls_from_obj(
                     // the nullability of individual elements (i.e. instances)!
                     match (is_plural, is_nullable) {
                         (true, true) => quote! {
-                            self.#field_name.as_ref().map(|comp_list| (comp_list as &dyn crate::ComponentList).into())
+                            self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into())
                         },
                         (false, true) => quote! {
-                            self.#field_name.as_ref().map(|comp| (comp as &dyn crate::ComponentList).into())
+                            self.#field_name.as_ref().map(|comp| (comp as &dyn crate::ComponentBatch).into())
                         },
                         (_, false) => quote! {
-                            Some((&self.#field_name as &dyn crate::ComponentList).into())
+                            Some((&self.#field_name as &dyn crate::ComponentBatch).into())
                         }
                     }
                 }))
@@ -1111,8 +1111,8 @@ fn quote_trait_impls_from_obj(
                         #num_instances
                     }
 
-                    fn as_component_lists(&self) -> Vec<crate::AnyComponentList<'_>> {
-                        [#(#all_component_lists,)*].into_iter().flatten().collect()
+                    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
+                        [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }
 
                     #[inline]

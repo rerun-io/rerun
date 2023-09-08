@@ -24,7 +24,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 
     // Hack to establish 2d view bounds
     // TODO(#2786): Rect2D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "rect",
         false,
         1,

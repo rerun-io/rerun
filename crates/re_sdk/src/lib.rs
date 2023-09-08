@@ -67,7 +67,7 @@ pub mod time {
 /// These are the different _components_ you can log.
 ///
 /// They all implement the [`Component`][`re_types::Component`] trait,
-/// and can be used in [`RecordingStream::log_component_lists`].
+/// and can be used in [`RecordingStream::log_component_batches`].
 pub mod components {
     pub use re_components::{
         Box3D, EncodedMesh3D, Mesh3D, MeshFormat, Pinhole, Quaternion, RawMesh3D, Rect2D, Scalar,
@@ -94,8 +94,8 @@ pub mod coordinates {
 }
 
 pub use re_types::{
-    archetypes, datatypes, AnyComponentList, Archetype, ArchetypeName, Component, ComponentList,
-    ComponentName, Datatype, DatatypeList, DatatypeName, GenericIndicatorComponent, Loggable,
+    archetypes, datatypes, AnyComponentBatch, Archetype, ArchetypeName, Component, ComponentBatch,
+    ComponentName, Datatype, DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable,
 };
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.

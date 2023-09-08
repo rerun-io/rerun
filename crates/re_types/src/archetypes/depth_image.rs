@@ -120,16 +120,16 @@ impl crate::Archetype for DepthImage {
         1
     }
 
-    fn as_component_lists(&self) -> Vec<crate::AnyComponentList<'_>> {
+    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
         [
-            Some(Self::Indicator::new_list(self.num_instances() as _).into()),
-            Some((&self.data as &dyn crate::ComponentList).into()),
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
             self.meter
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.draw_order
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

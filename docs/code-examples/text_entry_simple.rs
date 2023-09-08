@@ -6,13 +6,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_text_entry").memory()?;
 
     // TODO(#2793): TextLog archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "logs",
         false,
         1,
         [&TextEntry::new("this entry has loglevel TRACE", Some("TRACE".into())) as _],
     )?;
-    rec.log_component_lists(
+    rec.log_component_batches(
         "logs",
         false,
         1,

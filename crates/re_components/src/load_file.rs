@@ -48,7 +48,7 @@ pub fn data_cells_from_file_path(
         #[cfg(feature = "image")]
         _ => {
             use re_types::Archetype;
-            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::new_list(1);
+            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
             let indicator_cell = DataCell::from_arrow(
                 re_types::archetypes::Image::indicator_component(),
                 indicator.to_arrow(),
@@ -100,7 +100,7 @@ pub fn data_cells_from_file_contents(
             };
 
             use re_types::Archetype;
-            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::new_list(1);
+            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
             let indicator_cell = DataCell::from_arrow(
                 re_types::archetypes::Image::indicator_component(),
                 indicator.to_arrow(),

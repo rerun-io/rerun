@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // TODO(#2788): Mesh archetype
-    rec.log_component_lists("triangle", false, 1, [&Mesh3D::Raw(mesh) as _])?;
+    rec.log_component_batches("triangle", false, 1, [&Mesh3D::Raw(mesh) as _])?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

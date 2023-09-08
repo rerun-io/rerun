@@ -139,28 +139,28 @@ impl crate::Archetype for Points3D {
         self.points.len()
     }
 
-    fn as_component_lists(&self) -> Vec<crate::AnyComponentList<'_>> {
+    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
         [
-            Some(Self::Indicator::new_list(self.num_instances() as _).into()),
-            Some((&self.points as &dyn crate::ComponentList).into()),
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.points as &dyn crate::ComponentBatch).into()),
             self.radii
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.colors
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.labels
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.class_ids
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.keypoint_ids
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.instance_keys
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

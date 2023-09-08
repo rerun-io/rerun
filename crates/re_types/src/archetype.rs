@@ -1,10 +1,10 @@
 use crate::{
-    AnyComponentList, ComponentList, ComponentName, DeserializationResult, ResultExt as _,
+    AnyComponentBatch, ComponentBatch, ComponentName, DeserializationResult, ResultExt as _,
     SerializationResult, _Backtrace,
 };
 
 #[allow(unused_imports)] // used in docstrings
-use crate::{Component, Loggable, LoggableList};
+use crate::{Component, Loggable, LoggableBatch};
 
 // ---
 
@@ -24,8 +24,8 @@ use crate::{Component, Loggable, LoggableList};
 /// manually extend existing archetypes, or even implement fully custom ones.
 ///
 /// Most [`Archetype`] methods are optional to implement.
-/// The most important method to implement is [`Archetype::as_component_lists`], which describes how
-/// the archetype can be interpreted as a [`ComponentList`]: a set of components that are ready to
+/// The most important method to implement is [`Archetype::as_component_batches`], which describes how
+/// the archetype can be interpreted as a [`ComponentBatch`]: a set of components that are ready to
 /// be serialized.
 ///
 /// Have a look at our [Custom Data] example to learn more about handwritten archetypes.
@@ -51,13 +51,13 @@ pub trait Archetype {
     ///
     /// Since null arrays aren't actually arrays and we don't actually have any data to shuffle
     /// around per-se, we can't implement the usual [`Loggable`] traits.
-    /// For this reason, indicator components directly implement [`LoggableList`] instead, and
+    /// For this reason, indicator components directly implement [`LoggableBatch`] instead, and
     /// bypass the entire iterator machinery.
     //
     // TODO(rust-lang/rust#29661): We'd like to just default this to the right thing which is
     // pretty much always `A::Indicator`, but defaults are unstable.
-    // type Indicator: ComponentList = A::Indicator;
-    type Indicator: ComponentList;
+    // type Indicator: ComponentBatch = A::Indicator;
+    type Indicator: ComponentBatch;
 
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
@@ -114,12 +114,12 @@ pub trait Archetype {
     /// present in its required component(s).
     #[inline]
     fn num_instances(&self) -> usize {
-        self.as_component_lists()
+        self.as_component_batches()
             .first()
-            .map_or(0, |comp_list| comp_list.as_list().num_instances())
+            .map_or(0, |comp_batch| comp_batch.as_batch().num_instances())
     }
 
-    /// Exposes the archetype's contents as a set of [`ComponentList`]s.
+    /// Exposes the archetype's contents as a set of [`ComponentBatch`]s.
     ///
     /// This is the main mechanism for easily extending builtin archetypes or even writing
     /// fully custom ones.
@@ -130,7 +130,7 @@ pub trait Archetype {
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
     #[inline]
-    fn as_component_lists(&self) -> Vec<AnyComponentList<'_>> {
+    fn as_component_batches(&self) -> Vec<AnyComponentBatch<'_>> {
         vec![]
     }
 
@@ -138,7 +138,7 @@ pub trait Archetype {
 
     /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.
     ///
-    /// The default implementation will simply serialize the result of [`Self::as_component_lists`]
+    /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
     /// as-is, which is what you want in 99.9% of cases.
     ///
     /// This can _never_ fail for Rerun's built-in archetypes.
@@ -148,14 +148,14 @@ pub trait Archetype {
         &self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
     {
-        self.as_component_lists()
+        self.as_component_batches()
             .into_iter()
-            .map(|comp_list| {
-                comp_list
-                    .as_list()
+            .map(|comp_batch| {
+                comp_batch
+                    .as_batch()
                     .try_to_arrow()
-                    .map(|array| (comp_list.as_list().arrow_field(), array))
-                    .with_context(comp_list.as_list().name())
+                    .map(|array| (comp_batch.as_batch().arrow_field(), array))
+                    .with_context(comp_batch.as_batch().name())
             })
             .collect()
     }
@@ -246,12 +246,12 @@ pub struct GenericIndicatorComponent<A: Archetype> {
 }
 
 impl<'a, A: 'a + Archetype> GenericIndicatorComponent<A> {
-    /// Allocates a new [`ComponentList`] that represents `num_instances` elements worth of this
+    /// Allocates a new [`ComponentBatch`] that represents `num_instances` elements worth of this
     /// indicator component.
     ///
     /// Indicator components don't actually carry any data, thus this is extremely cheap.
     #[inline]
-    pub fn new_list(num_instances: usize) -> Box<dyn ComponentList + 'a> {
+    pub fn batch(num_instances: usize) -> Box<dyn ComponentBatch + 'a> {
         Box::new(Self {
             num_instances,
             _phantom: std::marker::PhantomData::<A>,
@@ -259,7 +259,7 @@ impl<'a, A: 'a + Archetype> GenericIndicatorComponent<A> {
     }
 }
 
-impl<A: Archetype> crate::LoggableList for GenericIndicatorComponent<A> {
+impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     type Name = ComponentName;
 
     #[inline]
@@ -295,4 +295,4 @@ impl<A: Archetype> crate::LoggableList for GenericIndicatorComponent<A> {
     }
 }
 
-impl<A: Archetype> crate::ComponentList for GenericIndicatorComponent<A> {}
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {}
