@@ -9,7 +9,7 @@ use re_viewer_context::{
     ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
-use super::view_part_system::{TextEntry, TextLogSystem};
+use super::view_part_system::{Entry, TextLogSystem};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default)]
@@ -143,8 +143,8 @@ impl SpaceViewClass for TextSpaceView {
 
         // TODO(andreas): Should filter text entries in the part-system instead.
         // this likely requires a way to pass state into a context.
-        let text_entries = text
-            .text_entries
+        let entries = text
+            .entries
             .iter()
             .filter(|te| {
                 te.level
@@ -159,7 +159,7 @@ impl SpaceViewClass for TextSpaceView {
         }
         .show(ui, |ui| {
             // Update filters if necessary.
-            state.filters.update(ctx, &text_entries);
+            state.filters.update(ctx, &entries);
 
             let time = ctx
                 .rec_cfg
@@ -173,7 +173,7 @@ impl SpaceViewClass for TextSpaceView {
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
                 re_tracing::profile_scope!("TextEntryState - search scroll time");
-                text_entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
+                entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
             });
 
             state.latest_time = time;
@@ -181,7 +181,7 @@ impl SpaceViewClass for TextSpaceView {
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
                     re_tracing::profile_scope!("render table");
-                    table_ui(ctx, ui, state, &text_entries, scroll_to_row);
+                    table_ui(ctx, ui, state, &entries, scroll_to_row);
                 })
             });
         });
@@ -224,7 +224,7 @@ impl ViewTextFilters {
 
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
-    fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[&TextEntry]) {
+    fn update(&mut self, ctx: &mut ViewerContext<'_>, entries: &[&Entry]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -238,7 +238,7 @@ impl ViewTextFilters {
             col_timelines.entry(*timeline).or_insert(true);
         }
 
-        for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
+        for level in entries.iter().filter_map(|te| te.level.as_ref()) {
             row_log_levels.entry(level.clone()).or_insert(true);
         }
     }
@@ -246,7 +246,7 @@ impl ViewTextFilters {
 
 // ---
 
-fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
+fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
     if let Some(time_point) = ctx
         .store_db
         .entity_db
@@ -267,7 +267,7 @@ fn table_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut TextSpaceViewState,
-    text_entries: &[&TextEntry],
+    entries: &[&Entry],
     scroll_to_row: Option<usize>,
 ) {
     let timelines = state
@@ -340,18 +340,18 @@ fn table_ui(
 
             body_clip_rect = Some(body.max_rect());
 
-            let row_heights = text_entries.iter().map(|te| calc_row_height(te));
+            let row_heights = entries.iter().map(|te| calc_row_height(te));
             body.heterogeneous_rows(row_heights, |index, mut row| {
-                let text_entry = &text_entries[index];
+                let entry = &entries[index];
 
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying
                 // store, which is a costly operation.
                 // Doing this here guarantees that it only happens for visible rows.
-                let Some(time_point) = get_time_point(ctx, text_entry) else {
+                let Some(time_point) = get_time_point(ctx, entry) else {
                     row.col(|ui| {
                         ui.colored_label(
                             egui::Color32::RED,
-                            "<failed to load TextEntry from data store>",
+                            "<failed to load TextLog from data store>",
                         );
                     });
                     return;
@@ -386,14 +386,14 @@ fn table_ui(
                 // path
                 if state.filters.col_entity_path {
                     row.col(|ui| {
-                        item_ui::entity_path_button(ctx, ui, None, &text_entry.entity_path);
+                        item_ui::entity_path_button(ctx, ui, None, &entry.entity_path);
                     });
                 }
 
                 // level
                 if state.filters.col_log_level {
                     row.col(|ui| {
-                        if let Some(lvl) = &text_entry.level {
+                        if let Some(lvl) = &entry.level {
                             ui.label(level_to_rich_text(ui, lvl));
                         } else {
                             ui.label("-");
@@ -403,12 +403,12 @@ fn table_ui(
 
                 // body
                 row.col(|ui| {
-                    let mut text = egui::RichText::new(text_entry.body.as_str());
+                    let mut text = egui::RichText::new(entry.body.as_str());
 
                     if state.monospace {
                         text = text.monospace();
                     }
-                    if let Some(color) = text_entry.color {
+                    if let Some(color) = entry.color {
                         text = text.color(color);
                     }
 
@@ -428,7 +428,7 @@ fn table_ui(
     }
 }
 
-fn calc_row_height(entry: &TextEntry) -> f32 {
+fn calc_row_height(entry: &Entry) -> f32 {
     // Simple, fast, ugly, and functional
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;

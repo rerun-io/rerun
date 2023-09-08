@@ -12,7 +12,7 @@ use re_viewer_context::{
 };
 
 #[derive(Debug, Clone)]
-pub struct TextEntry {
+pub struct Entry {
     // props
     pub row_id: RowId,
 
@@ -31,7 +31,7 @@ pub struct TextEntry {
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
 pub struct TextLogSystem {
-    pub text_entries: Vec<TextEntry>,
+    pub entries: Vec<Entry>,
 }
 
 impl NamedViewSystem for TextLogSystem {
@@ -80,7 +80,7 @@ impl ViewPartSystem for TextLogSystem {
                      body: Text,
                      level: Option<TextLogLevel>,
                      color: Option<Color>| {
-                        self.text_entries.push(TextEntry {
+                        self.entries.push(Entry {
                             row_id: ent_view.primary_row_id(),
                             entity_path: ent_path.clone(),
                             time: time.map(|time| time.as_i64()),
@@ -100,7 +100,7 @@ impl ViewPartSystem for TextLogSystem {
 
         {
             re_tracing::profile_scope!("sort");
-            self.text_entries.sort_by_key(|entry| entry.time);
+            self.entries.sort_by_key(|entry| entry.time);
         }
 
         Ok(Vec::new())
