@@ -130,17 +130,17 @@ impl CppCodeGenerator {
             hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
             hpp_includes.insert_rerun("result.hpp"); // rerun result is used for serialization methods
 
-            let (hpp_type_extensions, hpp_extenion_string) =
+            let (hpp_type_extensions, hpp_extension_string) =
                 hpp_type_extensions(&folder_path_sdk, &filename, &mut hpp_includes);
 
             let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions);
 
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
                 let mut string = string_from_token_stream(&tokens, obj.relative_filepath());
-                if let Some(hpp_extenion_string) = &hpp_extenion_string {
+                if let Some(hpp_extension_string) = &hpp_extension_string {
                     string = string.replace(
                         &format!("\"{HEADER_EXTENSION_TOKEN}\""),
-                        hpp_extenion_string,
+                        hpp_extension_string,
                     );
                 }
                 let string = format_code(&string);
@@ -268,7 +268,7 @@ fn hpp_type_extensions(
         "Extensions to generated type defined in '{}'",
         extension_file.file_name().unwrap()
     ));
-    let hpp_extenion_string = content[start + COPY_TO_HEADER_START_MARKER.len()..end].to_owned();
+    let hpp_extension_string = content[start + COPY_TO_HEADER_START_MARKER.len()..end].to_owned();
     let hpp_type_extensions = quote! {
         public:
         #NEWLINE_TOKEN
@@ -278,7 +278,7 @@ fn hpp_type_extensions(
         #NEWLINE_TOKEN
     };
 
-    (hpp_type_extensions, Some(hpp_extenion_string))
+    (hpp_type_extensions, Some(hpp_extension_string))
 }
 
 fn generate_hpp_cpp(
