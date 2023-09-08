@@ -1732,7 +1732,8 @@ fn quote_constants_header_and_cpp(
             cpp.push(quote!(const char #obj_type_ident::NAME[] = #legacy_fqname));
         }
         ObjectKind::Archetype => {
-            let indicator_fqname = format!("rerun.components.{}Indicator", obj.name);
+            let indicator_fqname =
+                format!("{}Indicator", obj.fqname).replace("archetypes", "components");
             let comment = quote_doc_comment("Name of the indicator component, used to identify the archetype when converting to a list of components.");
             hpp.push(quote! {
                 #NEWLINE_TOKEN
