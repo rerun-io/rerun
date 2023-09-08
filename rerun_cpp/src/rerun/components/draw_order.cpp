@@ -11,7 +11,7 @@
 
 namespace rerun {
     namespace components {
-        const char* DrawOrder::NAME = "rerun.draw_order";
+        const char DrawOrder::NAME[] = "rerun.draw_order";
 
         const std::shared_ptr<arrow::DataType>& DrawOrder::arrow_datatype() {
             static const auto datatype = arrow::float32();

@@ -24,7 +24,7 @@ namespace rerun {
             std::optional<rerun::datatypes::AffixFuzzer3> single_optional_union;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             AffixFuzzer15() = default;

@@ -3,33 +3,27 @@
 
 #include "transform3d.hpp"
 
-#include "../components/transform3d.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> Transform3D::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
-            cells.reserve(1);
+        const char Transform3D::INDICATOR_COMPONENT_NAME[] =
+            "rerun.components.Transform3DIndicator";
 
-            {
-                const auto result = rerun::components::Transform3D::to_data_cell(&transform, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                const auto result = create_indicator_component(
-                    "rerun.components.Transform3DIndicator",
+        std::vector<AnonymousComponentBatch> Transform3D::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(1);
+
+            comp_batches.emplace_back(transform);
+            comp_batches.emplace_back(
+                ComponentBatch<
+                    components::IndicatorComponent<Transform3D::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
                     num_instances()
-                );
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+                )
+            );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

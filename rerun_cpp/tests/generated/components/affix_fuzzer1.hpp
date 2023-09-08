@@ -23,7 +23,7 @@ namespace rerun {
             rerun::datatypes::AffixFuzzer1 single_required;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             AffixFuzzer1() = default;

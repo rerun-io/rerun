@@ -540,7 +540,8 @@ impl QuotedObject {
                     });
                 }
 
-                methods.push(archetype_to_data_cells(
+                methods.push(archetype_as_component_batches(
+                    &type_ident,
                     obj,
                     &mut hpp_includes,
                     &mut cpp_includes,
@@ -1221,89 +1222,53 @@ fn component_to_data_cell_method(
     }
 }
 
-fn archetype_to_data_cells(
+fn archetype_as_component_batches(
+    type_ident: &Ident,
     obj: &Object,
     hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
 ) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
-    hpp_includes.insert_rerun("result.hpp");
     hpp_includes.insert_rerun("arrow.hpp");
+    hpp_includes.insert_rerun("component_batch.hpp");
+    cpp_includes.insert_rerun("indicator_component.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
-    // TODO(andreas): Splats need to be handled separately.
-
     let num_fields = quote_integer(obj.fields.len());
-    let push_cells = obj.fields.iter().map(|field| {
-        let field_type_fqname = match &field.typ {
-            Type::Vector { elem_type } => elem_type.fqname().unwrap(),
-            Type::Object(fqname) => fqname,
-            _ => unreachable!(
-                "Archetypes are not expected to have any fields other than objects and vectors"
-            ),
-        };
-        let field_type = quote_fqname_as_type_path(cpp_includes, field_type_fqname);
+    let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
-
         if field.is_nullable {
-            let to_data_cell = if field.typ.is_plural() {
-                quote!(#field_type::to_data_cell(value.data(), value.size()))
-            } else {
-                quote!(#field_type::to_data_cell(&value, 1))
-            };
             quote! {
                 if (#field_name.has_value()) {
-                    const auto& value  = #field_name.value();
-                    const auto result = #to_data_cell;
-                    if (result.is_err()) {
-                        return result.error;
-                    }
-                    cells.emplace_back(std::move(result.value));
+                    comp_batches.emplace_back(#field_name.value());
                 }
             }
         } else {
-            let to_data_cell = if field.typ.is_plural() {
-                quote!(#field_type::to_data_cell(#field_name.data(), #field_name.size()))
-            } else {
-                quote!(#field_type::to_data_cell(&#field_name, 1))
-            };
             quote! {
-                {
-                    const auto result = #to_data_cell;
-                    if (result.is_err()) {
-                        return result.error;
-                    }
-                    cells.emplace_back(std::move(result.value));
-                }
+                comp_batches.emplace_back(#field_name);
             }
         }
     });
 
-    let indicator_fqname = format!("rerun.components.{}Indicator", obj.name);
     Method {
-        docs: "Creates a list of Rerun DataCell from this archetype.".into(),
+        docs: "Collections all component lists into a list of component collections. \
+        *Attention:* The returned vector references this instance and does not take ownership of any data. \
+        Adding any new components to this archetype will invalidate the returned component lists!".into(),
         declaration: MethodDeclaration {
             is_static: false,
-            return_type: quote!(Result<std::vector<rerun::DataCell>>),
-            name_and_parameters: quote!(to_data_cells() const),
+            return_type: quote!(std::vector<AnonymousComponentBatch>),
+            name_and_parameters: quote!(as_component_batches() const),
         },
         definition_body: quote! {
-            std::vector<rerun::DataCell> cells;
-            cells.reserve(#num_fields);
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            #(#push_cells)*
-            {
-                const auto result =
-                    create_indicator_component(#indicator_fqname, num_instances());
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+            #(#push_batches)*
+            comp_batches.emplace_back(ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return cells;
+            return comp_batches;
         },
         inline: false,
     }
@@ -1762,11 +1727,25 @@ fn quote_constants_header_and_cpp(
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #comment
-                static const char* NAME
+                static const char NAME[]
             });
-            cpp.push(quote!(const char* #obj_type_ident::NAME = #legacy_fqname));
+            cpp.push(quote!(const char #obj_type_ident::NAME[] = #legacy_fqname));
         }
-        ObjectKind::Archetype | ObjectKind::Datatype => {}
+        ObjectKind::Archetype => {
+            let indicator_fqname =
+                format!("{}Indicator", obj.fqname).replace("archetypes", "components");
+            let comment = quote_doc_comment("Name of the indicator component, used to identify the archetype when converting to a list of components.");
+            hpp.push(quote! {
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+                #comment
+                static const char INDICATOR_COMPONENT_NAME[]
+            });
+            cpp.push(
+                quote!(const char #obj_type_ident::INDICATOR_COMPONENT_NAME[] = #indicator_fqname),
+            );
+        }
+        ObjectKind::Datatype => {}
     }
 
     (hpp, cpp)

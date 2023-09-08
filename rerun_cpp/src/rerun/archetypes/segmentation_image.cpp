@@ -3,42 +3,30 @@
 
 #include "segmentation_image.hpp"
 
-#include "../components/draw_order.hpp"
-#include "../components/tensor_data.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> SegmentationImage::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
-            cells.reserve(2);
+        const char SegmentationImage::INDICATOR_COMPONENT_NAME[] =
+            "rerun.components.SegmentationImageIndicator";
 
-            {
-                const auto result = rerun::components::TensorData::to_data_cell(&data, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+        std::vector<AnonymousComponentBatch> SegmentationImage::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(2);
+
+            comp_batches.emplace_back(data);
             if (draw_order.has_value()) {
-                const auto& value = draw_order.value();
-                const auto result = rerun::components::DrawOrder::to_data_cell(&value, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
+                comp_batches.emplace_back(draw_order.value());
             }
-            {
-                const auto result = create_indicator_component(
-                    "rerun.components.SegmentationImageIndicator",
+            comp_batches.emplace_back(
+                ComponentBatch<
+                    components::IndicatorComponent<SegmentationImage::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
                     num_instances()
-                );
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+                )
+            );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

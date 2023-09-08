@@ -3,34 +3,27 @@
 
 #include "disconnected_space.hpp"
 
-#include "../components/disconnected_space.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> DisconnectedSpace::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
-            cells.reserve(1);
+        const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =
+            "rerun.components.DisconnectedSpaceIndicator";
 
-            {
-                const auto result =
-                    rerun::components::DisconnectedSpace::to_data_cell(&disconnected_space, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                const auto result = create_indicator_component(
-                    "rerun.components.DisconnectedSpaceIndicator",
+        std::vector<AnonymousComponentBatch> DisconnectedSpace::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(1);
+
+            comp_batches.emplace_back(disconnected_space);
+            comp_batches.emplace_back(
+                ComponentBatch<
+                    components::IndicatorComponent<DisconnectedSpace::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
                     num_instances()
-                );
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+                )
+            );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

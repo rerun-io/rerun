@@ -1,10 +1,9 @@
 #pragma once
 
-#include <cstddef> // size_t
-#include <cstdint> // uint32_t etc
+#include <cstdint> // uint32_t etc.
 #include <vector>
 
-#include "data_cell.hpp"
+#include "component_batch.hpp"
 #include "error.hpp"
 
 namespace rerun {
@@ -38,6 +37,16 @@ namespace rerun {
     /// set it as a the global.
     ///
     /// Shutting down cannot ever block.
+    ///
+    /// ## Logging
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk-micro-batching) for
+    /// more information.
+    ///
+    /// The data will be timestamped automatically based on the `RecordingStream`'s
+    /// internal clock.
     class RecordingStream {
       public:
         /// Creates a new recording stream to log to.
@@ -116,11 +125,8 @@ namespace rerun {
 
         /// Logs an archetype.
         ///
-        /// Prefer this interface for ease of use over the more general `log_components` interface.
-        ///
-        /// Alias for `log_archetype`.
-        /// TODO(andreas): Would be nice if this were able to combine both log_archetype and
-        /// log_components!
+        /// Prefer this interface for ease of use over the more general `log_component_batches`
+        /// interface.
         ///
         /// Logs any failure via `Error::log_on_failure`
         template <typename T>
@@ -128,11 +134,7 @@ namespace rerun {
             log_archetype(entity_path, archetype);
         }
 
-        /// Logs an archetype.
-        ///
-        /// Prefer this interface for ease of use over the more general `log_components` interface.
-        ///
-        /// Logs any failure via `Error::log_on_failure`
+        /// @copydoc log
         template <typename T>
         void log_archetype(const char* entity_path, const T& archetype) {
             try_log_archetype(entity_path, archetype).log_on_failure();
@@ -143,122 +145,109 @@ namespace rerun {
         /// @see log_archetype
         template <typename T>
         Error try_log_archetype(const char* entity_path, const T& archetype) {
-            const auto data_cells_result = archetype.to_data_cells();
-            if (data_cells_result.is_ok()) {
-                return try_log_data_row(
-                    entity_path,
-                    archetype.num_instances(),
-                    data_cells_result.value.size(),
-                    data_cells_result.value.data()
-                );
-            } else {
-                return data_cells_result.error;
-            }
+            return try_log_component_batches(
+                entity_path,
+                archetype.num_instances(),
+                archetype.as_component_batches()
+            );
         }
 
-        /// Logs a list of component arrays.
+        /// Logs a single component batch.
         ///
         /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
         /// built-in archetypes.
         ///
-        /// Expects component arrays as std::vector, std::array or C arrays.
-        ///
-        /// TODO(andreas): More documentation, examples etc.
-        ///
         /// Logs any failure via `Error::log_on_failure`
-        template <typename... Ts>
-        void log_components(const char* entity_path, const Ts&... component_array) {
-            try_log_components(entity_path, component_array...).log_on_failure();
+        ///
+        /// @param component_batch
+        /// Expects component batch as std::vector, std::array or C arrays.
+        ///
+        /// @see try_log_component_batch, log_component_batches, try_log_component_batches
+        template <typename T>
+        void log_component_batch(const char* entity_path, const T& component_batch) {
+            const auto batch = AnonymousComponentBatch(component_batch);
+            try_log_component_batches(entity_path, batch.num_instances, batch).log_on_failure();
         }
 
-        /// Logs a list of component arrays, returning an error on failure.
+        /// Logs a single component batch.
         ///
-        /// @see log_components
+        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
+        /// built-in archetypes.
+        ///
+        /// @param component_batch
+        /// Expects component batch as std::vector, std::array or C arrays.
+        ///
+        /// @see log_component_batch, log_component_batches, try_log_component_batches
+        template <typename T>
+        Error try_log_component_batch(const char* entity_path, const T& component_batch) {
+            const auto batch = AnonymousComponentBatch(component_batch);
+            return try_log_component_batches(entity_path, batch.num_instances, batch);
+        }
+
+        /// Logs several component batches.
+        ///
+        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
+        /// built-in archetypes.
+        ///
+        /// Logs any failure via `Error::log_on_failure`
+        ///
+        /// @param component_batches
+        /// Expects component batches as std::vector, std::array or C arrays.
+        ///
+        /// @param num_instances
+        /// Specify the expected number of component instances present in each
+        /// list. Each can have either:
+        /// - exactly `num_instances` instances,
+        /// - a single instance (splat),
+        /// - or zero instance (clear).
+        ///
+        /// @see try_log_component_batches
         template <typename... Ts>
-        Error try_log_components(const char* entity_path, const Ts&... component_array) {
-            // TODO(andreas): Handle splats.
-            const size_t num_instances = size_of_first_collection(component_array...);
+        void log_component_batches(
+            const char* entity_path, size_t num_instances, const Ts&... component_batches
+        ) {
+            try_log_component_batches(entity_path, num_instances, component_batches...)
+                .log_on_failure();
+        }
 
-            std::vector<DataCell> data_cells;
-            data_cells.reserve(sizeof...(Ts));
-            const auto error = push_data_cells(data_cells, component_array...);
-            if (error.is_err()) {
-                return error;
-            }
-
-            return try_log_data_row(
+        /// Logs several component batches, returning an error on failure.
+        ///
+        ///
+        /// @param num_instances
+        /// Specify the expected number of component instances present in each
+        /// list. Each can have either:
+        /// - exactly `num_instances` instances,
+        /// - a single instance (splat),
+        /// - or zero instance (clear).
+        ///
+        /// @see log_component_batches
+        template <typename... Ts>
+        Error try_log_component_batches(
+            const char* entity_path, size_t num_instances, const Ts&... component_batches
+        ) {
+            return try_log_component_batches(
                 entity_path,
                 num_instances,
-                data_cells.size(),
-                data_cells.data()
+                {AnonymousComponentBatch(component_batches)...}
             );
         }
 
+        /// @copydoc try_log_component_batches
+        Error try_log_component_batches(
+            const char* entity_path, size_t num_instances,
+            const std::vector<AnonymousComponentBatch>& component_lists
+        );
+
         /// Low level API that logs raw data cells to the recording stream.
         ///
-        /// I.e. logs a number of components arrays (each with a same number of instances) to a
-        /// single entity path.
+        /// @param num_instances
+        /// Each cell is expected to hold exactly `num_instances` instances.
         Error try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells
         );
 
       private:
-        template <typename C, typename... Ts>
-        static size_t size_of_first_collection(const std::vector<C>& first, const Ts&...) {
-            return first.size();
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static size_t size_of_first_collection(const std::array<C, N>& first, const Ts&...) {
-            return first.size();
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static size_t size_of_first_collection(const C (&)[N], const Ts&...) {
-            return N;
-        }
-
-        template <typename C, typename... Ts>
-        static Error push_data_cells(
-            std::vector<DataCell>& data_cells, const std::vector<C>& first, const Ts&... rest
-        ) {
-            const auto cell_result = C::to_data_cell(first.data(), first.size());
-            if (cell_result.is_err()) {
-                return cell_result.error;
-            }
-            data_cells.push_back(cell_result.value);
-            return push_data_cells(data_cells, rest...);
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static Error push_data_cells(
-            std::vector<DataCell>& data_cells, const std::array<C, N>& first, const Ts&... rest
-        ) {
-            const auto cell_result = C::to_data_cell(first.data(), N);
-            if (!cell_result.is_ok()) {
-                return cell_result.error;
-            }
-            data_cells.push_back(cell_result.value);
-            return push_data_cells(data_cells, rest...);
-        }
-
-        template <size_t N, typename C, typename... Ts>
-        static Error push_data_cells(
-            std::vector<DataCell>& data_cells, const C (&first)[N], const Ts&... rest
-        ) {
-            const auto cell_result = C::to_data_cell(first, N);
-            if (!cell_result.is_ok()) {
-                return cell_result.error;
-            }
-            data_cells.push_back(cell_result.value);
-            return push_data_cells(data_cells, rest...);
-        }
-
-        static Error push_data_cells(std::vector<DataCell>&) {
-            return Error();
-        }
-
         RecordingStream(uint32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
 
         uint32_t _id;

@@ -3,33 +3,27 @@
 
 #include "text_document.hpp"
 
-#include "../components/text.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> TextDocument::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
-            cells.reserve(1);
+        const char TextDocument::INDICATOR_COMPONENT_NAME[] =
+            "rerun.components.TextDocumentIndicator";
 
-            {
-                const auto result = rerun::components::Text::to_data_cell(&body, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                const auto result = create_indicator_component(
-                    "rerun.components.TextDocumentIndicator",
+        std::vector<AnonymousComponentBatch> TextDocument::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(1);
+
+            comp_batches.emplace_back(body);
+            comp_batches.emplace_back(
+                ComponentBatch<
+                    components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
                     num_instances()
-                );
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+                )
+            );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun
