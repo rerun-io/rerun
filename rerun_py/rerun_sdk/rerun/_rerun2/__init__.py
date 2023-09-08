@@ -16,6 +16,7 @@ __all__ = [
     "SegmentationImage",
     "Tensor",
     "TextDocument",
+    "TextLog",
     "Transform3D",
 ]
 
@@ -33,5 +34,6 @@ from .archetypes import (
     SegmentationImage,
     Tensor,
     TextDocument,
+    TextLog,
     Transform3D,
 )

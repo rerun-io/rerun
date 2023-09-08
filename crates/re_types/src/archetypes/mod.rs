@@ -16,6 +16,7 @@ mod segmentation_image_ext;
 mod tensor;
 mod tensor_ext;
 mod text_document;
+mod text_log;
 mod transform3d;
 
 pub use self::annotation_context::AnnotationContext;
@@ -30,4 +31,5 @@ pub use self::points3d::Points3D;
 pub use self::segmentation_image::SegmentationImage;
 pub use self::tensor::Tensor;
 pub use self::text_document::TextDocument;
+pub use self::text_log::TextLog;
 pub use self::transform3d::Transform3D;

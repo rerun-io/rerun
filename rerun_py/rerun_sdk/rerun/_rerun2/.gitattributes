@@ -16,6 +16,7 @@ archetypes/points3d.py linguist-generated=true
 archetypes/segmentation_image.py linguist-generated=true
 archetypes/tensor.py linguist-generated=true
 archetypes/text_document.py linguist-generated=true
+archetypes/text_log.py linguist-generated=true
 archetypes/transform3d.py linguist-generated=true
 components/__init__.py linguist-generated=true
 components/annotation_context.py linguist-generated=true

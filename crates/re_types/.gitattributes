@@ -14,6 +14,7 @@ src/archetypes/points3d.rs linguist-generated=true
 src/archetypes/segmentation_image.rs linguist-generated=true
 src/archetypes/tensor.rs linguist-generated=true
 src/archetypes/text_document.rs linguist-generated=true
+src/archetypes/text_log.rs linguist-generated=true
 src/archetypes/transform3d.rs linguist-generated=true
 src/components/annotation_context.rs linguist-generated=true
 src/components/class_id.rs linguist-generated=true
