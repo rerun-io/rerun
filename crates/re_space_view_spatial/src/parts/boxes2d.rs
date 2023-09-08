@@ -1,23 +1,25 @@
-use re_components::Rect2D;
 use re_data_store::EntityPath;
-use re_query::{EntityView, QueryError};
-use re_renderer::Size;
+use re_query::{ArchetypeView, QueryError};
 use re_types::{
-    components::{ClassId, Color, InstanceKey, Radius, Text},
-    Loggable as _,
+    archetypes::Boxes2D,
+    components::{HalfExtents2D, Origin2D},
+    Archetype,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{entity_iterator::process_entity_views, UiLabel, UiLabelTarget},
+    parts::{UiLabel, UiLabelTarget},
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{
+    entity_iterator::process_archetype_views, picking_id_from_instance_key, process_annotations,
+    process_colors, process_radii, SpatialViewPartData,
+};
 
 pub struct Boxes2DPart(SpatialViewPartData);
 
@@ -28,83 +30,83 @@ impl Default for Boxes2DPart {
 }
 
 impl Boxes2DPart {
-    fn process_entity_view(
+    fn process_arch_view(
         &mut self,
-        _query: &ViewQuery<'_>,
-        ent_view: &EntityView<Rect2D>,
+        query: &ViewQuery<'_>,
+        arch_view: &ArchetypeView<Boxes2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let default_color = DefaultColor::EntityPath(ent_path);
+        let annotation_infos = process_annotations::<HalfExtents2D, Boxes2D>(
+            query,
+            arch_view,
+            &ent_context.annotations,
+        )?;
+
+        let instance_keys = arch_view.iter_instance_keys();
+        let half_extents = arch_view.iter_required_component::<HalfExtents2D>()?;
+        let origins = arch_view
+            .iter_optional_component::<Origin2D>()?
+            .map(|origin| origin.unwrap_or_default());
+        let radii = process_radii(arch_view, ent_path)?;
+        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let labels = arch_view.iter_optional_component::<re_types::components::Text>()?;
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
-            .batch("2d boxes")
+            .batch("boxes2d")
             .depth_offset(ent_context.depth_offset)
             .world_from_obj(ent_context.world_from_obj)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        ent_view.visit5(
-            |instance_key,
-             rect,
-             color: Option<Color>,
-             radius: Option<Radius>,
-             label: Option<Text>,
-             class_id: Option<ClassId>| {
-                let instance_hash =
-                    re_data_store::InstancePathHash::instance(ent_path, instance_key);
+        for (instance_key, half_extent, origin, radius, color, label) in
+            itertools::izip!(instance_keys, half_extents, origins, radii, colors, labels)
+        {
+            let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
 
-                let annotation_info = ent_context
-                    .annotations
-                    .resolved_class_description(class_id)
-                    .annotation_info();
-                let color =
-                    annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
-                let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
-                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+            let min = half_extent.box_min(origin);
+            let max = half_extent.box_max(origin);
 
-                self.0.extend_bounding_box(
-                    macaw::BoundingBox {
-                        min: glam::Vec2::from(rect.top_left_corner()).extend(0.0),
-                        max: (glam::Vec2::from(rect.top_left_corner())
-                            + glam::vec2(rect.width(), rect.height()))
-                        .extend(0.0),
-                    },
-                    ent_context.world_from_obj,
-                );
+            self.0.extend_bounding_box(
+                macaw::BoundingBox {
+                    min: min.extend(0.),
+                    max: max.extend(0.),
+                },
+                ent_context.world_from_obj,
+            );
 
-                let rectangle = line_batch
-                    .add_rectangle_outline_2d(
-                        rect.top_left_corner().into(),
-                        glam::vec2(rect.width(), 0.0),
-                        glam::vec2(0.0, rect.height()),
-                    )
-                    .color(color)
-                    .radius(radius)
-                    .picking_instance_id(picking_id_from_instance_key(instance_key));
+            let rectangle = line_batch
+                .add_rectangle_outline_2d(
+                    min,
+                    glam::vec2(half_extent.width(), 0.0),
+                    glam::vec2(0.0, half_extent.height()),
+                )
+                .color(color)
+                .radius(radius)
+                .picking_instance_id(picking_id_from_instance_key(instance_key));
+            if let Some(outline_mask_ids) = ent_context
+                .highlight
+                .instances
+                .get(&instance_hash.instance_key)
+            {
+                rectangle.outline_mask_ids(*outline_mask_ids);
+            }
 
-                if let Some(outline_mask_ids) = ent_context
-                    .highlight
-                    .instances
-                    .get(&instance_hash.instance_key)
-                {
-                    rectangle.outline_mask_ids(*outline_mask_ids);
-                }
+            if let Some(text) = label {
+                self.0.ui_labels.push(UiLabel {
+                    text: text.to_string(),
+                    color,
+                    target: UiLabelTarget::Rect(egui::Rect::from_min_max(
+                        egui::pos2(min.x, min.y),
+                        egui::pos2(max.x, max.y),
+                    )),
+                    labeled_instance: instance_hash,
+                });
+            }
+        }
 
-                if let Some(label) = label {
-                    self.0.ui_labels.push(UiLabel {
-                        text: label,
-                        color,
-                        target: UiLabelTarget::Rect(egui::Rect::from_min_size(
-                            rect.top_left_corner().into(),
-                            egui::vec2(rect.width(), rect.height()),
-                        )),
-                        labeled_instance: instance_hash,
-                    });
-                }
-            },
-        )
+        Ok(())
     }
 }
 
@@ -116,14 +118,7 @@ impl NamedViewSystem for Boxes2DPart {
 
 impl ViewPartSystem for Boxes2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![
-            Rect2D::name(),
-            InstanceKey::name(),
-            Color::name(),
-            Radius::name(),
-            Text::name(),
-            ClassId::name(),
-        ]
+        Boxes2D::all_components().try_into().unwrap()
     }
 
     fn execute(
@@ -132,14 +127,13 @@ impl ViewPartSystem for Boxes2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_entity_views::<Boxes2DPart, Rect2D, 6, _>(
+        process_archetype_views::<Boxes2DPart, Boxes2D, { Boxes2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.lines2d,
-            self.archetype(),
-            |_ctx, ent_path, entity_view, ent_context| {
-                self.process_entity_view(query, &entity_view, ent_path, ent_context)
+            view_ctx.get::<EntityDepthOffsets>()?.box2d,
+            |_ctx, ent_path, arch_view, ent_context| {
+                self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },
         )?;
 

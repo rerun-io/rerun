@@ -147,6 +147,21 @@ pub fn process_radii<'a, A: Archetype>(
         }))
 }
 
+/// Resolves all annotations for the given entity view.
+fn process_annotations<Primary, A: Archetype>(
+    query: &ViewQuery<'_>,
+    arch_view: &re_query::ArchetypeView<A>,
+    annotations: &Arc<Annotations>,
+) -> Result<ResolvedAnnotationInfos, re_query::QueryError>
+where
+    Primary: re_types::Component + Clone + Default,
+{
+    process_annotations_and_keypoints(query, arch_view, annotations, |_: &Primary| {
+        glam::Vec3::ZERO
+    })
+    .map(|(a, _)| a)
+}
+
 /// Resolves all annotations and keypoints for the given entity view.
 fn process_annotations_and_keypoints<Primary, A: Archetype>(
     query: &ViewQuery<'_>,

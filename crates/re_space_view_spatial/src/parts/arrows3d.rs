@@ -11,12 +11,12 @@ use re_viewer_context::{
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::{
-        entity_iterator::process_archetype_views, process_annotations_and_keypoints,
-        process_colors, process_radii, UiLabel, UiLabelTarget,
+        entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
+        UiLabelTarget,
     },
     view_kind::SpatialSpaceViewKind,
 };
@@ -84,12 +84,8 @@ impl Arrows3DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let (annotation_infos, _) = process_annotations_and_keypoints::<Vector3D, Arrows3D>(
-            query,
-            arch_view,
-            &ent_context.annotations,
-            |vector| vector.0.into(),
-        )?;
+        let annotation_infos =
+            process_annotations::<Vector3D, Arrows3D>(query, arch_view, &ent_context.annotations)?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let radii = process_radii(arch_view, ent_path)?;
@@ -187,7 +183,7 @@ impl ViewPartSystem for Arrows3DPart {
             ctx,
             query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.points,
+            view_ctx.get::<EntityDepthOffsets>()?.lines2d,
             |_ctx, ent_path, arch_view, ent_context| {
                 self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },

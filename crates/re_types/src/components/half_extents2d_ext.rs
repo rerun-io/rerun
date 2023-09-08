@@ -37,12 +37,20 @@ impl HalfExtents2D {
         glam::Vec2::from(self) * 2.0
     }
 
-    /// Returns the top left box corner for a given box center.
+    /// Returns the min position of a box with these half-extents and a given center.
     ///
-    /// Assumes "image space axis semantics": y-axis points down, x-axis points right.
+    /// In "image space axis semantics" (y-axis points down, x-axis points right), this is the top-left corner.
     #[cfg(feature = "glam")]
-    pub fn top_left_corner(self, box_center: Origin2D) -> glam::Vec2 {
+    pub fn box_min(self, box_center: Origin2D) -> glam::Vec2 {
         glam::Vec2::from(box_center) - glam::vec2(self.x(), self.y())
+    }
+
+    /// Returns the maximum of a box with these half-extents and a given center.
+    ///
+    /// In "image space axis semantics" (y-axis points down, x-axis points right), this is the bottom-right corner.
+    #[cfg(feature = "glam")]
+    pub fn box_max(self, box_center: Origin2D) -> glam::Vec2 {
+        glam::Vec2::from(box_center) + glam::vec2(self.x(), self.y())
     }
 }
 
