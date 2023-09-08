@@ -14,5 +14,6 @@ include "./components/point3d.fbs";
 include "./components/radius.fbs";
 include "./components/tensor_data.fbs";
 include "./components/text.fbs";
+include "./components/text_log_level.fbs";
 include "./components/transform3d.fbs";
 include "./components/vector3d.fbs";

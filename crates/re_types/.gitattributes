@@ -32,6 +32,7 @@ src/components/point3d.rs linguist-generated=true
 src/components/radius.rs linguist-generated=true
 src/components/tensor_data.rs linguist-generated=true
 src/components/text.rs linguist-generated=true
+src/components/text_log_level.rs linguist-generated=true
 src/components/transform3d.rs linguist-generated=true
 src/components/vector3d.rs linguist-generated=true
 src/datatypes/angle.rs linguist-generated=true

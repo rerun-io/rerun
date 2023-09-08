@@ -102,6 +102,7 @@ from .point3d import Point3DArray, Point3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
 from .tensor_data import TensorDataArray, TensorDataType
 from .text import TextArray, TextType
+from .text_log_level import TextLogLevelArray, TextLogLevelType
 from .transform3d import Transform3DArray, Transform3DType
 from .vector3d import Vector3DArray, Vector3DType
 
@@ -231,6 +232,8 @@ __all__ = [
     "TensorDataArray",
     "TensorDataType",
     "TextArray",
+    "TextLogLevelArray",
+    "TextLogLevelType",
     "TextType",
     "Transform3DArray",
     "Transform3DType",

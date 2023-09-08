@@ -35,6 +35,7 @@ components/point3d.py linguist-generated=true
 components/radius.py linguist-generated=true
 components/tensor_data.py linguist-generated=true
 components/text.py linguist-generated=true
+components/text_log_level.py linguist-generated=true
 components/transform3d.py linguist-generated=true
 components/vector3d.py linguist-generated=true
 datatypes/__init__.py linguist-generated=true
