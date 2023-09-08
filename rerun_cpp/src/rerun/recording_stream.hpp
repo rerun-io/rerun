@@ -169,7 +169,7 @@ namespace rerun {
             return try_log_components(entity_path, {AnonymousComponentBatch(component_arrays)...});
         }
 
-        /// Logs a list of component arrays, returning an error on failure.
+        /// Logs a list of component batches, returning an error on failure.
         ///
         /// @see log_components
         Error try_log_components(
