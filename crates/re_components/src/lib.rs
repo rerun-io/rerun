@@ -54,9 +54,9 @@ pub use self::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path};
+pub use self::load_file::{data_cells_from_file_path, data_cells_from_mesh_file_path};
 
-pub use self::load_file::{data_cell_from_file_contents, FromFileError};
+pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 
 // This is very convenient to re-export
 pub use re_log_types::LegacyComponent;
