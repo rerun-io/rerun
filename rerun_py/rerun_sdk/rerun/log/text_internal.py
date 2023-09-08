@@ -1,52 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Final
-
 from rerun.log import Color, _normalize_colors
 from rerun.recording_stream import RecordingStream
 
 # Fully qualified to avoid circular import
 
 __all__ = [
-    "LogLevel",
     "log_text_entry_internal",
 ]
-
-
-@dataclass
-class LogLevel:
-    """
-    Represents the standard log levels.
-
-    This is a collection of constants rather than an enum because we do support
-    arbitrary strings as level (e.g. for user-defined levels).
-    """
-
-    CRITICAL: Final = "CRITICAL"
-    """ Designates catastrophic failures. """
-
-    ERROR: Final = "ERROR"
-    """ Designates very serious errors. """
-
-    WARN: Final = "WARN"
-    """ Designates hazardous situations. """
-
-    INFO: Final = "INFO"
-    """ Designates useful information. """
-
-    DEBUG: Final = "DEBUG"
-    """ Designates lower priority information. """
-
-    TRACE: Final = "TRACE"
-    """ Designates very low priority, often extremely verbose, information. """
 
 
 def log_text_entry_internal(
     entity_path: str,
     text: str,
     *,
-    level: str | None = LogLevel.INFO,
+    level: str | None = "INFO",
     color: Color | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -64,9 +32,7 @@ def log_text_entry_internal(
     text:
         The text to log.
     level:
-        The level of the text entry (default: `LogLevel.INFO`). Note this can technically
-        be an arbitrary string, but it's recommended to use one of the constants
-        from [LogLevel][rerun.log.text.LogLevel]
+        The level of the text entry, e.g. "INFO" "ERROR", ….
     color:
         Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     timeless:
