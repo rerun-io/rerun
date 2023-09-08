@@ -39,14 +39,18 @@ namespace rerun {
             }
 
             // [CODEGEN COPY TO HEADER END]
-
-            const TextLogLevel TextLogLevel::CRITICAL = "CRITICAL";
-            const TextLogLevel TextLogLevel::ERROR = "ERROR";
-            const TextLogLevel TextLogLevel::WARN = "WARN";
-            const TextLogLevel TextLogLevel::INFO = "INFO";
-            const TextLogLevel TextLogLevel::DEBUG = "DEBUG";
-            const TextLogLevel TextLogLevel::TRACE = "TRACE";
         };
+
+#undef TextLogLevel
+#else
+#define TextLogLevelExt TextLogLevel
 #endif
+
+        const TextLogLevel TextLogLevel::CRITICAL = "CRITICAL";
+        const TextLogLevel TextLogLevel::ERROR = "ERROR";
+        const TextLogLevel TextLogLevel::WARN = "WARN";
+        const TextLogLevel TextLogLevel::INFO = "INFO";
+        const TextLogLevel TextLogLevel::DEBUG = "DEBUG";
+        const TextLogLevel TextLogLevel::TRACE = "TRACE";
     } // namespace components
 } // namespace rerun
