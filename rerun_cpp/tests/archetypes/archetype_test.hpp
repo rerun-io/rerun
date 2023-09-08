@@ -3,16 +3,16 @@
 #include <arrow/buffer.h>
 #include <catch2/catch_test_macros.hpp>
 
-#include <rerun/component_list.hpp>
+#include <rerun/component_batch.hpp>
 #include <rerun/data_cell.hpp>
 
 template <typename T>
 void test_serialization_for_manual_and_builder(const T& from_manual, const T& from_builder) {
     THEN("convert to component lists") {
         std::vector<rerun::AnonymousComponentBatch> from_builder_lists =
-            from_builder.as_component_lists();
+            from_builder.as_component_batches();
         std::vector<rerun::AnonymousComponentBatch> from_manual_lists =
-            from_manual.as_component_lists();
+            from_manual.as_component_batches();
 
         REQUIRE(from_builder_lists.size() == from_manual_lists.size());
 

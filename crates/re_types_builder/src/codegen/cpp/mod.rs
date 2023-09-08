@@ -540,7 +540,7 @@ impl QuotedObject {
                     });
                 }
 
-                methods.push(archetype_as_component_lists(
+                methods.push(archetype_as_component_batches(
                     &type_ident,
                     obj,
                     &mut hpp_includes,
@@ -1222,7 +1222,7 @@ fn component_to_data_cell_method(
     }
 }
 
-fn archetype_as_component_lists(
+fn archetype_as_component_batches(
     type_ident: &Ident,
     obj: &Object,
     hpp_includes: &mut Includes,
@@ -1235,17 +1235,17 @@ fn archetype_as_component_lists(
     hpp_includes.insert_system("vector"); // std::vector
 
     let num_fields = quote_integer(obj.fields.len());
-    let push_cells = obj.fields.iter().map(|field| {
+    let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         if field.is_nullable {
             quote! {
                 if (#field_name.has_value()) {
-                    cells.emplace_back(#field_name.value());
+                    comp_batches.emplace_back(#field_name.value());
                 }
             }
         } else {
             quote! {
-                cells.emplace_back(#field_name);
+                comp_batches.emplace_back(#field_name);
             }
         }
     });
@@ -1257,18 +1257,18 @@ fn archetype_as_component_lists(
         declaration: MethodDeclaration {
             is_static: false,
             return_type: quote!(std::vector<AnonymousComponentBatch>),
-            name_and_parameters: quote!(as_component_lists() const),
+            name_and_parameters: quote!(as_component_batches() const),
         },
         definition_body: quote! {
-            std::vector<AnonymousComponentBatch> cells;
-            cells.reserve(#num_fields);
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            #(#push_cells)*
-            cells.emplace_back(ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
+            #(#push_batches)*
+            comp_batches.emplace_back(ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return cells;
+            return comp_batches;
         },
         inline: false,
     }

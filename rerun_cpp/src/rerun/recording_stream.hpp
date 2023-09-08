@@ -142,7 +142,7 @@ namespace rerun {
         /// @see log_archetype
         template <typename T>
         Error try_log_archetype(const char* entity_path, const T& archetype) {
-            return try_log_components(entity_path, archetype.as_component_lists());
+            return try_log_components(entity_path, archetype.as_component_batches());
         }
 
         /// Logs a list of component arrays.
