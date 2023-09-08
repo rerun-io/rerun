@@ -19,6 +19,12 @@ fn arrow_array_builder_type_and_declaration(
     declarations: &mut ForwardDecls,
 ) -> Ident {
     match typ {
+        Type::Null => {
+            let ident = format_ident!("NullBuilder");
+            declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
+            ident
+        }
+
         Type::Int8
         | Type::Int16
         | Type::Int32
@@ -31,6 +37,7 @@ fn arrow_array_builder_type_and_declaration(
         | Type::Float32
         | Type::Float64 => {
             let klass = match typ {
+                Type::Null => "Null", // TODO
                 Type::Int8 => "Int8",
                 Type::Int16 => "Int16",
                 Type::Int32 => "Int32",
@@ -117,7 +124,8 @@ pub fn quote_arrow_array_builder_type_instantiation(
     let builder_type = arrow_array_builder_type(typ, objects);
 
     match typ {
-        Type::UInt8
+        Type::Null // TODO
+        | Type::UInt8
         | Type::UInt16
         | Type::UInt32
         | Type::UInt64

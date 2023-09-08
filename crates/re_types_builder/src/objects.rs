@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType,
+    FbsType, LazyDatatype, ATTR_IGNORED,
 };
 
 // ---
@@ -45,12 +45,22 @@ impl Objects {
 
         // resolve enums
         for enm in schema.enums() {
+            let attrs = Attributes::from_raw_attrs(enm.attributes());
+            if attrs.try_get::<String>(enm.name(), ATTR_IGNORED).is_some() {
+                continue; // ignored
+            }
+
             let resolved_enum = Object::from_raw_enum(include_dir_path, &enums, &objs, &enm);
             resolved_enums.insert(resolved_enum.fqname.clone(), resolved_enum);
         }
 
         // resolve objects
         for obj in schema.objects() {
+            let attrs = Attributes::from_raw_attrs(obj.attributes());
+            if attrs.try_get::<String>(obj.name(), ATTR_IGNORED).is_some() {
+                continue; // ignored
+            }
+
             let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
@@ -149,6 +159,81 @@ impl Objects {
             .filter(|(_, obj)| !obj.is_transparent())
             .collect();
 
+        // TODO: instantiate marker components
+
+        let mut indicators = Vec::new();
+        for obj in this
+            .objects
+            .values()
+            .filter(|obj| obj.kind == ObjectKind::Archetype)
+        {
+            let Object {
+                virtpath,
+                filepath,
+                fqname,
+                pkg_name,
+                name,
+                docs,
+                kind,
+                attrs,
+                order,
+                fields,
+                specifics,
+                datatype,
+            } = obj;
+
+            let pkg_name = pkg_name.replace("archetypes", "components");
+            let virtpath = virtpath
+                .replace("archetypes", "components")
+                .replace(".fbs", "_indicator.fbs");
+            let name = format!("{name}Indicator");
+            let fqname = format!("rerun.components.{name}");
+
+            dbg!((&pkg_name, &virtpath, &filepath));
+
+            indicators.push(Object {
+                virtpath: virtpath.clone(),
+                filepath: filepath.clone(),
+                fqname: fqname.clone(),
+                pkg_name: pkg_name.clone(),
+                name: name.clone(),
+                docs: Docs {
+                    doc: vec![
+                        format!("Indicator component for the `{}` archetype.", fqname), //
+                        "".into(),
+                        "Indicator components are data-less components used to give some extra context.".into(),
+                        "The Rerun Viewer can make use of them to provide better heuristics and even improve performance".into(),
+                        "in some cases.".into(),
+                    ],
+                    ..Default::default()
+                },
+                kind: ObjectKind::Component,
+                attrs: Attributes::default(), // TODO
+                order: u32::MAX,
+                fields: vec![
+                    ObjectField {
+                        virtpath: virtpath.clone(),
+                        filepath: filepath.clone(),
+                        fqname,
+                        pkg_name: pkg_name.clone(),
+                        name,
+                        docs: Docs::default(), // TODO
+                        typ: Type::Null,
+                        attrs: Attributes::default(), // TODO
+                        order: 0,
+                        is_nullable: false,
+                        is_deprecated: false,
+                        datatype: Some(LazyDatatype::Null),
+                    },
+                ],
+                specifics: ObjectSpecifics::Struct,
+                datatype: None, // Arrow transparent
+            })
+        }
+
+        this.objects
+            .extend(indicators.into_iter().map(|obj| (obj.fqname.clone(), obj)));
+
         this
     }
 }
@@ -242,7 +327,7 @@ impl ObjectKind {
 }
 
 /// A high-level representation of a flatbuffers object's documentation.
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Docs {
     /// General documentation for the object.
     ///
@@ -455,8 +540,23 @@ impl Object {
                 // NOTE: These are intermediate fields used by flatbuffers internals, we don't care.
                 .filter(|field| field.type_().base_type() != FbsBaseType::UType)
                 .filter(|field| field.type_().element() != FbsBaseType::UType)
-                .map(|field| {
-                    ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
+                .filter_map(|field| {
+                    let attrs = Attributes::from_raw_attrs(field.attributes());
+                    if attrs
+                        .try_get::<String>(field.name(), ATTR_IGNORED)
+                        .is_some()
+                    {
+                        return None;
+                    }
+
+                    // TODO: let's not go there
+                    Some(ObjectField::from_raw_object_field(
+                        include_dir_path,
+                        enums,
+                        objs,
+                        obj,
+                        &field,
+                    ))
                 })
                 .collect();
             fields.sort_by_key(|field| field.order);
@@ -834,6 +934,7 @@ impl ObjectField {
 /// The underlying type of an [`ObjectField`].
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Type {
+    Null,
     UInt8,
     UInt16,
     UInt32,
@@ -860,6 +961,7 @@ pub enum Type {
 impl From<ElementType> for Type {
     fn from(typ: ElementType) -> Self {
         match typ {
+            ElementType::Null => Self::Null,
             ElementType::UInt8 => Self::UInt8,
             ElementType::UInt16 => Self::UInt16,
             ElementType::UInt32 => Self::UInt32,
@@ -945,7 +1047,8 @@ impl Type {
                 elem_type,
                 length: _,
             } => Some(elem_type),
-            Self::UInt8
+            Self::Null
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64
@@ -983,7 +1086,8 @@ impl Type {
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
     pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {
-            Self::UInt8
+            Self::Null
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64
@@ -1011,6 +1115,7 @@ impl Type {
 /// always have to be wrapped into intermediate layers of structs or tables!
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ElementType {
+    Null,
     UInt8,
     UInt16,
     UInt32,
@@ -1077,7 +1182,8 @@ impl ElementType {
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
     pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {
-            Self::UInt8
+            Self::Null
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64
@@ -1101,7 +1207,8 @@ impl ElementType {
     /// a slice representation.
     pub fn backed_by_arrow_buffer(&self) -> bool {
         match self {
-            Self::UInt8
+            Self::Null
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64

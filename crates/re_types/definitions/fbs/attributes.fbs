@@ -38,3 +38,9 @@ attribute "transparent";
 /// limitations that do not make sense for our use case and B) our overall data model is built
 /// around the idea of nullability, rather than requirements (i.e. the exact opposite).
 attribute "nullable";
+
+/// This can be applied to anything, in which case whatever it is applied to will be dropped
+/// during the semantic pass.
+///
+/// The only useful use case is to build zero-size aka. marker structs.
+attribute "ignored";

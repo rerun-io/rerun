@@ -61,6 +61,45 @@ pub trait DatatypeList: LoggableList<Name = DatatypeName> {}
 /// implements [`ComponentList`].
 pub trait ComponentList: LoggableList<Name = ComponentName> {}
 
+// TODO: CoW requires clone
+// TODO: inline
+pub enum AnyComponentList<'a> {
+    Owned(Box<dyn ComponentList>),
+    Ref(&'a dyn ComponentList),
+}
+
+impl<'a> From<&'a dyn ComponentList> for AnyComponentList<'a> {
+    fn from(comp_list: &'a dyn ComponentList) -> Self {
+        Self::Ref(comp_list)
+    }
+}
+
+impl From<Box<dyn ComponentList>> for AnyComponentList<'_> {
+    fn from(comp_list: Box<dyn ComponentList>) -> Self {
+        Self::Owned(comp_list)
+    }
+}
+
+impl<'a> AnyComponentList<'a> {
+    pub fn get(&'a self) -> &dyn ComponentList {
+        match self {
+            AnyComponentList::Owned(this) => &**this,
+            AnyComponentList::Ref(this) => *this,
+        }
+    }
+}
+
+// impl<'a> std::ops::Deref for AnyComponentList<'a> {
+//     type Target = dyn ComponentList;
+//
+//     fn deref(&self) -> &Self::Target {
+//         match self {
+//             AnyComponentList::Owned(this) => &**this,
+//             AnyComponentList::Ref(this) => *this,
+//         }
+//     }
+// }
+
 // --- Unary ---
 
 impl<L: Clone + Loggable> LoggableList for L {

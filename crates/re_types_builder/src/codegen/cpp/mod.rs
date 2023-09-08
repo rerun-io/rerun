@@ -26,6 +26,8 @@ use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
+use super::common::is_marker_struct_from_obj;
+
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
 // `TokenStream` ignores whitespace (including comments), but we can insert "quoted strings",
@@ -340,21 +342,26 @@ impl QuotedObject {
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
-        let field_declarations = obj
-            .fields
-            .iter()
-            .map(|obj_field| {
-                let declaration = quote_variable_with_docstring(
-                    &mut hpp_includes,
-                    obj_field,
-                    &format_ident!("{}", obj_field.name),
-                );
-                quote! {
-                    #NEWLINE_TOKEN
-                    #declaration
-                }
-            })
-            .collect_vec();
+        let is_marker_struct = is_marker_struct_from_obj(obj);
+
+        let field_declarations = if is_marker_struct {
+            Vec::new()
+        } else {
+            obj.fields
+                .iter()
+                .map(|obj_field| {
+                    let declaration = quote_variable_with_docstring(
+                        &mut hpp_includes,
+                        obj_field,
+                        &format_ident!("{}", obj_field.name),
+                    );
+                    quote! {
+                        #NEWLINE_TOKEN
+                        #declaration
+                    }
+                })
+                .collect_vec()
+        };
 
         let (constants_hpp, constants_cpp) =
             quote_constants_header_and_cpp(obj, objects, &type_ident);
@@ -560,6 +567,7 @@ impl QuotedObject {
                     #(#methods_hpp)*
             }
         };
+
         let hpp = quote! {
             #hpp_includes
 
@@ -984,28 +992,30 @@ fn single_field_constructor_methods(
         // Pass by value:
         // If it was a temporary it gets moved into the value and then moved again into the field.
         // If it was a lvalue it gets copied into the value and then moved into the field.
-        let parameter_declaration = quote_variable(hpp_includes, obj_field, &param_ident);
-        hpp_includes.insert_system("utility"); // std::move
-        methods.push(Method {
-            declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
-            }),
-            ..Method::default()
-        });
-        methods.push(Method {
-            declaration: MethodDeclaration {
-                is_static: false,
-                return_type: quote!(#type_ident&),
-                name_and_parameters: quote! {
-                    operator=(#parameter_declaration)
+        if !is_marker_struct_from_obj(obj) {
+            let parameter_declaration = quote_variable(hpp_includes, obj_field, &param_ident);
+            hpp_includes.insert_system("utility"); // std::move
+            methods.push(Method {
+                declaration: MethodDeclaration::constructor(quote! {
+                    #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
+                }),
+                ..Method::default()
+            });
+            methods.push(Method {
+                declaration: MethodDeclaration {
+                    is_static: false,
+                    return_type: quote!(#type_ident&),
+                    name_and_parameters: quote! {
+                        operator=(#parameter_declaration)
+                    },
                 },
-            },
-            definition_body: quote! {
-                #field_ident = std::move(#param_ident);
-                return *this;
-            },
-            ..Method::default()
-        });
+                definition_body: quote! {
+                    #field_ident = std::move(#param_ident);
+                    return *this;
+                },
+                ..Method::default()
+            });
+        }
 
         // If the field is a custom type as well which in turn has only a single field,
         // provide a constructor for that single field as well.
@@ -1279,7 +1289,6 @@ fn archetype_to_data_cells(
         }
     });
 
-    let indicator_fqname = format!("rerun.components.{}Indicator", obj.name);
     Method {
         docs: "Creates a list of Rerun DataCell from this archetype.".into(),
         declaration: MethodDeclaration {
@@ -1293,14 +1302,6 @@ fn archetype_to_data_cells(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_cells)*
-            {
-                const auto result =
-                    create_indicator_component(#indicator_fqname, num_instances());
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cells;
@@ -1318,6 +1319,14 @@ fn quote_fill_arrow_array_builder(
 ) -> TokenStream {
     if obj.is_arrow_transparent() {
         let field = &obj.fields[0];
+
+        let is_marker_struct = is_marker_struct_from_obj(obj);
+        if is_marker_struct {
+            return quote! {
+                ARROW_RETURN_NOT_OK(builder->AppendNulls(static_cast<int64_t>(num_elements)));
+            };
+        }
+
         if let Type::Object(fqname) = &field.typ {
             if field.is_nullable {
                 quote! {
@@ -1570,7 +1579,8 @@ fn quote_append_single_value_to_builder(
     includes: &mut Includes,
 ) -> TokenStream {
     match &typ {
-        Type::UInt8
+        Type::Null // TODO
+        | Type::UInt8
         | Type::UInt16
         | Type::UInt32
         | Type::UInt64
@@ -1589,7 +1599,8 @@ fn quote_append_single_value_to_builder(
             let num_items_per_element = quote_num_items_per_value(typ, &value_access);
 
             match elem_type {
-                ElementType::UInt8
+                ElementType::Null // TODO
+                | ElementType::UInt8
                 | ElementType::UInt16
                 | ElementType::UInt32
                 | ElementType::UInt64
@@ -1802,6 +1813,7 @@ fn quote_variable(
     if obj_field.is_nullable {
         includes.insert_system("optional");
         match &obj_field.typ {
+            Type::Null => quote! { std::optional<void> #name }, // TODO: ??
             Type::UInt8 => quote! { std::optional<uint8_t> #name },
             Type::UInt16 => quote! { std::optional<uint16_t> #name },
             Type::UInt32 => quote! { std::optional<uint32_t> #name },
@@ -1836,6 +1848,7 @@ fn quote_variable(
         }
     } else {
         match &obj_field.typ {
+            Type::Null => quote! { void #name }, // TODO
             Type::UInt8 => quote! { uint8_t #name },
             Type::UInt16 => quote! { uint16_t #name },
             Type::UInt32 => quote! { uint32_t #name },
@@ -1873,6 +1886,7 @@ fn quote_variable(
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
     match typ {
+        ElementType::Null => quote! { void }, // TODO
         ElementType::UInt8 => quote! { uint8_t },
         ElementType::UInt16 => quote! { uint16_t },
         ElementType::UInt32 => quote! { uint32_t },
@@ -1926,6 +1940,7 @@ fn quote_arrow_data_type(
     is_top_level_type: bool,
 ) -> TokenStream {
     match typ {
+        Type::Null => quote!(arrow::null()), // TODO
         Type::Int8 => quote!(arrow::int8()),
         Type::Int16 => quote!(arrow::int16()),
         Type::Int32 => quote!(arrow::int32()),

@@ -9,8 +9,29 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
+from .annotation_context_indicator import (
+    AnnotationContextIndicator,
+    AnnotationContextIndicatorArray,
+    AnnotationContextIndicatorArrayLike,
+    AnnotationContextIndicatorLike,
+    AnnotationContextIndicatorType,
+)
+from .arrows3d_indicator import (
+    Arrows3DIndicator,
+    Arrows3DIndicatorArray,
+    Arrows3DIndicatorArrayLike,
+    Arrows3DIndicatorLike,
+    Arrows3DIndicatorType,
+)
 from .class_id import ClassIdArray, ClassIdType
 from .color import ColorArray, ColorType
+from .depth_image_indicator import (
+    DepthImageIndicator,
+    DepthImageIndicatorArray,
+    DepthImageIndicatorArrayLike,
+    DepthImageIndicatorLike,
+    DepthImageIndicatorType,
+)
 from .depth_meter import DepthMeter, DepthMeterArray, DepthMeterArrayLike, DepthMeterLike, DepthMeterType
 from .disconnected_space import (
     DisconnectedSpace,
@@ -18,6 +39,13 @@ from .disconnected_space import (
     DisconnectedSpaceArrayLike,
     DisconnectedSpaceLike,
     DisconnectedSpaceType,
+)
+from .disconnected_space_indicator import (
+    DisconnectedSpaceIndicator,
+    DisconnectedSpaceIndicatorArray,
+    DisconnectedSpaceIndicatorArrayLike,
+    DisconnectedSpaceIndicatorLike,
+    DisconnectedSpaceIndicatorType,
 )
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
 from .fuzzy import (
@@ -92,17 +120,87 @@ from .fuzzy import (
     AffixFuzzer20Array,
     AffixFuzzer20Type,
 )
+from .fuzzy_indicator import (
+    AffixFuzzer1Indicator,
+    AffixFuzzer1IndicatorArray,
+    AffixFuzzer1IndicatorArrayLike,
+    AffixFuzzer1IndicatorLike,
+    AffixFuzzer1IndicatorType,
+)
+from .image_indicator import (
+    ImageIndicator,
+    ImageIndicatorArray,
+    ImageIndicatorArrayLike,
+    ImageIndicatorLike,
+    ImageIndicatorType,
+)
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointIdArray, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArray, LineStrip3DArrayLike, LineStrip3DLike, LineStrip3DType
+from .line_strips2d_indicator import (
+    LineStrips2DIndicator,
+    LineStrips2DIndicatorArray,
+    LineStrips2DIndicatorArrayLike,
+    LineStrips2DIndicatorLike,
+    LineStrips2DIndicatorType,
+)
+from .line_strips3d_indicator import (
+    LineStrips3DIndicator,
+    LineStrips3DIndicatorArray,
+    LineStrips3DIndicatorArrayLike,
+    LineStrips3DIndicatorLike,
+    LineStrips3DIndicatorType,
+)
 from .origin3d import Origin3DArray, Origin3DType
 from .point2d import Point2DArray, Point2DType
 from .point3d import Point3DArray, Point3DType
+from .points2d_indicator import (
+    Points2DIndicator,
+    Points2DIndicatorArray,
+    Points2DIndicatorArrayLike,
+    Points2DIndicatorLike,
+    Points2DIndicatorType,
+)
+from .points3d_indicator import (
+    Points3DIndicator,
+    Points3DIndicatorArray,
+    Points3DIndicatorArrayLike,
+    Points3DIndicatorLike,
+    Points3DIndicatorType,
+)
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
+from .segmentation_image_indicator import (
+    SegmentationImageIndicator,
+    SegmentationImageIndicatorArray,
+    SegmentationImageIndicatorArrayLike,
+    SegmentationImageIndicatorLike,
+    SegmentationImageIndicatorType,
+)
 from .tensor_data import TensorDataArray, TensorDataType
+from .tensor_indicator import (
+    TensorIndicator,
+    TensorIndicatorArray,
+    TensorIndicatorArrayLike,
+    TensorIndicatorLike,
+    TensorIndicatorType,
+)
 from .text import TextArray, TextType
+from .text_document_indicator import (
+    TextDocumentIndicator,
+    TextDocumentIndicatorArray,
+    TextDocumentIndicatorArrayLike,
+    TextDocumentIndicatorLike,
+    TextDocumentIndicatorType,
+)
 from .transform3d import Transform3DArray, Transform3DType
+from .transform3d_indicator import (
+    Transform3DIndicator,
+    Transform3DIndicatorArray,
+    Transform3DIndicatorArrayLike,
+    Transform3DIndicatorLike,
+    Transform3DIndicatorType,
+)
 from .vector3d import Vector3DArray, Vector3DType
 
 __all__ = [
@@ -148,6 +246,11 @@ __all__ = [
     "AffixFuzzer19Array",
     "AffixFuzzer19Type",
     "AffixFuzzer1Array",
+    "AffixFuzzer1Indicator",
+    "AffixFuzzer1IndicatorArray",
+    "AffixFuzzer1IndicatorArrayLike",
+    "AffixFuzzer1IndicatorLike",
+    "AffixFuzzer1IndicatorType",
     "AffixFuzzer1Type",
     "AffixFuzzer20Array",
     "AffixFuzzer20Type",
@@ -179,12 +282,27 @@ __all__ = [
     "AnnotationContext",
     "AnnotationContextArray",
     "AnnotationContextArrayLike",
+    "AnnotationContextIndicator",
+    "AnnotationContextIndicatorArray",
+    "AnnotationContextIndicatorArrayLike",
+    "AnnotationContextIndicatorLike",
+    "AnnotationContextIndicatorType",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "Arrows3DIndicator",
+    "Arrows3DIndicatorArray",
+    "Arrows3DIndicatorArrayLike",
+    "Arrows3DIndicatorLike",
+    "Arrows3DIndicatorType",
     "ClassIdArray",
     "ClassIdType",
     "ColorArray",
     "ColorType",
+    "DepthImageIndicator",
+    "DepthImageIndicatorArray",
+    "DepthImageIndicatorArrayLike",
+    "DepthImageIndicatorLike",
+    "DepthImageIndicatorType",
     "DepthMeter",
     "DepthMeterArray",
     "DepthMeterArrayLike",
@@ -193,6 +311,11 @@ __all__ = [
     "DisconnectedSpace",
     "DisconnectedSpaceArray",
     "DisconnectedSpaceArrayLike",
+    "DisconnectedSpaceIndicator",
+    "DisconnectedSpaceIndicatorArray",
+    "DisconnectedSpaceIndicatorArrayLike",
+    "DisconnectedSpaceIndicatorLike",
+    "DisconnectedSpaceIndicatorType",
     "DisconnectedSpaceLike",
     "DisconnectedSpaceType",
     "DrawOrder",
@@ -200,6 +323,11 @@ __all__ = [
     "DrawOrderArrayLike",
     "DrawOrderLike",
     "DrawOrderType",
+    "ImageIndicator",
+    "ImageIndicatorArray",
+    "ImageIndicatorArrayLike",
+    "ImageIndicatorLike",
+    "ImageIndicatorType",
     "InstanceKey",
     "InstanceKeyArray",
     "InstanceKeyArrayLike",
@@ -217,22 +345,62 @@ __all__ = [
     "LineStrip3DArrayLike",
     "LineStrip3DLike",
     "LineStrip3DType",
+    "LineStrips2DIndicator",
+    "LineStrips2DIndicatorArray",
+    "LineStrips2DIndicatorArrayLike",
+    "LineStrips2DIndicatorLike",
+    "LineStrips2DIndicatorType",
+    "LineStrips3DIndicator",
+    "LineStrips3DIndicatorArray",
+    "LineStrips3DIndicatorArrayLike",
+    "LineStrips3DIndicatorLike",
+    "LineStrips3DIndicatorType",
     "Origin3DArray",
     "Origin3DType",
     "Point2DArray",
     "Point2DType",
     "Point3DArray",
     "Point3DType",
+    "Points2DIndicator",
+    "Points2DIndicatorArray",
+    "Points2DIndicatorArrayLike",
+    "Points2DIndicatorLike",
+    "Points2DIndicatorType",
+    "Points3DIndicator",
+    "Points3DIndicatorArray",
+    "Points3DIndicatorArrayLike",
+    "Points3DIndicatorLike",
+    "Points3DIndicatorType",
     "Radius",
     "RadiusArray",
     "RadiusArrayLike",
     "RadiusLike",
     "RadiusType",
+    "SegmentationImageIndicator",
+    "SegmentationImageIndicatorArray",
+    "SegmentationImageIndicatorArrayLike",
+    "SegmentationImageIndicatorLike",
+    "SegmentationImageIndicatorType",
     "TensorDataArray",
     "TensorDataType",
+    "TensorIndicator",
+    "TensorIndicatorArray",
+    "TensorIndicatorArrayLike",
+    "TensorIndicatorLike",
+    "TensorIndicatorType",
     "TextArray",
+    "TextDocumentIndicator",
+    "TextDocumentIndicatorArray",
+    "TextDocumentIndicatorArrayLike",
+    "TextDocumentIndicatorLike",
+    "TextDocumentIndicatorType",
     "TextType",
     "Transform3DArray",
+    "Transform3DIndicator",
+    "Transform3DIndicatorArray",
+    "Transform3DIndicatorArrayLike",
+    "Transform3DIndicatorLike",
+    "Transform3DIndicatorType",
     "Transform3DType",
     "Vector3DArray",
     "Vector3DType",

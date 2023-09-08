@@ -132,6 +132,7 @@ impl ArrowRegistry {
 
     fn arrow_datatype_from_type(&mut self, typ: Type, field: &mut ObjectField) -> LazyDatatype {
         let datatype = match typ {
+            Type::Null => LazyDatatype::Null,
             Type::UInt8 => LazyDatatype::UInt8,
             Type::UInt16 => LazyDatatype::UInt16,
             Type::UInt32 => LazyDatatype::UInt32,
@@ -172,6 +173,7 @@ impl ArrowRegistry {
     fn arrow_datatype_from_element_type(&self, typ: ElementType) -> LazyDatatype {
         _ = self;
         match typ {
+            ElementType::Null => LazyDatatype::Null,
             ElementType::UInt8 => LazyDatatype::UInt8,
             ElementType::UInt16 => LazyDatatype::UInt16,
             ElementType::UInt32 => LazyDatatype::UInt32,

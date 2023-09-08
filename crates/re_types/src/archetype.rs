@@ -1,6 +1,6 @@
 use crate::{
-    ComponentList, ComponentName, DeserializationResult, ResultExt as _, SerializationResult,
-    _Backtrace,
+    AnyComponentList, ComponentList, ComponentName, DeserializationResult, ResultExt as _,
+    SerializationResult, _Backtrace,
 };
 
 #[allow(unused_imports)] // used in docstrings
@@ -33,6 +33,10 @@ use crate::Component;
 /// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/re_types/definitions/rerun
 /// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
 pub trait Archetype {
+    // TODO: paste docs
+    // TODO: link to default associated types rust issue
+    type Indicator: ComponentList;
+
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
 
@@ -46,6 +50,7 @@ pub trait Archetype {
     /// this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentName]> {
+        // TODO: how can we fit the indicator name in there???
         std::borrow::Cow::Borrowed(&[])
     }
 
@@ -100,7 +105,7 @@ pub trait Archetype {
     fn num_instances(&self) -> usize {
         self.as_component_lists()
             .first()
-            .map_or(0, |comp_list| comp_list.num_instances())
+            .map_or(0, |comp_list| comp_list.get().num_instances())
     }
 
     /// Exposes the archetype's contents as a set of [`ComponentList`]s.
@@ -114,7 +119,7 @@ pub trait Archetype {
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
     #[inline]
-    fn as_component_lists(&self) -> Vec<&dyn ComponentList> {
+    fn as_component_lists(&self) -> Vec<AnyComponentList<'_>> {
         vec![]
     }
 
@@ -136,9 +141,10 @@ pub trait Archetype {
             .into_iter()
             .map(|comp_list| {
                 comp_list
+                    .get()
                     .try_to_arrow()
-                    .map(|array| (comp_list.arrow_field(), array))
-                    .with_context(comp_list.name())
+                    .map(|array| (comp_list.get().arrow_field(), array))
+                    .with_context(comp_list.get().name())
             })
             .collect()
     }
@@ -212,3 +218,113 @@ impl ArchetypeName {
         }
     }
 }
+
+// ---
+
+// TODO: gotta explain why this implements ComponentList rather than Component
+
+#[derive(Debug, Clone, Copy)]
+pub struct GenericIndicatorComponent<A: Archetype> {
+    num_instances: u32,
+    _phantom: std::marker::PhantomData<A>,
+}
+
+impl<'a, A: 'a + Archetype> GenericIndicatorComponent<A> {
+    // TODO: doc
+    #[inline]
+    pub fn new_list(num_instances: u32) -> Box<dyn ComponentList + 'a> {
+        Box::new(Self {
+            num_instances,
+            _phantom: std::marker::PhantomData::<A>,
+        })
+    }
+}
+
+// TODO: on one hand it sucks because you always have a splat, on the other hand if that wasn't the
+// case range queries would be incorrect...?
+
+impl<A: Archetype> crate::LoggableList for GenericIndicatorComponent<A> {
+    type Name = ComponentName;
+
+    // TODO: have to think more about this...
+    fn name(&self) -> Self::Name {
+        A::indicator_component() // TODO: rename this
+    }
+
+    fn num_instances(&self) -> usize {
+        // TODO: why is this usize to begin with..?
+        self.num_instances as _
+    }
+
+    fn arrow_field(&self) -> arrow2::datatypes::Field {
+        let name = self.name().to_string();
+        arrow2::datatypes::Field::new(
+            name.clone(),
+            arrow2::datatypes::DataType::Extension(
+                name,
+                Box::new(arrow2::datatypes::DataType::Null),
+                None,
+            ),
+            false,
+        )
+    }
+
+    fn try_to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+        Ok(
+            arrow2::array::NullArray::new(arrow2::datatypes::DataType::Null, self.num_instances())
+                .boxed(),
+        )
+    }
+}
+
+impl<A: Archetype> crate::ComponentList for GenericIndicatorComponent<A> {}
+
+// TODO
+// impl<C: Component> crate::Loggable for GenericIndicatorComponent<C> {
+//     type Name = C::Name;
+//
+//     #[inline]
+//     fn name() -> Self::Name {
+//         C::name()
+//     }
+//
+//     #[inline]
+//     fn arrow_datatype() -> arrow2::datatypes::DataType {
+//         arrow2::datatypes::DataType::Null
+//     }
+//
+//     fn try_to_arrow_opt<'a>(
+//         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+//     ) -> crate::SerializationResult<Box<dyn arrow2::array::Array>>
+//     where
+//         Self: Clone + 'a,
+//     {
+//         Ok({
+//             let data0 = data.into_iter().filter(|datum| datum.is_some()).count();
+//             arrow2::array::NullArray::new(Self::arrow_datatype(), data0).boxed()
+//         })
+//     }
+//
+//     // TODO: probably better to just not implement it for now i guess?
+//     // #[allow(unused_imports, clippy::wildcard_imports)]
+//     // fn try_from_arrow_opt(
+//     //     arrow_data: &dyn arrow2::array::Array,
+//     // ) -> crate::DeserializationResult<Vec<Option<Self>>>
+//     // where
+//     //     Self: Sized,
+//     // {
+//     //     use crate::{Loggable as _, ResultExt as _};
+//     //     use arrow2::{array::*, buffer::*, datatypes::*};
+//     //     arrow_data
+//     //         .as_any()
+//     //         .downcast_ref::<NullArray>()
+//     //         .ok_or_else(|| {
+//     //             crate::DeserializationError::datatype_mismatch(
+//     //                 DataType::Null,
+//     //                 arrow_data.data_type().clone(),
+//     //             )
+//     //         })
+//     //         .with_context(C::name())?
+//     //         .null_count();
+//     // }
+// }

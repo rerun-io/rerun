@@ -2,7 +2,7 @@ use arrow2::datatypes::DataType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{ArrowRegistry, Object, Objects};
+use crate::{codegen::common::is_marker_struct_from_obj, ArrowRegistry, Object, Objects};
 
 use super::{
     arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path},
@@ -26,6 +26,7 @@ pub fn quote_arrow_serializer(
     let quoted_datatype = quote!(<#fqname_use>::arrow_datatype());
 
     let is_arrow_transparent = obj.datatype.is_none();
+    let is_marker_struct = is_marker_struct_from_obj(obj);
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
     let quoted_flatten = |obj_field_is_nullable| {
@@ -87,28 +88,37 @@ pub fn quote_arrow_serializer(
 
         let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-        quote! {{
-            let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+        if is_marker_struct {
+            quote! {{
+                // NOTE: NullArrays cannot have validity bitmaps... in fact they aren't even
+                // arrays to begin with.
+                let #quoted_data_dst = #quoted_data_src.into_iter().filter(|datum| datum.is_some()).count();
+                #quoted_serializer
+            }}
+        } else {
+            quote! {{
+                let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+                    .into_iter()
+                    .map(|datum| {
+                        let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
 
-                    let datum = datum
-                        .map(|datum| {
-                            let #quoted_binding = datum.into_owned();
-                            #quoted_data_dst
-                        })
-                        #quoted_flatten;
+                        let datum = datum
+                            .map(|datum| {
+                                let #quoted_binding = datum.into_owned();
+                                #quoted_data_dst
+                            })
+                            #quoted_flatten;
 
-                    (datum.is_some(), datum)
-                })
-                .unzip();
+                        (datum.is_some(), datum)
+                    })
+                    .unzip();
 
 
-            #quoted_bitmap;
+                #quoted_bitmap;
 
-            #quoted_serializer
-        }}
+                #quoted_serializer
+            }}
+        }
     } else {
         let data_src = data_src.clone();
 
@@ -344,6 +354,16 @@ fn quote_arrow_field_serializer(
     let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
 
     match datatype.to_logical_type() {
+        DataType::Null => {
+            quote! {
+                NullArray::new(
+                    #quoted_datatype,
+                    #data_src, // NOTE: this is just a counter
+                )
+                .boxed()
+            }
+        }
+
         DataType::Int8
         | DataType::Int16
         | DataType::Int32
@@ -355,12 +375,11 @@ fn quote_arrow_field_serializer(
         | DataType::Float16
         | DataType::Float32
         | DataType::Float64 => {
-            // NOTE: We need values for all slots, regardless of what the bitmap says,
-            // hence `unwrap_or_default`.
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
                 let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                 let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+
                 let quoted_data_dst = format_ident!(
                     "{}",
                     if is_tuple_struct {
@@ -387,6 +406,8 @@ fn quote_arrow_field_serializer(
                 }
             } else {
                 quote! {
+                    // NOTE: We need values for all slots, regardless of what the bitmap says,
+                    // hence `unwrap_or_default`.
                     .map(|v| v.unwrap_or_default())
                 }
             };

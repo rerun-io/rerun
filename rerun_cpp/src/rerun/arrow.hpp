@@ -16,6 +16,4 @@ namespace rerun {
     /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
     /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
     Result<std::shared_ptr<arrow::Buffer>> ipc_from_table(const arrow::Table& table);
-
-    Result<rerun::DataCell> create_indicator_component(const char* arch_name, size_t num_instances);
 } // namespace rerun

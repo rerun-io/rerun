@@ -3,9 +3,12 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
-    codegen::rust::{
-        arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
-        util::is_tuple_struct_from_obj,
+    codegen::{
+        common::is_marker_struct_from_obj,
+        rust::{
+            arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+            util::is_tuple_struct_from_obj,
+        },
     },
     ArrowRegistry, Object, ObjectKind, Objects,
 };
@@ -57,6 +60,7 @@ pub fn quote_arrow_deserializer(
 
     let obj_fqname = obj.fqname.as_str();
     let is_arrow_transparent = obj.datatype.is_none();
+    let is_marker_struct = is_marker_struct_from_obj(obj);
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
     if is_arrow_transparent {
@@ -96,16 +100,27 @@ pub fn quote_arrow_deserializer(
             quote!(.map(|res| res.map(|#data_dst| Some(Self { #data_dst }))))
         };
 
-        quote! {
-            #quoted_deserializer
-            #quoted_unwrapping
-            #quoted_remapping
-            // NOTE: implicit Vec<Result> to Result<Vec>
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-            // NOTE: double context so the user can see the transparent shenanigans going on in the
-            // error.
-            .with_context(#obj_field_fqname)
-            .with_context(#obj_fqname)?
+        if is_marker_struct {
+            quote! {
+                #quoted_deserializer
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                // NOTE: double context so the user can see the transparent shenanigans going on in the
+                // error.
+                .with_context(#obj_field_fqname)
+                .with_context(#obj_fqname)?
+            }
+        } else {
+            quote! {
+                #quoted_deserializer
+                #quoted_unwrapping
+                #quoted_remapping
+                // NOTE: implicit Vec<Result> to Result<Vec>
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                // NOTE: double context so the user can see the transparent shenanigans going on in the
+                // error.
+                .with_context(#obj_field_fqname)
+                .with_context(#obj_fqname)?
+            }
         }
     } else {
         // NOTE: This can only be struct or union/enum at this point.
@@ -382,6 +397,20 @@ fn quote_arrow_field_deserializer(
     _ = is_nullable; // not yet used, will be needed very soon
 
     match datatype.to_logical_type() {
+        DataType::Null => {
+            let quoted_downcast = {
+                let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
+                let cast_as = format_ident!("{cast_as}Array");
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+            };
+
+            // NOTE: NullArrays cannot have validity bitmaps... in fact they aren't even
+            // arrays to begin with.
+            quote! {
+                std::iter::repeat(Ok(Some(Self))).take(#quoted_downcast?.null_count())
+            }
+        }
+
         DataType::Int8
         | DataType::Int16
         | DataType::Int32

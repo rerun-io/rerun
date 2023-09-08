@@ -4,7 +4,13 @@ use std::collections::BTreeSet;
 
 use camino::Utf8PathBuf;
 
-use crate::Docs;
+use crate::{Docs, Object, Type};
+
+// ---
+
+pub fn is_marker_struct_from_obj(obj: &Object) -> bool {
+    obj.datatype.is_none() && obj.fields.len() == 1 && obj.fields[0].typ == Type::Null
+}
 
 /// Retrieves the global and tagged documentation from a [`Docs`] object.
 pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {

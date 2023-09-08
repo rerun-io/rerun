@@ -1022,6 +1022,7 @@ fn quote_field_type_from_field(
 ) -> (String, bool) {
     let mut unwrapped = false;
     let typ = match &field.typ {
+        Type::Null => "()".to_owned(), // TODO
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
@@ -1038,6 +1039,7 @@ fn quote_field_type_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
+            ElementType::Null => "npt.NDArray[np.void]".to_owned(), // TODO
             ElementType::UInt8 => "npt.NDArray[np.uint8]".to_owned(),
             ElementType::UInt16 => "npt.NDArray[np.uint16]".to_owned(),
             ElementType::UInt32 => "npt.NDArray[np.uint32]".to_owned(),
@@ -1078,6 +1080,7 @@ fn quote_field_converter_from_field(
     let mut function = String::new();
 
     let converter = match &field.typ {
+        Type::Null => "()".to_owned(), // TODO
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
@@ -1118,6 +1121,7 @@ fn quote_field_converter_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
+            ElementType::Null => "to_np_void".to_owned(), // TODO
             ElementType::UInt8 => "to_np_uint8".to_owned(),
             ElementType::UInt16 => "to_np_uint16".to_owned(),
             ElementType::UInt32 => "to_np_uint32".to_owned(),
@@ -1185,6 +1189,7 @@ fn quote_field_converter_from_field(
 
 fn quote_type_from_element_type(typ: &ElementType) -> String {
     match typ {
+        ElementType::Null => "()".to_owned(), // TODO
         ElementType::UInt8
         | ElementType::UInt16
         | ElementType::UInt32
