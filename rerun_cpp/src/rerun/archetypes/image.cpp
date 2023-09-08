@@ -9,8 +9,8 @@ namespace rerun {
     namespace archetypes {
         const char Image::INDICATOR_COMPONENT_NAME[] = "rerun.components.ImageIndicator";
 
-        std::vector<AnonymousComponentList> Image::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> Image::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(2);
 
             cells.emplace_back(data);
@@ -18,7 +18,7 @@ namespace rerun {
                 cells.emplace_back(draw_order.value());
             }
             cells.emplace_back(
-                ComponentList<components::IndicatorComponent<Image::INDICATOR_COMPONENT_NAME>>(
+                ComponentBatch<components::IndicatorComponent<Image::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
                     num_instances()
                 )

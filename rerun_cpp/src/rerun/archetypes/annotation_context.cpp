@@ -10,13 +10,13 @@ namespace rerun {
         const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.AnnotationContextIndicator";
 
-        std::vector<AnonymousComponentList> AnnotationContext::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> AnnotationContext::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(1);
 
             cells.emplace_back(context);
             cells.emplace_back(
-                ComponentList<
+                ComponentBatch<
                     components::IndicatorComponent<AnnotationContext::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
                     num_instances()

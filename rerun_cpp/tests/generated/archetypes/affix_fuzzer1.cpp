@@ -10,8 +10,8 @@ namespace rerun {
         const char AffixFuzzer1::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.AffixFuzzer1Indicator";
 
-        std::vector<AnonymousComponentList> AffixFuzzer1::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> AffixFuzzer1::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(74);
 
             cells.emplace_back(fuzz1001);
@@ -161,7 +161,7 @@ namespace rerun {
                 cells.emplace_back(fuzz2118.value());
             }
             cells.emplace_back(
-                ComponentList<
+                ComponentBatch<
                     components::IndicatorComponent<AffixFuzzer1::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
                     num_instances()

@@ -27,7 +27,7 @@
 #include <cstdint>
 #include <optional>
 #include <rerun/arrow.hpp>
-#include <rerun/component_list.hpp>
+#include <rerun/component_batch.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
@@ -628,7 +628,7 @@ namespace rerun {
             /// The returned vector references this instance and does not take ownership of any
             /// data. Adding any new components to this archetype will invalidate the returned
             /// component lists!
-            std::vector<AnonymousComponentList> as_component_lists() const;
+            std::vector<AnonymousComponentBatch> as_component_lists() const;
         };
     } // namespace archetypes
 } // namespace rerun

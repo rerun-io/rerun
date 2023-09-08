@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../arrow.hpp"
-#include "../component_list.hpp"
+#include "../component_batch.hpp"
 #include "../components/transform3d.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
@@ -252,7 +252,7 @@ namespace rerun {
             /// The returned vector references this instance and does not take ownership of any
             /// data. Adding any new components to this archetype will invalidate the returned
             /// component lists!
-            std::vector<AnonymousComponentList> as_component_lists() const;
+            std::vector<AnonymousComponentBatch> as_component_lists() const;
         };
     } // namespace archetypes
 } // namespace rerun

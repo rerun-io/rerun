@@ -10,8 +10,8 @@ namespace rerun {
         const char LineStrips3D::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.LineStrips3DIndicator";
 
-        std::vector<AnonymousComponentList> LineStrips3D::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> LineStrips3D::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(6);
 
             cells.emplace_back(strips);
@@ -31,7 +31,7 @@ namespace rerun {
                 cells.emplace_back(instance_keys.value());
             }
             cells.emplace_back(
-                ComponentList<
+                ComponentBatch<
                     components::IndicatorComponent<LineStrips3D::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
                     num_instances()

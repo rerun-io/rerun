@@ -9,8 +9,8 @@ namespace rerun {
     namespace archetypes {
         const char Arrows3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Arrows3DIndicator";
 
-        std::vector<AnonymousComponentList> Arrows3D::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> Arrows3D::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(7);
 
             cells.emplace_back(vectors);
@@ -33,7 +33,7 @@ namespace rerun {
                 cells.emplace_back(instance_keys.value());
             }
             cells.emplace_back(
-                ComponentList<components::IndicatorComponent<Arrows3D::INDICATOR_COMPONENT_NAME>>(
+                ComponentBatch<components::IndicatorComponent<Arrows3D::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
                     num_instances()
                 )

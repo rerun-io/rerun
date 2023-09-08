@@ -9,8 +9,8 @@ namespace rerun {
     namespace archetypes {
         const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";
 
-        std::vector<AnonymousComponentList> Points2D::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> Points2D::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(8);
 
             cells.emplace_back(points);
@@ -36,7 +36,7 @@ namespace rerun {
                 cells.emplace_back(instance_keys.value());
             }
             cells.emplace_back(
-                ComponentList<components::IndicatorComponent<Points2D::INDICATOR_COMPONENT_NAME>>(
+                ComponentBatch<components::IndicatorComponent<Points2D::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
                     num_instances()
                 )

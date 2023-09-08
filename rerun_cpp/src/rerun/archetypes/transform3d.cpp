@@ -10,12 +10,12 @@ namespace rerun {
         const char Transform3D::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.Transform3DIndicator";
 
-        std::vector<AnonymousComponentList> Transform3D::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> Transform3D::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(1);
 
             cells.emplace_back(transform);
-            cells.emplace_back(ComponentList<components::IndicatorComponent<
+            cells.emplace_back(ComponentBatch<components::IndicatorComponent<
                                    Transform3D::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances())
             );
 

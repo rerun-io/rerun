@@ -10,13 +10,13 @@ namespace rerun {
         const char TextDocument::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.TextDocumentIndicator";
 
-        std::vector<AnonymousComponentList> TextDocument::as_component_lists() const {
-            std::vector<AnonymousComponentList> cells;
+        std::vector<AnonymousComponentBatch> TextDocument::as_component_lists() const {
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(1);
 
             cells.emplace_back(body);
             cells.emplace_back(
-                ComponentList<
+                ComponentBatch<
                     components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
                     num_instances()
