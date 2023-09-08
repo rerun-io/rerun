@@ -32,7 +32,7 @@ pub use rerun::{
         AnnotationContext, Box3D, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
         InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D, Pinhole,
         Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Text,
-        TextEntry, Transform3D, Vector3D, ViewCoordinates,
+        Transform3D, Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},
