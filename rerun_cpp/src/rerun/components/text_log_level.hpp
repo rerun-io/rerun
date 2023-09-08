@@ -39,22 +39,22 @@ namespace rerun {
             // Extensions to generated type defined in 'text_log_level_ext.cpp'
 
             /// Designates catastrophic failures.
-            static const TextLogLevel CRITICAL = "CRITICAL";
+            static const TextLogLevel CRITICAL;
 
             /// Designates very serious errors.
-            static const TextLogLevel ERROR = "ERROR";
+            static const TextLogLevel ERROR;
 
             /// Designates hazardous situations.
-            static const TextLogLevel WARN = "WARN";
+            static const TextLogLevel WARN;
 
             /// Designates useful information.
-            static const TextLogLevel INFO = "INFO";
+            static const TextLogLevel INFO;
 
             /// Designates lower priority information.
-            static const TextLogLevel DEBUG = "DEBUG";
+            static const TextLogLevel DEBUG;
 
             /// Designates very low priority, often extremely verbose, information.
-            static const TextLogLevel TRACE = "TRACE";
+            static const TextLogLevel TRACE;
 
             /// Construct `TextLogLevel` from a zero-terminated UTF8 string.
             TextLogLevel(const char* str) : value(str) {}

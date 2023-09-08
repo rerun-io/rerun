@@ -14,22 +14,22 @@ namespace rerun {
             // [CODEGEN COPY TO HEADER START]
 
             /// Designates catastrophic failures.
-            static const TextLogLevel CRITICAL = "CRITICAL";
+            static const TextLogLevel CRITICAL;
 
             /// Designates very serious errors.
-            static const TextLogLevel ERROR = "ERROR";
+            static const TextLogLevel ERROR;
 
             /// Designates hazardous situations.
-            static const TextLogLevel WARN = "WARN";
+            static const TextLogLevel WARN;
 
             /// Designates useful information.
-            static const TextLogLevel INFO = "INFO";
+            static const TextLogLevel INFO;
 
             /// Designates lower priority information.
-            static const TextLogLevel DEBUG = "DEBUG";
+            static const TextLogLevel DEBUG;
 
             /// Designates very low priority, often extremely verbose, information.
-            static const TextLogLevel TRACE = "TRACE";
+            static const TextLogLevel TRACE;
 
             /// Construct `TextLogLevel` from a zero-terminated UTF8 string.
             TextLogLevel(const char* str) : value(str) {}
@@ -39,6 +39,13 @@ namespace rerun {
             }
 
             // [CODEGEN COPY TO HEADER END]
+
+            const TextLogLevel TextLogLevel::CRITICAL = "CRITICAL";
+            const TextLogLevel TextLogLevel::ERROR = "ERROR";
+            const TextLogLevel TextLogLevel::WARN = "WARN";
+            const TextLogLevel TextLogLevel::INFO = "INFO";
+            const TextLogLevel TextLogLevel::DEBUG = "DEBUG";
+            const TextLogLevel TextLogLevel::TRACE = "TRACE";
         };
 #endif
     } // namespace components
