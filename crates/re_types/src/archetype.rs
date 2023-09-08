@@ -1,10 +1,10 @@
 use crate::{
-    ComponentList, ComponentName, DeserializationResult, ResultExt as _, SerializationResult,
-    _Backtrace,
+    AnyComponentList, ComponentList, ComponentName, DeserializationResult, ResultExt as _,
+    SerializationResult, _Backtrace,
 };
 
 #[allow(unused_imports)] // used in docstrings
-use crate::Component;
+use crate::{Component, Loggable, LoggableList};
 
 // ---
 
@@ -33,6 +33,32 @@ use crate::Component;
 /// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/re_types/definitions/rerun
 /// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
 pub trait Archetype {
+    /// The associated indicator component, whose presence indicates that the high-level
+    /// archetype-based APIs were used to log the data.
+    ///
+    /// Indicator components open new opportunities in terms of API design, better heuristics and
+    /// performance improvements on the query side.
+    ///
+    /// ## Internal representation
+    ///
+    /// Indicator components are non-splatted null arrays.
+    /// Their names follow the pattern `rerun.components.{ArchetypeName}Indicator`, e.g.
+    /// `rerun.components.Points3DIndicator`.
+    ///
+    /// The reason for not using splats is so that indicator components don't require dedicated rows.
+    /// This is not an issue because of the way null arrays are stored: storing 1 null value or 1M null
+    /// values takes the same size.
+    ///
+    /// Since null arrays aren't actually arrays and we don't actually have any data to shuffle
+    /// around per-se, we can't implement the usual [`Loggable`] traits.
+    /// For this reason, indicator components directly implement [`LoggableList`] instead, and
+    /// bypass the entire iterator machinery.
+    //
+    // TODO(rust-lang/rust#29661): We'd like to just default this to the right thing which is
+    // pretty much always `A::Indicator`, but defaults are unstable.
+    // type Indicator: ComponentList = A::Indicator;
+    type Indicator: ComponentList;
+
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
 
@@ -46,7 +72,7 @@ pub trait Archetype {
     /// this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentName]> {
-        std::borrow::Cow::Borrowed(&[])
+        std::borrow::Cow::Owned(vec![Self::indicator_component()])
     }
 
     /// Returns the names of all components that _may_ be provided by the user when constructing
@@ -76,22 +102,12 @@ pub trait Archetype {
         .into()
     }
 
-    /// Returns the name of the associated indicator component, whose presence indicates that the
-    /// high-level archetype-based APIs were used to log the data.
-    ///
-    /// Indicator components open new opportunities in terms of API design, better heuristics and
-    /// performance improvements on the query side.
-    ///
-    /// Indicator components are non-splatted null arrays.
-    /// Their names follow the pattern `rerun.components.{ArchetypeName}Indicator`, e.g.
-    /// `rerun.components.Points3DIndicator`.
-    ///
-    /// The reason for not using splats is so that indicator components don't require dedicated rows.
-    /// This is not an issue because of the way null arrays are stored: storing 1 null value or 1M null
-    /// values takes the same size.
+    /// Returns the name of the associated indicator component.
     #[inline]
     fn indicator_component() -> ComponentName {
-        format!("rerun.components.{}Indicator", Self::name().short_name()).into()
+        format!("{}Indicator", Self::name().full_name())
+            .replace("archetypes", "components")
+            .into()
     }
 
     /// Returns the number of instances of the archetype, i.e. the number of instances currently
@@ -100,7 +116,7 @@ pub trait Archetype {
     fn num_instances(&self) -> usize {
         self.as_component_lists()
             .first()
-            .map_or(0, |comp_list| comp_list.num_instances())
+            .map_or(0, |comp_list| comp_list.as_list().num_instances())
     }
 
     /// Exposes the archetype's contents as a set of [`ComponentList`]s.
@@ -114,7 +130,7 @@ pub trait Archetype {
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
     #[inline]
-    fn as_component_lists(&self) -> Vec<&dyn ComponentList> {
+    fn as_component_lists(&self) -> Vec<AnyComponentList<'_>> {
         vec![]
     }
 
@@ -136,9 +152,10 @@ pub trait Archetype {
             .into_iter()
             .map(|comp_list| {
                 comp_list
+                    .as_list()
                     .try_to_arrow()
-                    .map(|array| (comp_list.arrow_field(), array))
-                    .with_context(comp_list.name())
+                    .map(|array| (comp_list.as_list().arrow_field(), array))
+                    .with_context(comp_list.as_list().name())
             })
             .collect()
     }
@@ -212,3 +229,70 @@ impl ArchetypeName {
         }
     }
 }
+
+// ---
+
+/// A generic [indicator component] that can be specialized for any [`Archetype`].
+///
+/// ```ignore
+/// type MyArchetypeIndicator = GenericIndicatorComponent<MyArchetype>;
+/// ```
+///
+/// [indicator component]: [`Archetype::Indicator`]
+#[derive(Debug, Clone, Copy)]
+pub struct GenericIndicatorComponent<A: Archetype> {
+    num_instances: usize,
+    _phantom: std::marker::PhantomData<A>,
+}
+
+impl<'a, A: 'a + Archetype> GenericIndicatorComponent<A> {
+    /// Allocates a new [`ComponentList`] that represents `num_instances` elements worth of this
+    /// indicator component.
+    ///
+    /// Indicator components don't actually carry any data, thus this is extremely cheap.
+    #[inline]
+    pub fn new_list(num_instances: usize) -> Box<dyn ComponentList + 'a> {
+        Box::new(Self {
+            num_instances,
+            _phantom: std::marker::PhantomData::<A>,
+        })
+    }
+}
+
+impl<A: Archetype> crate::LoggableList for GenericIndicatorComponent<A> {
+    type Name = ComponentName;
+
+    #[inline]
+    fn name(&self) -> Self::Name {
+        A::indicator_component()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.num_instances
+    }
+
+    #[inline]
+    fn arrow_field(&self) -> arrow2::datatypes::Field {
+        let name = self.name().to_string();
+        arrow2::datatypes::Field::new(
+            name.clone(),
+            arrow2::datatypes::DataType::Extension(
+                name,
+                Box::new(arrow2::datatypes::DataType::Null),
+                None,
+            ),
+            false,
+        )
+    }
+
+    #[inline]
+    fn try_to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+        Ok(
+            arrow2::array::NullArray::new(arrow2::datatypes::DataType::Null, self.num_instances())
+                .boxed(),
+        )
+    }
+}
+
+impl<A: Archetype> crate::ComponentList for GenericIndicatorComponent<A> {}

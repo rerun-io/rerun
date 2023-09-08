@@ -24,20 +24,36 @@ pub struct TextLog {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.label".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.TextLogLevel".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.TextLogLevel".into(),
+            "rerun.components.TextLogIndicator".into(),
+        ]
+    });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.label".into(), "rerun.components.TextLogLevel".into()]);
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.label".into(),
+            "rerun.components.TextLogLevel".into(),
+            "rerun.components.TextLogIndicator".into(),
+        ]
+    });
 
 impl TextLog {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
+/// Indicator component for the [`TextLog`] [`crate::Archetype`]
+pub type TextLogIndicator = crate::GenericIndicatorComponent<TextLog>;
+
 impl crate::Archetype for TextLog {
+    type Indicator = TextLogIndicator;
+
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.TextLog".into()
@@ -64,24 +80,20 @@ impl crate::Archetype for TextLog {
     }
 
     #[inline]
-    fn indicator_component() -> crate::ComponentName {
-        "rerun.components.TextLogIndicator".into()
-    }
-
-    #[inline]
     fn num_instances(&self) -> usize {
         1
     }
 
-    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+    fn as_component_lists(&self) -> Vec<crate::AnyComponentList<'_>> {
         [
-            Some(&self.body as &dyn crate::ComponentList),
+            Some(Self::Indicator::new_list(self.num_instances() as _).into()),
+            Some((&self.body as &dyn crate::ComponentList).into()),
             self.level
                 .as_ref()
-                .map(|comp| comp as &dyn crate::ComponentList),
+                .map(|comp| (comp as &dyn crate::ComponentList).into()),
             self.color
                 .as_ref()
-                .map(|comp| comp as &dyn crate::ComponentList),
+                .map(|comp| (comp as &dyn crate::ComponentList).into()),
         ]
         .into_iter()
         .flatten()
@@ -153,26 +165,6 @@ impl crate::Archetype for TextLog {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.TextLog#color")?
-            },
-            {
-                let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.TextLogIndicator".to_owned(),
-                    Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.TextLogIndicator".to_owned()),
-                );
-                let array = ::arrow2::array::NullArray::new(
-                    datatype.to_logical_type().clone(),
-                    self.num_instances(),
-                )
-                .boxed();
-                Some((
-                    ::arrow2::datatypes::Field::new(
-                        "rerun.components.TextLogIndicator",
-                        datatype,
-                        false,
-                    ),
-                    array,
-                ))
             },
         ]
         .into_iter()
