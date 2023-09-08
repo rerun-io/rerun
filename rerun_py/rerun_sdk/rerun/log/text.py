@@ -108,7 +108,6 @@ def log_text_entry(
     if color is not None:
         color = _normalize_colors(color)
 
-    # TODO(emilk): color
     return log(
         entity_path, TextLog(body=text, level=level, color=color), ext=ext, timeless=timeless, recording=recording
     )

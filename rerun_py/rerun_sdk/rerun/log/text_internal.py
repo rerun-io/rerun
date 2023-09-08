@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Final
 
-from rerun import bindings
-from rerun.components import instance_key_splat
-from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.recording_stream import RecordingStream
 
@@ -81,26 +77,11 @@ def log_text_entry_internal(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
+    from rerun.experimental import TextLog, log
 
     recording = RecordingStream.to_native(recording)
 
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
-    if text:
-        instanced["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
-    else:
-        logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
-
     if color is not None:
-        colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
+        color = _normalize_colors(color)
 
-    if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    return log(entity_path, TextLog(body=text, level=level), timeless=timeless, recording=recording)

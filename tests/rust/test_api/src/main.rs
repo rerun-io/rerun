@@ -15,7 +15,11 @@
 use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools;
-use rerun::{archetypes::SegmentationImage, external::re_log, EntityPath, RecordingStream};
+use rerun::{
+    archetypes::{SegmentationImage, TextLog},
+    external::re_log,
+    EntityPath, RecordingStream,
+};
 
 // --- Rerun logging ---
 
@@ -315,7 +319,6 @@ fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
 fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::{AnnotationContext, Points2D},
-        components::TextEntry,
         datatypes::{self, AnnotationInfo},
     };
 
@@ -325,14 +328,8 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     // In either case, this raises the question of tracking time at the SDK level, akin to what the
     // python SDK does.
     fn log_info(rec: &RecordingStream, text: &str) -> anyhow::Result<()> {
-        // TODO(#2793): TextLog archetype
-        rec.log_component_lists(
-            "logs/seg_test_log",
-            false,
-            1,
-            [&TextEntry::new(text, Some("INFO".into())) as _],
-        )
-        .map_err(Into::into)
+        rec.log("logs/seg_test_log", &TextLog::new(text).with_level("INFO"))?;
+        Ok(())
     }
 
     // Log an image before we have set up our labels
@@ -429,29 +426,19 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
 }
 
 fn test_text_logs(rec: &RecordingStream) -> anyhow::Result<()> {
-    use rerun::components::{Color, TextEntry};
-
     // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
     rec.set_time_seconds("sim_time", 0f64);
 
-    // TODO(#2793): TextLog archetype
-    rec.log_component_lists(
+    rec.log(
         "logs",
-        false,
-        1,
-        [
-            &TextEntry::new("Text with explicitly set color", None) as _,
-            &Color::from_rgb(255, 215, 0) as _,
-        ],
+        &TextLog::new("Text with explicitly set color").with_color((255, 215, 0)),
     )?;
 
-    rec.log_component_lists(
+    rec.log(
         "logs",
-        false,
-        1,
-        [&TextEntry::new("this entry has loglevel TRACE", Some("TRACE".into())) as _],
+        &TextLog::new("this entry has loglevel TRACE").with_level("TRACE"),
     )?;
 
     Ok(())
