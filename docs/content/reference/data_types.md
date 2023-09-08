@@ -39,5 +39,4 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 
 ## Other **Archetypes**
 * [Scalar](data_types/scalar.md): a single scalar / metric value. Can be viewed in the `TimeSeries` space view.
-* [TextEntry](data_types/text_entry.md): captures text data. Can be viewed in the `Text` space view.
 * [AnnotationContext](data_types/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
