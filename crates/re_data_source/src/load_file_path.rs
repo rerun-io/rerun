@@ -75,9 +75,9 @@ fn log_msg_from_file_path(
     file_path: &std::path::Path,
 ) -> anyhow::Result<LogMsg> {
     let entity_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
-    let cell = re_components::data_cell_from_file_path(file_path)?;
+    let cells = re_components::data_cells_from_file_path(file_path)?;
 
-    let num_instances = cell.num_instances();
+    let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
 
     let timepoint = re_log_types::TimePoint::default();
 
@@ -86,7 +86,7 @@ fn log_msg_from_file_path(
         timepoint,
         entity_path,
         num_instances,
-        vec![cell],
+        cells,
     );
 
     let data_table =
