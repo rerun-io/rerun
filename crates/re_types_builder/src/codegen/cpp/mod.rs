@@ -139,7 +139,7 @@ impl CppCodeGenerator {
                 let mut string = string_from_token_stream(&tokens, obj.relative_filepath());
                 if let Some(hpp_extension_string) = &hpp_extension_string {
                     string = string.replace(
-                        &format!("\"{HEADER_EXTENSION_TOKEN}\""),
+                        &format!("\"{HEADER_EXTENSION_TOKEN}\""), // NOLINT
                         hpp_extension_string,
                     );
                 }
