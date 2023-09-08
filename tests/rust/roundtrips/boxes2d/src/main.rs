@@ -16,6 +16,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_origins([[0., 0.], [-1., 1.]])
             .with_colors([0xAA0000CC, 0x00BB00DD])
             .with_labels(["hello", "friend"])
+            .with_radii([0.1, 1.0])
             .with_draw_order(300.0)
             .with_class_ids([126, 127])
             .with_instance_keys([66, 666]),

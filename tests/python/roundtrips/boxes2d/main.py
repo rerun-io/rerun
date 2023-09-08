@@ -21,6 +21,7 @@ def main() -> None:
         ],
         dtype=np.uint32,
     )
+    radii = np.array([0.1, 1.0], dtype=np.float32)
     labels = ["hello", "friend"]
     draw_order = 300
     class_ids = np.array([126, 127], dtype=np.uint64)
@@ -31,6 +32,7 @@ def main() -> None:
         origins=origins,
         colors=colors,
         labels=labels,
+        radii=radii,
         draw_order=draw_order,
         class_ids=class_ids,
         instance_keys=instance_keys,
