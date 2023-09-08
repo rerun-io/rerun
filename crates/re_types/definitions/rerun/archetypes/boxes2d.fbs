@@ -52,7 +52,7 @@ table Boxes2D (
   // --- Required ---
 
   /// All half-extents that make up the batch of boxes.
-  strips: [rerun.components.HalfExtent2D] ("attr.rerun.component_required", order: 1000);
+  strips: [rerun.components.HalfExtents2D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 

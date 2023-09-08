@@ -4,7 +4,7 @@ include "./components/color.fbs";
 include "./components/disconnected_space.fbs";
 include "./components/depth_meter.fbs";
 include "./components/draw_order.fbs";
-include "./components/half_extent2d.fbs";
+include "./components/half_extents2d.fbs";
 include "./components/instance_key.fbs";
 include "./components/keypoint_id.fbs";
 include "./components/line_strip2d.fbs";
