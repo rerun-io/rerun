@@ -642,76 +642,14 @@ impl RecordingStream {
         timeless: bool,
         arch: &impl Archetype,
     ) -> RecordingStreamResult<()> {
-        // TODO(#3159): This is what we're supposed to do, but we need indicator to be first-class
-        // for that.
-        // self.log_component_lists(
-        //     ent_path,
-        //     timeless,
-        //     arch.num_instances() as u32,
-        //     arch.as_component_lists(),
-        // )
-
-        // NOTE: All of this disappears with #3159
-        let ent_path = ent_path.into();
-        let num_instances = arch.num_instances() as _;
-        let cells: Result<Vec<_>, _> = arch
-            .try_to_arrow()?
-            .into_iter()
-            .map(|(field, array)| {
-                // NOTE: Unreachable, a top-level Field will always be a component, and thus an
-                // extension.
-                use re_log_types::external::arrow2::datatypes::DataType;
-                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
-                    return Err(SerializationError::missing_extension_metadata(field.name))
-                        .map_err(Into::into);
-                };
-                DataCell::try_from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
-            })
-            .collect();
-        let cells = cells?;
-
-        let mut instanced: Vec<DataCell> = Vec::new();
-        let mut splatted: Vec<DataCell> = Vec::new();
-
-        for cell in cells {
-            if num_instances > 1 && cell.num_instances() == 1 {
-                splatted.push(cell);
-            } else {
-                instanced.push(cell);
-            }
-        }
-
-        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
-        // internal clock.
-        let timepoint = TimePoint::timeless();
-
-        let instanced = (!instanced.is_empty()).then(|| {
-            DataRow::from_cells(
-                RowId::random(),
-                timepoint.clone(),
-                ent_path.clone(),
-                num_instances,
-                instanced,
-            )
-        });
-
-        // TODO(#1629): unsplit splats once new data cells are in
-        let splatted = (!splatted.is_empty()).then(|| {
-            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
-            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
-        });
-
-        if let Some(splatted) = splatted {
-            self.record_row(splatted, !timeless);
-        }
-
-        // Always the primary component last so range-based queries will include the other data.
-        // Since the primary component can't be splatted it must be in here, see(#1215).
-        if let Some(instanced) = instanced {
-            self.record_row(instanced, !timeless);
-        }
-
-        Ok(())
+        self.log_component_lists(
+            ent_path,
+            timeless,
+            arch.num_instances() as u32,
+            arch.as_component_lists()
+                .iter()
+                .map(|any_comp_list| any_comp_list.as_list()),
+        )
     }
 
     /// Logs a set of [`ComponentList`]s into Rerun.

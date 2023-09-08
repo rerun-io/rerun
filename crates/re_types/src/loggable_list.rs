@@ -61,6 +61,55 @@ pub trait DatatypeList: LoggableList<Name = DatatypeName> {}
 /// implements [`ComponentList`].
 pub trait ComponentList: LoggableList<Name = ComponentName> {}
 
+/// Holds either an owned [`ComponentList`] that lives on heap, or a reference to one.
+///
+/// This doesn't use [`std::borrow::Cow`] on purpose: `Cow` requires `Clone`, which would break
+/// object-safety, which would prevent us from erasing [`ComponentList`]s in the first place.
+pub enum AnyComponentList<'a> {
+    Owned(Box<dyn ComponentList>),
+    Ref(&'a dyn ComponentList),
+}
+
+impl<'a> From<&'a dyn ComponentList> for AnyComponentList<'a> {
+    #[inline]
+    fn from(comp_list: &'a dyn ComponentList) -> Self {
+        Self::Ref(comp_list)
+    }
+}
+
+impl From<Box<dyn ComponentList>> for AnyComponentList<'_> {
+    #[inline]
+    fn from(comp_list: Box<dyn ComponentList>) -> Self {
+        Self::Owned(comp_list)
+    }
+}
+
+impl<'a> AnyComponentList<'a> {
+    /// Returns a reference to the inner [`ComponentList`], no matter where it lives.
+    ///
+    /// This doesn't use [`std::ops::Deref`] on purpose: it's associated `Target` type is not
+    /// generic over lifetimes, which we need in this case.
+    #[inline]
+    pub fn as_list(&'a self) -> &dyn ComponentList {
+        match self {
+            AnyComponentList::Owned(this) => &**this,
+            AnyComponentList::Ref(this) => *this,
+        }
+    }
+}
+
+// NOTE: Cannot do this since `Deref::Target` is not generic over lifetimes.
+// impl<'a> std::ops::Deref for AnyComponentList<'a> {
+//     type Target = dyn ComponentList;
+//
+//     fn deref(&self) -> &Self::Target {
+//         match self {
+//             AnyComponentList::Owned(this) => &**this,
+//             AnyComponentList::Ref(this) => *this,
+//         }
+//     }
+// }
+
 // --- Unary ---
 
 impl<L: Clone + Loggable> LoggableList for L {
