@@ -1230,7 +1230,7 @@ fn archetype_as_component_lists(
 ) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("arrow.hpp");
-    hpp_includes.insert_rerun("component_list.hpp");
+    hpp_includes.insert_rerun("component_batch.hpp");
     cpp_includes.insert_rerun("indicator_component.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
@@ -1256,16 +1256,16 @@ fn archetype_as_component_lists(
         Adding any new components to this archetype will invalidate the returned component lists!".into(),
         declaration: MethodDeclaration {
             is_static: false,
-            return_type: quote!(std::vector<AnonymousComponentList>),
+            return_type: quote!(std::vector<AnonymousComponentBatch>),
             name_and_parameters: quote!(as_component_lists() const),
         },
         definition_body: quote! {
-            std::vector<AnonymousComponentList> cells;
+            std::vector<AnonymousComponentBatch> cells;
             cells.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_cells)*
-            cells.emplace_back(ComponentList<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
+            cells.emplace_back(ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return cells;

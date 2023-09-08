@@ -166,14 +166,14 @@ namespace rerun {
         /// @see log_components
         template <typename... Ts>
         Error try_log_components(const char* entity_path, const Ts&... component_arrays) {
-            return try_log_components(entity_path, {AnonymousComponentList(component_arrays)...});
+            return try_log_components(entity_path, {AnonymousComponentBatch(component_arrays)...});
         }
 
         /// Logs a list of component arrays, returning an error on failure.
         ///
         /// @see log_components
         Error try_log_components(
-            const char* entity_path, const std::vector<AnonymousComponentList> component_lists
+            const char* entity_path, const std::vector<AnonymousComponentBatch> component_lists
         );
 
         /// Low level API that logs raw data cells to the recording stream.

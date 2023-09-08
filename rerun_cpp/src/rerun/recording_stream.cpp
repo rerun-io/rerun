@@ -95,7 +95,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_components(
-        const char* entity_path, const std::vector<AnonymousComponentList> component_lists
+        const char* entity_path, const std::vector<AnonymousComponentBatch> component_lists
     ) {
         if (component_lists.size() == 0) {
             return Error::ok();

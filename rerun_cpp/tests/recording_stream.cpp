@@ -40,7 +40,7 @@ struct BadArchetype {
         return 1;
     }
 
-    std::vector<rerun::AnonymousComponentList> as_component_lists() const {
+    std::vector<rerun::AnonymousComponentBatch> as_component_lists() const {
         return {BadComponent()};
     }
 };

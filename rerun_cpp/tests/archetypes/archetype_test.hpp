@@ -9,9 +9,9 @@
 template <typename T>
 void test_serialization_for_manual_and_builder(const T& from_manual, const T& from_builder) {
     THEN("convert to component lists") {
-        std::vector<rerun::AnonymousComponentList> from_builder_lists =
+        std::vector<rerun::AnonymousComponentBatch> from_builder_lists =
             from_builder.as_component_lists();
-        std::vector<rerun::AnonymousComponentList> from_manual_lists =
+        std::vector<rerun::AnonymousComponentBatch> from_manual_lists =
             from_manual.as_component_lists();
 
         REQUIRE(from_builder_lists.size() == from_manual_lists.size());
