@@ -4474,7 +4474,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_space_view_text"
+name = "re_space_view_text_document"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "egui",
+ "re_arrow_store",
+ "re_query",
+ "re_renderer",
+ "re_types",
+ "re_ui",
+ "re_viewer_context",
+ "vec1",
+]
+
+[[package]]
+name = "re_space_view_text_log"
 version = "0.9.0-alpha.3"
 dependencies = [
  "egui",
@@ -4488,20 +4502,6 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "vec1",
-]
-
-[[package]]
-name = "re_space_view_text_document"
-version = "0.9.0-alpha.3"
-dependencies = [
- "egui",
- "re_arrow_store",
- "re_query",
- "re_renderer",
  "re_types",
  "re_ui",
  "re_viewer_context",
@@ -4707,8 +4707,8 @@ dependencies = [
  "re_space_view_bar_chart",
  "re_space_view_spatial",
  "re_space_view_tensor",
- "re_space_view_text",
  "re_space_view_text_document",
+ "re_space_view_text_log",
  "re_space_view_time_series",
  "re_time_panel",
  "re_tracing",
