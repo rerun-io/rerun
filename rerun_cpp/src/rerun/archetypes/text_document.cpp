@@ -10,12 +10,12 @@ namespace rerun {
         const char TextDocument::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.TextDocumentIndicator";
 
-        std::vector<AnonymousComponentBatch> TextDocument::as_component_lists() const {
-            std::vector<AnonymousComponentBatch> cells;
-            cells.reserve(1);
+        std::vector<AnonymousComponentBatch> TextDocument::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(1);
 
-            cells.emplace_back(body);
-            cells.emplace_back(
+            comp_batches.emplace_back(body);
+            comp_batches.emplace_back(
                 ComponentBatch<
                     components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
@@ -23,7 +23,7 @@ namespace rerun {
                 )
             );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

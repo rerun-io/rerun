@@ -10,27 +10,27 @@ namespace rerun {
         const char LineStrips3D::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.LineStrips3DIndicator";
 
-        std::vector<AnonymousComponentBatch> LineStrips3D::as_component_lists() const {
-            std::vector<AnonymousComponentBatch> cells;
-            cells.reserve(6);
+        std::vector<AnonymousComponentBatch> LineStrips3D::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(6);
 
-            cells.emplace_back(strips);
+            comp_batches.emplace_back(strips);
             if (radii.has_value()) {
-                cells.emplace_back(radii.value());
+                comp_batches.emplace_back(radii.value());
             }
             if (colors.has_value()) {
-                cells.emplace_back(colors.value());
+                comp_batches.emplace_back(colors.value());
             }
             if (labels.has_value()) {
-                cells.emplace_back(labels.value());
+                comp_batches.emplace_back(labels.value());
             }
             if (class_ids.has_value()) {
-                cells.emplace_back(class_ids.value());
+                comp_batches.emplace_back(class_ids.value());
             }
             if (instance_keys.has_value()) {
-                cells.emplace_back(instance_keys.value());
+                comp_batches.emplace_back(instance_keys.value());
             }
-            cells.emplace_back(
+            comp_batches.emplace_back(
                 ComponentBatch<
                     components::IndicatorComponent<LineStrips3D::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
@@ -38,7 +38,7 @@ namespace rerun {
                 )
             );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

@@ -9,22 +9,26 @@ namespace rerun {
     namespace archetypes {
         const char DepthImage::INDICATOR_COMPONENT_NAME[] = "rerun.components.DepthImageIndicator";
 
-        std::vector<AnonymousComponentBatch> DepthImage::as_component_lists() const {
-            std::vector<AnonymousComponentBatch> cells;
-            cells.reserve(3);
+        std::vector<AnonymousComponentBatch> DepthImage::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(3);
 
-            cells.emplace_back(data);
+            comp_batches.emplace_back(data);
             if (meter.has_value()) {
-                cells.emplace_back(meter.value());
+                comp_batches.emplace_back(meter.value());
             }
             if (draw_order.has_value()) {
-                cells.emplace_back(draw_order.value());
+                comp_batches.emplace_back(draw_order.value());
             }
-            cells.emplace_back(ComponentBatch<components::IndicatorComponent<
-                                   DepthImage::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances())
+            comp_batches.emplace_back(
+                ComponentBatch<
+                    components::IndicatorComponent<DepthImage::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
+                    num_instances()
+                )
             );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

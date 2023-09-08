@@ -10,12 +10,12 @@ namespace rerun {
         const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.DisconnectedSpaceIndicator";
 
-        std::vector<AnonymousComponentBatch> DisconnectedSpace::as_component_lists() const {
-            std::vector<AnonymousComponentBatch> cells;
-            cells.reserve(1);
+        std::vector<AnonymousComponentBatch> DisconnectedSpace::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(1);
 
-            cells.emplace_back(disconnected_space);
-            cells.emplace_back(
+            comp_batches.emplace_back(disconnected_space);
+            comp_batches.emplace_back(
                 ComponentBatch<
                     components::IndicatorComponent<DisconnectedSpace::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
@@ -23,7 +23,7 @@ namespace rerun {
                 )
             );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

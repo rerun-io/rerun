@@ -10,15 +10,15 @@ namespace rerun {
         const char SegmentationImage::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.SegmentationImageIndicator";
 
-        std::vector<AnonymousComponentBatch> SegmentationImage::as_component_lists() const {
-            std::vector<AnonymousComponentBatch> cells;
-            cells.reserve(2);
+        std::vector<AnonymousComponentBatch> SegmentationImage::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(2);
 
-            cells.emplace_back(data);
+            comp_batches.emplace_back(data);
             if (draw_order.has_value()) {
-                cells.emplace_back(draw_order.value());
+                comp_batches.emplace_back(draw_order.value());
             }
-            cells.emplace_back(
+            comp_batches.emplace_back(
                 ComponentBatch<
                     components::IndicatorComponent<SegmentationImage::INDICATOR_COMPONENT_NAME>>(
                     nullptr,
@@ -26,7 +26,7 @@ namespace rerun {
                 )
             );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

@@ -57,7 +57,7 @@ namespace rerun {
             /// The returned vector references this instance and does not take ownership of any
             /// data. Adding any new components to this archetype will invalidate the returned
             /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_lists() const;
+            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
     } // namespace archetypes
 } // namespace rerun
