@@ -3,8 +3,7 @@
 #include <cstdint> // uint32_t etc.
 #include <vector>
 
-#include "component_list.hpp"
-#include "data_cell.hpp"
+#include "component_batch.hpp"
 #include "error.hpp"
 
 namespace rerun {
