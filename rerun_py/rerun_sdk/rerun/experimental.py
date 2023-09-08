@@ -29,6 +29,7 @@ __all__ = [
     "set_panels",
     "Tensor",
     "TextDocument",
+    "TextLog",
     "Transform3D",
 ]
 
@@ -49,6 +50,7 @@ from ._rerun2.archetypes import (
     SegmentationImage,
     Tensor,
     TextDocument,
+    TextLog,
     Transform3D,
 )
 from ._rerun2.log import log

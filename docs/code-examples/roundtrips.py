@@ -191,6 +191,10 @@ def main() -> None:
         if "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
 
+    print()
+    print("----------------------------------------------------------")
+    print("All tests passed!")
+
 
 def build_example(example: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":

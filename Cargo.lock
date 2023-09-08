@@ -5172,6 +5172,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_text_log"
+version = "0.9.0-alpha.3"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_transform3d"
 version = "0.9.0-alpha.3"
 dependencies = [

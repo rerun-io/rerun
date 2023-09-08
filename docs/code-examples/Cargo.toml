@@ -120,6 +120,10 @@ name = "text_entry_simple"
 path = "text_entry_simple.rs"
 
 [[bin]]
+name = "text_log"
+path = "text_log.rs"
+
+[[bin]]
 name = "transform3d_simple"
 path = "transform3d_simple.rs"
 
