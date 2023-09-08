@@ -139,6 +139,7 @@ impl SpaceViewClass for TextSpaceView {
         _query: &ViewQuery<'_>,
         _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        re_tracing::profile_function!();
         let text = parts.get::<TextLogSystem>()?;
 
         // TODO(andreas): Should filter text entries in the part-system instead.
@@ -172,7 +173,7 @@ impl SpaceViewClass for TextSpaceView {
             // - Otherwise, let the user scroll around freely!
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
-                re_tracing::profile_scope!("TextEntryState - search scroll time");
+                re_tracing::profile_scope!("search scroll time");
                 entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
             });
 
