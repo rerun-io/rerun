@@ -18,6 +18,7 @@
 -r objectron/requirements.txt
 -r open_photogrammetry_format/requirements.txt
 -r plots/requirements.txt
+-r point_tracks/requirements.txt
 -r raw_mesh/requirements.txt
 -r rgbd/requirements.txt
 -r ros_node/requirements.txt
