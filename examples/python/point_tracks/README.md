@@ -43,7 +43,7 @@ TODO(roym899) GIF of current state
 We can see the points, but it is difficult to see the exact path they follow. To add a history we can log line segments between points adjacent in time. To do this we need to log the line segments between the points in the current time step and the previous time step. We can do this by stacking the points in the current time step and the previous time step and then reshaping the array to get the line segments in the format Rerun expects. Note that we need to skip the first time step since there is no previous time step to log the line segments to.
 ```python
 for i, time_step in enumerate(time_steps):
-    ... # log points as before
+    … # log points as before
     if i > 1:
         segments = np.stack((tracks[:, i - 1], tracks[:, i]), axis=1)
         rr.log_line_segments("point_tracks/lines", segments.reshape(-1, 2))
@@ -73,12 +73,12 @@ This will stop updating the point position when it is not visible, however, if n
 
 ```python
 for i, time_step in enumerate(time_steps):
-    ... # compute mask as before
+    … # compute mask as before
     rr.log_cleared("point_tracks/points")
     rr.log_points("point_tracks/points", tracks[mask, i])
 
     if i > 1:
-        ... # compute segments as before
+        … # compute segments as before
         rr.log_cleared("point_tracks/lines")
         rr.log_line_segments("point_tracks/lines", segments.reshape(-1, 2))
 ```
