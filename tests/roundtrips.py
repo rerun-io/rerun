@@ -146,6 +146,10 @@ def main() -> None:
             if "cpp" not in arch_opt_out:
                 run_comparison(cpp_output_path, rust_output_path, args.full_dump)
 
+    print()
+    print("----------------------------------------------------------")
+    print("All tests passed!")
+
 
 def roundtrip_env() -> dict[str, str]:
     # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within

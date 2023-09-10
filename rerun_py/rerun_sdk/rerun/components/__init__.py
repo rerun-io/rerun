@@ -18,7 +18,6 @@ all = [
     "scalar",
     "splat",
     "tensor",
-    "text_entry",
     "vec",
 ]
 

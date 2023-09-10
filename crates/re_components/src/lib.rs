@@ -28,7 +28,6 @@ mod pinhole;
 mod quaternion;
 mod rect;
 mod scalar;
-mod text_entry;
 mod vec;
 
 mod load_file;
@@ -50,7 +49,6 @@ pub use self::{
     quaternion::Quaternion,
     rect::Rect2D,
     scalar::{Scalar, ScalarPlotProps},
-    text_entry::TextEntry,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -79,7 +77,7 @@ use re_types::components::{
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 27] = [
+    static ref FIELDS: [Field; 26] = [
         <Box3D as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
@@ -88,7 +86,6 @@ lazy_static! {
         <Rect2D as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
-        <TextEntry as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
         AnnotationContext::arrow_field(),
         ClassId::arrow_field(),

@@ -18,6 +18,12 @@ impl TimeRange {
         max: TimeInt::MIN,
     };
 
+    /// Contains all time.
+    pub const EVERYTHING: Self = Self {
+        min: TimeInt::MIN,
+        max: TimeInt::MAX,
+    };
+
     #[inline]
     pub fn new(min: TimeInt, max: TimeInt) -> Self {
         Self { min, max }

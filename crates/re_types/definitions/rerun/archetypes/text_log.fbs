@@ -1,0 +1,19 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// A log entry in a text log, comprised of a text body and its log level.
+table TextLog (
+  "attr.rerun.legacy_fqname": "rerun.text_entry",
+  "attr.rust.derive": "PartialEq, Eq",
+  order: 100
+) {
+  body: rerun.components.Text ("attr.rerun.component_required", order: 100);
+  level: rerun.components.TextLogLevel ("attr.rerun.component_recommended", nullable, order: 200);
+  color: rerun.components.Color (nullable, order: 300);
+}

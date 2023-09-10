@@ -116,8 +116,8 @@ name = "text_document"
 path = "text_document.rs"
 
 [[bin]]
-name = "text_entry_simple"
-path = "text_entry_simple.rs"
+name = "text_log"
+path = "text_log.rs"
 
 [[bin]]
 name = "transform3d_simple"

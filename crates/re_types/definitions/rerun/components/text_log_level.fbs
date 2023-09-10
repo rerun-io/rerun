@@ -1,0 +1,30 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// The severity level of a text log message.
+///
+/// Recommended to be one of:
+/// * `"CRITICAL"`
+/// * `"ERROR"`
+/// * `"WARN"`
+/// * `"INFO"`
+/// * `"DEBUG"`
+/// * `"TRACE"`
+table TextLogLevel (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  order: 100
+) {
+  value: rerun.datatypes.Utf8 (order: 100);
+}

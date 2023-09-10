@@ -1,4 +1,4 @@
-// Log a TextDocument
+// Log a `TextDocument`
 
 #include <rerun.hpp>
 

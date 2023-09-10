@@ -105,7 +105,9 @@ impl SpaceViewClass for TextDocumentSpaceView {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         // TODO(jleibs): better handling for multiple results
-                        if text_document.text_entries.len() == 1 {
+                        if text_document.text_entries.is_empty() {
+                            ui.label("No TextDocument entries found.");
+                        } else if text_document.text_entries.len() == 1 {
                             let mut text =
                                 egui::RichText::new(text_document.text_entries[0].body.as_str());
 

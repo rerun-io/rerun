@@ -337,7 +337,7 @@ def run_rects(experimental_api: bool) -> None:
 
 def run_text_logs(experimental_api: bool) -> None:
     rr.log_text_entry("logs", "Text with explicitly set color", color=[255, 215, 0], timeless=True)
-    rr.log_text_entry("logs", "this entry has loglevel TRACE", level=rr.LogLevel.TRACE)
+    rr.log_text_entry("logs", "this entry has loglevel TRACE", level="TRACE")
 
     logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))
     logging.getLogger().setLevel(-1)

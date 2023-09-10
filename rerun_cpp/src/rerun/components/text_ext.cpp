@@ -13,7 +13,7 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            /// Construct `Text` from a zero-terminaded UTF8 string.
+            /// Construct `Text` from a zero-terminated UTF8 string.
             Text(const char* str) : value(str) {}
 
             const char* c_str() const {

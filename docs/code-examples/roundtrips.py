@@ -39,7 +39,6 @@ opt_out_entirely = {
     "tensor_one_dim": ["cpp"],
     "tensor_simple": ["cpp"],
     "text_log_integration": ["cpp", "rust"],
-    "text_entry_simple": ["cpp"],
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
@@ -190,6 +189,10 @@ def main() -> None:
 
         if "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+
+    print()
+    print("----------------------------------------------------------")
+    print("All tests passed!")
 
 
 def build_example(example: str, language: str, args: argparse.Namespace) -> None:

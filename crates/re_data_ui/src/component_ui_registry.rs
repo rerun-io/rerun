@@ -33,7 +33,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_components::Mesh3D>(&mut registry);
     add::<re_components::Pinhole>(&mut registry);
     add::<re_components::Rect2D>(&mut registry);
-    add::<re_components::TextEntry>(&mut registry);
     add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::AnnotationContext>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
@@ -82,44 +81,6 @@ fn format_arrow(value: &dyn arrow2::array::Array) -> String {
 }
 
 // ----------------------------------------------------------------------------
-
-impl DataUi for re_components::TextEntry {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        use re_viewer_context::level_to_rich_text;
-
-        let Self { body, level } = self;
-
-        match verbosity {
-            UiVerbosity::Small => {
-                ui.horizontal(|ui| {
-                    if let Some(level) = level {
-                        ui.label(level_to_rich_text(ui, level));
-                    }
-                    ui.label(format!("{body:?}")); // Debug format to get quotes and escapes
-                });
-            }
-            UiVerbosity::All | UiVerbosity::Reduced => {
-                egui::Grid::new("text_entry").num_columns(2).show(ui, |ui| {
-                    ui.label("level:");
-                    if let Some(level) = level {
-                        ui.label(level_to_rich_text(ui, level));
-                    }
-                    ui.end_row();
-
-                    ui.label("body:");
-                    ui.label(format!("{body:?}")); // Debug format to get quotes and escapes
-                    ui.end_row();
-                });
-            }
-        }
-    }
-}
 
 impl DataUi for re_components::Mesh3D {
     fn data_ui(

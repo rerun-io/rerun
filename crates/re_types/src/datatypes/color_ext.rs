@@ -43,9 +43,30 @@ impl From<u32> for Color {
     }
 }
 
+impl From<(u8, u8, u8)> for Color {
+    #[inline]
+    fn from((r, g, b): (u8, u8, u8)) -> Self {
+        Self::from_rgb(r, g, b)
+    }
+}
+
+impl From<[u8; 3]> for Color {
+    #[inline]
+    fn from([r, g, b]: [u8; 3]) -> Self {
+        Self::from_rgb(r, g, b)
+    }
+}
+
 impl From<[u8; 4]> for Color {
     #[inline]
     fn from([r, g, b, a]: [u8; 4]) -> Self {
+        Self::from_unmultiplied_rgba(r, g, b, a)
+    }
+}
+
+impl From<(u8, u8, u8, u8)> for Color {
+    #[inline]
+    fn from((r, g, b, a): (u8, u8, u8, u8)) -> Self {
         Self::from_unmultiplied_rgba(r, g, b, a)
     }
 }

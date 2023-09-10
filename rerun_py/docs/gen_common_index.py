@@ -128,10 +128,8 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Text",
         module_summary=None,
-        # TODO(#1251): Classes aren't supported yet
-        # "LogLevel", "LoggingHandler"
         func_list=["log_text_entry"],
-        class_list=["LogLevel", "LoggingHandler"],
+        class_list=["LoggingHandler"],
     ),
     Section(
         title="Clearing Entities",

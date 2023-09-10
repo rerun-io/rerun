@@ -4,7 +4,7 @@ import inspect
 import logging
 
 import rerun
-from rerun.log.text_internal import LogLevel, log_text_entry_internal
+from rerun.log.text_internal import log_text_entry_internal
 from rerun.recording_stream import RecordingStream
 
 __all__ = [
@@ -36,5 +36,5 @@ def _send_warning(
 
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
-    log_text_entry_internal("rerun", warning, level=LogLevel.WARN, recording=recording)
+    log_text_entry_internal("rerun", warning, level="WARN", recording=recording)
     logging.warning(warning)

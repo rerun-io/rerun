@@ -3,19 +3,13 @@ from __future__ import annotations
 import logging
 from typing import Any, Final
 
-import rerun.log.extension_components
-from rerun import bindings
-from rerun.components import instance_key_splat
-from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
-from rerun.log.text_internal import LogLevel
 from rerun.recording_stream import RecordingStream
 
 # Fully qualified to avoid circular import
 
 __all__ = [
-    "LogLevel",
     "LoggingHandler",
     "log_text_entry",
 ]
@@ -46,11 +40,11 @@ class LoggingHandler(logging.Handler):
     """
 
     LVL2NAME: Final = {
-        logging.CRITICAL: LogLevel.CRITICAL,
-        logging.ERROR: LogLevel.ERROR,
-        logging.WARNING: LogLevel.WARN,
-        logging.INFO: LogLevel.INFO,
-        logging.DEBUG: LogLevel.DEBUG,
+        logging.CRITICAL: "CRITICAL",
+        logging.ERROR: "ERROR",
+        logging.WARNING: "WARN",
+        logging.INFO: "INFO",
+        logging.DEBUG: "DEBUG",
     }
 
     def __init__(self, root_entity_path: str | None = None):
@@ -74,7 +68,7 @@ def log_text_entry(
     entity_path: str,
     text: str,
     *,
-    level: str | None = LogLevel.INFO,
+    level: str | None = "INFO",
     color: Color | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
@@ -90,9 +84,8 @@ def log_text_entry(
     text:
         The text to log.
     level:
-        The level of the text entry (default: `LogLevel.INFO`). Note this can technically
-        be an arbitrary string, but it's recommended to use one of the constants
-        from [LogLevel][rerun.log.text.LogLevel]
+        The level of the text entry. This can technically
+        be an arbitrary string, but it's recommended to use one of "CRITICAL", "ERROR", "WARN", "INFO", "DEBUG".
     color:
         Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     ext:
@@ -105,29 +98,13 @@ def log_text_entry(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
+    from rerun.experimental import TextLog, log
 
     recording = RecordingStream.to_native(recording)
 
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
-    if text:
-        instanced["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
-    else:
-        logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
-
     if color is not None:
-        colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
+        color = _normalize_colors(color)
 
-    if ext:
-        rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
-
-    if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    return log(
+        entity_path, TextLog(body=text, level=level, color=color), ext=ext, timeless=timeless, recording=recording
+    )

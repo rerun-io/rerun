@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Log a simple set of line segments."""
+"""Log a `TextDocument`."""
 
 import rerun as rr
 import rerun.experimental as rr2

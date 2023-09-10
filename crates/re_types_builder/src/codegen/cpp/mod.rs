@@ -37,8 +37,7 @@ const DOC_COMMENT_PREFIX_TOKEN: &str = "DOC_COMMENT_PREFIX_TOKEN";
 const DOC_COMMENT_SUFFIX_TOKEN: &str = "DOC_COMMENT_SUFFIX_TOKEN";
 const ANGLE_BRACKET_LEFT_TOKEN: &str = "SYS_INCLUDE_PATH_PREFIX_TOKEN";
 const ANGLE_BRACKET_RIGHT_TOKEN: &str = "SYS_INCLUDE_PATH_SUFFIX_TOKEN";
-const HEADER_EXTENSION_PREFIX_TOKEN: &str = "HEADER_EXTENSION_PREFIX_TOKEN";
-const HEADER_EXTENSION_SUFFIX_TOKEN: &str = "HEADER_EXTENSION_SUFFIX_TOKEN";
+const HEADER_EXTENSION_TOKEN: &str = "HEADER_EXTENSION_TOKEN";
 const TODO_TOKEN: &str = "TODO_TOKEN";
 
 fn quote_comment(text: &str) -> TokenStream {
@@ -66,8 +65,6 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
         .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
         .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
-        .replace(&format!("{HEADER_EXTENSION_PREFIX_TOKEN:?} \""), "")
-        .replace(&format!("\" {HEADER_EXTENSION_SUFFIX_TOKEN:?}"), "")
         .replace(&format!("{ANGLE_BRACKET_LEFT_TOKEN:?} \""), "<")
         .replace(&format!("\" {ANGLE_BRACKET_RIGHT_TOKEN:?}"), ">")
         .replace(
@@ -95,10 +92,12 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
 
     code.push('\n');
 
-    code = clang_format::clang_format_with_style(&code, &clang_format::ClangFormatStyle::File)
-        .expect("Failed to run clang-format");
-
     code
+}
+
+fn format_code(code: &str) -> String {
+    clang_format::clang_format_with_style(code, &clang_format::ClangFormatStyle::File)
+        .expect("Failed to run clang-format")
 }
 
 pub struct CppCodeGenerator {
@@ -131,13 +130,20 @@ impl CppCodeGenerator {
             hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
             hpp_includes.insert_rerun("result.hpp"); // rerun result is used for serialization methods
 
-            let hpp_type_extensions =
+            let (hpp_type_extensions, hpp_extension_string) =
                 hpp_type_extensions(&folder_path_sdk, &filename, &mut hpp_includes);
 
             let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions);
 
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
-                let string = string_from_token_stream(&tokens, obj.relative_filepath());
+                let mut string = string_from_token_stream(&tokens, obj.relative_filepath());
+                if let Some(hpp_extension_string) = &hpp_extension_string {
+                    string = string.replace(
+                        &format!("\"{HEADER_EXTENSION_TOKEN}\""), // NOLINT
+                        hpp_extension_string,
+                    );
+                }
+                let string = format_code(&string);
                 let folder_path = if obj.is_testing() {
                     &folder_path_testing
                 } else {
@@ -176,6 +182,7 @@ impl CppCodeGenerator {
                 .unwrap()
                 .join(format!("{folder_name}.hpp"));
             let string = string_from_token_stream(&tokens, None);
+            let string = format_code(&string);
             write_file(&filepath, string);
             filepaths.insert(filepath);
         }
@@ -206,14 +213,16 @@ impl crate::CodeGenerator for CppCodeGenerator {
 /// Retrieves code from an extension cpp file that should go to the generated header.
 ///
 /// Additionally, picks up all includes files that aren't including the header itself.
+///
+/// Returns what to inject, and what to repalce `HEADER_EXTENSION_TOKEN` with at the end.
 fn hpp_type_extensions(
     folder_path: &Utf8Path,
     filename: &str,
     includes: &mut Includes,
-) -> TokenStream {
+) -> (TokenStream, Option<String>) {
     let extension_file = folder_path.join(format!("{filename}_ext.cpp"));
     let Ok(content) = std::fs::read_to_string(extension_file.as_std_path()) else {
-        return quote! {};
+        return (quote! {}, None);
     };
 
     let target_header = format!("{filename}.hpp");
@@ -259,16 +268,17 @@ fn hpp_type_extensions(
         "Extensions to generated type defined in '{}'",
         extension_file.file_name().unwrap()
     ));
-    let extensions = &content[start + COPY_TO_HEADER_START_MARKER.len()..end]
-        .replace('\n', &format!(" {NEWLINE_TOKEN} "));
-    quote! {
+    let hpp_extension_string = content[start + COPY_TO_HEADER_START_MARKER.len()..end].to_owned();
+    let hpp_type_extensions = quote! {
         public:
         #NEWLINE_TOKEN
         #comment
         #NEWLINE_TOKEN
-        #HEADER_EXTENSION_PREFIX_TOKEN #extensions #HEADER_EXTENSION_SUFFIX_TOKEN
+        #HEADER_EXTENSION_TOKEN
         #NEWLINE_TOKEN
-    }
+    };
+
+    (hpp_type_extensions, Some(hpp_extension_string))
 }
 
 fn generate_hpp_cpp(

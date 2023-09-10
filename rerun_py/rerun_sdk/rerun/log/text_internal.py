@@ -1,56 +1,20 @@
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass
-from typing import Any, Final
-
-from rerun import bindings
-from rerun.components import instance_key_splat
-from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.recording_stream import RecordingStream
 
 # Fully qualified to avoid circular import
 
 __all__ = [
-    "LogLevel",
     "log_text_entry_internal",
 ]
-
-
-@dataclass
-class LogLevel:
-    """
-    Represents the standard log levels.
-
-    This is a collection of constants rather than an enum because we do support
-    arbitrary strings as level (e.g. for user-defined levels).
-    """
-
-    CRITICAL: Final = "CRITICAL"
-    """ Designates catastrophic failures. """
-
-    ERROR: Final = "ERROR"
-    """ Designates very serious errors. """
-
-    WARN: Final = "WARN"
-    """ Designates hazardous situations. """
-
-    INFO: Final = "INFO"
-    """ Designates useful information. """
-
-    DEBUG: Final = "DEBUG"
-    """ Designates lower priority information. """
-
-    TRACE: Final = "TRACE"
-    """ Designates very low priority, often extremely verbose, information. """
 
 
 def log_text_entry_internal(
     entity_path: str,
     text: str,
     *,
-    level: str | None = LogLevel.INFO,
+    level: str | None = "INFO",
     color: Color | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -68,9 +32,7 @@ def log_text_entry_internal(
     text:
         The text to log.
     level:
-        The level of the text entry (default: `LogLevel.INFO`). Note this can technically
-        be an arbitrary string, but it's recommended to use one of the constants
-        from [LogLevel][rerun.log.text.LogLevel]
+        The level of the text entry, e.g. "INFO" "ERROR", ….
     color:
         Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     timeless:
@@ -81,26 +43,11 @@ def log_text_entry_internal(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
+    from rerun.experimental import TextLog, log
 
     recording = RecordingStream.to_native(recording)
 
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
-    if text:
-        instanced["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
-    else:
-        logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
-
     if color is not None:
-        colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
+        color = _normalize_colors(color)
 
-    if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+    return log(entity_path, TextLog(body=text, level=level), timeless=timeless, recording=recording)

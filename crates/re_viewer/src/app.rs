@@ -1104,7 +1104,7 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;
     space_view_class_registry.add_class::<re_space_view_tensor::TensorSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_document::TextDocumentSpaceView>()?;
-    space_view_class_registry.add_class::<re_space_view_text::TextSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_text_log::TextSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
     Ok(())
 }

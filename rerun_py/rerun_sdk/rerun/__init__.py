@@ -11,7 +11,6 @@ __all__ = [
     "AnnotationInfo",
     "ClassDescription",
     "ImageFormat",
-    "LogLevel",
     "LoggingHandler",
     "MeshFormat",
     "Quaternion",
@@ -104,7 +103,7 @@ from .log.points import log_point, log_points
 from .log.rects import RectFormat, log_rect, log_rects
 from .log.scalar import log_scalar
 from .log.tensor import log_tensor
-from .log.text import LoggingHandler, LogLevel, log_text_entry
+from .log.text import LoggingHandler, log_text_entry
 from .log.transform import (
     log_disconnected_space,
     log_rigid3,
