@@ -1,4 +1,5 @@
 #include "recording_stream.hpp"
+#include "components/instance_key.hpp"
 
 #include <rerun.h>
 
@@ -6,6 +7,8 @@
 #include <vector>
 
 namespace rerun {
+    static const auto splat_key = components::InstanceKey(std::numeric_limits<uint64_t>::max());
+
     static rr_store_kind store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
@@ -89,6 +92,40 @@ namespace rerun {
 
     void RecordingStream::flush_blocking() {
         rr_recording_stream_flush_blocking(_id);
+    }
+
+    Error RecordingStream::try_log_component_batches(
+        const char* entity_path, size_t num_instances,
+        const std::vector<AnonymousComponentBatch>& component_lists
+    ) {
+        if (num_instances == 0) {
+            return Error::ok();
+        }
+
+        std::vector<DataCell> instanced;
+        std::vector<DataCell> splatted;
+
+        for (const auto& component_list : component_lists) {
+            const auto result = component_list.to_data_cell();
+            if (result.is_err()) {
+                return result.error;
+            }
+            if (num_instances > 1 && component_list.num_instances == 1) {
+                splatted.push_back(result.value);
+            } else {
+                instanced.push_back(result.value);
+            }
+        }
+
+        if (!splatted.empty()) {
+            splatted.push_back(components::InstanceKey::to_data_cell(&splat_key, 1).value);
+            auto result = try_log_data_row(entity_path, 1, splatted.size(), splatted.data());
+            if (result.is_err()) {
+                return result;
+            }
+        }
+
+        return try_log_data_row(entity_path, num_instances, instanced.size(), instanced.data());
     }
 
     Error RecordingStream::try_log_data_row(

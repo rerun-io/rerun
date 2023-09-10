@@ -26,7 +26,7 @@ namespace rerun {
             std::optional<float> single_float_optional;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             AffixFuzzer8() = default;

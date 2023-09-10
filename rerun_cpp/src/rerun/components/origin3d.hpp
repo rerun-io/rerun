@@ -24,7 +24,7 @@ namespace rerun {
             rerun::datatypes::Vec3D origin;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             // Extensions to generated type defined in 'origin3d_ext.cpp'

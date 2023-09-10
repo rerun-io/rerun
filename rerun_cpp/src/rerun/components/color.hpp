@@ -29,7 +29,7 @@ namespace rerun {
             rerun::datatypes::Color rgba;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             // Extensions to generated type defined in 'color_ext.cpp'

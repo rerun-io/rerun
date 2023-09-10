@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *Vector3D::NAME = "rerun.components.Vector3D";
+        const char Vector3D::NAME[] = "rerun.components.Vector3D";
 
         const std::shared_ptr<arrow::DataType> &Vector3D::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Vec3D::arrow_datatype();

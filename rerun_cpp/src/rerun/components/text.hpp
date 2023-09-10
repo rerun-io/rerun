@@ -25,7 +25,7 @@ namespace rerun {
             rerun::datatypes::Utf8 value;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             // Extensions to generated type defined in 'text_ext.cpp'

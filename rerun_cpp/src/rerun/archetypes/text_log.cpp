@@ -3,51 +3,31 @@
 
 #include "text_log.hpp"
 
-#include "../components/color.hpp"
-#include "../components/text.hpp"
-#include "../components/text_log_level.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> TextLog::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
-            cells.reserve(3);
+        const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
 
-            {
-                const auto result = rerun::components::Text::to_data_cell(&body, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+        std::vector<AnonymousComponentBatch> TextLog::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(3);
+
+            comp_batches.emplace_back(body);
             if (level.has_value()) {
-                const auto& value = level.value();
-                const auto result = rerun::components::TextLogLevel::to_data_cell(&value, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
+                comp_batches.emplace_back(level.value());
             }
             if (color.has_value()) {
-                const auto& value = color.value();
-                const auto result = rerun::components::Color::to_data_cell(&value, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
+                comp_batches.emplace_back(color.value());
             }
-            {
-                const auto result = create_indicator_component(
-                    "rerun.components.TextLogIndicator",
+            comp_batches.emplace_back(
+                ComponentBatch<components::IndicatorComponent<TextLog::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
                     num_instances()
-                );
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+                )
+            );
 
-            return cells;
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun

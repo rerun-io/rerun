@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace components {
-        const char* AffixFuzzer9::NAME = "rerun.testing.components.AffixFuzzer9";
+        const char AffixFuzzer9::NAME[] = "rerun.testing.components.AffixFuzzer9";
 
         const std::shared_ptr<arrow::DataType>& AffixFuzzer9::arrow_datatype() {
             static const auto datatype = arrow::utf8();

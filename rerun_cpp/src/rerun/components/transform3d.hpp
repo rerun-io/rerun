@@ -25,7 +25,7 @@ namespace rerun {
             rerun::datatypes::Transform3D repr;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             Transform3D() = default;

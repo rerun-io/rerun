@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *TextLogLevel::NAME = "rerun.components.TextLogLevel";
+        const char TextLogLevel::NAME[] = "rerun.components.TextLogLevel";
 
         const std::shared_ptr<arrow::DataType> &TextLogLevel::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Utf8::arrow_datatype();

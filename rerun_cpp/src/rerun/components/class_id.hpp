@@ -28,7 +28,7 @@ namespace rerun {
             rerun::datatypes::ClassId id;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             ClassId() = default;

@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *Color::NAME = "rerun.colorrgba";
+        const char Color::NAME[] = "rerun.colorrgba";
 
         const std::shared_ptr<arrow::DataType> &Color::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Color::arrow_datatype();

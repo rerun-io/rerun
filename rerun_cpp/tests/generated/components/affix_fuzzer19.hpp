@@ -25,7 +25,7 @@ namespace rerun {
             rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             AffixFuzzer19() = default;

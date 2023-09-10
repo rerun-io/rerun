@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *Text::NAME = "rerun.label";
+        const char Text::NAME[] = "rerun.label";
 
         const std::shared_ptr<arrow::DataType> &Text::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Utf8::arrow_datatype();

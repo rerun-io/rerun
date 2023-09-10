@@ -24,7 +24,7 @@ namespace rerun {
             rerun::datatypes::Vec2D xy;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             // Extensions to generated type defined in 'point2d_ext.cpp'

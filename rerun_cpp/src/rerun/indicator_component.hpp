@@ -1,0 +1,24 @@
+#pragma once
+
+#include "arrow.hpp"
+#include "data_cell.hpp"
+
+namespace rerun {
+    namespace components {
+        /// Indicator component used by archetypes when converting them to component lists.
+        ///
+        /// This is done in order to track how a collection of component was logged.
+        template <const char Name[]>
+        struct IndicatorComponent {
+          public:
+            IndicatorComponent() = default;
+
+            /// Creates a Rerun DataCell from an array of IndicatorComponent components.
+            static Result<rerun::DataCell> to_data_cell(
+                const IndicatorComponent<Name>*, size_t num_instances
+            ) {
+                return rerun::create_indicator_component(Name, num_instances);
+            }
+        };
+    } // namespace components
+} // namespace rerun

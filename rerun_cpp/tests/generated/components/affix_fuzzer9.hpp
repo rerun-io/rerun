@@ -22,7 +22,7 @@ namespace rerun {
             std::string single_string_required;
 
             /// Name of the component, used for serialization.
-            static const char* NAME;
+            static const char NAME[];
 
           public:
             AffixFuzzer9() = default;

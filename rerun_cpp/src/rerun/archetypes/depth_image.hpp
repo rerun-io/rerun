@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../arrow.hpp"
+#include "../component_batch.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
@@ -36,6 +37,10 @@ namespace rerun {
             /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
+            /// Name of the indicator component, used to identify the archetype when converting to a
+            /// list of components.
+            static const char INDICATOR_COMPONENT_NAME[];
+
           public:
             DepthImage() = default;
 
@@ -63,8 +68,11 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates a list of Rerun DataCell from this archetype.
-            Result<std::vector<rerun::DataCell>> to_data_cells() const;
+            /// Collections all component lists into a list of component collections. *Attention:*
+            /// The returned vector references this instance and does not take ownership of any
+            /// data. Adding any new components to this archetype will invalidate the returned
+            /// component lists!
+            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
     } // namespace archetypes
 } // namespace rerun

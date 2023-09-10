@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char *TensorData::NAME = "rerun.components.TensorData";
+        const char TensorData::NAME[] = "rerun.components.TensorData";
 
         const std::shared_ptr<arrow::DataType> &TensorData::arrow_datatype() {
             static const auto datatype = rerun::datatypes::TensorData::arrow_datatype();

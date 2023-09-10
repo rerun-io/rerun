@@ -3,31 +3,25 @@
 
 #include "tensor.hpp"
 
-#include "../components/tensor_data.hpp"
+#include "../indicator_component.hpp"
 
 namespace rerun {
     namespace archetypes {
-        Result<std::vector<rerun::DataCell>> Tensor::to_data_cells() const {
-            std::vector<rerun::DataCell> cells;
-            cells.reserve(1);
+        const char Tensor::INDICATOR_COMPONENT_NAME[] = "rerun.components.TensorIndicator";
 
-            {
-                const auto result = rerun::components::TensorData::to_data_cell(&data, 1);
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                const auto result =
-                    create_indicator_component("rerun.components.TensorIndicator", num_instances());
-                if (result.is_err()) {
-                    return result.error;
-                }
-                cells.emplace_back(std::move(result.value));
-            }
+        std::vector<AnonymousComponentBatch> Tensor::as_component_batches() const {
+            std::vector<AnonymousComponentBatch> comp_batches;
+            comp_batches.reserve(1);
 
-            return cells;
+            comp_batches.emplace_back(data);
+            comp_batches.emplace_back(
+                ComponentBatch<components::IndicatorComponent<Tensor::INDICATOR_COMPONENT_NAME>>(
+                    nullptr,
+                    num_instances()
+                )
+            );
+
+            return comp_batches;
         }
     } // namespace archetypes
 } // namespace rerun
