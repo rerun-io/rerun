@@ -1,5 +1,6 @@
 Cargo.lock
 crates/re_types/src/datatypes/tensor_buffer.rs
+crates/re_types/src/testing/archetypes/affix_fuzzer1.rs
 crates/re_types/src/testing/archetypes/fuzzy.rs
 crates/re_types/src/testing/components/fuzzy.rs
 crates/re_types/src/testing/datatypes/fuzzy.rs
