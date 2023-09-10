@@ -13,6 +13,7 @@ int main() {
 
     rr_stream.log(
         "log",
-        rr::archetypes::TextLog("INFO level").with_level(rr::components::TextLogLevel::INFO)
+        rr::archetypes::TextLog("Application started.")
+            .with_level(rr::components::TextLogLevel::INFO)
     );
 }
