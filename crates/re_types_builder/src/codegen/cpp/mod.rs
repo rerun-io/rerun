@@ -104,6 +104,23 @@ pub struct CppCodeGenerator {
     output_path: Utf8PathBuf,
 }
 
+impl crate::CodeGenerator for CppCodeGenerator {
+    fn generate(
+        &mut self,
+        objects: &Objects,
+        _arrow_registry: &ArrowRegistry,
+    ) -> BTreeSet<Utf8PathBuf> {
+        ObjectKind::ALL
+            .par_iter()
+            .map(|object_kind| {
+                let folder_name = object_kind.plural_snake_case();
+                self.generate_folder(objects, *object_kind, folder_name)
+            })
+            .flatten()
+            .collect()
+    }
+}
+
 impl CppCodeGenerator {
     pub fn new(output_path: impl Into<Utf8PathBuf>) -> Self {
         Self {
@@ -124,14 +141,14 @@ impl CppCodeGenerator {
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
-            let filename = obj.snake_case_name();
+            let filename_stem = obj.snake_case_name();
 
             let mut hpp_includes = Includes::new(obj.fqname.clone());
             hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
             hpp_includes.insert_rerun("result.hpp"); // rerun result is used for serialization methods
 
             let (hpp_type_extensions, hpp_extension_string) =
-                hpp_type_extensions(&folder_path_sdk, &filename, &mut hpp_includes);
+                hpp_type_extensions(&folder_path_sdk, &filename_stem, &mut hpp_includes);
 
             let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions);
 
@@ -149,7 +166,7 @@ impl CppCodeGenerator {
                 } else {
                     &folder_path_sdk
                 };
-                let filepath = folder_path.join(format!("{filename}.{extension}"));
+                let filepath = folder_path.join(format!("{filename_stem}.{extension}"));
                 write_file(&filepath, string);
                 let inserted = filepaths.insert(filepath);
                 assert!(
@@ -193,23 +210,6 @@ impl CppCodeGenerator {
     }
 }
 
-impl crate::CodeGenerator for CppCodeGenerator {
-    fn generate(
-        &mut self,
-        objects: &Objects,
-        _arrow_registry: &ArrowRegistry,
-    ) -> BTreeSet<Utf8PathBuf> {
-        ObjectKind::ALL
-            .par_iter()
-            .map(|object_kind| {
-                let folder_name = object_kind.plural_snake_case();
-                self.generate_folder(objects, *object_kind, folder_name)
-            })
-            .flatten()
-            .collect()
-    }
-}
-
 /// Retrieves code from an extension cpp file that should go to the generated header.
 ///
 /// Additionally, picks up all includes files that aren't including the header itself.
@@ -217,15 +217,15 @@ impl crate::CodeGenerator for CppCodeGenerator {
 /// Returns what to inject, and what to repalce `HEADER_EXTENSION_TOKEN` with at the end.
 fn hpp_type_extensions(
     folder_path: &Utf8Path,
-    filename: &str,
+    filename_stem: &str,
     includes: &mut Includes,
 ) -> (TokenStream, Option<String>) {
-    let extension_file = folder_path.join(format!("{filename}_ext.cpp"));
+    let extension_file = folder_path.join(format!("{filename_stem}_ext.cpp"));
     let Ok(content) = std::fs::read_to_string(extension_file.as_std_path()) else {
         return (quote! {}, None);
     };
 
-    let target_header = format!("{filename}.hpp");
+    let target_header = format!("{filename_stem}.hpp");
     for line in content.lines() {
         if line.starts_with("#include") {
             if let Some(start) = line.find('\"') {

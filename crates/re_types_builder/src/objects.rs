@@ -382,7 +382,7 @@ pub struct Object {
     /// Fully-qualified package name of the object, e.g. `rerun.components`.
     pub pkg_name: String,
 
-    /// Name of the object, e.g. `Point2D`.
+    /// PascalCase name of the object type, e.g. `Point2D`.
     pub name: String,
 
     /// The object's multiple layers of documentation.
