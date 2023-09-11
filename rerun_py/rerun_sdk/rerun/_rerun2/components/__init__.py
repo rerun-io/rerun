@@ -2,6 +2,68 @@
 
 from __future__ import annotations
 
+from .affix_fuzzer1 import AffixFuzzer1Array, AffixFuzzer1Type
+from .affix_fuzzer2 import AffixFuzzer2Array, AffixFuzzer2Type
+from .affix_fuzzer3 import AffixFuzzer3Array, AffixFuzzer3Type
+from .affix_fuzzer4 import AffixFuzzer4Array, AffixFuzzer4Type
+from .affix_fuzzer5 import AffixFuzzer5Array, AffixFuzzer5Type
+from .affix_fuzzer6 import AffixFuzzer6Array, AffixFuzzer6Type
+from .affix_fuzzer7 import AffixFuzzer7, AffixFuzzer7Array, AffixFuzzer7ArrayLike, AffixFuzzer7Like, AffixFuzzer7Type
+from .affix_fuzzer8 import AffixFuzzer8, AffixFuzzer8Array, AffixFuzzer8ArrayLike, AffixFuzzer8Like, AffixFuzzer8Type
+from .affix_fuzzer9 import AffixFuzzer9, AffixFuzzer9Array, AffixFuzzer9ArrayLike, AffixFuzzer9Like, AffixFuzzer9Type
+from .affix_fuzzer10 import (
+    AffixFuzzer10,
+    AffixFuzzer10Array,
+    AffixFuzzer10ArrayLike,
+    AffixFuzzer10Like,
+    AffixFuzzer10Type,
+)
+from .affix_fuzzer11 import (
+    AffixFuzzer11,
+    AffixFuzzer11Array,
+    AffixFuzzer11ArrayLike,
+    AffixFuzzer11Like,
+    AffixFuzzer11Type,
+)
+from .affix_fuzzer12 import (
+    AffixFuzzer12,
+    AffixFuzzer12Array,
+    AffixFuzzer12ArrayLike,
+    AffixFuzzer12Like,
+    AffixFuzzer12Type,
+)
+from .affix_fuzzer13 import (
+    AffixFuzzer13,
+    AffixFuzzer13Array,
+    AffixFuzzer13ArrayLike,
+    AffixFuzzer13Like,
+    AffixFuzzer13Type,
+)
+from .affix_fuzzer14 import AffixFuzzer14Array, AffixFuzzer14Type
+from .affix_fuzzer15 import AffixFuzzer15Array, AffixFuzzer15Type
+from .affix_fuzzer16 import (
+    AffixFuzzer16,
+    AffixFuzzer16Array,
+    AffixFuzzer16ArrayLike,
+    AffixFuzzer16Like,
+    AffixFuzzer16Type,
+)
+from .affix_fuzzer17 import (
+    AffixFuzzer17,
+    AffixFuzzer17Array,
+    AffixFuzzer17ArrayLike,
+    AffixFuzzer17Like,
+    AffixFuzzer17Type,
+)
+from .affix_fuzzer18 import (
+    AffixFuzzer18,
+    AffixFuzzer18Array,
+    AffixFuzzer18ArrayLike,
+    AffixFuzzer18Like,
+    AffixFuzzer18Type,
+)
+from .affix_fuzzer19 import AffixFuzzer19Array, AffixFuzzer19Type
+from .affix_fuzzer20 import AffixFuzzer20Array, AffixFuzzer20Type
 from .annotation_context import (
     AnnotationContext,
     AnnotationContextArray,
@@ -20,78 +82,6 @@ from .disconnected_space import (
     DisconnectedSpaceType,
 )
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
-from .fuzzy import (
-    AffixFuzzer1Array,
-    AffixFuzzer1Type,
-    AffixFuzzer2Array,
-    AffixFuzzer2Type,
-    AffixFuzzer3Array,
-    AffixFuzzer3Type,
-    AffixFuzzer4Array,
-    AffixFuzzer4Type,
-    AffixFuzzer5Array,
-    AffixFuzzer5Type,
-    AffixFuzzer6Array,
-    AffixFuzzer6Type,
-    AffixFuzzer7,
-    AffixFuzzer7Array,
-    AffixFuzzer7ArrayLike,
-    AffixFuzzer7Like,
-    AffixFuzzer7Type,
-    AffixFuzzer8,
-    AffixFuzzer8Array,
-    AffixFuzzer8ArrayLike,
-    AffixFuzzer8Like,
-    AffixFuzzer8Type,
-    AffixFuzzer9,
-    AffixFuzzer9Array,
-    AffixFuzzer9ArrayLike,
-    AffixFuzzer9Like,
-    AffixFuzzer9Type,
-    AffixFuzzer10,
-    AffixFuzzer10Array,
-    AffixFuzzer10ArrayLike,
-    AffixFuzzer10Like,
-    AffixFuzzer10Type,
-    AffixFuzzer11,
-    AffixFuzzer11Array,
-    AffixFuzzer11ArrayLike,
-    AffixFuzzer11Like,
-    AffixFuzzer11Type,
-    AffixFuzzer12,
-    AffixFuzzer12Array,
-    AffixFuzzer12ArrayLike,
-    AffixFuzzer12Like,
-    AffixFuzzer12Type,
-    AffixFuzzer13,
-    AffixFuzzer13Array,
-    AffixFuzzer13ArrayLike,
-    AffixFuzzer13Like,
-    AffixFuzzer13Type,
-    AffixFuzzer14Array,
-    AffixFuzzer14Type,
-    AffixFuzzer15Array,
-    AffixFuzzer15Type,
-    AffixFuzzer16,
-    AffixFuzzer16Array,
-    AffixFuzzer16ArrayLike,
-    AffixFuzzer16Like,
-    AffixFuzzer16Type,
-    AffixFuzzer17,
-    AffixFuzzer17Array,
-    AffixFuzzer17ArrayLike,
-    AffixFuzzer17Like,
-    AffixFuzzer17Type,
-    AffixFuzzer18,
-    AffixFuzzer18Array,
-    AffixFuzzer18ArrayLike,
-    AffixFuzzer18Like,
-    AffixFuzzer18Type,
-    AffixFuzzer19Array,
-    AffixFuzzer19Type,
-    AffixFuzzer20Array,
-    AffixFuzzer20Type,
-)
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointIdArray, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType

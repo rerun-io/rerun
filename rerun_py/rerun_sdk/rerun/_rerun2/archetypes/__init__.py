@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from .affix_fuzzer1 import AffixFuzzer1
 from .annotation_context import AnnotationContext
 from .arrows3d import Arrows3D
 from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
-from .fuzzy import AffixFuzzer1
 from .image import Image
 from .line_strips2d import LineStrips2D
 from .line_strips3d import LineStrips3D

@@ -112,10 +112,7 @@ impl crate::CodeGenerator for CppCodeGenerator {
     ) -> BTreeSet<Utf8PathBuf> {
         ObjectKind::ALL
             .par_iter()
-            .map(|object_kind| {
-                let folder_name = object_kind.plural_snake_case();
-                self.generate_folder(objects, *object_kind, folder_name)
-            })
+            .map(|object_kind| self.generate_folder(objects, *object_kind))
             .flatten()
             .collect()
     }
@@ -128,12 +125,8 @@ impl CppCodeGenerator {
         }
     }
 
-    fn generate_folder(
-        &self,
-        objects: &Objects,
-        object_kind: ObjectKind,
-        folder_name: &str,
-    ) -> BTreeSet<Utf8PathBuf> {
+    fn generate_folder(&self, objects: &Objects, object_kind: ObjectKind) -> BTreeSet<Utf8PathBuf> {
+        let folder_name = object_kind.plural_snake_case();
         let folder_path_sdk = self.output_path.join("src/rerun").join(folder_name);
         let folder_path_testing = self.output_path.join("tests/generated").join(folder_name);
         let mut filepaths = BTreeSet::default();

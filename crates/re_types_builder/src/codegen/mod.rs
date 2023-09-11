@@ -5,7 +5,7 @@ pub trait CodeGenerator {
     /// Returns the paths of all generated files.
     fn generate(
         &mut self,
-        objs: &crate::Objects,
+        objects: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,
     ) -> std::collections::BTreeSet<camino::Utf8PathBuf>;
 }

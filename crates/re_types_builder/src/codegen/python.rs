@@ -90,59 +90,21 @@ fn load_overrides(path: &Utf8Path) -> HashSet<String> {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
-        objs: &Objects,
+        objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
-        {
-            let kind = ObjectKind::Datatype;
-            let kind_path = self.pkg_path.join(kind.plural_snake_case());
-            let overrides = load_overrides(&kind_path);
-            files_to_write.extend(
-                quote_objects(
-                    &kind_path,
-                    arrow_registry,
-                    &overrides,
-                    objs,
-                    kind,
-                    &objs.ordered_objects(kind.into()),
-                )
-                .0,
-            );
+        for object_kind in ObjectKind::ALL {
+            self.generate_folder(objects, arrow_registry, object_kind, &mut files_to_write);
         }
 
         {
-            let kind = ObjectKind::Component;
-            let kind_path = self.pkg_path.join(kind.plural_snake_case());
-            let overrides = load_overrides(&kind_path);
-            files_to_write.extend(
-                quote_objects(
-                    &kind_path,
-                    arrow_registry,
-                    &overrides,
-                    objs,
-                    kind,
-                    &objs.ordered_objects(kind.into()),
-                )
-                .0,
-            );
-        }
-
-        {
-            let kind = ObjectKind::Archetype;
-            let kind_path = self.pkg_path.join(kind.plural_snake_case());
-            let overrides = load_overrides(&kind_path);
-            let (paths, archetype_names) = quote_objects(
-                &kind_path,
-                arrow_registry,
-                &overrides,
-                objs,
-                kind,
-                &objs.ordered_objects(kind.into()),
-            );
-            files_to_write.extend(paths);
-
+            let archetype_names = objects
+                .ordered_objects(ObjectKind::Archetype.into())
+                .iter()
+                .map(|o| o.name.clone())
+                .collect_vec();
             files_to_write.insert(
                 self.pkg_path.join("__init__.py"),
                 lib_source_code(&archetype_names),
@@ -159,6 +121,179 @@ impl CodeGenerator for PythonCodeGenerator {
         }
 
         filepaths
+    }
+}
+
+impl PythonCodeGenerator {
+    fn generate_folder(
+        &self,
+        objects: &Objects,
+        arrow_registry: &ArrowRegistry,
+        object_kind: ObjectKind,
+        files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+    ) {
+        let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
+        let overrides = load_overrides(&kind_path);
+
+        // (module_name, [object_name])
+        let mut mods = HashMap::<String, Vec<String>>::new();
+
+        // Generate folder contents:
+        let ordered_objects = objects.ordered_objects(object_kind.into());
+        for &obj in &ordered_objects {
+            let filepath = kind_path.join(format!("{}.py", obj.snake_case_name()));
+
+            let names = match obj.kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    let name = &obj.name;
+
+                    if obj.is_delegating_component() {
+                        vec![format!("{name}Array"), format!("{name}Type")]
+                    } else {
+                        vec![
+                            format!("{name}"),
+                            format!("{name}Like"),
+                            format!("{name}Array"),
+                            format!("{name}ArrayLike"),
+                            format!("{name}Type"),
+                        ]
+                    }
+                }
+                ObjectKind::Archetype => vec![obj.name.clone()],
+            };
+
+            // NOTE: Isolating the file stem only works because we're handling datatypes, components
+            // and archetypes separately (and even then it's a bit shady, eh).
+            mods.entry(filepath.file_stem().unwrap().to_owned())
+                .or_default()
+                .extend(names.iter().cloned());
+
+            let mut code = String::new();
+            code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
+            if let Some(source_path) = obj.relative_filepath() {
+                code.push_text(&format!("# Based on {source_path:?}.\n\n"), 2, 0);
+            }
+
+            let manifest = quote_manifest(names);
+
+            code.push_unindented_text(
+                "
+            from __future__ import annotations
+
+            from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
+                TYPE_CHECKING, SupportsFloat, Literal)
+
+            from attrs import define, field
+            import numpy as np
+            import numpy.typing as npt
+            import pyarrow as pa
+            import uuid
+
+            from .._baseclasses import (
+                Archetype,
+                BaseExtensionType,
+                BaseExtensionArray,
+                BaseDelegatingExtensionType,
+                BaseDelegatingExtensionArray
+            )
+            from .._converters import (
+                int_or_none,
+                float_or_none,
+                bool_or_none,
+                str_or_none,
+                to_np_uint8,
+                to_np_uint16,
+                to_np_uint32,
+                to_np_uint64,
+                to_np_int8,
+                to_np_int16,
+                to_np_int32,
+                to_np_int64,
+                to_np_bool,
+                to_np_float16,
+                to_np_float32,
+                to_np_float64
+            )
+            ",
+                0,
+            );
+
+            // import all overrides
+            let lowercase_name = obj.name.as_str().to_lowercase(); // TODO(emilk): snake-case name
+            let override_names: Vec<_> = overrides
+                .iter()
+                .filter(|o| o.starts_with(lowercase_name.as_str()))
+                .map(|o| o.as_str())
+                .collect::<Vec<_>>();
+
+            // TODO(ab): remove this noqa—useful for checking what overrides are extracted
+            if !override_names.is_empty() {
+                code.push_unindented_text(
+                    format!(
+                        "
+                    from ._overrides import {}  # noqa: F401
+                    ",
+                        override_names.join(", ")
+                    ),
+                    0,
+                );
+            }
+
+            let import_clauses: HashSet<_> = obj
+                .fields
+                .iter()
+                .filter_map(quote_import_clauses_from_field)
+                .collect();
+            for clause in import_clauses {
+                code.push_text(&clause, 1, 0);
+            }
+
+            code.push_unindented_text(
+                format!(
+                    "
+                __all__ = [{manifest}]
+
+                ",
+                ),
+                0,
+            );
+
+            let obj_code = if obj.is_struct() {
+                code_for_struct(arrow_registry, &overrides, objects, obj)
+            } else {
+                code_for_union(arrow_registry, &overrides, objects, obj)
+            };
+            code.push_text(&obj_code, 1, 0);
+
+            files_to_write.insert(filepath.clone(), code);
+        }
+
+        // rerun/{datatypes|components|archetypes}/__init__.py
+        {
+            let path = kind_path.join("__init__.py");
+
+            let mut code = String::new();
+
+            let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+
+            code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
+            code.push_unindented_text(
+                "
+            from __future__ import annotations
+
+            ",
+                0,
+            );
+
+            for (module, names) in &mods {
+                let names = names.join(", ");
+                code.push_text(&format!("from .{module} import {names}"), 1, 0);
+            }
+
+            code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+
+            files_to_write.insert(path, code);
+        }
     }
 }
 
@@ -214,457 +349,88 @@ fn lib_source_code(archetype_names: &[String]) -> String {
     code
 }
 
-/// Returns all filepaths + all object names.
-fn quote_objects(
-    out_path: &Utf8Path,
-    arrow_registry: &ArrowRegistry,
-    overrides: &HashSet<String>,
-    all_objects: &Objects,
-    _kind: ObjectKind,
-    objs: &[&Object],
-) -> (BTreeMap<Utf8PathBuf, String>, Vec<String>) {
-    let mut files_to_write = BTreeMap::new();
-    let mut all_names = Vec::new();
-
-    let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
-    for obj in objs {
-        all_names.push(obj.name.clone());
-
-        let obj = if obj.is_struct() {
-            QuotedObject::from_struct(arrow_registry, overrides, all_objects, obj)
-        } else {
-            QuotedObject::from_union(arrow_registry, overrides, all_objects, obj)
-        };
-
-        let filepath = out_path.join(obj.filepath.file_name().unwrap());
-        files.entry(filepath.clone()).or_default().push(obj);
-    }
-
-    // (module_name, [object_name])
-    let mut mods = HashMap::<String, Vec<String>>::new();
-
-    // rerun/{datatypes|components|archetypes}/{xxx}.py
-    for (filepath, objs) in files {
-        let names = objs
-            .iter()
-            .flat_map(|obj| match obj.object.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
-                    let name = &obj.object.name;
-
-                    if obj.object.is_delegating_component() {
-                        vec![format!("{name}Array"), format!("{name}Type")]
-                    } else {
-                        vec![
-                            format!("{name}"),
-                            format!("{name}Like"),
-                            format!("{name}Array"),
-                            format!("{name}ArrayLike"),
-                            format!("{name}Type"),
-                        ]
-                    }
-                }
-                ObjectKind::Archetype => vec![obj.object.name.clone()],
-            })
-            .collect::<Vec<_>>();
-
-        // NOTE: Isolating the file stem only works because we're handling datatypes, components
-        // and archetypes separately (and even then it's a bit shady, eh).
-        mods.entry(filepath.file_stem().unwrap().to_owned())
-            .or_default()
-            .extend(names.iter().cloned());
-
-        let mut code = String::new();
-        code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
-
-        let manifest = quote_manifest(names);
-
-        code.push_unindented_text(
-            "
-            from __future__ import annotations
-
-            from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-                TYPE_CHECKING, SupportsFloat, Literal)
-
-            from attrs import define, field
-            import numpy as np
-            import numpy.typing as npt
-            import pyarrow as pa
-            import uuid
-
-            from .._baseclasses import (
-                Archetype,
-                BaseExtensionType,
-                BaseExtensionArray,
-                BaseDelegatingExtensionType,
-                BaseDelegatingExtensionArray
-            )
-            from .._converters import (
-                int_or_none,
-                float_or_none,
-                bool_or_none,
-                str_or_none,
-                to_np_uint8,
-                to_np_uint16,
-                to_np_uint32,
-                to_np_uint64,
-                to_np_int8,
-                to_np_int16,
-                to_np_int32,
-                to_np_int64,
-                to_np_bool,
-                to_np_float16,
-                to_np_float32,
-                to_np_float64
-            )
-            ",
-            0,
-        );
-
-        // import all overrides
-        let override_names: Vec<_> = objs
-            .iter()
-            .flat_map(|obj| {
-                let name = obj.object.name.as_str().to_lowercase();
-                overrides
-                    .iter()
-                    .filter(|o| o.starts_with(name.as_str()))
-                    .map(|o| o.as_str())
-                    .collect::<Vec<_>>()
-            })
-            .collect();
-
-        // TODO(ab): remove this noqa—useful for checking what overrides are extracted
-        if !override_names.is_empty() {
-            code.push_unindented_text(
-                format!(
-                    "
-                    from ._overrides import {}  # noqa: F401
-                    ",
-                    override_names.join(", ")
-                ),
-                0,
-            );
-        }
-
-        let import_clauses: HashSet<_> = objs
-            .iter()
-            .flat_map(|obj| obj.object.fields.iter())
-            .filter_map(quote_import_clauses_from_field)
-            .collect();
-        for clause in import_clauses {
-            code.push_text(&clause, 1, 0);
-        }
-
-        code.push_unindented_text(
-            format!(
-                "
-                __all__ = [{manifest}]
-
-                ",
-            ),
-            0,
-        );
-
-        for obj in objs {
-            code.push_text(&obj.code, 1, 0);
-        }
-
-        files_to_write.insert(filepath.clone(), code);
-    }
-
-    // rerun/{datatypes|components|archetypes}/__init__.py
-    {
-        let path = out_path.join("__init__.py");
-
-        let mut code = String::new();
-
-        let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
-
-        code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
-        code.push_unindented_text(
-            "
-            from __future__ import annotations
-
-            ",
-            0,
-        );
-
-        for (module, names) in &mods {
-            let names = names.join(", ");
-            code.push_text(&format!("from .{module} import {names}"), 1, 0);
-        }
-
-        code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
-
-        files_to_write.insert(path, code);
-    }
-
-    (files_to_write, all_names)
-}
-
 // --- Codegen core loop ---
 
-#[derive(Debug, Clone)]
-struct QuotedObject {
-    object: Object,
-    filepath: Utf8PathBuf,
-    code: String,
-}
+fn code_for_struct(
+    arrow_registry: &ArrowRegistry,
+    overrides: &HashSet<String>,
+    objects: &Objects,
+    obj: &Object,
+) -> String {
+    assert!(obj.is_struct());
 
-impl QuotedObject {
-    fn from_struct(
-        arrow_registry: &ArrowRegistry,
-        overrides: &HashSet<String>,
-        objects: &Objects,
-        obj: &Object,
-    ) -> Self {
-        assert!(obj.is_struct());
+    let Object {
+        name,
+        docs,
+        kind,
+        fields,
+        ..
+    } = obj;
 
-        let Object {
-            virtpath,
-            filepath: _,
-            fqname: _,
-            pkg_name: _,
-            name,
-            docs,
-            kind,
-            attrs: _,
-            order: _,
-            fields,
-            specifics: _,
-            datatype: _,
-        } = obj;
+    let mut code = String::new();
 
-        let mut code = String::new();
+    if *kind != ObjectKind::Component || obj.is_non_delegating_component() {
+        // field converters preprocessing pass — must be performed here because we must autogen
+        // converter function *before* the class
+        let mut field_converters: HashMap<String, String> = HashMap::new();
+        for field in fields {
+            let (default_converter, converter_function) =
+                quote_field_converter_from_field(obj, objects, field);
 
-        if *kind != ObjectKind::Component || obj.is_non_delegating_component() {
-            // field converters preprocessing pass — must be performed here because we must autogen
-            // converter function *before* the class
-            let mut field_converters: HashMap<String, String> = HashMap::new();
-            for field in fields {
-                let (default_converter, converter_function) =
-                    quote_field_converter_from_field(obj, objects, field);
-
-                let override_name = format!(
-                    "{}_{}_converter",
-                    name.to_lowercase(),
-                    field.name.to_lowercase()
-                );
-                let converter = if overrides.contains(&override_name) {
-                    format!("converter={override_name}")
-                } else if *kind == ObjectKind::Archetype {
-                    // Archetypes default to using `from_similar` from the Component
-                    let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
-                    // archetype always delegate field init to the component array object
-                    format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
-                } else if !default_converter.is_empty() {
-                    code.push_text(&converter_function, 1, 0);
-                    format!("converter={default_converter}")
-                } else {
-                    String::new()
-                };
-                field_converters.insert(field.fqname.clone(), converter);
-            }
-
-            // init override handling
-            let override_name = format!("{}_init", name.to_lowercase());
-            let (init_define_arg, init_func) = if overrides.contains(&override_name) {
-                ("init=False".to_owned(), override_name)
-            } else {
-                (String::new(), String::new())
-            };
-
-            let superclass = match *kind {
-                ObjectKind::Archetype => "(Archetype)",
-                ObjectKind::Component | ObjectKind::Datatype => "",
-            };
-
-            let define_args = if *kind == ObjectKind::Archetype {
-                format!(
-                    "str=False, repr=False{}{init_define_arg}",
-                    if init_define_arg.is_empty() { "" } else { ", " }
-                )
-            } else {
-                init_define_arg
-            };
-
-            let define_args = if !define_args.is_empty() {
-                format!("({define_args})")
-            } else {
-                define_args
-            };
-
-            code.push_unindented_text(
-                format!(
-                    r#"
-                @define{define_args}
-                class {name}{superclass}:
-                "#
-                ),
-                0,
+            let override_name = format!(
+                "{}_{}_converter",
+                name.to_lowercase(),
+                field.name.to_lowercase()
             );
-
-            code.push_text(quote_doc_from_docs(docs), 0, 4);
-
-            if !init_func.is_empty() {
-                code.push_text(
-                    "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
-                    1,
-                    4,
-                );
-                code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
-            }
-
-            // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
-            // complains.
-            // TODO(ab, #2641): this is required because fields without default should appear before fields
-            //  with default. Now, `TranslationXXX.from_parent` *should* have a default value,
-            //  and appear at the end of the list, but it currently doesn't. This is unfortunate as
-            //  the apparent field order is inconsistent with what the `xxxx_init()` override
-            //  accepts.
-            let fields_in_order = fields
-                .iter()
-                .filter(|field| !field.is_nullable)
-                .chain(fields.iter().filter(|field| field.is_nullable));
-            for field in fields_in_order {
-                let ObjectField {
-                    virtpath: _,
-                    filepath: _,
-                    fqname: _,
-                    pkg_name: _,
-                    name,
-                    docs,
-                    typ: _,
-                    attrs: _,
-                    order: _,
-                    is_nullable,
-                    is_deprecated: _,
-                    datatype: _,
-                } = field;
-
-                let (typ, _) = quote_field_type_from_field(objects, field, false);
+            let converter = if overrides.contains(&override_name) {
+                format!("converter={override_name}")
+            } else if *kind == ObjectKind::Archetype {
+                // Archetypes default to using `from_similar` from the Component
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
-                let typ = if *kind == ObjectKind::Archetype {
-                    format!("{typ_unwrapped}Array")
-                } else {
-                    typ
-                };
-
-                let metadata = if *kind == ObjectKind::Archetype {
-                    format!(
-                        "\nmetadata={{'component': '{}'}}, ",
-                        if *is_nullable { "secondary" } else { "primary" }
-                    )
-                } else {
-                    String::new()
-                };
-
-                let converter = &field_converters[&field.fqname];
-                let typ = if !*is_nullable {
-                    format!("{typ} = field({metadata}{converter})")
-                } else {
-                    format!(
-                        "{typ} | None = field({metadata}default=None{}{converter})",
-                        if converter.is_empty() { "" } else { ", " },
-                    )
-                };
-
-                code.push_text(format!("{name}: {typ}"), 1, 4);
-
-                code.push_text(quote_doc_from_docs(docs), 0, 4);
-            }
-
-            if *kind == ObjectKind::Archetype {
-                code.push_text("__str__ = Archetype.__str__", 1, 4);
-                code.push_text("__repr__ = Archetype.__repr__", 1, 4);
-            }
-
-            code.push_text(quote_array_method_from_obj(overrides, objects, obj), 1, 4);
-            code.push_text(quote_native_types_method_from_obj(objects, obj), 1, 4);
-
-            if *kind != ObjectKind::Archetype {
-                code.push_text(quote_aliases_from_object(obj), 1, 0);
-            }
+                // archetype always delegate field init to the component array object
+                format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+            } else if !default_converter.is_empty() {
+                code.push_text(&converter_function, 1, 0);
+                format!("converter={default_converter}")
+            } else {
+                String::new()
+            };
+            field_converters.insert(field.fqname.clone(), converter);
         }
-
-        match kind {
-            ObjectKind::Archetype => (),
-            ObjectKind::Component => {
-                // a component might be either delegating to a datatype or using a native type
-                if let Type::Object(ref dtype_fqname) = obj.fields[0].typ {
-                    let dtype_obj = &objects[dtype_fqname];
-                    code.push_text(
-                        quote_arrow_support_from_delegating_component(obj, dtype_obj),
-                        1,
-                        0,
-                    );
-                } else {
-                    code.push_text(
-                        quote_arrow_support_from_obj(arrow_registry, overrides, obj),
-                        1,
-                        0,
-                    );
-                }
-            }
-            ObjectKind::Datatype => {
-                code.push_text(
-                    quote_arrow_support_from_obj(arrow_registry, overrides, obj),
-                    1,
-                    0,
-                );
-            }
-        }
-
-        let mut filepath = Utf8PathBuf::from(virtpath);
-        filepath.set_extension("py");
-
-        Self {
-            object: obj.clone(),
-            filepath,
-            code,
-        }
-    }
-
-    fn from_union(
-        arrow_registry: &ArrowRegistry,
-        overrides: &HashSet<String>,
-        objects: &Objects,
-        obj: &Object,
-    ) -> Self {
-        assert!(!obj.is_struct());
-        assert_eq!(obj.kind, ObjectKind::Datatype);
-
-        let Object {
-            virtpath,
-            filepath: _,
-            fqname: _,
-            pkg_name: _,
-            name,
-            docs,
-            kind,
-            attrs: _,
-            order: _,
-            fields,
-            specifics: _,
-            datatype: _,
-        } = obj;
-
-        let mut code = String::new();
 
         // init override handling
         let override_name = format!("{}_init", name.to_lowercase());
-        let (define_args, init_func) = if overrides.contains(&override_name) {
-            ("(init=False)".to_owned(), override_name)
+        let (init_define_arg, init_func) = if overrides.contains(&override_name) {
+            ("init=False".to_owned(), override_name)
         } else {
             (String::new(), String::new())
+        };
+
+        let superclass = match *kind {
+            ObjectKind::Archetype => "(Archetype)",
+            ObjectKind::Component | ObjectKind::Datatype => "",
+        };
+
+        let define_args = if *kind == ObjectKind::Archetype {
+            format!(
+                "str=False, repr=False{}{init_define_arg}",
+                if init_define_arg.is_empty() { "" } else { ", " }
+            )
+        } else {
+            init_define_arg
+        };
+
+        let define_args = if !define_args.is_empty() {
+            format!("({define_args})")
+        } else {
+            define_args
         };
 
         code.push_unindented_text(
             format!(
                 r#"
-
                 @define{define_args}
-                class {name}:
+                class {name}{superclass}:
                 "#
             ),
             0,
@@ -681,61 +447,90 @@ impl QuotedObject {
             code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
         }
 
-        let field_types = fields
+        // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
+        // complains.
+        // TODO(ab, #2641): this is required because fields without default should appear before fields
+        //  with default. Now, `TranslationXXX.from_parent` *should* have a default value,
+        //  and appear at the end of the list, but it currently doesn't. This is unfortunate as
+        //  the apparent field order is inconsistent with what the `xxxx_init()` override
+        //  accepts.
+        let fields_in_order = fields
             .iter()
-            .map(|f| quote_field_type_from_field(objects, f, false).0)
-            .collect::<BTreeSet<_>>();
-        let has_duplicate_types = field_types.len() != fields.len();
+            .filter(|field| !field.is_nullable)
+            .chain(fields.iter().filter(|field| field.is_nullable));
+        for field in fields_in_order {
+            let ObjectField {
+                virtpath: _,
+                filepath: _,
+                fqname: _,
+                pkg_name: _,
+                name,
+                docs,
+                typ: _,
+                attrs: _,
+                order: _,
+                is_nullable,
+                is_deprecated: _,
+                datatype: _,
+            } = field;
 
-        // provide a default converter if *all* arms are of the same type
-        let default_converter = if field_types.len() == 1 {
-            quote_field_converter_from_field(obj, objects, &fields[0]).0
-        } else {
-            String::new()
-        };
+            let (typ, _) = quote_field_type_from_field(objects, field, false);
+            let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
+            let typ = if *kind == ObjectKind::Archetype {
+                format!("{typ_unwrapped}Array")
+            } else {
+                typ
+            };
 
-        let inner_type = if field_types.len() > 1 {
-            format!("Union[{}]", field_types.iter().join(", "))
-        } else {
-            field_types.iter().next().unwrap().to_string()
-        };
+            let metadata = if *kind == ObjectKind::Archetype {
+                format!(
+                    "\nmetadata={{'component': '{}'}}, ",
+                    if *is_nullable { "secondary" } else { "primary" }
+                )
+            } else {
+                String::new()
+            };
 
-        // components and datatypes have converters only if manually provided
-        let override_name = format!("{}_inner_converter", name.to_lowercase(),);
-        let converter = if overrides.contains(&override_name) {
-            format!("converter={override_name}")
-        } else if !default_converter.is_empty() {
-            format!("converter={default_converter}")
-        } else {
-            String::new()
-        };
+            let converter = &field_converters[&field.fqname];
+            let typ = if !*is_nullable {
+                format!("{typ} = field({metadata}{converter})")
+            } else {
+                format!(
+                    "{typ} | None = field({metadata}default=None{}{converter})",
+                    if converter.is_empty() { "" } else { ", " },
+                )
+            };
 
-        code.push_text(format!("inner: {inner_type} = field({converter})"), 1, 4);
-        code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
+            code.push_text(format!("{name}: {typ}"), 1, 4);
 
-        // if there are duplicate types, we need to add a `kind` field to disambiguate the union
-        if has_duplicate_types {
-            let kind_type = fields
-                .iter()
-                .map(|f| format!("{:?}", f.name.to_lowercase()))
-                .join(", ");
-            let first_kind = &fields[0].name.to_lowercase();
-
-            code.push_text(
-                format!("kind: Literal[{kind_type}] = field(default={first_kind:?})"),
-                1,
-                4,
-            );
+            code.push_text(quote_doc_from_docs(docs), 0, 4);
         }
 
-        code.push_unindented_text(quote_union_aliases_from_object(obj, field_types.iter()), 1);
+        if *kind == ObjectKind::Archetype {
+            code.push_text("__str__ = Archetype.__str__", 1, 4);
+            code.push_text("__repr__ = Archetype.__repr__", 1, 4);
+        }
 
-        match kind {
-            ObjectKind::Archetype => (),
-            ObjectKind::Component => {
-                unreachable!("component may not be a union")
-            }
-            ObjectKind::Datatype => {
+        code.push_text(quote_array_method_from_obj(overrides, objects, obj), 1, 4);
+        code.push_text(quote_native_types_method_from_obj(objects, obj), 1, 4);
+
+        if *kind != ObjectKind::Archetype {
+            code.push_text(quote_aliases_from_object(obj), 1, 0);
+        }
+    }
+
+    match kind {
+        ObjectKind::Archetype => (),
+        ObjectKind::Component => {
+            // a component might be either delegating to a datatype or using a native type
+            if let Type::Object(ref dtype_fqname) = obj.fields[0].typ {
+                let dtype_obj = &objects[dtype_fqname];
+                code.push_text(
+                    quote_arrow_support_from_delegating_component(obj, dtype_obj),
+                    1,
+                    0,
+                );
+            } else {
                 code.push_text(
                     quote_arrow_support_from_obj(arrow_registry, overrides, obj),
                     1,
@@ -743,16 +538,131 @@ impl QuotedObject {
                 );
             }
         }
-
-        let mut filepath = Utf8PathBuf::from(virtpath);
-        filepath.set_extension("py");
-
-        Self {
-            object: obj.clone(),
-            filepath,
-            code,
+        ObjectKind::Datatype => {
+            code.push_text(
+                quote_arrow_support_from_obj(arrow_registry, overrides, obj),
+                1,
+                0,
+            );
         }
     }
+
+    code
+}
+
+fn code_for_union(
+    arrow_registry: &ArrowRegistry,
+    overrides: &HashSet<String>,
+    objects: &Objects,
+    obj: &Object,
+) -> String {
+    assert!(!obj.is_struct());
+    assert_eq!(obj.kind, ObjectKind::Datatype);
+
+    let Object {
+        name,
+        docs,
+        kind,
+        fields,
+        ..
+    } = obj;
+
+    let mut code = String::new();
+
+    // init override handling
+    let override_name = format!("{}_init", name.to_lowercase());
+    let (define_args, init_func) = if overrides.contains(&override_name) {
+        ("(init=False)".to_owned(), override_name)
+    } else {
+        (String::new(), String::new())
+    };
+
+    code.push_unindented_text(
+        format!(
+            r#"
+
+                @define{define_args}
+                class {name}:
+                "#
+        ),
+        0,
+    );
+
+    code.push_text(quote_doc_from_docs(docs), 0, 4);
+
+    if !init_func.is_empty() {
+        code.push_text(
+            "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
+            1,
+            4,
+        );
+        code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
+    }
+
+    let field_types = fields
+        .iter()
+        .map(|f| quote_field_type_from_field(objects, f, false).0)
+        .collect::<BTreeSet<_>>();
+    let has_duplicate_types = field_types.len() != fields.len();
+
+    // provide a default converter if *all* arms are of the same type
+    let default_converter = if field_types.len() == 1 {
+        quote_field_converter_from_field(obj, objects, &fields[0]).0
+    } else {
+        String::new()
+    };
+
+    let inner_type = if field_types.len() > 1 {
+        format!("Union[{}]", field_types.iter().join(", "))
+    } else {
+        field_types.iter().next().unwrap().to_string()
+    };
+
+    // components and datatypes have converters only if manually provided
+    let override_name = format!("{}_inner_converter", name.to_lowercase(),);
+    let converter = if overrides.contains(&override_name) {
+        format!("converter={override_name}")
+    } else if !default_converter.is_empty() {
+        format!("converter={default_converter}")
+    } else {
+        String::new()
+    };
+
+    code.push_text(format!("inner: {inner_type} = field({converter})"), 1, 4);
+    code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
+
+    // if there are duplicate types, we need to add a `kind` field to disambiguate the union
+    if has_duplicate_types {
+        let kind_type = fields
+            .iter()
+            .map(|f| format!("{:?}", f.name.to_lowercase()))
+            .join(", ");
+        let first_kind = &fields[0].name.to_lowercase();
+
+        code.push_text(
+            format!("kind: Literal[{kind_type}] = field(default={first_kind:?})"),
+            1,
+            4,
+        );
+    }
+
+    code.push_unindented_text(quote_union_aliases_from_object(obj, field_types.iter()), 1);
+
+    match kind {
+        ObjectKind::Archetype => (),
+        ObjectKind::Component => {
+            unreachable!("component may not be a union")
+        }
+        ObjectKind::Datatype => {
+            code.push_text(
+                quote_arrow_support_from_obj(arrow_registry, overrides, obj),
+                1,
+                0,
+            );
+        }
+    }
+
+    code
 }
 
 // --- Code generators ---

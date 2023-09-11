@@ -55,14 +55,7 @@ impl CodeGenerator for RustCodeGenerator {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
-            let folder_name = object_kind.plural_snake_case();
-            self.generate_folder(
-                objects,
-                arrow_registry,
-                object_kind,
-                folder_name,
-                &mut files_to_write,
-            );
+            self.generate_folder(objects, arrow_registry, object_kind, &mut files_to_write);
         }
 
         write_files(&files_to_write);
@@ -89,9 +82,9 @@ impl RustCodeGenerator {
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
-        folder_name: &str,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
+        let folder_name = object_kind.plural_snake_case();
         let kind_path = self.crate_path.join("src").join(folder_name);
         let kind_testing_path = self.crate_path.join("src/testing").join(folder_name);
 
