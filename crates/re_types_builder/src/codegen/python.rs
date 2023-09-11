@@ -1058,7 +1058,7 @@ fn quote_field_converter_from_field(
             // single argument
             if field_obj.fields.len() == 1 || field_obj.is_union() {
                 let converter_name = format!(
-                    "_override_{}_{}_converter",
+                    "_override_{}_{}__special_field_converter_override",
                     obj.snake_case_name(),
                     field.name
                 );

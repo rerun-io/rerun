@@ -19,14 +19,18 @@ from ._overrides import override_keypoint_pair___native_to_pa_array_override  # 
 __all__ = ["KeypointPair", "KeypointPairArray", "KeypointPairArrayLike", "KeypointPairLike", "KeypointPairType"]
 
 
-def _override_keypoint_pair_keypoint0_converter(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
+def _override_keypoint_pair_keypoint0__special_field_converter_override(
+    x: datatypes.KeypointIdLike,
+) -> datatypes.KeypointId:
     if isinstance(x, datatypes.KeypointId):
         return x
     else:
         return datatypes.KeypointId(x)
 
 
-def _override_keypoint_pair_keypoint1_converter(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
+def _override_keypoint_pair_keypoint1__special_field_converter_override(
+    x: datatypes.KeypointIdLike,
+) -> datatypes.KeypointId:
     if isinstance(x, datatypes.KeypointId):
         return x
     else:
@@ -39,8 +43,12 @@ class KeypointPair:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    keypoint0: datatypes.KeypointId = field(converter=_override_keypoint_pair_keypoint0_converter)
-    keypoint1: datatypes.KeypointId = field(converter=_override_keypoint_pair_keypoint1_converter)
+    keypoint0: datatypes.KeypointId = field(
+        converter=_override_keypoint_pair_keypoint0__special_field_converter_override
+    )
+    keypoint1: datatypes.KeypointId = field(
+        converter=_override_keypoint_pair_keypoint1__special_field_converter_override
+    )
 
 
 if TYPE_CHECKING:

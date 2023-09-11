@@ -18,14 +18,18 @@ from .._baseclasses import (
 __all__ = ["AffixFuzzer20", "AffixFuzzer20Array", "AffixFuzzer20ArrayLike", "AffixFuzzer20Like", "AffixFuzzer20Type"]
 
 
-def _override_affix_fuzzer20_p_converter(x: datatypes.PrimitiveComponentLike) -> datatypes.PrimitiveComponent:
+def _override_affix_fuzzer20_p__special_field_converter_override(
+    x: datatypes.PrimitiveComponentLike,
+) -> datatypes.PrimitiveComponent:
     if isinstance(x, datatypes.PrimitiveComponent):
         return x
     else:
         return datatypes.PrimitiveComponent(x)
 
 
-def _override_affix_fuzzer20_s_converter(x: datatypes.StringComponentLike) -> datatypes.StringComponent:
+def _override_affix_fuzzer20_s__special_field_converter_override(
+    x: datatypes.StringComponentLike,
+) -> datatypes.StringComponent:
     if isinstance(x, datatypes.StringComponent):
         return x
     else:
@@ -36,8 +40,8 @@ def _override_affix_fuzzer20_s_converter(x: datatypes.StringComponentLike) -> da
 class AffixFuzzer20:
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    p: datatypes.PrimitiveComponent = field(converter=_override_affix_fuzzer20_p_converter)
-    s: datatypes.StringComponent = field(converter=_override_affix_fuzzer20_s_converter)
+    p: datatypes.PrimitiveComponent = field(converter=_override_affix_fuzzer20_p__special_field_converter_override)
+    s: datatypes.StringComponent = field(converter=_override_affix_fuzzer20_s__special_field_converter_override)
 
 
 AffixFuzzer20Like = AffixFuzzer20

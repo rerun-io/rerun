@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-def _override_translation_rotation_scale3d_translation_converter(
+def _override_translation_rotation_scale3d_translation__special_field_converter_override(
     x: datatypes.Vec3DLike | None,
 ) -> datatypes.Vec3D | None:
     if x is None:
@@ -36,7 +36,7 @@ def _override_translation_rotation_scale3d_translation_converter(
         return datatypes.Vec3D(x)
 
 
-def _override_translation_rotation_scale3d_rotation_converter(
+def _override_translation_rotation_scale3d_rotation__special_field_converter_override(
     x: datatypes.Rotation3DLike | None,
 ) -> datatypes.Rotation3D | None:
     if x is None:
@@ -47,7 +47,9 @@ def _override_translation_rotation_scale3d_rotation_converter(
         return datatypes.Rotation3D(x)
 
 
-def _override_translation_rotation_scale3d_scale_converter(x: datatypes.Scale3DLike | None) -> datatypes.Scale3D | None:
+def _override_translation_rotation_scale3d_scale__special_field_converter_override(
+    x: datatypes.Scale3DLike | None,
+) -> datatypes.Scale3D | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Scale3D):
@@ -70,21 +72,21 @@ class TranslationRotationScale3D:
     """
 
     translation: datatypes.Vec3D | None = field(
-        default=None, converter=_override_translation_rotation_scale3d_translation_converter
+        default=None, converter=_override_translation_rotation_scale3d_translation__special_field_converter_override
     )
     """
     3D translation vector, applied last.
     """
 
     rotation: datatypes.Rotation3D | None = field(
-        default=None, converter=_override_translation_rotation_scale3d_rotation_converter
+        default=None, converter=_override_translation_rotation_scale3d_rotation__special_field_converter_override
     )
     """
     3D rotation, applied second.
     """
 
     scale: datatypes.Scale3D | None = field(
-        default=None, converter=_override_translation_rotation_scale3d_scale_converter
+        default=None, converter=_override_translation_rotation_scale3d_scale__special_field_converter_override
     )
     """
     3D scale, applied first.

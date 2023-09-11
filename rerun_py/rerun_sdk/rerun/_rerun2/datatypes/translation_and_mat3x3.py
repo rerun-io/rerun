@@ -25,7 +25,9 @@ __all__ = [
 ]
 
 
-def _override_translation_and_mat3x3_translation_converter(x: datatypes.Vec3DLike | None) -> datatypes.Vec3D | None:
+def _override_translation_and_mat3x3_translation__special_field_converter_override(
+    x: datatypes.Vec3DLike | None,
+) -> datatypes.Vec3D | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Vec3D):
@@ -34,7 +36,9 @@ def _override_translation_and_mat3x3_translation_converter(x: datatypes.Vec3DLik
         return datatypes.Vec3D(x)
 
 
-def _override_translation_and_mat3x3_matrix_converter(x: datatypes.Mat3x3Like | None) -> datatypes.Mat3x3 | None:
+def _override_translation_and_mat3x3_matrix__special_field_converter_override(
+    x: datatypes.Mat3x3Like | None,
+) -> datatypes.Mat3x3 | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Mat3x3):
@@ -61,13 +65,15 @@ class TranslationAndMat3x3:
     """
 
     translation: datatypes.Vec3D | None = field(
-        default=None, converter=_override_translation_and_mat3x3_translation_converter
+        default=None, converter=_override_translation_and_mat3x3_translation__special_field_converter_override
     )
     """
     3D translation, applied after the matrix.
     """
 
-    matrix: datatypes.Mat3x3 | None = field(default=None, converter=_override_translation_and_mat3x3_matrix_converter)
+    matrix: datatypes.Mat3x3 | None = field(
+        default=None, converter=_override_translation_and_mat3x3_matrix__special_field_converter_override
+    )
     """
     3x3 matrix for scale, rotation & shear.
     """

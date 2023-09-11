@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-def _override_rotation_axis_angle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D:
+def _override_rotation_axis_angle_axis__special_field_converter_override(x: datatypes.Vec3DLike) -> datatypes.Vec3D:
     if isinstance(x, datatypes.Vec3D):
         return x
     else:
@@ -38,7 +38,7 @@ class RotationAxisAngle:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    axis: datatypes.Vec3D = field(converter=_override_rotation_axis_angle_axis_converter)
+    axis: datatypes.Vec3D = field(converter=_override_rotation_axis_angle_axis__special_field_converter_override)
     """
     Axis to rotate around.
 

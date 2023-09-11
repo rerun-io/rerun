@@ -25,7 +25,9 @@ __all__ = [
 ]
 
 
-def _override_annotation_info_label_converter(x: datatypes.Utf8Like | None) -> datatypes.Utf8 | None:
+def _override_annotation_info_label__special_field_converter_override(
+    x: datatypes.Utf8Like | None,
+) -> datatypes.Utf8 | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Utf8):
@@ -34,7 +36,9 @@ def _override_annotation_info_label_converter(x: datatypes.Utf8Like | None) -> d
         return datatypes.Utf8(x)
 
 
-def _override_annotation_info_color_converter(x: datatypes.ColorLike | None) -> datatypes.Color | None:
+def _override_annotation_info_color__special_field_converter_override(
+    x: datatypes.ColorLike | None,
+) -> datatypes.Color | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Color):
@@ -59,12 +63,16 @@ class AnnotationInfo:
     `ClassId` or `KeypointId` to which this annotation info belongs.
     """
 
-    label: datatypes.Utf8 | None = field(default=None, converter=_override_annotation_info_label_converter)
+    label: datatypes.Utf8 | None = field(
+        default=None, converter=_override_annotation_info_label__special_field_converter_override
+    )
     """
     The label that will be shown in the UI.
     """
 
-    color: datatypes.Color | None = field(default=None, converter=_override_annotation_info_color_converter)
+    color: datatypes.Color | None = field(
+        default=None, converter=_override_annotation_info_color__special_field_converter_override
+    )
     """
     The color that will be applied to the annotated entity.
     """

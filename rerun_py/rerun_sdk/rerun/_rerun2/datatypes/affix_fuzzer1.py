@@ -26,7 +26,7 @@ from .._converters import (
 __all__ = ["AffixFuzzer1", "AffixFuzzer1Array", "AffixFuzzer1ArrayLike", "AffixFuzzer1Like", "AffixFuzzer1Type"]
 
 
-def _override_affix_fuzzer1_almost_flattened_scalar_converter(
+def _override_affix_fuzzer1_almost_flattened_scalar__special_field_converter_override(
     x: datatypes.FlattenedScalarLike,
 ) -> datatypes.FlattenedScalar:
     if isinstance(x, datatypes.FlattenedScalar):
@@ -43,7 +43,7 @@ class AffixFuzzer1:
     many_strings_required: list[str] = field()
     flattened_scalar: float = field(converter=float)
     almost_flattened_scalar: datatypes.FlattenedScalar = field(
-        converter=_override_affix_fuzzer1_almost_flattened_scalar_converter
+        converter=_override_affix_fuzzer1_almost_flattened_scalar__special_field_converter_override
     )
     single_float_optional: float | None = field(default=None, converter=float_or_none)
     single_string_optional: str | None = field(default=None, converter=str_or_none)
