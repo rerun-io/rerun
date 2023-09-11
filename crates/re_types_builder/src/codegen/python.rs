@@ -165,7 +165,7 @@ impl CodeGenerator for PythonCodeGenerator {
 fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
     re_tracing::profile_function!();
     // TODO(emilk): running `black` and `ruff` once for each file is very slow.
-    // It would probably be faster to write all filtes to a temporary folder, run `black` and `ruff` on
+    // It would probably be faster to write all files to a temporary folder, run `black` and `ruff` on
     // that folder, and then copy the results to the final destination (if the files has changed).
     files_to_write.par_iter().for_each(|(path, source)| {
         write_file(path, source.clone());
