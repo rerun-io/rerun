@@ -1,6 +1,6 @@
 use crate::datatypes::Vec2D;
 
-use super::{HalfExtents2D, Origin2D};
+use super::{HalfExtents2D};
 
 impl HalfExtents2D {
     #[inline]
@@ -41,7 +41,7 @@ impl HalfExtents2D {
     ///
     /// In "image space axis semantics" (y-axis points down, x-axis points right), this is the top-left corner.
     #[cfg(feature = "glam")]
-    pub fn box_min(self, box_center: Origin2D) -> glam::Vec2 {
+    pub fn box_min(self, box_center: super::Origin2D) -> glam::Vec2 {
         glam::Vec2::from(box_center) - glam::vec2(self.x(), self.y())
     }
 
@@ -49,7 +49,7 @@ impl HalfExtents2D {
     ///
     /// In "image space axis semantics" (y-axis points down, x-axis points right), this is the bottom-right corner.
     #[cfg(feature = "glam")]
-    pub fn box_max(self, box_center: Origin2D) -> glam::Vec2 {
+    pub fn box_max(self, box_center: super::Origin2D) -> glam::Vec2 {
         glam::Vec2::from(box_center) + glam::vec2(self.x(), self.y())
     }
 }
