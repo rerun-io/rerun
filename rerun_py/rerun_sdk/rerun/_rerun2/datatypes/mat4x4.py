@@ -29,7 +29,7 @@ class Mat4x4:
     coeffs: npt.NDArray[np.float32] = field(converter=override_mat4x4_coeffs_converter)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_mat4x4_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_mat4x4_as_array_override"
         return np.asarray(self.coeffs, dtype=dtype)
 
 

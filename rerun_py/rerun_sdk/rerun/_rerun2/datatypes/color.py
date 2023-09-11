@@ -35,7 +35,7 @@ class Color:
     rgba: int = field(converter=override_color_rgba_converter)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_color_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_color_as_array_override"
         return np.asarray(self.rgba, dtype=dtype)
 
     def __int__(self) -> int:

@@ -32,7 +32,7 @@ class Vec4D:
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_vec4d_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_vec4d_as_array_override"
         return np.asarray(self.xyzw, dtype=dtype)
 
 

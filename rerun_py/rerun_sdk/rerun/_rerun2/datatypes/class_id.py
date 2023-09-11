@@ -29,7 +29,7 @@ class ClassId:
     id: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_class_id_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_class_id_as_array_override"
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:

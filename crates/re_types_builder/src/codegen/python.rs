@@ -745,7 +745,7 @@ fn quote_array_method_from_obj(
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
-    let override_name = format!("override_{}_as_array", obj.snake_case_name());
+    let override_name = format!("override_{}_as_array_override", obj.snake_case_name());
     if overrides.contains(&override_name) {
         return unindent::unindent(&format!(
             "

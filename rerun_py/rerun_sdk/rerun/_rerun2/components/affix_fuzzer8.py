@@ -29,7 +29,7 @@ class AffixFuzzer8:
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_affix_fuzzer8_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_affix_fuzzer8_as_array_override"
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 

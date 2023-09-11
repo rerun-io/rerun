@@ -32,7 +32,7 @@ class PrimitiveComponent:
     value: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_primitive_component_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_primitive_component_as_array_override"
         return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:
