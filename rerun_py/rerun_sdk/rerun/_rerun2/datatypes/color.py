@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import color__native_to_pa_array_override, color_rgba__field_converter_override  # noqa: F401
+from ._overrides import color__native_to_pa_array_override, color__rgba__field_converter_override  # noqa: F401
 
 __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
@@ -32,7 +32,7 @@ class Color:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    rgba: int = field(converter=color_rgba__field_converter_override)
+    rgba: int = field(converter=color__rgba__field_converter_override)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can replace `np.asarray` here with your own code by defining a function named "color__as_array_override"

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from ...datatypes import TensorDataArrayLike
 
 
-def image_data__field_converter_override(data: TensorDataArrayLike) -> TensorDataArray:
+def image__data__field_converter_override(data: TensorDataArrayLike) -> TensorDataArray:
     from ...components import TensorDataArray
     from ...datatypes import TensorDataType, TensorDimensionType
 

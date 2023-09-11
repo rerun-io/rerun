@@ -16,11 +16,11 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from ._overrides import (
+    class_description__info__field_converter_override,
     class_description__init_override,
+    class_description__keypoint_annotations__field_converter_override,
+    class_description__keypoint_connections__field_converter_override,
     class_description__native_to_pa_array_override,
-    class_description_info__field_converter_override,
-    class_description_keypoint_annotations__field_converter_override,
-    class_description_keypoint_connections__field_converter_override,
 )
 
 __all__ = [
@@ -54,20 +54,20 @@ class ClassDescription:
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         class_description__init_override(self, *args, **kwargs)
 
-    info: datatypes.AnnotationInfo = field(converter=class_description_info__field_converter_override)
+    info: datatypes.AnnotationInfo = field(converter=class_description__info__field_converter_override)
     """
     The `AnnotationInfo` for the class.
     """
 
     keypoint_annotations: list[datatypes.AnnotationInfo] = field(
-        converter=class_description_keypoint_annotations__field_converter_override
+        converter=class_description__keypoint_annotations__field_converter_override
     )
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
     keypoint_connections: list[datatypes.KeypointPair] = field(
-        converter=class_description_keypoint_connections__field_converter_override
+        converter=class_description__keypoint_connections__field_converter_override
     )
     """
     The connections between keypoints.

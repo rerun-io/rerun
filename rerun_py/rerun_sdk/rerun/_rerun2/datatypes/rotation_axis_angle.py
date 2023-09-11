@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import rotation_axis_angle_angle__field_converter_override  # noqa: F401
+from ._overrides import rotation_axis_angle__angle__field_converter_override  # noqa: F401
 
 __all__ = [
     "RotationAxisAngle",
@@ -47,7 +47,7 @@ class RotationAxisAngle:
     ignored.
     """
 
-    angle: datatypes.Angle = field(converter=rotation_axis_angle_angle__field_converter_override)
+    angle: datatypes.Angle = field(converter=rotation_axis_angle__angle__field_converter_override)
     """
     How much to rotate around the axis.
     """

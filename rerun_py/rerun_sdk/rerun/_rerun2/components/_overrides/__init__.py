@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from .annotation_context import (
+    annotation_context__class_map__field_converter_override,
     annotation_context__native_to_pa_array_override,
-    annotation_context_class_map__field_converter_override,
 )
 from .depth_meter import depth_meter__native_to_pa_array_override
 from .disconnected_space import disconnected_space__native_to_pa_array_override

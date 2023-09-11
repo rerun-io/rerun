@@ -35,7 +35,7 @@ def _class_description_map_elem_converter(
 ################################################################################
 
 
-def annotation_context_class_map__field_converter_override(
+def annotation_context__class_map__field_converter_override(
     data: Sequence[ClassDescriptionMapElemLike],
 ) -> list[ClassDescriptionMapElem]:
     return [_class_description_map_elem_converter(item) for item in data]

@@ -16,8 +16,8 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from ._overrides import (
+    annotation_context__class_map__field_converter_override,
     annotation_context__native_to_pa_array_override,
-    annotation_context_class_map__field_converter_override,
 )
 
 __all__ = [
@@ -44,7 +44,7 @@ class AnnotationContext:
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
     class_map: list[datatypes.ClassDescriptionMapElem] = field(
-        converter=annotation_context_class_map__field_converter_override
+        converter=annotation_context__class_map__field_converter_override
     )
 
 
