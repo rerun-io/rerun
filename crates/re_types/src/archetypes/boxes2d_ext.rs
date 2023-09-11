@@ -6,9 +6,9 @@ use crate::{
 use super::Boxes2D;
 
 impl Boxes2D {
-    /// Creates new [`Boxes2D`] with [`Self::half_extents`] and [`Self::origins`] created from minimum X/Y and width + height.
+    /// Creates new [`Boxes2D`] with [`Self::half_extents`] and [`Self::centers`] created from minimum X/Y and width + height.
     ///
-    /// Does *not* preserve data as-is and instead creates origins and half-extents from the input data.
+    /// Does *not* preserve data as-is and instead creates centers and half-extents from the input data.
     pub fn from_xywh(
         xy: impl IntoIterator<Item = impl Into<Vec2D>>,
         extents: impl IntoIterator<Item = impl Into<Vec2D>>,
@@ -20,7 +20,7 @@ impl Boxes2D {
                 HalfExtents2D::new(wh.x() / 2.0, wh.y() / 2.0)
             })
             .collect();
-        let origins: Vec<_> = xy
+        let centers: Vec<_> = xy
             .into_iter()
             .zip(half_extents.iter())
             .map(|(xy, half_extent)| {
@@ -29,6 +29,6 @@ impl Boxes2D {
             })
             .collect();
 
-        Self::new(half_extents).with_centers(origins)
+        Self::new(half_extents).with_centers(centers)
     }
 }
