@@ -195,7 +195,7 @@ class Tracker:
                 class_id=self.tracked.class_id,
             )
         else:
-            rr.log_rect(f"image/tracked/{self.tracking_id}", None)
+            rr.log_rect(f"image/tracked/{self.tracking_id}", [])
 
     def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
         self.num_recent_undetected_frames = 0

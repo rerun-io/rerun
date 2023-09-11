@@ -5,13 +5,9 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
-from rerun.components import instance_key_splat
-from rerun.components.draw_order import DrawOrderArray
-from rerun.components.rect2d import Rect2DArray, RectFormat
-from rerun.log import Color, Colors, OptionalClassIds, _normalize_colors, _normalize_ids, _normalize_labels
+from rerun.components.rect2d import RectFormat
+from rerun.log import Color, Colors, OptionalClassIds
 from rerun.log.error_utils import _send_warning
-from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -25,7 +21,7 @@ __all__ = [
 @log_decorator
 def log_rect(
     entity_path: str,
-    rect: npt.ArrayLike | None,
+    rect: npt.ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
     color: Color | None = None,
@@ -69,61 +65,24 @@ def log_rect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
-
-    recording = RecordingStream.to_native(recording)
-
-    if np.any(rect):  # type: ignore[arg-type]
-        rects = np.asarray([rect], dtype="float32")
-    else:
-        rects = np.zeros((0, 4), dtype="float32")
-    assert type(rects) is np.ndarray
-
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
-    instanced["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
-
-    if color is not None:
-        colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
-
-    if label:
-        instanced["rerun.label"] = rrc.TextArray.from_similar([label]).storage
-
-    if class_id:
-        class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids).storage
-
-    if draw_order is not None:
-        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
-
-    if ext:
-        _add_extension_components(instanced, splats, ext, None)
-
-    if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
-        bindings.log_arrow_msg(
-            entity_path,
-            components=splats,
-            timeless=timeless,
-            recording=recording,
-        )
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(
-            entity_path,
-            components=instanced,
-            timeless=timeless,
-            recording=recording,
-        )
+    log_rects(
+        entity_path,
+        rects=rect,
+        rect_format=rect_format,
+        colors=color,
+        labels=[label] if label is not None else None,
+        class_ids=[class_id] if class_id is not None else None,
+        draw_order=draw_order,
+        ext=ext,
+        timeless=timeless,
+        recording=recording,
+    )
 
 
 @log_decorator
 def log_rects(
     entity_path: str,
-    rects: npt.ArrayLike | None,
+    rects: npt.ArrayLike,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
     identifiers: Sequence[int] | None = None,
@@ -182,71 +141,60 @@ def log_rects(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
+    from rerun.experimental import Boxes2D, log
 
-    recording = RecordingStream.to_native(recording)
+    if rects is None:
+        raise ValueError("`rects` argument must be set")
 
-    # Treat None the same as []
     if np.any(rects):  # type: ignore[arg-type]
         rects = np.asarray(rects, dtype="float32")
+        if rects.ndim == 1:
+            rects = np.expand_dims(rects, axis=0)
     else:
         rects = np.zeros((0, 4), dtype="float32")
     assert type(rects) is np.ndarray
 
-    colors = _normalize_colors(colors)
-    class_ids = _normalize_ids(class_ids)
-    labels = _normalize_labels(labels)
+    if rect_format == RectFormat.XYWH:
+        half_extents = rects[:, 2:4] / 2
+        origins = rects[:, 0:2] + half_extents
+    elif rect_format == RectFormat.YXHW:
+        half_extents = rects[:, 4:2] / 2
+        origins = rects[:, 2:0] + half_extents
+    elif rect_format == RectFormat.XYXY:
+        left_top = rects[:, 0:2]
+        right_bottom = rects[:, 2:4]
+        origins = (left_top - right_bottom) / 2
+        half_extents = right_bottom - origins
+    elif rect_format == RectFormat.YXYX:
+        left_top = rects[:, 2:0]
+        right_bottom = rects[:, 4:2]
+        origins = (left_top - right_bottom) / 2
+        half_extents = right_bottom - origins
+    elif rect_format == RectFormat.XCYCWH:
+        half_extents = rects[:, 2:4] / 2
+        origins = rects[:, 0:2]
+    elif rect_format == RectFormat.XCYCW2H2:
+        half_extents = rects[:, 2:4]
+        origins = rects[:, 0:2]
+    else:
+        raise ValueError(f"Unknown rect format {rect_format}")
 
-    identifiers_np = np.array((), dtype="int64")
-    if identifiers:
+    recording = RecordingStream.to_native(recording)
+
+    identifiers_np = np.array((), dtype="uint64")
+    if identifiers is not None:
         try:
-            identifiers = [int(id) for id in identifiers]
-            identifiers_np = np.array(identifiers, dtype="int64")
+            identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
 
-    # 0 = instanced, 1 = splat
-    comps = [{}, {}]  # type: ignore[var-annotated]
-    comps[0]["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
-
-    if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np).storage
-
-    if len(colors):
-        from rerun.experimental import cmp as rrc
-
-        is_splat = len(colors.shape) == 1
-        if is_splat:
-            colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
-
-    if len(labels):
-        is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = rrc.TextArray.from_similar(labels).storage
-
-    if len(class_ids):
-        is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = rrc.ClassIdArray.from_similar(class_ids).storage
-
-    if draw_order is not None:
-        comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
-
-    if ext:
-        _add_extension_components(comps[0], comps[1], ext, identifiers_np)
-
-    if comps[1]:
-        comps[1]["rerun.instance_key"] = instance_key_splat()
-        bindings.log_arrow_msg(
-            entity_path,
-            components=comps[1],
-            timeless=timeless,
-            recording=recording,
-        )
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    bindings.log_arrow_msg(
-        entity_path,
-        components=comps[0],
-        timeless=timeless,
-        recording=recording,
+    arch = Boxes2D(
+        half_extents,
+        origins=origins,
+        colors=colors,
+        draw_order=draw_order,
+        labels=labels,
+        class_ids=class_ids,
+        instance_keys=identifiers_np,
     )
+    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
