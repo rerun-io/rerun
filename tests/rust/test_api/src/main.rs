@@ -75,7 +75,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
 }
 
 fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
-    use rerun::components::{Color, Rect2D, Text};
+    use rerun::archetypes::Boxes2D;
 
     // TODO(#3023): Cleared archetype
     fn log_cleared(rec: &RecordingStream, ent_path: impl Into<EntityPath>, recursive: bool) {
@@ -84,26 +84,17 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     }
 
     rec.set_time_seconds("sim_time", 1f64);
-    // TODO(#2786): Rect2D archetype
-    rec.log_component_batches(
+    rec.log(
         "null_test/rect/0",
-        false,
-        1,
-        [
-            &Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0) as _,
-            &Color::from(0xFF0000FF) as _,
-            &Text("Rect1".into()) as _,
-        ],
+        &Boxes2D::from_xywh([(5.0, 5.0)], [(4.0, 4.0)])
+            .with_colors([0xFF0000FF])
+            .with_labels(["Rect1"]),
     )?;
-    rec.log_component_batches(
+    rec.log(
         "null_test/rect/1",
-        false,
-        1,
-        [
-            &Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0) as _,
-            &Color::from(0x00FF00FF) as _,
-            &Text("Rect2".into()) as _,
-        ],
+        &Boxes2D::from_xywh([(10.0, 5.0)], [(4.0, 4.0)])
+            .with_colors([0x00FF00FF])
+            .with_labels(["Rect2"]),
     )?;
 
     rec.set_time_seconds("sim_time", 2f64);
@@ -113,19 +104,15 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     log_cleared(rec, "null_test/rect", true);
 
     rec.set_time_seconds("sim_time", 4f64);
-    rec.log_component_batches(
+    rec.log(
         "null_test/rect/0",
-        false,
-        1,
-        [&Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0) as _],
+        &Boxes2D::from_xywh([(5.0, 5.0)], [(4.0, 4.0)]),
     )?;
 
     rec.set_time_seconds("sim_time", 5f64);
-    rec.log_component_batches(
+    rec.log(
         "null_test/rect/1",
-        false,
-        1,
-        [&Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0) as _],
+        &Boxes2D::from_xywh([(10.0, 5.0)], [(4.0, 4.0)]),
     )?;
 
     Ok(())
@@ -187,14 +174,13 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
     Ok(())
 }
 
-// TODO(#2786): Rect2D archetype
 fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
     use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
 
     use rerun::{
-        archetypes::Tensor,
-        components::{Color, Rect2D},
+        archetypes::{Boxes2D, Tensor},
+        components::{Color, HalfExtents2D},
     };
 
     // Add an image
@@ -208,26 +194,28 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     // 20 random rectangles
     let rects_xy = Array::random((20, 2), Uniform::new(0.0, 1.0)) * 1024.0f32;
     let rects_wh = Array::random((20, 2), Uniform::new(0.0, 1.0)) * (1024.0 - &rects_xy + 1.0);
-    let rects = ndarray::concatenate(Axis(1), &[rects_xy.view(), rects_wh.view()])?
-        .axis_iter(Axis(0))
-        .map(|r| Rect2D::from_xywh(r[0], r[1], r[2], r[3]))
-        .collect_vec();
     let colors = Array::random((20, 3), Uniform::new(0, 255))
         .axis_iter(Axis(0))
         .map(|c| Color::from_rgb(c[0], c[1], c[2]))
         .collect_vec();
 
     rec.set_time_seconds("sim_time", 2f64);
-    rec.log_component_batches(
+    rec.log(
         "rects_test/rects",
-        false,
-        rects.len() as _,
-        [&rects as _, &colors as _],
+        &Boxes2D::from_xywh(
+            rects_xy.axis_iter(Axis(0)).map(|v| (v[0], v[1])),
+            rects_wh.axis_iter(Axis(0)).map(|v| (v[0], v[1])),
+        )
+        .with_colors(colors),
     )?;
 
     // Clear the rectangles by logging an empty set
     rec.set_time_seconds("sim_time", 3f64);
-    rec.log_component_batches("rects_test/rects", false, 0, [&Vec::<Rect2D>::new() as _])?;
+    rec.log(
+        "rects_test/rects",
+        // TODO(#3279): Should be &Boxes2D::empty()
+        &Boxes2D::new(std::iter::empty::<HalfExtents2D>()),
+    )?;
 
     Ok(())
 }
@@ -250,10 +238,7 @@ fn colored_tensor<F: Fn(usize, usize) -> [u8; 3]>(
 fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
 
-    use rerun::{
-        archetypes::{Image, LineStrips2D, Points2D},
-        components::{DrawOrder, Rect2D},
-    };
+    use rerun::archetypes::{Boxes2D, Image, LineStrips2D, Points2D};
 
     rec.set_time_seconds("sim_time", 1f64);
 
@@ -287,14 +272,9 @@ fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     // Rectangle in between the top and the middle.
-    rec.log_component_batches(
+    rec.log(
         "2d_layering/rect_between_top_and_middle",
-        false,
-        1,
-        [
-            &Rect2D::from_xywh(64.0, 64.0, 256.0, 256.0) as _,
-            &DrawOrder(1.5) as _,
-        ],
+        &Boxes2D::from_xywh([(64.0, 64.0)], [(256.0, 256.0)]).with_draw_order(1.5),
     )?;
 
     // Lines behind the rectangle.
