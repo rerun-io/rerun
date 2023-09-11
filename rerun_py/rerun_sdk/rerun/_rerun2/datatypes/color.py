@@ -30,9 +30,12 @@ class Color:
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     rgba: int = field(converter=color_rgba_converter)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "color_as_array"
         return np.asarray(self.rgba, dtype=dtype)
 
     def __int__(self) -> int:

@@ -36,6 +36,8 @@ class DisconnectedSpace:
     If a transform or pinhole is logged on the same path, this component will be ignored.
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     is_disconnected: bool = field(converter=bool)
 
 

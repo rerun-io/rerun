@@ -37,6 +37,8 @@ class AnnotationContext:
     path.
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     class_map: list[datatypes.ClassDescriptionMapElem] = field(converter=annotationcontext_class_map_converter)
 
 

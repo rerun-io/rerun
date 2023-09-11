@@ -38,6 +38,7 @@ class Quaternion:
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "quaternion_as_array"
         return np.asarray(self.xyzw, dtype=dtype)
 
 

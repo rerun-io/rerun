@@ -19,6 +19,8 @@ __all__ = ["AffixFuzzer12", "AffixFuzzer12Array", "AffixFuzzer12ArrayLike", "Aff
 
 @define
 class AffixFuzzer12:
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     many_strings_required: list[str] = field()
 
 

@@ -35,6 +35,8 @@ def _affixfuzzer1_almost_flattened_scalar_converter(x: datatypes.FlattenedScalar
 
 @define
 class AffixFuzzer1:
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     single_string_required: str = field(converter=str)
     many_strings_required: list[str] = field()
     flattened_scalar: float = field(converter=float)

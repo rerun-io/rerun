@@ -18,6 +18,8 @@ __all__ = ["TextLog"]
 class TextLog(Archetype):
     """A log entry in a text log, comprised of a text body and its log level."""
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     body: components.TextArray = field(
         metadata={"component": "primary"},
         converter=components.TextArray.from_similar,  # type: ignore[misc]

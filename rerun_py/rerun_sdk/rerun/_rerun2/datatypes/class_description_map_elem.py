@@ -40,6 +40,8 @@ class ClassDescriptionMapElem:
     This is internal to the `AnnotationContext` structure.
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     class_id: datatypes.ClassId = field(converter=_classdescriptionmapelem_class_id_converter)
     class_description: datatypes.ClassDescription = field()
 

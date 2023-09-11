@@ -49,6 +49,8 @@ class SegmentationImage(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     data: components.TensorDataArray = field(
         metadata={"component": "primary"}, converter=segmentationimage_data_converter
     )

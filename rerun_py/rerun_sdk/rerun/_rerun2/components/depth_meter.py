@@ -24,9 +24,12 @@ __all__ = ["DepthMeter", "DepthMeterArray", "DepthMeterArrayLike", "DepthMeterLi
 class DepthMeter:
     """A component indicating how long a meter is, expressed in native units."""
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "depthmeter_as_array"
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:

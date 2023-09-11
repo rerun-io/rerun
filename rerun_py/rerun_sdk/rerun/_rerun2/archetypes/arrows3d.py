@@ -39,6 +39,8 @@ class Arrows3D(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     vectors: components.Vector3DArray = field(
         metadata={"component": "primary"},
         converter=components.Vector3DArray.from_similar,  # type: ignore[misc]

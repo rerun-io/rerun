@@ -28,6 +28,8 @@ class TensorBuffer:
     Tensor elements are stored in a contiguous buffer of a single type.
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     inner: npt.NDArray[np.float32] | npt.NDArray[np.float64] | npt.NDArray[np.int16] | npt.NDArray[
         np.int32
     ] | npt.NDArray[np.int64] | npt.NDArray[np.int8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[

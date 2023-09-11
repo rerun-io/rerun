@@ -36,6 +36,8 @@ def _rotationaxisangle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D
 class RotationAxisAngle:
     """3D rotation represented by a rotation around a given axis."""
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     axis: datatypes.Vec3D = field(converter=_rotationaxisangle_axis_converter)
     """
     Axis to rotate around.

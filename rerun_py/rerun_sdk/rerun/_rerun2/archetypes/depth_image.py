@@ -43,6 +43,8 @@ class DepthImage(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     data: components.TensorDataArray = field(metadata={"component": "primary"}, converter=depthimage_data_converter)
     """
     The depth-image data. Should always be a rank-2 tensor.

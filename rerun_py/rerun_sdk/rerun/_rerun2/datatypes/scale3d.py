@@ -36,6 +36,8 @@ class Scale3D:
     ```
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     inner: datatypes.Vec3D | float = field(converter=scale3d_inner_converter)
     """
     ThreeD (datatypes.Vec3D):

@@ -51,6 +51,8 @@ class Transform3D(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     transform: components.Transform3DArray = field(
         metadata={"component": "primary"},
         converter=components.Transform3DArray.from_similar,  # type: ignore[misc]

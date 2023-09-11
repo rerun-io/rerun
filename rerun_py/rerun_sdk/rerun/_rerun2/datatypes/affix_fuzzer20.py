@@ -34,6 +34,8 @@ def _affixfuzzer20_s_converter(x: datatypes.StringComponentLike) -> datatypes.St
 
 @define
 class AffixFuzzer20:
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     p: datatypes.PrimitiveComponent = field(converter=_affixfuzzer20_p_converter)
     s: datatypes.StringComponent = field(converter=_affixfuzzer20_s_converter)
 

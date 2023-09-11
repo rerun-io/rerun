@@ -42,6 +42,8 @@ class DisconnectedSpace(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     disconnected_space: components.DisconnectedSpaceArray = field(
         metadata={"component": "primary"},
         converter=components.DisconnectedSpaceArray.from_similar,  # type: ignore[misc]

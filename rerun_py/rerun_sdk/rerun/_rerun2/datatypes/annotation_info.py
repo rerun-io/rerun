@@ -52,6 +52,8 @@ class AnnotationInfo:
     The id refers either to a class or key-point id
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     id: int = field(converter=int)
     """
     `ClassId` or `KeypointId` to which this annotation info belongs.

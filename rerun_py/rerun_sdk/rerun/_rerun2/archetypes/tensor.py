@@ -18,6 +18,8 @@ __all__ = ["Tensor"]
 class Tensor(Archetype):
     """A generic n-dimensional Tensor."""
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     data: components.TensorDataArray = field(
         metadata={"component": "primary"},
         converter=components.TensorDataArray.from_similar,  # type: ignore[misc]

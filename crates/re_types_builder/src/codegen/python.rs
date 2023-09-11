@@ -377,13 +377,13 @@ fn code_for_struct(
             let (default_converter, converter_function) =
                 quote_field_converter_from_field(obj, objects, field);
 
-            let override_name = format!(
+            let converter_override_name = format!(
                 "{}_{}_converter",
                 name.to_lowercase(),
                 field.name.to_lowercase()
             );
-            let converter = if overrides.contains(&override_name) {
-                format!("converter={override_name}")
+            let converter = if overrides.contains(&converter_override_name) {
+                format!("converter={converter_override_name}")
             } else if *kind == ObjectKind::Archetype {
                 // Archetypes default to using `from_similar` from the Component
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
@@ -399,9 +399,9 @@ fn code_for_struct(
         }
 
         // init override handling
-        let override_name = format!("{}_init", name.to_lowercase());
-        let (init_define_arg, init_func) = if overrides.contains(&override_name) {
-            ("init=False".to_owned(), override_name)
+        let init_override_name = format!("{}_init", name.to_lowercase());
+        let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
+            ("init=False".to_owned(), init_override_name)
         } else {
             (String::new(), String::new())
         };
@@ -438,7 +438,9 @@ fn code_for_struct(
 
         code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-        if !init_func.is_empty() {
+        if init_func.is_empty() {
+            code.push_text("# You can define your own __init__ function by defining a function called {init_override_name:?}", 2, 4);
+        } else {
             code.push_text(
                 "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
                 1,
@@ -570,9 +572,9 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let override_name = format!("{}_init", name.to_lowercase());
-    let (define_args, init_func) = if overrides.contains(&override_name) {
-        ("(init=False)".to_owned(), override_name)
+    let init_override_name = format!("{}_init", name.to_lowercase());
+    let (define_args, init_func) = if overrides.contains(&init_override_name) {
+        ("(init=False)".to_owned(), init_override_name)
     } else {
         (String::new(), String::new())
     };
@@ -590,7 +592,9 @@ fn code_for_union(
 
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-    if !init_func.is_empty() {
+    if init_func.is_empty() {
+        code.push_text("# You can define your own __init__ function by defining a function called {init_override_name:?}", 2, 4);
+    } else {
         code.push_text(
             "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
             1,
@@ -619,9 +623,9 @@ fn code_for_union(
     };
 
     // components and datatypes have converters only if manually provided
-    let override_name = format!("{}_inner_converter", name.to_lowercase(),);
-    let converter = if overrides.contains(&override_name) {
-        format!("converter={override_name}")
+    let converter_override_name = format!("{}_inner_converter", name.to_lowercase());
+    let converter = if overrides.contains(&converter_override_name) {
+        format!("converter={converter_override_name}")
     } else if !default_converter.is_empty() {
         format!("converter={default_converter}")
     } else {
@@ -762,6 +766,7 @@ fn quote_array_method_from_obj(
     unindent::unindent(&format!(
         "
         def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+            # You can replace `np.asarray` here with your own code by defining a function named {override_name:?}
             return np.asarray(self.{field_name}, dtype=dtype)
         ",
     ))

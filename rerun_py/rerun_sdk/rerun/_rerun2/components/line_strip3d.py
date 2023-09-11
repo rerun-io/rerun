@@ -38,6 +38,8 @@ class LineStrip3D:
     ```
     """
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     points: list[datatypes.Vec3D] = field()
 
 

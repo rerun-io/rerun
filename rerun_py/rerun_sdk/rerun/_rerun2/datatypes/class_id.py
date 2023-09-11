@@ -24,9 +24,12 @@ __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassI
 class ClassId:
     """A 16-bit ID representing a type of semantic class."""
 
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     id: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "classid_as_array"
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:

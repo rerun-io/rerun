@@ -24,9 +24,12 @@ __all__ = ["AffixFuzzer8", "AffixFuzzer8Array", "AffixFuzzer8ArrayLike", "AffixF
 
 @define
 class AffixFuzzer8:
+    # You can define your own __init__ function by defining a function called {init_override_name:?}
+
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "affixfuzzer8_as_array"
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
