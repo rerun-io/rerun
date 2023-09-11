@@ -378,7 +378,7 @@ fn code_for_struct(
                 quote_field_converter_from_field(obj, objects, field);
 
             let converter_override_name = format!(
-                "override_{}_{}_converter",
+                "override_{}_{}__field_converter_override",
                 obj.snake_case_name(),
                 field.name
             );

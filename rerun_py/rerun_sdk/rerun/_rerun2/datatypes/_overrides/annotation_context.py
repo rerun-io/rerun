@@ -83,7 +83,7 @@ def _class_description_map_elem_converter(
 ################################################################################
 
 
-def override_class_description_info_converter(
+def override_class_description_info__field_converter_override(
     data: AnnotationInfoLike,
 ) -> AnnotationInfo:
     from .. import AnnotationInfo
@@ -96,16 +96,16 @@ def override_class_description_info_converter(
         return AnnotationInfo(*data)
 
 
-def override_class_description_keypoint_annotations_converter(
+def override_class_description_keypoint_annotations__field_converter_override(
     data: Sequence[AnnotationInfoLike] | None,
 ) -> list[AnnotationInfo] | None:
     if data is None:
         return data
 
-    return [override_class_description_info_converter(item) for item in data]
+    return [override_class_description_info__field_converter_override(item) for item in data]
 
 
-def override_class_description_keypoint_connections_converter(
+def override_class_description_keypoint_connections__field_converter_override(
     data: Sequence[KeypointPairLike] | None,
 ) -> list[KeypointPair] | None:
     if data is None:
@@ -147,7 +147,7 @@ def override_annotation_info_native_to_pa_array_override(
     if isinstance(data, AnnotationInfo):
         data = [data]
 
-    annotations = [override_class_description_info_converter(item) for item in data]
+    annotations = [override_class_description_info__field_converter_override(item) for item in data]
 
     ids = [item.id for item in annotations]
     labels = [item.label.value if item.label else None for item in annotations]

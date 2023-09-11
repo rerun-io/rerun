@@ -3,21 +3,21 @@ from __future__ import annotations
 from .angle import override_angle_init_override
 from .annotation_context import (
     override_annotation_info_native_to_pa_array_override,
-    override_class_description_info_converter,
+    override_class_description_info__field_converter_override,
     override_class_description_init_override,
-    override_class_description_keypoint_annotations_converter,
-    override_class_description_keypoint_connections_converter,
-    override_class_description_native_to_pa_array_override,
+    override_class_description_keypoint_annotations__field_converter_override,
+    override_class_description_keypoint_connections__field_converter_override,
     override_class_description_map_elem_native_to_pa_array_override,
+    override_class_description_native_to_pa_array_override,
     override_keypoint_pair_native_to_pa_array_override,
 )
 from .class_id import override_class_id_native_to_pa_array_override
-from .color import override_color_native_to_pa_array_override, override_color_rgba_converter
+from .color import override_color_native_to_pa_array_override, override_color_rgba__field_converter_override
 from .keypoint_id import override_keypoint_id_native_to_pa_array_override
-from .matnxn import override_mat3x3_coeffs_converter, override_mat4x4_coeffs_converter
+from .matnxn import override_mat3x3_coeffs__field_converter_override, override_mat4x4_coeffs__field_converter_override
 from .quaternion import override_quaternion_init_override
 from .rotation3d import override_rotation3d_inner_converter_override
-from .rotation_axis_angle import override_rotation_axis_angle_angle_converter
+from .rotation_axis_angle import override_rotation_axis_angle_angle__field_converter_override
 from .scale3d import override_scale3d_inner_converter_override
 from .tensor_buffer import override_tensor_buffer_inner_converter_override
 from .tensor_data import override_tensor_data_init_override, override_tensor_data_native_to_pa_array_override

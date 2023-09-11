@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .annotation_context import (
-    override_annotation_context_class_map_converter,
+    override_annotation_context_class_map__field_converter_override,
     override_annotation_context_native_to_pa_array_override,
 )
 from .depth_meter import override_depth_meter_native_to_pa_array_override

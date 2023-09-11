@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_mat4x4_coeffs_converter  # noqa: F401
+from ._overrides import override_mat4x4_coeffs__field_converter_override  # noqa: F401
 
 __all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type"]
 
@@ -26,7 +26,7 @@ class Mat4x4:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    coeffs: npt.NDArray[np.float32] = field(converter=override_mat4x4_coeffs_converter)
+    coeffs: npt.NDArray[np.float32] = field(converter=override_mat4x4_coeffs__field_converter_override)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can replace `np.asarray` here with your own code by defining a function named "override_mat4x4_as_array_override"
