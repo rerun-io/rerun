@@ -17,7 +17,7 @@ from .._baseclasses import (
 )
 from ._overrides import (
     override_class_description_info_converter,
-    override_class_description_init,
+    override_class_description_init_override,
     override_class_description_keypoint_annotations_converter,
     override_class_description_keypoint_connections_converter,
     override_class_description_native_to_pa_array_override,
@@ -52,7 +52,7 @@ class ClassDescription:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_class_description_init(self, *args, **kwargs)
+        override_class_description_init_override(self, *args, **kwargs)
 
     info: datatypes.AnnotationInfo = field(converter=override_class_description_info_converter)
     """

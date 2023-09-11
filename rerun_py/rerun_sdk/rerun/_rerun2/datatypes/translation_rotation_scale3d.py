@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_translation_rotation_scale3d_init  # noqa: F401
+from ._overrides import override_translation_rotation_scale3d_init_override  # noqa: F401
 
 __all__ = [
     "TranslationRotationScale3D",
@@ -61,7 +61,7 @@ class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_translation_rotation_scale3d_init(self, *args, **kwargs)
+        override_translation_rotation_scale3d_init_override(self, *args, **kwargs)
 
     from_parent: bool = field(converter=bool)
     """

@@ -53,7 +53,7 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
 # inconsistent state.
 
 
-def override_tensor_data_init(
+def override_tensor_data_init_override(
     self: TensorData,
     *,
     shape: Sequence[TensorDimensionLike] | None = None,

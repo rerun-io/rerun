@@ -399,7 +399,7 @@ fn code_for_struct(
         }
 
         // init override handling
-        let init_override_name = format!("override_{}_init", obj.snake_case_name());
+        let init_override_name = format!("override_{}_init_override", obj.snake_case_name());
         let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
             ("init=False".to_owned(), init_override_name)
         } else {
@@ -572,7 +572,7 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let init_override_name = format!("override_{}_init", obj.snake_case_name());
+    let init_override_name = format!("override_{}_init_override", obj.snake_case_name());
     let (define_args, init_func) = if overrides.contains(&init_override_name) {
         ("(init=False)".to_owned(), init_override_name)
     } else {
@@ -1217,7 +1217,10 @@ fn quote_arrow_support_from_obj(
         .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
         .unwrap_or_else(|| fqname.clone());
 
-    let override_name = format!("override_{}_native_to_pa_array_override", obj.snake_case_name());
+    let override_name = format!(
+        "override_{}_native_to_pa_array_override",
+        obj.snake_case_name()
+    );
     let override_ = if overrides.contains(&override_name) {
         format!("return {override_name}(data, data_type)")
     } else {

@@ -18,7 +18,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import override_quaternion_init  # noqa: F401
+from ._overrides import override_quaternion_init_override  # noqa: F401
 
 __all__ = ["Quaternion", "QuaternionArray", "QuaternionArrayLike", "QuaternionLike", "QuaternionType"]
 
@@ -33,7 +33,7 @@ class Quaternion:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_quaternion_init(self, *args, **kwargs)
+        override_quaternion_init_override(self, *args, **kwargs)
 
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 

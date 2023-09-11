@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_translation_and_mat3x3_init  # noqa: F401
+from ._overrides import override_translation_and_mat3x3_init_override  # noqa: F401
 
 __all__ = [
     "TranslationAndMat3x3",
@@ -52,7 +52,7 @@ class TranslationAndMat3x3:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_translation_and_mat3x3_init(self, *args, **kwargs)
+        override_translation_and_mat3x3_init_override(self, *args, **kwargs)
 
     from_parent: bool = field(converter=bool)
     """

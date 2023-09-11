@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from .. import Angle
 
 
-def override_angle_init(self: Angle, rad: float | None = None, deg: float | None = None) -> None:
+def override_angle_init_override(self: Angle, rad: float | None = None, deg: float | None = None) -> None:
     if rad is not None:
         self.__attrs_init__(inner=rad, kind="radians")  # pyright: ignore[reportGeneralTypeIssues]
     elif deg is not None:

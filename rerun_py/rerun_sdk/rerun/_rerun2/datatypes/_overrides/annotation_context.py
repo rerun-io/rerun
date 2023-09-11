@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 ################################################################################
 
 
-def override_class_description_init(
+def override_class_description_init_override(
     self: ClassDescription,
     *,
     info: AnnotationInfoLike,

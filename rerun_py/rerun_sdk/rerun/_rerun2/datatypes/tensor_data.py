@@ -15,7 +15,10 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_tensor_data_init, override_tensor_data_native_to_pa_array_override  # noqa: F401
+from ._overrides import (
+    override_tensor_data_init_override,
+    override_tensor_data_native_to_pa_array_override,
+)  # noqa: F401
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
@@ -41,7 +44,7 @@ class TensorData:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_tensor_data_init(self, *args, **kwargs)
+        override_tensor_data_init_override(self, *args, **kwargs)
 
     shape: list[datatypes.TensorDimension] = field()
     buffer: datatypes.TensorBuffer = field(converter=_override_tensor_data_buffer_converter)

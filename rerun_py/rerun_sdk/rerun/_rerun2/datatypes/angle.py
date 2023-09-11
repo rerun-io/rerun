@@ -13,7 +13,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_angle_init  # noqa: F401
+from ._overrides import override_angle_init_override  # noqa: F401
 
 __all__ = ["Angle", "AngleArray", "AngleArrayLike", "AngleLike", "AngleType"]
 
@@ -23,7 +23,7 @@ class Angle:
     """Angle in either radians or degrees."""
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_angle_init(self, *args, **kwargs)
+        override_angle_init_override(self, *args, **kwargs)
 
     inner: float = field(converter=float)
     """
