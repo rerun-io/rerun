@@ -4,10 +4,7 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
-use std::{
-    eprint, eprintln,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
