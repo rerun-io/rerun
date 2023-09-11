@@ -29,7 +29,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     // Hack to establish 2d view bounds
     rec.log(
         "rect",
-        &Boxes2D::new([(2.0, 3.0)]).with_origins([(2.0, 3.0)]),
+        &Boxes2D::new([(2.0, 3.0)]).with_centers([(2.0, 3.0)]),
     )?;
 
     Ok(())

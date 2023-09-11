@@ -7,7 +7,7 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A batch of 2d boxes with half-extents and optional positions, rotations, rotations, colors etc.
+/// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// \py Example
 /// \py -------
@@ -57,7 +57,7 @@ table Boxes2D (
   // --- Recommended ---
 
   /// Optional center positions of the boxes.
-  origins: [rerun.components.Origin2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  centers: [rerun.components.Origin2D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   // TODO(#3247): Add 2D rotation.
   // Optional rotations of the boxes.

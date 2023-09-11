@@ -13,7 +13,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
         "boxes2d",
         &Boxes2D::new([[10., 9.], [5., -5.]])
-            .with_origins([[0., 0.], [-1., 1.]])
+            .with_centers([[0., 0.], [-1., 1.]])
             .with_colors([0xAA0000CC, 0x00BB00DD])
             .with_labels(["hello", "friend"])
             .with_radii([0.1, 1.0])

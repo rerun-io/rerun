@@ -156,26 +156,26 @@ def log_rects(
 
     if rect_format == RectFormat.XYWH:
         half_extents = rects[:, 2:4] / 2
-        origins = rects[:, 0:2] + half_extents
+        centers = rects[:, 0:2] + half_extents
     elif rect_format == RectFormat.YXHW:
         half_extents = rects[:, 4:2] / 2
-        origins = rects[:, 2:0] + half_extents
+        centers = rects[:, 2:0] + half_extents
     elif rect_format == RectFormat.XYXY:
         left_top = rects[:, 0:2]
         right_bottom = rects[:, 2:4]
-        origins = (left_top - right_bottom) / 2
-        half_extents = right_bottom - origins
+        centers = (left_top - right_bottom) / 2
+        half_extents = right_bottom - centers
     elif rect_format == RectFormat.YXYX:
         left_top = rects[:, 2:0]
         right_bottom = rects[:, 4:2]
-        origins = (left_top - right_bottom) / 2
-        half_extents = right_bottom - origins
+        centers = (left_top - right_bottom) / 2
+        half_extents = right_bottom - centers
     elif rect_format == RectFormat.XCYCWH:
         half_extents = rects[:, 2:4] / 2
-        origins = rects[:, 0:2]
+        centers = rects[:, 0:2]
     elif rect_format == RectFormat.XCYCW2H2:
         half_extents = rects[:, 2:4]
-        origins = rects[:, 0:2]
+        centers = rects[:, 0:2]
     else:
         raise ValueError(f"Unknown rect format {rect_format}")
 
@@ -190,7 +190,7 @@ def log_rects(
 
     arch = Boxes2D(
         half_extents,
-        origins=origins,
+        centers=centers,
         colors=colors,
         draw_order=draw_order,
         labels=labels,

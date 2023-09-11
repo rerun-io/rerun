@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
     rec.log(
         "boxes2d",
         rr::archetypes::Boxes2D({{10.f, 9.f}, {5.f, -5.f}})
-            .with_origins({{0.f, 0.f}, {-1.f, 1.f}})
+            .with_centers({{0.f, 0.f}, {-1.f, 1.f}})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
             .with_radii({0.1f, 1.0f})
