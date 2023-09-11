@@ -84,31 +84,14 @@ impl From<Box<dyn ComponentBatch>> for AnyComponentBatch<'_> {
     }
 }
 
-impl<'a> AnyComponentBatch<'a> {
-    /// Returns a reference to the inner [`ComponentBatch`], no matter where it lives.
-    ///
-    /// This doesn't use [`std::ops::Deref`] on purpose: it's associated `Target` type is not
-    /// generic over lifetimes, which we need in this case.
-    #[inline]
-    pub fn as_batch(&'a self) -> &dyn ComponentBatch {
+impl<'a> AsRef<dyn ComponentBatch + 'a> for AnyComponentBatch<'a> {
+    fn as_ref(&self) -> &(dyn ComponentBatch + 'a) {
         match self {
             AnyComponentBatch::Owned(this) => &**this,
             AnyComponentBatch::Ref(this) => *this,
         }
     }
 }
-
-// NOTE: Cannot do this since `Deref::Target` is not generic over lifetimes.
-// impl<'a> std::ops::Deref for AnyComponentBatch<'a> {
-//     type Target = dyn ComponentBatch;
-//
-//     fn deref(&self) -> &Self::Target {
-//         match self {
-//             AnyComponentBatch::Owned(this) => &**this,
-//             AnyComponentBatch::Ref(this) => *this,
-//         }
-//     }
-// }
 
 // --- Unary ---
 

@@ -36,9 +36,6 @@ pub trait Archetype {
     /// The associated indicator component, whose presence indicates that the high-level
     /// archetype-based APIs were used to log the data.
     ///
-    /// Indicator components open new opportunities in terms of API design, better heuristics and
-    /// performance improvements on the query side.
-    ///
     /// ## Internal representation
     ///
     /// Indicator components are non-splatted null arrays.
@@ -116,7 +113,7 @@ pub trait Archetype {
     fn num_instances(&self) -> usize {
         self.as_component_batches()
             .first()
-            .map_or(0, |comp_batch| comp_batch.as_batch().num_instances())
+            .map_or(0, |comp_batch| comp_batch.as_ref().num_instances())
     }
 
     /// Exposes the archetype's contents as a set of [`ComponentBatch`]s.
@@ -152,10 +149,10 @@ pub trait Archetype {
             .into_iter()
             .map(|comp_batch| {
                 comp_batch
-                    .as_batch()
+                    .as_ref()
                     .try_to_arrow()
-                    .map(|array| (comp_batch.as_batch().arrow_field(), array))
-                    .with_context(comp_batch.as_batch().name())
+                    .map(|array| (comp_batch.as_ref().arrow_field(), array))
+                    .with_context(comp_batch.as_ref().name())
             })
             .collect()
     }

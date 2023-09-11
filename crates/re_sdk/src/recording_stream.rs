@@ -648,7 +648,7 @@ impl RecordingStream {
             arch.num_instances() as u32,
             arch.as_component_batches()
                 .iter()
-                .map(|any_comp_batch| any_comp_batch.as_batch()),
+                .map(|any_comp_batch| any_comp_batch.as_ref()),
         )
     }
 
