@@ -11,4 +11,4 @@ rr2.log(
 )
 
 # Log an extra rect to set the view bounds
-rr2.log("bounds", rr2.Boxes2D([4, 5], centers=[3, 0]))
+rr2.log("bounds", rr2.Boxes2D([4, 3], centers=[3, 0]))
