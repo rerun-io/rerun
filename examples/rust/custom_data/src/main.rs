@@ -5,8 +5,8 @@ use rerun::{
     datatypes::Float32,
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    MaybeOwnedComponentBatch, Archetype, ArchetypeName, ComponentBatch, ComponentName,
-    GenericIndicatorComponent, Loggable, RecordingStreamBuilder,
+    Archetype, ArchetypeName, ComponentBatch, ComponentName, GenericIndicatorComponent, Loggable,
+    MaybeOwnedComponentBatch, RecordingStreamBuilder,
 };
 
 // ---

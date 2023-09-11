@@ -1,5 +1,5 @@
 use crate::{
-    MaybeOwnedComponentBatch, ComponentBatch, ComponentName, DeserializationResult, ResultExt as _,
+    ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch, ResultExt as _,
     SerializationResult, _Backtrace,
 };
 
