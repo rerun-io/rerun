@@ -33,7 +33,6 @@ opt_out_entirely = {
     "mesh_simple": ["cpp"],
     "pinhole_simple": ["cpp"],
     "point2d_random": ["cpp"],
-    "rect2d_simple": ["cpp"],
     "segmentation_image_simple": ["cpp"],
     "scalar_simple": ["cpp"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_one_dim": ["cpp"],

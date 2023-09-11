@@ -92,8 +92,8 @@ name = "point3d_simple"
 path = "point3d_simple.rs"
 
 [[bin]]
-name = "rect2d_simple"
-path = "rect2d_simple.rs"
+name = "box2d_simple"
+path = "box2d_simple.rs"
 
 [[bin]]
 name = "scalar_simple"

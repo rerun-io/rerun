@@ -10,4 +10,4 @@ rr2.log(
 )
 
 # Log an extra rect to set the view bounds
-rr.log_rect("bounds", [3, 0, 8, 6], rect_format=rr.RectFormat.XCYCWH)
+rr2.log("bounds", rr2.Boxes2D([4, 3], centers=[3, 0]))
