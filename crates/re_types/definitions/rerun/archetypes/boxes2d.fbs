@@ -12,36 +12,21 @@ namespace rerun.archetypes;
 /// \py Example
 /// \py -------
 /// \py
-/// \py Many boxes:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/box2d_batch.py
-/// \py ```
-/// \py
-/// \py Individual boxes:
+/// \py Simple 2D boxes:
 /// \py ```python
 /// \py \include:../../../../../docs/code-examples/box2d_simple.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
-/// \rs Many boxes:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/box2d_batch.rs
-/// \rs ```
-/// \rs
-/// \rs Individual boxes:
+/// \rs Simple 2D boxes:
 /// \rs ```ignore
 /// \rs \include:../../../../../docs/code-examples/box2d_simple.rs
 /// \rs ```
 ///
 /// \cpp ## Example
 /// \cpp
-/// \cpp Many boxes:
-/// \cpp ```ignore
-/// \cpp \include:../../../../../docs/code-examples/box2d_batch.cpp
-/// \cpp ```
-/// \cpp
-/// \cpp Individual boxes:
+/// \cpp Simple 2D boxes:
 /// \cpp ```ignore
 /// \cpp \include:../../../../../docs/code-examples/box2d_simple.cpp
 /// \cpp ```
