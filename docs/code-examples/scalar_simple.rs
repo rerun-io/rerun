@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut value = 1.0;
     for step in 0..100 {
         rec.set_time_sequence("step", step);
-        rec.log_component_lists("scalar", false, 1, [&Scalar::from(value) as _])?;
+        rec.log_component_batches("scalar", false, 1, [&Scalar::from(value) as _])?;
         value += thread_rng().sample::<f64, _>(StandardNormal);
     }
 

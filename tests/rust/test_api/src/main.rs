@@ -32,7 +32,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
 
     rec.set_time_seconds("sim_time", 0f64);
     // TODO(#2786): Box3D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "bbox_test/bbox",
         false,
         1,
@@ -52,7 +52,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     rec.set_time_seconds("sim_time", 1f64);
-    rec.log_component_lists(
+    rec.log_component_batches(
         "bbox_test/bbox",
         false,
         1,
@@ -85,7 +85,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
 
     rec.set_time_seconds("sim_time", 1f64);
     // TODO(#2786): Rect2D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "null_test/rect/0",
         false,
         1,
@@ -95,7 +95,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
             &Text("Rect1".into()) as _,
         ],
     )?;
-    rec.log_component_lists(
+    rec.log_component_batches(
         "null_test/rect/1",
         false,
         1,
@@ -113,7 +113,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     log_cleared(rec, "null_test/rect", true);
 
     rec.set_time_seconds("sim_time", 4f64);
-    rec.log_component_lists(
+    rec.log_component_batches(
         "null_test/rect/0",
         false,
         1,
@@ -121,7 +121,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     rec.set_time_seconds("sim_time", 5f64);
-    rec.log_component_lists(
+    rec.log_component_batches(
         "null_test/rect/1",
         false,
         1,
@@ -218,7 +218,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
         .collect_vec();
 
     rec.set_time_seconds("sim_time", 2f64);
-    rec.log_component_lists(
+    rec.log_component_batches(
         "rects_test/rects",
         false,
         rects.len() as _,
@@ -227,7 +227,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
 
     // Clear the rectangles by logging an empty set
     rec.set_time_seconds("sim_time", 3f64);
-    rec.log_component_lists("rects_test/rects", false, 0, [&Vec::<Rect2D>::new() as _])?;
+    rec.log_component_batches("rects_test/rects", false, 0, [&Vec::<Rect2D>::new() as _])?;
 
     Ok(())
 }
@@ -287,7 +287,7 @@ fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     // Rectangle in between the top and the middle.
-    rec.log_component_lists(
+    rec.log_component_batches(
         "2d_layering/rect_between_top_and_middle",
         false,
         1,
@@ -470,7 +470,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
             SignedAxis3::POSITIVE_Z,
             rerun::coordinates::Handedness::Right,
         );
-        rec.log_component_lists(
+        rec.log_component_batches(
             ent_path,
             true,
             1,

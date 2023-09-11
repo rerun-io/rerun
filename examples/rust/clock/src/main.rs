@@ -40,10 +40,10 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         SignedAxis3::POSITIVE_Y,
         rerun::coordinates::Handedness::Right,
     );
-    rec.log_component_lists("world", true, 1, [&view_coords as _])?;
+    rec.log_component_batches("world", true, 1, [&view_coords as _])?;
 
     // TODO(#2786): Box3D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "world/frame",
         true,
         1,

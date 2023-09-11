@@ -1,6 +1,6 @@
 use re_log_types::DataCell;
 
-/// Errors from [`data_cell_from_file_path`] and [`data_cell_from_mesh_file_path`].
+/// Errors from [`data_cells_from_file_path`] and [`data_cells_from_mesh_file_path`].
 #[derive(thiserror::Error, Debug)]
 pub enum FromFileError {
     #[cfg(not(target_arch = "wasm32"))]
@@ -30,7 +30,9 @@ pub enum FromFileError {
 ///
 /// All other extensions will return an error.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell, FromFileError> {
+pub fn data_cells_from_file_path(
+    file_path: &std::path::Path,
+) -> Result<Vec<DataCell>, FromFileError> {
     let extension = file_path
         .extension()
         .unwrap_or_default()
@@ -39,18 +41,27 @@ pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell,
         .to_string();
 
     match extension.as_str() {
-        "glb" => data_cell_from_mesh_file_path(file_path, crate::MeshFormat::Glb),
-        "glft" => data_cell_from_mesh_file_path(file_path, crate::MeshFormat::Gltf),
-        "obj" => data_cell_from_mesh_file_path(file_path, crate::MeshFormat::Obj),
+        "glb" => data_cells_from_mesh_file_path(file_path, crate::MeshFormat::Glb),
+        "glft" => data_cells_from_mesh_file_path(file_path, crate::MeshFormat::Gltf),
+        "obj" => data_cells_from_mesh_file_path(file_path, crate::MeshFormat::Obj),
 
         #[cfg(feature = "image")]
         _ => {
+            use re_types::Archetype;
+            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
+            let indicator_cell = DataCell::from_arrow(
+                re_types::archetypes::Image::indicator_component(),
+                indicator.to_arrow(),
+            );
+
             // Assume an image (there are so many image extensions):
-            // TODO(#3159): include the `ImageIndicator` component.
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_file(file_path)?,
             );
-            Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
+            Ok(vec![
+                indicator_cell,
+                DataCell::try_from_native(std::iter::once(&tensor))?,
+            ])
         }
 
         #[cfg(not(feature = "image"))]
@@ -61,10 +72,10 @@ pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell,
     }
 }
 
-pub fn data_cell_from_file_contents(
+pub fn data_cells_from_file_contents(
     file_name: &str,
     bytes: Vec<u8>,
-) -> Result<DataCell, FromFileError> {
+) -> Result<Vec<DataCell>, FromFileError> {
     re_tracing::profile_function!(file_name);
 
     let extension = std::path::Path::new(file_name)
@@ -75,9 +86,9 @@ pub fn data_cell_from_file_contents(
         .to_string();
 
     match extension.as_str() {
-        "glb" => data_cell_from_mesh_file_contents(bytes, crate::MeshFormat::Glb),
-        "glft" => data_cell_from_mesh_file_contents(bytes, crate::MeshFormat::Gltf),
-        "obj" => data_cell_from_mesh_file_contents(bytes, crate::MeshFormat::Obj),
+        "glb" => data_cells_from_mesh_file_contents(bytes, crate::MeshFormat::Glb),
+        "glft" => data_cells_from_mesh_file_contents(bytes, crate::MeshFormat::Gltf),
+        "obj" => data_cells_from_mesh_file_contents(bytes, crate::MeshFormat::Obj),
 
         #[cfg(feature = "image")]
         _ => {
@@ -88,12 +99,21 @@ pub fn data_cell_from_file_contents(
                     .map_err(re_types::tensor_data::TensorImageLoadError::from)?
             };
 
+            use re_types::Archetype;
+            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
+            let indicator_cell = DataCell::from_arrow(
+                re_types::archetypes::Image::indicator_component(),
+                indicator.to_arrow(),
+            );
+
             // Assume an image (there are so many image extensions):
-            // TODO(#3159): include the `ImageIndicator` component.
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_bytes(bytes, format)?,
             );
-            Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
+            Ok(vec![
+                indicator_cell,
+                DataCell::try_from_native(std::iter::once(&tensor))?,
+            ])
         }
 
         #[cfg(not(feature = "image"))]
@@ -111,18 +131,19 @@ pub fn data_cell_from_file_contents(
 ///
 /// All other extensions will return an error.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn data_cell_from_mesh_file_path(
+pub fn data_cells_from_mesh_file_path(
     file_path: &std::path::Path,
     format: crate::MeshFormat,
-) -> Result<DataCell, FromFileError> {
+) -> Result<Vec<DataCell>, FromFileError> {
     let bytes = std::fs::read(file_path)?;
-    data_cell_from_mesh_file_contents(bytes, format)
+    data_cells_from_mesh_file_contents(bytes, format)
 }
 
-pub fn data_cell_from_mesh_file_contents(
+pub fn data_cells_from_mesh_file_contents(
     bytes: Vec<u8>,
     format: crate::MeshFormat,
-) -> Result<DataCell, FromFileError> {
+) -> Result<Vec<DataCell>, FromFileError> {
+    // TODO(#2788): mesh indicator
     let mesh = crate::EncodedMesh3D {
         format,
         bytes: bytes.into(),
@@ -134,5 +155,5 @@ pub fn data_cell_from_mesh_file_contents(
         ],
     };
     let mesh = crate::Mesh3D::Encoded(mesh);
-    Ok(DataCell::try_from_native(std::iter::once(&mesh))?)
+    Ok(vec![DataCell::try_from_native(std::iter::once(&mesh))?])
 }

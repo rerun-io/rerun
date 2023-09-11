@@ -29,6 +29,8 @@ use crate::{
 
 use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
 
+// ---
+
 // TODO(cmc): it'd be nice to be able to generate vanilla comments (as opposed to doc-comments)
 // once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
@@ -762,6 +764,7 @@ fn quote_trait_impls_from_obj(
                 obj: &Object,
                 attr: &'static str,
                 objects: &Objects,
+                extras: impl IntoIterator<Item = String>,
             ) -> (usize, TokenStream) {
                 let components = iter_archetype_components(obj, attr)
                     .map(|fqname| {
@@ -769,6 +772,7 @@ fn quote_trait_impls_from_obj(
                             .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
                             .unwrap_or(fqname)
                     })
+                    .chain(extras)
                     .collect::<Vec<_>>();
                 let num_components = components.len();
                 let quoted_components = quote!(#(#components.into(),)*);
@@ -793,12 +797,24 @@ fn quote_trait_impls_from_obj(
                 quote!(1)
             };
 
+            let indicator_name = format!("{}Indicator", obj.name);
+            let indicator_fqname =
+                format!("{}Indicator", obj.fqname).replace("archetypes", "components");
+
+            let quoted_indicator_name = format_ident!("{indicator_name}");
+            let quoted_indicator_doc =
+                format!("Indicator component for the [`{name}`] [`crate::Archetype`]");
+
             let (num_required, required) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, objects);
-            let (num_recommended, recommended) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, objects);
+                compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, objects, []);
+            let (num_recommended, recommended) = compute_components(
+                obj,
+                ATTR_RERUN_COMPONENT_RECOMMENDED,
+                objects,
+                [indicator_fqname],
+            );
             let (num_optional, optional) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, objects);
+                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, objects, []);
 
             let num_all = num_required + num_recommended + num_optional;
 
@@ -808,8 +824,10 @@ fn quote_trait_impls_from_obj(
                 .map(|field| format_ident!("{}", field.name))
                 .collect::<Vec<_>>();
 
-            let all_component_lists = {
-                obj.fields.iter().map(|obj_field| {
+            let all_component_batches = {
+                std::iter::once(quote!{
+                    Some(Self::Indicator::batch(self.num_instances() as _).into())
+                }).chain(obj.fields.iter().map(|obj_field| {
                     let field_name = format_ident!("{}", obj_field.name);
                     let is_plural = obj_field.typ.is_plural();
                     let is_nullable = obj_field.is_nullable;
@@ -818,17 +836,17 @@ fn quote_trait_impls_from_obj(
                     // dealing with here is the nullability of an entire array of components, not
                     // the nullability of individual elements (i.e. instances)!
                     match (is_plural, is_nullable) {
-                        (true, true) => {
-                            quote! { self.#field_name.as_ref().map(|comp_list| comp_list as &dyn crate::ComponentList) }
-                        }
-                        (false, true) => {
-                            quote! { self.#field_name.as_ref().map(|comp| comp as &dyn crate::ComponentList) }
-                        }
-                        (_, false) => {
-                            quote! { Some(&self.#field_name as &dyn crate::ComponentList) }
+                        (true, true) => quote! {
+                            self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into())
+                        },
+                        (false, true) => quote! {
+                            self.#field_name.as_ref().map(|comp| (comp as &dyn crate::ComponentBatch).into())
+                        },
+                        (_, false) => quote! {
+                            Some((&self.#field_name as &dyn crate::ComponentBatch).into())
                         }
                     }
-                })
+                }))
             };
 
             let all_serializers = {
@@ -959,9 +977,6 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
-            let indicator_fqname =
-                format!("{}Indicator", obj.fqname).replace("rerun.archetypes", "rerun.components");
-
             quote! {
                 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> =
                     once_cell::sync::Lazy::new(|| {[#required]});
@@ -979,7 +994,12 @@ fn quote_trait_impls_from_obj(
                     pub const NUM_COMPONENTS: usize = #num_all;
                 }
 
+                #[doc = #quoted_indicator_doc]
+                pub type #quoted_indicator_name = crate::GenericIndicatorComponent<#name>;
+
                 impl crate::Archetype for #name {
+                    type Indicator = #quoted_indicator_name;
+
                     #[inline]
                     fn name() -> crate::ArchetypeName {
                         #fqname.into()
@@ -1006,47 +1026,21 @@ fn quote_trait_impls_from_obj(
                         ALL_COMPONENTS.as_slice().into()
                     }
 
-                    // NOTE: Don't rely on default implementation so that we can avoid runtime formatting.
-                    #[inline]
-                    fn indicator_component() -> crate::ComponentName  {
-                        #indicator_fqname.into()
-                    }
-
                     #[inline]
                     fn num_instances(&self) -> usize {
                         #num_instances
                     }
 
-                    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
-                        [#(#all_component_lists,)*].into_iter().flatten().collect()
+                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+                        [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }
 
-                    // TODO(#3159): Make indicator components first class and return them through `as_component_lists`,
-                    // at which point we can rely on the default implementation and remove this altogether.
                     #[inline]
                     fn try_to_arrow(
                         &self,
                     ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
                         use crate::{Loggable as _, ResultExt as _};
-                        Ok([
-                            #({ #all_serializers }),*,
-                            // Inject the indicator component.
-                            {
-                                let datatype = ::arrow2::datatypes::DataType::Extension(
-                                    #indicator_fqname.to_owned(),
-                                    Box::new(::arrow2::datatypes::DataType::Null),
-                                    // NOTE: Mandatory during migration to codegen.
-                                    Some(#indicator_fqname.to_owned()),
-                                );
-                                let array = ::arrow2::array::NullArray::new(
-                                    datatype.to_logical_type().clone(), self.num_instances(),
-                                ).boxed();
-                                Some((
-                                    ::arrow2::datatypes::Field::new(#indicator_fqname, datatype, false),
-                                    array,
-                                ))
-                            },
-                        ].into_iter().flatten().collect())
+                        Ok([ #({ #all_serializers }),*, ].into_iter().flatten().collect())
                     }
 
                     #[inline]

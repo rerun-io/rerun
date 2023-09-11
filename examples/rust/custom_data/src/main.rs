@@ -5,10 +5,13 @@ use rerun::{
     datatypes::Float32,
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    Archetype, ArchetypeName, ComponentList, ComponentName, Loggable, RecordingStreamBuilder,
+    Archetype, ArchetypeName, ComponentBatch, ComponentName, GenericIndicatorComponent, Loggable,
+    MaybeOwnedComponentBatch, RecordingStreamBuilder,
 };
 
 // ---
+
+type CustomPoints3DIndicator = GenericIndicatorComponent<CustomPoints3D>;
 
 /// A custom [`Archetype`] that extends Rerun's builtin [`Points3D`] archetype with extra
 /// [`rerun::Component`]s.
@@ -18,6 +21,8 @@ struct CustomPoints3D {
 }
 
 impl Archetype for CustomPoints3D {
+    type Indicator = CustomPoints3DIndicator;
+
     fn name() -> ArchetypeName {
         "user.CustomPoints3D".into()
     }
@@ -43,14 +48,19 @@ impl Archetype for CustomPoints3D {
         self.points3d.num_instances()
     }
 
-    fn as_component_lists(&self) -> Vec<&dyn ComponentList> {
-        // TODO(#3159): need an easy way to get a CustomPoints3DIndicator component in here!
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         self.points3d
-            .as_component_lists()
+            .as_component_batches()
             .into_iter()
             .chain(
-                std::iter::once(self.confidences.as_ref().map(|v| v as &dyn ComponentList))
-                    .flatten(),
+                [
+                    Some(Self::Indicator::batch(self.num_instances()).into()),
+                    self.confidences
+                        .as_ref()
+                        .map(|v| (v as &dyn ComponentBatch).into()),
+                ]
+                .into_iter()
+                .flatten(),
             )
             .collect()
     }

@@ -9,7 +9,7 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::{components::InstanceKey, Archetype, ComponentList, SerializationError};
+use re_types::{components::InstanceKey, Archetype, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -642,79 +642,17 @@ impl RecordingStream {
         timeless: bool,
         arch: &impl Archetype,
     ) -> RecordingStreamResult<()> {
-        // TODO(#3159): This is what we're supposed to do, but we need indicator to be first-class
-        // for that.
-        // self.log_component_lists(
-        //     ent_path,
-        //     timeless,
-        //     arch.num_instances() as u32,
-        //     arch.as_component_lists(),
-        // )
-
-        // NOTE: All of this disappears with #3159
-        let ent_path = ent_path.into();
-        let num_instances = arch.num_instances() as _;
-        let cells: Result<Vec<_>, _> = arch
-            .try_to_arrow()?
-            .into_iter()
-            .map(|(field, array)| {
-                // NOTE: Unreachable, a top-level Field will always be a component, and thus an
-                // extension.
-                use re_log_types::external::arrow2::datatypes::DataType;
-                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
-                    return Err(SerializationError::missing_extension_metadata(field.name))
-                        .map_err(Into::into);
-                };
-                DataCell::try_from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
-            })
-            .collect();
-        let cells = cells?;
-
-        let mut instanced: Vec<DataCell> = Vec::new();
-        let mut splatted: Vec<DataCell> = Vec::new();
-
-        for cell in cells {
-            if num_instances > 1 && cell.num_instances() == 1 {
-                splatted.push(cell);
-            } else {
-                instanced.push(cell);
-            }
-        }
-
-        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
-        // internal clock.
-        let timepoint = TimePoint::timeless();
-
-        let instanced = (!instanced.is_empty()).then(|| {
-            DataRow::from_cells(
-                RowId::random(),
-                timepoint.clone(),
-                ent_path.clone(),
-                num_instances,
-                instanced,
-            )
-        });
-
-        // TODO(#1629): unsplit splats once new data cells are in
-        let splatted = (!splatted.is_empty()).then(|| {
-            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
-            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
-        });
-
-        if let Some(splatted) = splatted {
-            self.record_row(splatted, !timeless);
-        }
-
-        // Always the primary component last so range-based queries will include the other data.
-        // Since the primary component can't be splatted it must be in here, see(#1215).
-        if let Some(instanced) = instanced {
-            self.record_row(instanced, !timeless);
-        }
-
-        Ok(())
+        self.log_component_batches(
+            ent_path,
+            timeless,
+            arch.num_instances() as u32,
+            arch.as_component_batches()
+                .iter()
+                .map(|any_comp_batch| any_comp_batch.as_ref()),
+        )
     }
 
-    /// Logs a set of [`ComponentList`]s into Rerun.
+    /// Logs a set of [`ComponentBatch`]es into Rerun.
     ///
     /// If `timeless` is set to `false`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
@@ -736,12 +674,12 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
-    pub fn log_component_lists<'a>(
+    pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
         num_instances: u32,
-        comp_lists: impl IntoIterator<Item = &'a dyn ComponentList>,
+        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             return Ok(()); // silently drop the message
@@ -749,17 +687,17 @@ impl RecordingStream {
 
         let ent_path = ent_path.into();
 
-        let comp_lists: Result<Vec<_>, _> = comp_lists
+        let comp_batches: Result<Vec<_>, _> = comp_batches
             .into_iter()
-            .map(|comp_list| {
-                comp_list
+            .map(|comp_batch| {
+                comp_batch
                     .try_to_arrow()
-                    .map(|array| (comp_list.arrow_field(), array))
+                    .map(|array| (comp_batch.arrow_field(), array))
             })
             .collect();
-        let comp_lists = comp_lists?;
+        let comp_batches = comp_batches?;
 
-        let cells: Result<Vec<_>, _> = comp_lists
+        let cells: Result<Vec<_>, _> = comp_batches
             .into_iter()
             .map(|(field, array)| {
                 // NOTE: Unreachable, a top-level Field will always be a component, and thus an

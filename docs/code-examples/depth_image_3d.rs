@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (width, height) = (image.shape()[1] as f32, image.shape()[0] as f32);
     let focal_length = 200.;
     #[allow(clippy::tuple_array_conversions)]
-    rec.log_component_lists(
+    rec.log_component_batches(
         "world/camera",
         false,
         1,

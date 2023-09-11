@@ -70,25 +70,31 @@ pub struct SegmentationImage {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.SegmentationImageIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.draw_order".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
+            "rerun.components.SegmentationImageIndicator".into(),
             "rerun.draw_order".into(),
         ]
     });
 
 impl SegmentationImage {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
+/// Indicator component for the [`SegmentationImage`] [`crate::Archetype`]
+pub type SegmentationImageIndicator = crate::GenericIndicatorComponent<SegmentationImage>;
+
 impl crate::Archetype for SegmentationImage {
+    type Indicator = SegmentationImageIndicator;
+
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.SegmentationImage".into()
@@ -115,21 +121,17 @@ impl crate::Archetype for SegmentationImage {
     }
 
     #[inline]
-    fn indicator_component() -> crate::ComponentName {
-        "rerun.components.SegmentationImageIndicator".into()
-    }
-
-    #[inline]
     fn num_instances(&self) -> usize {
         1
     }
 
-    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(&self.data as &dyn crate::ComponentList),
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
             self.draw_order
                 .as_ref()
-                .map(|comp| comp as &dyn crate::ComponentList),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -181,26 +183,6 @@ impl crate::Archetype for SegmentationImage {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.SegmentationImage#draw_order")?
-            },
-            {
-                let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.SegmentationImageIndicator".to_owned(),
-                    Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.SegmentationImageIndicator".to_owned()),
-                );
-                let array = ::arrow2::array::NullArray::new(
-                    datatype.to_logical_type().clone(),
-                    self.num_instances(),
-                )
-                .boxed();
-                Some((
-                    ::arrow2::datatypes::Field::new(
-                        "rerun.components.SegmentationImageIndicator",
-                        datatype,
-                        false,
-                    ),
-                    array,
-                ))
             },
         ]
         .into_iter()
