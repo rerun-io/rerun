@@ -639,9 +639,9 @@ fn code_for_union(
     if has_duplicate_types {
         let kind_type = fields
             .iter()
-            .map(|f| format!("{:?}", f.name.to_lowercase()))
+            .map(|f| format!("{:?}", f.snake_case_name()))
             .join(", ");
-        let first_kind = &fields[0].name.to_lowercase();
+        let first_kind = &fields[0].snake_case_name();
 
         code.push_text(
             format!("kind: Literal[{kind_type}] = field(default={first_kind:?})"),
