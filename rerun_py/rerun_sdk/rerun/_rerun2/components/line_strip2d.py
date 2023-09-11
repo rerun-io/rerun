@@ -16,7 +16,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_line_strip2d_native_to_pa_array_override  # noqa: F401
+from ._overrides import override_line_strip2d___native_to_pa_array_override  # noqa: F401
 
 __all__ = ["LineStrip2D", "LineStrip2DArray", "LineStrip2DArrayLike", "LineStrip2DLike", "LineStrip2DType"]
 
@@ -76,7 +76,7 @@ class LineStrip2DArray(BaseExtensionArray[LineStrip2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_line_strip2d_native_to_pa_array_override(data, data_type)
+        raise NotImplementedError  # You need to implement "override_line_strip2d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/line_strip2d.py
 
 
 LineStrip2DType._ARRAY_TYPE = LineStrip2DArray

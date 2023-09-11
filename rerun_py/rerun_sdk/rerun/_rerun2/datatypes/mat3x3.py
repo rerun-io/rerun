@@ -29,7 +29,7 @@ class Mat3x3:
     coeffs: npt.NDArray[np.float32] = field(converter=override_mat3x3_coeffs__field_converter_override)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_mat3x3_as_array_override"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_mat3x3__as_array_override"
         return np.asarray(self.coeffs, dtype=dtype)
 
 
@@ -60,7 +60,7 @@ class Mat3x3Array(BaseExtensionArray[Mat3x3ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_mat3x3_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/mat3x3.py
+        raise NotImplementedError  # You need to implement "override_mat3x3__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/mat3x3.py
 
 
 Mat3x3Type._ARRAY_TYPE = Mat3x3Array

@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 # TODO(#2641): this is needed until we support default value for params
-def override_translation_rotation_scale3d_init_override(
+def override_translation_rotation_scale3d__init_override(
     self: TranslationRotationScale3D,
     translation: Vec3DLike | None = None,
     rotation: Rotation3DLike | None = None,

@@ -17,7 +17,6 @@ from .._baseclasses import (
 )
 from ._overrides import (
     override_annotation_context_class_map__field_converter_override,
-    override_annotation_context_native_to_pa_array_override,
 )
 
 __all__ = [
@@ -148,7 +147,7 @@ class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_annotation_context_native_to_pa_array_override(data, data_type)
+        raise NotImplementedError  # You need to implement "override_annotation_context__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/annotation_context.py
 
 
 AnnotationContextType._ARRAY_TYPE = AnnotationContextArray

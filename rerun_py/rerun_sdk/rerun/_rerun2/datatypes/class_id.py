@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_class_id_native_to_pa_array_override  # noqa: F401
+from ._overrides import override_class_id___native_to_pa_array_override  # noqa: F401
 
 __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
 
@@ -29,7 +29,7 @@ class ClassId:
     id: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_class_id_as_array_override"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_class_id__as_array_override"
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:
@@ -66,7 +66,7 @@ class ClassIdArray(BaseExtensionArray[ClassIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_class_id_native_to_pa_array_override(data, data_type)
+        raise NotImplementedError  # You need to implement "override_class_id__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/class_id.py
 
 
 ClassIdType._ARRAY_TYPE = ClassIdArray

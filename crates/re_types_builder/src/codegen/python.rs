@@ -399,7 +399,7 @@ fn code_for_struct(
         }
 
         // init override handling
-        let init_override_name = format!("override_{}_init_override", obj.snake_case_name());
+        let init_override_name = format!("override_{}__init_override", obj.snake_case_name());
         let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
             ("init=False".to_owned(), init_override_name)
         } else {
@@ -572,7 +572,7 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let init_override_name = format!("override_{}_init_override", obj.snake_case_name());
+    let init_override_name = format!("override_{}__init_override", obj.snake_case_name());
     let (define_args, init_func) = if overrides.contains(&init_override_name) {
         ("(init=False)".to_owned(), init_override_name)
     } else {
@@ -624,7 +624,7 @@ fn code_for_union(
 
     // components and datatypes have converters only if manually provided
     let converter_override_name = format!(
-        "override_{}_inner_converter_override",
+        "override_{}__inner_converter_override",
         obj.snake_case_name()
     );
     let converter = if overrides.contains(&converter_override_name) {
@@ -745,7 +745,7 @@ fn quote_array_method_from_obj(
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
-    let override_name = format!("override_{}_as_array_override", obj.snake_case_name());
+    let override_name = format!("override_{}__as_array_override", obj.snake_case_name());
     if overrides.contains(&override_name) {
         return unindent::unindent(&format!(
             "
@@ -1221,7 +1221,7 @@ fn quote_arrow_support_from_obj(
         .unwrap_or_else(|| fqname.clone());
 
     let override_name = format!(
-        "override_{}_native_to_pa_array_override",
+        "override_{}__native_to_pa_array_override",
         obj.snake_case_name()
     );
     let override_ = if overrides.contains(&override_name) {

@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_keypoint_pair_native_to_pa_array_override  # noqa: F401
+from ._overrides import override_keypoint_pair___native_to_pa_array_override  # noqa: F401
 
 __all__ = ["KeypointPair", "KeypointPairArray", "KeypointPairArrayLike", "KeypointPairLike", "KeypointPairType"]
 
@@ -77,7 +77,7 @@ class KeypointPairArray(BaseExtensionArray[KeypointPairArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_keypoint_pair_native_to_pa_array_override(data, data_type)
+        raise NotImplementedError  # You need to implement "override_keypoint_pair__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/keypoint_pair.py
 
 
 KeypointPairType._ARRAY_TYPE = KeypointPairArray

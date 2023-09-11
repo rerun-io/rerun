@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_translation_rotation_scale3d_init_override  # noqa: F401
+from ._overrides import override_translation_rotation_scale3d__init_override  # noqa: F401
 
 __all__ = [
     "TranslationRotationScale3D",
@@ -61,7 +61,7 @@ class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_translation_rotation_scale3d_init_override(self, *args, **kwargs)
+        override_translation_rotation_scale3d__init_override(self, *args, **kwargs)
 
     from_parent: bool = field(converter=bool)
     """
@@ -190,7 +190,7 @@ class TranslationRotationScale3DArray(BaseExtensionArray[TranslationRotationScal
 
     @staticmethod
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_translation_rotation_scale3d_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_rotation_scale3d.py
+        raise NotImplementedError  # You need to implement "override_translation_rotation_scale3d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_rotation_scale3d.py
 
 
 TranslationRotationScale3DType._ARRAY_TYPE = TranslationRotationScale3DArray

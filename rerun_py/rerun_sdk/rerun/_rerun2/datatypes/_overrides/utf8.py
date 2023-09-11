@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from .. import Utf8ArrayLike
 
 
-def override_utf8_native_to_pa_array_override(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_utf8___native_to_pa_array_override(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
     if isinstance(data, str):
         array = [data]
     elif isinstance(data, Sequence):

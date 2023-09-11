@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_class_description_map_elem_native_to_pa_array_override  # noqa: F401
+from ._overrides import override_class_description_map_elem___native_to_pa_array_override  # noqa: F401
 
 __all__ = [
     "ClassDescriptionMapElem",
@@ -137,7 +137,7 @@ class ClassDescriptionMapElemArray(BaseExtensionArray[ClassDescriptionMapElemArr
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_class_description_map_elem_native_to_pa_array_override(data, data_type)
+        raise NotImplementedError  # You need to implement "override_class_description_map_elem__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/class_description_map_elem.py
 
 
 ClassDescriptionMapElemType._ARRAY_TYPE = ClassDescriptionMapElemArray

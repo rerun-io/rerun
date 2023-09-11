@@ -9,6 +9,6 @@ if TYPE_CHECKING:
     from .. import KeypointIdArrayLike
 
 
-def override_keypoint_id_native_to_pa_array_override(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_keypoint_id___native_to_pa_array_override(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
     array = np.asarray(data, dtype=np.uint16).flatten()
     return pa.array(array, type=data_type)

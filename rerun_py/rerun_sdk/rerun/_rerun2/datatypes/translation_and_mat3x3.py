@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_translation_and_mat3x3_init_override  # noqa: F401
+from ._overrides import override_translation_and_mat3x3__init_override  # noqa: F401
 
 __all__ = [
     "TranslationAndMat3x3",
@@ -52,7 +52,7 @@ class TranslationAndMat3x3:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_translation_and_mat3x3_init_override(self, *args, **kwargs)
+        override_translation_and_mat3x3__init_override(self, *args, **kwargs)
 
     from_parent: bool = field(converter=bool)
     """
@@ -114,7 +114,7 @@ class TranslationAndMat3x3Array(BaseExtensionArray[TranslationAndMat3x3ArrayLike
 
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_translation_and_mat3x3_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_and_mat3x3.py
+        raise NotImplementedError  # You need to implement "override_translation_and_mat3x3__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_and_mat3x3.py
 
 
 TranslationAndMat3x3Type._ARRAY_TYPE = TranslationAndMat3x3Array

@@ -16,7 +16,6 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from ._overrides import (
-    override_color_native_to_pa_array_override,
     override_color_rgba__field_converter_override,
 )
 
@@ -38,7 +37,7 @@ class Color:
     rgba: int = field(converter=override_color_rgba__field_converter_override)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_color_as_array_override"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_color__as_array_override"
         return np.asarray(self.rgba, dtype=dtype)
 
     def __int__(self) -> int:
@@ -73,7 +72,7 @@ class ColorArray(BaseExtensionArray[ColorArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_color_native_to_pa_array_override(data, data_type)
+        raise NotImplementedError  # You need to implement "override_color__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/color.py
 
 
 ColorType._ARRAY_TYPE = ColorArray

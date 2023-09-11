@@ -13,7 +13,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_utf8_native_to_pa_array_override  # noqa: F401
+from ._overrides import override_utf8___native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
 
@@ -52,7 +52,7 @@ class Utf8Array(BaseExtensionArray[Utf8ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_utf8_native_to_pa_array_override(data, data_type)
+        raise NotImplementedError  # You need to implement "override_utf8__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/utf8.py
 
 
 Utf8Type._ARRAY_TYPE = Utf8Array

@@ -26,7 +26,7 @@ class Float32:
     value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_float32_as_array_override"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_float32__as_array_override"
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
@@ -54,7 +54,7 @@ class Float32Array(BaseExtensionArray[Float32ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Float32ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_float32_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/float32.py
+        raise NotImplementedError  # You need to implement "override_float32__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/float32.py
 
 
 Float32Type._ARRAY_TYPE = Float32Array
