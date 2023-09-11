@@ -98,6 +98,7 @@ impl CodeGenerator for PythonCodeGenerator {
         for object_kind in ObjectKind::ALL {
             self.generate_folder(objects, arrow_registry, object_kind, &mut files_to_write);
         }
+
         {
             let archetype_names = objects
                 .ordered_objects(ObjectKind::Archetype.into())
