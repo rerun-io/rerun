@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_scale3d_inner_converter  # noqa: F401
+from ._overrides import override_scale3d_inner_converter_override  # noqa: F401
 
 __all__ = ["Scale3D", "Scale3DArray", "Scale3DArrayLike", "Scale3DLike", "Scale3DType"]
 
@@ -38,7 +38,7 @@ class Scale3D:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    inner: datatypes.Vec3D | float = field(converter=override_scale3d_inner_converter)
+    inner: datatypes.Vec3D | float = field(converter=override_scale3d_inner_converter_override)
     """
     ThreeD (datatypes.Vec3D):
         Individual scaling factors for each axis, distorting the original object.

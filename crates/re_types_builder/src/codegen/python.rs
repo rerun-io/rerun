@@ -623,7 +623,10 @@ fn code_for_union(
     };
 
     // components and datatypes have converters only if manually provided
-    let converter_override_name = format!("override_{}_inner_converter", obj.snake_case_name());
+    let converter_override_name = format!(
+        "override_{}_inner_converter_override",
+        obj.snake_case_name()
+    );
     let converter = if overrides.contains(&converter_override_name) {
         format!("converter={converter_override_name}")
     } else if !default_converter.is_empty() {

@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_tensor_buffer_inner_converter  # noqa: F401
+from ._overrides import override_tensor_buffer_inner_converter_override  # noqa: F401
 
 __all__ = ["TensorBuffer", "TensorBufferArray", "TensorBufferArrayLike", "TensorBufferLike", "TensorBufferType"]
 
@@ -37,7 +37,7 @@ class TensorBuffer:
     ] | npt.NDArray[
         np.uint8
     ] = field(
-        converter=override_tensor_buffer_inner_converter
+        converter=override_tensor_buffer_inner_converter_override
     )
     """
     U8 (npt.NDArray[np.uint8]):

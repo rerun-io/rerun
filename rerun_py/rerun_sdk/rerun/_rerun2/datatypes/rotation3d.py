@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_rotation3d_inner_converter  # noqa: F401
+from ._overrides import override_rotation3d_inner_converter_override  # noqa: F401
 
 __all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLike", "Rotation3DType"]
 
@@ -25,7 +25,9 @@ class Rotation3D:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=override_rotation3d_inner_converter)
+    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(
+        converter=override_rotation3d_inner_converter_override
+    )
     """
     Quaternion (datatypes.Quaternion):
         Rotation defined by a quaternion.

@@ -10,6 +10,7 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
+# noqa: F401
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
@@ -18,7 +19,7 @@ from .._baseclasses import (
 from ._overrides import (
     override_tensor_data_init_override,
     override_tensor_data_native_to_pa_array_override,
-)  # noqa: F401
+)
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
