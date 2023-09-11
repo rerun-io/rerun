@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from .. import Quaternion, Rotation3DLike, RotationAxisAngle
 
 
-def override_rotation3d__inner_converter_override(
+def rotation3d__inner_converter_override(
     data: Rotation3DLike,
 ) -> Quaternion | RotationAxisAngle:
     from .. import Quaternion, Rotation3D, RotationAxisAngle

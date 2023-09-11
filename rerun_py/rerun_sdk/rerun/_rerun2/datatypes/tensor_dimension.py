@@ -66,7 +66,7 @@ class TensorDimensionArray(BaseExtensionArray[TensorDimensionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_tensor_dimension__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_dimension.py
+        raise NotImplementedError  # You need to implement "tensor_dimension__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_dimension.py
 
 
 TensorDimensionType._ARRAY_TYPE = TensorDimensionArray

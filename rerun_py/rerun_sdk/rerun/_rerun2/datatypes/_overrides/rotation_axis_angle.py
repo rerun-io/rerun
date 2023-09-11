@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 # needed because the default converter doesn't handle well Angle, which has an overridden __init__
-def override_rotation_axis_angle_angle__field_converter_override(x: AngleLike) -> Angle:
+def rotation_axis_angle_angle__field_converter_override(x: AngleLike) -> Angle:
     from .. import Angle
 
     if isinstance(x, Angle):

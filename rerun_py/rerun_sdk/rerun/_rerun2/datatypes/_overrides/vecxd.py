@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
 
-def override_vec2d___native_to_pa_array_override(data: Vec2DArrayLike, data_type: pa.DataType) -> pa.Array:
+def vec2d__native_to_pa_array_override(data: Vec2DArrayLike, data_type: pa.DataType) -> pa.Array:
     # TODO(ab): get rid of this once we drop support for Python 3.8. Make sure to pin numpy>=1.25.
     if NUMPY_VERSION < (1, 25):
         # Older numpy doesn't seem to support `data` in the form of [Point3D(1, 2), Point3D(3, 4)]
@@ -26,7 +26,7 @@ def override_vec2d___native_to_pa_array_override(data: Vec2DArrayLike, data_type
     return pa.FixedSizeListArray.from_arrays(points, type=data_type)
 
 
-def override_vec3d___native_to_pa_array_override(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
+def vec3d__native_to_pa_array_override(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
     # TODO(ab): get rid of this once we drop support for Python 3.8. Make sure to pin numpy>=1.25.
     if NUMPY_VERSION < (1, 25):
         # Older numpy doesn't seem to support `data` in the form of [Point3D(1, 2), Point3D(3, 4)]
@@ -40,7 +40,7 @@ def override_vec3d___native_to_pa_array_override(data: Vec3DArrayLike, data_type
     return pa.FixedSizeListArray.from_arrays(points, type=data_type)
 
 
-def override_vec4d___native_to_pa_array_override(data: Vec4DArrayLike, data_type: pa.DataType) -> pa.Array:
+def vec4d__native_to_pa_array_override(data: Vec4DArrayLike, data_type: pa.DataType) -> pa.Array:
     # TODO(ab): get rid of this once we drop support for Python 3.8. Make sure to pin numpy>=1.25.
     if NUMPY_VERSION < (1, 25):
         # Older numpy doesn't seem to support `data` in the form of [Point3D(1, 2), Point3D(3, 4)]

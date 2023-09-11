@@ -14,23 +14,19 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_keypoint_pair___native_to_pa_array_override  # noqa: F401
+from ._overrides import keypoint_pair__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["KeypointPair", "KeypointPairArray", "KeypointPairArrayLike", "KeypointPairLike", "KeypointPairType"]
 
 
-def _override_keypoint_pair_keypoint0__special_field_converter_override(
-    x: datatypes.KeypointIdLike,
-) -> datatypes.KeypointId:
+def _keypoint_pair_keypoint0__special_field_converter_override(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
     if isinstance(x, datatypes.KeypointId):
         return x
     else:
         return datatypes.KeypointId(x)
 
 
-def _override_keypoint_pair_keypoint1__special_field_converter_override(
-    x: datatypes.KeypointIdLike,
-) -> datatypes.KeypointId:
+def _keypoint_pair_keypoint1__special_field_converter_override(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
     if isinstance(x, datatypes.KeypointId):
         return x
     else:
@@ -43,12 +39,8 @@ class KeypointPair:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    keypoint0: datatypes.KeypointId = field(
-        converter=_override_keypoint_pair_keypoint0__special_field_converter_override
-    )
-    keypoint1: datatypes.KeypointId = field(
-        converter=_override_keypoint_pair_keypoint1__special_field_converter_override
-    )
+    keypoint0: datatypes.KeypointId = field(converter=_keypoint_pair_keypoint0__special_field_converter_override)
+    keypoint1: datatypes.KeypointId = field(converter=_keypoint_pair_keypoint1__special_field_converter_override)
 
 
 if TYPE_CHECKING:
@@ -85,7 +77,7 @@ class KeypointPairArray(BaseExtensionArray[KeypointPairArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_keypoint_pair__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/keypoint_pair.py
+        return keypoint_pair__native_to_pa_array_override(data, data_type)
 
 
 KeypointPairType._ARRAY_TYPE = KeypointPairArray

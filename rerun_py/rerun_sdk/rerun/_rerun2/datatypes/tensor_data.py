@@ -10,22 +10,17 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-# noqa: F401
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import (
-    override_tensor_data__init_override,
-)
+from ._overrides import tensor_data__init_override, tensor_data__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
 
-def _override_tensor_data_buffer__special_field_converter_override(
-    x: datatypes.TensorBufferLike,
-) -> datatypes.TensorBuffer:
+def _tensor_data_buffer__special_field_converter_override(x: datatypes.TensorBufferLike) -> datatypes.TensorBuffer:
     if isinstance(x, datatypes.TensorBuffer):
         return x
     else:
@@ -46,10 +41,10 @@ class TensorData:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_tensor_data__init_override(self, *args, **kwargs)
+        tensor_data__init_override(self, *args, **kwargs)
 
     shape: list[datatypes.TensorDimension] = field()
-    buffer: datatypes.TensorBuffer = field(converter=_override_tensor_data_buffer__special_field_converter_override)
+    buffer: datatypes.TensorBuffer = field(converter=_tensor_data_buffer__special_field_converter_override)
 
 
 if TYPE_CHECKING:
@@ -175,7 +170,7 @@ class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_tensor_data__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_data.py
+        return tensor_data__native_to_pa_array_override(data, data_type)
 
 
 TensorDataType._ARRAY_TYPE = TensorDataArray

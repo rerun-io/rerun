@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_disconnected_space___native_to_pa_array_override  # noqa: F401
+from ._overrides import disconnected_space__native_to_pa_array_override  # noqa: F401
 
 __all__ = [
     "DisconnectedSpace",
@@ -63,7 +63,7 @@ class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_disconnected_space__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/disconnected_space.py
+        return disconnected_space__native_to_pa_array_override(data, data_type)
 
 
 DisconnectedSpaceType._ARRAY_TYPE = DisconnectedSpaceArray

@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_transform3d___native_to_pa_array_override  # noqa: F401
+from ._overrides import transform3d__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform3DLike", "Transform3DType"]
 
@@ -193,7 +193,7 @@ class Transform3DArray(BaseExtensionArray[Transform3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_transform3d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/transform3d.py
+        return transform3d__native_to_pa_array_override(data, data_type)
 
 
 Transform3DType._ARRAY_TYPE = Transform3DArray

@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 # TODO(#2641): this is needed until we support default value for from_parent
-def override_translation_and_mat3x3__init_override(
+def translation_and_mat3x3__init_override(
     self: TranslationAndMat3x3,
     translation: Vec3DLike | None = None,
     matrix: Mat3x3Like | None = None,

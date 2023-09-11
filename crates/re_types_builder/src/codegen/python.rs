@@ -218,11 +218,11 @@ impl PythonCodeGenerator {
                 0,
             );
 
-            // import all overrides
-            let obj_override_prefix = format!("override_{}", obj.snake_case_name());
+            // Import all overrides. Overrides always start with `type_name_` and ends with `_override`.
             let override_names: Vec<_> = overrides
                 .iter()
-                .filter(|o| o.starts_with(&obj_override_prefix))
+                .filter(|o| o.starts_with(&obj.snake_case_name()))
+                .filter(|o| o.ends_with("_override"))
                 .map(|o| o.as_str())
                 .collect::<Vec<_>>();
 
@@ -378,7 +378,7 @@ fn code_for_struct(
                 quote_field_converter_from_field(obj, objects, field);
 
             let converter_override_name = format!(
-                "override_{}_{}__field_converter_override",
+                "{}_{}__field_converter_override",
                 obj.snake_case_name(),
                 field.name
             );
@@ -399,7 +399,7 @@ fn code_for_struct(
         }
 
         // init override handling
-        let init_override_name = format!("override_{}__init_override", obj.snake_case_name());
+        let init_override_name = format!("{}__init_override", obj.snake_case_name());
         let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
             ("init=False".to_owned(), init_override_name)
         } else {
@@ -572,7 +572,7 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let init_override_name = format!("override_{}__init_override", obj.snake_case_name());
+    let init_override_name = format!("{}__init_override", obj.snake_case_name());
     let (define_args, init_func) = if overrides.contains(&init_override_name) {
         ("(init=False)".to_owned(), init_override_name)
     } else {
@@ -623,10 +623,7 @@ fn code_for_union(
     };
 
     // components and datatypes have converters only if manually provided
-    let converter_override_name = format!(
-        "override_{}__inner_converter_override",
-        obj.snake_case_name()
-    );
+    let converter_override_name = format!("{}__inner_converter_override", obj.snake_case_name());
     let converter = if overrides.contains(&converter_override_name) {
         format!("converter={converter_override_name}")
     } else if !default_converter.is_empty() {
@@ -745,7 +742,7 @@ fn quote_array_method_from_obj(
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
-    let override_name = format!("override_{}__as_array_override", obj.snake_case_name());
+    let override_name = format!("{}__as_array_override", obj.snake_case_name());
     if overrides.contains(&override_name) {
         return unindent::unindent(&format!(
             "
@@ -1058,7 +1055,7 @@ fn quote_field_converter_from_field(
             // single argument
             if field_obj.fields.len() == 1 || field_obj.is_union() {
                 let converter_name = format!(
-                    "_override_{}_{}__special_field_converter_override",
+                    "_{}_{}__special_field_converter_override", // TODO(emilk): why does this have an underscore prefix?
                     obj.snake_case_name(),
                     field.name
                 );
@@ -1220,10 +1217,7 @@ fn quote_arrow_support_from_obj(
         .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
         .unwrap_or_else(|| fqname.clone());
 
-    let override_name = format!(
-        "override_{}__native_to_pa_array_override",
-        obj.snake_case_name()
-    );
+    let override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
     let override_ = if overrides.contains(&override_name) {
         format!("return {override_name}(data, data_type)")
     } else {

@@ -16,7 +16,8 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from ._overrides import (
-    override_annotation_context_class_map__field_converter_override,
+    annotation_context__native_to_pa_array_override,
+    annotation_context_class_map__field_converter_override,
 )
 
 __all__ = [
@@ -43,7 +44,7 @@ class AnnotationContext:
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
     class_map: list[datatypes.ClassDescriptionMapElem] = field(
-        converter=override_annotation_context_class_map__field_converter_override
+        converter=annotation_context_class_map__field_converter_override
     )
 
 
@@ -147,7 +148,7 @@ class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_annotation_context__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/annotation_context.py
+        return annotation_context__native_to_pa_array_override(data, data_type)
 
 
 AnnotationContextType._ARRAY_TYPE = AnnotationContextArray

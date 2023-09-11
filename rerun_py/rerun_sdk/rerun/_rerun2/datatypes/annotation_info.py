@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_annotation_info___native_to_pa_array_override  # noqa: F401
+from ._overrides import annotation_info__native_to_pa_array_override  # noqa: F401
 
 __all__ = [
     "AnnotationInfo",
@@ -25,9 +25,7 @@ __all__ = [
 ]
 
 
-def _override_annotation_info_label__special_field_converter_override(
-    x: datatypes.Utf8Like | None,
-) -> datatypes.Utf8 | None:
+def _annotation_info_label__special_field_converter_override(x: datatypes.Utf8Like | None) -> datatypes.Utf8 | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Utf8):
@@ -36,9 +34,7 @@ def _override_annotation_info_label__special_field_converter_override(
         return datatypes.Utf8(x)
 
 
-def _override_annotation_info_color__special_field_converter_override(
-    x: datatypes.ColorLike | None,
-) -> datatypes.Color | None:
+def _annotation_info_color__special_field_converter_override(x: datatypes.ColorLike | None) -> datatypes.Color | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Color):
@@ -64,14 +60,14 @@ class AnnotationInfo:
     """
 
     label: datatypes.Utf8 | None = field(
-        default=None, converter=_override_annotation_info_label__special_field_converter_override
+        default=None, converter=_annotation_info_label__special_field_converter_override
     )
     """
     The label that will be shown in the UI.
     """
 
     color: datatypes.Color | None = field(
-        default=None, converter=_override_annotation_info_color__special_field_converter_override
+        default=None, converter=_annotation_info_color__special_field_converter_override
     )
     """
     The color that will be applied to the annotated entity.
@@ -113,7 +109,7 @@ class AnnotationInfoArray(BaseExtensionArray[AnnotationInfoArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_annotation_info__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/annotation_info.py
+        return annotation_info__native_to_pa_array_override(data, data_type)
 
 
 AnnotationInfoType._ARRAY_TYPE = AnnotationInfoArray

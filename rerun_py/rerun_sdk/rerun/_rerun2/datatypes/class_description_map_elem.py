@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_class_description_map_elem___native_to_pa_array_override  # noqa: F401
+from ._overrides import class_description_map_elem__native_to_pa_array_override  # noqa: F401
 
 __all__ = [
     "ClassDescriptionMapElem",
@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-def _override_class_description_map_elem_class_id__special_field_converter_override(
+def _class_description_map_elem_class_id__special_field_converter_override(
     x: datatypes.ClassIdLike,
 ) -> datatypes.ClassId:
     if isinstance(x, datatypes.ClassId):
@@ -45,7 +45,7 @@ class ClassDescriptionMapElem:
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
     class_id: datatypes.ClassId = field(
-        converter=_override_class_description_map_elem_class_id__special_field_converter_override
+        converter=_class_description_map_elem_class_id__special_field_converter_override
     )
     class_description: datatypes.ClassDescription = field()
 
@@ -141,7 +141,7 @@ class ClassDescriptionMapElemArray(BaseExtensionArray[ClassDescriptionMapElemArr
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_class_description_map_elem__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/class_description_map_elem.py
+        return class_description_map_elem__native_to_pa_array_override(data, data_type)
 
 
 ClassDescriptionMapElemType._ARRAY_TYPE = ClassDescriptionMapElemArray

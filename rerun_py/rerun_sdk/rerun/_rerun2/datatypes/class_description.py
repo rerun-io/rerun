@@ -16,10 +16,11 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from ._overrides import (
-    override_class_description__init_override,
-    override_class_description_info__field_converter_override,
-    override_class_description_keypoint_annotations__field_converter_override,
-    override_class_description_keypoint_connections__field_converter_override,
+    class_description__init_override,
+    class_description__native_to_pa_array_override,
+    class_description_info__field_converter_override,
+    class_description_keypoint_annotations__field_converter_override,
+    class_description_keypoint_connections__field_converter_override,
 )
 
 __all__ = [
@@ -51,22 +52,22 @@ class ClassDescription:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_class_description__init_override(self, *args, **kwargs)
+        class_description__init_override(self, *args, **kwargs)
 
-    info: datatypes.AnnotationInfo = field(converter=override_class_description_info__field_converter_override)
+    info: datatypes.AnnotationInfo = field(converter=class_description_info__field_converter_override)
     """
     The `AnnotationInfo` for the class.
     """
 
     keypoint_annotations: list[datatypes.AnnotationInfo] = field(
-        converter=override_class_description_keypoint_annotations__field_converter_override
+        converter=class_description_keypoint_annotations__field_converter_override
     )
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
     keypoint_connections: list[datatypes.KeypointPair] = field(
-        converter=override_class_description_keypoint_connections__field_converter_override
+        converter=class_description_keypoint_connections__field_converter_override
     )
     """
     The connections between keypoints.
@@ -154,7 +155,7 @@ class ClassDescriptionArray(BaseExtensionArray[ClassDescriptionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_class_description__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/class_description.py
+        return class_description__native_to_pa_array_override(data, data_type)
 
 
 ClassDescriptionType._ARRAY_TYPE = ClassDescriptionArray

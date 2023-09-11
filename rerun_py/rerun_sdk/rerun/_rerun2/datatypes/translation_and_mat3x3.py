@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_translation_and_mat3x3__init_override  # noqa: F401
+from ._overrides import translation_and_mat3x3__init_override  # noqa: F401
 
 __all__ = [
     "TranslationAndMat3x3",
@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-def _override_translation_and_mat3x3_translation__special_field_converter_override(
+def _translation_and_mat3x3_translation__special_field_converter_override(
     x: datatypes.Vec3DLike | None,
 ) -> datatypes.Vec3D | None:
     if x is None:
@@ -36,7 +36,7 @@ def _override_translation_and_mat3x3_translation__special_field_converter_overri
         return datatypes.Vec3D(x)
 
 
-def _override_translation_and_mat3x3_matrix__special_field_converter_override(
+def _translation_and_mat3x3_matrix__special_field_converter_override(
     x: datatypes.Mat3x3Like | None,
 ) -> datatypes.Mat3x3 | None:
     if x is None:
@@ -56,7 +56,7 @@ class TranslationAndMat3x3:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        override_translation_and_mat3x3__init_override(self, *args, **kwargs)
+        translation_and_mat3x3__init_override(self, *args, **kwargs)
 
     from_parent: bool = field(converter=bool)
     """
@@ -65,14 +65,14 @@ class TranslationAndMat3x3:
     """
 
     translation: datatypes.Vec3D | None = field(
-        default=None, converter=_override_translation_and_mat3x3_translation__special_field_converter_override
+        default=None, converter=_translation_and_mat3x3_translation__special_field_converter_override
     )
     """
     3D translation, applied after the matrix.
     """
 
     matrix: datatypes.Mat3x3 | None = field(
-        default=None, converter=_override_translation_and_mat3x3_matrix__special_field_converter_override
+        default=None, converter=_translation_and_mat3x3_matrix__special_field_converter_override
     )
     """
     3x3 matrix for scale, rotation & shear.
@@ -120,7 +120,7 @@ class TranslationAndMat3x3Array(BaseExtensionArray[TranslationAndMat3x3ArrayLike
 
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_translation_and_mat3x3__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_and_mat3x3.py
+        raise NotImplementedError  # You need to implement "translation_and_mat3x3__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_and_mat3x3.py
 
 
 TranslationAndMat3x3Type._ARRAY_TYPE = TranslationAndMat3x3Array

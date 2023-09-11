@@ -9,6 +9,6 @@ if TYPE_CHECKING:
     from .. import RadiusArrayLike
 
 
-def override_radius___native_to_pa_array_override(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:
+def radius__native_to_pa_array_override(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:
     array = np.asarray(data, dtype=np.float32).flatten()
     return pa.array(array, type=data_type)

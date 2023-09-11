@@ -18,7 +18,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import override_vec2d___native_to_pa_array_override  # noqa: F401
+from ._overrides import vec2d__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
 
@@ -32,7 +32,7 @@ class Vec2D:
     xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "override_vec2d__as_array_override"
+        # You can replace `np.asarray` here with your own code by defining a function named "vec2d__as_array_override"
         return np.asarray(self.xy, dtype=dtype)
 
 
@@ -62,7 +62,7 @@ class Vec2DArray(BaseExtensionArray[Vec2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Vec2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_vec2d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/vec2d.py
+        return vec2d__native_to_pa_array_override(data, data_type)
 
 
 Vec2DType._ARRAY_TYPE = Vec2DArray
