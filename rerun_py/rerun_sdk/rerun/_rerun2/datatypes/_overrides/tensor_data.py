@@ -106,7 +106,7 @@ def tensor_data__init_override(
         raise ValueError("Can only provide one of 'shape' or 'names'")
 
     from .. import TensorBuffer, TensorDimension
-    from ..tensor_data import _tensor_data_buffer__special_field_converter_override
+    from ..tensor_data import _tensor_data__buffer__special_field_converter_override
 
     if shape is not None:
         resolved_shape = list(shape)
@@ -170,7 +170,7 @@ def tensor_data__init_override(
             return
 
     if buffer is not None:
-        self.buffer = _tensor_data_buffer__special_field_converter_override(buffer)
+        self.buffer = _tensor_data__buffer__special_field_converter_override(buffer)
     elif array is not None:
         self.buffer = TensorBuffer(array.flatten())
 

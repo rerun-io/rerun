@@ -18,7 +18,7 @@ from .._baseclasses import (
 __all__ = ["AffixFuzzer5", "AffixFuzzer5Array", "AffixFuzzer5ArrayLike", "AffixFuzzer5Like", "AffixFuzzer5Type"]
 
 
-def _affix_fuzzer5_single_optional_union__special_field_converter_override(
+def _affix_fuzzer5__single_optional_union__special_field_converter_override(
     x: datatypes.AffixFuzzer4Like | None,
 ) -> datatypes.AffixFuzzer4 | None:
     if x is None:
@@ -34,7 +34,7 @@ class AffixFuzzer5:
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
     single_optional_union: datatypes.AffixFuzzer4 | None = field(
-        default=None, converter=_affix_fuzzer5_single_optional_union__special_field_converter_override
+        default=None, converter=_affix_fuzzer5__single_optional_union__special_field_converter_override
     )
 
 

@@ -20,7 +20,7 @@ from ._overrides import tensor_data__init_override, tensor_data__native_to_pa_ar
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
 
-def _tensor_data_buffer__special_field_converter_override(x: datatypes.TensorBufferLike) -> datatypes.TensorBuffer:
+def _tensor_data__buffer__special_field_converter_override(x: datatypes.TensorBufferLike) -> datatypes.TensorBuffer:
     if isinstance(x, datatypes.TensorBuffer):
         return x
     else:
@@ -44,7 +44,7 @@ class TensorData:
         tensor_data__init_override(self, *args, **kwargs)
 
     shape: list[datatypes.TensorDimension] = field()
-    buffer: datatypes.TensorBuffer = field(converter=_tensor_data_buffer__special_field_converter_override)
+    buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)
 
 
 if TYPE_CHECKING:

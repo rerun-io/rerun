@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-def _class_description_map_elem_class_id__special_field_converter_override(
+def _class_description_map_elem__class_id__special_field_converter_override(
     x: datatypes.ClassIdLike,
 ) -> datatypes.ClassId:
     if isinstance(x, datatypes.ClassId):
@@ -45,7 +45,7 @@ class ClassDescriptionMapElem:
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
     class_id: datatypes.ClassId = field(
-        converter=_class_description_map_elem_class_id__special_field_converter_override
+        converter=_class_description_map_elem__class_id__special_field_converter_override
     )
     class_description: datatypes.ClassDescription = field()
 

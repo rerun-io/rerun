@@ -1055,7 +1055,7 @@ fn quote_field_converter_from_field(
             // single argument
             if field_obj.fields.len() == 1 || field_obj.is_union() {
                 let converter_name = format!(
-                    "_{}_{}__special_field_converter_override", // TODO(emilk): why does this have an underscore prefix?
+                    "_{}__{}__special_field_converter_override", // TODO(emilk): why does this have an underscore prefix?
                     obj.snake_case_name(),
                     field.name
                 );
