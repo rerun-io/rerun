@@ -31,11 +31,7 @@ impl re_types::Archetype for ColorArchetype {
     }
 
     fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
-        vec![
-            Self::indicator_component(),
-            re_types::components::Color::name(),
-        ]
-        .into()
+        vec![re_types::components::Color::name()].into()
     }
 }
 
