@@ -652,7 +652,7 @@ impl RecordingStream {
         )
     }
 
-    /// Logs a set of [`ComponentBatch`]s into Rerun.
+    /// Logs a set of [`ComponentBatch`]es into Rerun.
     ///
     /// If `timeless` is set to `false`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
