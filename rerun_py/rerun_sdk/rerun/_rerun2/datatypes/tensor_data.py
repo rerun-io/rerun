@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_tensor_data_init, override_tensor_data_native_to_pa_array  # noqa: F401
+from ._overrides import override_tensor_data_init, override_tensor_data_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
@@ -170,7 +170,7 @@ class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_tensor_data_native_to_pa_array(data, data_type)
+        return override_tensor_data_native_to_pa_array_override(data, data_type)
 
 
 TensorDataType._ARRAY_TYPE = TensorDataArray

@@ -75,7 +75,7 @@ class AngleArray(BaseExtensionArray[AngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_angle_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/angle.py
+        raise NotImplementedError  # You need to implement "override_angle_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/angle.py
 
 
 AngleType._ARRAY_TYPE = AngleArray

@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_transform3d_native_to_pa_array  # noqa: F401
+from ._overrides import override_transform3d_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform3DLike", "Transform3DType"]
 
@@ -193,7 +193,7 @@ class Transform3DArray(BaseExtensionArray[Transform3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_transform3d_native_to_pa_array(data, data_type)
+        return override_transform3d_native_to_pa_array_override(data, data_type)
 
 
 Transform3DType._ARRAY_TYPE = Transform3DArray

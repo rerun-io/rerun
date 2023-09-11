@@ -60,7 +60,7 @@ class Mat4x4Array(BaseExtensionArray[Mat4x4ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Mat4x4ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_mat4x4_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/mat4x4.py
+        raise NotImplementedError  # You need to implement "override_mat4x4_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/mat4x4.py
 
 
 Mat4x4Type._ARRAY_TYPE = Mat4x4Array

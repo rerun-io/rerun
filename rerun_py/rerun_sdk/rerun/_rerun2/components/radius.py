@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_radius_native_to_pa_array  # noqa: F401
+from ._overrides import override_radius_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType"]
 
@@ -58,7 +58,7 @@ class RadiusArray(BaseExtensionArray[RadiusArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_radius_native_to_pa_array(data, data_type)
+        return override_radius_native_to_pa_array_override(data, data_type)
 
 
 RadiusType._ARRAY_TYPE = RadiusArray

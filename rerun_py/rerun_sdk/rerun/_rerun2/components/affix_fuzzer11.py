@@ -58,7 +58,7 @@ class AffixFuzzer11Array(BaseExtensionArray[AffixFuzzer11ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer11ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_affix_fuzzer11_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/affix_fuzzer11.py
+        raise NotImplementedError  # You need to implement "override_affix_fuzzer11_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/affix_fuzzer11.py
 
 
 AffixFuzzer11Type._ARRAY_TYPE = AffixFuzzer11Array

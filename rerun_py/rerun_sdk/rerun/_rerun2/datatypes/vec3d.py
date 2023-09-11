@@ -18,7 +18,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import override_vec3d_native_to_pa_array  # noqa: F401
+from ._overrides import override_vec3d_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Vec3D", "Vec3DArray", "Vec3DArrayLike", "Vec3DLike", "Vec3DType"]
 
@@ -62,7 +62,7 @@ class Vec3DArray(BaseExtensionArray[Vec3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_vec3d_native_to_pa_array(data, data_type)
+        return override_vec3d_native_to_pa_array_override(data, data_type)
 
 
 Vec3DType._ARRAY_TYPE = Vec3DArray

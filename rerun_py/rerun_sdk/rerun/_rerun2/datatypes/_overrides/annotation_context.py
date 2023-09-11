@@ -119,7 +119,7 @@ def override_class_description_keypoint_connections_converter(
 ################################################################################
 
 
-def override_keypoint_pair_native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_keypoint_pair_native_to_pa_array_override(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import KeypointIdArray, KeypointPair
 
     if isinstance(data, KeypointPair):
@@ -139,7 +139,9 @@ def override_keypoint_pair_native_to_pa_array(data: KeypointPairArrayLike, data_
     )
 
 
-def override_annotation_info_native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_annotation_info_native_to_pa_array_override(
+    data: AnnotationInfoArrayLike, data_type: pa.DataType
+) -> pa.Array:
     from .. import AnnotationInfo, ColorType, Utf8Type
 
     if isinstance(data, AnnotationInfo):
@@ -164,7 +166,9 @@ def override_annotation_info_native_to_pa_array(data: AnnotationInfoArrayLike, d
     )
 
 
-def override_class_description_native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_class_description_native_to_pa_array_override(
+    data: ClassDescriptionArrayLike, data_type: pa.DataType
+) -> pa.Array:
     from .. import AnnotationInfoArray, ClassDescription, KeypointPairArray
 
     if isinstance(data, ClassDescription):
@@ -216,7 +220,7 @@ def override_class_description_native_to_pa_array(data: ClassDescriptionArrayLik
     )
 
 
-def override_class_description_map_elem_native_to_pa_array(
+def override_class_description_map_elem_native_to_pa_array_override(
     data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType
 ) -> pa.Array:
     from .. import ClassDescriptionArray, ClassDescriptionMapElem, ClassIdArray

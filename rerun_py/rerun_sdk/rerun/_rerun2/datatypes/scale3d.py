@@ -89,7 +89,7 @@ class Scale3DArray(BaseExtensionArray[Scale3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_scale3d_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/scale3d.py
+        raise NotImplementedError  # You need to implement "override_scale3d_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/scale3d.py
 
 
 Scale3DType._ARRAY_TYPE = Scale3DArray

@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_draw_order_native_to_pa_array  # noqa: F401
+from ._overrides import override_draw_order_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
 
@@ -66,7 +66,7 @@ class DrawOrderArray(BaseExtensionArray[DrawOrderArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_draw_order_native_to_pa_array(data, data_type)
+        return override_draw_order_native_to_pa_array_override(data, data_type)
 
 
 DrawOrderType._ARRAY_TYPE = DrawOrderArray

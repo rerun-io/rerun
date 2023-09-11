@@ -20,7 +20,7 @@ from ._overrides import (
     override_class_description_init,
     override_class_description_keypoint_annotations_converter,
     override_class_description_keypoint_connections_converter,
-    override_class_description_native_to_pa_array,
+    override_class_description_native_to_pa_array_override,
 )
 
 __all__ = [
@@ -155,7 +155,7 @@ class ClassDescriptionArray(BaseExtensionArray[ClassDescriptionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_class_description_native_to_pa_array(data, data_type)
+        return override_class_description_native_to_pa_array_override(data, data_type)
 
 
 ClassDescriptionType._ARRAY_TYPE = ClassDescriptionArray

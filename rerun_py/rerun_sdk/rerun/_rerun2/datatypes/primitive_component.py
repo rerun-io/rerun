@@ -60,7 +60,7 @@ class PrimitiveComponentArray(BaseExtensionArray[PrimitiveComponentArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_primitive_component_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/primitive_component.py
+        raise NotImplementedError  # You need to implement "override_primitive_component_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/primitive_component.py
 
 
 PrimitiveComponentType._ARRAY_TYPE = PrimitiveComponentArray

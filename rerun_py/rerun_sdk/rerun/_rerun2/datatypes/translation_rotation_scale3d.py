@@ -190,7 +190,7 @@ class TranslationRotationScale3DArray(BaseExtensionArray[TranslationRotationScal
 
     @staticmethod
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_translation_rotation_scale3d_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_rotation_scale3d.py
+        raise NotImplementedError  # You need to implement "override_translation_rotation_scale3d_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_rotation_scale3d.py
 
 
 TranslationRotationScale3DType._ARRAY_TYPE = TranslationRotationScale3DArray

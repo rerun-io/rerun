@@ -54,7 +54,7 @@ class Float32Array(BaseExtensionArray[Float32ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Float32ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_float32_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/float32.py
+        raise NotImplementedError  # You need to implement "override_float32_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/float32.py
 
 
 Float32Type._ARRAY_TYPE = Float32Array

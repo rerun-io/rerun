@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_keypoint_id_native_to_pa_array  # noqa: F401
+from ._overrides import override_keypoint_id_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
 
@@ -73,7 +73,7 @@ class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_keypoint_id_native_to_pa_array(data, data_type)
+        return override_keypoint_id_native_to_pa_array_override(data, data_type)
 
 
 KeypointIdType._ARRAY_TYPE = KeypointIdArray

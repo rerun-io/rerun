@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_depth_meter_native_to_pa_array  # noqa: F401
+from ._overrides import override_depth_meter_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["DepthMeter", "DepthMeterArray", "DepthMeterArrayLike", "DepthMeterLike", "DepthMeterType"]
 
@@ -58,7 +58,7 @@ class DepthMeterArray(BaseExtensionArray[DepthMeterArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DepthMeterArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_depth_meter_native_to_pa_array(data, data_type)
+        return override_depth_meter_native_to_pa_array_override(data, data_type)
 
 
 DepthMeterType._ARRAY_TYPE = DepthMeterArray

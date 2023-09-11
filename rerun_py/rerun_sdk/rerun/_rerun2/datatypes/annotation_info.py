@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_annotation_info_native_to_pa_array  # noqa: F401
+from ._overrides import override_annotation_info_native_to_pa_array_override  # noqa: F401
 
 __all__ = [
     "AnnotationInfo",
@@ -105,7 +105,7 @@ class AnnotationInfoArray(BaseExtensionArray[AnnotationInfoArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_annotation_info_native_to_pa_array(data, data_type)
+        return override_annotation_info_native_to_pa_array_override(data, data_type)
 
 
 AnnotationInfoType._ARRAY_TYPE = AnnotationInfoArray

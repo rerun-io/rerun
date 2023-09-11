@@ -17,7 +17,7 @@ from .._baseclasses import (
 )
 from ._overrides import (
     override_annotation_context_class_map_converter,
-    override_annotation_context_native_to_pa_array,
+    override_annotation_context_native_to_pa_array_override,
 )
 
 __all__ = [
@@ -148,7 +148,7 @@ class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_annotation_context_native_to_pa_array(data, data_type)
+        return override_annotation_context_native_to_pa_array_override(data, data_type)
 
 
 AnnotationContextType._ARRAY_TYPE = AnnotationContextArray

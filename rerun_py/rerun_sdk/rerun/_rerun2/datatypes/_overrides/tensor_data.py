@@ -187,7 +187,7 @@ def override_tensor_data_init(
 ################################################################################
 
 
-def override_tensor_data_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_tensor_data_native_to_pa_array_override(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import TensorData
 
     # If it's a sequence of a single TensorData, grab the first one

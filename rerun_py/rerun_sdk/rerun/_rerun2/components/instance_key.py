@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_instance_key_native_to_pa_array  # noqa: F401
+from ._overrides import override_instance_key_native_to_pa_array_override  # noqa: F401
 
 __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
 
@@ -58,7 +58,7 @@ class InstanceKeyArray(BaseExtensionArray[InstanceKeyArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_instance_key_native_to_pa_array(data, data_type)
+        return override_instance_key_native_to_pa_array_override(data, data_type)
 
 
 InstanceKeyType._ARRAY_TYPE = InstanceKeyArray

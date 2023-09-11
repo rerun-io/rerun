@@ -46,7 +46,7 @@ def override_annotation_context_class_map_converter(
 ################################################################################
 
 
-def override_annotation_context_native_to_pa_array(
+def override_annotation_context_native_to_pa_array_override(
     data: AnnotationContextArrayLike, data_type: pa.DataType
 ) -> pa.Array:
     from ...datatypes import ClassDescription, ClassDescriptionMapElemArray

@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import override_color_native_to_pa_array, override_color_rgba_converter  # noqa: F401
+from ._overrides import override_color_native_to_pa_array_override, override_color_rgba_converter  # noqa: F401
 
 __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
@@ -70,7 +70,7 @@ class ColorArray(BaseExtensionArray[ColorArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
-        return override_color_native_to_pa_array(data, data_type)
+        return override_color_native_to_pa_array_override(data, data_type)
 
 
 ColorType._ARRAY_TYPE = ColorArray

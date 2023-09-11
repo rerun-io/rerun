@@ -64,7 +64,7 @@ class FlattenedScalarArray(BaseExtensionArray[FlattenedScalarArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "override_flattened_scalar_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/flattened_scalar.py
+        raise NotImplementedError  # You need to implement "override_flattened_scalar_native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/flattened_scalar.py
 
 
 FlattenedScalarType._ARRAY_TYPE = FlattenedScalarArray
