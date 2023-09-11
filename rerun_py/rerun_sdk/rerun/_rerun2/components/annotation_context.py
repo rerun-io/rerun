@@ -9,12 +9,16 @@ from typing import Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
+# noqa: F401
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import annotationcontext_class_map_converter, annotationcontext_native_to_pa_array  # noqa: F401
+from ._overrides import (
+    override_annotation_context_class_map_converter,
+    override_annotation_context_native_to_pa_array,
+)
 
 __all__ = [
     "AnnotationContext",
@@ -39,7 +43,9 @@ class AnnotationContext:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    class_map: list[datatypes.ClassDescriptionMapElem] = field(converter=annotationcontext_class_map_converter)
+    class_map: list[datatypes.ClassDescriptionMapElem] = field(
+        converter=override_annotation_context_class_map_converter
+    )
 
 
 AnnotationContextLike = AnnotationContext
@@ -142,7 +148,7 @@ class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-        return annotationcontext_native_to_pa_array(data, data_type)
+        return override_annotation_context_native_to_pa_array(data, data_type)
 
 
 AnnotationContextType._ARRAY_TYPE = AnnotationContextArray

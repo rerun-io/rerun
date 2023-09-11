@@ -53,7 +53,7 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
 # inconsistent state.
 
 
-def tensordata_init(
+def override_tensor_data_init(
     self: TensorData,
     *,
     shape: Sequence[TensorDimensionLike] | None = None,
@@ -106,7 +106,7 @@ def tensordata_init(
         raise ValueError("Can only provide one of 'shape' or 'names'")
 
     from .. import TensorBuffer, TensorDimension
-    from ..tensor_data import _tensordata_buffer_converter
+    from ..tensor_data import _override_tensor_data_buffer_converter
 
     if shape is not None:
         resolved_shape = list(shape)
@@ -170,7 +170,7 @@ def tensordata_init(
             return
 
     if buffer is not None:
-        self.buffer = _tensordata_buffer_converter(buffer)
+        self.buffer = _override_tensor_data_buffer_converter(buffer)
     elif array is not None:
         self.buffer = TensorBuffer(array.flatten())
 
@@ -187,7 +187,7 @@ def tensordata_init(
 ################################################################################
 
 
-def tensordata_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_tensor_data_native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import TensorData
 
     # If it's a sequence of a single TensorData, grab the first one

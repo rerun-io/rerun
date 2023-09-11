@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from .. import DisconnectedSpaceArrayLike
 
 
-def disconnectedspace_native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_disconnected_space_native_to_pa_array(
+    data: DisconnectedSpaceArrayLike, data_type: pa.DataType
+) -> pa.Array:
     array = np.asarray(data, dtype=np.bool_).flatten()
     return pa.array(array, type=data_type)

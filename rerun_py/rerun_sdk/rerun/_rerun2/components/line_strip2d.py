@@ -16,7 +16,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import linestrip2d_native_to_pa_array  # noqa: F401
+from ._overrides import override_line_strip2d_native_to_pa_array  # noqa: F401
 
 __all__ = ["LineStrip2D", "LineStrip2DArray", "LineStrip2DArrayLike", "LineStrip2DLike", "LineStrip2DType"]
 
@@ -76,7 +76,7 @@ class LineStrip2DArray(BaseExtensionArray[LineStrip2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return linestrip2d_native_to_pa_array(data, data_type)
+        return override_line_strip2d_native_to_pa_array(data, data_type)
 
 
 LineStrip2DType._ARRAY_TYPE = LineStrip2DArray

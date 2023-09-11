@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import radius_native_to_pa_array  # noqa: F401
+from ._overrides import override_radius_native_to_pa_array  # noqa: F401
 
 __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType"]
 
@@ -29,7 +29,7 @@ class Radius:
     value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "radius_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_radius_as_array"
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
@@ -58,7 +58,7 @@ class RadiusArray(BaseExtensionArray[RadiusArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:
-        return radius_native_to_pa_array(data, data_type)
+        return override_radius_native_to_pa_array(data, data_type)
 
 
 RadiusType._ARRAY_TYPE = RadiusArray

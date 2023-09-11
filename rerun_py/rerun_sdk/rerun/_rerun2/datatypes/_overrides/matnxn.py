@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .. import Mat3x3Like, Mat4x4Like
 
 
-def mat3x3_coeffs_converter(data: Mat3x3Like) -> npt.NDArray[np.float32]:
+def override_mat3x3_coeffs_converter(data: Mat3x3Like) -> npt.NDArray[np.float32]:
     from .. import Mat3x3
 
     if isinstance(data, Mat3x3):
@@ -19,7 +19,7 @@ def mat3x3_coeffs_converter(data: Mat3x3Like) -> npt.NDArray[np.float32]:
         return arr.flatten("F")
 
 
-def mat4x4_coeffs_converter(data: Mat4x4Like) -> npt.NDArray[np.float32]:
+def override_mat4x4_coeffs_converter(data: Mat4x4Like) -> npt.NDArray[np.float32]:
     from .. import Mat4x4
 
     if isinstance(data, Mat4x4):

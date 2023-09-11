@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from .annotation_context import annotationcontext_class_map_converter, annotationcontext_native_to_pa_array
-from .depth_meter import depthmeter_native_to_pa_array
-from .disconnected_space import disconnectedspace_native_to_pa_array
-from .draw_order import draworder_native_to_pa_array
-from .instance_key import instancekey_native_to_pa_array
-from .line_strip2d import linestrip2d_native_to_pa_array
-from .line_strip3d import linestrip3d_native_to_pa_array
-from .radius import radius_native_to_pa_array
+from .annotation_context import (
+    override_annotation_context_class_map_converter,
+    override_annotation_context_native_to_pa_array,
+)
+from .depth_meter import override_depth_meter_native_to_pa_array
+from .disconnected_space import override_disconnected_space_native_to_pa_array
+from .draw_order import override_draw_order_native_to_pa_array
+from .instance_key import override_instance_key_native_to_pa_array
+from .line_strip2d import override_line_strip2d_native_to_pa_array
+from .line_strip3d import override_line_strip3d_native_to_pa_array
+from .radius import override_radius_native_to_pa_array

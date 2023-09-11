@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import disconnectedspace_native_to_pa_array  # noqa: F401
+from ._overrides import override_disconnected_space_native_to_pa_array  # noqa: F401
 
 __all__ = [
     "DisconnectedSpace",
@@ -63,7 +63,7 @@ class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
-        return disconnectedspace_native_to_pa_array(data, data_type)
+        return override_disconnected_space_native_to_pa_array(data, data_type)
 
 
 DisconnectedSpaceType._ARRAY_TYPE = DisconnectedSpaceArray

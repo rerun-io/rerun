@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import mat4x4_coeffs_converter  # noqa: F401
+from ._overrides import override_mat4x4_coeffs_converter  # noqa: F401
 
 __all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type"]
 
@@ -26,10 +26,10 @@ class Mat4x4:
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    coeffs: npt.NDArray[np.float32] = field(converter=mat4x4_coeffs_converter)
+    coeffs: npt.NDArray[np.float32] = field(converter=override_mat4x4_coeffs_converter)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "mat4x4_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_mat4x4_as_array"
         return np.asarray(self.coeffs, dtype=dtype)
 
 
@@ -60,7 +60,7 @@ class Mat4x4Array(BaseExtensionArray[Mat4x4ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Mat4x4ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "mat4x4_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/mat4x4.py
+        raise NotImplementedError  # You need to implement "override_mat4x4_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/mat4x4.py
 
 
 Mat4x4Type._ARRAY_TYPE = Mat4x4Array

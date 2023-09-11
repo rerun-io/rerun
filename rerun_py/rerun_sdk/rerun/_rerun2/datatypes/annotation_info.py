@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import annotationinfo_native_to_pa_array  # noqa: F401
+from ._overrides import override_annotation_info_native_to_pa_array  # noqa: F401
 
 __all__ = [
     "AnnotationInfo",
@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-def _annotationinfo_label_converter(x: datatypes.Utf8Like | None) -> datatypes.Utf8 | None:
+def _override_annotation_info_label_converter(x: datatypes.Utf8Like | None) -> datatypes.Utf8 | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Utf8):
@@ -34,7 +34,7 @@ def _annotationinfo_label_converter(x: datatypes.Utf8Like | None) -> datatypes.U
         return datatypes.Utf8(x)
 
 
-def _annotationinfo_color_converter(x: datatypes.ColorLike | None) -> datatypes.Color | None:
+def _override_annotation_info_color_converter(x: datatypes.ColorLike | None) -> datatypes.Color | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Color):
@@ -59,12 +59,12 @@ class AnnotationInfo:
     `ClassId` or `KeypointId` to which this annotation info belongs.
     """
 
-    label: datatypes.Utf8 | None = field(default=None, converter=_annotationinfo_label_converter)
+    label: datatypes.Utf8 | None = field(default=None, converter=_override_annotation_info_label_converter)
     """
     The label that will be shown in the UI.
     """
 
-    color: datatypes.Color | None = field(default=None, converter=_annotationinfo_color_converter)
+    color: datatypes.Color | None = field(default=None, converter=_override_annotation_info_color_converter)
     """
     The color that will be applied to the annotated entity.
     """
@@ -105,7 +105,7 @@ class AnnotationInfoArray(BaseExtensionArray[AnnotationInfoArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-        return annotationinfo_native_to_pa_array(data, data_type)
+        return override_annotation_info_native_to_pa_array(data, data_type)
 
 
 AnnotationInfoType._ARRAY_TYPE = AnnotationInfoArray

@@ -10,7 +10,7 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ._overrides import image_data_converter  # noqa: F401
+from ._overrides import override_image_data_converter  # noqa: F401
 
 __all__ = ["Image"]
 
@@ -49,7 +49,7 @@ class Image(Archetype):
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    data: components.TensorDataArray = field(metadata={"component": "primary"}, converter=image_data_converter)
+    data: components.TensorDataArray = field(metadata={"component": "primary"}, converter=override_image_data_converter)
     """
     The image data. Should always be a rank-2 or rank-3 tensor.
     """

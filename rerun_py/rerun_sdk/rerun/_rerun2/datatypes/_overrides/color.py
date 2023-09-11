@@ -39,7 +39,7 @@ def _numpy_array_to_u32(data: npt.NDArray[np.uint8 | np.float32 | np.float64]) -
     return array
 
 
-def color_rgba_converter(data: ColorLike) -> int:
+def override_color_rgba_converter(data: ColorLike) -> int:
     from .. import Color
 
     if isinstance(data, Color):
@@ -55,7 +55,7 @@ def color_rgba_converter(data: ColorLike) -> int:
         return int(data)
 
 
-def color_native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_color_native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import Color
 
     if isinstance(data, (Color, int)):

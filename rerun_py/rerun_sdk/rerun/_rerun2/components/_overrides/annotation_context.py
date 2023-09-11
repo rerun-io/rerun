@@ -35,7 +35,7 @@ def _class_description_map_elem_converter(
 ################################################################################
 
 
-def annotationcontext_class_map_converter(
+def override_annotation_context_class_map_converter(
     data: Sequence[ClassDescriptionMapElemLike],
 ) -> list[ClassDescriptionMapElem]:
     return [_class_description_map_elem_converter(item) for item in data]
@@ -46,7 +46,9 @@ def annotationcontext_class_map_converter(
 ################################################################################
 
 
-def annotationcontext_native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_annotation_context_native_to_pa_array(
+    data: AnnotationContextArrayLike, data_type: pa.DataType
+) -> pa.Array:
     from ...datatypes import ClassDescription, ClassDescriptionMapElemArray
     from .. import AnnotationContext
 

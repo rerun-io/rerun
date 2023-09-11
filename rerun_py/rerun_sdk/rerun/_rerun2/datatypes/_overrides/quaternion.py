@@ -8,5 +8,5 @@ if TYPE_CHECKING:
     from .. import Quaternion
 
 
-def quaternion_init(self: Quaternion, *, xyzw: npt.ArrayLike) -> None:
+def override_quaternion_init(self: Quaternion, *, xyzw: npt.ArrayLike) -> None:
     self.__attrs_init__(xyzw=xyzw)

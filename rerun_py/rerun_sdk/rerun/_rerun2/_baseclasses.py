@@ -110,7 +110,7 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
         located in the `_overrides` subpackage and *explicitly* imported by `_overrides/__init__.py` (to be noticed
         by the code generator).
 
-        `color_native_to_pa_array()` in `_overrides/color.py` is a good example of how to implement this method, in
+        `override_color_native_to_pa_array()` in `_overrides/color.py` is a good example of how to implement this method, in
         conjunction with the native type's converter (see `color_converter()`, used to construct the native `Color`
         object).
 

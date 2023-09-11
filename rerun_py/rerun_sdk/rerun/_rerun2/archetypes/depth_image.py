@@ -10,7 +10,7 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ._overrides import depthimage_data_converter  # noqa: F401
+from ._overrides import override_depth_image_data_converter  # noqa: F401
 
 __all__ = ["DepthImage"]
 
@@ -45,7 +45,9 @@ class DepthImage(Archetype):
 
     # You can define your own __init__ function by defining a function called {init_override_name:?}
 
-    data: components.TensorDataArray = field(metadata={"component": "primary"}, converter=depthimage_data_converter)
+    data: components.TensorDataArray = field(
+        metadata={"component": "primary"}, converter=override_depth_image_data_converter
+    )
     """
     The depth-image data. Should always be a rank-2 tensor.
     """

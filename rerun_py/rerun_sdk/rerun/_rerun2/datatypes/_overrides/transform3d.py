@@ -187,7 +187,7 @@ def _build_struct_array_from_translation_rotation_scale(
     )
 
 
-def transform3d_native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_transform3d_native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
 
     if isinstance(data, Transform3D):

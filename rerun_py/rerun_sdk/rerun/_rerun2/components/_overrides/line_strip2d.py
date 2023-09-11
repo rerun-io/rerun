@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from .. import LineStrip2DArrayLike
 
 
-def linestrip2d_native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
+def override_line_strip2d_native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
     from ...components import LineStrip2D
     from ...datatypes import Vec2DArray
 

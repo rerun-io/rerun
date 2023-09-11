@@ -18,7 +18,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import vec4d_native_to_pa_array  # noqa: F401
+from ._overrides import override_vec4d_native_to_pa_array  # noqa: F401
 
 __all__ = ["Vec4D", "Vec4DArray", "Vec4DArrayLike", "Vec4DLike", "Vec4DType"]
 
@@ -32,7 +32,7 @@ class Vec4D:
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "vec4d_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_vec4d_as_array"
         return np.asarray(self.xyzw, dtype=dtype)
 
 
@@ -62,7 +62,7 @@ class Vec4DArray(BaseExtensionArray[Vec4DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Vec4DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return vec4d_native_to_pa_array(data, data_type)
+        return override_vec4d_native_to_pa_array(data, data_type)
 
 
 Vec4DType._ARRAY_TYPE = Vec4DArray

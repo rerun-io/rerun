@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import instancekey_native_to_pa_array  # noqa: F401
+from ._overrides import override_instance_key_native_to_pa_array  # noqa: F401
 
 __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
 
@@ -29,7 +29,7 @@ class InstanceKey:
     value: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "instancekey_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_instance_key_as_array"
         return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:
@@ -58,7 +58,7 @@ class InstanceKeyArray(BaseExtensionArray[InstanceKeyArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
-        return instancekey_native_to_pa_array(data, data_type)
+        return override_instance_key_native_to_pa_array(data, data_type)
 
 
 InstanceKeyType._ARRAY_TYPE = InstanceKeyArray

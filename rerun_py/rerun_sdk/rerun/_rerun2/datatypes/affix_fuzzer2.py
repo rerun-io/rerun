@@ -29,7 +29,7 @@ class AffixFuzzer2:
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "affixfuzzer2_as_array"
+        # You can replace `np.asarray` here with your own code by defining a function named "override_affix_fuzzer2_as_array"
         return np.asarray(self.single_float_optional, dtype=dtype)
 
 
@@ -54,7 +54,7 @@ class AffixFuzzer2Array(BaseExtensionArray[AffixFuzzer2ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer2ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "affixfuzzer2_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/affix_fuzzer2.py
+        raise NotImplementedError  # You need to implement "override_affix_fuzzer2_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/affix_fuzzer2.py
 
 
 AffixFuzzer2Type._ARRAY_TYPE = AffixFuzzer2Array

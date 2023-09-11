@@ -219,10 +219,10 @@ impl PythonCodeGenerator {
             );
 
             // import all overrides
-            let lowercase_name = obj.name.as_str().to_lowercase(); // TODO(emilk): snake-case name
+            let obj_override_prefix = format!("override_{}", obj.snake_case_name());
             let override_names: Vec<_> = overrides
                 .iter()
-                .filter(|o| o.starts_with(lowercase_name.as_str()))
+                .filter(|o| o.starts_with(&obj_override_prefix))
                 .map(|o| o.as_str())
                 .collect::<Vec<_>>();
 
@@ -378,9 +378,9 @@ fn code_for_struct(
                 quote_field_converter_from_field(obj, objects, field);
 
             let converter_override_name = format!(
-                "{}_{}_converter",
-                name.to_lowercase(),
-                field.name.to_lowercase()
+                "override_{}_{}_converter",
+                obj.snake_case_name(),
+                field.name
             );
             let converter = if overrides.contains(&converter_override_name) {
                 format!("converter={converter_override_name}")
@@ -399,7 +399,7 @@ fn code_for_struct(
         }
 
         // init override handling
-        let init_override_name = format!("{}_init", name.to_lowercase());
+        let init_override_name = format!("override_{}_init", obj.snake_case_name());
         let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
             ("init=False".to_owned(), init_override_name)
         } else {
@@ -572,7 +572,7 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let init_override_name = format!("{}_init", name.to_lowercase());
+    let init_override_name = format!("override_{}_init", obj.snake_case_name());
     let (define_args, init_func) = if overrides.contains(&init_override_name) {
         ("(init=False)".to_owned(), init_override_name)
     } else {
@@ -623,7 +623,7 @@ fn code_for_union(
     };
 
     // components and datatypes have converters only if manually provided
-    let converter_override_name = format!("{}_inner_converter", name.to_lowercase());
+    let converter_override_name = format!("override_{}_inner_converter", obj.snake_case_name());
     let converter = if overrides.contains(&converter_override_name) {
         format!("converter={converter_override_name}")
     } else if !default_converter.is_empty() {
@@ -742,7 +742,7 @@ fn quote_array_method_from_obj(
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
-    let override_name = format!("{}_as_array", obj.name.to_lowercase());
+    let override_name = format!("override_{}_as_array", obj.snake_case_name());
     if overrides.contains(&override_name) {
         return unindent::unindent(&format!(
             "
@@ -1054,8 +1054,11 @@ fn quote_field_converter_from_field(
             // we generate a default converter only if the field's type can be constructed with a
             // single argument
             if field_obj.fields.len() == 1 || field_obj.is_union() {
-                let converter_name =
-                    format!("_{}_{}_converter", obj.name.to_lowercase(), field.name);
+                let converter_name = format!(
+                    "_override_{}_{}_converter",
+                    obj.snake_case_name(),
+                    field.name
+                );
 
                 // generate the converter function
                 if field.is_nullable {
@@ -1214,10 +1217,9 @@ fn quote_arrow_support_from_obj(
         .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
         .unwrap_or_else(|| fqname.clone());
 
-    let name_lower = name.to_lowercase();
-    let override_name = format!("{name_lower}_native_to_pa_array");
+    let override_name = format!("override_{}_native_to_pa_array", obj.snake_case_name());
     let override_ = if overrides.contains(&override_name) {
-        format!("return {name_lower}_native_to_pa_array(data, data_type)")
+        format!("return {override_name}(data, data_type)")
     } else {
         let override_file_path = format!(
             "rerun_py/rerun_sdk/rerun/_rerun2/{}/_overrides/{}.py",
