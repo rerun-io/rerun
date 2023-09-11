@@ -945,7 +945,10 @@ impl IndexedBucketInner {
         let swaps = {
             re_tracing::profile_scope!("swaps");
             let mut swaps = (0..col_time.len()).collect::<Vec<_>>();
-            swaps.sort_by_key(|&i| &col_time[i]);
+            // NOTE: Within a single timestamp, we must use the Row ID as tie-breaker!
+            // The Row ID is how we define ordering within a client's thread, and our public APIs
+            // guarantee that logging order is respected within a single thread!
+            swaps.sort_by_key(|&i| (&col_time[i], &col_row_id[i]));
             swaps
                 .iter()
                 .copied()

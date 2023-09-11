@@ -453,6 +453,11 @@ impl IndexedBucket {
                 *is_sorted = false;
             }
         }
+        if let Some(row_id) = col_row_id.last() {
+            if row.row_id() < *row_id {
+                *is_sorted = false;
+            }
+        }
 
         col_time.push(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
