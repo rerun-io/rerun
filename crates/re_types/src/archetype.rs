@@ -1,5 +1,5 @@
 use crate::{
-    AnyComponentBatch, ComponentBatch, ComponentName, DeserializationResult, ResultExt as _,
+    MaybeOwnedComponentBatch, ComponentBatch, ComponentName, DeserializationResult, ResultExt as _,
     SerializationResult, _Backtrace,
 };
 
@@ -127,7 +127,7 @@ pub trait Archetype {
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
     #[inline]
-    fn as_component_batches(&self) -> Vec<AnyComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         vec![]
     }
 

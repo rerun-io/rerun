@@ -140,7 +140,7 @@ impl crate::Archetype for Points3D {
         self.points.len()
     }
 
-    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
             Some(Self::Indicator::batch(self.num_instances() as _).into()),
             Some((&self.points as &dyn crate::ComponentBatch).into()),

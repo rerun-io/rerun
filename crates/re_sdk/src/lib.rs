@@ -94,7 +94,7 @@ pub mod coordinates {
 }
 
 pub use re_types::{
-    archetypes, datatypes, AnyComponentBatch, Archetype, ArchetypeName, Component, ComponentBatch,
+    archetypes, datatypes, MaybeOwnedComponentBatch, Archetype, ArchetypeName, Component, ComponentBatch,
     ComponentName, Datatype, DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable,
 };
 

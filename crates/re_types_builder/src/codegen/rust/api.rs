@@ -1031,7 +1031,7 @@ fn quote_trait_impls_from_obj(
                         #num_instances
                     }
 
-                    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
+                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
                         [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }
 

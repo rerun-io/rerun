@@ -76,7 +76,7 @@ impl crate::Archetype for TextDocument {
         1
     }
 
-    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
             Some(Self::Indicator::batch(self.num_instances() as _).into()),
             Some((&self.body as &dyn crate::ComponentBatch).into()),

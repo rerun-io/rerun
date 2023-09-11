@@ -124,7 +124,7 @@ mod size_bytes;
 
 pub use self::archetype::{Archetype, ArchetypeName, GenericIndicatorComponent};
 pub use self::loggable::{Component, ComponentName, Datatype, DatatypeName, Loggable};
-pub use self::loggable_batch::{AnyComponentBatch, ComponentBatch, DatatypeBatch, LoggableBatch};
+pub use self::loggable_batch::{MaybeOwnedComponentBatch, ComponentBatch, DatatypeBatch, LoggableBatch};
 pub use self::result::{
     DeserializationError, DeserializationResult, ResultExt, SerializationError,
     SerializationResult, _Backtrace,

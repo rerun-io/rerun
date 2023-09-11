@@ -65,30 +65,30 @@ pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {}
 ///
 /// This doesn't use [`std::borrow::Cow`] on purpose: `Cow` requires `Clone`, which would break
 /// object-safety, which would prevent us from erasing [`ComponentBatch`]s in the first place.
-pub enum AnyComponentBatch<'a> {
+pub enum MaybeOwnedComponentBatch<'a> {
     Owned(Box<dyn ComponentBatch>),
     Ref(&'a dyn ComponentBatch),
 }
 
-impl<'a> From<&'a dyn ComponentBatch> for AnyComponentBatch<'a> {
+impl<'a> From<&'a dyn ComponentBatch> for MaybeOwnedComponentBatch<'a> {
     #[inline]
     fn from(comp_batch: &'a dyn ComponentBatch) -> Self {
         Self::Ref(comp_batch)
     }
 }
 
-impl From<Box<dyn ComponentBatch>> for AnyComponentBatch<'_> {
+impl From<Box<dyn ComponentBatch>> for MaybeOwnedComponentBatch<'_> {
     #[inline]
     fn from(comp_batch: Box<dyn ComponentBatch>) -> Self {
         Self::Owned(comp_batch)
     }
 }
 
-impl<'a> AsRef<dyn ComponentBatch + 'a> for AnyComponentBatch<'a> {
+impl<'a> AsRef<dyn ComponentBatch + 'a> for MaybeOwnedComponentBatch<'a> {
     fn as_ref(&self) -> &(dyn ComponentBatch + 'a) {
         match self {
-            AnyComponentBatch::Owned(this) => &**this,
-            AnyComponentBatch::Ref(this) => *this,
+            MaybeOwnedComponentBatch::Owned(this) => &**this,
+            MaybeOwnedComponentBatch::Ref(this) => *this,
         }
     }
 }
