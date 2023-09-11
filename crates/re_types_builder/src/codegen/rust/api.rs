@@ -1,7 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
+use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use rayon::prelude::*;
@@ -53,203 +54,179 @@ impl CodeGenerator for RustCodeGenerator {
     ) -> BTreeSet<Utf8PathBuf> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
-        let datatypes_path = self.crate_path.join("src/datatypes");
-        let datatypes_testing_path = self.crate_path.join("src/testing/datatypes");
-        files_to_write.extend(create_files(
-            datatypes_path,
-            datatypes_testing_path,
-            arrow_registry,
-            objects,
-            &objects.ordered_objects(ObjectKind::Datatype.into()),
-        ));
-
-        let components_path = self.crate_path.join("src/components");
-        let components_testing_path = self.crate_path.join("src/testing/components");
-        files_to_write.extend(create_files(
-            components_path,
-            components_testing_path,
-            arrow_registry,
-            objects,
-            &objects.ordered_objects(ObjectKind::Component.into()),
-        ));
-
-        let archetypes_path = self.crate_path.join("src/archetypes");
-        let archetypes_testing_path = self.crate_path.join("src/testing/archetypes");
-        files_to_write.extend(create_files(
-            archetypes_path,
-            archetypes_testing_path,
-            arrow_registry,
-            objects,
-            &objects.ordered_objects(ObjectKind::Archetype.into()),
-        ));
+        for object_kind in ObjectKind::ALL {
+            let folder_name = object_kind.plural_snake_case();
+            self.generate_folder(
+                objects,
+                arrow_registry,
+                object_kind,
+                folder_name,
+                &mut files_to_write,
+            );
+        }
 
         write_files(&files_to_write);
-
         let filepaths = files_to_write.keys().cloned().collect();
 
         for kind in ObjectKind::ALL {
             let folder_path = self.crate_path.join("src").join(kind.plural_snake_case());
             crate::codegen::common::remove_old_files_from_folder(folder_path, &filepaths);
+
+            let test_folder_path = self
+                .crate_path
+                .join("src/testing")
+                .join(kind.plural_snake_case());
+            crate::codegen::common::remove_old_files_from_folder(test_folder_path, &filepaths);
         }
 
         filepaths
     }
 }
 
-// --- File management ---
+impl RustCodeGenerator {
+    fn generate_folder(
+        &self,
+        objects: &Objects,
+        arrow_registry: &ArrowRegistry,
+        object_kind: ObjectKind,
+        folder_name: &str,
+        files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+    ) {
+        let kind_path = self.crate_path.join("src").join(folder_name);
+        let kind_testing_path = self.crate_path.join("src/testing").join(folder_name);
 
-fn create_files(
-    out_path: impl AsRef<Utf8Path>,
-    out_testing_path: impl AsRef<Utf8Path>,
-    arrow_registry: &ArrowRegistry,
-    objects: &Objects,
-    objs: &[&Object],
-) -> BTreeMap<Utf8PathBuf, String> {
-    let out_path = out_path.as_ref();
-    let out_testing_path = out_testing_path.as_ref();
+        // Generate folder contents:
+        let ordered_objects = objects.ordered_objects(object_kind.into());
+        for &obj in &ordered_objects {
+            let filename_stem = obj.snake_case_name();
+            let filename = format!("{filename_stem}.rs");
 
-    let mut files_to_write = BTreeMap::new();
+            let filepath = if obj.is_testing() {
+                kind_testing_path.join(filename)
+            } else {
+                kind_path.join(filename)
+            };
+            let code = generate_object_file(objects, arrow_registry, obj);
 
-    let mut files = HashMap::<Utf8PathBuf, Vec<QuotedObject>>::new();
-    for obj in objs {
-        let quoted_obj = if obj.is_struct() {
-            QuotedObject::from_struct(arrow_registry, objects, obj)
-        } else {
-            QuotedObject::from_union(arrow_registry, objects, obj)
-        };
+            files_to_write.insert(filepath, code);
+        }
 
-        let filepath = if quoted_obj.is_testing {
-            out_testing_path.join(quoted_obj.filepath.file_name().unwrap())
-        } else {
-            out_path.join(quoted_obj.filepath.file_name().unwrap())
-        };
-        files.entry(filepath.clone()).or_default().push(quoted_obj);
+        // src/{datatypes|components|archetypes}/mod.rs
+        generate_mod_file(
+            &kind_path,
+            &ordered_objects
+                .iter()
+                .filter(|obj| !obj.is_testing())
+                .copied()
+                .collect_vec(),
+            files_to_write,
+        );
+        // src/testing/{datatypes|components|archetypes}/mod.rs
+        generate_mod_file(
+            &kind_testing_path,
+            &ordered_objects
+                .iter()
+                .filter(|obj| obj.is_testing())
+                .copied()
+                .collect_vec(),
+            files_to_write,
+        );
+    }
+}
+
+fn generate_object_file(objects: &Objects, arrow_registry: &ArrowRegistry, obj: &Object) -> String {
+    let mut code = String::new();
+    code.push_str(&format!("// {}\n", autogen_warning!()));
+    if let Some(source_path) = obj.relative_filepath() {
+        code.push_str(&format!("// Based on {source_path:?}.\n\n"));
     }
 
-    // (module_name, [object_name])
-    let mut mods = HashMap::<String, Vec<String>>::new();
-    let mut mods_testing = HashMap::<String, Vec<String>>::new();
+    code.push_str("#![allow(trivial_numeric_casts)]\n");
+    code.push_str("#![allow(unused_parens)]\n");
+    code.push_str("#![allow(clippy::clone_on_copy)]\n");
+    code.push_str("#![allow(clippy::iter_on_single_items)]\n");
+    code.push_str("#![allow(clippy::map_flatten)]\n");
+    code.push_str("#![allow(clippy::match_wildcard_for_single_variants)]\n");
+    code.push_str("#![allow(clippy::needless_question_mark)]\n");
+    code.push_str("#![allow(clippy::redundant_closure)]\n");
+    code.push_str("#![allow(clippy::too_many_arguments)]\n");
+    code.push_str("#![allow(clippy::too_many_lines)]\n");
+    code.push_str("#![allow(clippy::unnecessary_cast)]\n");
 
-    // src/testing?/{datatypes|components|archetypes}/{xxx}.rs
-    for (filepath, objs) in files {
-        // NOTE: Isolating the file stem only works because we're handling datatypes, components
-        // and archetypes separately (and even then it's a bit shady, eh).
+    let mut acc = TokenStream::new();
 
-        let names = objs
-            .iter()
-            .filter(|obj| !obj.is_testing)
-            .map(|obj| obj.name.clone())
-            .collect::<Vec<_>>();
-        if !names.is_empty() {
-            mods.entry(filepath.file_stem().unwrap().to_owned())
-                .or_default()
-                .extend(names);
-        }
+    // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
+    // inject some of our own when writing to file… while making sure that don't inject
+    // random spacing into doc comments that look like code!
 
-        let names_testing = objs
-            .iter()
-            .filter(|obj| obj.is_testing)
-            .map(|obj| obj.name.clone())
-            .collect::<Vec<_>>();
-        if !names_testing.is_empty() {
-            mods_testing
-                .entry(filepath.file_stem().unwrap().to_owned())
-                .or_default()
-                .extend(names_testing);
-        }
-
-        let mut code = String::new();
-        #[rustfmt::skip]
-        {
-            code.push_text(format!("// {}", autogen_warning!()), 2, 0);
-            code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
-            code.push_text("#![allow(unused_parens)]", 2, 0);
-            code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
-            code.push_text("#![allow(clippy::iter_on_single_items)]", 2, 0);
-            code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
-            code.push_text("#![allow(clippy::match_wildcard_for_single_variants)]", 2, 0);
-            code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
-            code.push_text("#![allow(clippy::redundant_closure)]", 2, 0);
-            code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
-            code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
-            code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
-        };
-
-        for obj in objs {
-            let mut acc = TokenStream::new();
-
-            // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
-            // inject some of our own when writing to file… while making sure that don't inject
-            // random spacing into doc comments that look like code!
-
-            let mut tokens = obj.tokens.into_iter();
-            while let Some(token) = tokens.next() {
-                match &token {
-                    // If this is a doc-comment block, be smart about it.
-                    proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                        code.push_text(string_from_quoted(&acc), 1, 0);
-                        acc = TokenStream::new();
-
-                        acc.extend([token, tokens.next().unwrap()]);
-                        code.push_text(acc.to_string(), 1, 0);
-                        acc = TokenStream::new();
-                    }
-                    _ => {
-                        acc.extend([token]);
-                    }
-                }
-            }
-
-            code.push_text(string_from_quoted(&acc), 1, 0);
-        }
-
-        code = replace_doc_attrb_with_doc_comment(&code);
-
-        files_to_write.insert(filepath, code);
-    }
-
-    let mut generate_mod_files = |out_path: &Utf8Path, mods: &HashMap<String, Vec<String>>| {
-        let path = out_path.join("mod.rs");
-
-        let mut code = String::new();
-
-        code.push_text(format!("// {}", autogen_warning!()), 2, 0);
-
-        for module in mods.keys() {
-            code.push_text(format!("mod {module};"), 1, 0);
-
-            // Detect if someone manually created an extension file, and automatically
-            // import it if so.
-            let mut ext_path = out_path.join(format!("{module}_ext"));
-            ext_path.set_extension("rs");
-            if ext_path.exists() {
-                code.push_text(format!("mod {module}_ext;"), 1, 0);
-            }
-        }
-
-        code += "\n\n";
-
-        for (module, names) in mods {
-            let names = names.join(", ");
-            code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
-        }
-
-        files_to_write.insert(path, code);
+    let quoted_obj = if obj.is_struct() {
+        quote_struct(arrow_registry, objects, obj)
+    } else {
+        quote_union(arrow_registry, objects, obj)
     };
 
-    // src/{datatypes|components|archetypes}/mod.rs
-    generate_mod_files(out_path, &mods);
+    let mut tokens = quoted_obj.into_iter();
+    while let Some(token) = tokens.next() {
+        match &token {
+            // If this is a doc-comment block, be smart about it.
+            proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
+                code.push_text(string_from_quoted(&acc), 1, 0);
+                acc = TokenStream::new();
 
-    // src/testing/{datatypes|components|archetypes}/mod.rs
-    generate_mod_files(out_testing_path, &mods_testing);
+                acc.extend([token, tokens.next().unwrap()]);
+                code.push_text(acc.to_string(), 1, 0);
+                acc = TokenStream::new();
+            }
+            _ => {
+                acc.extend([token]);
+            }
+        }
+    }
 
-    files_to_write
+    code.push_text(string_from_quoted(&acc), 1, 0);
+
+    replace_doc_attrb_with_doc_comment(&code)
+}
+
+fn generate_mod_file(
+    dirpath: &Utf8Path,
+    objects: &[&Object],
+    files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+) {
+    let path = dirpath.join("mod.rs");
+
+    let mut code = String::new();
+
+    code.push_str(&format!("// {}\n\n", autogen_warning!()));
+
+    for obj in objects {
+        let module_name = obj.snake_case_name();
+        code.push_str(&format!("mod {module_name};\n"));
+
+        // Detect if someone manually created an extension file, and automatically
+        // import it if so.
+        let mut ext_path = dirpath.join(format!("{module_name}_ext"));
+        ext_path.set_extension("rs");
+        if ext_path.exists() {
+            code.push_str(&format!("mod {module_name}_ext;\n"));
+        }
+    }
+
+    code += "\n\n";
+
+    for obj in objects {
+        let module_name = obj.snake_case_name();
+        let type_name = &obj.name;
+        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
+    }
+
+    files_to_write.insert(path, code);
 }
 
 fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
     re_tracing::profile_function!();
     // TODO(emilk): running `cargo fmt` once for each file is very slow.
-    // It would probably be faster to write all filtes to a temporary folder, run carg-fmt on
+    // It would probably be faster to write all files to a temporary folder, run carg-fmt on
     // that folder, and then copy the results to the final destination (if the files has changed).
     files_to_write.par_iter().for_each(|(path, source)| {
         write_file(path, source.clone());
@@ -348,188 +325,138 @@ fn unescape_string_into(input: &str, output: &mut String) {
 
 // --- Codegen core loop ---
 
-#[derive(Debug, Clone)]
-struct QuotedObject {
-    filepath: Utf8PathBuf,
-    name: String,
-    is_testing: bool,
-    tokens: TokenStream,
+fn quote_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> TokenStream {
+    assert!(obj.is_struct());
+
+    let Object {
+        name, docs, fields, ..
+    } = obj;
+
+    let name = format_ident!("{name}");
+
+    let quoted_doc = quote_doc_from_docs(docs);
+
+    let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+    let quoted_derive_clone_debug = if derive_only {
+        quote!()
+    } else {
+        quote_derive_clone_debug()
+    };
+    let quoted_derive_clause = if derive_only {
+        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+    } else {
+        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+    };
+    let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
+    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+
+    let quoted_fields = fields
+        .iter()
+        .map(|obj_field| ObjectFieldTokenizer(obj, obj_field));
+
+    let is_tuple_struct = is_tuple_struct_from_obj(obj);
+    let quoted_struct = if is_tuple_struct {
+        quote! { pub struct #name(#(#quoted_fields,)*); }
+    } else {
+        quote! { pub struct #name { #(#quoted_fields,)* }}
+    };
+
+    let quoted_from_impl = quote_from_impl_from_obj(obj);
+
+    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+
+    let quoted_builder = quote_builder_from_obj(obj);
+
+    let tokens = quote! {
+        #quoted_doc
+        #quoted_derive_clone_debug
+        #quoted_derive_clause
+        #quoted_repr_clause
+        #quoted_custom_clause
+        #quoted_struct
+
+        #quoted_from_impl
+
+        #quoted_trait_impls
+
+        #quoted_builder
+    };
+
+    tokens
 }
 
-impl QuotedObject {
-    fn from_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> Self {
-        assert!(obj.is_struct());
+fn quote_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> TokenStream {
+    assert!(!obj.is_struct());
 
-        let Object {
-            virtpath,
+    let Object {
+        name, docs, fields, ..
+    } = obj;
+
+    let name = format_ident!("{name}");
+
+    let quoted_doc = quote_doc_from_docs(docs);
+    let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+    let quoted_derive_clone_debug = if derive_only {
+        quote!()
+    } else {
+        quote_derive_clone_debug()
+    };
+    let quoted_derive_clause = if derive_only {
+        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+    } else {
+        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+    };
+    let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
+    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+
+    let quoted_fields = fields.iter().map(|obj_field| {
+        let ObjectField {
+            virtpath: _,
             filepath: _,
             fqname: _,
             pkg_name: _,
             name,
             docs,
-            kind: _,
+            typ: _,
             attrs: _,
             order: _,
-            fields,
-            specifics: _,
+            is_nullable,
+            is_deprecated: _,
             datatype: _,
-        } = obj;
+        } = obj_field;
 
-        let name = format_ident!("{name}");
+        let name = format_ident!("{}", crate::to_pascal_case(name));
 
         let quoted_doc = quote_doc_from_docs(docs);
-
-        let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
-        let quoted_derive_clone_debug = if derive_only {
-            quote!()
+        let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
+        let quoted_type = if *is_nullable {
+            quote!(Option<#quoted_type>)
         } else {
-            quote_derive_clone_debug()
-        };
-        let quoted_derive_clause = if derive_only {
-            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
-        } else {
-            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
-        };
-        let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
-        let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
-
-        let quoted_fields = fields
-            .iter()
-            .map(|obj_field| ObjectFieldTokenizer(obj, obj_field));
-
-        let is_tuple_struct = is_tuple_struct_from_obj(obj);
-        let quoted_struct = if is_tuple_struct {
-            quote! { pub struct #name(#(#quoted_fields,)*); }
-        } else {
-            quote! { pub struct #name { #(#quoted_fields,)* }}
+            quoted_type
         };
 
-        let quoted_from_impl = quote_from_impl_from_obj(obj);
-
-        let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
-
-        let quoted_builder = quote_builder_from_obj(obj);
-
-        let tokens = quote! {
+        quote! {
             #quoted_doc
-            #quoted_derive_clone_debug
-            #quoted_derive_clause
-            #quoted_repr_clause
-            #quoted_custom_clause
-            #quoted_struct
-
-            #quoted_from_impl
-
-            #quoted_trait_impls
-
-            #quoted_builder
-        };
-
-        Self {
-            filepath: {
-                let mut filepath = Utf8PathBuf::from(virtpath);
-                filepath.set_extension("rs");
-                filepath
-            },
-            name: obj.name.clone(),
-            is_testing: obj.is_testing(),
-            tokens,
+            #name(#quoted_type)
         }
-    }
+    });
 
-    fn from_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> Self {
-        assert!(!obj.is_struct());
+    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
-        let Object {
-            virtpath,
-            filepath: _,
-            fqname: _,
-            pkg_name: _,
-            name,
-            docs,
-            kind: _,
-            attrs: _,
-            order: _,
-            fields,
-            specifics: _,
-            datatype: _,
-        } = obj;
-
-        let name = format_ident!("{name}");
-
-        let quoted_doc = quote_doc_from_docs(docs);
-        let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
-        let quoted_derive_clone_debug = if derive_only {
-            quote!()
-        } else {
-            quote_derive_clone_debug()
-        };
-        let quoted_derive_clause = if derive_only {
-            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
-        } else {
-            quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
-        };
-        let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
-        let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
-
-        let quoted_fields = fields.iter().map(|obj_field| {
-            let ObjectField {
-                virtpath: _,
-                filepath: _,
-                fqname: _,
-                pkg_name: _,
-                name,
-                docs,
-                typ: _,
-                attrs: _,
-                order: _,
-                is_nullable,
-                is_deprecated: _,
-                datatype: _,
-            } = obj_field;
-
-            let name = format_ident!("{}", crate::to_pascal_case(name));
-
-            let quoted_doc = quote_doc_from_docs(docs);
-            let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
-            let quoted_type = if *is_nullable {
-                quote!(Option<#quoted_type>)
-            } else {
-                quoted_type
-            };
-
-            quote! {
-                #quoted_doc
-                #name(#quoted_type)
-            }
-        });
-
-        let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
-
-        let tokens = quote! {
-            #quoted_doc
-            #quoted_derive_clone_debug
-            #quoted_derive_clause
-            #quoted_repr_clause
-            #quoted_custom_clause
-            pub enum #name {
-                #(#quoted_fields,)*
-            }
-
-            #quoted_trait_impls
-        };
-
-        Self {
-            filepath: {
-                let mut filepath = Utf8PathBuf::from(virtpath);
-                filepath.set_extension("rs");
-                filepath
-            },
-            name: obj.name.clone(),
-            is_testing: obj.is_testing(),
-            tokens,
+    let tokens = quote! {
+        #quoted_doc
+        #quoted_derive_clone_debug
+        #quoted_derive_clause
+        #quoted_repr_clause
+        #quoted_custom_clause
+        pub enum #name {
+            #(#quoted_fields,)*
         }
-    }
+
+        #quoted_trait_impls
+    };
+
+    tokens
 }
 
 // --- Code generators ---
