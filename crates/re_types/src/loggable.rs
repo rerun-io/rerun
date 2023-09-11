@@ -1,7 +1,7 @@
 use crate::{result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult};
 
 #[allow(unused_imports)] // used in docstrings
-use crate::{Archetype, ComponentList, DatatypeList, LoggableList};
+use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
 
 // ---
 
@@ -14,8 +14,8 @@ use crate::{Archetype, ComponentList, DatatypeList, LoggableList};
 /// automatically implemented based on the type used for [`Loggable::Name`].
 ///
 /// Implementing the [`Loggable`] trait (and by extension [`Datatype`]/[`Component`])
-/// automatically derives the [`LoggableList`] implementation (and by extension
-/// [`DatatypeList`]/[`ComponentList`]), which makes it possible to work with lists' worth of data
+/// automatically derives the [`LoggableBatch`] implementation (and by extension
+/// [`DatatypeBatch`]/[`ComponentBatch`]), which makes it possible to work with lists' worth of data
 /// in a generic fashion.
 pub trait Loggable: Clone + Sized {
     type Name: std::fmt::Display;

@@ -301,155 +301,155 @@ impl crate::Archetype for AffixFuzzer1 {
         1
     }
 
-    fn as_component_lists(&self) -> Vec<crate::AnyComponentList<'_>> {
+    fn as_component_batches(&self) -> Vec<crate::AnyComponentBatch<'_>> {
         [
-            Some(Self::Indicator::new_list(self.num_instances() as _).into()),
-            Some((&self.fuzz1001 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1002 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1003 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1004 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1005 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1006 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1007 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1008 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1009 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1010 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1011 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1012 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1013 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1014 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1015 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1016 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1017 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1018 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1019 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1020 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1101 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1102 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1103 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1104 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1105 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1106 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1107 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1108 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1109 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1110 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1111 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1112 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1113 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1114 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1115 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1116 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1117 as &dyn crate::ComponentList).into()),
-            Some((&self.fuzz1118 as &dyn crate::ComponentList).into()),
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.fuzz1001 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1002 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1003 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1004 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1005 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1006 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1007 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1008 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1009 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1010 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1011 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1012 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1013 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1014 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1015 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1016 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1017 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1018 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1019 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1020 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1101 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1102 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1103 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1104 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1105 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1106 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1107 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1108 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1109 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1110 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1111 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1112 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1113 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1114 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1115 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1116 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1117 as &dyn crate::ComponentBatch).into()),
+            Some((&self.fuzz1118 as &dyn crate::ComponentBatch).into()),
             self.fuzz2001
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2002
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2003
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2004
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2005
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2006
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2007
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2008
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2009
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2010
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2011
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2012
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2013
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2014
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2015
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2016
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2017
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2018
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentList).into()),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
             self.fuzz2101
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2102
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2103
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2104
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2105
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2106
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2107
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2108
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2109
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2110
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2111
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2112
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2113
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2114
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2115
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2116
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2117
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.fuzz2118
                 .as_ref()
-                .map(|comp_list| (comp_list as &dyn crate::ComponentList).into()),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

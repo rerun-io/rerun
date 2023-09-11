@@ -23,7 +23,7 @@ use rerun::{
     datatypes::TranslationRotationScale3D,
     external::re_log,
     time::{Time, TimePoint, TimeType, Timeline},
-    ComponentList, RecordingStream,
+    ComponentBatch, RecordingStream,
 };
 
 // --- Rerun logging ---
@@ -83,7 +83,7 @@ fn log_coordinate_space(
     let view_coords: rerun::components::ViewCoordinates = axes
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
-    rec.log_component_lists(ent_path, true, 1, [&view_coords as _])
+    rec.log_component_batches(ent_path, true, 1, [&view_coords as _])
         .map_err(Into::into)
 }
 
@@ -137,12 +137,12 @@ fn log_baseline_objects(
     });
 
     for (id, bbox, transform, label) in boxes {
-        rec.log_component_lists(
+        rec.log_component_batches(
             format!("world/annotations/box-{id}"),
             true,
             1,
             [
-                &bbox as &dyn ComponentList,
+                &bbox as &dyn ComponentBatch,
                 &transform,
                 &label,
                 &Color::from_rgb(160, 230, 130),
@@ -198,7 +198,7 @@ fn log_ar_camera(
     )?;
 
     // TODO(#2816): Pinhole archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "world/camera",
         false,
         1,

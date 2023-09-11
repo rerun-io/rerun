@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_rect2d").memory()?;
 
     // TODO(#2786): Rect2D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "simple",
         false,
         1,
@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Log an extra rect to set the view bounds
     // TODO(#2786): Rect2D archetype
-    rec.log_component_lists(
+    rec.log_component_batches(
         "bounds",
         false,
         1,

@@ -10,7 +10,7 @@
 //! Rerun (and the underlying Arrow data framework) is designed to work with large arrays of
 //! [`Component`]s, as opposed to single instances.
 //! When multiple instances of a [`Component`] are put together in an array, they yield a
-//! [`ComponentList`]: the atomic unit of (de)serialization.
+//! [`ComponentBatch`]: the atomic unit of (de)serialization.
 //!
 //! Internally, [`Component`]s are implemented using many different [`Datatype`]s.
 //!
@@ -118,13 +118,13 @@ pub mod datatypes;
 
 mod archetype;
 mod loggable;
-mod loggable_list;
+mod loggable_batch;
 mod result;
 mod size_bytes;
 
 pub use self::archetype::{Archetype, ArchetypeName, GenericIndicatorComponent};
 pub use self::loggable::{Component, ComponentName, Datatype, DatatypeName, Loggable};
-pub use self::loggable_list::{AnyComponentList, ComponentList, DatatypeList, LoggableList};
+pub use self::loggable_batch::{AnyComponentBatch, ComponentBatch, DatatypeBatch, LoggableBatch};
 pub use self::result::{
     DeserializationError, DeserializationResult, ResultExt, SerializationError,
     SerializationResult, _Backtrace,
