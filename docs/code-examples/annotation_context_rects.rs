@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log a batch of 2 rectangles with different class IDs
     rec.log(
         "detections",
-        &Boxes2D::from_xywh([(-2., -2.), (0., 0.)], [(3.0, 3.0), (2.0, 2.0)])
+        &Boxes2D::from_mins_and_sizes([(-2., -2.), (0., 0.)], [(3.0, 3.0), (2.0, 2.0)])
             .with_class_ids([1, 2]),
     )?;
 

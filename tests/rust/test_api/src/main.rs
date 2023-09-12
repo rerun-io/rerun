@@ -86,13 +86,13 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time_seconds("sim_time", 1f64);
     rec.log(
         "null_test/rect/0",
-        &Boxes2D::from_xywh([(5.0, 5.0)], [(4.0, 4.0)])
+        &Boxes2D::from_mins_and_sizes([(5.0, 5.0)], [(4.0, 4.0)])
             .with_colors([0xFF0000FF])
             .with_labels(["Rect1"]),
     )?;
     rec.log(
         "null_test/rect/1",
-        &Boxes2D::from_xywh([(10.0, 5.0)], [(4.0, 4.0)])
+        &Boxes2D::from_mins_and_sizes([(10.0, 5.0)], [(4.0, 4.0)])
             .with_colors([0x00FF00FF])
             .with_labels(["Rect2"]),
     )?;
@@ -106,13 +106,13 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time_seconds("sim_time", 4f64);
     rec.log(
         "null_test/rect/0",
-        &Boxes2D::from_xywh([(5.0, 5.0)], [(4.0, 4.0)]),
+        &Boxes2D::from_mins_and_sizes([(5.0, 5.0)], [(4.0, 4.0)]),
     )?;
 
     rec.set_time_seconds("sim_time", 5f64);
     rec.log(
         "null_test/rect/1",
-        &Boxes2D::from_xywh([(10.0, 5.0)], [(4.0, 4.0)]),
+        &Boxes2D::from_mins_and_sizes([(10.0, 5.0)], [(4.0, 4.0)]),
     )?;
 
     Ok(())
@@ -202,7 +202,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time_seconds("sim_time", 2f64);
     rec.log(
         "rects_test/rects",
-        &Boxes2D::from_xywh(
+        &Boxes2D::from_mins_and_sizes(
             rects_xy.axis_iter(Axis(0)).map(|v| (v[0], v[1])),
             rects_wh.axis_iter(Axis(0)).map(|v| (v[0], v[1])),
         )
@@ -274,7 +274,7 @@ fn test_2d_layering(rec: &RecordingStream) -> anyhow::Result<()> {
     // Rectangle in between the top and the middle.
     rec.log(
         "2d_layering/rect_between_top_and_middle",
-        &Boxes2D::from_xywh([(64.0, 64.0)], [(256.0, 256.0)]).with_draw_order(1.5),
+        &Boxes2D::from_mins_and_sizes([(64.0, 64.0)], [(256.0, 256.0)]).with_draw_order(1.5),
     )?;
 
     // Lines behind the rectangle.

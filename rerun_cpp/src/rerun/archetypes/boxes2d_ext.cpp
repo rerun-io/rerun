@@ -8,19 +8,19 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
-        /// Creates new `Boxes2D` with `half_extents`] and [`Self::centers`] created
-        /// from minimum X/Y and width + height.
+        /// Creates new `Boxes2D` with `half_sizes` and `centers` created from minimums and (full)
+        /// sizes.
         ///
-        /// Does *not* preserve data as-is and instead creates centers and half-extents from the
-        /// input data.
-        static Boxes2D from_xywh(
+        /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
+        /// from the input data.
+        static Boxes2D from_mins_and_sizes(
             const std::vector<datatypes::Vec2D>& xy, const std::vector<datatypes::Vec2D>& extents
         );
 
         // [CODEGEN COPY TO HEADER END]
 #endif
 
-        Boxes2D Boxes2D::from_xywh(
+        Boxes2D Boxes2D::from_mins_and_sizes(
             const std::vector<datatypes::Vec2D>& xy, const std::vector<datatypes::Vec2D>& extents
         ) {
             std::vector<components::HalfExtents2D> half_extents;
