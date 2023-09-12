@@ -13,4 +13,4 @@ radii = rng.uniform(0, 1, size=[10])
 rr2.log("random", rr2.Points2D(positions, colors=colors, radii=radii))
 
 # Log an extra rect to set the view bounds
-rr2.log("bounds", rr2.Boxes2D([4, 3]))
+rr2.log("bounds", rr2.Boxes2D(half_sizes=[4, 3]))

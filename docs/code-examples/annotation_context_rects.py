@@ -11,4 +11,4 @@ rr2.log("/", rr2.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 25
 rr.log_rects("detections", [[-2, -2, 3, 3], [0, 0, 2, 2]], class_ids=[1, 2], rect_format=rr.RectFormat.XYWH)
 
 # Log an extra rect to set the view bounds
-rr2.log("bounds", rr2.Boxes2D([2.5, 2.5], centers=[2.5, 2.5]))
+rr2.log("bounds", rr2.Boxes2D(centers=[2.5, 2.5], half_sizes=[2.5, 2.5]))
