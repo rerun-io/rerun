@@ -97,6 +97,22 @@ impl Tuid {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
 
+    /// Returns the next logical `Tuid`.
+    ///
+    /// Wraps the monotonically increasing back to zero on overflow.
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`Tuid::random`] when unsure.
+    #[inline]
+    pub fn next(&self) -> Self {
+        let Self { time_ns, inc } = *self;
+
+        Self {
+            time_ns,
+            inc: inc.wrapping_add(1),
+        }
+    }
+
     #[inline]
     pub fn nanoseconds_since_epoch(&self) -> u64 {
         self.time_ns

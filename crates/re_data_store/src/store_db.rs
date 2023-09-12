@@ -123,29 +123,40 @@ impl EntityDb {
     fn add_path_op(&mut self, row_id: RowId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(row_id, time_point, path_op);
 
+        // NOTE: Btree! We need a stable ordering here!
+        let mut cells = BTreeMap::<EntityPath, Vec<DataCell>>::default();
         for component_path in cleared_paths {
             if let Some(data_type) = self
                 .data_store
                 .lookup_datatype(&component_path.component_name)
             {
-                // Create and insert an empty component into the arrow store
-                // TODO(jleibs): Faster empty-array creation
-                let cell =
-                    DataCell::from_arrow_empty(component_path.component_name, data_type.clone());
+                let cells = cells
+                    .entry(component_path.entity_path.clone())
+                    .or_insert_with(Vec::new);
 
-                // NOTE(cmc): The fact that this inserts data to multiple entity paths using a
-                // single `RowId` is… interesting. Keep it in mind.
-                let row = DataRow::from_cells1(
-                    row_id,
-                    component_path.entity_path.clone(),
-                    time_point.clone(),
-                    cell.num_instances(),
-                    cell,
-                );
-                self.data_store.insert_row(&row).ok();
-                // Also update the tree with the clear-event
+                cells.push(DataCell::from_arrow_empty(
+                    component_path.component_name,
+                    data_type.clone(),
+                ));
+
+                // Update the tree with the clear-event.
                 self.tree.add_data_msg(time_point, &component_path);
             }
+        }
+
+        // Create and insert empty components into the arrow store.
+        let mut row_id = row_id;
+        for (ent_path, cells) in cells {
+            // NOTE: It is important we insert all those empty components using a single row (id)!
+            // 1. It'll be much more efficient when querying that data back.
+            // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
+            //    these rows! This flaky ordering will in turn leak through the public
+            //    API (e.g. range queries)!!
+            let row = DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells);
+            self.data_store.insert_row(&row).ok();
+
+            // Don't reuse the same row ID for the next entity!
+            row_id = row_id.next();
         }
     }
 
