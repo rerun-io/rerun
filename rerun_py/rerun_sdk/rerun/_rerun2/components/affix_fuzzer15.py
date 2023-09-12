@@ -2,44 +2,14 @@
 # Based on "crates/re_types/definitions/rerun/testing/components/fuzzy.fbs".
 
 
-
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
-
-from attrs import define, field
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
-import uuid
-
-from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
-    BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
-)
 from .. import datatypes
+from .._baseclasses import (
+    BaseDelegatingExtensionArray,
+    BaseDelegatingExtensionType,
+)
+
 __all__ = ["AffixFuzzer15", "AffixFuzzer15Array", "AffixFuzzer15Type"]
 
 
@@ -47,20 +17,21 @@ class AffixFuzzer15(datatypes.AffixFuzzer3):
     # You can define your own __init__ function as a member of AffixFuzzer15Ext in affix_fuzzer15_ext.py
 
     # Note: there are no fields here because AffixFuzzer15 delegates to datatypes.AffixFuzzer3
+    pass
 
 
 class AffixFuzzer15Type(BaseDelegatingExtensionType):
     _TYPE_NAME = "rerun.testing.components.AffixFuzzer15"
     _DELEGATED_EXTENSION_TYPE = datatypes.AffixFuzzer3Type
 
+
 class AffixFuzzer15Array(BaseDelegatingExtensionArray[datatypes.AffixFuzzer3ArrayLike]):
     _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer15"
     _EXTENSION_TYPE = AffixFuzzer15Type
     _DELEGATED_ARRAY_TYPE = datatypes.AffixFuzzer3Array
 
+
 AffixFuzzer15Type._ARRAY_TYPE = AffixFuzzer15Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer15Type())
-
-

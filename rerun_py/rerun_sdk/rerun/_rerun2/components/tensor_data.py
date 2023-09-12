@@ -2,44 +2,14 @@
 # Based on "crates/re_types/definitions/rerun/components/tensor_data.fbs".
 
 
-
 from __future__ import annotations
 
-from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
-    TYPE_CHECKING, SupportsFloat, Literal)
-
-from attrs import define, field
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
-import uuid
-
-from .._baseclasses import (
-    Archetype,
-    BaseExtensionType,
-    BaseExtensionArray,
-    BaseDelegatingExtensionType,
-    BaseDelegatingExtensionArray
-)
-from .._converters import (
-    int_or_none,
-    float_or_none,
-    bool_or_none,
-    str_or_none,
-    to_np_uint8,
-    to_np_uint16,
-    to_np_uint32,
-    to_np_uint64,
-    to_np_int8,
-    to_np_int16,
-    to_np_int32,
-    to_np_int64,
-    to_np_bool,
-    to_np_float16,
-    to_np_float32,
-    to_np_float64
-)
 from .. import datatypes
+from .._baseclasses import (
+    BaseDelegatingExtensionArray,
+    BaseDelegatingExtensionType,
+)
+
 __all__ = ["TensorData", "TensorDataArray", "TensorDataType"]
 
 
@@ -47,20 +17,21 @@ class TensorData(datatypes.TensorData):
     # You can define your own __init__ function as a member of TensorDataExt in tensor_data_ext.py
 
     # Note: there are no fields here because TensorData delegates to datatypes.TensorData
+    pass
 
 
 class TensorDataType(BaseDelegatingExtensionType):
     _TYPE_NAME = "rerun.components.TensorData"
     _DELEGATED_EXTENSION_TYPE = datatypes.TensorDataType
 
+
 class TensorDataArray(BaseDelegatingExtensionArray[datatypes.TensorDataArrayLike]):
     _EXTENSION_NAME = "rerun.components.TensorData"
     _EXTENSION_TYPE = TensorDataType
     _DELEGATED_ARRAY_TYPE = datatypes.TensorDataArray
 
+
 TensorDataType._ARRAY_TYPE = TensorDataArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TensorDataType())
-
-

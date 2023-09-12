@@ -19,6 +19,7 @@ class Transform3D(datatypes.Transform3D):
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
     # Note: there are no fields here because Transform3D delegates to datatypes.Transform3D
+    pass
 
 
 class Transform3DType(BaseDelegatingExtensionType):

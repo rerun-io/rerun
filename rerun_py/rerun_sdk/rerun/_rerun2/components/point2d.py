@@ -19,6 +19,7 @@ class Point2D(datatypes.Vec2D):
     # You can define your own __init__ function as a member of Point2DExt in point2d_ext.py
 
     # Note: there are no fields here because Point2D delegates to datatypes.Vec2D
+    pass
 
 
 class Point2DType(BaseDelegatingExtensionType):

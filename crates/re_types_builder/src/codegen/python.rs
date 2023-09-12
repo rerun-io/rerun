@@ -648,9 +648,10 @@ fn code_for_struct(
                 obj.name,
                 obj.delegate_datatype(objects).unwrap().name
             ),
-            2,
+            1,
             4,
         );
+        code.push_text("pass", 2, 4);
     } else {
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
         // complains.

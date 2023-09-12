@@ -24,6 +24,7 @@ class HalfSizes2D(datatypes.Vec2D):
     # You can define your own __init__ function as a member of HalfSizes2DExt in half_sizes2d_ext.py
 
     # Note: there are no fields here because HalfSizes2D delegates to datatypes.Vec2D
+    pass
 
 
 class HalfSizes2DType(BaseDelegatingExtensionType):
