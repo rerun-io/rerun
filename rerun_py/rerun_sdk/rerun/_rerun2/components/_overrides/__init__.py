@@ -4,7 +4,7 @@ from .annotation_context import (
     annotation_context__class_map__field_converter_override,
     annotation_context__native_to_pa_array_override,
 )
-from .clear_settings import clearsettings_native_to_pa_array
+from .clear_settings import clear_settings__native_to_pa_array_override
 from .depth_meter import depth_meter__native_to_pa_array_override
 from .disconnected_space import disconnected_space__native_to_pa_array_override
 from .draw_order import draw_order__native_to_pa_array_override
