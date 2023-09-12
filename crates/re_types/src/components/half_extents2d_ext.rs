@@ -1,6 +1,6 @@
 use crate::datatypes::Vec2D;
 
-use super::{HalfExtents2D};
+use super::HalfExtents2D;
 
 impl HalfExtents2D {
     #[inline]
@@ -30,7 +30,7 @@ impl HalfExtents2D {
         self.y() * 2.0
     }
 
-    /// Double the half-extent to get the full extent.
+    /// The whole extent, i.e. twice the half extents.
     #[cfg(feature = "glam")]
     #[inline]
     pub fn full_extents(self) -> glam::Vec2 {
