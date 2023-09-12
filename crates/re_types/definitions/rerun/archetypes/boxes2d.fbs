@@ -37,7 +37,7 @@ table Boxes2D (
   // --- Required ---
 
   /// All half-extents that make up the batch of boxes.
-  half_extents: [rerun.components.HalfExtents2D] ("attr.rerun.component_required", order: 1000);
+  half_sizes: [rerun.components.HalfSizes2D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 

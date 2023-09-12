@@ -1,8 +1,8 @@
 use crate::datatypes::Vec2D;
 
-use super::HalfExtents2D;
+use super::HalfSizes2D;
 
-impl HalfExtents2D {
+impl HalfSizes2D {
     #[inline]
     pub const fn new(x: f32, y: f32) -> Self {
         Self(Vec2D::new(x, y))
@@ -45,17 +45,17 @@ impl HalfExtents2D {
 }
 
 #[cfg(feature = "glam")]
-impl From<HalfExtents2D> for glam::Vec2 {
+impl From<HalfSizes2D> for glam::Vec2 {
     #[inline]
-    fn from(extent: HalfExtents2D) -> Self {
+    fn from(extent: HalfSizes2D) -> Self {
         Self::new(extent.x(), extent.y())
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<HalfExtents2D> for glam::Vec3 {
+impl From<HalfSizes2D> for glam::Vec3 {
     #[inline]
-    fn from(extent: HalfExtents2D) -> Self {
+    fn from(extent: HalfSizes2D) -> Self {
         Self::new(extent.x(), extent.y(), 0.0)
     }
 }

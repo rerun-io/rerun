@@ -12,7 +12,7 @@ import rerun.experimental as rr2
 
 
 def main() -> None:
-    half_extents = np.array([[10, 9], [5, -5]])
+    half_sizes = np.array([[10, 9], [5, -5]])
     centers = np.array([[0, 0], [-1, 1]])
     colors = np.array(
         [
@@ -28,7 +28,7 @@ def main() -> None:
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
     boxes2d = rr2.Boxes2D(
-        half_extents,
+        half_sizes,
         centers=centers,
         colors=colors,
         labels=labels,

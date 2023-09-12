@@ -1,5 +1,5 @@
 use crate::{
-    components::{HalfExtents2D, Origin2D},
+    components::{HalfSizes2D, Origin2D},
     datatypes::Vec2D,
 };
 
@@ -10,22 +10,22 @@ impl Boxes2D {
     ///
     /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes from the input data.
     pub fn from_mins_and_sizes(
-        xy: impl IntoIterator<Item = impl Into<Vec2D>>,
-        extents: impl IntoIterator<Item = impl Into<Vec2D>>,
+        mins: impl IntoIterator<Item = impl Into<Vec2D>>,
+        sizes: impl IntoIterator<Item = impl Into<Vec2D>>,
     ) -> Self {
-        let half_sizes: Vec<_> = extents
+        let half_sizes: Vec<_> = sizes
             .into_iter()
             .map(|wh| {
                 let wh = wh.into();
-                HalfExtents2D::new(wh.x() / 2.0, wh.y() / 2.0)
+                HalfSizes2D::new(wh.x() / 2.0, wh.y() / 2.0)
             })
             .collect();
-        let centers: Vec<_> = xy
+        let centers: Vec<_> = mins
             .into_iter()
             .zip(half_sizes.iter())
-            .map(|(xy, half_extent)| {
-                let xy = xy.into();
-                Origin2D::new(xy.x() + half_extent.x(), xy.y() + half_extent.y())
+            .map(|(min, half_size)| {
+                let min = min.into();
+                Origin2D::new(min.x() + half_size.x(), min.y() + half_size.y())
             })
             .collect();
 

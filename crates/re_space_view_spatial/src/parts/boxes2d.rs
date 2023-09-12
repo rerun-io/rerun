@@ -2,7 +2,7 @@ use re_data_store::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
-    components::{HalfExtents2D, Origin2D},
+    components::{HalfSizes2D, Origin2D},
     Archetype,
 };
 use re_viewer_context::{
@@ -37,14 +37,14 @@ impl Boxes2DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let annotation_infos = process_annotations::<HalfExtents2D, Boxes2D>(
+        let annotation_infos = process_annotations::<HalfSizes2D, Boxes2D>(
             query,
             arch_view,
             &ent_context.annotations,
         )?;
 
         let instance_keys = arch_view.iter_instance_keys();
-        let half_extents = arch_view.iter_required_component::<HalfExtents2D>()?;
+        let half_sizes = arch_view.iter_required_component::<HalfSizes2D>()?;
         let origins = arch_view
             .iter_optional_component::<Origin2D>()?
             .map(|origin| origin.unwrap_or_default());
@@ -61,7 +61,7 @@ impl Boxes2DPart {
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         for (instance_key, half_extent, origin, radius, color, label) in
-            itertools::izip!(instance_keys, half_extents, origins, radii, colors, labels)
+            itertools::izip!(instance_keys, half_sizes, origins, radii, colors, labels)
         {
             let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
 

@@ -180,7 +180,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
 
     use rerun::{
         archetypes::{Boxes2D, Tensor},
-        components::{Color, HalfExtents2D},
+        components::{Color, HalfSizes2D},
     };
 
     // Add an image
@@ -214,7 +214,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.log(
         "rects_test/rects",
         // TODO(#3279): Should be &Boxes2D::empty()
-        &Boxes2D::new(std::iter::empty::<HalfExtents2D>()),
+        &Boxes2D::new(std::iter::empty::<HalfSizes2D>()),
     )?;
 
     Ok(())

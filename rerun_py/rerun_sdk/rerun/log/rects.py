@@ -155,26 +155,26 @@ def log_rects(
     assert type(rects) is np.ndarray
 
     if rect_format == RectFormat.XYWH:
-        half_extents = rects[:, 2:4] / 2
-        centers = rects[:, 0:2] + half_extents
+        half_sizes = rects[:, 2:4] / 2
+        centers = rects[:, 0:2] + half_sizes
     elif rect_format == RectFormat.YXHW:
-        half_extents = rects[:, 4:2] / 2
-        centers = rects[:, 2:0] + half_extents
+        half_sizes = rects[:, 4:2] / 2
+        centers = rects[:, 2:0] + half_sizes
     elif rect_format == RectFormat.XYXY:
         min = rects[:, 0:2]
         max = rects[:, 2:4]
         centers = (min + max) / 2
-        half_extents = max - centers
+        half_sizes = max - centers
     elif rect_format == RectFormat.YXYX:
         min = rects[:, 2:0]
         max = rects[:, 4:2]
         centers = (min + max) / 2
-        half_extents = max - centers
+        half_sizes = max - centers
     elif rect_format == RectFormat.XCYCWH:
-        half_extents = rects[:, 2:4] / 2
+        half_sizes = rects[:, 2:4] / 2
         centers = rects[:, 0:2]
     elif rect_format == RectFormat.XCYCW2H2:
-        half_extents = rects[:, 2:4]
+        half_sizes = rects[:, 2:4]
         centers = rects[:, 0:2]
     else:
         raise ValueError(f"Unknown rect format {rect_format}")
@@ -189,7 +189,7 @@ def log_rects(
             _send_warning("Only integer identifiers supported", 1)
 
     arch = Boxes2D(
-        half_extents,
+        half_sizes,
         centers=centers,
         colors=colors,
         draw_order=draw_order,

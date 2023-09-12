@@ -9,11 +9,11 @@ namespace rerun.components;
 
 // ---
 
-/// Half extents of a 2D box along its local axis, starting at its local origin.
+/// Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
 ///
-/// The box extents both in negative and positive direction along each axis.
-/// Negative extents indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
-struct HalfExtents2D (
+/// The box extends both in negative and positive direction along each axis.
+/// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
+struct HalfSizes2D (
   "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
