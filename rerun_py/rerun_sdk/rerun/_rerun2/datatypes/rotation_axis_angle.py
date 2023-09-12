@@ -36,7 +36,7 @@ def _rotation_axis_angle__axis__special_field_converter_override(x: datatypes.Ve
 class RotationAxisAngle:
     """3D rotation represented by a rotation around a given axis."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "rotation_axis_angle__init_override"
 
     axis: datatypes.Vec3D = field(converter=_rotation_axis_angle__axis__special_field_converter_override)
     """

@@ -32,7 +32,7 @@ class DrawOrder:
     Draw order for entities with the same draw order is generally undefined.
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "draw_order__init_override"
 
     value: float = field(converter=float)
 

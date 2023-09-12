@@ -21,7 +21,7 @@ __all__ = ["Float32", "Float32Array", "Float32ArrayLike", "Float32Like", "Float3
 
 @define
 class Float32:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "float32__init_override"
 
     value: float = field(converter=float)
 

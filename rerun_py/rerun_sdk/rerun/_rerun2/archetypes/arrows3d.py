@@ -39,7 +39,7 @@ class Arrows3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "arrows3d__init_override"
 
     vectors: components.Vector3DArray = field(
         metadata={"component": "primary"},

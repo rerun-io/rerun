@@ -18,7 +18,7 @@ __all__ = ["TextDocument"]
 class TextDocument(Archetype):
     """A text element intended to be displayed in its own text-box."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "text_document__init_override"
 
     body: components.TextArray = field(
         metadata={"component": "primary"},

@@ -20,7 +20,7 @@ __all__ = ["AffixFuzzer17", "AffixFuzzer17Array", "AffixFuzzer17ArrayLike", "Aff
 
 @define
 class AffixFuzzer17:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "affix_fuzzer17__init_override"
 
     many_optional_unions: list[datatypes.AffixFuzzer3] | None = field(default=None)
 

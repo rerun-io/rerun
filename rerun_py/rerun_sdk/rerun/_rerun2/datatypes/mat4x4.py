@@ -24,7 +24,7 @@ __all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type
 class Mat4x4:
     """A 4x4 column-major Matrix."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "mat4x4__init_override"
 
     coeffs: npt.NDArray[np.float32] = field(converter=mat4x4__coeffs__field_converter_override)
 

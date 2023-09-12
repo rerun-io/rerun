@@ -24,7 +24,7 @@ __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassI
 class ClassId:
     """A 16-bit ID representing a type of semantic class."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "class_id__init_override"
 
     id: int = field(converter=int)
 

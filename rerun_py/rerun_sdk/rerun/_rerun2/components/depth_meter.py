@@ -24,7 +24,7 @@ __all__ = ["DepthMeter", "DepthMeterArray", "DepthMeterArrayLike", "DepthMeterLi
 class DepthMeter:
     """A component indicating how long a meter is, expressed in native units."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "depth_meter__init_override"
 
     value: float = field(converter=float)
 

@@ -25,7 +25,7 @@ __all__ = [
 
 @define
 class StringComponent:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "string_component__init_override"
 
     value: str = field(converter=str)
 

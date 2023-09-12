@@ -64,7 +64,7 @@ class LineStrips2D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "line_strips2d__init_override"
 
     strips: components.LineStrip2DArray = field(
         metadata={"component": "primary"},

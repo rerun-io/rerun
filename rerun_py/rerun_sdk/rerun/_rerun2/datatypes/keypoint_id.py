@@ -31,7 +31,7 @@ class KeypointId:
     [`rerun.components.AnnotationContext`].
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "keypoint_id__init_override"
 
     id: int = field(converter=int)
 

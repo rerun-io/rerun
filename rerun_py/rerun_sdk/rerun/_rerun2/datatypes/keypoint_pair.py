@@ -37,7 +37,7 @@ def _keypoint_pair__keypoint1__special_field_converter_override(x: datatypes.Key
 class KeypointPair:
     """A connection between two `Keypoints`."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "keypoint_pair__init_override"
 
     keypoint0: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint0__special_field_converter_override)
     keypoint1: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint1__special_field_converter_override)

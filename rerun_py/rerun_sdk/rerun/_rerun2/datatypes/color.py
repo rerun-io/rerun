@@ -30,7 +30,7 @@ class Color:
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "color__init_override"
 
     rgba: int = field(converter=color__rgba__field_converter_override)
 

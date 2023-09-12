@@ -401,7 +401,7 @@ fn code_for_struct(
         // init override handling
         let init_override_name = format!("{}__init_override", obj.snake_case_name());
         let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
-            ("init=False".to_owned(), init_override_name)
+            ("init=False".to_owned(), init_override_name.clone())
         } else {
             (String::new(), String::new())
         };
@@ -439,7 +439,7 @@ fn code_for_struct(
         code.push_text(quote_doc_from_docs(docs), 0, 4);
 
         if init_func.is_empty() {
-            code.push_text("# You can define your own __init__ function by defining a function called {init_override_name:?}", 2, 4);
+            code.push_text(format!("# You can define your own __init__ function by defining a function called {init_override_name:?}"), 2, 4);
         } else {
             code.push_text(
                 "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
@@ -574,7 +574,7 @@ fn code_for_union(
     // init override handling
     let init_override_name = format!("{}__init_override", obj.snake_case_name());
     let (define_args, init_func) = if overrides.contains(&init_override_name) {
-        ("(init=False)".to_owned(), init_override_name)
+        ("(init=False)".to_owned(), init_override_name.clone())
     } else {
         (String::new(), String::new())
     };
@@ -593,7 +593,7 @@ fn code_for_union(
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
     if init_func.is_empty() {
-        code.push_text("# You can define your own __init__ function by defining a function called {init_override_name:?}", 2, 4);
+        code.push_text(format!("# You can define your own __init__ function by defining a function called {init_override_name:?}"), 2, 4);
     } else {
         code.push_text(
             "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",

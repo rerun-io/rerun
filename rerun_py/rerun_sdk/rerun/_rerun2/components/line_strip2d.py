@@ -38,7 +38,7 @@ class LineStrip2D:
     ```
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "line_strip2d__init_override"
 
     points: list[datatypes.Vec2D] = field()
 

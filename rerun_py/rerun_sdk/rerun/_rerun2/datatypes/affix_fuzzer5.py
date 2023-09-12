@@ -31,7 +31,7 @@ def _affix_fuzzer5__single_optional_union__special_field_converter_override(
 
 @define
 class AffixFuzzer5:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "affix_fuzzer5__init_override"
 
     single_optional_union: datatypes.AffixFuzzer4 | None = field(
         default=None, converter=_affix_fuzzer5__single_optional_union__special_field_converter_override

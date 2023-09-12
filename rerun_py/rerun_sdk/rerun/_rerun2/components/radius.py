@@ -24,7 +24,7 @@ __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType
 class Radius:
     """A Radius component."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "radius__init_override"
 
     value: float = field(converter=float)
 

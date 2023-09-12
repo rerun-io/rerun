@@ -28,7 +28,7 @@ class TensorBuffer:
     Tensor elements are stored in a contiguous buffer of a single type.
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "tensor_buffer__init_override"
 
     inner: npt.NDArray[np.float32] | npt.NDArray[np.float64] | npt.NDArray[np.int16] | npt.NDArray[
         np.int32

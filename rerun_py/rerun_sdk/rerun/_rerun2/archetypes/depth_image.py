@@ -43,7 +43,7 @@ class DepthImage(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "depth_image__init_override"
 
     data: components.TensorDataArray = field(
         metadata={"component": "primary"}, converter=depth_image__data__field_converter_override

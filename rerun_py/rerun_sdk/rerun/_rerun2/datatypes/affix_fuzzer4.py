@@ -20,7 +20,7 @@ __all__ = ["AffixFuzzer4", "AffixFuzzer4Array", "AffixFuzzer4ArrayLike", "AffixF
 
 @define
 class AffixFuzzer4:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "affix_fuzzer4__init_override"
 
     inner: datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3] = field()
     """

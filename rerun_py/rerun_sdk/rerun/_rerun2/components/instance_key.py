@@ -24,7 +24,7 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 class InstanceKey:
     """A unique numeric identifier for each individual instance within a batch."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "instance_key__init_override"
 
     value: int = field(converter=int)
 

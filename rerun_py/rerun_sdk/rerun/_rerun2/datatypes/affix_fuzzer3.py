@@ -22,7 +22,7 @@ __all__ = ["AffixFuzzer3", "AffixFuzzer3Array", "AffixFuzzer3ArrayLike", "AffixF
 
 @define
 class AffixFuzzer3:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "affix_fuzzer3__init_override"
 
     inner: float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] = field()
     """

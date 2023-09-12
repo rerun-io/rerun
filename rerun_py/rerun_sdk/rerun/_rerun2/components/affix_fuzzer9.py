@@ -19,7 +19,7 @@ __all__ = ["AffixFuzzer9", "AffixFuzzer9Array", "AffixFuzzer9ArrayLike", "AffixF
 
 @define
 class AffixFuzzer9:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "affix_fuzzer9__init_override"
 
     single_string_required: str = field(converter=str)
 

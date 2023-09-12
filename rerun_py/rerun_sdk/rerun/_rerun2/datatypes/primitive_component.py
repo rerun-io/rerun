@@ -27,7 +27,7 @@ __all__ = [
 
 @define
 class PrimitiveComponent:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "primitive_component__init_override"
 
     value: int = field(converter=int)
 

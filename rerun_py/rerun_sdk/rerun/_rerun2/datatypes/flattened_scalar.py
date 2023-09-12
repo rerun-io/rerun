@@ -27,7 +27,7 @@ __all__ = [
 
 @define
 class FlattenedScalar:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "flattened_scalar__init_override"
 
     value: float = field(converter=float)
 

@@ -24,7 +24,7 @@ __all__ = ["AffixFuzzer2", "AffixFuzzer2Array", "AffixFuzzer2ArrayLike", "AffixF
 
 @define
 class AffixFuzzer2:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "affix_fuzzer2__init_override"
 
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 

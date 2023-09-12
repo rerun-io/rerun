@@ -30,7 +30,7 @@ __all__ = [
 class TensorDimension:
     """A single dimension within a multi-dimensional tensor."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "tensor_dimension__init_override"
 
     size: int = field(converter=int)
     name: str | None = field(default=None, converter=str_or_none)

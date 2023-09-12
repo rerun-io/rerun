@@ -23,7 +23,7 @@ __all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLi
 class Rotation3D:
     """A 3D rotation."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "rotation3d__init_override"
 
     inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=rotation3d__inner_converter_override)
     """

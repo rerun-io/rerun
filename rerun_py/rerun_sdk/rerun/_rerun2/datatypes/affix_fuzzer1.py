@@ -37,7 +37,7 @@ def _affix_fuzzer1__almost_flattened_scalar__special_field_converter_override(
 
 @define
 class AffixFuzzer1:
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "affix_fuzzer1__init_override"
 
     single_string_required: str = field(converter=str)
     many_strings_required: list[str] = field()

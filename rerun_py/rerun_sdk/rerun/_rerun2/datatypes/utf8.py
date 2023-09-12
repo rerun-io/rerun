@@ -22,7 +22,7 @@ __all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
 class Utf8:
     """A string of text, encoded as UTF-8."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "utf8__init_override"
 
     value: str = field(converter=str)
 

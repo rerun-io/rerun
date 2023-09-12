@@ -27,7 +27,7 @@ __all__ = ["Vec4D", "Vec4DArray", "Vec4DArrayLike", "Vec4DLike", "Vec4DType"]
 class Vec4D:
     """A vector in 4D space."""
 
-    # You can define your own __init__ function by defining a function called {init_override_name:?}
+    # You can define your own __init__ function by defining a function called "vec4d__init_override"
 
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 
