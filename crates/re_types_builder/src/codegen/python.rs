@@ -648,11 +648,12 @@ fn code_for_struct(
             };
 
             let converter = &field_converters[&field.fqname];
+            // Note: mypy gets confused using staticmethods for field-converters
             let typ = if !*is_nullable {
-                format!("{typ} = field({metadata}{converter})")
+                format!("{typ} = field({metadata}{converter}) # type: ignore[misc]")
             } else {
                 format!(
-                    "{typ} | None = field({metadata}default=None{}{converter})",
+                    "{typ} | None = field({metadata}default=None{}{converter}) # type: ignore[misc]",
                     if converter.is_empty() { "" } else { ", " },
                 )
             };
@@ -832,7 +833,12 @@ fn code_for_union(
         String::new()
     };
 
-    code.push_text(format!("inner: {inner_type} = field({converter})"), 1, 4);
+    // Note: mypy gets confused using staticmethods for field-converters
+    code.push_text(
+        format!("inner: {inner_type} = field({converter}) # type: ignore[misc]"),
+        1,
+        4,
+    );
     code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
 
     // if there are duplicate types, we need to add a `kind` field to disambiguate the union
