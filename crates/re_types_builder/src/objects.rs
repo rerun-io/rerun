@@ -582,6 +582,10 @@ impl Object {
         self.attrs.try_get(self.fqname.as_str(), name)
     }
 
+    pub fn has_attr(&self, name: impl AsRef<str>) -> bool {
+        self.attrs.has(name)
+    }
+
     pub fn is_struct(&self) -> bool {
         match &self.specifics {
             ObjectSpecifics::Struct {} => true,
@@ -604,16 +608,11 @@ impl Object {
     }
 
     pub fn is_arrow_transparent(&self) -> bool {
-        self.kind == ObjectKind::Component
-            || self
-                .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
-                .is_some()
+        self.kind == ObjectKind::Component || self.attrs.has(crate::ATTR_ARROW_TRANSPARENT)
     }
 
     fn is_transparent(&self) -> bool {
-        self.attrs
-            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
-            .is_some()
+        self.attrs.has(crate::ATTR_TRANSPARENT)
     }
 
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
@@ -735,9 +734,7 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(field.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let is_nullable = attrs
-            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
-            .is_some();
+        let is_nullable = attrs.has(crate::ATTR_NULLABLE);
         let is_deprecated = field.deprecated();
 
         Self {
@@ -789,9 +786,7 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(val.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let is_nullable = attrs
-            .try_get::<String>(&fqname, crate::ATTR_NULLABLE)
-            .is_some();
+        let is_nullable = attrs.has(crate::ATTR_NULLABLE);
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
         let is_deprecated = false;
 
@@ -812,9 +807,7 @@ impl ObjectField {
     }
 
     fn is_transparent(&self) -> bool {
-        self.attrs
-            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
-            .is_some()
+        self.attrs.has(crate::ATTR_TRANSPARENT)
     }
 
     pub fn get_attr<T>(&self, name: impl AsRef<str>) -> T
@@ -1208,6 +1201,10 @@ impl Attributes {
                 })
                 .unwrap(),
         )
+    }
+
+    pub fn has(&self, name: impl AsRef<str>) -> bool {
+        self.0.contains_key(name.as_ref())
     }
 }
 

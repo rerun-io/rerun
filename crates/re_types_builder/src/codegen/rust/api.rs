@@ -24,7 +24,7 @@ use crate::{
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_CUSTOM_CLAUSE,
-    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_REPR,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
@@ -331,7 +331,7 @@ fn quote_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object)
 
     let quoted_doc = quote_doc_from_docs(docs);
 
-    let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+    let derive_only = obj.has_attr(ATTR_RUST_DERIVE_ONLY);
     let quoted_derive_clone_debug = if derive_only {
         quote!()
     } else {
@@ -1212,8 +1212,13 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         quote!(#field_name: None)
     });
 
+    let fn_new_pub = if obj.has_attr(ATTR_RUST_NEW_PUB_CRATE) {
+        quote!(pub(crate))
+    } else {
+        quote!(pub)
+    };
     let fn_new = quote! {
-        pub fn new(#(#quoted_params,)*) -> Self {
+        #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
             Self {
                 #(#quoted_required,)*
                 #(#quoted_optional,)*

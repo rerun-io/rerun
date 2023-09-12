@@ -16,7 +16,7 @@ use crate::{
     codegen::autogen_warning, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
 };
-use crate::{Object, ObjectSpecifics};
+use crate::{Object, ObjectSpecifics, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -365,7 +365,7 @@ impl QuotedObject {
 
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
-                if obj.fields.len() == 1 {
+                if obj.fields.len() == 1 && !obj.has_attr(ATTR_CPP_NO_FIELD_CTORS) {
                     methods.extend(single_field_constructor_methods(
                         obj,
                         &mut hpp_includes,
@@ -416,7 +416,7 @@ impl QuotedObject {
                     .collect_vec();
 
                 // Constructors with all required components.
-                {
+                if !obj.has_attr(ATTR_CPP_NO_FIELD_CTORS) {
                     let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
                         .iter()
                         .map(|obj_field| {
@@ -696,24 +696,26 @@ impl QuotedObject {
             ));
         }
 
-        if are_types_disjoint(&obj.fields) {
-            // Implicit construct from the different variant types:
-            for obj_field in &obj.fields {
-                let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
-                let param_declaration =
-                    quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
+        if !obj.has_attr(ATTR_CPP_NO_FIELD_CTORS) {
+            if are_types_disjoint(&obj.fields) {
+                // Implicit construct from the different variant types:
+                for obj_field in &obj.fields {
+                    let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
+                    let param_declaration =
+                        quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
 
-                methods.push(Method {
+                    methods.push(Method {
                     docs: obj_field.docs.clone().into(),
                     declaration: MethodDeclaration::constructor(quote!(#pascal_case_ident(#param_declaration))),
                     definition_body: quote!(*this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident));),
                     inline: true,
                 });
+                }
+            } else {
+                // Cannot make implicit constructors, e.g. for
+                // `enum Angle { Radians(f32), Degrees(f32) };`
             }
-        } else {
-            // Cannot make implicit constructors, e.g. for
-            // `enum Angle { Radians(f32), Degrees(f32) };`
-        };
+        }
 
         methods.push(arrow_data_type_method(
             obj,
