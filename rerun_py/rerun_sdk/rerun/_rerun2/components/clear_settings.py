@@ -15,6 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from ._overrides import clear_settings__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["ClearSettings", "ClearSettingsArray", "ClearSettingsArrayLike", "ClearSettingsLike", "ClearSettingsType"]
 
@@ -53,7 +54,7 @@ class ClearSettingsArray(BaseExtensionArray[ClearSettingsArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClearSettingsArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "clear_settings__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/clear_settings.py
+        return clear_settings__native_to_pa_array_override(data, data_type)
 
 
 ClearSettingsType._ARRAY_TYPE = ClearSettingsArray
