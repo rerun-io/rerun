@@ -88,7 +88,12 @@ During codegen, each class looks for a file: `class_ext.py` in the same director
 will be generated. For example `datatypes/color_ext.py` is the extension file for the `Color` datatype,
 which can be found in `datatypes/color.py`.
 
-In this file you must define a class called `<Type>Ext` that will be added as a mixin to the generated class.
+In this file you must define a class called `<Type>Ext`, which will be added as a mixin to the generated class.
+
+Any methods defined in the extension class will be accessible via the generated class, so this can be a helpful way of adding
+things such as custom constructors.
+
+Additionally the extension class allows you to overide `__init__()`, `__array__()`, `native_to_pa_array`, or the field converters for any of the generated fields.
 
 #### Native object init method (`__init__()`)
 
