@@ -16,6 +16,7 @@ In this recipe we will show how to combine points and line segments to create in
 ```python
 import numpy as np
 import rerun as rr
+import rerun.experimental as rr2
 
 # define some parameters to generate the data
 num_tracks = 50
@@ -36,7 +37,7 @@ rr.init("Point Tracks", spawn=True)
 # log the points so we can visualize the tracks
 for i, time_step in enumerate(time_steps):
     rr.set_time_seconds("time", time_step)
-    rr.log_points("point_tracks/points", tracks[:, i])
+    rr2.log("point_tracks/points", rr2.Points2D(tracks[:, i]))
 ```
 TODO(roym899) GIF of current state
 
@@ -46,7 +47,7 @@ for i, time_step in enumerate(time_steps):
     … # log points as before
     if i > 1:
         segments = np.stack((tracks[:, i - 1], tracks[:, i]), axis=1)
-        rr.log_line_segments("point_tracks/lines", segments.reshape(-1, 2))
+        rr2.log("point_tracks/lines", rr2.LineStrips2D(segments))
 ```
 By default, we only see the a single segment between the current point and the previous point. However, by adjusting the visible history within the Rerun viewer the length of the point tracks can easily be adjusted.
 
@@ -60,14 +61,13 @@ visibilities = np.abs(tracks[:, :, 0] - 2 * np.pi) > 0.5
 for i, time_step in enumerate(time_steps):
     mask = visibilities[:, i]
     rr.set_time_seconds("time", time_step)
-    rr.log_points("point_tracks/points", tracks[mask, i])
+    rr2.log("point_tracks/points", rr2.Points2D(tracks[mask, i]))
 
     if i > 1:
         seg_mask = visibilities[:, i] * visibilities[:, i - 1]
         segments = np.stack((tracks[seg_mask, i - 1], tracks[seg_mask, i]), axis=1)
-        rr.log_line_segments("point_tracks/lines", segments.reshape(-1, 2))
+        rr2.log("point_tracks/lines", rr2.LineStrips2D(segments))
 ```
-TODO(roym899) GIF of current state
 
 This will stop updating the point position when it is not visible, however, if no point is visible the points will stay at the last logged position. An easy way to avoid this, is to always call `rr.log_cleared` prior to logging the points. This way, we always start from a clean slate at each time step.
 
@@ -75,26 +75,46 @@ This will stop updating the point position when it is not visible, however, if n
 for i, time_step in enumerate(time_steps):
     … # compute mask as before
     rr.log_cleared("point_tracks/points")
-    rr.log_points("point_tracks/points", tracks[mask, i])
+    rr2.log("point_tracks/points", rr2.Points2D(tracks[mask, i]))
 
     if i > 1:
         … # compute segments as before
         rr.log_cleared("point_tracks/lines")
-        rr.log_line_segments("point_tracks/lines", segments.reshape(-1, 2))
+        rr2.log("point_tracks/lines", rr2.LineStrips2D(segments))
 ```
 
-<!-- Add this once log_line_segments supports multiple colors (otherwise need ugly workaround)
+TODO(roym899) GIF of current state
 
-To keep track of each point it can be useful to assign a unique color to each point track. In this example, we use matplotlib's colormap to generate a color for each point track based on the initial point position. We then use the color to set the color of the point and the line segment. Note that we use the same color for the point and the line segment to make it clear that they belong to the same point track.
+To keep track of each point it can be useful to assign a unique color to each point track. To do so we log the track id as the class id of each point and line segment. We can also log an annotation context to assign a unique color to each track. Note that we need to log the annotation context prior to logging the points and line segments to ensure that the colors are applied correctly.
+
 ```python
+# assign random color to each track
+track_ids = np.arange(0, len(tracks))
+annotation_context = [(i, "", np.random.rand(3)) for i in track_ids]
+rr2.log(entity_path, rr2.AnnotationContext(annotation_context), timeless=True)
 
+for i, time_step in enumerate(time_steps):
+    … # as before
+    rr2.log(
+        "point_tracks/points",
+        rr2.Points2D(tracks[mask, i], class_ids=track_ids[mask]),
+    )
+
+    if i > 1:
+        … # as before
+        rr2.log(
+            "point_tracks/lines",
+            rr2.LineStrips2D(segments, class_ids=track_ids[seg_mask]),
+        )
 ```
-TODO(roym899) GIF of current state -->
+
+TODO(roym899) GIF of current state
 
 Putting everything together and wrapping the logic in functions we get the following code:
 ```python
 import numpy as np
 import rerun as rr
+import rerun.experimental as rr2
 
 
 def log_point_tracks(entity_path, tracks, visibilities, time_steps):
@@ -109,22 +129,33 @@ def log_point_tracks(entity_path, tracks, visibilities, time_steps):
         time_steps:
             The time steps for each point in the point tracks. Shape (num_time_steps,).
     """
+    # assign random color to each track
+    track_ids = np.arange(0, len(tracks))
+    annotation_context = [(i, "", np.random.rand(3)) for i in track_ids]
+    rr2.log(entity_path, rr2.AnnotationContext(annotation_context), timeless=True)
+
     for i, time_step in enumerate(time_steps):
         mask = visibilities[:, i]
         rr.set_time_seconds("time", time_step)
         rr.log_cleared(entity_path + "/points")
-        rr.log_points(entity_path + "/points", tracks[mask, i])
+        rr2.log(
+            entity_path + "/points",
+            rr2.Points2D(tracks[mask, i], class_ids=track_ids[mask]),
+        )
 
-        if i > 1:
+        if i >= 1:
             seg_mask = visibilities[:, i] * visibilities[:, i - 1]
             segments = np.stack((tracks[seg_mask, i - 1], tracks[seg_mask, i]), axis=1)
             rr.log_cleared(entity_path + "/lines")
-            rr.log_line_segments(entity_path + "/lines", segments.reshape(-1, 2))
+            rr2.log(
+                entity_path + "/lines",
+                rr2.LineStrips2D(segments, class_ids=track_ids[seg_mask]),
+            )
 
 
 def generate_data():
     """Generate point track data for this example."""
-    num_tracks = 50
+    num_tracks = 20
     duration = 3.0
     max_x = 4 * np.pi
     num_steps = int(duration * 30)
@@ -134,7 +165,7 @@ def generate_data():
     base_point_track = np.stack((x_values, np.cos(x_values)), axis=-1)
     offsets = np.random.randn(num_tracks, 1, 2)
     tracks = offsets + base_point_track[None]
-    visibilities = np.abs(tracks[:, :, 0] - 2 * np.pi) > 0.5
+    visibilities = np.abs(tracks[:, :, 0] - 2 * np.pi) > 0.5  # hide strip in middle
 
     return tracks, visibilities, time_steps
 
