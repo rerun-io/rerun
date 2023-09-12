@@ -45,20 +45,30 @@ pub struct Tensor {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.TensorData".into(),
+            "rerun.components.TensorIndicator".into(),
+        ]
+    });
 
 impl Tensor {
-    pub const NUM_COMPONENTS: usize = 1usize;
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
+/// Indicator component for the [`Tensor`] [`crate::Archetype`]
+pub type TensorIndicator = crate::GenericIndicatorComponent<Tensor>;
+
 impl crate::Archetype for Tensor {
+    type Indicator = TensorIndicator;
+
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.Tensor".into()
@@ -85,20 +95,18 @@ impl crate::Archetype for Tensor {
     }
 
     #[inline]
-    fn indicator_component() -> crate::ComponentName {
-        "rerun.components.TensorIndicator".into()
-    }
-
-    #[inline]
     fn num_instances(&self) -> usize {
         1
     }
 
-    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
-        [Some(&self.data as &dyn crate::ComponentList)]
-            .into_iter()
-            .flatten()
-            .collect()
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        [
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 
     #[inline]
@@ -108,46 +116,24 @@ impl crate::Archetype for Tensor {
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::TensorData>::try_to_arrow([&self.data]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.TensorData".into(),
-                            Box::new(array.data_type().clone()),
-                            Some("rerun.components.TensorData".into()),
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("data", datatype, false),
-                            array,
-                        )
-                    })
+        Ok([{
+            Some({
+                let array = <crate::components::TensorData>::try_to_arrow([&self.data]);
+                array.map(|array| {
+                    let datatype = ::arrow2::datatypes::DataType::Extension(
+                        "rerun.components.TensorData".into(),
+                        Box::new(array.data_type().clone()),
+                        Some("rerun.components.TensorData".into()),
+                    );
+                    (
+                        ::arrow2::datatypes::Field::new("data", datatype, false),
+                        array,
+                    )
                 })
-                .transpose()
-                .with_context("rerun.archetypes.Tensor#data")?
-            },
-            {
-                let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.TensorIndicator".to_owned(),
-                    Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.TensorIndicator".to_owned()),
-                );
-                let array = ::arrow2::array::NullArray::new(
-                    datatype.to_logical_type().clone(),
-                    self.num_instances(),
-                )
-                .boxed();
-                Some((
-                    ::arrow2::datatypes::Field::new(
-                        "rerun.components.TensorIndicator",
-                        datatype,
-                        false,
-                    ),
-                    array,
-                ))
-            },
-        ]
+            })
+            .transpose()
+            .with_context("rerun.archetypes.Tensor#data")?
+        }]
         .into_iter()
         .flatten()
         .collect())

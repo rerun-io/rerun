@@ -81,8 +81,13 @@ pub struct Arrows3D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Vector3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Origin3D".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.Origin3D".into(),
+            "rerun.components.Arrows3DIndicator".into(),
+        ]
+    });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -95,11 +100,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Vector3D".into(),
             "rerun.components.Origin3D".into(),
+            "rerun.components.Arrows3DIndicator".into(),
             "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.label".into(),
@@ -109,10 +115,15 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
     });
 
 impl Arrows3D {
-    pub const NUM_COMPONENTS: usize = 7usize;
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
+/// Indicator component for the [`Arrows3D`] [`crate::Archetype`]
+pub type Arrows3DIndicator = crate::GenericIndicatorComponent<Arrows3D>;
+
 impl crate::Archetype for Arrows3D {
+    type Indicator = Arrows3DIndicator;
+
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.Arrows3D".into()
@@ -139,36 +150,32 @@ impl crate::Archetype for Arrows3D {
     }
 
     #[inline]
-    fn indicator_component() -> crate::ComponentName {
-        "rerun.components.Arrows3DIndicator".into()
-    }
-
-    #[inline]
     fn num_instances(&self) -> usize {
         self.vectors.len()
     }
 
-    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(&self.vectors as &dyn crate::ComponentList),
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.vectors as &dyn crate::ComponentBatch).into()),
             self.origins
                 .as_ref()
-                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.radii
                 .as_ref()
-                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.colors
                 .as_ref()
-                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.labels
                 .as_ref()
-                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.class_ids
                 .as_ref()
-                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.instance_keys
                 .as_ref()
-                .map(|comp_list| comp_list as &dyn crate::ComponentList),
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -320,26 +327,6 @@ impl crate::Archetype for Arrows3D {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.Arrows3D#instance_keys")?
-            },
-            {
-                let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.Arrows3DIndicator".to_owned(),
-                    Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.Arrows3DIndicator".to_owned()),
-                );
-                let array = ::arrow2::array::NullArray::new(
-                    datatype.to_logical_type().clone(),
-                    self.num_instances(),
-                )
-                .boxed();
-                Some((
-                    ::arrow2::datatypes::Field::new(
-                        "rerun.components.Arrows3DIndicator",
-                        datatype,
-                        false,
-                    ),
-                    array,
-                ))
             },
         ]
         .into_iter()

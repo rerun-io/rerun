@@ -81,7 +81,7 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
         .into_iter()
         .map(Mesh3D::from)
         .collect::<Vec<_>>();
-    rec.log_component_lists(
+    rec.log_component_batches(
         node.name.as_str(),
         false,
         primitives.len() as _,
@@ -107,7 +107,7 @@ fn log_coordinate_space(
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
 
-    rec.log_component_lists(ent_path, true, 1, [&view_coords as _])
+    rec.log_component_batches(ent_path, true, 1, [&view_coords as _])
         .map_err(Into::into)
 }
 

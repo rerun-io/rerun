@@ -58,25 +58,31 @@ pub struct Image {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.ImageIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.draw_order".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
+            "rerun.components.ImageIndicator".into(),
             "rerun.draw_order".into(),
         ]
     });
 
 impl Image {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
+/// Indicator component for the [`Image`] [`crate::Archetype`]
+pub type ImageIndicator = crate::GenericIndicatorComponent<Image>;
+
 impl crate::Archetype for Image {
+    type Indicator = ImageIndicator;
+
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.Image".into()
@@ -103,21 +109,17 @@ impl crate::Archetype for Image {
     }
 
     #[inline]
-    fn indicator_component() -> crate::ComponentName {
-        "rerun.components.ImageIndicator".into()
-    }
-
-    #[inline]
     fn num_instances(&self) -> usize {
         1
     }
 
-    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(&self.data as &dyn crate::ComponentList),
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
             self.draw_order
                 .as_ref()
-                .map(|comp| comp as &dyn crate::ComponentList),
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -169,26 +171,6 @@ impl crate::Archetype for Image {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.Image#draw_order")?
-            },
-            {
-                let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.ImageIndicator".to_owned(),
-                    Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.ImageIndicator".to_owned()),
-                );
-                let array = ::arrow2::array::NullArray::new(
-                    datatype.to_logical_type().clone(),
-                    self.num_instances(),
-                )
-                .boxed();
-                Some((
-                    ::arrow2::datatypes::Field::new(
-                        "rerun.components.ImageIndicator",
-                        datatype,
-                        false,
-                    ),
-                    array,
-                ))
             },
         ]
         .into_iter()

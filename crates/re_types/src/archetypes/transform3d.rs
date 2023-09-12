@@ -65,20 +65,30 @@ pub struct Transform3D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.transform3d".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.transform3d".into()]);
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.transform3d".into(),
+            "rerun.components.Transform3DIndicator".into(),
+        ]
+    });
 
 impl Transform3D {
-    pub const NUM_COMPONENTS: usize = 1usize;
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
+/// Indicator component for the [`Transform3D`] [`crate::Archetype`]
+pub type Transform3DIndicator = crate::GenericIndicatorComponent<Transform3D>;
+
 impl crate::Archetype for Transform3D {
+    type Indicator = Transform3DIndicator;
+
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.Transform3D".into()
@@ -105,20 +115,18 @@ impl crate::Archetype for Transform3D {
     }
 
     #[inline]
-    fn indicator_component() -> crate::ComponentName {
-        "rerun.components.Transform3DIndicator".into()
-    }
-
-    #[inline]
     fn num_instances(&self) -> usize {
         1
     }
 
-    fn as_component_lists(&self) -> Vec<&dyn crate::ComponentList> {
-        [Some(&self.transform as &dyn crate::ComponentList)]
-            .into_iter()
-            .flatten()
-            .collect()
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        [
+            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some((&self.transform as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 
     #[inline]
@@ -128,46 +136,24 @@ impl crate::Archetype for Transform3D {
         Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     > {
         use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::Transform3D>::try_to_arrow([&self.transform]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Transform3D".into(),
-                            Box::new(array.data_type().clone()),
-                            Some("rerun.transform3d".into()),
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("transform", datatype, false),
-                            array,
-                        )
-                    })
+        Ok([{
+            Some({
+                let array = <crate::components::Transform3D>::try_to_arrow([&self.transform]);
+                array.map(|array| {
+                    let datatype = ::arrow2::datatypes::DataType::Extension(
+                        "rerun.components.Transform3D".into(),
+                        Box::new(array.data_type().clone()),
+                        Some("rerun.transform3d".into()),
+                    );
+                    (
+                        ::arrow2::datatypes::Field::new("transform", datatype, false),
+                        array,
+                    )
                 })
-                .transpose()
-                .with_context("rerun.archetypes.Transform3D#transform")?
-            },
-            {
-                let datatype = ::arrow2::datatypes::DataType::Extension(
-                    "rerun.components.Transform3DIndicator".to_owned(),
-                    Box::new(::arrow2::datatypes::DataType::Null),
-                    Some("rerun.components.Transform3DIndicator".to_owned()),
-                );
-                let array = ::arrow2::array::NullArray::new(
-                    datatype.to_logical_type().clone(),
-                    self.num_instances(),
-                )
-                .boxed();
-                Some((
-                    ::arrow2::datatypes::Field::new(
-                        "rerun.components.Transform3DIndicator",
-                        datatype,
-                        false,
-                    ),
-                    array,
-                ))
-            },
-        ]
+            })
+            .transpose()
+            .with_context("rerun.archetypes.Transform3D#transform")?
+        }]
         .into_iter()
         .flatten()
         .collect())

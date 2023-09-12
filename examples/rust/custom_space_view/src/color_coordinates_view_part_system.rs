@@ -23,8 +23,9 @@ pub struct ColorWithInstanceKey {
 
 struct ColorArchetype;
 
-// TODO(#2778): The introduction of ArchetypeInfo should make this much much nicer.
 impl re_types::Archetype for ColorArchetype {
+    type Indicator = re_types::GenericIndicatorComponent<Self>;
+
     fn name() -> re_types::ArchetypeName {
         "InstanceColor".into()
     }
