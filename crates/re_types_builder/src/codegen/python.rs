@@ -125,7 +125,8 @@ impl CodeGenerator for PythonCodeGenerator {
 }
 
 struct ObjExt {
-    name: String,
+    ext_name: String,
+    overrides: Vec<String>,
 }
 
 impl PythonCodeGenerator {
@@ -229,15 +230,37 @@ impl PythonCodeGenerator {
             if ext_path.exists() {
                 let mut ext_name = obj.name.clone();
                 ext_name.push_str("Ext");
+
+                let contents = std::fs::read_to_string(&ext_path)
+                    .with_context(|| format!("couldn't load overrides module at {ext_path:?}"))
+                    .unwrap();
+
+                // Extract potential overrides
+                // TODO(jleibs): Maybe pull in regex here
+                let overrides: Vec<_> = contents
+                    .lines()
+                    .map(|l| l.trim())
+                    .filter(|l| l.starts_with("def"))
+                    .map(|l| l.trim_start_matches("def"))
+                    .filter_map(|l| l.split('(').next())
+                    .filter(|l| l.ends_with("_override") || *l == "__init__")
+                    .map(|l| l.to_owned())
+                    .collect();
+
+                obj_ext = Some(ObjExt {
+                    ext_name,
+                    overrides,
+                });
+
                 code.push_unindented_text(
                     format!(
-                        "from .{} import {}Ext",
+                        "from .{} import {}Ext # Members: {}",
                         ext_path.file_stem().unwrap(),
-                        obj.name
+                        obj.name,
+                        obj_ext.as_ref().unwrap().overrides.join(", ")
                     ),
                     1,
                 );
-                obj_ext = Some(ObjExt { name: ext_name });
             }
 
             // Import all overrides. Overrides always start with `type_name_` and ends with `_override`.
@@ -436,7 +459,7 @@ fn code_for_struct(
         }
 
         if let Some(obj_ext) = &obj_ext {
-            superclasses.push(obj_ext.name.as_str());
+            superclasses.push(obj_ext.ext_name.as_str());
         }
 
         let superclass_decl = if superclasses.len() > 0 {
