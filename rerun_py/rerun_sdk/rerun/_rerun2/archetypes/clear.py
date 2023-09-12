@@ -23,9 +23,7 @@ class Clear(Archetype):
     --------
     Flat:
     ```python
-    from math import tau
 
-    import numpy as np
     import rerun as rr
     import rerun.experimental as rr2
 
@@ -46,9 +44,7 @@ class Clear(Archetype):
     ```
     Recursive:
     ```python
-    from math import tau
 
-    import numpy as np
     import rerun as rr
     import rerun.experimental as rr2
 

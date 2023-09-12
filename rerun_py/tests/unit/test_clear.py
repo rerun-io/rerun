@@ -7,7 +7,7 @@ from rerun.experimental import cmp as rr_cmp
 
 
 def test_clear() -> None:
-    clears: list[rr_cmp.ClearSettingsLike] = [
+    all_settings: list[rr_cmp.ClearSettingsLike] = [
         # ClearLike: bool
         True,
         # ClearLike: Clear
@@ -15,12 +15,12 @@ def test_clear() -> None:
     ]
 
     all_arrays = itertools.zip_longest(
-        clears,
+        all_settings,
     )
 
-    for clear in all_arrays:
-        print(f"rr2.Clear(\n" f"settings={clear}\n" f")")
-        arch = rr2.Clear(clear)
+    for settings in all_arrays:
+        print(f"rr2.Clear(\n" f"settings={settings}\n" f")")
+        arch = rr2.Clear(settings)
         print(f"{arch}\n")
 
         assert arch.settings == rr_cmp.ClearSettingsArray.from_similar([True])

@@ -1,4 +1,10 @@
 # This is a sha256 hash for all direct and indirect dependencies of this crate's build script.
 # It can be safely removed at anytime to force the build script to run again.
 # Check out build.rs to see how it's computed.
+<<<<<<< HEAD
 d89c19706851a426dab2ab9add773f5fe5f2de08a32578455da2f6dd0a9ced39
+||||||| parent of abf33af55 (lints)
+f40621a24d303605b38b678c6caf96cbaa8ce69c61bc18469745dfe249b71295
+=======
+62ee60df87a467d28a0d4b58a0b3b120ebb87dd2bee3e565c2a47707fa968a21
+>>>>>>> abf33af55 (lints)
