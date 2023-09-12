@@ -15,6 +15,8 @@ use crate::{
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
+// We delay any modifications to the tree until the end of the frame,
+// so that we don't iterate over something while modifying it.
 #[derive(Default)]
 struct TreeActions {
     focus_tab: Option<SpaceViewId>,
@@ -72,7 +74,7 @@ impl ViewportBlueprint<'_> {
         tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
     ) {
-        // Temporarily remove the tile so we don't get borrow checker fights:
+        // Temporarily remove the tile so we don't get borrow-checker fights:
         let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
             return;
         };
