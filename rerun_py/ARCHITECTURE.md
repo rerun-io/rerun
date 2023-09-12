@@ -93,7 +93,7 @@ In this file you must define a class called `<Type>Ext`, which will be added as 
 Any methods defined in the extension class will be accessible via the generated class, so this can be a helpful way of adding
 things such as custom constructors.
 
-Additionally the extension class allows you to overide `__init__()`, `__array__()`, `native_to_pa_array`, or the field converters for any of the generated fields.
+Additionally the extension class allows you to override `__init__()`, `__array__()`, `native_to_pa_array`, or the field converters for any of the generated fields.
 
 #### Native object init method (`__init__()`)
 
