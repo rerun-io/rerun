@@ -50,7 +50,7 @@ for i, time_step in enumerate(time_steps):
         segments = np.stack((tracks[:, i - 1], tracks[:, i]), axis=1)
         rr2.log("point_tracks/lines", rr2.LineStrips2D(segments))
 ```
-By default, we only see the a single segment between the current point and the previous point. However, by adjusting the visible history within the Rerun viewer the length of the point tracks can easily be adjusted.
+By default, we only see a single segment between the current point and the previous point. However, by adjusting the visible history within the Rerun viewer the length of the point tracks can easily be adjusted.
 
 TODO(roym899) GIF of current state with sliding history
 
