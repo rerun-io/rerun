@@ -32,7 +32,7 @@ offsets = np.random.randn(num_tracks, 1, 2)
 tracks = offsets + base_point_track[None]
 
 # start Rerun prior to logging anything
-rr.init("Point Tracks", spawn=True)
+rr.init("rerun_example_point_tracks", spawn=True)
 
 # log the points so we can visualize the tracks
 for i, time_step in enumerate(time_steps):
@@ -170,7 +170,7 @@ def generate_data():
     return tracks, visibilities, time_steps
 
 
-rr.init("Point Tracks", spawn=True)
+rr.init("rerun_example_point_tracks", spawn=True)
 tracks, visibilities, time_steps = generate_data()
 log_point_tracks("point_tracks", tracks, visibilities, time_steps)
 ```
