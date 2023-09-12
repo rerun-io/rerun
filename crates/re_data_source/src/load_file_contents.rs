@@ -1,3 +1,4 @@
+use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::LogMsg;
 use re_smart_channel::Sender;
 
@@ -106,7 +107,7 @@ fn load_rrd_sync(file_contents: &FileContents, tx: &Sender<LogMsg>) -> Result<()
     re_tracing::profile_function!(file_contents.name.as_str());
 
     let bytes: &[u8] = &file_contents.bytes;
-    let decoder = re_log_encoding::decoder::Decoder::new(bytes)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(VersionPolicy::Warn, bytes)?;
     for msg in decoder {
         tx.send(msg?)?;
     }

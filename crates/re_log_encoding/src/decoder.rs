@@ -2,6 +2,7 @@
 
 pub mod stream;
 
+use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
 use crate::FileHeader;
@@ -11,9 +12,24 @@ use crate::{Compression, EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
 
-fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
-    use re_build_info::CrateVersion;
+/// How to handle version mismatches during decoding.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum VersionPolicy {
+    /// Warn if the versions don't match, but continue loading.
+    ///
+    /// We usually use this for loading `.rrd` recordings.
+    Warn,
 
+    /// Return [`DecodeError::IncompatibleRerunVersion`] if the versions aren't compatible.
+    ///
+    /// We usually use this for tests, and for loading `.blueprint` files.
+    Error,
+}
+
+fn warn_on_version_mismatch(
+    version_policy: VersionPolicy,
+    encoded_version: [u8; 4],
+) -> Result<(), DecodeError> {
     // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
     let encoded_version = if encoded_version == [0, 0, 0, 0] {
         CrateVersion::new(0, 2, 0)
@@ -23,12 +39,23 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
 
     const LOCAL_VERSION: CrateVersion = CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
-    if !encoded_version.is_compatible_with(LOCAL_VERSION) {
-        re_log::warn!(
-            "Found log stream with Rerun version {encoded_version}, \
-            which is incompatible with the local Rerun version {LOCAL_VERSION}. \
-            Loading will try to continue, but might fail in subtle ways."
-        );
+    if encoded_version.is_compatible_with(LOCAL_VERSION) {
+        Ok(())
+    } else {
+        match version_policy {
+            VersionPolicy::Warn => {
+                re_log::warn!(
+                    "Found log stream with Rerun version {encoded_version}, \
+                     which is incompatible with the local Rerun version {LOCAL_VERSION}. \
+                     Loading will try to continue, but might fail in subtle ways."
+                );
+                Ok(())
+            }
+            VersionPolicy::Error => Err(DecodeError::IncompatibleRerunVersion {
+                file: encoded_version,
+                local: LOCAL_VERSION,
+            }),
+        }
     }
 }
 
@@ -40,8 +67,14 @@ pub enum DecodeError {
     #[error("Not an .rrd file")]
     NotAnRrd,
 
-    #[error("Found an .rrd file from an old, incompatible Rerun version")]
+    #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
+
+    #[error("Data from Rerun version {file}, which is incompatible with the local Rerun version {local}")]
+    IncompatibleRerunVersion {
+        file: CrateVersion,
+        local: CrateVersion,
+    },
 
     #[error("Failed to decode the options: {0}")]
     Options(#[from] crate::OptionsError),
@@ -58,9 +91,12 @@ pub enum DecodeError {
 
 // ----------------------------------------------------------------------------
 
-pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
+pub fn decode_bytes(
+    version_policy: VersionPolicy,
+    bytes: &[u8],
+) -> Result<Vec<LogMsg>, DecodeError> {
     re_tracing::profile_function!();
-    let decoder = Decoder::new(std::io::Cursor::new(bytes))?;
+    let decoder = Decoder::new(version_policy, std::io::Cursor::new(bytes))?;
     let mut msgs = vec![];
     for msg in decoder {
         msgs.push(msg?);
@@ -70,7 +106,10 @@ pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
 
 // ----------------------------------------------------------------------------
 
-pub fn read_options(bytes: &[u8]) -> Result<EncodingOptions, DecodeError> {
+pub fn read_options(
+    version_policy: VersionPolicy,
+    bytes: &[u8],
+) -> Result<EncodingOptions, DecodeError> {
     let mut read = std::io::Cursor::new(bytes);
 
     let FileHeader {
@@ -85,7 +124,7 @@ pub fn read_options(bytes: &[u8]) -> Result<EncodingOptions, DecodeError> {
         return Err(DecodeError::NotAnRrd);
     }
 
-    warn_on_version_mismatch(version);
+    warn_on_version_mismatch(version_policy, version)?;
 
     match options.serializer {
         Serializer::MsgPack => {}
@@ -102,12 +141,12 @@ pub struct Decoder<R: std::io::Read> {
 }
 
 impl<R: std::io::Read> Decoder<R> {
-    pub fn new(mut read: R) -> Result<Self, DecodeError> {
+    pub fn new(version_policy: VersionPolicy, mut read: R) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
-        let compression = read_options(&data)?.compression;
+        let compression = read_options(version_policy, &data)?.compression;
 
         Ok(Self {
             compression,
@@ -218,7 +257,7 @@ fn test_encode_decode() {
         let mut file = vec![];
         crate::encoder::encode(options, messages.iter(), &mut file).unwrap();
 
-        let decoded_messages = Decoder::new(&mut file.as_slice())
+        let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
             .unwrap()
             .collect::<Result<Vec<LogMsg>, DecodeError>>()
             .unwrap();

@@ -52,7 +52,8 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {
-        let decoder = RefCell::new(StreamDecoder::new());
+        let version_policy = crate::decoder::VersionPolicy::Warn;
+        let decoder = RefCell::new(StreamDecoder::new(version_policy));
         move |part| match part {
             Ok(part) => match part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {

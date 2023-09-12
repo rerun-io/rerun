@@ -199,7 +199,8 @@ async fn run_client(
 
         congestion_manager.register_latency(tx.latency_sec());
 
-        for msg in re_log_encoding::decoder::decode_bytes(&packet)? {
+        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        for msg in re_log_encoding::decoder::decode_bytes(version_policy, &packet)? {
             if congestion_manager.should_send(&msg) {
                 tx.send(msg)?;
             } else {

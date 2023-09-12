@@ -101,8 +101,9 @@ fn stream_rrd_file(
     path: std::path::PathBuf,
     tx: re_smart_channel::Sender<LogMsg>,
 ) -> anyhow::Result<()> {
+    let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
     let file = std::fs::File::open(&path).context("Failed to open file")?;
-    let decoder = re_log_encoding::decoder::Decoder::new(file)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, file)?;
 
     rayon::spawn(move || {
         re_tracing::profile_scope!("stream_rrd_file");
