@@ -25,16 +25,7 @@ const ARRAY_METHOD: &str = "__array__";
 /// The method used to convert a native type into a pyarrow array
 const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
 
-/// The common suffix for method used to convert fields to their canonical representation.jjj
-///
-/// If an extension class has a method named after the field with this suffix, it will be passed
-/// as the converter argument to the `attrs` field constructor.
-///
-/// For example, `ColorExt` has a method `rgba__field_converter_override`. This results in
-/// the rgba field being created as:
-/// ```
-/// rgba: int = field(converter=ColorExt.rgba__field_converter_override)
-/// ```
+/// The common suffix for method used to convert fields to their canonical representation.
 const FIELD_CONVERTER_SUFFIX: &str = "__field_converter_override";
 
 // ---
@@ -145,34 +136,64 @@ impl CodeGenerator for PythonCodeGenerator {
     }
 }
 
-struct ObjectExt {
-    /// Whether or not the `ObjectExtension` was found
+/// `ExtensionClass` represents an optional means of extending the generated python code
+///
+/// For any given type the extension will be looked for using the `_ext.py` suffix in the same
+/// directory as the type and must have a name ending with `Ext`.
+///
+/// For example, if the generated class for `Color` is found in `color.py`, then the `ExtensionClass`
+/// should be `ColorExt` and found in the `color_ext.py` file.
+///
+/// If the `ExtensionClass` is found it will be added as another parent-class of the base type.
+/// Python supports multiple-inheritance and often refers to this as a "mixin" class.
+struct ExtensionClass {
+    /// Whether or not the `ObjectExt` was found
     found: bool,
 
-    /// The name of the file where the `ObjectExtension` is implemented
+    /// The name of the file where the `ObjectExt` is implemented
     file_name: String,
 
-    /// The name of the module where `ObjectExtension` is implemented
+    /// The name of the module where `ObjectExt` is implemented
     module_name: String,
 
-    /// The name of this `ObjectExtension`
+    /// The name of this `ObjectExt`
     name: String,
 
-    /// The discovered overrides
+    /// The discovered overrides for field converters.
+    ///
+    /// The overrides must end in [`FIELD_CONVERTER_SUFFIX`] in order to be discovered.
+    ///
+    /// If an extension class has a method named after the field with this suffix, it will be passed
+    /// as the converter argument to the `attrs` field constructor.
+    ///
+    /// For example, `ColorExt` has a method `rgba__field_converter_override`. This results in
+    /// the rgba field being created as:
+    /// ```
+    /// rgba: int = field(converter=ColorExt.rgba__field_converter_override)
+    /// ```
     field_converter_overrides: Vec<String>,
 
-    /// Whether the ObjectExt contains __init__()
+    /// Whether the `ObjectExt` contains __init__()
+    ///
+    /// If the `ExtensioNClass` contains its own `__init__`, we need to avoid creating the
+    /// default `__init__` via `attrs.define`. This can be done by specifying:
+    /// ```
+    /// @define(init=false)
+    /// ```
     has_init: bool,
 
-    /// Whether the ObjectExt contains __array__()
+    /// Whether the `ObjectExt` contains __array__()
+    ///
+    /// If the `ExtensionClass` contains its own `__array__` then we avoid generating
+    /// a default implementation.
     has_array: bool,
 
-    /// Whether the ObjectExt contains __native_to_pa_array__()
+    /// Whether the `ObjectExt` contains __native_to_pa_array__()
     has_native_to_pa_array: bool,
 }
 
-impl ObjectExt {
-    fn new(base_path: &Utf8Path, obj: &Object) -> ObjectExt {
+impl ExtensionClass {
+    fn new(base_path: &Utf8Path, obj: &Object) -> ExtensionClass {
         let file_name = format!("{}_ext.py", obj.snake_case_name());
         let path = base_path.join(file_name.clone());
         let module_name = path.file_stem().unwrap().to_owned();
@@ -203,7 +224,7 @@ impl ObjectExt {
                 .map(|l| l.to_owned())
                 .collect();
 
-            ObjectExt {
+            ExtensionClass {
                 found: true,
                 file_name,
                 module_name,
@@ -214,7 +235,7 @@ impl ObjectExt {
                 has_native_to_pa_array,
             }
         } else {
-            ObjectExt {
+            ExtensionClass {
                 found: false,
                 file_name,
                 module_name,
@@ -249,7 +270,7 @@ impl PythonCodeGenerator {
         for &obj in &ordered_objects {
             let filepath = kind_path.join(format!("{}.py", obj.snake_case_name()));
 
-            let obj_ext = ObjectExt::new(&kind_path, obj);
+            let ext_class = ExtensionClass::new(&kind_path, obj);
 
             let names = match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
@@ -326,9 +347,9 @@ impl PythonCodeGenerator {
                 0,
             );
 
-            if obj_ext.found {
+            if ext_class.found {
                 code.push_unindented_text(
-                    format!("from .{} import {}", obj_ext.module_name, obj_ext.name,),
+                    format!("from .{} import {}", ext_class.module_name, ext_class.name,),
                     1,
                 );
             }
@@ -376,9 +397,9 @@ impl PythonCodeGenerator {
             );
 
             let obj_code = if obj.is_struct() {
-                code_for_struct(arrow_registry, &obj_ext, &overrides, objects, obj)
+                code_for_struct(arrow_registry, &ext_class, &overrides, objects, obj)
             } else {
-                code_for_union(arrow_registry, &obj_ext, &overrides, objects, obj)
+                code_for_union(arrow_registry, &ext_class, &overrides, objects, obj)
             };
             code.push_text(&obj_code, 1, 0);
 
@@ -470,7 +491,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
 fn code_for_struct(
     arrow_registry: &ArrowRegistry,
-    obj_ext: &ObjectExt,
+    ext_class: &ExtensionClass,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -503,11 +524,11 @@ fn code_for_struct(
 
             let converter_override_name = format!("{}{FIELD_CONVERTER_SUFFIX}", field.name);
 
-            let converter = if obj_ext
+            let converter = if ext_class
                 .field_converter_overrides
                 .contains(&converter_override_name)
             {
-                format!("converter={}.{converter_override_name}", obj_ext.name)
+                format!("converter={}.{converter_override_name}", ext_class.name)
             } else if overrides.contains(&old_converter_override_name) {
                 format!("converter={old_converter_override_name}")
             } else if *kind == ObjectKind::Archetype {
@@ -526,7 +547,7 @@ fn code_for_struct(
 
         // init override handling
         let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
-        let init_define_arg = if obj_ext.has_init || overrides.contains(&old_init_override_name) {
+        let init_define_arg = if ext_class.has_init || overrides.contains(&old_init_override_name) {
             "init=False".to_owned()
         } else {
             String::new()
@@ -538,8 +559,8 @@ fn code_for_struct(
             superclasses.push("Archetype");
         }
 
-        if obj_ext.found {
-            superclasses.push(obj_ext.name.as_str());
+        if ext_class.found {
+            superclasses.push(ext_class.name.as_str());
         }
 
         let superclass_decl = if !superclasses.is_empty() {
@@ -575,9 +596,9 @@ fn code_for_struct(
 
         code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-        if obj_ext.has_init {
+        if ext_class.has_init {
             code.push_text(
-                format!("# __init__ can be found in {}", obj_ext.file_name),
+                format!("# __init__ can be found in {}", ext_class.file_name),
                 2,
                 4,
             );
@@ -596,7 +617,7 @@ fn code_for_struct(
             code.push_text(
                 format!(
                     "# You can define your own __init__ function as a member of {} in {}",
-                    obj_ext.name, obj_ext.file_name
+                    ext_class.name, ext_class.file_name
                 ),
                 2,
                 4,
@@ -669,7 +690,7 @@ fn code_for_struct(
         }
 
         code.push_text(
-            quote_array_method_from_obj(obj_ext, overrides, objects, obj),
+            quote_array_method_from_obj(ext_class, overrides, objects, obj),
             1,
             4,
         );
@@ -693,7 +714,7 @@ fn code_for_struct(
                 );
             } else {
                 code.push_text(
-                    quote_arrow_support_from_obj(arrow_registry, obj_ext, overrides, obj),
+                    quote_arrow_support_from_obj(arrow_registry, ext_class, overrides, obj),
                     1,
                     0,
                 );
@@ -701,7 +722,7 @@ fn code_for_struct(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, obj_ext, overrides, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, overrides, obj),
                 1,
                 0,
             );
@@ -713,7 +734,7 @@ fn code_for_struct(
 
 fn code_for_union(
     arrow_registry: &ArrowRegistry,
-    obj_ext: &ObjectExt,
+    ext_class: &ExtensionClass,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -733,7 +754,7 @@ fn code_for_union(
 
     // init override handling
     let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
-    let define_args = if obj_ext.has_init || overrides.contains(&old_init_override_name) {
+    let define_args = if ext_class.has_init || overrides.contains(&old_init_override_name) {
         "(init=False)".to_owned()
     } else {
         String::new()
@@ -745,8 +766,8 @@ fn code_for_union(
         superclasses.push("Archetype");
     }
 
-    if obj_ext.found {
-        superclasses.push(obj_ext.name.as_str());
+    if ext_class.found {
+        superclasses.push(ext_class.name.as_str());
     }
 
     let superclass_decl = if !superclasses.is_empty() {
@@ -768,9 +789,9 @@ fn code_for_union(
 
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-    if obj_ext.has_init {
+    if ext_class.has_init {
         code.push_text(
-            format!("# __init__ can be found in {}", obj_ext.file_name),
+            format!("# __init__ can be found in {}", ext_class.file_name),
             2,
             4,
         );
@@ -789,7 +810,7 @@ fn code_for_union(
         code.push_text(
             format!(
                 "# You can define your own __init__ function as a member of {} in {}",
-                obj_ext.name, obj_ext.file_name
+                ext_class.name, ext_class.file_name
             ),
             2,
             4,
@@ -820,11 +841,11 @@ fn code_for_union(
         format!("{}__inner_converter_override", obj.snake_case_name());
     let converter_override_name = "inner_converter_override".to_owned();
 
-    let converter = if obj_ext
+    let converter = if ext_class
         .field_converter_overrides
         .contains(&converter_override_name)
     {
-        format!("converter={}.{converter_override_name}", obj_ext.name)
+        format!("converter={}.{converter_override_name}", ext_class.name)
     } else if overrides.contains(&old_converter_override_name) {
         format!("converter={old_converter_override_name}")
     } else if !default_converter.is_empty() {
@@ -865,7 +886,7 @@ fn code_for_union(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, obj_ext, overrides, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, overrides, obj),
                 1,
                 0,
             );
@@ -940,7 +961,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
 ///
 /// Only applies to datatypes and components.
 fn quote_array_method_from_obj(
-    obj_ext: &ObjectExt,
+    ext_class: &ExtensionClass,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -950,8 +971,8 @@ fn quote_array_method_from_obj(
 
     // allow overriding the __array__ function
     let old_override_name = format!("{}__as_array_override", obj.snake_case_name());
-    if obj_ext.has_array {
-        return format!("# __array__ can be found in {}", obj_ext.file_name);
+    if ext_class.has_array {
+        return format!("# __array__ can be found in {}", ext_class.file_name);
     } else if overrides.contains(&old_override_name) {
         return unindent::unindent(&format!(
             "
@@ -978,7 +999,7 @@ fn quote_array_method_from_obj(
             # You can define your own __array__ function as a member of {} in {}
             return np.asarray(self.{field_name}, dtype=dtype)
         ",
-        obj_ext.name, obj_ext.file_name
+        ext_class.name, ext_class.file_name
     ))
 }
 
@@ -1401,7 +1422,7 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
     arrow_registry: &ArrowRegistry,
-    obj_ext: &ObjectExt,
+    ext_class: &ExtensionClass,
     overrides: &HashSet<String>,
     obj: &Object,
 ) -> String {
@@ -1429,17 +1450,17 @@ fn quote_arrow_support_from_obj(
         .unwrap_or_else(|| fqname.clone());
 
     let old_override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
-    let override_ = if obj_ext.has_native_to_pa_array {
+    let override_ = if ext_class.has_native_to_pa_array {
         format!(
             "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
-            obj_ext.name
+            ext_class.name
         )
     } else if overrides.contains(&old_override_name) {
         format!("return {old_override_name}(data, data_type)")
     } else {
         format!(
             "raise NotImplementedError # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}",
-            obj_ext.file_name
+            ext_class.file_name
         )
     };
 
