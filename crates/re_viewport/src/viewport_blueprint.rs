@@ -216,9 +216,10 @@ impl<'a> ViewportBlueprint<'a> {
             .collect()
     }
 
+    /// Compares the before and after snapshots and sends any necessary deltas to the store.
     pub fn sync_viewport_blueprint(
-        &self,
-        snapshot: &ViewportBlueprint<'_>,
+        before: &ViewportBlueprint<'_>,
+        after: &ViewportBlueprint<'_>,
         command_sender: &CommandSender,
     ) {
         let mut deltas = vec![];
@@ -228,43 +229,42 @@ impl<'a> ViewportBlueprint<'a> {
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
-        if self.auto_space_views != snapshot.auto_space_views {
-            let component = AutoSpaceViews(self.auto_space_views);
+        if after.auto_space_views != before.auto_space_views {
+            let component = AutoSpaceViews(after.auto_space_views);
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
-        if self.maximized != snapshot.maximized {
-            let component = SpaceViewMaximized(self.maximized);
+        if after.maximized != before.maximized {
+            let component = SpaceViewMaximized(after.maximized);
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
-        if self.tree != snapshot.tree || self.has_been_user_edited != snapshot.has_been_user_edited
-        {
+        if after.tree != before.tree || after.has_been_user_edited != before.has_been_user_edited {
             let component = ViewportLayout {
-                space_view_keys: self.space_views.keys().cloned().collect(),
-                tree: self.tree.clone(),
-                has_been_user_edited: self.has_been_user_edited,
+                space_view_keys: after.space_views.keys().cloned().collect(),
+                tree: after.tree.clone(),
+                has_been_user_edited: after.has_been_user_edited,
             };
 
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
         // Add any new or modified space views
-        for id in self.space_view_ids() {
-            if let Some(space_view) = self.space_view(id) {
-                sync_space_view(&mut deltas, space_view, snapshot.space_view(id));
+        for id in after.space_view_ids() {
+            if let Some(space_view) = after.space_view(id) {
+                sync_space_view(&mut deltas, space_view, before.space_view(id));
             }
         }
 
         // Remove any deleted space views
-        for space_view_id in snapshot.space_view_ids() {
-            if self.space_view(space_view_id).is_none() {
+        for space_view_id in before.space_view_ids() {
+            if after.space_view(space_view_id).is_none() {
                 clear_space_view(&mut deltas, space_view_id);
             }
         }
 
         command_sender.send_system(SystemCommand::UpdateBlueprint(
-            self.blueprint_db.store_id().clone(),
+            after.blueprint_db.store_id().clone(),
             deltas,
         ));
     }

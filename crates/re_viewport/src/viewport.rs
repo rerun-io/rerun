@@ -53,8 +53,15 @@ impl ViewportState {
 
 /// Defines the layout of the Viewport
 pub struct Viewport<'a, 'b> {
+    /// The initial state of the Viewport read from the blueprint store on this frame.
+    ///
+    /// This is used to compare to the possibly mutated blueprint to
+    /// determine whether or not we need to save changes back
+    /// to the store as part of `sync_blueprint_changes`.
+    start_of_frame_snapshot: ViewportBlueprint<'a>,
+
+    // This is what me mutate during the frame.
     pub blueprint: ViewportBlueprint<'a>,
-    snapshot: ViewportBlueprint<'a>,
 
     pub state: &'b mut ViewportState,
 }
@@ -65,18 +72,21 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let blueprint = load_viewport_blueprint(blueprint_db);
 
-        let snapshot = blueprint.clone();
+        let start_of_frame_snapshot = blueprint.clone();
 
         Self {
-            snapshot,
+            start_of_frame_snapshot,
             blueprint,
             state,
         }
     }
 
     pub fn sync_blueprint_changes(&self, command_sender: &CommandSender) {
-        self.blueprint
-            .sync_viewport_blueprint(&self.snapshot, command_sender);
+        ViewportBlueprint::sync_viewport_blueprint(
+            &self.start_of_frame_snapshot,
+            &self.blueprint,
+            command_sender,
+        );
     }
 
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
@@ -85,9 +95,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
     pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a mut ViewerContext<'_>) {
         let Viewport {
-            blueprint,
-            snapshot: _,
-            state,
+            blueprint, state, ..
         } = self;
 
         if let Some(window) = &mut state.space_view_entity_window {
