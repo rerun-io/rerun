@@ -916,26 +916,6 @@ impl RecordingStream {
         this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
-    /// Records a [`re_log_types::PathOp`].
-    ///
-    /// This is a convenience wrapper for [`Self::record_msg`].
-    #[inline]
-    pub fn record_path_op(&self, path_op: re_log_types::PathOp) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to record_path_op() ignored");
-            return;
-        };
-
-        self.record_msg(LogMsg::EntityPathOpMsg(
-            this.info.store_id.clone(),
-            re_log_types::EntityPathOpMsg {
-                row_id: re_log_types::RowId::random(),
-                time_point: self.now(),
-                path_op,
-            },
-        ));
-    }
-
     /// Records a single [`DataRow`].
     ///
     /// If `inject_time` is set to `true`, the row's timestamp data will be overridden using the

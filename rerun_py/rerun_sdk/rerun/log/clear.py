@@ -28,5 +28,6 @@ def log_cleared(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
+    from rerun.experimental import Clear, log
     recording = RecordingStream.to_native(recording)
-    bindings.log_cleared(entity_path, recursive, recording=recording)
+    return log(entity_path, Clear(recursive), recording=recording)
