@@ -3,6 +3,7 @@
 mod annotation_context;
 mod class_id;
 mod class_id_ext;
+mod clear_settings;
 mod color;
 mod color_ext;
 mod depth_meter;
@@ -42,6 +43,7 @@ mod vector3d;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::class_id::ClassId;
+pub use self::clear_settings::ClearSettings;
 pub use self::color::Color;
 pub use self::depth_meter::DepthMeter;
 pub use self::disconnected_space::DisconnectedSpace;
