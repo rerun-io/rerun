@@ -28,7 +28,6 @@ __all__ = [
     "add_space_view",
     "arch",
     "cmp",
-    "cmp",
     "dt",
     "log",
     "new_blueprint",

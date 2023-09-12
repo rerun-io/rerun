@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from rerun import bindings
 from rerun.recording_stream import RecordingStream
 
 
@@ -29,5 +28,6 @@ def log_cleared(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
     from rerun.experimental import Clear, log
+
     recording = RecordingStream.to_native(recording)
     return log(entity_path, Clear(recursive), recording=recording)
