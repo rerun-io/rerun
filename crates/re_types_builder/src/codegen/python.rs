@@ -168,7 +168,7 @@ struct ExtensionClass {
     ///
     /// For example, `ColorExt` has a method `rgba__field_converter_override`. This results in
     /// the rgba field being created as:
-    /// ```
+    /// ```python
     /// rgba: int = field(converter=ColorExt.rgba__field_converter_override)
     /// ```
     field_converter_overrides: Vec<String>,
@@ -177,7 +177,7 @@ struct ExtensionClass {
     ///
     /// If the `ExtensioNClass` contains its own `__init__`, we need to avoid creating the
     /// default `__init__` via `attrs.define`. This can be done by specifying:
-    /// ```
+    /// ```python
     /// @define(init=false)
     /// ```
     has_init: bool,
