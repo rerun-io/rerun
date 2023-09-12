@@ -601,7 +601,7 @@ fn code_for_struct(
                 );
             } else {
                 code.push_text(
-                    quote_arrow_support_from_obj(arrow_registry, overrides, obj),
+                    quote_arrow_support_from_obj(arrow_registry, obj_ext, overrides, obj),
                     1,
                     0,
                 );
@@ -609,7 +609,7 @@ fn code_for_struct(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, overrides, obj),
+                quote_arrow_support_from_obj(arrow_registry, obj_ext, overrides, obj),
                 1,
                 0,
             );
@@ -727,7 +727,7 @@ fn code_for_union(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, overrides, obj),
+                quote_arrow_support_from_obj(arrow_registry, obj_ext, overrides, obj),
                 1,
                 0,
             );
@@ -1259,6 +1259,7 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
     arrow_registry: &ArrowRegistry,
+    obj_ext: Option<&ObjExt>,
     overrides: &HashSet<String>,
     obj: &Object,
 ) -> String {
@@ -1285,12 +1286,18 @@ fn quote_arrow_support_from_obj(
         .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
         .unwrap_or_else(|| fqname.clone());
 
-    let override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
-    let override_ = if overrides.contains(&override_name) {
-        format!("return {override_name}(data, data_type)")
+    let old_override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
+    let override_name = "native_to_pa_array_override".to_owned();
+    let override_ = if obj_ext.map_or(false, |obj_ext| obj_ext.overrides.contains(&override_name)) {
+        format!(
+            "return {}.{override_name}(data, data_type)",
+            obj_ext.unwrap().ext_name
+        )
+    } else if overrides.contains(&old_override_name) {
+        format!("return {old_override_name}(data, data_type)")
     } else {
         let override_file_path = format!(
-            "rerun_py/rerun_sdk/rerun/_rerun2/{}/_overrides/{}.py",
+            "rerun_py/rerun_sdk/rerun/_rerun2/{}/{}_ext.py",
             obj.kind.plural_snake_case(),
             obj.snake_case_name()
         );
