@@ -27,7 +27,8 @@ def main() -> None:
     class_ids = np.array([126, 127], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    boxes2d = rr2.Boxes2D(half_sizes=half_sizes,
+    boxes2d = rr2.Boxes2D(
+        half_sizes=half_sizes,
         centers=centers,
         colors=colors,
         labels=labels,
