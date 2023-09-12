@@ -87,6 +87,7 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.script_setup(args, "rerun_example_plot")
+    random.seed(0)  # For deterministic results
 
     log_parabola()
     log_trig()
