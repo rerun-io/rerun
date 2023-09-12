@@ -27,12 +27,12 @@ __all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
 class Vec2D:
     """A vector in 2D space."""
 
-    # You can define your own __init__ function by defining a function called "vec2d__init_override"
+    # You can define your own __init__ function as a member of Vec2DExt in vec2d_ext.py
 
-    xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xy: npt.NDArray[np.float32] = field(converter=to_np_float32)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "vec2d__as_array_override"
+        # You can define your own __array__ function as a member of Vec2DExt in vec2d_ext.py
         return np.asarray(self.xy, dtype=dtype)
 
 

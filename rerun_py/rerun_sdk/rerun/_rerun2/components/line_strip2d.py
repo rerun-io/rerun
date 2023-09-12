@@ -38,9 +38,9 @@ class LineStrip2D:
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "line_strip2d__init_override"
+    # You can define your own __init__ function as a member of LineStrip2DExt in line_strip2d_ext.py
 
-    points: list[datatypes.Vec2D] = field()
+    points: list[datatypes.Vec2D] = field()  # type: ignore[misc]
 
 
 if TYPE_CHECKING:

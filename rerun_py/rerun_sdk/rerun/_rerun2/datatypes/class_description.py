@@ -54,21 +54,17 @@ class ClassDescription:
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         class_description__init_override(self, *args, **kwargs)
 
-    info: datatypes.AnnotationInfo = field(converter=class_description__info__field_converter_override)
+    info: datatypes.AnnotationInfo = field(converter=class_description__info__field_converter_override)  # type: ignore[misc]
     """
     The `AnnotationInfo` for the class.
     """
 
-    keypoint_annotations: list[datatypes.AnnotationInfo] = field(
-        converter=class_description__keypoint_annotations__field_converter_override
-    )
+    keypoint_annotations: list[datatypes.AnnotationInfo] = field(converter=class_description__keypoint_annotations__field_converter_override)  # type: ignore[misc]
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
-    keypoint_connections: list[datatypes.KeypointPair] = field(
-        converter=class_description__keypoint_connections__field_converter_override
-    )
+    keypoint_connections: list[datatypes.KeypointPair] = field(converter=class_description__keypoint_connections__field_converter_override)  # type: ignore[misc]
     """
     The connections between keypoints.
     """

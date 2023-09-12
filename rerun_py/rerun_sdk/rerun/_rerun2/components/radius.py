@@ -24,12 +24,12 @@ __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType
 class Radius:
     """A Radius component."""
 
-    # You can define your own __init__ function by defining a function called "radius__init_override"
+    # You can define your own __init__ function as a member of RadiusExt in radius_ext.py
 
-    value: float = field(converter=float)
+    value: float = field(converter=float)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "radius__as_array_override"
+        # You can define your own __array__ function as a member of RadiusExt in radius_ext.py
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:

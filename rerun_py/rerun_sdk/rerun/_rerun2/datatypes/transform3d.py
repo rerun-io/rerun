@@ -23,9 +23,9 @@ __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform
 class Transform3D:
     """Representation of a 3D affine transform."""
 
-    # You can define your own __init__ function by defining a function called "transform3d__init_override"
+    # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
-    inner: datatypes.TranslationAndMat3x3 | datatypes.TranslationRotationScale3D = field()
+    inner: datatypes.TranslationAndMat3x3 | datatypes.TranslationRotationScale3D = field()  # type: ignore[misc]
     """
     TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
 

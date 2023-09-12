@@ -24,12 +24,12 @@ __all__ = ["Mat3x3", "Mat3x3Array", "Mat3x3ArrayLike", "Mat3x3Like", "Mat3x3Type
 class Mat3x3:
     """A 3x3 column-major Matrix."""
 
-    # You can define your own __init__ function by defining a function called "mat3x3__init_override"
+    # You can define your own __init__ function as a member of Mat3x3Ext in mat3x3_ext.py
 
-    coeffs: npt.NDArray[np.float32] = field(converter=mat3x3__coeffs__field_converter_override)
+    coeffs: npt.NDArray[np.float32] = field(converter=mat3x3__coeffs__field_converter_override)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "mat3x3__as_array_override"
+        # You can define your own __array__ function as a member of Mat3x3Ext in mat3x3_ext.py
         return np.asarray(self.coeffs, dtype=dtype)
 
 
@@ -60,7 +60,7 @@ class Mat3x3Array(BaseExtensionArray[Mat3x3ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "mat3x3__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/mat3x3.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in mat3x3_ext.py
 
 
 Mat3x3Type._ARRAY_TYPE = Mat3x3Array

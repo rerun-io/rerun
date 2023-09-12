@@ -24,12 +24,12 @@ __all__ = ["AffixFuzzer11", "AffixFuzzer11Array", "AffixFuzzer11ArrayLike", "Aff
 
 @define
 class AffixFuzzer11:
-    # You can define your own __init__ function by defining a function called "affix_fuzzer11__init_override"
+    # You can define your own __init__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
 
-    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
+    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "affix_fuzzer11__as_array_override"
+        # You can define your own __array__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
         return np.asarray(self.many_floats_optional, dtype=dtype)
 
 
@@ -58,7 +58,7 @@ class AffixFuzzer11Array(BaseExtensionArray[AffixFuzzer11ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer11ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "affix_fuzzer11__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/affix_fuzzer11.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer11_ext.py
 
 
 AffixFuzzer11Type._ARRAY_TYPE = AffixFuzzer11Array

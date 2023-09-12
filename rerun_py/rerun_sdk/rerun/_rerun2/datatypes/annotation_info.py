@@ -52,23 +52,19 @@ class AnnotationInfo:
     The id refers either to a class or key-point id
     """
 
-    # You can define your own __init__ function by defining a function called "annotation_info__init_override"
+    # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py
 
-    id: int = field(converter=int)
+    id: int = field(converter=int)  # type: ignore[misc]
     """
     `ClassId` or `KeypointId` to which this annotation info belongs.
     """
 
-    label: datatypes.Utf8 | None = field(
-        default=None, converter=_annotation_info__label__special_field_converter_override
-    )
+    label: datatypes.Utf8 | None = field(default=None, converter=_annotation_info__label__special_field_converter_override)  # type: ignore[misc]
     """
     The label that will be shown in the UI.
     """
 
-    color: datatypes.Color | None = field(
-        default=None, converter=_annotation_info__color__special_field_converter_override
-    )
+    color: datatypes.Color | None = field(default=None, converter=_annotation_info__color__special_field_converter_override)  # type: ignore[misc]
     """
     The color that will be applied to the annotated entity.
     """

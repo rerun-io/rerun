@@ -49,11 +49,11 @@ class SegmentationImage(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "segmentation_image__init_override"
+    # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
 
     data: components.TensorDataArray = field(
         metadata={"component": "primary"}, converter=segmentation_image__data__field_converter_override
-    )
+    )  # type: ignore[misc]
     """
     The image data. Should always be a rank-2 tensor.
     """
@@ -62,7 +62,7 @@ class SegmentationImage(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.

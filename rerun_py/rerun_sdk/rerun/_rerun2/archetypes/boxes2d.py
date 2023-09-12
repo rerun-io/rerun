@@ -36,12 +36,12 @@ class Boxes2D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "boxes2d__init_override"
+    # You can define your own __init__ function as a member of Boxes2DExt in boxes2d_ext.py
 
     half_sizes: components.HalfSizes2DArray = field(
         metadata={"component": "primary"},
         converter=components.HalfSizes2DArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     All half-extents that make up the batch of boxes.
     """
@@ -50,7 +50,7 @@ class Boxes2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.Origin2DArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional center positions of the boxes.
     """
@@ -59,7 +59,7 @@ class Boxes2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.RadiusArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional radii for the lines that make up the boxes.
     """
@@ -68,7 +68,7 @@ class Boxes2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ColorArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional colors for the boxes.
     """
@@ -77,7 +77,7 @@ class Boxes2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.TextArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional text labels for the boxes.
     """
@@ -86,7 +86,7 @@ class Boxes2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.
@@ -98,7 +98,7 @@ class Boxes2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional `ClassId`s for the boxes.
 
@@ -109,7 +109,7 @@ class Boxes2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Unique identifiers for each individual boxes in the batch.
     """

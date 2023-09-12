@@ -34,12 +34,12 @@ class Points2D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "points2d__init_override"
+    # You can define your own __init__ function as a member of Points2DExt in points2d_ext.py
 
     points: components.Point2DArray = field(
         metadata={"component": "primary"},
         converter=components.Point2DArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     All the actual 2D points that make up the point cloud.
     """
@@ -48,7 +48,7 @@ class Points2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.RadiusArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional radii for the points, effectively turning them into circles.
     """
@@ -57,7 +57,7 @@ class Points2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ColorArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional colors for the points.
 
@@ -69,7 +69,7 @@ class Points2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.TextArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional text labels for the points.
     """
@@ -78,7 +78,7 @@ class Points2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.
@@ -88,7 +88,7 @@ class Points2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional class Ids for the points.
 
@@ -99,7 +99,7 @@ class Points2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.KeypointIdArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional keypoint IDs for the points, identifying them within a class.
 
@@ -115,7 +115,7 @@ class Points2D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Unique identifiers for each individual point in the batch.
     """

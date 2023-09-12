@@ -39,12 +39,12 @@ class Arrows3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "arrows3d__init_override"
+    # You can define your own __init__ function as a member of Arrows3DExt in arrows3d_ext.py
 
     vectors: components.Vector3DArray = field(
         metadata={"component": "primary"},
         converter=components.Vector3DArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     All the vectors for each arrow in the batch.
     """
@@ -53,7 +53,7 @@ class Arrows3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.Origin3DArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     All the origin points for each arrow in the batch.
     """
@@ -62,7 +62,7 @@ class Arrows3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.RadiusArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional radii for the arrows.
 
@@ -74,7 +74,7 @@ class Arrows3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ColorArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional colors for the points.
     """
@@ -83,7 +83,7 @@ class Arrows3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.TextArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional text labels for the arrows.
     """
@@ -92,7 +92,7 @@ class Arrows3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional class Ids for the points.
 
@@ -103,7 +103,7 @@ class Arrows3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Unique identifiers for each individual point in the batch.
     """

@@ -27,12 +27,12 @@ __all__ = [
 
 @define
 class FlattenedScalar:
-    # You can define your own __init__ function by defining a function called "flattened_scalar__init_override"
+    # You can define your own __init__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
 
-    value: float = field(converter=float)
+    value: float = field(converter=float)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "flattened_scalar__as_array_override"
+        # You can define your own __array__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
@@ -64,7 +64,7 @@ class FlattenedScalarArray(BaseExtensionArray[FlattenedScalarArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "flattened_scalar__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/flattened_scalar.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in flattened_scalar_ext.py
 
 
 FlattenedScalarType._ARRAY_TYPE = FlattenedScalarArray

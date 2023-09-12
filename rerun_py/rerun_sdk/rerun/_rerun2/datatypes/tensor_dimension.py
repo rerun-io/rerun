@@ -30,10 +30,10 @@ __all__ = [
 class TensorDimension:
     """A single dimension within a multi-dimensional tensor."""
 
-    # You can define your own __init__ function by defining a function called "tensor_dimension__init_override"
+    # You can define your own __init__ function as a member of TensorDimensionExt in tensor_dimension_ext.py
 
-    size: int = field(converter=int)
-    name: str | None = field(default=None, converter=str_or_none)
+    size: int = field(converter=int)  # type: ignore[misc]
+    name: str | None = field(default=None, converter=str_or_none)  # type: ignore[misc]
 
 
 TensorDimensionLike = TensorDimension
@@ -66,7 +66,7 @@ class TensorDimensionArray(BaseExtensionArray[TensorDimensionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "tensor_dimension__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_dimension.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_dimension_ext.py
 
 
 TensorDimensionType._ARRAY_TYPE = TensorDimensionArray

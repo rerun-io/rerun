@@ -22,9 +22,9 @@ __all__ = ["AffixFuzzer3", "AffixFuzzer3Array", "AffixFuzzer3ArrayLike", "AffixF
 
 @define
 class AffixFuzzer3:
-    # You can define your own __init__ function by defining a function called "affix_fuzzer3__init_override"
+    # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
 
-    inner: float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] = field()
+    inner: float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] = field()  # type: ignore[misc]
     """
     degrees (float):
 
@@ -131,7 +131,7 @@ class AffixFuzzer3Array(BaseExtensionArray[AffixFuzzer3ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "affix_fuzzer3__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/affix_fuzzer3.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer3_ext.py
 
 
 AffixFuzzer3Type._ARRAY_TYPE = AffixFuzzer3Array

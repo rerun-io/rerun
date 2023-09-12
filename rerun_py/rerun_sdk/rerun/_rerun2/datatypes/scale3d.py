@@ -36,9 +36,9 @@ class Scale3D:
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "scale3d__init_override"
+    # You can define your own __init__ function as a member of Scale3DExt in scale3d_ext.py
 
-    inner: datatypes.Vec3D | float = field(converter=scale3d__inner_converter_override)
+    inner: datatypes.Vec3D | float = field(converter=scale3d__inner_converter_override)  # type: ignore[misc]
     """
     ThreeD (datatypes.Vec3D):
         Individual scaling factors for each axis, distorting the original object.
@@ -89,7 +89,7 @@ class Scale3DArray(BaseExtensionArray[Scale3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "scale3d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/scale3d.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in scale3d_ext.py
 
 
 Scale3DType._ARRAY_TYPE = Scale3DArray

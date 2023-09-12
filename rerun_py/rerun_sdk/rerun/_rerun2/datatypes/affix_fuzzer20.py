@@ -36,10 +36,10 @@ def _affix_fuzzer20__s__special_field_converter_override(x: datatypes.StringComp
 
 @define
 class AffixFuzzer20:
-    # You can define your own __init__ function by defining a function called "affix_fuzzer20__init_override"
+    # You can define your own __init__ function as a member of AffixFuzzer20Ext in affix_fuzzer20_ext.py
 
-    p: datatypes.PrimitiveComponent = field(converter=_affix_fuzzer20__p__special_field_converter_override)
-    s: datatypes.StringComponent = field(converter=_affix_fuzzer20__s__special_field_converter_override)
+    p: datatypes.PrimitiveComponent = field(converter=_affix_fuzzer20__p__special_field_converter_override)  # type: ignore[misc]
+    s: datatypes.StringComponent = field(converter=_affix_fuzzer20__s__special_field_converter_override)  # type: ignore[misc]
 
 
 AffixFuzzer20Like = AffixFuzzer20
@@ -72,7 +72,7 @@ class AffixFuzzer20Array(BaseExtensionArray[AffixFuzzer20ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer20ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "affix_fuzzer20__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/affix_fuzzer20.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer20_ext.py
 
 
 AffixFuzzer20Type._ARRAY_TYPE = AffixFuzzer20Array

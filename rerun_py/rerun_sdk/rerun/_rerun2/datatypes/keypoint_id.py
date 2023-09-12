@@ -31,12 +31,12 @@ class KeypointId:
     [`rerun.components.AnnotationContext`].
     """
 
-    # You can define your own __init__ function by defining a function called "keypoint_id__init_override"
+    # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
 
-    id: int = field(converter=int)
+    id: int = field(converter=int)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "keypoint_id__as_array_override"
+        # You can define your own __array__ function as a member of KeypointIdExt in keypoint_id_ext.py
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:

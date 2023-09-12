@@ -58,22 +58,18 @@ class TranslationAndMat3x3:
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         translation_and_mat3x3__init_override(self, *args, **kwargs)
 
-    from_parent: bool = field(converter=bool)
+    from_parent: bool = field(converter=bool)  # type: ignore[misc]
     """
     If true, the transform maps from the parent space to the space where the transform was logged.
     Otherwise, the transform maps from the space to its parent.
     """
 
-    translation: datatypes.Vec3D | None = field(
-        default=None, converter=_translation_and_mat3x3__translation__special_field_converter_override
-    )
+    translation: datatypes.Vec3D | None = field(default=None, converter=_translation_and_mat3x3__translation__special_field_converter_override)  # type: ignore[misc]
     """
     3D translation, applied after the matrix.
     """
 
-    matrix: datatypes.Mat3x3 | None = field(
-        default=None, converter=_translation_and_mat3x3__matrix__special_field_converter_override
-    )
+    matrix: datatypes.Mat3x3 | None = field(default=None, converter=_translation_and_mat3x3__matrix__special_field_converter_override)  # type: ignore[misc]
     """
     3x3 matrix for scale, rotation & shear.
     """
@@ -120,7 +116,7 @@ class TranslationAndMat3x3Array(BaseExtensionArray[TranslationAndMat3x3ArrayLike
 
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "translation_and_mat3x3__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_and_mat3x3.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_and_mat3x3_ext.py
 
 
 TranslationAndMat3x3Type._ARRAY_TYPE = TranslationAndMat3x3Array

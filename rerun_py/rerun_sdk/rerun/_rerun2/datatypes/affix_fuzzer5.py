@@ -31,11 +31,9 @@ def _affix_fuzzer5__single_optional_union__special_field_converter_override(
 
 @define
 class AffixFuzzer5:
-    # You can define your own __init__ function by defining a function called "affix_fuzzer5__init_override"
+    # You can define your own __init__ function as a member of AffixFuzzer5Ext in affix_fuzzer5_ext.py
 
-    single_optional_union: datatypes.AffixFuzzer4 | None = field(
-        default=None, converter=_affix_fuzzer5__single_optional_union__special_field_converter_override
-    )
+    single_optional_union: datatypes.AffixFuzzer4 | None = field(default=None, converter=_affix_fuzzer5__single_optional_union__special_field_converter_override)  # type: ignore[misc]
 
 
 AffixFuzzer5Like = AffixFuzzer5
@@ -452,7 +450,7 @@ class AffixFuzzer5Array(BaseExtensionArray[AffixFuzzer5ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer5ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "affix_fuzzer5__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/affix_fuzzer5.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer5_ext.py
 
 
 AffixFuzzer5Type._ARRAY_TYPE = AffixFuzzer5Array

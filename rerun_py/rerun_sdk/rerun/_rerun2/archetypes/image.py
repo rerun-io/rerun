@@ -47,11 +47,11 @@ class Image(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "image__init_override"
+    # You can define your own __init__ function as a member of ImageExt in image_ext.py
 
     data: components.TensorDataArray = field(
         metadata={"component": "primary"}, converter=image__data__field_converter_override
-    )
+    )  # type: ignore[misc]
     """
     The image data. Should always be a rank-2 or rank-3 tensor.
     """
@@ -60,7 +60,7 @@ class Image(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.

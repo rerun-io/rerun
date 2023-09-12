@@ -81,12 +81,12 @@ class LineStrips3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "line_strips3d__init_override"
+    # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
 
     strips: components.LineStrip3DArray = field(
         metadata={"component": "primary"},
         converter=components.LineStrip3DArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     All the actual 3D line strips that make up the batch.
     """
@@ -95,7 +95,7 @@ class LineStrips3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.RadiusArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional radii for the line strips.
     """
@@ -104,7 +104,7 @@ class LineStrips3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ColorArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional colors for the line strips.
     """
@@ -113,7 +113,7 @@ class LineStrips3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.TextArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional text labels for the line strips.
     """
@@ -122,7 +122,7 @@ class LineStrips3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Optional `ClassId`s for the lines.
 
@@ -133,7 +133,7 @@ class LineStrips3D(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     Unique identifiers for each individual line strip in the batch.
     """

@@ -13,19 +13,18 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import angle__init_override  # noqa: F401
+from .angle_ext import AngleExt
 
 __all__ = ["Angle", "AngleArray", "AngleArrayLike", "AngleLike", "AngleType"]
 
 
 @define(init=False)
-class Angle:
+class Angle(AngleExt):
     """Angle in either radians or degrees."""
 
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        angle__init_override(self, *args, **kwargs)
+    # __init__ can be found in angle_ext.py
 
-    inner: float = field(converter=float)
+    inner: float = field(converter=float)  # type: ignore[misc]
     """
     Radians (float):
         3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
@@ -75,7 +74,7 @@ class AngleArray(BaseExtensionArray[AngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "angle__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/angle.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in angle_ext.py
 
 
 AngleType._ARRAY_TYPE = AngleArray

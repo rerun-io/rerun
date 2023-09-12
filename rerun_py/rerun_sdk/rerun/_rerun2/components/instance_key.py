@@ -24,12 +24,12 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 class InstanceKey:
     """A unique numeric identifier for each individual instance within a batch."""
 
-    # You can define your own __init__ function by defining a function called "instance_key__init_override"
+    # You can define your own __init__ function as a member of InstanceKeyExt in instance_key_ext.py
 
-    value: int = field(converter=int)
+    value: int = field(converter=int)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "instance_key__as_array_override"
+        # You can define your own __array__ function as a member of InstanceKeyExt in instance_key_ext.py
         return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:

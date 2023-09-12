@@ -43,11 +43,11 @@ class DepthImage(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "depth_image__init_override"
+    # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
 
     data: components.TensorDataArray = field(
         metadata={"component": "primary"}, converter=depth_image__data__field_converter_override
-    )
+    )  # type: ignore[misc]
     """
     The depth-image data. Should always be a rank-2 tensor.
     """
@@ -56,7 +56,7 @@ class DepthImage(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.DepthMeterArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     An optional floating point value that specifies how long a meter is in the native depth units.
 
@@ -68,7 +68,7 @@ class DepthImage(Archetype):
         metadata={"component": "secondary"},
         default=None,
         converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.

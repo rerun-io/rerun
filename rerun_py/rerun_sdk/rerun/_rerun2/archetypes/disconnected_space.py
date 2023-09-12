@@ -42,11 +42,11 @@ class DisconnectedSpace(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "disconnected_space__init_override"
+    # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
 
     disconnected_space: components.DisconnectedSpaceArray = field(
         metadata={"component": "primary"},
         converter=components.DisconnectedSpaceArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

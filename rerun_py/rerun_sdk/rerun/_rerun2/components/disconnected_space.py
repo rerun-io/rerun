@@ -36,9 +36,9 @@ class DisconnectedSpace:
     If a transform or pinhole is logged on the same path, this component will be ignored.
     """
 
-    # You can define your own __init__ function by defining a function called "disconnected_space__init_override"
+    # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
 
-    is_disconnected: bool = field(converter=bool)
+    is_disconnected: bool = field(converter=bool)  # type: ignore[misc]
 
 
 if TYPE_CHECKING:

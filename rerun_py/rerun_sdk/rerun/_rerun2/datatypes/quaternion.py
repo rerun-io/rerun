@@ -35,10 +35,10 @@ class Quaternion:
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         quaternion__init_override(self, *args, **kwargs)
 
-    xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "quaternion__as_array_override"
+        # You can define your own __array__ function as a member of QuaternionExt in quaternion_ext.py
         return np.asarray(self.xyzw, dtype=dtype)
 
 
@@ -65,7 +65,7 @@ class QuaternionArray(BaseExtensionArray[QuaternionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: QuaternionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "quaternion__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/quaternion.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in quaternion_ext.py
 
 
 QuaternionType._ARRAY_TYPE = QuaternionArray

@@ -27,12 +27,12 @@ __all__ = ["Vec4D", "Vec4DArray", "Vec4DArrayLike", "Vec4DLike", "Vec4DType"]
 class Vec4D:
     """A vector in 4D space."""
 
-    # You can define your own __init__ function by defining a function called "vec4d__init_override"
+    # You can define your own __init__ function as a member of Vec4DExt in vec4d_ext.py
 
-    xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "vec4d__as_array_override"
+        # You can define your own __array__ function as a member of Vec4DExt in vec4d_ext.py
         return np.asarray(self.xyzw, dtype=dtype)
 
 

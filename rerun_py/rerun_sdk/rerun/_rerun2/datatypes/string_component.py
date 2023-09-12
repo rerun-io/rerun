@@ -25,9 +25,9 @@ __all__ = [
 
 @define
 class StringComponent:
-    # You can define your own __init__ function by defining a function called "string_component__init_override"
+    # You can define your own __init__ function as a member of StringComponentExt in string_component_ext.py
 
-    value: str = field(converter=str)
+    value: str = field(converter=str)  # type: ignore[misc]
 
     def __str__(self) -> str:
         return str(self.value)
@@ -54,7 +54,7 @@ class StringComponentArray(BaseExtensionArray[StringComponentArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: StringComponentArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "string_component__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/string_component.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in string_component_ext.py
 
 
 StringComponentType._ARRAY_TYPE = StringComponentArray

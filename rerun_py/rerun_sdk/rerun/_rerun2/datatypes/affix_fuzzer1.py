@@ -37,19 +37,17 @@ def _affix_fuzzer1__almost_flattened_scalar__special_field_converter_override(
 
 @define
 class AffixFuzzer1:
-    # You can define your own __init__ function by defining a function called "affix_fuzzer1__init_override"
+    # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py
 
-    single_string_required: str = field(converter=str)
-    many_strings_required: list[str] = field()
-    flattened_scalar: float = field(converter=float)
-    almost_flattened_scalar: datatypes.FlattenedScalar = field(
-        converter=_affix_fuzzer1__almost_flattened_scalar__special_field_converter_override
-    )
-    single_float_optional: float | None = field(default=None, converter=float_or_none)
-    single_string_optional: str | None = field(default=None, converter=str_or_none)
-    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
-    many_strings_optional: list[str] | None = field(default=None)
-    from_parent: bool | None = field(default=None, converter=bool_or_none)
+    single_string_required: str = field(converter=str)  # type: ignore[misc]
+    many_strings_required: list[str] = field()  # type: ignore[misc]
+    flattened_scalar: float = field(converter=float)  # type: ignore[misc]
+    almost_flattened_scalar: datatypes.FlattenedScalar = field(converter=_affix_fuzzer1__almost_flattened_scalar__special_field_converter_override)  # type: ignore[misc]
+    single_float_optional: float | None = field(default=None, converter=float_or_none)  # type: ignore[misc]
+    single_string_optional: str | None = field(default=None, converter=str_or_none)  # type: ignore[misc]
+    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)  # type: ignore[misc]
+    many_strings_optional: list[str] | None = field(default=None)  # type: ignore[misc]
+    from_parent: bool | None = field(default=None, converter=bool_or_none)  # type: ignore[misc]
 
 
 AffixFuzzer1Like = AffixFuzzer1
@@ -109,7 +107,7 @@ class AffixFuzzer1Array(BaseExtensionArray[AffixFuzzer1ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer1ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "affix_fuzzer1__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/affix_fuzzer1.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer1_ext.py
 
 
 AffixFuzzer1Type._ARRAY_TYPE = AffixFuzzer1Array

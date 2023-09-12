@@ -23,9 +23,9 @@ __all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLi
 class Rotation3D:
     """A 3D rotation."""
 
-    # You can define your own __init__ function by defining a function called "rotation3d__init_override"
+    # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
 
-    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=rotation3d__inner_converter_override)
+    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=rotation3d__inner_converter_override)  # type: ignore[misc]
     """
     Quaternion (datatypes.Quaternion):
         Rotation defined by a quaternion.
@@ -102,7 +102,7 @@ class Rotation3DArray(BaseExtensionArray[Rotation3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "rotation3d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/rotation3d.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in rotation3d_ext.py
 
 
 Rotation3DType._ARRAY_TYPE = Rotation3DArray

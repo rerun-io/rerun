@@ -37,10 +37,10 @@ def _keypoint_pair__keypoint1__special_field_converter_override(x: datatypes.Key
 class KeypointPair:
     """A connection between two `Keypoints`."""
 
-    # You can define your own __init__ function by defining a function called "keypoint_pair__init_override"
+    # You can define your own __init__ function as a member of KeypointPairExt in keypoint_pair_ext.py
 
-    keypoint0: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint0__special_field_converter_override)
-    keypoint1: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint1__special_field_converter_override)
+    keypoint0: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint0__special_field_converter_override)  # type: ignore[misc]
+    keypoint1: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint1__special_field_converter_override)  # type: ignore[misc]
 
 
 if TYPE_CHECKING:

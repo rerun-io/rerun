@@ -43,8 +43,8 @@ class TensorData:
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         tensor_data__init_override(self, *args, **kwargs)
 
-    shape: list[datatypes.TensorDimension] = field()
-    buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)
+    shape: list[datatypes.TensorDimension] = field()  # type: ignore[misc]
+    buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)  # type: ignore[misc]
 
 
 if TYPE_CHECKING:

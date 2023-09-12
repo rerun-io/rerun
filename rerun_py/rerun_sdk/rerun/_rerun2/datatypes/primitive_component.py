@@ -27,12 +27,12 @@ __all__ = [
 
 @define
 class PrimitiveComponent:
-    # You can define your own __init__ function by defining a function called "primitive_component__init_override"
+    # You can define your own __init__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
 
-    value: int = field(converter=int)
+    value: int = field(converter=int)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "primitive_component__as_array_override"
+        # You can define your own __array__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
         return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:
@@ -60,7 +60,7 @@ class PrimitiveComponentArray(BaseExtensionArray[PrimitiveComponentArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "primitive_component__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/primitive_component.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in primitive_component_ext.py
 
 
 PrimitiveComponentType._ARRAY_TYPE = PrimitiveComponentArray

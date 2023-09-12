@@ -18,12 +18,12 @@ __all__ = ["Tensor"]
 class Tensor(Archetype):
     """A generic n-dimensional Tensor."""
 
-    # You can define your own __init__ function by defining a function called "tensor__init_override"
+    # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
 
     data: components.TensorDataArray = field(
         metadata={"component": "primary"},
         converter=components.TensorDataArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     """
     The tensor data
     """

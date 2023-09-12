@@ -32,12 +32,12 @@ class DrawOrder:
     Draw order for entities with the same draw order is generally undefined.
     """
 
-    # You can define your own __init__ function by defining a function called "draw_order__init_override"
+    # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
 
-    value: float = field(converter=float)
+    value: float = field(converter=float)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "draw_order__as_array_override"
+        # You can define your own __array__ function as a member of DrawOrderExt in draw_order_ext.py
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:

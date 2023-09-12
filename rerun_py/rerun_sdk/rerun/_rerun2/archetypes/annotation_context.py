@@ -45,11 +45,11 @@ class AnnotationContext(Archetype):
     ```
     """
 
-    # You can define your own __init__ function by defining a function called "annotation_context__init_override"
+    # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
 
     context: components.AnnotationContextArray = field(
         metadata={"component": "primary"},
         converter=components.AnnotationContextArray.from_similar,  # type: ignore[misc]
-    )
+    )  # type: ignore[misc]
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

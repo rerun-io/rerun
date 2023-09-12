@@ -27,12 +27,12 @@ __all__ = ["Vec3D", "Vec3DArray", "Vec3DArrayLike", "Vec3DLike", "Vec3DType"]
 class Vec3D:
     """A vector in 3D space."""
 
-    # You can define your own __init__ function by defining a function called "vec3d__init_override"
+    # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
 
-    xyz: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    xyz: npt.NDArray[np.float32] = field(converter=to_np_float32)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can replace `np.asarray` here with your own code by defining a function named "vec3d__as_array_override"
+        # You can define your own __array__ function as a member of Vec3DExt in vec3d_ext.py
         return np.asarray(self.xyz, dtype=dtype)
 
 

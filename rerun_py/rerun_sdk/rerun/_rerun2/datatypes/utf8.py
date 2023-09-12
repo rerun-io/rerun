@@ -22,9 +22,9 @@ __all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
 class Utf8:
     """A string of text, encoded as UTF-8."""
 
-    # You can define your own __init__ function by defining a function called "utf8__init_override"
+    # You can define your own __init__ function as a member of Utf8Ext in utf8_ext.py
 
-    value: str = field(converter=str)
+    value: str = field(converter=str)  # type: ignore[misc]
 
     def __str__(self) -> str:
         return str(self.value)

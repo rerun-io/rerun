@@ -65,29 +65,23 @@ class TranslationRotationScale3D:
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         translation_rotation_scale3d__init_override(self, *args, **kwargs)
 
-    from_parent: bool = field(converter=bool)
+    from_parent: bool = field(converter=bool)  # type: ignore[misc]
     """
     If true, the transform maps from the parent space to the space where the transform was logged.
     Otherwise, the transform maps from the space to its parent.
     """
 
-    translation: datatypes.Vec3D | None = field(
-        default=None, converter=_translation_rotation_scale3d__translation__special_field_converter_override
-    )
+    translation: datatypes.Vec3D | None = field(default=None, converter=_translation_rotation_scale3d__translation__special_field_converter_override)  # type: ignore[misc]
     """
     3D translation vector, applied last.
     """
 
-    rotation: datatypes.Rotation3D | None = field(
-        default=None, converter=_translation_rotation_scale3d__rotation__special_field_converter_override
-    )
+    rotation: datatypes.Rotation3D | None = field(default=None, converter=_translation_rotation_scale3d__rotation__special_field_converter_override)  # type: ignore[misc]
     """
     3D rotation, applied second.
     """
 
-    scale: datatypes.Scale3D | None = field(
-        default=None, converter=_translation_rotation_scale3d__scale__special_field_converter_override
-    )
+    scale: datatypes.Scale3D | None = field(default=None, converter=_translation_rotation_scale3d__scale__special_field_converter_override)  # type: ignore[misc]
     """
     3D scale, applied first.
     """
@@ -192,7 +186,7 @@ class TranslationRotationScale3DArray(BaseExtensionArray[TranslationRotationScal
 
     @staticmethod
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "translation_rotation_scale3d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_rotation_scale3d.py
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_rotation_scale3d_ext.py
 
 
 TranslationRotationScale3DType._ARRAY_TYPE = TranslationRotationScale3DArray
