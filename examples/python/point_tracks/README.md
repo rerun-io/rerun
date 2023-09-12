@@ -3,19 +3,27 @@ title: Point Tracks
 thumbnail: https://static.rerun.io/0d2e95315a9eb546cf6eecbc2642a044d044141a_point_tracks_recipe_480w.png
 ---
 
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/c7f24fbacc5b61e53c6ff9367d464e99fb46ed06_point_tracks_recipe_header_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/4a12cb85034faa68a7cac2c8bacbc9c372f20c03_point_tracks_recipe_header_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bf309584ad5490eb4be216fc37bc5e071a00f541_point_tracks_recipe_header_1024w.png">
+  <img src="https://static.rerun.io/49b8447fd4aa2b0544aeed978b3f3c0bd33b93c5_point_tracks_recipe_header_full.png" alt="">
+</picture>
 
-In this recipe we will show how to combine points and line segments to create interactive point tracks in Rerun. A real-world implementation of the same idea can be found in the [TAPIR](/examples/paper-visualizations/tapir) example.
 
+In this recipe we will show how to combine points and line segments to create interactive point tracks (with temporary occlusion) like the ones shown above in Rerun. A real-world implementation of the same idea can be found in the [TAPIR](/examples/paper-visualizations/tapir) example.
+
+Let's start by generating some point tracks. For this example, we will generate multiple randomly offset sine waves as our point tracks. We also immediately visualize these point tracks by logging them to Rerun.
 ```python
 import numpy as np
 import rerun as rr
 import rerun.experimental as rr2
 
 # define some parameters to generate the data
-num_tracks = 50
+num_tracks = 20
 duration = 3.0
 max_x = 4 * np.pi
-num_steps = int(duration * 30)
+num_steps = int(duration * 60)
 
 # generate multiple randomly offset sine waves as point tracks
 x_values = np.linspace(0.0, max_x, num_steps)
@@ -62,7 +70,7 @@ for i, time_step in enumerate(time_steps):
         rr2.log("point_tracks/lines", rr2.LineStrips2D(segments))
 ```
 
-This will stop updating the point position when it is not visible, however, if no point is visible the points will stay at the last logged position. An easy way to avoid this, is to always call `rr.log_cleared` prior to logging the points. This way, we always start from a clean slate at each time step.
+This will stop updating the point position when it is not visible, however, if no point is visible, the points will stay at the last logged position. An easy way to avoid this, is to always call `rr.log_cleared` prior to logging the points. This way, we always start from a clean slate at each time step.
 
 ```python
 for i, time_step in enumerate(time_steps):
@@ -78,7 +86,7 @@ for i, time_step in enumerate(time_steps):
 
 TODO(roym899) GIF of current state
 
-To keep track of each point it can be useful to assign a unique color to each point track. To do so we log the track id as the class id of each point and line segment. We can also log an annotation context to assign a unique color to each track. Note that we need to log the annotation context prior to logging the points and line segments to ensure that the colors are applied correctly.
+To keep track of each point it can be useful to assign a unique color to each point track. To do so we log the track id as the class id of each point and line segment. We also log an annotation context to assign a unique color to each track. Note that we set the `timeless` flag to `True` when logging the annotation context, since a track's color should not change over time.
 
 ```python
 # assign random color to each track
@@ -151,7 +159,7 @@ def generate_data():
     num_tracks = 20
     duration = 3.0
     max_x = 4 * np.pi
-    num_steps = int(duration * 30)
+    num_steps = int(duration * 60)
 
     x_values = np.linspace(0.0, max_x, num_steps)
     time_steps = np.linspace(0.0, duration, num_steps)
