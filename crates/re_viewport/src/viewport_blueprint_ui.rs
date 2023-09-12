@@ -21,6 +21,11 @@ enum TreeAction {
     Remove,
 }
 
+#[derive(Default)]
+struct TreeActions {
+    focus_tab: Option<SpaceViewId>,
+}
+
 impl ViewportBlueprint<'_> {
     /// Show the blueprint panel tree view.
     pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -31,11 +36,22 @@ impl ViewportBlueprint<'_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 if let Some(root) = self.tree.root() {
-                    match self.tile_ui(ctx, ui, root) == TreeAction::Remove {
+                    let mut tree_actions = TreeActions::default();
+
+                    match self.tile_ui(ctx, ui, &mut tree_actions, root) == TreeAction::Remove {
                         true => {
                             self.tree.root = None;
                         }
                         false => (),
+                    }
+
+                    let TreeActions { focus_tab } = tree_actions;
+
+                    if let Some(tab) = &focus_tab {
+                        self.tree.make_active(|tile| match tile {
+                            egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
+                            egui_tiles::Tile::Container(_) => false,
+                        });
                     }
                 }
             });
@@ -51,6 +67,7 @@ impl ViewportBlueprint<'_> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
     ) -> TreeAction {
         // Temporarily remove the tile so we don't get borrow checker fights:
@@ -60,11 +77,11 @@ impl ViewportBlueprint<'_> {
 
         let action = match &mut tile {
             egui_tiles::Tile::Container(container) => {
-                self.container_tree_ui(ctx, ui, tile_id, container)
+                self.container_tree_ui(ctx, ui, tree_actions, tile_id, container)
             }
             egui_tiles::Tile::Pane(space_view_id) => {
                 // A space view
-                self.space_view_entry_ui(ctx, ui, tile_id, space_view_id)
+                self.space_view_entry_ui(ctx, ui, tree_actions, tile_id, space_view_id)
             }
         };
 
@@ -85,6 +102,7 @@ impl ViewportBlueprint<'_> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
         container: &mut egui_tiles::Container,
     ) -> TreeAction {
@@ -94,7 +112,7 @@ impl ViewportBlueprint<'_> {
             // so if the child is made invisible, we should do the same for the parent.
             let child_is_visible = self.tree.is_visible(child_id);
             self.tree.set_visible(tile_id, child_is_visible);
-            return self.tile_ui(ctx, ui, child_id);
+            return self.tile_ui(ctx, ui, tree_actions, child_id);
         }
 
         let mut visibility_changed = false;
@@ -117,7 +135,8 @@ impl ViewportBlueprint<'_> {
                 response | vis_response
             })
             .show_collapsing(ui, ui.id().with(tile_id), default_open, |_, ui| {
-                container.retain(|child| self.tile_ui(ctx, ui, child) == TreeAction::Keep);
+                container
+                    .retain(|child| self.tile_ui(ctx, ui, tree_actions, child) == TreeAction::Keep);
             });
 
         if visibility_changed {
@@ -132,6 +151,7 @@ impl ViewportBlueprint<'_> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
     ) -> TreeAction {
@@ -182,7 +202,7 @@ impl ViewportBlueprint<'_> {
             .on_hover_text("Space View");
 
         if response.clicked() {
-            focus_tab(&mut self.tree, space_view_id);
+            tree_actions.focus_tab = Some(space_view.id);
         }
 
         item_ui::select_hovered_on_click(ctx, &response, &[item]);
@@ -385,13 +405,6 @@ impl ViewportBlueprint<'_> {
 }
 
 // ----------------------------------------------------------------------------
-
-fn focus_tab(tree: &mut egui_tiles::Tree<SpaceViewId>, tab: &SpaceViewId) {
-    tree.make_active(|tile| match tile {
-        egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
-        egui_tiles::Tile::Container(_) => false,
-    });
-}
 
 fn remove_button_ui(re_ui: &ReUi, ui: &mut Ui, tooltip: &str) -> Response {
     re_ui
