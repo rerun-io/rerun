@@ -703,13 +703,16 @@ impl QuotedObject {
                     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
                     let param_declaration =
                         quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
+                    let definition_body = quote!(*this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident)););
 
                     methods.push(Method {
-                    docs: obj_field.docs.clone().into(),
-                    declaration: MethodDeclaration::constructor(quote!(#pascal_case_ident(#param_declaration))),
-                    definition_body: quote!(*this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident));),
-                    inline: true,
-                });
+                        docs: obj_field.docs.clone().into(),
+                        declaration: MethodDeclaration::constructor(
+                            quote!(#pascal_case_ident(#param_declaration)),
+                        ),
+                        definition_body,
+                        inline: true,
+                    });
                 }
             } else {
                 // Cannot make implicit constructors, e.g. for

@@ -20,7 +20,6 @@ impl HalfSizes2D {
         self.y() * 2.0
     }
 
-
     /// Returns the min position of a box with these half-extents and a given center.
     ///
     /// In "image space axis semantics" (y-axis points down, x-axis points right), this is the top-left corner.
