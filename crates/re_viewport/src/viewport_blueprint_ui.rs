@@ -1,5 +1,6 @@
 use egui::{Response, Ui};
 use itertools::Itertools;
+
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
 use re_space_view::DataBlueprintGroup;
@@ -14,16 +15,10 @@ use crate::{
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
-#[must_use]
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum TreeAction {
-    Keep,
-    Remove,
-}
-
 #[derive(Default)]
 struct TreeActions {
     focus_tab: Option<SpaceViewId>,
+    remove: Vec<egui_tiles::TileId>,
 }
 
 impl ViewportBlueprint<'_> {
@@ -38,20 +33,27 @@ impl ViewportBlueprint<'_> {
                 if let Some(root) = self.tree.root() {
                     let mut tree_actions = TreeActions::default();
 
-                    match self.tile_ui(ctx, ui, &mut tree_actions, root) == TreeAction::Remove {
-                        true => {
-                            self.tree.root = None;
-                        }
-                        false => (),
-                    }
+                    self.tile_ui(ctx, ui, &mut tree_actions, root);
 
-                    let TreeActions { focus_tab } = tree_actions;
+                    let TreeActions { focus_tab, remove } = tree_actions;
 
                     if let Some(tab) = &focus_tab {
                         self.tree.make_active(|tile| match tile {
                             egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
                             egui_tiles::Tile::Container(_) => false,
                         });
+                    }
+
+                    for tile_id in remove {
+                        for tile in self.tree.tiles.remove_recursively(tile_id) {
+                            if let egui_tiles::Tile::Pane(space_view_id) = tile {
+                                self.remove(&space_view_id);
+                            }
+                        }
+
+                        if Some(tile_id) == self.tree.root {
+                            self.tree.root = None;
+                        }
                     }
                 }
             });
@@ -69,33 +71,23 @@ impl ViewportBlueprint<'_> {
         ui: &mut egui::Ui,
         tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
-    ) -> TreeAction {
+    ) {
         // Temporarily remove the tile so we don't get borrow checker fights:
         let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
-            return TreeAction::Remove;
+            return;
         };
 
-        let action = match &mut tile {
+        match &mut tile {
             egui_tiles::Tile::Container(container) => {
-                self.container_tree_ui(ctx, ui, tree_actions, tile_id, container)
+                self.container_tree_ui(ctx, ui, tree_actions, tile_id, container);
             }
             egui_tiles::Tile::Pane(space_view_id) => {
                 // A space view
-                self.space_view_entry_ui(ctx, ui, tree_actions, tile_id, space_view_id)
+                self.space_view_entry_ui(ctx, ui, tree_actions, tile_id, space_view_id);
             }
         };
 
         self.tree.tiles.insert(tile_id, tile);
-
-        if action == TreeAction::Remove {
-            for tile in self.tree.tiles.remove_recursively(tile_id) {
-                if let egui_tiles::Tile::Pane(space_view_id) = tile {
-                    self.remove(&space_view_id);
-                }
-            }
-        }
-
-        action
     }
 
     fn container_tree_ui(
@@ -105,7 +97,7 @@ impl ViewportBlueprint<'_> {
         tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
         container: &mut egui_tiles::Container,
-    ) -> TreeAction {
+    ) {
         if let Some(child_id) = container.only_child() {
             // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood.
             // This means we won't be showing the visibility button of the parent container,
@@ -116,8 +108,8 @@ impl ViewportBlueprint<'_> {
         }
 
         let mut visibility_changed = false;
-        let mut action = TreeAction::Keep;
         let mut visible = self.tree.is_visible(tile_id);
+        let mut remove = false;
 
         let default_open = true;
 
@@ -127,24 +119,25 @@ impl ViewportBlueprint<'_> {
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
                 visibility_changed = vis_response.changed();
 
-                let response = remove_button_ui(re_ui, ui, "Remove container");
-                if response.clicked() {
-                    action = TreeAction::Remove;
-                }
+                let remove_response = remove_button_ui(re_ui, ui, "Remove container");
+                remove = remove_response.clicked();
 
-                response | vis_response
+                remove_response | vis_response
             })
             .show_collapsing(ui, ui.id().with(tile_id), default_open, |_, ui| {
-                container
-                    .retain(|child| self.tile_ui(ctx, ui, tree_actions, child) == TreeAction::Keep);
+                for &child in container.children() {
+                    self.tile_ui(ctx, ui, tree_actions, child);
+                }
             });
+
+        if remove {
+            tree_actions.remove.push(tile_id);
+        }
 
         if visibility_changed {
             self.has_been_user_edited = true;
             self.tree.set_visible(tile_id, visible);
         }
-
-        action
     }
 
     fn space_view_entry_ui(
@@ -154,15 +147,15 @@ impl ViewportBlueprint<'_> {
         tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
-    ) -> TreeAction {
+    ) {
         let Some(space_view) = self.space_views.get_mut(space_view_id) else {
             re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
-            return TreeAction::Remove;
+            tree_actions.remove.push(tile_id);
+            return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
         let mut visibility_changed = false;
-        let mut action = TreeAction::Keep;
         let mut visible = self.tree.is_visible(tile_id);
         let visible_child = visible;
         let item = Item::SpaceView(space_view.id);
@@ -184,7 +177,7 @@ impl ViewportBlueprint<'_> {
 
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
-                    action = TreeAction::Remove;
+                    tree_actions.remove.push(tile_id);
                 }
 
                 response | vis_response
@@ -211,12 +204,6 @@ impl ViewportBlueprint<'_> {
             self.has_been_user_edited = true;
             self.tree.set_visible(tile_id, visible);
         }
-
-        if action == TreeAction::Remove {
-            self.remove(space_view_id);
-        }
-
-        action
     }
 
     fn space_view_blueprint_ui(
