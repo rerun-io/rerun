@@ -152,7 +152,13 @@ impl<'a, 'b> Viewport<'a, 'b> {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
 
             re_tracing::profile_scope!("tree.ui");
+            let tree_before = tree.clone();
             tree.ui(&mut tab_viewer, ui);
+
+            // Detect if the user has moved a tab or similar:
+            if !blueprint.has_been_user_edited && *tree != tree_before {
+                blueprint.has_been_user_edited = true;
+            }
         });
     }
 
