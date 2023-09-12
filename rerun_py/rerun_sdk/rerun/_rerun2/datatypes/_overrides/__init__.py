@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .angle import angle__init_override
 from .annotation_context import (
     annotation_info__native_to_pa_array_override,
     class_description__info__field_converter_override,
@@ -12,7 +11,6 @@ from .annotation_context import (
     keypoint_pair__native_to_pa_array_override,
 )
 from .class_id import class_id__native_to_pa_array_override
-from .color import color__native_to_pa_array_override, color__rgba__field_converter_override
 from .keypoint_id import keypoint_id__native_to_pa_array_override
 from .matnxn import mat3x3__coeffs__field_converter_override, mat4x4__coeffs__field_converter_override
 from .quaternion import quaternion__init_override
