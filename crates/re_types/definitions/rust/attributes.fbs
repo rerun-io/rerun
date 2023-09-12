@@ -32,5 +32,5 @@ attribute "attr.rust.repr";
 /// Default field for a union.
 attribute "attr.rust.union_default";
 
-/// Sets the visibility of new to pub(crate) so it is only available to extension methods.
+/// Sets the visibility of `new` to `pub(crate)` so it is only available to extension methods.
 attribute "attr.rust.new_pub_crate";
