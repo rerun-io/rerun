@@ -448,15 +448,9 @@ impl IndexedBucket {
 
         // append time to primary column and update time range appropriately
 
-        if let Some(last_time) = col_time.last() {
-            if time.as_i64() < *last_time {
-                *is_sorted = false;
-            }
-        }
-        if let Some(row_id) = col_row_id.last() {
-            if row.row_id() < *row_id {
-                *is_sorted = false;
-            }
+        if let (Some(last_time), Some(last_row_id)) = (col_time.last(), col_row_id.last()) {
+            // NOTE: Within a single timestamp, we use the Row ID as tie-breaker
+            *is_sorted &= (*last_time, *last_row_id) <= (time.as_i64(), row.row_id());
         }
 
         col_time.push(time.as_i64());
