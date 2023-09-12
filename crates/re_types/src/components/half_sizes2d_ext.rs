@@ -20,12 +20,6 @@ impl HalfSizes2D {
         self.y() * 2.0
     }
 
-    /// The whole extent, i.e. twice the half extents.
-    #[cfg(feature = "glam")]
-    #[inline]
-    pub fn full_extents(self) -> glam::Vec2 {
-        glam::Vec2::from(self) * 2.0
-    }
 
     /// Returns the min position of a box with these half-extents and a given center.
     ///
