@@ -23,7 +23,10 @@ __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 @define
 class Color:
     """
-    An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+    An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+
+    The color is stored as a 32-bit integer, where the most significant
+    byte is `R` and the least significant byte is `A`.
 
     Float colors are assumed to be in 0-1 gamma sRGB space.
     All other colors are assumed to be in 0-255 gamma sRGB space.
