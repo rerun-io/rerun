@@ -14,6 +14,7 @@ import argparse
 import logging
 import math
 import os
+import random
 import threading
 from typing import Callable
 
@@ -285,8 +286,6 @@ def run_2d_lines(experimental_api: bool) -> None:
 
 
 def run_3d_points(experimental_api: bool) -> None:
-    import random
-
     rr.set_time_seconds("sim_time", 1)
     rr.log_point("3d_points/single_point_unlabeled", np.array([10.0, 0.0, 0.0]))
     rr.log_point("3d_points/single_point_labeled", np.array([0.0, 0.0, 0.0]), label="labeled point")
@@ -313,8 +312,6 @@ def raw_mesh(experimental_api: bool) -> None:
 
 
 def run_rects(experimental_api: bool) -> None:
-    import random
-
     rr.set_time_seconds("sim_time", 1)
 
     # Add an image
@@ -580,6 +577,9 @@ def main() -> None:
         action="store_true",
         help="If specified run tests using the new experimental APIs",
     )
+
+    random.seed(0)  # For deterministic results
+    np.random.seed(0)  # For deterministic results
 
     rr.script_add_args(parser)
     args = parser.parse_args()

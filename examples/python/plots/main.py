@@ -37,7 +37,7 @@ def log_parabola() -> None:
         rr.set_time_sequence("frame_nr", t)
 
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        radius = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)  # type: ignore[no-untyped-call]
+        radius = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]
@@ -87,6 +87,7 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.script_setup(args, "rerun_example_plot")
+    random.seed(0)  # For deterministic results
 
     log_parabola()
     log_trig()
