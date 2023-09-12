@@ -331,7 +331,7 @@ fn quote_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object)
 
     let quoted_doc = quote_doc_from_docs(docs);
 
-    let derive_only = obj.has_attr(ATTR_RUST_DERIVE_ONLY);
+    let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
     let quoted_derive_clone_debug = if derive_only {
         quote!()
     } else {
@@ -1212,7 +1212,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         quote!(#field_name: None)
     });
 
-    let fn_new_pub = if obj.has_attr(ATTR_RUST_NEW_PUB_CRATE) {
+    let fn_new_pub = if obj.is_attr_set(ATTR_RUST_NEW_PUB_CRATE) {
         quote!(pub(crate))
     } else {
         quote!(pub)

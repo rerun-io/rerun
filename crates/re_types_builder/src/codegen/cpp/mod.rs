@@ -365,7 +365,7 @@ impl QuotedObject {
 
         match obj.kind {
             ObjectKind::Datatype | ObjectKind::Component => {
-                if obj.fields.len() == 1 && !obj.has_attr(ATTR_CPP_NO_FIELD_CTORS) {
+                if obj.fields.len() == 1 && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
                     methods.extend(single_field_constructor_methods(
                         obj,
                         &mut hpp_includes,
@@ -416,7 +416,7 @@ impl QuotedObject {
                     .collect_vec();
 
                 // Constructors with all required components.
-                if !obj.has_attr(ATTR_CPP_NO_FIELD_CTORS) {
+                if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
                     let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
                         .iter()
                         .map(|obj_field| {
@@ -696,7 +696,7 @@ impl QuotedObject {
             ));
         }
 
-        if !obj.has_attr(ATTR_CPP_NO_FIELD_CTORS) {
+        if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
             if are_types_disjoint(&obj.fields) {
                 // Implicit construct from the different variant types:
                 for obj_field in &obj.fields {

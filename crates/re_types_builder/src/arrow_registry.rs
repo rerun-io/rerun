@@ -85,7 +85,7 @@ impl ArrowRegistry {
                 None,
             )
         } else {
-            let is_sparse = obj.has_attr(ATTR_ARROW_SPARSE_UNION);
+            let is_sparse = obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
             LazyDatatype::Extension(
                 obj.fqname.clone(),
                 Box::new(

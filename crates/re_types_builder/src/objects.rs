@@ -582,7 +582,7 @@ impl Object {
         self.attrs.try_get(self.fqname.as_str(), name)
     }
 
-    pub fn has_attr(&self, name: impl AsRef<str>) -> bool {
+    pub fn is_attr_set(&self, name: impl AsRef<str>) -> bool {
         self.attrs.has(name)
     }
 
