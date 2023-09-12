@@ -10,7 +10,15 @@ from .._baseclasses import (
     BaseDelegatingExtensionType,
 )
 
-__all__ = ["ClassIdArray", "ClassIdType"]
+__all__ = ["ClassId", "ClassIdArray", "ClassIdType"]
+
+
+class ClassId(datatypes.ClassId):
+    """A 16-bit ID representing a type of semantic class."""
+
+    # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
+
+    # Note: there are no fields here because ClassId delegates to datatypes.ClassId
 
 
 class ClassIdType(BaseDelegatingExtensionType):

@@ -10,7 +10,24 @@ from .._baseclasses import (
     BaseDelegatingExtensionType,
 )
 
-__all__ = ["ColorArray", "ColorType"]
+__all__ = ["Color", "ColorArray", "ColorType"]
+
+
+class Color(datatypes.Color):
+    """
+    An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+
+    The color is stored as a 32-bit integer, where the most significant
+    byte is `R` and the least significant byte is `A`.
+
+    Float colors are assumed to be in 0-1 gamma sRGB space.
+    All other colors are assumed to be in 0-255 gamma sRGB space.
+    If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
+    """
+
+    # You can define your own __init__ function as a member of ColorExt in color_ext.py
+
+    # Note: there are no fields here because Color delegates to datatypes.Color
 
 
 class ColorType(BaseDelegatingExtensionType):

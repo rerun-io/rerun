@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1Array, AffixFuzzer1Type
-from .affix_fuzzer2 import AffixFuzzer2Array, AffixFuzzer2Type
-from .affix_fuzzer3 import AffixFuzzer3Array, AffixFuzzer3Type
-from .affix_fuzzer4 import AffixFuzzer4Array, AffixFuzzer4Type
-from .affix_fuzzer5 import AffixFuzzer5Array, AffixFuzzer5Type
-from .affix_fuzzer6 import AffixFuzzer6Array, AffixFuzzer6Type
+from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1Array, AffixFuzzer1Type
+from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2Array, AffixFuzzer2Type
+from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3Array, AffixFuzzer3Type
+from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4Array, AffixFuzzer4Type
+from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5Array, AffixFuzzer5Type
+from .affix_fuzzer6 import AffixFuzzer6, AffixFuzzer6Array, AffixFuzzer6Type
 from .affix_fuzzer7 import AffixFuzzer7, AffixFuzzer7Array, AffixFuzzer7ArrayLike, AffixFuzzer7Like, AffixFuzzer7Type
 from .affix_fuzzer8 import AffixFuzzer8, AffixFuzzer8Array, AffixFuzzer8ArrayLike, AffixFuzzer8Like, AffixFuzzer8Type
 from .affix_fuzzer9 import AffixFuzzer9, AffixFuzzer9Array, AffixFuzzer9ArrayLike, AffixFuzzer9Like, AffixFuzzer9Type
@@ -39,8 +39,8 @@ from .affix_fuzzer13 import (
     AffixFuzzer13Like,
     AffixFuzzer13Type,
 )
-from .affix_fuzzer14 import AffixFuzzer14Array, AffixFuzzer14Type
-from .affix_fuzzer15 import AffixFuzzer15Array, AffixFuzzer15Type
+from .affix_fuzzer14 import AffixFuzzer14, AffixFuzzer14Array, AffixFuzzer14Type
+from .affix_fuzzer15 import AffixFuzzer15, AffixFuzzer15Array, AffixFuzzer15Type
 from .affix_fuzzer16 import (
     AffixFuzzer16,
     AffixFuzzer16Array,
@@ -62,8 +62,8 @@ from .affix_fuzzer18 import (
     AffixFuzzer18Like,
     AffixFuzzer18Type,
 )
-from .affix_fuzzer19 import AffixFuzzer19Array, AffixFuzzer19Type
-from .affix_fuzzer20 import AffixFuzzer20Array, AffixFuzzer20Type
+from .affix_fuzzer19 import AffixFuzzer19, AffixFuzzer19Array, AffixFuzzer19Type
+from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Array, AffixFuzzer20Type
 from .annotation_context import (
     AnnotationContext,
     AnnotationContextArray,
@@ -71,8 +71,8 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
-from .class_id import ClassIdArray, ClassIdType
-from .color import ColorArray, ColorType
+from .class_id import ClassId, ClassIdArray, ClassIdType
+from .color import Color, ColorArray, ColorType
 from .depth_meter import DepthMeter, DepthMeterArray, DepthMeterArrayLike, DepthMeterLike, DepthMeterType
 from .disconnected_space import (
     DisconnectedSpace,
@@ -82,23 +82,24 @@ from .disconnected_space import (
     DisconnectedSpaceType,
 )
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
-from .half_sizes2d import HalfSizes2DArray, HalfSizes2DType
+from .half_sizes2d import HalfSizes2D, HalfSizes2DArray, HalfSizes2DType
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
-from .keypoint_id import KeypointIdArray, KeypointIdType
+from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArray, LineStrip3DArrayLike, LineStrip3DLike, LineStrip3DType
-from .origin2d import Origin2DArray, Origin2DType
-from .origin3d import Origin3DArray, Origin3DType
-from .point2d import Point2DArray, Point2DType
-from .point3d import Point3DArray, Point3DType
+from .origin2d import Origin2D, Origin2DArray, Origin2DType
+from .origin3d import Origin3D, Origin3DArray, Origin3DType
+from .point2d import Point2D, Point2DArray, Point2DType
+from .point3d import Point3D, Point3DArray, Point3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
-from .tensor_data import TensorDataArray, TensorDataType
-from .text import TextArray, TextType
-from .text_log_level import TextLogLevelArray, TextLogLevelType
-from .transform3d import Transform3DArray, Transform3DType
-from .vector3d import Vector3DArray, Vector3DType
+from .tensor_data import TensorData, TensorDataArray, TensorDataType
+from .text import Text, TextArray, TextType
+from .text_log_level import TextLogLevel, TextLogLevelArray, TextLogLevelType
+from .transform3d import Transform3D, Transform3DArray, Transform3DType
+from .vector3d import Vector3D, Vector3DArray, Vector3DType
 
 __all__ = [
+    "AffixFuzzer1",
     "AffixFuzzer10",
     "AffixFuzzer10Array",
     "AffixFuzzer10ArrayLike",
@@ -119,8 +120,10 @@ __all__ = [
     "AffixFuzzer13ArrayLike",
     "AffixFuzzer13Like",
     "AffixFuzzer13Type",
+    "AffixFuzzer14",
     "AffixFuzzer14Array",
     "AffixFuzzer14Type",
+    "AffixFuzzer15",
     "AffixFuzzer15Array",
     "AffixFuzzer15Type",
     "AffixFuzzer16",
@@ -138,20 +141,27 @@ __all__ = [
     "AffixFuzzer18ArrayLike",
     "AffixFuzzer18Like",
     "AffixFuzzer18Type",
+    "AffixFuzzer19",
     "AffixFuzzer19Array",
     "AffixFuzzer19Type",
     "AffixFuzzer1Array",
     "AffixFuzzer1Type",
+    "AffixFuzzer2",
+    "AffixFuzzer20",
     "AffixFuzzer20Array",
     "AffixFuzzer20Type",
     "AffixFuzzer2Array",
     "AffixFuzzer2Type",
+    "AffixFuzzer3",
     "AffixFuzzer3Array",
     "AffixFuzzer3Type",
+    "AffixFuzzer4",
     "AffixFuzzer4Array",
     "AffixFuzzer4Type",
+    "AffixFuzzer5",
     "AffixFuzzer5Array",
     "AffixFuzzer5Type",
+    "AffixFuzzer6",
     "AffixFuzzer6Array",
     "AffixFuzzer6Type",
     "AffixFuzzer7",
@@ -174,8 +184,10 @@ __all__ = [
     "AnnotationContextArrayLike",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "ClassId",
     "ClassIdArray",
     "ClassIdType",
+    "Color",
     "ColorArray",
     "ColorType",
     "DepthMeter",
@@ -193,6 +205,7 @@ __all__ = [
     "DrawOrderArrayLike",
     "DrawOrderLike",
     "DrawOrderType",
+    "HalfSizes2D",
     "HalfSizes2DArray",
     "HalfSizes2DType",
     "InstanceKey",
@@ -200,6 +213,7 @@ __all__ = [
     "InstanceKeyArrayLike",
     "InstanceKeyLike",
     "InstanceKeyType",
+    "KeypointId",
     "KeypointIdArray",
     "KeypointIdType",
     "LineStrip2D",
@@ -212,12 +226,16 @@ __all__ = [
     "LineStrip3DArrayLike",
     "LineStrip3DLike",
     "LineStrip3DType",
+    "Origin2D",
     "Origin2DArray",
     "Origin2DType",
+    "Origin3D",
     "Origin3DArray",
     "Origin3DType",
+    "Point2D",
     "Point2DArray",
     "Point2DType",
+    "Point3D",
     "Point3DArray",
     "Point3DType",
     "Radius",
@@ -225,14 +243,19 @@ __all__ = [
     "RadiusArrayLike",
     "RadiusLike",
     "RadiusType",
+    "TensorData",
     "TensorDataArray",
     "TensorDataType",
+    "Text",
     "TextArray",
+    "TextLogLevel",
     "TextLogLevelArray",
     "TextLogLevelType",
     "TextType",
+    "Transform3D",
     "Transform3DArray",
     "Transform3DType",
+    "Vector3D",
     "Vector3DArray",
     "Vector3DType",
 ]

@@ -10,7 +10,15 @@ from .._baseclasses import (
     BaseDelegatingExtensionType,
 )
 
-__all__ = ["Point2DArray", "Point2DType"]
+__all__ = ["Point2D", "Point2DArray", "Point2DType"]
+
+
+class Point2D(datatypes.Vec2D):
+    """A point in 2D space."""
+
+    # You can define your own __init__ function as a member of Point2DExt in point2d_ext.py
+
+    # Note: there are no fields here because Point2D delegates to datatypes.Vec2D
 
 
 class Point2DType(BaseDelegatingExtensionType):
