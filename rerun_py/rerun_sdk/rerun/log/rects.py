@@ -161,15 +161,15 @@ def log_rects(
         half_extents = rects[:, 4:2] / 2
         centers = rects[:, 2:0] + half_extents
     elif rect_format == RectFormat.XYXY:
-        left_top = rects[:, 0:2]
-        right_bottom = rects[:, 2:4]
-        centers = (left_top - right_bottom) / 2
-        half_extents = right_bottom - centers
+        min = rects[:, 0:2]
+        max = rects[:, 2:4]
+        centers = (min + max) / 2
+        half_extents = max - centers
     elif rect_format == RectFormat.YXYX:
-        left_top = rects[:, 2:0]
-        right_bottom = rects[:, 4:2]
-        centers = (left_top - right_bottom) / 2
-        half_extents = right_bottom - centers
+        min = rects[:, 2:0]
+        max = rects[:, 4:2]
+        centers = (min + max) / 2
+        half_extents = max - centers
     elif rect_format == RectFormat.XCYCWH:
         half_extents = rects[:, 2:4] / 2
         centers = rects[:, 0:2]
