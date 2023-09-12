@@ -162,7 +162,8 @@ mod web_decode {
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         let mut last_yield = web_time::Instant::now();
 
-        match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
+        let version_policy = crate::decoder::VersionPolicy::Warn;
+        match crate::decoder::Decoder::new(version_policy, rrd_bytes.as_slice()) {
             Ok(decoder) => {
                 for msg in decoder {
                     match msg {
