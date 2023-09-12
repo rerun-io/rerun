@@ -3,6 +3,7 @@ use itertools::Itertools;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::StoreDb;
+use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
 
@@ -10,7 +11,7 @@ use re_arrow_store::StoreGeneration;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{
-    loading::load_file_path,
+    loading::load_blueprint_file,
     saving::{default_blueprint_path, save_database_to_file},
 };
 
@@ -265,8 +266,9 @@ impl StoreHub {
         let blueprint_path = default_blueprint_path(app_id)?;
         if blueprint_path.exists() {
             re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}",);
-            let with_notification = false;
-            if let Some(mut bundle) = load_file_path(&blueprint_path, with_notification) {
+
+            let with_notifications = false;
+            if let Some(mut bundle) = load_blueprint_file(&blueprint_path, with_notifications) {
                 for store in bundle.drain_store_dbs() {
                     if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
                     {
@@ -334,6 +336,15 @@ impl StoreHub {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum StoreLoadError {
+    #[error(transparent)]
+    Decode(#[from] re_log_encoding::decoder::DecodeError),
+
+    #[error(transparent)]
+    DataStore(#[from] re_data_store::Error),
+}
+
 /// Stores many [`StoreDb`]s of recordings and blueprints.
 #[derive(Default)]
 pub struct StoreBundle {
@@ -344,10 +355,13 @@ pub struct StoreBundle {
 impl StoreBundle {
     /// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
-    pub fn from_rrd(read: impl std::io::Read) -> anyhow::Result<Self> {
+    pub fn from_rrd(
+        version_policy: VersionPolicy,
+        read: impl std::io::Read,
+    ) -> Result<Self, StoreLoadError> {
         re_tracing::profile_function!();
 
-        let decoder = re_log_encoding::decoder::Decoder::new(read)?;
+        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, read)?;
 
         let mut slf = Self::default();
 

@@ -453,8 +453,7 @@ impl CpuWriteGpuReadBelt {
                 // Allocation might be bigger than a chunk!
                 let buffer_size =
                     wgpu::util::align_to(self.chunk_size.max(size), Self::MIN_OFFSET_ALIGNMENT);
-                // Happens relatively rarely, this is a noteworthy event!
-                re_log::debug!(
+                re_log::trace!(
                     "Allocating new CpuWriteGpuReadBelt chunk of size {:.1} MiB",
                     buffer_size as f32 / (1024.0 * 1024.0)
                 );

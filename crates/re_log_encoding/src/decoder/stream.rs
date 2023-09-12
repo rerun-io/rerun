@@ -9,7 +9,7 @@ use crate::Compression;
 use crate::FileHeader;
 use crate::MessageHeader;
 
-use super::DecodeError;
+use super::{DecodeError, VersionPolicy};
 
 /// The stream decoder is a state machine which ingests byte chunks
 /// and outputs messages once it has enough data to deserialize one.
@@ -17,6 +17,9 @@ use super::DecodeError;
 /// Chunks are given to the stream via `StreamDecoder::push_chunk`,
 /// and messages are read back via `StreamDecoder::try_read`.
 pub struct StreamDecoder {
+    /// How to handle version mismatches
+    version_policy: VersionPolicy,
+
     /// Compression options
     compression: Compression,
 
@@ -67,8 +70,9 @@ enum State {
 }
 
 impl StreamDecoder {
-    pub fn new() -> Self {
+    pub fn new(version_policy: VersionPolicy) -> Self {
         Self {
+            version_policy,
             compression: Compression::Off,
             chunks: ChunkBuffer::new(),
             uncompressed: Vec::with_capacity(1024),
@@ -85,7 +89,7 @@ impl StreamDecoder {
             State::StreamHeader => {
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
                     // header contains version and compression options
-                    self.compression = read_options(header)?.compression;
+                    self.compression = read_options(self.version_policy, header)?.compression;
 
                     // we might have data left in the current chunk,
                     // immediately try to read length of the next message
@@ -125,12 +129,6 @@ impl StreamDecoder {
         }
 
         Ok(None)
-    }
-}
-
-impl Default for StreamDecoder {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -292,7 +290,7 @@ mod tests {
     fn stream_whole_chunks_uncompressed() {
         let (input, data) = test_data(EncodingOptions::UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -309,7 +307,7 @@ mod tests {
     fn stream_byte_chunks_uncompressed() {
         let (input, data) = test_data(EncodingOptions::UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -328,7 +326,7 @@ mod tests {
     fn stream_whole_chunks_compressed() {
         let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -345,7 +343,7 @@ mod tests {
     fn stream_byte_chunks_compressed() {
         let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -364,7 +362,7 @@ mod tests {
     fn stream_3x16_chunks() {
         let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
         let mut decoded_messages = vec![];
 
         // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
@@ -394,7 +392,7 @@ mod tests {
         let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
         let mut data = Cursor::new(data);
 
-        let mut decoder = StreamDecoder::new();
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
         let mut decoded_messages = vec![];
 
         // read chunks 2xN bytes at a time, where `N` comes from a regular pattern

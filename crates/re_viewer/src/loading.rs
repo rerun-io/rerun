@@ -1,20 +1,32 @@
-#[cfg(not(target_arch = "wasm32"))]
+use crate::{store_hub::StoreLoadError, StoreBundle};
+
+#[derive(thiserror::Error, Debug)]
+enum BlueprintLoadError {
+    #[error("Failed to open file: {0}")]
+    FileOpen(#[from] std::io::Error),
+
+    #[error(transparent)]
+    StoreLoad(#[from] StoreLoadError),
+}
+
+/// Try to load the given `.blueprint` file.
+///
+/// The file must be of a matching version of rerun.
 #[must_use]
-pub fn load_file_path(
+pub fn load_blueprint_file(
     path: &std::path::Path,
     with_notifications: bool,
 ) -> Option<crate::StoreBundle> {
-    use crate::StoreBundle;
-
-    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<StoreBundle> {
+    fn load_file_path_impl(path: &std::path::Path) -> Result<StoreBundle, BlueprintLoadError> {
         re_tracing::profile_function!();
-        use anyhow::Context as _;
-        let file = std::fs::File::open(path).context("Failed to open file")?;
-        StoreBundle::from_rrd(file)
-    }
 
-    if with_notifications {
-        re_log::info!("Loading {path:?}…");
+        let file = std::fs::File::open(path)?;
+
+        // Blueprint files change often. Be strict about the version, and then ignore any errors.
+        // See https://github.com/rerun-io/rerun/issues/2830
+        let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
+
+        Ok(StoreBundle::from_rrd(version_policy, file)?)
     }
 
     match load_file_path_impl(path) {
@@ -22,6 +34,7 @@ pub fn load_file_path(
             if with_notifications {
                 re_log::info!("Loaded {path:?}");
             }
+
             for store_db in rrd.store_dbs_mut() {
                 store_db.data_source =
                     Some(re_smart_channel::SmartChannelSource::File(path.into()));
@@ -29,12 +42,18 @@ pub fn load_file_path(
             Some(rrd)
         }
         Err(err) => {
-            let msg = format!("Failed loading {path:?}: {}", re_error::format(&err));
-            re_log::error!("{msg}");
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_description(&msg)
-                .show();
+            let msg = format!("Failed loading {path:?}: {err}");
+
+            if with_notifications {
+                re_log::error!("{msg}");
+                rfd::MessageDialog::new()
+                    .set_level(rfd::MessageLevel::Error)
+                    .set_description(&msg)
+                    .show();
+            } else {
+                // Silently ignore
+                re_log::debug!("{msg}");
+            }
             None
         }
     }

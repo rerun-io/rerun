@@ -339,7 +339,8 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
             .with_context(|| format!("couldn't open rrd file contents at {path_to_rrd:?}"))?;
 
         let mut stores: std::collections::HashMap<StoreId, StoreDb> = Default::default();
-        let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
+        let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
+        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
         for msg in decoder {
             let msg = msg
                 .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
