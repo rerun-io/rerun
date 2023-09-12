@@ -126,6 +126,15 @@ impl RowId {
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
     }
+
+    /// Returns the next logical `RowId`.
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`Tuid::random`] when unsure.
+    #[inline]
+    pub fn next(&self) -> Self {
+        Self(self.0.next())
+    }
 }
 
 impl SizeBytes for RowId {
