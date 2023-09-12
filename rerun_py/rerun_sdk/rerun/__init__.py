@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import functools
+import random
 from typing import Any, Callable, TypeVar, cast
+
+import numpy as np
 
 # =====================================
 # API RE-EXPORTS
@@ -197,6 +200,11 @@ def init(
         For example, if you have one application doing object detection
         and another doing camera calibration, you could have
         `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+
+        Application ids starting with `rerun_example_` are reserved for Rerun examples,
+        and will be treated specially by the Rerun Viewer.
+        In particular, it will opt-in to more analytics, and will also
+        seed the global random number generator deterministically.
     recording_id : Optional[str]
         Set the recording ID that this process is logging to, as a UUIDv4.
 
@@ -227,6 +235,11 @@ def init(
         (Experimental) Should the blueprint append to the existing app-default blueprint instead of creating a new one.
 
     """
+
+    if application_id.startswith("rerun_example_"):
+        # Make all our example code deterministic.
+        random.seed(0)
+        np.random.seed(0)
 
     global _strict_mode
     _strict_mode = strict

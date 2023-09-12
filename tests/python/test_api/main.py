@@ -578,9 +578,6 @@ def main() -> None:
         help="If specified run tests using the new experimental APIs",
     )
 
-    random.seed(0)  # For deterministic results
-    np.random.seed(0)  # For deterministic results
-
     rr.script_add_args(parser)
     args = parser.parse_args()
 
