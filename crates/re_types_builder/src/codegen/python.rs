@@ -241,7 +241,7 @@ impl PythonCodeGenerator {
                     .lines()
                     .map(|l| l.trim())
                     .filter(|l| l.starts_with("def"))
-                    .map(|l| l.trim_start_matches("def"))
+                    .map(|l| l.trim_start_matches("def").trim())
                     .filter_map(|l| l.split('(').next())
                     .filter(|l| l.ends_with("_override") || *l == "__init__")
                     .map(|l| l.to_owned())
@@ -304,9 +304,9 @@ impl PythonCodeGenerator {
             );
 
             let obj_code = if obj.is_struct() {
-                code_for_struct(arrow_registry, obj_ext, &overrides, objects, obj)
+                code_for_struct(arrow_registry, obj_ext.as_ref(), &overrides, objects, obj)
             } else {
-                code_for_union(arrow_registry, obj_ext, &overrides, objects, obj)
+                code_for_union(arrow_registry, obj_ext.as_ref(), &overrides, objects, obj)
             };
             code.push_text(&obj_code, 1, 0);
 
@@ -398,7 +398,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
 fn code_for_struct(
     arrow_registry: &ArrowRegistry,
-    obj_ext: Option<ObjExt>,
+    obj_ext: Option<&ObjExt>,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -423,13 +423,23 @@ fn code_for_struct(
             let (default_converter, converter_function) =
                 quote_field_converter_from_field(obj, objects, field);
 
-            let converter_override_name = format!(
+            let old_converter_override_name = format!(
                 "{}__{}__field_converter_override",
                 obj.snake_case_name(),
                 field.name
             );
-            let converter = if overrides.contains(&converter_override_name) {
-                format!("converter={converter_override_name}")
+
+            let converter_override_name = format!("{}__field_converter_override", field.name);
+
+            let converter = if obj_ext.map_or(false, |obj_ext| {
+                obj_ext.overrides.contains(&converter_override_name)
+            }) {
+                format!(
+                    "converter={}.{converter_override_name}",
+                    obj_ext.unwrap().ext_name
+                )
+            } else if overrides.contains(&old_converter_override_name) {
+                format!("converter={old_converter_override_name}")
             } else if *kind == ObjectKind::Archetype {
                 // Archetypes default to using `from_similar` from the Component
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
@@ -611,7 +621,7 @@ fn code_for_struct(
 
 fn code_for_union(
     arrow_registry: &ArrowRegistry,
-    obj_ext: Option<ObjExt>,
+    obj_ext: Option<&ObjExt>,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
