@@ -1117,7 +1117,8 @@ fn row_id_ordering() {
     store.insert_row(&row1).unwrap();
     store.insert_row(&row2).unwrap();
 
-    store.sort_indices_if_needed();
+    // NOTE: Don't sort, let's see if the dirtiness bit got flipped.. as it should have!
+    // store.sort_indices_if_needed();
 
     let (row_id, results) = store
         .latest_at(
