@@ -578,14 +578,11 @@ def main() -> None:
         help="If specified run tests using the new experimental APIs",
     )
 
-    random.seed(0)  # For deterministic results
-    np.random.seed(0)  # For deterministic results
-
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     if not args.split_recordings:
-        rec = rr.script_setup(args, f"test_api_{args.test}")
+        rec = rr.script_setup(args, f"rerun_example_test_api_{args.test}")
 
     if args.test in ["most", "all"]:
         print(f"Running {args.test} tests…")
@@ -597,7 +594,7 @@ def main() -> None:
                 continue
 
             if args.split_recordings:
-                rec = rr.script_setup(args, f"test_api/{name}")
+                rec = rr.script_setup(args, f"rerun_example_test_api/{name}")
 
             if args.multithread:
                 t = threading.Thread(
@@ -618,7 +615,7 @@ def main() -> None:
             t.join()
     else:
         if args.split_recordings:
-            with rr.script_setup(args, f"test_api/{args.test}"):
+            with rr.script_setup(args, f"rerun_example_test_api/{args.test}"):
                 tests[args.test](args.experimental_api)
         else:
             tests[args.test](args.experimental_api)
