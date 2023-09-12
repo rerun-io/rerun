@@ -46,7 +46,7 @@ def main() -> None:
 
     rr2.log("points2d", points2d)
     # Hack to establish 2d view bounds
-    rr.log_rect("rect", [0, 0, 4, 6])
+    rr2.log("rect", rr2.Boxes2D(half_sizes=[2.0, 3.0], centers=[2.0, 3.0]))
 
     rr.script_teardown(args)
 

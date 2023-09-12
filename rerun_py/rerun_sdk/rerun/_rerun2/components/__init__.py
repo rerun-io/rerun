@@ -82,10 +82,12 @@ from .disconnected_space import (
     DisconnectedSpaceType,
 )
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
+from .half_sizes2d import HalfSizes2DArray, HalfSizes2DType
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointIdArray, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArray, LineStrip3DArrayLike, LineStrip3DLike, LineStrip3DType
+from .origin2d import Origin2DArray, Origin2DType
 from .origin3d import Origin3DArray, Origin3DType
 from .point2d import Point2DArray, Point2DType
 from .point3d import Point3DArray, Point3DType
@@ -191,6 +193,8 @@ __all__ = [
     "DrawOrderArrayLike",
     "DrawOrderLike",
     "DrawOrderType",
+    "HalfSizes2DArray",
+    "HalfSizes2DType",
     "InstanceKey",
     "InstanceKeyArray",
     "InstanceKeyArrayLike",
@@ -208,6 +212,8 @@ __all__ = [
     "LineStrip3DArrayLike",
     "LineStrip3DLike",
     "LineStrip3DType",
+    "Origin2DArray",
+    "Origin2DType",
     "Origin3DArray",
     "Origin3DType",
     "Point2DArray",

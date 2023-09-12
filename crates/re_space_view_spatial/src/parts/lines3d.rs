@@ -13,8 +13,8 @@ use re_viewer_context::{
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::{
-        entity_iterator::process_archetype_views, process_annotations_and_keypoints,
-        process_colors, process_radii, UiLabel, UiLabelTarget,
+        entity_iterator::process_archetype_views, process_annotations, process_colors,
+        process_radii, UiLabel, UiLabelTarget,
     },
     view_kind::SpatialSpaceViewKind,
 };
@@ -90,14 +90,10 @@ impl Lines3DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let (annotation_infos, _) = process_annotations_and_keypoints::<LineStrip3D, LineStrips3D>(
+        let annotation_infos = process_annotations::<LineStrip3D, LineStrips3D>(
             query,
             arch_view,
             &ent_context.annotations,
-            |strip| {
-                let pos = strip.0.get(0).copied().unwrap_or_default();
-                glam::Vec3::from(pos)
-            },
         )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;

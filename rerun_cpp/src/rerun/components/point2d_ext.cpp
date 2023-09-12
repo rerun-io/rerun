@@ -8,12 +8,12 @@ namespace rerun {
 
 #ifdef EDIT_EXTENSION
         struct Point2DExt {
-            float xyz[2];
+            float xy[2];
 #define Point2D Point2DExt
 
             // [CODEGEN COPY TO HEADER START]
 
-            /// Construct Point2D from x/y/z values.
+            /// Construct Point2D from x/y values.
             Point2D(float x, float y) : xy{x, y} {}
 
             float x() const {

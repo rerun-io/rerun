@@ -13,6 +13,7 @@ __all__ = [
     "AnnotationContext",
     "arch",
     "Arrows3D",
+    "Boxes2D",
     "cmp",
     "DepthImage",
     "DisconnectedSpace",
@@ -40,6 +41,7 @@ from ._rerun2 import datatypes as dt
 from ._rerun2.archetypes import (
     AnnotationContext,
     Arrows3D,
+    Boxes2D,
     DepthImage,
     DisconnectedSpace,
     Image,

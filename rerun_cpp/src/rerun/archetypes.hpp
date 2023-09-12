@@ -4,6 +4,7 @@
 
 #include "archetypes/annotation_context.hpp"
 #include "archetypes/arrows3d.hpp"
+#include "archetypes/boxes2d.hpp"
 #include "archetypes/depth_image.hpp"
 #include "archetypes/disconnected_space.hpp"
 #include "archetypes/image.hpp"

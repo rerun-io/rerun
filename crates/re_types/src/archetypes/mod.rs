@@ -2,6 +2,8 @@
 
 mod annotation_context;
 mod arrows3d;
+mod boxes2d;
+mod boxes2d_ext;
 mod depth_image;
 mod depth_image_ext;
 mod disconnected_space;
@@ -21,6 +23,7 @@ mod transform3d;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::arrows3d::Arrows3D;
+pub use self::boxes2d::Boxes2D;
 pub use self::depth_image::DepthImage;
 pub use self::disconnected_space::DisconnectedSpace;
 pub use self::image::Image;

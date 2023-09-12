@@ -1,9 +1,8 @@
 //! Log rectangles with different colors and labels using annotation context
 
 use rerun::{
-    archetypes::AnnotationContext,
-    components::{ClassId, Rect2D},
-    datatypes::{Color, Vec4D},
+    archetypes::{AnnotationContext, Boxes2D},
+    datatypes::Color,
     RecordingStreamBuilder,
 };
 
@@ -21,27 +20,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Log a batch of 2 rectangles with different class IDs
-    // TODO(#2786): Rect2D archetype
-    rec.log_component_batches(
+    rec.log(
         "detections",
-        false,
-        2,
-        [
-            &[
-                Rect2D::XYWH(Vec4D([-2., -2., 3., 3.]).into()),
-                Rect2D::XYWH(Vec4D([0., 0., 2., 2.]).into()),
-            ] as _,
-            &[ClassId::from(1), ClassId::from(2)] as _,
-        ],
+        &Boxes2D::from_mins_and_sizes([(-2., -2.), (0., 0.)], [(3., 3.), (2., 2.)])
+            .with_class_ids([1, 2]),
     )?;
 
     // Log an extra rect to set the view bounds
-    // TODO(#2786): Rect2D archetype
-    rec.log_component_batches(
+    rec.log(
         "bounds",
-        false,
-        1,
-        [&[Rect2D::XCYCWH(Vec4D([0.0, 0.0, 5.0, 5.0]).into())] as _],
+        &Boxes2D::from_mins_and_sizes([(0., 0.)], [(5., 5.)]),
     )?;
 
     rerun::native_viewer::show(storage.take())?;

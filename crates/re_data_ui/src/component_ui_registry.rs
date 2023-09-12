@@ -32,7 +32,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     add::<re_components::Mesh3D>(&mut registry);
     add::<re_components::Pinhole>(&mut registry);
-    add::<re_components::Rect2D>(&mut registry);
     add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::AnnotationContext>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);

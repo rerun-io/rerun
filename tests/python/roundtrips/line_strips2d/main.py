@@ -44,7 +44,7 @@ def main() -> None:
 
     rr2.log("line_strips2d", line_strips2d)
     # Hack to establish 2d view bounds
-    rr.log_rect("rect", [-10, -10, 20, 20])
+    rr2.log("rect", rr2.Boxes2D(centers=[0, 0], half_sizes=[10, 10]))
 
     rr.script_teardown(args)
 

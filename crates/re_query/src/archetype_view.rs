@@ -366,7 +366,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
 #[test]
 fn lookup_value() {
-    use re_types::components::{InstanceKey, Point2D};
+    use re_types::components::{Color, InstanceKey, Point2D};
 
     let instance_keys = InstanceKey::from_iter(0..5);
 
@@ -421,7 +421,7 @@ fn lookup_value() {
         QueryError::ComponentNotFound
     ));
 
-    let missing_value = component.lookup::<re_components::Rect2D>(&InstanceKey(99));
+    let missing_value = component.lookup::<Color>(&InstanceKey(99));
     assert!(matches!(
         missing_value.err().unwrap(),
         QueryError::TypeMismatch { .. }

@@ -29,7 +29,7 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'point2d_ext.cpp'
 
-            /// Construct Point2D from x/y/z values.
+            /// Construct Point2D from x/y values.
             Point2D(float x, float y) : xy{x, y} {}
 
             float x() const {

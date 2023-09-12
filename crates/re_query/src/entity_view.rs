@@ -155,8 +155,7 @@ where
 #[test]
 fn lookup_value() {
     use crate::QueryError;
-    use re_components::Rect2D;
-    use re_types::components::Point2D;
+    use re_types::components::{Color, Point2D};
     use re_types::Loggable as _;
 
     let instance_keys = InstanceKey::from_iter(0..5);
@@ -213,7 +212,7 @@ fn lookup_value() {
         QueryError::ComponentNotFound
     ));
 
-    let missing_value = component.lookup::<Rect2D>(&InstanceKey(99));
+    let missing_value = component.lookup::<Color>(&InstanceKey(99));
     assert!(matches!(
         missing_value.err().unwrap(),
         QueryError::TypeMismatch { .. }

@@ -4,6 +4,8 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use super::LegacyVec4D;
 
+// TODO(#3243): Legacy component still used in some tests, benchmarks and examples.
+//
 /// A rectangle in 2D space.
 ///
 /// ## Example

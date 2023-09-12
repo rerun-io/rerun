@@ -13,13 +13,13 @@ use re_viewer_context::{
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::{
-        entity_iterator::process_archetype_views, process_annotations_and_keypoints,
-        process_colors, process_radii, UiLabel, UiLabelTarget,
+        entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
+        UiLabelTarget,
     },
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
 
 pub struct Lines2DPart {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
@@ -83,14 +83,10 @@ impl Lines2DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let (annotation_infos, _) = process_annotations_and_keypoints::<LineStrip2D, LineStrips2D>(
+        let annotation_infos = process_annotations::<LineStrip2D, LineStrips2D>(
             query,
             arch_view,
             &ent_context.annotations,
-            |strip| {
-                let pos = strip.0.get(0).copied().unwrap_or_default();
-                glam::Vec3::new(pos.x(), pos.y(), 0.0)
-            },
         )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;

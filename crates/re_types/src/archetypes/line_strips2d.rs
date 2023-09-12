@@ -22,7 +22,8 @@
 /// //! Log a batch of 2d line strips.
 ///
 /// use rerun::{
-///    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, RecordingStreamBuilder,
+///    archetypes::{Boxes2D, LineStrips2D},
+///    RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -40,12 +41,9 @@
 ///    )?;
 ///
 ///    // Log an extra rect to set the view bounds
-///    // TODO(#2786): Rect2D archetype
-///    rec.log_component_batches(
+///    rec.log(
 ///        "bounds",
-///        false,
-///        1,
-///        [&Rect2D::XCYCWH(Vec4D([3.0, 1.5, 8.0, 9.0]).into()) as _],
+///        &Boxes2D::from_centers_and_sizes([(3.0, 1.5)], [(8.0, 9.0)]),
 ///    )?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;
@@ -58,7 +56,8 @@
 /// //! Log a couple 2D line segments using 2D line strips.
 ///
 /// use rerun::{
-///    archetypes::LineStrips2D, components::Rect2D, datatypes::Vec4D, RecordingStreamBuilder,
+///    archetypes::{Boxes2D, LineStrips2D},
+///    RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -68,12 +67,9 @@
 ///    rec.log("segments", &LineStrips2D::new(points.chunks(2)))?;
 ///
 ///    // Log an extra rect to set the view bounds
-///    // TODO(#2786): Rect2D archetype
-///    rec.log_component_batches(
+///    rec.log(
 ///        "bounds",
-///        false,
-///        1,
-///        [&Rect2D::XCYCWH(Vec4D([3.0, 0.0, 8.0, 6.0]).into()) as _],
+///        &Boxes2D::from_centers_and_sizes([(3.0, 0.0)], [(8.0, 6.0)]),
 ///    )?;
 ///
 ///    rerun::native_viewer::show(storage.take())?;

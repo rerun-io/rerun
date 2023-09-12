@@ -10,6 +10,5 @@ rr2.log(
     rr2.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
 )
 
-# TODO(#2786): Rect2D archetype
 # Log an extra rect to set the view bounds
-rr.log_rect("bounds", [3, 0, 8, 6], rect_format=rr.RectFormat.XCYCWH)
+rr2.log("bounds", rr2.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
