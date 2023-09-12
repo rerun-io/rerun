@@ -11,5 +11,5 @@ int main() {
     rec.log("simple", rr::Boxes2D::from_mins_and_sizes({{-1.f, -1.f}}, {{2.f, 2.f}}));
 
     // Log an extra rect to set the view bounds
-    rec.log("bounds", rr::Boxes2D({2.f, 1.5f}));
+    rec.log("bounds", rr::Boxes2D::from_sizes({{4.f, 3.f}}));
 }

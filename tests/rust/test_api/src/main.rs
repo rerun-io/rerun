@@ -214,7 +214,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.log(
         "rects_test/rects",
         // TODO(#3279): Should be &Boxes2D::empty()
-        &Boxes2D::new(std::iter::empty::<HalfSizes2D>()),
+        &Boxes2D::from_half_sizes(std::iter::empty::<HalfSizes2D>()),
     )?;
 
     Ok(())

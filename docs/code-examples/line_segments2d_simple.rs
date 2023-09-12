@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log an extra rect to set the view bounds
     rec.log(
         "bounds",
-        &Boxes2D::new([(4.0, 3.0)]).with_centers([(3.0, 0.0)]),
+        &Boxes2D::from_centers_and_sizes([(3.0, 0.0)], [(8.0, 6.0)]),
     )?;
 
     rerun::native_viewer::show(storage.take())?;

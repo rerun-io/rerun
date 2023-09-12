@@ -1,4 +1,6 @@
 include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+include "cpp/attributes.fbs";
 
 include "rerun/datatypes.fbs";
 include "rerun/components.fbs";
@@ -32,6 +34,8 @@ namespace rerun.archetypes;
 /// \cpp ```
 table Boxes2D (
   "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate",
+  "attr.cpp.no_field_ctors",
   order: 100
 ) {
   // --- Required ---

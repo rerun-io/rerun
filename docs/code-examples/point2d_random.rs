@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Log an extra rect to set the view bounds
-    rec.log("bounds", &Boxes2D::new([(4.0, 3.0)]))?;
+    rec.log("bounds", &Boxes2D::from_half_sizes([(4., 3.)]))?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

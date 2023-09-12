@@ -22,14 +22,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log a batch of 2 rectangles with different class IDs
     rec.log(
         "detections",
-        &Boxes2D::from_mins_and_sizes([(-2., -2.), (0., 0.)], [(3.0, 3.0), (2.0, 2.0)])
+        &Boxes2D::from_mins_and_sizes([(-2., -2.), (0., 0.)], [(3., 3.), (2., 2.)])
             .with_class_ids([1, 2]),
     )?;
 
     // Log an extra rect to set the view bounds
     rec.log(
         "bounds",
-        &Boxes2D::new([(2.5, 2.5)]).with_centers([(2.5, 2.5)]),
+        &Boxes2D::from_mins_and_sizes([(0., 0.)], [(5., 5.)]),
     )?;
 
     rerun::native_viewer::show(storage.take())?;
