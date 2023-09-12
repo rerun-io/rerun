@@ -124,6 +124,10 @@ impl CodeGenerator for PythonCodeGenerator {
     }
 }
 
+struct ObjExt {
+    name: String,
+}
+
 impl PythonCodeGenerator {
     fn generate_folder(
         &self,
@@ -133,6 +137,8 @@ impl PythonCodeGenerator {
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
+
+        // TODO(jleibs): This can go away once all overrides ported to extensions
         let overrides = load_overrides(&kind_path);
 
         // (module_name, [object_name])
@@ -142,6 +148,8 @@ impl PythonCodeGenerator {
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
             let filepath = kind_path.join(format!("{}.py", obj.snake_case_name()));
+            let ext_path = kind_path.join(format!("{}_ext.py", obj.snake_case_name()));
+            let mut obj_ext: Option<ObjExt> = None;
 
             let names = match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
@@ -218,6 +226,20 @@ impl PythonCodeGenerator {
                 0,
             );
 
+            if ext_path.exists() {
+                let mut ext_name = obj.name.clone();
+                ext_name.push_str("Ext");
+                code.push_unindented_text(
+                    format!(
+                        "from .{} import {}Ext",
+                        ext_path.file_stem().unwrap(),
+                        obj.name
+                    ),
+                    1,
+                );
+                obj_ext = Some(ObjExt { name: ext_name });
+            }
+
             // Import all overrides. Overrides always start with `type_name_` and ends with `_override`.
             let override_names: Vec<_> = overrides
                 .iter()
@@ -259,9 +281,9 @@ impl PythonCodeGenerator {
             );
 
             let obj_code = if obj.is_struct() {
-                code_for_struct(arrow_registry, &overrides, objects, obj)
+                code_for_struct(arrow_registry, obj_ext, &overrides, objects, obj)
             } else {
-                code_for_union(arrow_registry, &overrides, objects, obj)
+                code_for_union(arrow_registry, obj_ext, &overrides, objects, obj)
             };
             code.push_text(&obj_code, 1, 0);
 
@@ -353,6 +375,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
 fn code_for_struct(
     arrow_registry: &ArrowRegistry,
+    obj_ext: Option<ObjExt>,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -406,9 +429,20 @@ fn code_for_struct(
             (String::new(), String::new())
         };
 
-        let superclass = match *kind {
-            ObjectKind::Archetype => "(Archetype)",
-            ObjectKind::Component | ObjectKind::Datatype => "",
+        let mut superclasses = vec![];
+
+        if *kind == ObjectKind::Archetype {
+            superclasses.push("Archetype");
+        }
+
+        if let Some(obj_ext) = &obj_ext {
+            superclasses.push(obj_ext.name.as_str());
+        }
+
+        let superclass_decl = if superclasses.len() > 0 {
+            format!("({})", superclasses.join(","))
+        } else {
+            "".to_owned()
         };
 
         let define_args = if *kind == ObjectKind::Archetype {
@@ -430,7 +464,7 @@ fn code_for_struct(
             format!(
                 r#"
                 @define{define_args}
-                class {name}{superclass}:
+                class {name}{superclass_decl}:
                 "#
             ),
             0,
@@ -554,6 +588,7 @@ fn code_for_struct(
 
 fn code_for_union(
     arrow_registry: &ArrowRegistry,
+    obj_ext: Option<ObjExt>,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
