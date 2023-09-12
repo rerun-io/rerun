@@ -26,7 +26,6 @@ mod mat;
 mod mesh3d;
 mod pinhole;
 mod quaternion;
-mod rect;
 mod scalar;
 mod vec;
 
@@ -47,7 +46,6 @@ pub use self::{
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D},
     pinhole::Pinhole,
     quaternion::Quaternion,
-    rect::Rect2D,
     scalar::{Scalar, ScalarPlotProps},
 };
 
@@ -77,13 +75,12 @@ use re_types::components::{
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 26] = [
+    static ref FIELDS: [Field; 25] = [
         <Box3D as LegacyComponent>::field(),
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Pinhole as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
-        <Rect2D as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),

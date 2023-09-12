@@ -7,10 +7,10 @@
 use re_arrow_store::{test_row, DataStore};
 use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_instances, build_some_instances_from,
-    build_some_point2d, build_some_rects,
+    build_some_point2d,
 };
 use re_log_types::{EntityPath, Time};
-use re_types::{components::InstanceKey, Loggable};
+use re_types::{components::InstanceKey, testing::build_some_large_structs, Loggable};
 
 // ---
 
@@ -25,7 +25,7 @@ fn main() {
     for ent_path in &ent_paths {
         let row1 = test_row!(ent_path @ [
                 build_frame_nr(1.into()), build_log_time(Time::now()),
-            ] => 2; [build_some_instances(2), build_some_rects(2)]);
+            ] => 2; [build_some_instances(2), build_some_large_structs(2)]);
         store.insert_row(&row1).unwrap();
     }
 
@@ -50,7 +50,7 @@ fn main() {
     for ent_path in &ent_paths {
         let row4_1 = test_row!(ent_path @ [
                 build_frame_nr(4.into()), build_log_time(Time::now()),
-            ] => 3; [build_some_instances_from(20..23), build_some_rects(3)]);
+            ] => 3; [build_some_instances_from(20..23), build_some_large_structs(3)]);
         store.insert_row(&row4_1).unwrap();
 
         let row4_15 = test_row!(ent_path @ [
@@ -60,7 +60,7 @@ fn main() {
 
         let row4_2 = test_row!(ent_path @ [
                 build_frame_nr(4.into()), build_log_time(Time::now()),
-            ] => 3; [build_some_instances_from(25..28), build_some_rects(3)]);
+            ] => 3; [build_some_instances_from(25..28), build_some_large_structs(3)]);
         store.insert_row(&row4_2).unwrap();
 
         let row4_25 = test_row!(ent_path @ [
