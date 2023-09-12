@@ -76,32 +76,57 @@ Datatypes primary concern is modelling well-defined data structures, including a
 Contrary to archetypes and components, datatypes occasionally represent complex data structures, such as `Transform3D`, made of nested structs and unions. The latter, lacking an obvious counterpart in Python, calls for a specific treatment (see below for details).
 
 
-## Overrides
+## Extensions
 
 Though a fully automatic generation of an SDK conforming to our stated goals of ease-of-use and Pythonic API is asymptotically feasible, the effort required is disproportionate. The code generator thus offers a number of hooks allowing parts of the SDK to be hand-coded to handle edge cases and fine-tune the user-facing API.
 
 This section covers the available hooks.
 
-#### Native object init method (`objectname_init()`)
+### The TypeExt class
 
-This hook expose `attrs` ability to provide custom `__init__()` class method. The override implementation may typically make use of the `__attrs_init__()` function, which `attrs` [generates](https://www.attrs.org/en/stable/init.html#custom-init) in lieu of its default `__init__()` implementation.
+During codegen, each class looks for a file: `class_ext.py` in the same directory where the class
+will be generated. For example `datatypes/color_ext.py` is the extension file for the `Color` datatype,
+which can be found in `datatypes/color.py`.
 
-Init method overrides are typically used when the default constructor provided by `attrs` doesn't provide a satisfactory API. See `datatypes/_overrides/angle.py` for an example.
+In this file you must define a class called `<Type>Ext` that will be added as a mixin to the generated class.
 
-#### Native object field converter (`objectname_fieldname_converter()`)
+#### Native object init method (`__init__()`)
 
-This hook enable native objects to accept flexible input for their fields while normalising their content to a well-defined type. As this is a key enabler of a Pythonic user-facing API, most fields should have a converter set. The code generator attempts to provide meaningful default converter whenever possible
+By default, the generated class uses `attrs` to generate an `__init__()` method that accepts keyword arguments for each field.
 
-See `components/_overrides/color.py` for an example.
+However, if your extension class includes its own `__init__()` method, the generated class will be created with
+`@define(init=False)` so that `__init__` will instead be called on the extension class.
 
-#### Native object Numpy conversion method (`objectname_as_array()`)
+The override implementation may make use of the `__attrs_init__()` function, which `attrs`
+[generates](https://www.attrs.org/en/stable/init.html#custom-init) to call through to the generated `__init__()` method
+that would otherwise have been generated.
 
-This hook is used to provide an `__array__()` function to a native object, which in turn allows Numpy to automatically ingest instances of that class in a controlled way. This can in turn facilitate the implementation of the PyArrow array conversion overrides. See `datatypes/_overrides/point2d.py` for an example.
+Init method overrides are typically used when the default constructor provided by `attrs` doesn't provide a satisfactory API. See `datatypes/angle_ext.py` for an example.
 
-#### PyArrow array conversion method (`objectname_native_to_pa_array`)
+#### Native object field converter (`fieldname__field_converter_override()`)
 
-This hook is the primary means of providing serialisation to Arrow data, which is required for any non-delegating component or datatypes used by delegating components.
+This hook enables native objects to accept flexible input for their fields while normalizing their content to a
+well-defined type. As this is a key enabler of a Pythonic user-facing API, most fields should have a converter set. The
+code generator attempts to provide meaningful default converter whenever possible
 
+The extension can define a custom converter for any field by implementing a `staticmethod` on the extension class.
+The function must match the pattern `<fieldname>__field_converter_override`. This will be added as the `converter`
+argument to the corresponding field definition.
+
+See `components/color_ext.py` for an example.
+
+#### Native object Numpy conversion method (`__array__()`)
+
+If an object can be natively converted to a numpy array it should implement the `__array__()` method, which in turn
+allows Numpy to automatically ingest instances of that class in a controlled way.
+
+By default, this will be generated automatically for types which only contain a single field which is a numpy array. However,
+other types can still implement this method on the extension class directly, in which case the default implementation will
+be skipped.
+
+#### PyArrow array conversion method (`native_to_pa_array_override()`)
+
+This hook is the primary means of providing serialization to Arrow data, which is required for any non-delegating component or datatypes used by delegating components.
 
 ## Design notes on code generation
 
@@ -121,9 +146,9 @@ TODO(ab):
 
 Implementing a Pythonic API for a component or datatype sometime require a subtle interplay between various hand-coded overrides and auto-generated methods. The `Color` component is a good illustration:
 
-- The `color_rgba_converter()` converter flexibly normalises user input into a `int` RGBA storage.
+- The `rgba__field_converter_override()` converter flexibly normalises user input into a `int` RGBA storage.
 - The auto-generated `__int__()` method facilitates the conversion of a `Color` instance into a `int`, which is recognised by Numpy array creation functions.
-- The `color_native_to_pa_array()` exploits these capabilities of the `Color` native object to simplify its implementation (even though, in most cases, the user code wills skip using actual `Color` instances).
+- The `native_to_pa_array()` exploits these capabilities of the `Color` native object to simplify its implementation (even though, in most cases, the user code wills skip using actual `Color` instances).
 
 ### Converter must be functions
 
