@@ -9,16 +9,6 @@ impl Origin2D {
     pub const fn new(x: f32, y: f32) -> Self {
         Self(Vec2D::new(x, y))
     }
-
-    #[inline]
-    pub fn x(&self) -> f32 {
-        self.0.x()
-    }
-
-    #[inline]
-    pub fn y(&self) -> f32 {
-        self.0.y()
-    }
 }
 
 #[cfg(feature = "glam")]
