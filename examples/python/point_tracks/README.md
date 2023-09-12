@@ -91,7 +91,7 @@ To keep track of each point it can be useful to assign a unique color to each po
 ```python
 # assign random color to each track
 track_ids = np.arange(0, len(tracks))
-annotation_context = [(i, "", np.random.rand(3)) for i in track_ids]
+annotation_context = [(i, None, np.random.rand(3)) for i in track_ids]
 rr2.log(entity_path, rr2.AnnotationContext(annotation_context), timeless=True)
 
 for i, time_step in enumerate(time_steps):
@@ -132,7 +132,7 @@ def log_point_tracks(entity_path, tracks, visibilities, time_steps):
     """
     # assign random color to each track
     track_ids = np.arange(0, len(tracks))
-    annotation_context = [(i, "", np.random.rand(3)) for i in track_ids]
+    annotation_context = [(i, None, np.random.rand(3)) for i in track_ids]
     rr2.log(entity_path, rr2.AnnotationContext(annotation_context), timeless=True)
 
     for i, time_step in enumerate(time_steps):
