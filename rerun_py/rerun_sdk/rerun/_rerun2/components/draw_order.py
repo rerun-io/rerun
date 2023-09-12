@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import draworder_native_to_pa_array  # noqa: F401
+from ._overrides import draw_order__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
 
@@ -32,9 +32,12 @@ class DrawOrder:
     Draw order for entities with the same draw order is generally undefined.
     """
 
+    # You can define your own __init__ function by defining a function called "draw_order__init_override"
+
     value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "draw_order__as_array_override"
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
@@ -63,7 +66,7 @@ class DrawOrderArray(BaseExtensionArray[DrawOrderArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
-        return draworder_native_to_pa_array(data, data_type)
+        return draw_order__native_to_pa_array_override(data, data_type)
 
 
 DrawOrderType._ARRAY_TYPE = DrawOrderArray

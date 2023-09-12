@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import instancekey_native_to_pa_array  # noqa: F401
+from ._overrides import instance_key__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
 
@@ -24,9 +24,12 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 class InstanceKey:
     """A unique numeric identifier for each individual instance within a batch."""
 
+    # You can define your own __init__ function by defining a function called "instance_key__init_override"
+
     value: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "instance_key__as_array_override"
         return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:
@@ -55,7 +58,7 @@ class InstanceKeyArray(BaseExtensionArray[InstanceKeyArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
-        return instancekey_native_to_pa_array(data, data_type)
+        return instance_key__native_to_pa_array_override(data, data_type)
 
 
 InstanceKeyType._ARRAY_TYPE = InstanceKeyArray

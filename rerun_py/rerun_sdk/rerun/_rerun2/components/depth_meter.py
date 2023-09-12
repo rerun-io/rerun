@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import depthmeter_native_to_pa_array  # noqa: F401
+from ._overrides import depth_meter__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["DepthMeter", "DepthMeterArray", "DepthMeterArrayLike", "DepthMeterLike", "DepthMeterType"]
 
@@ -24,9 +24,12 @@ __all__ = ["DepthMeter", "DepthMeterArray", "DepthMeterArrayLike", "DepthMeterLi
 class DepthMeter:
     """A component indicating how long a meter is, expressed in native units."""
 
+    # You can define your own __init__ function by defining a function called "depth_meter__init_override"
+
     value: float = field(converter=float)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "depth_meter__as_array_override"
         return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
@@ -55,7 +58,7 @@ class DepthMeterArray(BaseExtensionArray[DepthMeterArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DepthMeterArrayLike, data_type: pa.DataType) -> pa.Array:
-        return depthmeter_native_to_pa_array(data, data_type)
+        return depth_meter__native_to_pa_array_override(data, data_type)
 
 
 DepthMeterType._ARRAY_TYPE = DepthMeterArray

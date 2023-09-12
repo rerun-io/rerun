@@ -672,7 +672,7 @@ impl QuotedObject {
                 let declaration = quote_variable_with_docstring(
                     &mut hpp_includes,
                     obj_field,
-                    &format_ident!("{}", crate::to_snake_case(&obj_field.name)),
+                    &format_ident!("{}", obj_field.snake_case_name()),
                 );
                 quote! {
                     #NEWLINE_TOKEN
@@ -699,7 +699,7 @@ impl QuotedObject {
         if are_types_disjoint(&obj.fields) {
             // Implicit construct from the different variant types:
             for obj_field in &obj.fields {
-                let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
                 let param_declaration =
                     quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
 
@@ -751,7 +751,7 @@ impl QuotedObject {
             })
             .chain(obj.fields.iter().map(|obj_field| {
                 let tag_ident = format_ident!("{}", obj_field.name);
-                let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                let field_ident = format_ident!("{}", obj_field.snake_case_name());
 
                 if obj_field.typ.has_default_destructor(objects) {
                     let comment = quote_comment("has a trivial destructor");
@@ -811,7 +811,7 @@ impl QuotedObject {
                 if obj_field.typ.has_default_destructor(objects) {
                     default_match_arms.push(case);
                 } else {
-                    let field_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+                    let field_ident = format_ident!("{}", obj_field.snake_case_name());
                     copy_match_arms.push(quote! {
                         #case {
                             _data.#field_ident = other._data.#field_ident;
@@ -1631,7 +1631,7 @@ fn static_constructor_for_enum_type(
     tag_typename: &Ident,
 ) -> Method {
     let tag_ident = format_ident!("{}", obj_field.name);
-    let snake_case_ident = format_ident!("{}", crate::to_snake_case(&obj_field.name));
+    let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
     let docs = obj_field.docs.clone().into();
 
     let param_declaration = quote_variable(hpp_includes, obj_field, &snake_case_ident);

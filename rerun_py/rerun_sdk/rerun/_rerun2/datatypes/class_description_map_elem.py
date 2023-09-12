@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import classdescriptionmapelem_native_to_pa_array  # noqa: F401
+from ._overrides import class_description_map_elem__native_to_pa_array_override  # noqa: F401
 
 __all__ = [
     "ClassDescriptionMapElem",
@@ -25,7 +25,9 @@ __all__ = [
 ]
 
 
-def _classdescriptionmapelem_class_id_converter(x: datatypes.ClassIdLike) -> datatypes.ClassId:
+def _class_description_map_elem__class_id__special_field_converter_override(
+    x: datatypes.ClassIdLike,
+) -> datatypes.ClassId:
     if isinstance(x, datatypes.ClassId):
         return x
     else:
@@ -40,7 +42,11 @@ class ClassDescriptionMapElem:
     This is internal to the `AnnotationContext` structure.
     """
 
-    class_id: datatypes.ClassId = field(converter=_classdescriptionmapelem_class_id_converter)
+    # You can define your own __init__ function by defining a function called "class_description_map_elem__init_override"
+
+    class_id: datatypes.ClassId = field(
+        converter=_class_description_map_elem__class_id__special_field_converter_override
+    )
     class_description: datatypes.ClassDescription = field()
 
 
@@ -135,7 +141,7 @@ class ClassDescriptionMapElemArray(BaseExtensionArray[ClassDescriptionMapElemArr
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
-        return classdescriptionmapelem_native_to_pa_array(data, data_type)
+        return class_description_map_elem__native_to_pa_array_override(data, data_type)
 
 
 ClassDescriptionMapElemType._ARRAY_TYPE = ClassDescriptionMapElemArray

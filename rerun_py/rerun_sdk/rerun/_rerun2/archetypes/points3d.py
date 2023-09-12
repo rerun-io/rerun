@@ -31,6 +31,8 @@ class Points3D(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called "points3d__init_override"
+
     points: components.Point3DArray = field(
         metadata={"component": "primary"},
         converter=components.Point3DArray.from_similar,  # type: ignore[misc]

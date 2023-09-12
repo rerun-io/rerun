@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import tensorbuffer_inner_converter  # noqa: F401
+from ._overrides import tensor_buffer__inner_converter_override  # noqa: F401
 
 __all__ = ["TensorBuffer", "TensorBufferArray", "TensorBufferArrayLike", "TensorBufferLike", "TensorBufferType"]
 
@@ -28,6 +28,8 @@ class TensorBuffer:
     Tensor elements are stored in a contiguous buffer of a single type.
     """
 
+    # You can define your own __init__ function by defining a function called "tensor_buffer__init_override"
+
     inner: npt.NDArray[np.float32] | npt.NDArray[np.float64] | npt.NDArray[np.int16] | npt.NDArray[
         np.int32
     ] | npt.NDArray[np.int64] | npt.NDArray[np.int8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[
@@ -35,7 +37,7 @@ class TensorBuffer:
     ] | npt.NDArray[
         np.uint8
     ] = field(
-        converter=tensorbuffer_inner_converter
+        converter=tensor_buffer__inner_converter_override
     )
     """
     U8 (npt.NDArray[np.uint8]):
@@ -184,7 +186,7 @@ class TensorBufferArray(BaseExtensionArray[TensorBufferArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorBufferArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "tensorbuffer_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_buffer.py
+        raise NotImplementedError  # You need to implement "tensor_buffer__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/tensor_buffer.py
 
 
 TensorBufferType._ARRAY_TYPE = TensorBufferArray

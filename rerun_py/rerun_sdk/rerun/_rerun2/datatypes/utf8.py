@@ -13,7 +13,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import utf8_native_to_pa_array  # noqa: F401
+from ._overrides import utf8__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
 
@@ -21,6 +21,8 @@ __all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
 @define
 class Utf8:
     """A string of text, encoded as UTF-8."""
+
+    # You can define your own __init__ function by defining a function called "utf8__init_override"
 
     value: str = field(converter=str)
 
@@ -50,7 +52,7 @@ class Utf8Array(BaseExtensionArray[Utf8ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
-        return utf8_native_to_pa_array(data, data_type)
+        return utf8__native_to_pa_array_override(data, data_type)
 
 
 Utf8Type._ARRAY_TYPE = Utf8Array

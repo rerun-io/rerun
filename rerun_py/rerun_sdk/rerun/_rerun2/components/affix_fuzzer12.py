@@ -19,6 +19,8 @@ __all__ = ["AffixFuzzer12", "AffixFuzzer12Array", "AffixFuzzer12ArrayLike", "Aff
 
 @define
 class AffixFuzzer12:
+    # You can define your own __init__ function by defining a function called "affix_fuzzer12__init_override"
+
     many_strings_required: list[str] = field()
 
 
@@ -47,7 +49,7 @@ class AffixFuzzer12Array(BaseExtensionArray[AffixFuzzer12ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer12ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "affixfuzzer12_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/affix_fuzzer12.py
+        raise NotImplementedError  # You need to implement "affix_fuzzer12__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/components/_overrides/affix_fuzzer12.py
 
 
 AffixFuzzer12Type._ARRAY_TYPE = AffixFuzzer12Array

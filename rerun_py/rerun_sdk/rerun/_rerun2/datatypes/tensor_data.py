@@ -15,12 +15,12 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import tensordata_init, tensordata_native_to_pa_array  # noqa: F401
+from ._overrides import tensor_data__init_override, tensor_data__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
 
-def _tensordata_buffer_converter(x: datatypes.TensorBufferLike) -> datatypes.TensorBuffer:
+def _tensor_data__buffer__special_field_converter_override(x: datatypes.TensorBufferLike) -> datatypes.TensorBuffer:
     if isinstance(x, datatypes.TensorBuffer):
         return x
     else:
@@ -41,10 +41,10 @@ class TensorData:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        tensordata_init(self, *args, **kwargs)
+        tensor_data__init_override(self, *args, **kwargs)
 
     shape: list[datatypes.TensorDimension] = field()
-    buffer: datatypes.TensorBuffer = field(converter=_tensordata_buffer_converter)
+    buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)
 
 
 if TYPE_CHECKING:
@@ -170,7 +170,7 @@ class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        return tensordata_native_to_pa_array(data, data_type)
+        return tensor_data__native_to_pa_array_override(data, data_type)
 
 
 TensorDataType._ARRAY_TYPE = TensorDataArray

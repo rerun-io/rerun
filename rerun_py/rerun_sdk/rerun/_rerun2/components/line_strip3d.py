@@ -16,7 +16,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import linestrip3d_native_to_pa_array  # noqa: F401
+from ._overrides import line_strip3d__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["LineStrip3D", "LineStrip3DArray", "LineStrip3DArrayLike", "LineStrip3DLike", "LineStrip3DType"]
 
@@ -37,6 +37,8 @@ class LineStrip3D:
                      4
     ```
     """
+
+    # You can define your own __init__ function by defining a function called "line_strip3d__init_override"
 
     points: list[datatypes.Vec3D] = field()
 
@@ -74,7 +76,7 @@ class LineStrip3DArray(BaseExtensionArray[LineStrip3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return linestrip3d_native_to_pa_array(data, data_type)
+        return line_strip3d__native_to_pa_array_override(data, data_type)
 
 
 LineStrip3DType._ARRAY_TYPE = LineStrip3DArray

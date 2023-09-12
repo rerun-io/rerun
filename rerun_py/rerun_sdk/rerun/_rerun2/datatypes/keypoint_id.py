@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import keypointid_native_to_pa_array  # noqa: F401
+from ._overrides import keypoint_id__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
 
@@ -31,9 +31,12 @@ class KeypointId:
     [`rerun.components.AnnotationContext`].
     """
 
+    # You can define your own __init__ function by defining a function called "keypoint_id__init_override"
+
     id: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "keypoint_id__as_array_override"
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:
@@ -70,7 +73,7 @@ class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return keypointid_native_to_pa_array(data, data_type)
+        return keypoint_id__native_to_pa_array_override(data, data_type)
 
 
 KeypointIdType._ARRAY_TYPE = KeypointIdArray

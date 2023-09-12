@@ -16,7 +16,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import linestrip2d_native_to_pa_array  # noqa: F401
+from ._overrides import line_strip2d__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["LineStrip2D", "LineStrip2DArray", "LineStrip2DArrayLike", "LineStrip2DLike", "LineStrip2DType"]
 
@@ -37,6 +37,8 @@ class LineStrip2D:
                      4
     ```
     """
+
+    # You can define your own __init__ function by defining a function called "line_strip2d__init_override"
 
     points: list[datatypes.Vec2D] = field()
 
@@ -74,7 +76,7 @@ class LineStrip2DArray(BaseExtensionArray[LineStrip2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return linestrip2d_native_to_pa_array(data, data_type)
+        return line_strip2d__native_to_pa_array_override(data, data_type)
 
 
 LineStrip2DType._ARRAY_TYPE = LineStrip2DArray

@@ -218,11 +218,11 @@ impl PythonCodeGenerator {
                 0,
             );
 
-            // import all overrides
-            let lowercase_name = obj.name.as_str().to_lowercase(); // TODO(emilk): snake-case name
+            // Import all overrides. Overrides always start with `type_name_` and ends with `_override`.
             let override_names: Vec<_> = overrides
                 .iter()
-                .filter(|o| o.starts_with(lowercase_name.as_str()))
+                .filter(|o| o.starts_with(&obj.snake_case_name()))
+                .filter(|o| o.ends_with("_override"))
                 .map(|o| o.as_str())
                 .collect::<Vec<_>>();
 
@@ -377,13 +377,13 @@ fn code_for_struct(
             let (default_converter, converter_function) =
                 quote_field_converter_from_field(obj, objects, field);
 
-            let override_name = format!(
-                "{}_{}_converter",
-                name.to_lowercase(),
-                field.name.to_lowercase()
+            let converter_override_name = format!(
+                "{}__{}__field_converter_override",
+                obj.snake_case_name(),
+                field.name
             );
-            let converter = if overrides.contains(&override_name) {
-                format!("converter={override_name}")
+            let converter = if overrides.contains(&converter_override_name) {
+                format!("converter={converter_override_name}")
             } else if *kind == ObjectKind::Archetype {
                 // Archetypes default to using `from_similar` from the Component
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
@@ -399,9 +399,9 @@ fn code_for_struct(
         }
 
         // init override handling
-        let override_name = format!("{}_init", name.to_lowercase());
-        let (init_define_arg, init_func) = if overrides.contains(&override_name) {
-            ("init=False".to_owned(), override_name)
+        let init_override_name = format!("{}__init_override", obj.snake_case_name());
+        let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
+            ("init=False".to_owned(), init_override_name.clone())
         } else {
             (String::new(), String::new())
         };
@@ -438,7 +438,9 @@ fn code_for_struct(
 
         code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-        if !init_func.is_empty() {
+        if init_func.is_empty() {
+            code.push_text(format!("# You can define your own __init__ function by defining a function called {init_override_name:?}"), 2, 4);
+        } else {
             code.push_text(
                 "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
                 1,
@@ -570,9 +572,9 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let override_name = format!("{}_init", name.to_lowercase());
-    let (define_args, init_func) = if overrides.contains(&override_name) {
-        ("(init=False)".to_owned(), override_name)
+    let init_override_name = format!("{}__init_override", obj.snake_case_name());
+    let (define_args, init_func) = if overrides.contains(&init_override_name) {
+        ("(init=False)".to_owned(), init_override_name.clone())
     } else {
         (String::new(), String::new())
     };
@@ -590,7 +592,9 @@ fn code_for_union(
 
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-    if !init_func.is_empty() {
+    if init_func.is_empty() {
+        code.push_text(format!("# You can define your own __init__ function by defining a function called {init_override_name:?}"), 2, 4);
+    } else {
         code.push_text(
             "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
             1,
@@ -619,9 +623,9 @@ fn code_for_union(
     };
 
     // components and datatypes have converters only if manually provided
-    let override_name = format!("{}_inner_converter", name.to_lowercase(),);
-    let converter = if overrides.contains(&override_name) {
-        format!("converter={override_name}")
+    let converter_override_name = format!("{}__inner_converter_override", obj.snake_case_name());
+    let converter = if overrides.contains(&converter_override_name) {
+        format!("converter={converter_override_name}")
     } else if !default_converter.is_empty() {
         format!("converter={default_converter}")
     } else {
@@ -635,9 +639,9 @@ fn code_for_union(
     if has_duplicate_types {
         let kind_type = fields
             .iter()
-            .map(|f| format!("{:?}", f.name.to_lowercase()))
+            .map(|f| format!("{:?}", f.snake_case_name()))
             .join(", ");
-        let first_kind = &fields[0].name.to_lowercase();
+        let first_kind = &fields[0].snake_case_name();
 
         code.push_text(
             format!("kind: Literal[{kind_type}] = field(default={first_kind:?})"),
@@ -738,7 +742,7 @@ fn quote_array_method_from_obj(
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
-    let override_name = format!("{}_as_array", obj.name.to_lowercase());
+    let override_name = format!("{}__as_array_override", obj.snake_case_name());
     if overrides.contains(&override_name) {
         return unindent::unindent(&format!(
             "
@@ -762,6 +766,7 @@ fn quote_array_method_from_obj(
     unindent::unindent(&format!(
         "
         def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
+            # You can replace `np.asarray` here with your own code by defining a function named {override_name:?}
             return np.asarray(self.{field_name}, dtype=dtype)
         ",
     ))
@@ -1049,8 +1054,11 @@ fn quote_field_converter_from_field(
             // we generate a default converter only if the field's type can be constructed with a
             // single argument
             if field_obj.fields.len() == 1 || field_obj.is_union() {
-                let converter_name =
-                    format!("_{}_{}_converter", obj.name.to_lowercase(), field.name);
+                let converter_name = format!(
+                    "_{}__{}__special_field_converter_override", // TODO(emilk): why does this have an underscore prefix?
+                    obj.snake_case_name(),
+                    field.name
+                );
 
                 // generate the converter function
                 if field.is_nullable {
@@ -1209,10 +1217,9 @@ fn quote_arrow_support_from_obj(
         .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
         .unwrap_or_else(|| fqname.clone());
 
-    let name_lower = name.to_lowercase();
-    let override_name = format!("{name_lower}_native_to_pa_array");
+    let override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
     let override_ = if overrides.contains(&override_name) {
-        format!("return {name_lower}_native_to_pa_array(data, data_type)")
+        format!("return {override_name}(data, data_type)")
     } else {
         let override_file_path = format!(
             "rerun_py/rerun_sdk/rerun/_rerun2/{}/_overrides/{}.py",

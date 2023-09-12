@@ -34,6 +34,8 @@ class Points2D(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called "points2d__init_override"
+
     points: components.Point2DArray = field(
         metadata={"component": "primary"},
         converter=components.Point2DArray.from_similar,  # type: ignore[misc]

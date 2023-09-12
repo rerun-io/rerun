@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import disconnectedspace_native_to_pa_array  # noqa: F401
+from ._overrides import disconnected_space__native_to_pa_array_override  # noqa: F401
 
 __all__ = [
     "DisconnectedSpace",
@@ -35,6 +35,8 @@ class DisconnectedSpace:
 
     If a transform or pinhole is logged on the same path, this component will be ignored.
     """
+
+    # You can define your own __init__ function by defining a function called "disconnected_space__init_override"
 
     is_disconnected: bool = field(converter=bool)
 
@@ -61,7 +63,7 @@ class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
-        return disconnectedspace_native_to_pa_array(data, data_type)
+        return disconnected_space__native_to_pa_array_override(data, data_type)
 
 
 DisconnectedSpaceType._ARRAY_TYPE = DisconnectedSpaceArray

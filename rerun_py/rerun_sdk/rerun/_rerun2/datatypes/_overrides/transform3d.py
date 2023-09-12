@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
 # TODO(#2623): lots of boilerplate here that could be auto-generated
 # To address that:
-# 1) rewrite everything in the form of `xxx_native_to_pa_array()`
-# 2) higher level `xxx_native_to_pa_array()` should call into lower level `xxx::from_similar()`
+# 1) rewrite everything in the form of `xxx__native_to_pa_array_override()`
+# 2) higher level `xxx__native_to_pa_array_override()` should call into lower level `xxx::from_similar()`
 # 3) identify regularities and auto-gen them
 
 
@@ -187,7 +187,7 @@ def _build_struct_array_from_translation_rotation_scale(
     )
 
 
-def transform3d_native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
+def transform3d__native_to_pa_array_override(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
     from .. import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
 
     if isinstance(data, Transform3D):

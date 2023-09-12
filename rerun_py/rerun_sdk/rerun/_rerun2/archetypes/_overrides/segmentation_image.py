@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from ...datatypes import TensorDataArrayLike
 
 
-def segmentationimage_data_converter(data: TensorDataArrayLike) -> TensorDataArray:
+def segmentation_image__data__field_converter_override(data: TensorDataArrayLike) -> TensorDataArray:
     from ...components import TensorDataArray
     from ...datatypes import TensorDataType, TensorDimensionType
 

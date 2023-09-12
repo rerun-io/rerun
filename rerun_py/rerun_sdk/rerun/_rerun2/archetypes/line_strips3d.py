@@ -81,6 +81,8 @@ class LineStrips3D(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called "line_strips3d__init_override"
+
     strips: components.LineStrip3DArray = field(
         metadata={"component": "primary"},
         converter=components.LineStrip3DArray.from_similar,  # type: ignore[misc]

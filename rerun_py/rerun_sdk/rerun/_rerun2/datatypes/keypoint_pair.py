@@ -14,19 +14,19 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import keypointpair_native_to_pa_array  # noqa: F401
+from ._overrides import keypoint_pair__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["KeypointPair", "KeypointPairArray", "KeypointPairArrayLike", "KeypointPairLike", "KeypointPairType"]
 
 
-def _keypointpair_keypoint0_converter(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
+def _keypoint_pair__keypoint0__special_field_converter_override(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
     if isinstance(x, datatypes.KeypointId):
         return x
     else:
         return datatypes.KeypointId(x)
 
 
-def _keypointpair_keypoint1_converter(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
+def _keypoint_pair__keypoint1__special_field_converter_override(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
     if isinstance(x, datatypes.KeypointId):
         return x
     else:
@@ -37,8 +37,10 @@ def _keypointpair_keypoint1_converter(x: datatypes.KeypointIdLike) -> datatypes.
 class KeypointPair:
     """A connection between two `Keypoints`."""
 
-    keypoint0: datatypes.KeypointId = field(converter=_keypointpair_keypoint0_converter)
-    keypoint1: datatypes.KeypointId = field(converter=_keypointpair_keypoint1_converter)
+    # You can define your own __init__ function by defining a function called "keypoint_pair__init_override"
+
+    keypoint0: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint0__special_field_converter_override)
+    keypoint1: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint1__special_field_converter_override)
 
 
 if TYPE_CHECKING:
@@ -75,7 +77,7 @@ class KeypointPairArray(BaseExtensionArray[KeypointPairArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
-        return keypointpair_native_to_pa_array(data, data_type)
+        return keypoint_pair__native_to_pa_array_override(data, data_type)
 
 
 KeypointPairType._ARRAY_TYPE = KeypointPairArray

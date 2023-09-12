@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import rotationaxisangle_angle_converter  # noqa: F401
+from ._overrides import rotation_axis_angle__angle__field_converter_override  # noqa: F401
 
 __all__ = [
     "RotationAxisAngle",
@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-def _rotationaxisangle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D:
+def _rotation_axis_angle__axis__special_field_converter_override(x: datatypes.Vec3DLike) -> datatypes.Vec3D:
     if isinstance(x, datatypes.Vec3D):
         return x
     else:
@@ -36,7 +36,9 @@ def _rotationaxisangle_axis_converter(x: datatypes.Vec3DLike) -> datatypes.Vec3D
 class RotationAxisAngle:
     """3D rotation represented by a rotation around a given axis."""
 
-    axis: datatypes.Vec3D = field(converter=_rotationaxisangle_axis_converter)
+    # You can define your own __init__ function by defining a function called "rotation_axis_angle__init_override"
+
+    axis: datatypes.Vec3D = field(converter=_rotation_axis_angle__axis__special_field_converter_override)
     """
     Axis to rotate around.
 
@@ -45,7 +47,7 @@ class RotationAxisAngle:
     ignored.
     """
 
-    angle: datatypes.Angle = field(converter=rotationaxisangle_angle_converter)
+    angle: datatypes.Angle = field(converter=rotation_axis_angle__angle__field_converter_override)
     """
     How much to rotate around the axis.
     """
@@ -97,7 +99,7 @@ class RotationAxisAngleArray(BaseExtensionArray[RotationAxisAngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "rotationaxisangle_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/rotation_axis_angle.py
+        raise NotImplementedError  # You need to implement "rotation_axis_angle__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/rotation_axis_angle.py
 
 
 RotationAxisAngleType._ARRAY_TYPE = RotationAxisAngleArray

@@ -674,6 +674,9 @@ pub struct ObjectField {
     pub pkg_name: String,
 
     /// Name of the field, e.g. `x`.
+    ///
+    /// For struct fields this is usually `snake_case`,
+    /// but for enums it is usually `PascalCase`.
     pub name: String,
 
     /// The field's multiple layers of documentation.
@@ -828,6 +831,16 @@ impl ObjectField {
         T::Err: std::error::Error + Send + Sync + 'static,
     {
         self.attrs.try_get(self.fqname.as_str(), name)
+    }
+
+    /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
+    pub fn snake_case_name(&self) -> String {
+        crate::to_snake_case(&self.name)
+    }
+
+    /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.
+    pub fn pascal_case_name(&self) -> String {
+        crate::to_pascal_case(&self.name)
     }
 }
 

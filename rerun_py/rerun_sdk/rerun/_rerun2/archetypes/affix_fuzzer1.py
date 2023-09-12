@@ -16,6 +16,8 @@ __all__ = ["AffixFuzzer1"]
 
 @define(str=False, repr=False)
 class AffixFuzzer1(Archetype):
+    # You can define your own __init__ function by defining a function called "affix_fuzzer1__init_override"
+
     fuzz1001: components.AffixFuzzer1Array = field(
         metadata={"component": "primary"},
         converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]

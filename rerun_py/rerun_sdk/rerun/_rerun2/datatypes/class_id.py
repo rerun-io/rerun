@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import classid_native_to_pa_array  # noqa: F401
+from ._overrides import class_id__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
 
@@ -24,9 +24,12 @@ __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassI
 class ClassId:
     """A 16-bit ID representing a type of semantic class."""
 
+    # You can define your own __init__ function by defining a function called "class_id__init_override"
+
     id: int = field(converter=int)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can replace `np.asarray` here with your own code by defining a function named "class_id__as_array_override"
         return np.asarray(self.id, dtype=dtype)
 
     def __int__(self) -> int:
@@ -63,7 +66,7 @@ class ClassIdArray(BaseExtensionArray[ClassIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return classid_native_to_pa_array(data, data_type)
+        return class_id__native_to_pa_array_override(data, data_type)
 
 
 ClassIdType._ARRAY_TYPE = ClassIdArray

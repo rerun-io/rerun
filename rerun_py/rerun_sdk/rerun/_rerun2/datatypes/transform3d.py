@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import transform3d_native_to_pa_array  # noqa: F401
+from ._overrides import transform3d__native_to_pa_array_override  # noqa: F401
 
 __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform3DLike", "Transform3DType"]
 
@@ -22,6 +22,8 @@ __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform
 @define
 class Transform3D:
     """Representation of a 3D affine transform."""
+
+    # You can define your own __init__ function by defining a function called "transform3d__init_override"
 
     inner: datatypes.TranslationAndMat3x3 | datatypes.TranslationRotationScale3D = field()
     """
@@ -191,7 +193,7 @@ class Transform3DArray(BaseExtensionArray[Transform3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return transform3d_native_to_pa_array(data, data_type)
+        return transform3d__native_to_pa_array_override(data, data_type)
 
 
 Transform3DType._ARRAY_TYPE = Transform3DArray

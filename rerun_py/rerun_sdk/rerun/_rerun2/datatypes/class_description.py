@@ -16,11 +16,11 @@ from .._baseclasses import (
     BaseExtensionType,
 )
 from ._overrides import (
-    classdescription_info_converter,
-    classdescription_init,
-    classdescription_keypoint_annotations_converter,
-    classdescription_keypoint_connections_converter,
-    classdescription_native_to_pa_array,
+    class_description__info__field_converter_override,
+    class_description__init_override,
+    class_description__keypoint_annotations__field_converter_override,
+    class_description__keypoint_connections__field_converter_override,
+    class_description__native_to_pa_array_override,
 )
 
 __all__ = [
@@ -52,22 +52,22 @@ class ClassDescription:
     """
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        classdescription_init(self, *args, **kwargs)
+        class_description__init_override(self, *args, **kwargs)
 
-    info: datatypes.AnnotationInfo = field(converter=classdescription_info_converter)
+    info: datatypes.AnnotationInfo = field(converter=class_description__info__field_converter_override)
     """
     The `AnnotationInfo` for the class.
     """
 
     keypoint_annotations: list[datatypes.AnnotationInfo] = field(
-        converter=classdescription_keypoint_annotations_converter
+        converter=class_description__keypoint_annotations__field_converter_override
     )
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
     keypoint_connections: list[datatypes.KeypointPair] = field(
-        converter=classdescription_keypoint_connections_converter
+        converter=class_description__keypoint_connections__field_converter_override
     )
     """
     The connections between keypoints.
@@ -155,7 +155,7 @@ class ClassDescriptionArray(BaseExtensionArray[ClassDescriptionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
-        return classdescription_native_to_pa_array(data, data_type)
+        return class_description__native_to_pa_array_override(data, data_type)
 
 
 ClassDescriptionType._ARRAY_TYPE = ClassDescriptionArray

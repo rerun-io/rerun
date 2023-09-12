@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .. import Scale3DLike, Vec3D
 
 
-def scale3d_inner_converter(data: Scale3DLike) -> Vec3D | float:
+def scale3d__inner_converter_override(data: Scale3DLike) -> Vec3D | float:
     from .. import Scale3D, Vec3D
 
     if isinstance(data, Vec3D):

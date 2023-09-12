@@ -44,6 +44,8 @@ class AnnotationContext(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called "annotation_context__init_override"
+
     context: components.AnnotationContextArray = field(
         metadata={"component": "primary"},
         converter=components.AnnotationContextArray.from_similar,  # type: ignore[misc]

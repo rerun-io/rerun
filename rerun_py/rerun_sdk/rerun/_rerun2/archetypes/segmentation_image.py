@@ -10,7 +10,7 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ._overrides import segmentationimage_data_converter  # noqa: F401
+from ._overrides import segmentation_image__data__field_converter_override  # noqa: F401
 
 __all__ = ["SegmentationImage"]
 
@@ -49,8 +49,10 @@ class SegmentationImage(Archetype):
     ```
     """
 
+    # You can define your own __init__ function by defining a function called "segmentation_image__init_override"
+
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"}, converter=segmentationimage_data_converter
+        metadata={"component": "primary"}, converter=segmentation_image__data__field_converter_override
     )
     """
     The image data. Should always be a rank-2 tensor.

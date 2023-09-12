@@ -9,6 +9,6 @@ if TYPE_CHECKING:
     from .. import DrawOrderArrayLike
 
 
-def draworder_native_to_pa_array(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
+def draw_order__native_to_pa_array_override(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
     array = np.asarray(data, dtype=np.float32).flatten()
     return pa.array(array, type=data_type)

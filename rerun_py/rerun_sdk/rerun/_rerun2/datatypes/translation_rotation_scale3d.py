@@ -14,7 +14,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import translationrotationscale3d_init  # noqa: F401
+from ._overrides import translation_rotation_scale3d__init_override  # noqa: F401
 
 __all__ = [
     "TranslationRotationScale3D",
@@ -25,7 +25,9 @@ __all__ = [
 ]
 
 
-def _translationrotationscale3d_translation_converter(x: datatypes.Vec3DLike | None) -> datatypes.Vec3D | None:
+def _translation_rotation_scale3d__translation__special_field_converter_override(
+    x: datatypes.Vec3DLike | None,
+) -> datatypes.Vec3D | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Vec3D):
@@ -34,7 +36,9 @@ def _translationrotationscale3d_translation_converter(x: datatypes.Vec3DLike | N
         return datatypes.Vec3D(x)
 
 
-def _translationrotationscale3d_rotation_converter(x: datatypes.Rotation3DLike | None) -> datatypes.Rotation3D | None:
+def _translation_rotation_scale3d__rotation__special_field_converter_override(
+    x: datatypes.Rotation3DLike | None,
+) -> datatypes.Rotation3D | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Rotation3D):
@@ -43,7 +47,9 @@ def _translationrotationscale3d_rotation_converter(x: datatypes.Rotation3DLike |
         return datatypes.Rotation3D(x)
 
 
-def _translationrotationscale3d_scale_converter(x: datatypes.Scale3DLike | None) -> datatypes.Scale3D | None:
+def _translation_rotation_scale3d__scale__special_field_converter_override(
+    x: datatypes.Scale3DLike | None,
+) -> datatypes.Scale3D | None:
     if x is None:
         return None
     elif isinstance(x, datatypes.Scale3D):
@@ -57,7 +63,7 @@ class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
 
     def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        translationrotationscale3d_init(self, *args, **kwargs)
+        translation_rotation_scale3d__init_override(self, *args, **kwargs)
 
     from_parent: bool = field(converter=bool)
     """
@@ -66,20 +72,22 @@ class TranslationRotationScale3D:
     """
 
     translation: datatypes.Vec3D | None = field(
-        default=None, converter=_translationrotationscale3d_translation_converter
+        default=None, converter=_translation_rotation_scale3d__translation__special_field_converter_override
     )
     """
     3D translation vector, applied last.
     """
 
     rotation: datatypes.Rotation3D | None = field(
-        default=None, converter=_translationrotationscale3d_rotation_converter
+        default=None, converter=_translation_rotation_scale3d__rotation__special_field_converter_override
     )
     """
     3D rotation, applied second.
     """
 
-    scale: datatypes.Scale3D | None = field(default=None, converter=_translationrotationscale3d_scale_converter)
+    scale: datatypes.Scale3D | None = field(
+        default=None, converter=_translation_rotation_scale3d__scale__special_field_converter_override
+    )
     """
     3D scale, applied first.
     """
@@ -184,7 +192,7 @@ class TranslationRotationScale3DArray(BaseExtensionArray[TranslationRotationScal
 
     @staticmethod
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement "translationrotationscale3d_native_to_pa_array" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_rotation_scale3d.py
+        raise NotImplementedError  # You need to implement "translation_rotation_scale3d__native_to_pa_array_override" in rerun_py/rerun_sdk/rerun/_rerun2/datatypes/_overrides/translation_rotation_scale3d.py
 
 
 TranslationRotationScale3DType._ARRAY_TYPE = TranslationRotationScale3DArray
