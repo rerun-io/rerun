@@ -19,6 +19,9 @@ all-features = true
 [features]
 default = []
 
+## Enable testing for re_types to access test components/datatypes.
+testing = ["re_types/testing"]
+
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 
@@ -118,6 +121,7 @@ harness = false
 [[bench]]
 name = "arrow2"
 harness = false
+required-features = ["testing"]
 
 [[bench]]
 name = "arrow2_convert"

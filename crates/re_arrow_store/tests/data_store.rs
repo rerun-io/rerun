@@ -15,16 +15,14 @@ use re_arrow_store::{
     DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
     TimeInt, TimeRange,
 };
-use re_components::{
-    datagen::{
-        build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
-        build_some_point2d, build_some_rects,
-    },
-    Rect2D,
+use re_components::datagen::{
+    build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
+    build_some_point2d,
 };
 use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
 use re_types::{
     components::{Color, InstanceKey, Point2D},
+    testing::{build_some_large_structs, LargeStruct},
     ComponentName, Loggable as _,
 };
 
@@ -91,29 +89,30 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         let components_a = &[
-            Color::name(),  // added by test, timeless
-            Rect2D::name(), // added by test
-            cluster_key,    // always here
+            Color::name(),       // added by test, timeless
+            LargeStruct::name(), // added by test
+            cluster_key,         // always here
         ];
 
         let components_b = &[
-            Color::name(),   // added by test, timeless
-            Point2D::name(), // added by test
-            Rect2D::name(),  // added by test
-            cluster_key,     // always here
+            Color::name(),       // added by test, timeless
+            Point2D::name(),     // added by test
+            LargeStruct::name(), // added by test
+            cluster_key,         // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_rects(2)]);
+        let row =
+            test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
         let row = test_row!(ent_path @ [
             build_frame_nr(frame2),
-        ] => 2; [build_some_rects(2), build_some_point2d(2)]);
+        ] => 2; [build_some_large_structs(2), build_some_point2d(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
@@ -132,36 +131,37 @@ fn all_components() {
         );
         let cluster_key = store.cluster_key();
 
-        // ┌──────────┬────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ row_id ┆ insert_id ┆ instance │
-        // ╞══════════╪════════╪════════╪═══════════╪══════════╡
-        // │ 1        ┆ 1      ┆ 1      ┆ 1         ┆ 1        │
-        // └──────────┴────────┴────────┴───────────┴──────────┘
-        // ┌──────────┬────────┬─────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ point2d ┆ row_id ┆ insert_id ┆ instance │
-        // ╞══════════╪════════╪═════════╪════════╪═══════════╪══════════╡
-        // │ 2        ┆ -      ┆ -       ┆ 2      ┆ 2         ┆ 2        │
-        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
-        // │ 3        ┆ -      ┆ 1       ┆ 3      ┆ 3         ┆ 1        │
-        // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
+        // ┌──────────┬─────────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ LargeStruct ┆ row_id ┆ insert_id ┆ instance │
+        // ╞══════════╪═════════════╪════════╪═══════════╪══════════╡
+        // │ 1        ┆ 1           ┆ 1      ┆ 1         ┆ 1        │
+        // └──────────┴─────────────┴────────┴───────────┴──────────┘
+        // ┌──────────┬─────────────┬─────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ LargeStruct ┆ point2d ┆ row_id ┆ insert_id ┆ instance │
+        // ╞══════════╪═════════════╪═════════╪════════╪═══════════╪══════════╡
+        // │ 2        ┆ -           ┆ -       ┆ 2      ┆ 2         ┆ 2        │
+        // ├╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
+        // │ 3        ┆ -           ┆ 1       ┆ 3      ┆ 3         ┆ 1        │
+        // └──────────┴─────────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            Color::name(),  // added by test, timeless
-            Rect2D::name(), // added by test
-            cluster_key,    // always here
+            Color::name(),       // added by test, timeless
+            LargeStruct::name(), // added by test
+            cluster_key,         // always here
         ];
 
         let components_b = &[
-            Color::name(),   // added by test, timeless
-            Rect2D::name(),  // ⚠ inherited before the buckets got split apart!
-            Point2D::name(), // added by test
-            cluster_key,     // always here
+            Color::name(),       // added by test, timeless
+            LargeStruct::name(), // ⚠ inherited before the buckets got split apart!
+            Point2D::name(),     // added by test
+            cluster_key,         // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_rects(2)]);
+        let row =
+            test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
@@ -191,48 +191,51 @@ fn all_components() {
         );
         let cluster_key = store.cluster_key();
 
-        // ┌──────────┬────────┬─────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ point2d ┆ row_id ┆ insert_id ┆ instance │
-        // ╞══════════╪════════╪═════════╪════════╪═══════════╪══════════╡
-        // │ 1        ┆ -      ┆ 1       ┆ 4      ┆ 4         ┆ 1        │
-        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
-        // │ 2        ┆ 1      ┆ -       ┆ 1      ┆ 1         ┆ 1        │
-        // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
-        // ┌──────────┬────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ row_id ┆ insert_id ┆ instance │
-        // ╞══════════╪════════╪════════╪═══════════╪══════════╡
-        // │ 3        ┆ 2      ┆ 2      ┆ 2         ┆ 1        │
-        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
-        // │ 4        ┆ 3      ┆ 3      ┆ 3         ┆ 1        │
-        // └──────────┴────────┴────────┴───────────┴──────────┘
+        // ┌──────────┬─────────────┬─────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ LargeStruct ┆ point2d ┆ row_id ┆ insert_id ┆ instance │
+        // ╞══════════╪═════════════╪═════════╪════════╪═══════════╪══════════╡
+        // │ 1        ┆ -           ┆ 1       ┆ 4      ┆ 4         ┆ 1        │
+        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
+        // │ 2        ┆ 1           ┆ -       ┆ 1      ┆ 1         ┆ 1        │
+        // └──────────┴─────────────┴─────────┴────────┴───────────┴──────────┘
+        // ┌──────────┬─────────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ LargeStruct ┆ row_id ┆ insert_id ┆ instance │
+        // ╞══════════╪═════════════╪════════╪═══════════╪══════════╡
+        // │ 3        ┆ 2           ┆ 2      ┆ 2         ┆ 1        │
+        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
+        // │ 4        ┆ 3           ┆ 3      ┆ 3         ┆ 1        │
+        // └──────────┴─────────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            Color::name(),  // added by test, timeless
-            Rect2D::name(), // added by test
-            cluster_key,    // always here
+            Color::name(),       // added by test, timeless
+            LargeStruct::name(), // added by test
+            cluster_key,         // always here
         ];
 
         let components_b = &[
-            Color::name(),   // added by test, timeless
-            Point2D::name(), // added by test but not contained in the second bucket
-            Rect2D::name(),  // added by test
-            cluster_key,     // always here
+            Color::name(),       // added by test, timeless
+            Point2D::name(),     // added by test but not contained in the second bucket
+            LargeStruct::name(), // added by test
+            cluster_key,         // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_rects(2)]);
+        let row =
+            test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_rects(2)]);
+        let row =
+            test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 2; [build_some_rects(2)]);
+        let row =
+            test_row!(ent_path @ [build_frame_nr(frame4)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
@@ -851,7 +854,7 @@ fn gc_impl(store: &mut DataStore) {
                 let row = test_row!(ent_path @ [
                     build_frame_nr(frame_nr.into())
                 ] => num_instances; [
-                    build_some_rects(num_instances as _),
+                    build_some_large_structs(num_instances as _),
                 ]);
                 store.insert_row(&row).unwrap();
             }

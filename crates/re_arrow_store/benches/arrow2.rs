@@ -8,13 +8,11 @@ use std::sync::Arc;
 use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
-use re_components::{
-    datagen::{build_some_instances, build_some_point2d, build_some_rects},
-    Rect2D,
-};
+use re_components::datagen::{build_some_instances, build_some_point2d};
 use re_log_types::{DataCell, SizeBytes as _};
 use re_types::{
     components::{InstanceKey, Point2D},
+    testing::{build_some_large_structs, LargeStruct},
     Component,
 };
 
@@ -52,7 +50,7 @@ enum ArrayKind {
     /// E.g. an array of `Point2D`.
     Struct,
 
-    /// E.g. an array of `Rect2D`.
+    /// An array of `LargeStruct`.
     StructLarge,
 }
 
@@ -91,7 +89,7 @@ fn erased_clone(c: &mut Criterion) {
                 bench_native(&mut group, data.as_slice());
             }
             ArrayKind::StructLarge => {
-                let data = build_some_rects(NUM_INSTANCES);
+                let data = build_some_large_structs(NUM_INSTANCES);
                 bench_arrow(&mut group, data.as_slice());
                 bench_native(&mut group, data.as_slice());
             }
@@ -199,7 +197,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
                     .map(|_| DataCell::from_native(build_some_point2d(NUM_INSTANCES).as_slice()))
                     .collect(),
                 ArrayKind::StructLarge => (0..NUM_ROWS)
-                    .map(|_| DataCell::from_native(build_some_rects(NUM_INSTANCES).as_slice()))
+                    .map(|_| {
+                        DataCell::from_native(build_some_large_structs(NUM_INSTANCES).as_slice())
+                    })
                     .collect(),
             }
         }
@@ -309,9 +309,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
                     .collect()
             }
 
-            fn generate_rects() -> Vec<Vec<Rect2D>> {
+            fn generate_rects() -> Vec<Vec<LargeStruct>> {
                 (0..NUM_ROWS)
-                    .map(|_| build_some_rects(NUM_INSTANCES))
+                    .map(|_| build_some_large_structs(NUM_INSTANCES))
                     .collect()
             }
 

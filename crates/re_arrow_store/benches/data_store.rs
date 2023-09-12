@@ -8,12 +8,13 @@ use re_arrow_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
     RangeQuery, TimeInt, TimeRange,
 };
-use re_components::{
-    datagen::{build_frame_nr, build_some_instances, build_some_rects},
-    Rect2D,
-};
+use re_components::datagen::{build_frame_nr, build_some_instances};
 use re_log_types::{DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimeType, Timeline};
-use re_types::{components::InstanceKey, ComponentName, Loggable as _};
+use re_types::{
+    components::InstanceKey,
+    testing::{build_some_large_structs, LargeStruct},
+    ComponentName, Loggable as _,
+};
 
 criterion_group!(benches, insert, latest_at, latest_at_missing, range, gc);
 criterion_main!(benches);
@@ -102,15 +103,15 @@ fn latest_at(c: &mut Criterion) {
         group.bench_function("default", |b| {
             let store = insert_table(Default::default(), InstanceKey::name(), &table);
             b.iter(|| {
-                let cells = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
-                let rects = cells[0]
+                let cells = latest_data_at(&store, LargeStruct::name(), &[LargeStruct::name()]);
+                let large_structs = cells[0]
                     .as_ref()
                     .unwrap()
                     .as_arrow_ref()
                     .as_any()
                     .downcast_ref::<UnionArray>()
                     .unwrap();
-                assert_eq!(NUM_INSTANCES as usize, rects.len());
+                assert_eq!(NUM_INSTANCES as usize, large_structs.len());
             });
         });
 
@@ -126,7 +127,7 @@ fn latest_at(c: &mut Criterion) {
             );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    let cells = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
+                    let cells = latest_data_at(&store, LargeStruct::name(), &[LargeStruct::name()]);
                     let rects = cells[0]
                         .as_ref()
                         .unwrap()
@@ -154,8 +155,11 @@ fn latest_at_missing(c: &mut Criterion) {
         let store = insert_table(Default::default(), InstanceKey::name(), &table);
         group.bench_function("primary/default", |b| {
             b.iter(|| {
-                let results =
-                    latest_data_at(&store, "non_existing_component".into(), &[Rect2D::name()]);
+                let results = latest_data_at(
+                    &store,
+                    "non_existing_component".into(),
+                    &[LargeStruct::name()],
+                );
                 assert!(results[0].is_none());
             });
         });
@@ -163,7 +167,7 @@ fn latest_at_missing(c: &mut Criterion) {
             b.iter(|| {
                 let results = latest_data_at(
                     &store,
-                    Rect2D::name(),
+                    LargeStruct::name(),
                     &[
                         "non_existing_component1".into(),
                         "non_existing_component2".into(),
@@ -188,8 +192,11 @@ fn latest_at_missing(c: &mut Criterion) {
             );
             group.bench_function(format!("primary/bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    let results =
-                        latest_data_at(&store, "non_existing_component".into(), &[Rect2D::name()]);
+                    let results = latest_data_at(
+                        &store,
+                        "non_existing_component".into(),
+                        &[LargeStruct::name()],
+                    );
                     assert!(results[0].is_none());
                 });
             });
@@ -197,7 +204,7 @@ fn latest_at_missing(c: &mut Criterion) {
                 b.iter(|| {
                     let results = latest_data_at(
                         &store,
-                        Rect2D::name(),
+                        LargeStruct::name(),
                         &[
                             "non_existing_component1".into(),
                             "non_existing_component2".into(),
@@ -241,7 +248,7 @@ fn range(c: &mut Criterion) {
             );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    let rows = range_data(&store, [Rect2D::name()]);
+                    let rows = range_data(&store, [LargeStruct::name()]);
                     for (cur_time, (time, cells)) in rows.enumerate() {
                         let time = time.unwrap();
                         assert_eq!(cur_time as i64, time.as_i64());
@@ -322,7 +329,7 @@ fn build_table(n: usize, packed: bool) -> DataTable {
                 "rects",
                 [build_frame_nr(frame_idx.into())],
                 n as _,
-                (build_some_instances(n), build_some_rects(n)),
+                (build_some_instances(n), build_some_large_structs(n)),
             )
         }),
     );
