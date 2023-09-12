@@ -16,6 +16,27 @@ use crate::{
     Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
 };
 
+/// The standard python init method.
+const INIT_METHOD: &str = "__init__";
+
+/// The standard numpy interface for converting to an array type
+const ARRAY_METHOD: &str = "__array__";
+
+/// The method used to convert a native type into a pyarrow array
+const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
+
+/// The common suffix for method used to convert fields to their canonical representation.jjj
+///
+/// If an extension class has a method named after the field with this suffix, it will be passed
+/// as the converter argument to the `attrs` field constructor.
+///
+/// For example, `ColorExt` has a method `rgba__field_converter_override`. This results in
+/// the rgba field being created as:
+/// ```
+/// rgba: int = field(converter=ColorExt.rgba__field_converter_override)
+/// ```
+const FIELD_CONVERTER_SUFFIX: &str = "__field_converter_override";
+
 // ---
 
 /// Python-specific helpers for [`Object`].
@@ -124,9 +145,87 @@ impl CodeGenerator for PythonCodeGenerator {
     }
 }
 
-struct ObjExt {
-    ext_name: String,
-    overrides: Vec<String>,
+struct ObjectExt {
+    /// Whether or not the `ObjectExtension` was found
+    found: bool,
+
+    /// The name of the file where the `ObjectExtension` is implemented
+    file_name: String,
+
+    /// The name of the module where `ObjectExtension` is implemented
+    module_name: String,
+
+    /// The name of this `ObjectExtension`
+    name: String,
+
+    /// The discovered overrides
+    field_converter_overrides: Vec<String>,
+
+    /// Whether the ObjectExt contains __init__()
+    has_init: bool,
+
+    /// Whether the ObjectExt contains __array__()
+    has_array: bool,
+
+    /// Whether the ObjectExt contains __native_to_pa_array__()
+    has_native_to_pa_array: bool,
+}
+
+impl ObjectExt {
+    fn new(base_path: &Utf8Path, obj: &Object) -> ObjectExt {
+        let file_name = format!("{}_ext.py", obj.snake_case_name());
+        let path = base_path.join(file_name.clone());
+        let module_name = path.file_stem().unwrap().to_owned();
+        let mut name = obj.name.clone();
+        name.push_str("Ext");
+
+        if path.exists() {
+            let contents = std::fs::read_to_string(&path)
+                .with_context(|| format!("couldn't load overrides module at {path:?}"))
+                .unwrap();
+
+            // Extract all methods
+            // TODO(jleibs): Maybe pull in regex here
+            let methods: Vec<_> = contents
+                .lines()
+                .map(|l| l.trim())
+                .filter(|l| l.starts_with("def"))
+                .map(|l| l.trim_start_matches("def").trim())
+                .filter_map(|l| l.split('(').next())
+                .collect();
+
+            let has_init = methods.contains(&INIT_METHOD);
+            let has_array = methods.contains(&ARRAY_METHOD);
+            let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
+            let field_converter_overrides = methods
+                .into_iter()
+                .filter(|l| l.ends_with(FIELD_CONVERTER_SUFFIX))
+                .map(|l| l.to_owned())
+                .collect();
+
+            ObjectExt {
+                found: true,
+                file_name,
+                module_name,
+                name,
+                field_converter_overrides,
+                has_init,
+                has_array,
+                has_native_to_pa_array,
+            }
+        } else {
+            ObjectExt {
+                found: false,
+                file_name,
+                module_name,
+                name,
+                field_converter_overrides: vec![],
+                has_init: false,
+                has_array: false,
+                has_native_to_pa_array: false,
+            }
+        }
+    }
 }
 
 impl PythonCodeGenerator {
@@ -149,8 +248,8 @@ impl PythonCodeGenerator {
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
             let filepath = kind_path.join(format!("{}.py", obj.snake_case_name()));
-            let ext_path = kind_path.join(format!("{}_ext.py", obj.snake_case_name()));
-            let mut obj_ext: Option<ObjExt> = None;
+
+            let obj_ext = ObjectExt::new(&kind_path, obj);
 
             let names = match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
@@ -227,42 +326,14 @@ impl PythonCodeGenerator {
                 0,
             );
 
-            if ext_path.exists() {
-                let mut ext_name = obj.name.clone();
-                ext_name.push_str("Ext");
-
-                let contents = std::fs::read_to_string(&ext_path)
-                    .with_context(|| format!("couldn't load overrides module at {ext_path:?}"))
-                    .unwrap();
-
-                // Extract potential overrides
-                // TODO(jleibs): Maybe pull in regex here
-                let overrides: Vec<_> = contents
-                    .lines()
-                    .map(|l| l.trim())
-                    .filter(|l| l.starts_with("def"))
-                    .map(|l| l.trim_start_matches("def").trim())
-                    .filter_map(|l| l.split('(').next())
-                    .filter(|l| l.ends_with("_override") || *l == "__init__")
-                    .map(|l| l.to_owned())
-                    .collect();
-
-                obj_ext = Some(ObjExt {
-                    ext_name,
-                    overrides,
-                });
-
+            if obj_ext.found {
                 code.push_unindented_text(
-                    format!(
-                        "from .{} import {}Ext # Members: {}",
-                        ext_path.file_stem().unwrap(),
-                        obj.name,
-                        obj_ext.as_ref().unwrap().overrides.join(", ")
-                    ),
+                    format!("from .{} import {}", obj_ext.module_name, obj_ext.name,),
                     1,
                 );
             }
 
+            // TODO(jleibs): This can go away once all overrides ported to extensions
             // Import all overrides. Overrides always start with `type_name_` and ends with `_override`.
             let override_names: Vec<_> = overrides
                 .iter()
@@ -271,6 +342,7 @@ impl PythonCodeGenerator {
                 .map(|o| o.as_str())
                 .collect::<Vec<_>>();
 
+            // TODO(jleibs): This can go away once all overrides ported to extensions
             // TODO(ab): remove this noqa—useful for checking what overrides are extracted
             if !override_names.is_empty() {
                 code.push_unindented_text(
@@ -304,9 +376,9 @@ impl PythonCodeGenerator {
             );
 
             let obj_code = if obj.is_struct() {
-                code_for_struct(arrow_registry, obj_ext.as_ref(), &overrides, objects, obj)
+                code_for_struct(arrow_registry, &obj_ext, &overrides, objects, obj)
             } else {
-                code_for_union(arrow_registry, obj_ext.as_ref(), &overrides, objects, obj)
+                code_for_union(arrow_registry, &obj_ext, &overrides, objects, obj)
             };
             code.push_text(&obj_code, 1, 0);
 
@@ -398,7 +470,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
 fn code_for_struct(
     arrow_registry: &ArrowRegistry,
-    obj_ext: Option<&ObjExt>,
+    obj_ext: &ObjectExt,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -429,15 +501,13 @@ fn code_for_struct(
                 field.name
             );
 
-            let converter_override_name = format!("{}__field_converter_override", field.name);
+            let converter_override_name = format!("{}{FIELD_CONVERTER_SUFFIX}", field.name);
 
-            let converter = if obj_ext.map_or(false, |obj_ext| {
-                obj_ext.overrides.contains(&converter_override_name)
-            }) {
-                format!(
-                    "converter={}.{converter_override_name}",
-                    obj_ext.unwrap().ext_name
-                )
+            let converter = if obj_ext
+                .field_converter_overrides
+                .contains(&converter_override_name)
+            {
+                format!("converter={}.{converter_override_name}", obj_ext.name)
             } else if overrides.contains(&old_converter_override_name) {
                 format!("converter={old_converter_override_name}")
             } else if *kind == ObjectKind::Archetype {
@@ -455,11 +525,11 @@ fn code_for_struct(
         }
 
         // init override handling
-        let init_override_name = format!("{}__init_override", obj.snake_case_name());
-        let (init_define_arg, init_func) = if overrides.contains(&init_override_name) {
-            ("init=False".to_owned(), init_override_name.clone())
+        let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
+        let init_define_arg = if obj_ext.has_init || overrides.contains(&old_init_override_name) {
+            "init=False".to_owned()
         } else {
-            (String::new(), String::new())
+            String::new()
         };
 
         let mut superclasses = vec![];
@@ -468,14 +538,14 @@ fn code_for_struct(
             superclasses.push("Archetype");
         }
 
-        if let Some(obj_ext) = &obj_ext {
-            superclasses.push(obj_ext.ext_name.as_str());
+        if obj_ext.found {
+            superclasses.push(obj_ext.name.as_str());
         }
 
-        let superclass_decl = if superclasses.len() > 0 {
+        let superclass_decl = if !superclasses.is_empty() {
             format!("({})", superclasses.join(","))
         } else {
-            "".to_owned()
+            String::new()
         };
 
         let define_args = if *kind == ObjectKind::Archetype {
@@ -505,15 +575,32 @@ fn code_for_struct(
 
         code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-        if init_func.is_empty() {
-            code.push_text(format!("# You can define your own __init__ function by defining a function called {init_override_name:?}"), 2, 4);
-        } else {
+        if obj_ext.has_init {
+            code.push_text(
+                format!("# __init__ can be found in {}", obj_ext.file_name),
+                2,
+                4,
+            );
+        } else if overrides.contains(&old_init_override_name) {
             code.push_text(
                 "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
                 1,
                 4,
             );
-            code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
+            code.push_text(
+                format!("{old_init_override_name}(self, *args, **kwargs)"),
+                2,
+                8,
+            );
+        } else {
+            code.push_text(
+                format!(
+                    "# You can define your own __init__ function as a member of {} in {}",
+                    obj_ext.name, obj_ext.file_name
+                ),
+                2,
+                4,
+            );
         }
 
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
@@ -580,7 +667,11 @@ fn code_for_struct(
             code.push_text("__repr__ = Archetype.__repr__", 1, 4);
         }
 
-        code.push_text(quote_array_method_from_obj(overrides, objects, obj), 1, 4);
+        code.push_text(
+            quote_array_method_from_obj(obj_ext, overrides, objects, obj),
+            1,
+            4,
+        );
         code.push_text(quote_native_types_method_from_obj(objects, obj), 1, 4);
 
         if *kind != ObjectKind::Archetype {
@@ -621,7 +712,7 @@ fn code_for_struct(
 
 fn code_for_union(
     arrow_registry: &ArrowRegistry,
-    obj_ext: Option<&ObjExt>,
+    obj_ext: &ObjectExt,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -640,11 +731,27 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let init_override_name = format!("{}__init_override", obj.snake_case_name());
-    let (define_args, init_func) = if overrides.contains(&init_override_name) {
-        ("(init=False)".to_owned(), init_override_name.clone())
+    let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
+    let define_args = if obj_ext.has_init || overrides.contains(&old_init_override_name) {
+        "(init=False)".to_owned()
     } else {
-        (String::new(), String::new())
+        String::new()
+    };
+
+    let mut superclasses = vec![];
+
+    if *kind == ObjectKind::Archetype {
+        superclasses.push("Archetype");
+    }
+
+    if obj_ext.found {
+        superclasses.push(obj_ext.name.as_str());
+    }
+
+    let superclass_decl = if !superclasses.is_empty() {
+        format!("({})", superclasses.join(","))
+    } else {
+        String::new()
     };
 
     code.push_unindented_text(
@@ -652,7 +759,7 @@ fn code_for_union(
             r#"
 
                 @define{define_args}
-                class {name}:
+                class {name}{superclass_decl}:
                 "#
         ),
         0,
@@ -660,15 +767,32 @@ fn code_for_union(
 
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-    if init_func.is_empty() {
-        code.push_text(format!("# You can define your own __init__ function by defining a function called {init_override_name:?}"), 2, 4);
-    } else {
+    if obj_ext.has_init {
+        code.push_text(
+            format!("# __init__ can be found in {}", obj_ext.file_name),
+            2,
+            4,
+        );
+    } else if overrides.contains(&old_init_override_name) {
         code.push_text(
             "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
             1,
             4,
         );
-        code.push_text(format!("{init_func}(self, *args, **kwargs)"), 2, 8);
+        code.push_text(
+            format!("{old_init_override_name}(self, *args, **kwargs)"),
+            2,
+            8,
+        );
+    } else {
+        code.push_text(
+            format!(
+                "# You can define your own __init__ function as a member of {} in {}",
+                obj_ext.name, obj_ext.file_name
+            ),
+            2,
+            4,
+        );
     }
 
     let field_types = fields
@@ -691,9 +815,17 @@ fn code_for_union(
     };
 
     // components and datatypes have converters only if manually provided
-    let converter_override_name = format!("{}__inner_converter_override", obj.snake_case_name());
-    let converter = if overrides.contains(&converter_override_name) {
-        format!("converter={converter_override_name}")
+    let old_converter_override_name =
+        format!("{}__inner_converter_override", obj.snake_case_name());
+    let converter_override_name = "inner_converter_override".to_owned();
+
+    let converter = if obj_ext
+        .field_converter_overrides
+        .contains(&converter_override_name)
+    {
+        format!("converter={}.{converter_override_name}", obj_ext.name)
+    } else if overrides.contains(&old_converter_override_name) {
+        format!("converter={old_converter_override_name}")
     } else if !default_converter.is_empty() {
         format!("converter={default_converter}")
     } else {
@@ -802,6 +934,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
 ///
 /// Only applies to datatypes and components.
 fn quote_array_method_from_obj(
+    obj_ext: &ObjectExt,
     overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
@@ -810,12 +943,14 @@ fn quote_array_method_from_obj(
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
-    let override_name = format!("{}__as_array_override", obj.snake_case_name());
-    if overrides.contains(&override_name) {
+    let old_override_name = format!("{}__as_array_override", obj.snake_case_name());
+    if obj_ext.has_array {
+        return format!("# __array__ can be found in {}", obj_ext.file_name);
+    } else if overrides.contains(&old_override_name) {
         return unindent::unindent(&format!(
             "
             def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
-                return {override_name}(self, dtype=dtype)
+                return {old_override_name}(self, dtype=dtype)
             "
         ));
     }
@@ -834,9 +969,10 @@ fn quote_array_method_from_obj(
     unindent::unindent(&format!(
         "
         def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
-            # You can replace `np.asarray` here with your own code by defining a function named {override_name:?}
+            # You can define your own __array__ function as a member of {} in {}
             return np.asarray(self.{field_name}, dtype=dtype)
         ",
+        obj_ext.name, obj_ext.file_name
     ))
 }
 
@@ -1259,7 +1395,7 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
     arrow_registry: &ArrowRegistry,
-    obj_ext: Option<&ObjExt>,
+    obj_ext: &ObjectExt,
     overrides: &HashSet<String>,
     obj: &Object,
 ) -> String {
@@ -1287,21 +1423,18 @@ fn quote_arrow_support_from_obj(
         .unwrap_or_else(|| fqname.clone());
 
     let old_override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
-    let override_name = "native_to_pa_array_override".to_owned();
-    let override_ = if obj_ext.map_or(false, |obj_ext| obj_ext.overrides.contains(&override_name)) {
+    let override_ = if obj_ext.has_native_to_pa_array {
         format!(
-            "return {}.{override_name}(data, data_type)",
-            obj_ext.unwrap().ext_name
+            "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
+            obj_ext.name
         )
     } else if overrides.contains(&old_override_name) {
         format!("return {old_override_name}(data, data_type)")
     } else {
-        let override_file_path = format!(
-            "rerun_py/rerun_sdk/rerun/_rerun2/{}/{}_ext.py",
-            obj.kind.plural_snake_case(),
-            obj.snake_case_name()
-        );
-        format!("raise NotImplementedError # You need to implement {override_name:?} in {override_file_path}")
+        format!(
+            "raise NotImplementedError # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}",
+            obj_ext.file_name
+        )
     };
 
     unindent::unindent(&format!(
