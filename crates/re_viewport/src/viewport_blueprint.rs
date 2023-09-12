@@ -192,11 +192,13 @@ impl<'a> ViewportBlueprint<'a> {
                 {
                     container.add_child(tile_id);
                 } else {
+                    re_log::trace!("Root was not a container - will re-run auto-layout");
                     self.tree = Default::default(); // we'll just re-initialize later instead
                 }
             }
         } else {
             // Re-run the auto-layout next frame:
+            re_log::trace!("No user edits yet - will re-run auto-layout");
             self.tree = Default::default();
         }
 
