@@ -67,12 +67,12 @@ class LineStrip2DType(BaseExtensionType):
                     metadata={},
                 )
             ),
-            "rerun.linestrip2d",
+            "rerun.components.LineStrip2D",
         )
 
 
 class LineStrip2DArray(BaseExtensionArray[LineStrip2DArrayLike]):
-    _EXTENSION_NAME = "rerun.linestrip2d"
+    _EXTENSION_NAME = "rerun.components.LineStrip2D"
     _EXTENSION_TYPE = LineStrip2DType
 
     @staticmethod

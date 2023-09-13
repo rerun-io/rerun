@@ -15,12 +15,12 @@ __all__ = ["TextArray", "TextType"]
 
 
 class TextType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.label"
+    _TYPE_NAME = "rerun.components.Text"
     _DELEGATED_EXTENSION_TYPE = datatypes.Utf8Type
 
 
 class TextArray(BaseDelegatingExtensionArray[datatypes.Utf8ArrayLike]):
-    _EXTENSION_NAME = "rerun.label"
+    _EXTENSION_NAME = "rerun.components.Text"
     _EXTENSION_TYPE = TextType
     _DELEGATED_ARRAY_TYPE = datatypes.Utf8Array
 

@@ -99,36 +99,36 @@ pub struct LineStrips3D {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.linestrip3d".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.LineStrip3D".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.colorrgba".into(),
+            "rerun.components.Color".into(),
             "rerun.components.LineStrips3DIndicator".into(),
-            "rerun.radius".into(),
+            "rerun.components.Radius".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.class_id".into(),
-            "rerun.instance_key".into(),
-            "rerun.label".into(),
+            "rerun.components.ClassId".into(),
+            "rerun.components.InstanceKey".into(),
+            "rerun.components.Text".into(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.linestrip3d".into(),
-            "rerun.colorrgba".into(),
+            "rerun.components.LineStrip3D".into(),
+            "rerun.components.Color".into(),
             "rerun.components.LineStrips3DIndicator".into(),
-            "rerun.radius".into(),
-            "rerun.class_id".into(),
-            "rerun.instance_key".into(),
-            "rerun.label".into(),
+            "rerun.components.Radius".into(),
+            "rerun.components.ClassId".into(),
+            "rerun.components.InstanceKey".into(),
+            "rerun.components.Text".into(),
         ]
     });
 
@@ -212,7 +212,7 @@ impl crate::Archetype for LineStrips3D {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.LineStrip3D".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.linestrip3d".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("strips", datatype, false),
@@ -232,7 +232,7 @@ impl crate::Archetype for LineStrips3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Radius".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.radius".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("radii", datatype, false),
@@ -252,7 +252,7 @@ impl crate::Archetype for LineStrips3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Color".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.colorrgba".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("colors", datatype, false),
@@ -272,7 +272,7 @@ impl crate::Archetype for LineStrips3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Text".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.label".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("labels", datatype, false),
@@ -292,7 +292,7 @@ impl crate::Archetype for LineStrips3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.class_id".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),
@@ -312,7 +312,7 @@ impl crate::Archetype for LineStrips3D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.InstanceKey".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.instance_key".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("instance_keys", datatype, false),

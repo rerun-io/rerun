@@ -114,25 +114,25 @@ def log_obb(
 
     if color is not None:
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
+        instanced["rerun.components.Color"] = rrc.ColorArray.from_similar(colors).storage
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
+        instanced["rerun.components.Radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if label:
-        instanced["rerun.label"] = rrc.TextArray.from_similar([label]).storage
+        instanced["rerun.components.Text"] = rrc.TextArray.from_similar([label]).storage
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        instanced["rerun.class_id"] = rrd.ClassIdArray.from_similar(class_ids).storage
+        instanced["rerun.components.ClassId"] = rrd.ClassIdArray.from_similar(class_ids).storage
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
+        splats["rerun.components.InstanceKey"] = instance_key_splat()
         bindings.log_arrow_msg(
             entity_path,
             components=splats,
@@ -240,25 +240,25 @@ def log_obbs(
         is_splat = len(colors.shape) == 1
         if is_splat:
             colors = colors.reshape(1, len(colors))
-        comps[is_splat]["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
+        comps[is_splat]["rerun.components.Color"] = rrc.ColorArray.from_similar(colors).storage
 
     if len(radii):
         is_splat = len(radii) == 1
-        comps[is_splat]["rerun.radius"] = rrc.RadiusArray.from_similar(radii).storage
+        comps[is_splat]["rerun.components.Radius"] = rrc.RadiusArray.from_similar(radii).storage
 
     if len(labels):
         is_splat = len(labels) == 1
-        comps[is_splat]["rerun.label"] = rrc.TextArray.from_similar(labels).storage
+        comps[is_splat]["rerun.components.Text"] = rrc.TextArray.from_similar(labels).storage
 
     if len(class_ids):
         is_splat = len(class_ids) == 1
-        comps[is_splat]["rerun.class_id"] = rrd.ClassIdArray.from_similar(class_ids).storage
+        comps[is_splat]["rerun.components.ClassId"] = rrd.ClassIdArray.from_similar(class_ids).storage
 
     if ext:
         _add_extension_components(comps[0], comps[1], ext, None)
 
     if comps[1]:
-        comps[1]["rerun.instance_key"] = instance_key_splat()
+        comps[1]["rerun.components.InstanceKey"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

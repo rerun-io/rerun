@@ -55,11 +55,11 @@ DisconnectedSpaceArrayLike = Union[DisconnectedSpace, Sequence[DisconnectedSpace
 
 class DisconnectedSpaceType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.bool_(), "rerun.disconnected_space")
+        pa.ExtensionType.__init__(self, pa.bool_(), "rerun.components.DisconnectedSpace")
 
 
 class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
-    _EXTENSION_NAME = "rerun.disconnected_space"
+    _EXTENSION_NAME = "rerun.components.DisconnectedSpace"
     _EXTENSION_TYPE = DisconnectedSpaceType
 
     @staticmethod

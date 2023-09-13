@@ -6,7 +6,7 @@ use re_viewer_context::{UiVerbosity, ViewerContext};
 use super::DataUi;
 use crate::item_ui;
 
-const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.instance_key"];
+const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.components.InstanceKey"];
 const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &[];
 
 impl DataUi for InstancePath {

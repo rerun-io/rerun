@@ -52,20 +52,20 @@ pub struct DisconnectedSpace {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.disconnected_space".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.DisconnectedSpace".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DisconnectedSpaceIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.instance_key".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.disconnected_space".into(),
+            "rerun.components.DisconnectedSpace".into(),
             "rerun.components.DisconnectedSpaceIndicator".into(),
-            "rerun.instance_key".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
@@ -136,7 +136,7 @@ impl crate::Archetype for DisconnectedSpace {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.DisconnectedSpace".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.disconnected_space".into()),
+                        None,
                     );
                     (
                         ::arrow2::datatypes::Field::new("disconnected_space", datatype, false),

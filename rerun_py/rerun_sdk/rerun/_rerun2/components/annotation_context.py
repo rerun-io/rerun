@@ -139,12 +139,12 @@ class AnnotationContextType(BaseExtensionType):
                     metadata={},
                 )
             ),
-            "rerun.annotation_context",
+            "rerun.components.AnnotationContext",
         )
 
 
 class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
-    _EXTENSION_NAME = "rerun.annotation_context"
+    _EXTENSION_NAME = "rerun.components.AnnotationContext"
     _EXTENSION_TYPE = AnnotationContextType
 
     @staticmethod

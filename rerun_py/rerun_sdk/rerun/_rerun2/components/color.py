@@ -15,12 +15,12 @@ __all__ = ["ColorArray", "ColorType"]
 
 
 class ColorType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.colorrgba"
+    _TYPE_NAME = "rerun.components.Color"
     _DELEGATED_EXTENSION_TYPE = datatypes.ColorType
 
 
 class ColorArray(BaseDelegatingExtensionArray[datatypes.ColorArrayLike]):
-    _EXTENSION_NAME = "rerun.colorrgba"
+    _EXTENSION_NAME = "rerun.components.Color"
     _EXTENSION_TYPE = ColorType
     _DELEGATED_ARRAY_TYPE = datatypes.ColorArray
 

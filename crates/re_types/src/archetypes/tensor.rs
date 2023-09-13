@@ -49,14 +49,14 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usi
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.instance_key".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.TensorIndicator".into(),
-            "rerun.instance_key".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
@@ -124,7 +124,7 @@ impl crate::Archetype for Tensor {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.TensorData".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.components.TensorData".into()),
+                        None,
                     );
                     (
                         ::arrow2::datatypes::Field::new("data", datatype, false),

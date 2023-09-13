@@ -62,7 +62,7 @@ impl crate::Loggable for ClassId {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.class_id".into()
+        "rerun.components.ClassId".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

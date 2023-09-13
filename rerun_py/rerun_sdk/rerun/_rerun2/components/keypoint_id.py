@@ -15,12 +15,12 @@ __all__ = ["KeypointIdArray", "KeypointIdType"]
 
 
 class KeypointIdType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.keypoint_id"
+    _TYPE_NAME = "rerun.components.KeypointId"
     _DELEGATED_EXTENSION_TYPE = datatypes.KeypointIdType
 
 
 class KeypointIdArray(BaseDelegatingExtensionArray[datatypes.KeypointIdArrayLike]):
-    _EXTENSION_NAME = "rerun.keypoint_id"
+    _EXTENSION_NAME = "rerun.components.KeypointId"
     _EXTENSION_TYPE = KeypointIdType
     _DELEGATED_ARRAY_TYPE = datatypes.KeypointIdArray
 

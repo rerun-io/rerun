@@ -62,15 +62,20 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usi
     once_cell::sync::Lazy::new(|| ["rerun.components.ImageIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.draw_order".into(), "rerun.instance_key".into()]);
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
+        ]
+    });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.ImageIndicator".into(),
-            "rerun.draw_order".into(),
-            "rerun.instance_key".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
@@ -142,7 +147,7 @@ impl crate::Archetype for Image {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.TensorData".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.components.TensorData".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("data", datatype, false),
@@ -162,7 +167,7 @@ impl crate::Archetype for Image {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DrawOrder".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.draw_order".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("draw_order", datatype, false),

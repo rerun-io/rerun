@@ -15,12 +15,12 @@ __all__ = ["Point3DArray", "Point3DType"]
 
 
 class Point3DType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.point3d"
+    _TYPE_NAME = "rerun.components.Point3D"
     _DELEGATED_EXTENSION_TYPE = datatypes.Vec3DType
 
 
 class Point3DArray(BaseDelegatingExtensionArray[datatypes.Vec3DArrayLike]):
-    _EXTENSION_NAME = "rerun.point3d"
+    _EXTENSION_NAME = "rerun.components.Point3D"
     _EXTENSION_TYPE = Point3DType
     _DELEGATED_ARRAY_TYPE = datatypes.Vec3DArray
 

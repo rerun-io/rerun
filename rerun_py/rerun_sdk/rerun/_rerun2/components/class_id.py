@@ -15,12 +15,12 @@ __all__ = ["ClassIdArray", "ClassIdType"]
 
 
 class ClassIdType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.class_id"
+    _TYPE_NAME = "rerun.components.ClassId"
     _DELEGATED_EXTENSION_TYPE = datatypes.ClassIdType
 
 
 class ClassIdArray(BaseDelegatingExtensionArray[datatypes.ClassIdArrayLike]):
-    _EXTENSION_NAME = "rerun.class_id"
+    _EXTENSION_NAME = "rerun.components.ClassId"
     _EXTENSION_TYPE = ClassIdType
     _DELEGATED_ARRAY_TYPE = datatypes.ClassIdArray
 

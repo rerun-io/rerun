@@ -127,16 +127,16 @@ def log_scalar(
     instanced["rerun.scalar"] = ScalarArray.from_numpy(np.array([scalar]))
 
     if label:
-        instanced["rerun.label"] = rrc.TextArray.from_similar([label]).storage
+        instanced["rerun.components.Text"] = rrc.TextArray.from_similar([label]).storage
 
     if color is not None:
         from rerun.experimental import cmp as rrc
 
         colors = _normalize_colors(color)
-        instanced["rerun.colorrgba"] = rrc.ColorArray.from_similar(colors).storage
+        instanced["rerun.components.Color"] = rrc.ColorArray.from_similar(colors).storage
 
     if radius:
-        instanced["rerun.radius"] = rrc.RadiusArray.from_similar(np.array([radius])).storage
+        instanced["rerun.components.Radius"] = rrc.RadiusArray.from_similar(np.array([radius])).storage
 
     if scattered:
         props = [{"scattered": scattered}]
@@ -146,7 +146,7 @@ def log_scalar(
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
+        splats["rerun.components.InstanceKey"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=False, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
