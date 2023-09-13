@@ -44,7 +44,7 @@ pub struct Boxes2D {
     pub half_sizes: Vec<crate::components::HalfSizes2D>,
 
     /// Optional center positions of the boxes.
-    pub centers: Option<Vec<crate::components::Origin2D>>,
+    pub centers: Option<Vec<crate::components::Position2D>>,
 
     /// Optional radii for the lines that make up the boxes.
     pub radii: Option<Vec<crate::components::Radius>>,
@@ -78,7 +78,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usi
         [
             "rerun.components.Boxes2DIndicator".into(),
             "rerun.components.Color".into(),
-            "rerun.components.Origin2D".into(),
+            "rerun.components.Position2D".into(),
         ]
     });
 
@@ -99,7 +99,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 9usize]> =
             "rerun.components.HalfSizes2D".into(),
             "rerun.components.Boxes2DIndicator".into(),
             "rerun.components.Color".into(),
-            "rerun.components.Origin2D".into(),
+            "rerun.components.Position2D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
             "rerun.components.InstanceKey".into(),
@@ -210,10 +210,10 @@ impl crate::Archetype for Boxes2D {
                 self.centers
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Origin2D>::try_to_arrow(many.iter());
+                        let array = <crate::components::Position2D>::try_to_arrow(many.iter());
                         array.map(|array| {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Origin2D".into(),
+                                "rerun.components.Position2D".into(),
                                 Box::new(array.data_type().clone()),
                                 None,
                             );
@@ -377,7 +377,7 @@ impl crate::Archetype for Boxes2D {
         };
         let centers = if let Some(array) = arrays_by_name.get("centers") {
             Some({
-                <crate::components::Origin2D>::try_from_arrow_opt(&**array)
+                <crate::components::Position2D>::try_from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes2D#centers")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -491,7 +491,7 @@ impl Boxes2D {
 
     pub fn with_centers(
         mut self,
-        centers: impl IntoIterator<Item = impl Into<crate::components::Origin2D>>,
+        centers: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
     ) -> Self {
         self.centers = Some(centers.into_iter().map(Into::into).collect());
         self

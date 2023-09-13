@@ -34,12 +34,12 @@ class Points3D(Archetype):
 
     # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
 
-    points: components.Point3DArray = field(
+    positions: components.Position3DArray = field(
         metadata={"component": "primary"},
-        converter=components.Point3DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position3DArray.from_similar,  # type: ignore[misc]
     )
     """
-    All the actual 3D points that make up the point cloud.
+    All the 3D positions at which the point cloud shows points.
     """
 
     radii: components.RadiusArray | None = field(
