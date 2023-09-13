@@ -1,5 +1,1 @@
 from __future__ import annotations
-
-from .depth_image import depth_image__data__field_converter_override
-from .image import image__data__field_converter_override
-from .segmentation_image import segmentation_image__data__field_converter_override

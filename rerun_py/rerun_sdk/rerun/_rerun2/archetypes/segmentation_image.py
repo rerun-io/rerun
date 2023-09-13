@@ -11,13 +11,13 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ._overrides import segmentation_image__data__field_converter_override  # noqa: F401
+from .segmentation_image_ext import SegmentationImageExt
 
 __all__ = ["SegmentationImage"]
 
 
 @define(str=False, repr=False)
-class SegmentationImage(Archetype):
+class SegmentationImage(Archetype, SegmentationImageExt):
     """
     An image made up of integer class-ids.
 
@@ -53,8 +53,8 @@ class SegmentationImage(Archetype):
     # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"}, converter=segmentation_image__data__field_converter_override
-    )
+        metadata={"component": "primary"}, converter=SegmentationImageExt.data__field_converter_override
+    )  # type: ignore[misc]
     """
     The image data. Should always be a rank-2 tensor.
     """
