@@ -9,12 +9,12 @@ namespace rerun.components;
 
 // ---
 
-/// A point in 2D space.
-struct Point2D (
-  "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
+/// A position in 3D space.
+struct Position3D (
+  "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   order: 100
 ) {
-  xy: rerun.datatypes.Vec2D (order: 100);
+  xyz: rerun.datatypes.Vec3D (order: 100);
 }

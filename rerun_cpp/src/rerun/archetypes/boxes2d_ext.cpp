@@ -17,7 +17,7 @@ namespace rerun {
 
         /// Creates new `Boxes2D` with `centers` and `half_sizes`.
         static Boxes2D from_centers_and_half_sizes(
-            std::vector<components::Origin2D> _centers,
+            std::vector<components::Position2D> _centers,
             std::vector<components::HalfSizes2D> _half_sizes
         ) {
             return Boxes2D::from_half_sizes(std::move(_half_sizes))
@@ -36,7 +36,7 @@ namespace rerun {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
         static Boxes2D from_centers_and_sizes(
-            std::vector<components::Origin2D> centers, const std::vector<datatypes::Vec2D>& sizes
+            std::vector<components::Position2D> centers, const std::vector<datatypes::Vec2D>& sizes
         ) {
             return from_sizes(sizes).with_centers(std::move(centers));
         }
@@ -68,7 +68,7 @@ namespace rerun {
             auto boxes = from_sizes(sizes);
 
             auto num_centers = std::min(mins.size(), sizes.size());
-            std::vector<components::Origin2D> centers;
+            std::vector<components::Position2D> centers;
             centers.reserve(num_centers);
             for (size_t i = 0; i < num_centers; ++i) {
                 centers.emplace_back(

@@ -1,19 +1,22 @@
 use itertools::Itertools;
 use re_query::{ComponentWithInstances, EntityView};
-use re_types::components::{Color, InstanceKey, Point2D};
+use re_types::components::{Color, InstanceKey, Position2D};
 
 #[test]
 fn basic_single_iter() {
     let instance_keys = InstanceKey::from_iter(0..2);
-    let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
+    let positions = [
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, points);
+    let component = ComponentWithInstances::from_native(instance_keys, positions);
 
-    let results =
-        itertools::izip!(points.into_iter(), component.values::<Point2D>().unwrap()).collect_vec();
+    let results = itertools::izip!(
+        positions.into_iter(),
+        component.values::<Position2D>().unwrap()
+    )
+    .collect_vec();
     assert_eq!(results.len(), 2);
     results
         .iter()
@@ -24,10 +27,10 @@ fn basic_single_iter() {
 fn implicit_joined_iter() {
     let instance_keys = InstanceKey::from_iter(0..3);
 
-    let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
+    let positions = [
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
     ];
 
     let colors = [
@@ -37,7 +40,7 @@ fn implicit_joined_iter() {
     ];
 
     let entity_view = EntityView::from_native2(
-        (&instance_keys, &points), //
+        (&instance_keys, &positions), //
         (&instance_keys, &colors),
     );
 
@@ -61,10 +64,10 @@ fn implicit_joined_iter() {
 fn implicit_primary_joined_iter() {
     let point_ids = InstanceKey::from_iter(0..3);
 
-    let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
+    let positions = [
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
     ];
 
     let color_ids = [
@@ -78,7 +81,7 @@ fn implicit_primary_joined_iter() {
     ];
 
     let entity_view = EntityView::from_native2(
-        (&point_ids, &points), //
+        (&point_ids, &positions), //
         (&color_ids, &colors),
     );
 
@@ -102,10 +105,10 @@ fn implicit_component_joined_iter() {
         InstanceKey(4),
     ];
 
-    let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
+    let positions = [
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
     ];
 
     let color_ids = InstanceKey::from_iter(0..5);
@@ -119,7 +122,7 @@ fn implicit_component_joined_iter() {
     ];
 
     let entity_view = EntityView::from_native2(
-        (&point_ids, &points), //
+        (&point_ids, &positions), //
         (&color_ids, &colors),
     );
 
@@ -148,11 +151,11 @@ fn complex_joined_iter() {
         InstanceKey(96),
     ];
 
-    let points = vec![
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
-        Point2D::new(7.0, 8.0),
+    let positions = vec![
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
+        Position2D::new(7.0, 8.0),
     ];
 
     let color_ids = vec![
@@ -172,7 +175,7 @@ fn complex_joined_iter() {
     ];
 
     let entity_view = EntityView::from_native2(
-        (&point_ids, &points), //
+        (&point_ids, &positions), //
         (&color_ids, &colors),
     );
 
@@ -196,38 +199,38 @@ fn complex_joined_iter() {
 #[test]
 fn single_visit() {
     let instance_keys = InstanceKey::from_iter(0..4);
-    let points = [
-        Point2D::new(1.0, 2.0),
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
-        Point2D::new(7.0, 8.0),
+    let positions = [
+        Position2D::new(1.0, 2.0),
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
+        Position2D::new(7.0, 8.0),
     ];
 
-    let entity_view = EntityView::from_native((&instance_keys, &points));
+    let entity_view = EntityView::from_native((&instance_keys, &positions));
 
     let mut instance_key_out = Vec::<InstanceKey>::new();
-    let mut points_out = Vec::<Point2D>::new();
+    let mut positions_out = Vec::<Position2D>::new();
 
     entity_view
-        .visit1(|instance_key: InstanceKey, point: Point2D| {
+        .visit1(|instance_key: InstanceKey, point: Position2D| {
             instance_key_out.push(instance_key);
-            points_out.push(point);
+            positions_out.push(point);
         })
         .ok()
         .unwrap();
 
     assert_eq!(instance_key_out, instance_keys);
-    assert_eq!(points.as_slice(), points_out.as_slice());
+    assert_eq!(positions.as_slice(), positions_out.as_slice());
 }
 
 #[test]
 fn joint_visit() {
-    let points = vec![
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
-        Point2D::new(7.0, 8.0),
-        Point2D::new(9.0, 10.0),
+    let positions = vec![
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
+        Position2D::new(7.0, 8.0),
+        Position2D::new(9.0, 10.0),
     ];
 
     let point_ids = InstanceKey::from_iter(0..5);
@@ -243,16 +246,16 @@ fn joint_visit() {
     ];
 
     let entity_view = EntityView::from_native2(
-        (&point_ids, &points), //
+        (&point_ids, &positions), //
         (&color_ids, &colors),
     );
 
-    let mut points_out = Vec::<Point2D>::new();
+    let mut positions_out = Vec::<Position2D>::new();
     let mut colors_out = Vec::<Option<Color>>::new();
 
     entity_view
-        .visit2(|_: InstanceKey, point: Point2D, color: Option<Color>| {
-            points_out.push(point);
+        .visit2(|_: InstanceKey, point: Position2D, color: Option<Color>| {
+            positions_out.push(point);
             colors_out.push(color);
         })
         .ok()
@@ -266,6 +269,6 @@ fn joint_visit() {
         Some(Color::from(0x00ff0000)),
     ];
 
-    assert_eq!(points, points_out);
+    assert_eq!(positions, positions_out);
     assert_eq!(expected_colors, colors_out);
 }

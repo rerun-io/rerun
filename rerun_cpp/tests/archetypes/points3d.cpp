@@ -21,7 +21,7 @@ SCENARIO(
                                 .with_instance_keys({123ull, 124ull});
 
         Points3D from_manual;
-        from_manual.points = {{1.0, 2.0, 3.0}, {10.0, 20.0, 30.0}};
+        from_manual.positions = {{1.0, 2.0, 3.0}, {10.0, 20.0, 30.0}};
         from_manual.radii = {1.0, 10.0};
         from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};
         from_manual.labels = {"hello", "friend"};

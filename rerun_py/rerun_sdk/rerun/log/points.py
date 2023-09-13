@@ -98,7 +98,7 @@ def log_point(
     position = np.require(position, dtype="float32")
     if position.size == 2:
         points2d = Points2D(
-            points=position,
+            positions=position,
             radii=radius,
             colors=color,
             labels=label,
@@ -111,7 +111,7 @@ def log_point(
         if draw_order is not None:
             raise ValueError("`draw_order` is only supported for 3D points")
         points3d = Points3D(
-            points=position,
+            positions=position,
             radii=radius,
             colors=color,
             labels=label,
@@ -216,7 +216,7 @@ def log_points(
 
     if positions.shape[1] == 2:
         points2d = Points2D(
-            points=positions,
+            positions=positions,
             radii=radii,
             colors=colors,
             labels=labels,
@@ -231,7 +231,7 @@ def log_points(
             raise ValueError("`draw_order` is only supported for 3D points")
 
         points3d = Points3D(
-            points=positions,
+            positions=positions,
             radii=radii,
             colors=colors,
             labels=labels,

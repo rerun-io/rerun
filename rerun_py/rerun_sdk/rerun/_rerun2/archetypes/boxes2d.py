@@ -47,10 +47,10 @@ class Boxes2D(Archetype):
     All half-extents that make up the batch of boxes.
     """
 
-    centers: components.Origin2DArray | None = field(
+    centers: components.Position2DArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.Origin2DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position2DArray.from_similar,  # type: ignore[misc]
     )
     """
     Optional center positions of the boxes.

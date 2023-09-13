@@ -33,8 +33,8 @@ table Points3D (
 ) {
   // --- Required ---
 
-  /// All the actual 3D points that make up the point cloud.
-  points: [rerun.components.Point3D] ("attr.rerun.component_required", order: 1000);
+  /// All the 3D positions at which the point cloud shows points.
+  positions: [rerun.components.Position3D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 

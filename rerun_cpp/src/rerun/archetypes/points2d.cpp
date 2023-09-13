@@ -13,7 +13,7 @@ namespace rerun {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(8);
 
-            comp_batches.emplace_back(points);
+            comp_batches.emplace_back(positions);
             if (radii.has_value()) {
                 comp_batches.emplace_back(radii.value());
             }

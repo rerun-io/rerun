@@ -9,7 +9,6 @@
 #include "error_check.hpp"
 
 #include <rerun/archetypes/points2d.hpp>
-#include <rerun/components/point2d.hpp>
 #include <rerun/datatypes/vec2d.hpp>
 #include <rerun/recording_stream.hpp>
 
@@ -140,13 +139,13 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log_component_batches(
                         "single-components",
                         2,
-                        rrc::Point2D{1.0, 2.0},
+                        rrc::Position2D{1.0, 2.0},
                         rrc::Color(0x00FF00FF)
                     );
                 }
 
                 THEN("components as c-array can be logged") {
-                    rrc::Point2D c_style_array[2] = {
+                    rrc::Position2D c_style_array[2] = {
                         rr::datatypes::Vec2D{1.0, 2.0},
                         rr::datatypes::Vec2D{4.0, 5.0},
                     };
@@ -156,7 +155,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("components as std::array can be logged") {
                     stream.log_component_batch(
                         "as-array",
-                        std::array<rrc::Point2D, 2>{
+                        std::array<rrc::Position2D, 2>{
                             rr::datatypes::Vec2D{1.0, 2.0},
                             rr::datatypes::Vec2D{4.0, 5.0},
                         }
@@ -166,7 +165,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log_component_batches(
                         "as-vector",
                         2,
-                        std::vector<rrc::Point2D>{
+                        std::vector<rrc::Position2D>{
                             rr::datatypes::Vec2D{1.0, 2.0},
                             rr::datatypes::Vec2D{4.0, 5.0},
                         }
@@ -182,9 +181,9 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         "as-mix",
                         3,
                         std::vector{
-                            rrc::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
-                            rrc::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
-                            rrc::Point2D(rr::datatypes::Vec2D{5.0, 5.0}),
+                            rrc::Position2D(rr::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Position2D(rr::datatypes::Vec2D{1.0, 3.0}),
+                            rrc::Position2D(rr::datatypes::Vec2D{5.0, 5.0}),
                         },
                         std::array{
                             rrc::Color(0xFF0000FF),
@@ -200,8 +199,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         "log_component_batches-splat",
                         2,
                         std::vector{
-                            rrc::Point2D(rr::datatypes::Vec2D{0.0, 0.0}),
-                            rrc::Point2D(rr::datatypes::Vec2D{1.0, 3.0}),
+                            rrc::Position2D(rr::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Position2D(rr::datatypes::Vec2D{1.0, 3.0}),
                         },
                         rrc::Color(0xFF0000FF)
                     );
@@ -268,7 +267,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                             check_logged_error([&] {
                                 stream1->log_component_batch(
                                     "as-array",
-                                    std::array<rrc::Point2D, 2>{
+                                    std::array<rrc::Position2D, 2>{
                                         rr::datatypes::Vec2D{1.0, 2.0},
                                         rr::datatypes::Vec2D{4.0, 5.0},
                                     }
@@ -327,7 +326,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
                 check_logged_error([&] {
                     stream.log_component_batch(
                         "as-array",
-                        std::array<rrc::Point2D, 2>{
+                        std::array<rrc::Position2D, 2>{
                             rr::datatypes::Vec2D{1.0, 2.0},
                             rr::datatypes::Vec2D{4.0, 5.0},
                         }
@@ -397,7 +396,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             }
             THEN("try_log_component_batch returns the correct error") {
                 CHECK(
-                    stream.try_log_component_batch(path, std::array<rrc::Point2D, 1>{v}).code ==
+                    stream.try_log_component_batch(path, std::array<rrc::Position2D, 1>{v}).code ==
                     error
                 );
             }
@@ -409,7 +408,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                     [&] {
                         stream.log_component_batch(
                             std::get<0>(variant),
-                            std::array<rrc::Point2D, 1>{v}
+                            std::array<rrc::Position2D, 1>{v}
                         );
                     },
                     error

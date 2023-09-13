@@ -37,12 +37,12 @@ class Points2D(Archetype):
 
     # You can define your own __init__ function as a member of Points2DExt in points2d_ext.py
 
-    points: components.Point2DArray = field(
+    positions: components.Position2DArray = field(
         metadata={"component": "primary"},
-        converter=components.Point2DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position2DArray.from_similar,  # type: ignore[misc]
     )
     """
-    All the actual 2D points that make up the point cloud.
+    All the 2D positions at which the point cloud shows points.
     """
 
     radii: components.RadiusArray | None = field(

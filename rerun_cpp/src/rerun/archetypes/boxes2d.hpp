@@ -10,7 +10,7 @@
 #include "../components/draw_order.hpp"
 #include "../components/half_sizes2d.hpp"
 #include "../components/instance_key.hpp"
-#include "../components/origin2d.hpp"
+#include "../components/position2d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
@@ -51,7 +51,7 @@ namespace rerun {
             std::vector<rerun::components::HalfSizes2D> half_sizes;
 
             /// Optional center positions of the boxes.
-            std::optional<std::vector<rerun::components::Origin2D>> centers;
+            std::optional<std::vector<rerun::components::Position2D>> centers;
 
             /// Optional radii for the lines that make up the boxes.
             std::optional<std::vector<rerun::components::Radius>> radii;
@@ -92,7 +92,7 @@ namespace rerun {
 
             /// Creates new `Boxes2D` with `centers` and `half_sizes`.
             static Boxes2D from_centers_and_half_sizes(
-                std::vector<components::Origin2D> _centers,
+                std::vector<components::Position2D> _centers,
                 std::vector<components::HalfSizes2D> _half_sizes
             ) {
                 return Boxes2D::from_half_sizes(std::move(_half_sizes))
@@ -111,7 +111,7 @@ namespace rerun {
             /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
             /// half-sizes from the input data.
             static Boxes2D from_centers_and_sizes(
-                std::vector<components::Origin2D> centers,
+                std::vector<components::Position2D> centers,
                 const std::vector<datatypes::Vec2D>& sizes
             ) {
                 return from_sizes(sizes).with_centers(std::move(centers));
@@ -131,13 +131,13 @@ namespace rerun {
             Boxes2D() = default;
 
             /// Optional center positions of the boxes.
-            Boxes2D& with_centers(std::vector<rerun::components::Origin2D> _centers) {
+            Boxes2D& with_centers(std::vector<rerun::components::Position2D> _centers) {
                 centers = std::move(_centers);
                 return *this;
             }
 
             /// Optional center positions of the boxes.
-            Boxes2D& with_centers(rerun::components::Origin2D _centers) {
+            Boxes2D& with_centers(rerun::components::Position2D _centers) {
                 centers = std::vector(1, std::move(_centers));
                 return *this;
             }

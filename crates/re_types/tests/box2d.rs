@@ -10,8 +10,8 @@ fn roundtrip() {
             components::HalfSizes2D::new(3.0, 4.0),
         ],
         centers: Some(vec![
-            components::Origin2D::new(1.0, 2.0), //
-            components::Origin2D::new(3.0, 4.0),
+            components::Position2D::new(1.0, 2.0), //
+            components::Position2D::new(3.0, 4.0),
         ]),
         colors: Some(vec![
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
@@ -48,7 +48,7 @@ fn roundtrip() {
 
     let expected_extensions: HashMap<_, _> = [
         ("half_sizes", vec!["rerun.components.HalfSize2D"]),
-        ("centers", vec!["rerun.components.Origin2D"]),
+        ("centers", vec!["rerun.components.Position2D"]),
         ("colors", vec!["rerun.components.Color"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("labels", vec!["rerun.components.Label"]),

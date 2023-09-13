@@ -7,14 +7,14 @@
 //! # Usage
 //! ```
 //! # use re_query::EntityView;
-//! # use re_types::components::{Color, Point2D, InstanceKey};
+//! # use re_types::components::{Color, Position2D, InstanceKey};
 //!
 //! let instances = InstanceKey::from_iter(0..3);
 //!
 //! let points = [
-//!     Point2D::new(1.0, 2.0),
-//!     Point2D::new(3.0, 4.0),
-//!     Point2D::new(5.0, 6.0),
+//!     Position2D::new(1.0, 2.0),
+//!     Position2D::new(3.0, 4.0),
+//!     Position2D::new(5.0, 6.0),
 //! ];
 //!
 //! let colors = [
@@ -28,18 +28,18 @@
 //!     (&instances, &colors),
 //! );
 //!
-//! let mut points_out = Vec::<Point2D>::new();
+//! let mut positions_out = Vec::<Position2D>::new();
 //! let mut colors_out = Vec::<Color>::new();
 //!
 //! entity_view
-//!     .visit2(|_: InstanceKey, point: Point2D, color: Option<Color>| {
-//!         points_out.push(point);
+//!     .visit2(|_: InstanceKey, point: Position2D, color: Option<Color>| {
+//!         positions_out.push(point);
 //!         colors_out.push(color.unwrap());
 //!     })
 //!     .ok()
 //!     .unwrap();
 //!
-//! assert_eq!(points.as_slice(), points_out.as_slice());
+//! assert_eq!(points.as_slice(), positions_out.as_slice());
 //! assert_eq!(colors.as_slice(), colors_out.as_slice());
 //! ```
 

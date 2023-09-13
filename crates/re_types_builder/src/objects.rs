@@ -193,7 +193,7 @@ impl Objects {
 /// let obj = &objects["rerun.datatypes.Vec3D"];
 /// let obj = &objects["rerun.datatypes.Angle"];
 /// let obj = &objects["rerun.components.Text"];
-/// let obj = &objects["rerun.archetypes.Point2D"];
+/// let obj = &objects["rerun.archetypes.Position2D"];
 /// ```
 impl std::ops::Index<&str> for Objects {
     type Output = Object;
@@ -376,13 +376,13 @@ pub struct Object {
     /// Absolute filepath of the associated fbs definition.
     pub filepath: Utf8PathBuf,
 
-    /// Fully-qualified name of the object, e.g. `rerun.components.Point2D`.
+    /// Fully-qualified name of the object, e.g. `rerun.components.Position2D`.
     pub fqname: String,
 
     /// Fully-qualified package name of the object, e.g. `rerun.components`.
     pub pkg_name: String,
 
-    /// PascalCase name of the object type, e.g. `Point2D`.
+    /// PascalCase name of the object type, e.g. `Position2D`.
     pub name: String,
 
     /// The object's multiple layers of documentation.
@@ -666,7 +666,7 @@ pub struct ObjectField {
     /// Absolute filepath of the associated fbs definition.
     pub filepath: Utf8PathBuf,
 
-    /// Fully-qualified name of the field, e.g. `rerun.components.Point2D#position`.
+    /// Fully-qualified name of the field, e.g. `rerun.components.Position2D#position`.
     pub fqname: String,
 
     /// Fully-qualified package name of the field, e.g. `rerun.components`.

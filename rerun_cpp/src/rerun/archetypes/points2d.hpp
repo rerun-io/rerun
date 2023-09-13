@@ -10,7 +10,7 @@
 #include "../components/draw_order.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
-#include "../components/point2d.hpp"
+#include "../components/position2d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
@@ -25,8 +25,8 @@ namespace rerun {
     namespace archetypes {
         /// A 2D point cloud with positions and optional colors, radii, labels, etc.
         struct Points2D {
-            /// All the actual 2D points that make up the point cloud.
-            std::vector<rerun::components::Point2D> points;
+            /// All the 2D positions at which the point cloud shows points.
+            std::vector<rerun::components::Position2D> positions;
 
             /// Optional radii for the points, effectively turning them into circles.
             std::optional<std::vector<rerun::components::Radius>> radii;
@@ -65,10 +65,11 @@ namespace rerun {
           public:
             Points2D() = default;
 
-            Points2D(std::vector<rerun::components::Point2D> _points)
-                : points(std::move(_points)) {}
+            Points2D(std::vector<rerun::components::Position2D> _positions)
+                : positions(std::move(_positions)) {}
 
-            Points2D(rerun::components::Point2D _points) : points(1, std::move(_points)) {}
+            Points2D(rerun::components::Position2D _positions)
+                : positions(1, std::move(_positions)) {}
 
             /// Optional radii for the points, effectively turning them into circles.
             Points2D& with_radii(std::vector<rerun::components::Radius> _radii) {
@@ -168,7 +169,7 @@ namespace rerun {
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
-                return points.size();
+                return positions.size();
             }
 
             /// Collections all component lists into a list of component collections. *Attention:*

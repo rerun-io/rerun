@@ -9,7 +9,7 @@ use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeInt, Time
 use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
-    components::{Color, InstanceKey, Point2D, Text},
+    components::{Color, InstanceKey, Position2D, Text},
     Loggable as _,
 };
 
@@ -45,12 +45,12 @@ criterion_main!(benches);
 
 // --- Benchmarks ---
 
-pub fn build_some_point2d(len: usize) -> Vec<Point2D> {
+pub fn build_some_point2d(len: usize) -> Vec<Position2D> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
     (0..len)
-        .map(|_| Point2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
+        .map(|_| Position2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
         .collect()
 }
 
@@ -249,7 +249,7 @@ fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> DataStore {
 }
 
 struct SavePoint {
-    _pos: Point2D,
+    _pos: Position2D,
     _color: Option<Color>,
 }
 
@@ -263,7 +263,7 @@ fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Sa
     for path in paths {
         let arch_view = query_archetype::<Points2D>(store, &query, path).unwrap();
         itertools::izip!(
-            arch_view.iter_required_component::<Point2D>().unwrap(),
+            arch_view.iter_required_component::<Position2D>().unwrap(),
             arch_view.iter_optional_component::<Color>().unwrap()
         )
         .for_each(|(pos, color)| {

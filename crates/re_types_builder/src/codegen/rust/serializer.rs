@@ -494,7 +494,7 @@ fn quote_arrow_field_serializer(
 
             // Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
             // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
-            // to simple fixed-sized types like `Point2D`.
+            // to simple fixed-sized types like `Position2D`.
             //
             // TODO(jleibs): If we need to support large FixedSizeList types where the `ArrowBuffer`
             // optimization would be significant, we can introduce a new attribute to force this.

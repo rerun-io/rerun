@@ -435,12 +435,12 @@ pub(crate) fn to_snake_case(s: &str) -> String {
 #[test]
 fn test_to_snake_case() {
     assert_eq!(
-        to_snake_case("rerun.components.Point2D"),
-        "rerun.components.point2d"
+        to_snake_case("rerun.components.Position2D"),
+        "rerun.components.position2d"
     );
     assert_eq!(
-        to_snake_case("rerun.components.point2d"),
-        "rerun.components.point2d"
+        to_snake_case("rerun.components.position2d"),
+        "rerun.components.position2d"
     );
 
     assert_eq!(
@@ -502,12 +502,12 @@ pub(crate) fn to_pascal_case(s: &str) -> String {
 #[test]
 fn test_to_pascal_case() {
     assert_eq!(
-        to_pascal_case("rerun.components.point2d"),
-        "rerun.components.Point2D"
+        to_pascal_case("rerun.components.position2d"),
+        "rerun.components.Position2D"
     );
     assert_eq!(
-        to_pascal_case("rerun.components.Point2D"),
-        "rerun.components.Point2D"
+        to_pascal_case("rerun.components.Position2D"),
+        "rerun.components.Position2D"
     );
 
     assert_eq!(

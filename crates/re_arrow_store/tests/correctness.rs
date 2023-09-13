@@ -11,7 +11,7 @@ use re_arrow_store::{
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
 use re_components::datagen::{
-    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
+    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_positions2d,
 };
 use re_log_types::{DataCell, Duration, EntityPath, Time, TimeType, Timeline};
 use re_types::{components::InstanceKey, Loggable as _};
@@ -32,7 +32,7 @@ fn write_errors() {
         let mut store = DataStore::new(InstanceKey::name(), Default::default());
         let row = test_row!(ent_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
-                build_sparse_instances(), build_some_point2d(3)
+                build_sparse_instances(), build_some_positions2d(3)
         ]);
         assert!(matches!(
             store.insert_row(&row),
@@ -53,7 +53,7 @@ fn write_errors() {
         {
             let row = test_row!(ent_path @
                 [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
-                    build_unsorted_instances(), build_some_point2d(3)
+                    build_unsorted_instances(), build_some_positions2d(3)
             ]);
             assert!(matches!(
                 store.insert_row(&row),
@@ -63,7 +63,7 @@ fn write_errors() {
         {
             let row = test_row!(ent_path @
                 [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
-                    build_duped_instances(), build_some_point2d(3)
+                    build_duped_instances(), build_some_positions2d(3)
             ]);
             assert!(matches!(
                 store.insert_row(&row),
@@ -218,14 +218,14 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         series::Series,
     };
     use re_arrow_store::ArrayExt as _;
-    use re_types::components::{Color, Point2D};
+    use re_types::components::{Color, Position2D};
 
     let ent_path = EntityPath::from("this/that");
 
-    let points = build_some_point2d(3);
+    let positions = build_some_positions2d(3);
     let colors = build_some_colors(3);
     let row =
-        test_row!(ent_path @ [build_frame_nr(42.into())] => 3; [points.clone(), colors.clone()]);
+        test_row!(ent_path @ [build_frame_nr(42.into())] => 3; [positions.clone(), colors.clone()]);
     store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -233,12 +233,12 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         timeline_frame_nr,
         re_arrow_store::TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
-    let components = [InstanceKey::name(), Point2D::name(), Color::name()];
+    let components = [InstanceKey::name(), Position2D::name(), Color::name()];
     let dfs = re_arrow_store::polars_util::range_components(
         store,
         &query,
         &ent_path,
-        Point2D::name(),
+        Position2D::name(),
         components,
         &JoinType::Outer,
     )
@@ -246,13 +246,16 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
     let df_expected = {
         let instances = InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]);
-        let points = Point2D::to_arrow(points);
+        let positions = Position2D::to_arrow(positions);
         let colors = Color::to_arrow(colors);
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
-            Series::try_from((Point2D::name().as_ref(), points.as_ref().clean_for_polars()))
-                .unwrap(),
+            Series::try_from((
+                Position2D::name().as_ref(),
+                positions.as_ref().clean_for_polars(),
+            ))
+            .unwrap(),
             Series::try_from((Color::name().as_ref(), colors)).unwrap(),
         ])
         .unwrap()

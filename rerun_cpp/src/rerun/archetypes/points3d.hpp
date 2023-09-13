@@ -9,7 +9,7 @@
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
-#include "../components/point3d.hpp"
+#include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
@@ -41,8 +41,8 @@ namespace rerun {
         /// }
         ///```
         struct Points3D {
-            /// All the actual 3D points that make up the point cloud.
-            std::vector<rerun::components::Point3D> points;
+            /// All the 3D positions at which the point cloud shows points.
+            std::vector<rerun::components::Position3D> positions;
 
             /// Optional radii for the points, effectively turning them into circles.
             std::optional<std::vector<rerun::components::Radius>> radii;
@@ -77,10 +77,11 @@ namespace rerun {
           public:
             Points3D() = default;
 
-            Points3D(std::vector<rerun::components::Point3D> _points)
-                : points(std::move(_points)) {}
+            Points3D(std::vector<rerun::components::Position3D> _positions)
+                : positions(std::move(_positions)) {}
 
-            Points3D(rerun::components::Point3D _points) : points(1, std::move(_points)) {}
+            Points3D(rerun::components::Position3D _positions)
+                : positions(1, std::move(_positions)) {}
 
             /// Optional radii for the points, effectively turning them into circles.
             Points3D& with_radii(std::vector<rerun::components::Radius> _radii) {
@@ -173,7 +174,7 @@ namespace rerun {
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
-                return points.size();
+                return positions.size();
             }
 
             /// Collections all component lists into a list of component collections. *Attention:*

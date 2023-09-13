@@ -1,6 +1,6 @@
 use re_log_types::{DataRow, DataRowError, EntityPath, RowId, TimePoint};
 use re_types::{
-    components::{Color, Point2D, Text},
+    components::{Color, Position2D, Text},
     Loggable as _,
 };
 
@@ -10,7 +10,7 @@ fn data_row_error_num_instances() {
     let timepoint = TimePoint::timeless();
 
     let num_instances = 2;
-    let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+    let positions: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
     let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
     let labels: &[Text] = &[];
 
@@ -21,16 +21,16 @@ fn data_row_error_num_instances() {
     DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, colors).unwrap();
 
     // num_instances = standard: legal
-    DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, points).unwrap();
+    DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, positions).unwrap();
 
     // anything else is illegal
-    let points: &[Point2D] = &[
+    let positions: &[Position2D] = &[
         [10.0, 10.0].into(),
         [20.0, 20.0].into(),
         [30.0, 30.0].into(),
     ];
     let err =
-        DataRow::try_from_cells1(row_id, "a/b/c", timepoint, num_instances, points).unwrap_err();
+        DataRow::try_from_cells1(row_id, "a/b/c", timepoint, num_instances, positions).unwrap_err();
 
     match err {
         DataRowError::WrongNumberOfInstances {
@@ -40,7 +40,7 @@ fn data_row_error_num_instances() {
             num_instances,
         } => {
             assert_eq!(EntityPath::from("a/b/c"), entity_path);
-            assert_eq!(Point2D::name(), component);
+            assert_eq!(Position2D::name(), component);
             assert_eq!(2, expected_num_instances);
             assert_eq!(3, num_instances);
         }
@@ -53,10 +53,10 @@ fn data_row_error_duped_components() {
     let row_id = RowId::ZERO;
     let timepoint = TimePoint::timeless();
 
-    let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+    let positions: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 
-    let err =
-        DataRow::try_from_cells2(row_id, "a/b/c", timepoint, 2, (points, points)).unwrap_err();
+    let err = DataRow::try_from_cells2(row_id, "a/b/c", timepoint, 2, (positions, positions))
+        .unwrap_err();
 
     match err {
         DataRowError::DupedComponent {
@@ -64,7 +64,7 @@ fn data_row_error_duped_components() {
             component,
         } => {
             assert_eq!(EntityPath::from("a/b/c"), entity_path);
-            assert_eq!(Point2D::name(), component);
+            assert_eq!(Position2D::name(), component);
         }
         _ => unreachable!(),
     }

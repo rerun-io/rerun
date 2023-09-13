@@ -16,9 +16,9 @@ int main() {
     std::uniform_real_distribution<float> dist_radius(0.1, 1.0);
     std::uniform_int_distribution<uint8_t> dist_color(0, 255);
 
-    std::vector<rr::components::Point3D> points3d(10);
+    std::vector<rr::components::Position3D> points3d(10);
     std::generate(points3d.begin(), points3d.end(), [&] {
-        return rr::components::Point3D(dist_pos(gen), dist_pos(gen), dist_pos(gen));
+        return rr::components::Position3D(dist_pos(gen), dist_pos(gen), dist_pos(gen));
     });
     std::vector<rr::components::Color> colors(10);
     std::generate(colors.begin(), colors.end(), [&] {

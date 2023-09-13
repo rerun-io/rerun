@@ -39,8 +39,8 @@
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct Points2D {
-    /// All the actual 2D points that make up the point cloud.
-    pub points: Vec<crate::components::Point2D>,
+    /// All the 2D positions at which the point cloud shows points.
+    pub positions: Vec<crate::components::Position2D>,
 
     /// Optional radii for the points, effectively turning them into circles.
     pub radii: Option<Vec<crate::components::Radius>>,
@@ -75,7 +75,7 @@ pub struct Points2D {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Point2D".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.Position2D".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -100,7 +100,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Point2D".into(),
+            "rerun.components.Position2D".into(),
             "rerun.components.Color".into(),
             "rerun.components.Points2DIndicator".into(),
             "rerun.components.Radius".into(),
@@ -149,13 +149,13 @@ impl crate::Archetype for Points2D {
 
     #[inline]
     fn num_instances(&self) -> usize {
-        self.points.len()
+        self.positions.len()
     }
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
             Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.points as &dyn crate::ComponentBatch).into()),
+            Some((&self.positions as &dyn crate::ComponentBatch).into()),
             self.radii
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
@@ -193,21 +193,22 @@ impl crate::Archetype for Points2D {
         Ok([
             {
                 Some({
-                    let array = <crate::components::Point2D>::try_to_arrow(self.points.iter());
+                    let array =
+                        <crate::components::Position2D>::try_to_arrow(self.positions.iter());
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Point2D".into(),
+                            "rerun.components.Position2D".into(),
                             Box::new(array.data_type().clone()),
                             None,
                         );
                         (
-                            ::arrow2::datatypes::Field::new("points", datatype, false),
+                            ::arrow2::datatypes::Field::new("positions", datatype, false),
                             array,
                         )
                     })
                 })
                 .transpose()
-                .with_context("rerun.archetypes.Points2D#points")?
+                .with_context("rerun.archetypes.Points2D#positions")?
             },
             {
                 self.radii
@@ -366,17 +367,17 @@ impl crate::Archetype for Points2D {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let points = {
+        let positions = {
             let array = arrays_by_name
-                .get("points")
+                .get("positions")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Points2D#points")?;
-            <crate::components::Point2D>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Points2D#points")?
+                .with_context("rerun.archetypes.Points2D#positions")?;
+            <crate::components::Position2D>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Points2D#positions")?
                 .into_iter()
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                 .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Points2D#points")?
+                .with_context("rerun.archetypes.Points2D#positions")?
         };
         let radii = if let Some(array) = arrays_by_name.get("radii") {
             Some({
@@ -464,7 +465,7 @@ impl crate::Archetype for Points2D {
             None
         };
         Ok(Self {
-            points,
+            positions,
             radii,
             colors,
             labels,
@@ -477,9 +478,11 @@ impl crate::Archetype for Points2D {
 }
 
 impl Points2D {
-    pub fn new(points: impl IntoIterator<Item = impl Into<crate::components::Point2D>>) -> Self {
+    pub fn new(
+        positions: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
+    ) -> Self {
         Self {
-            points: points.into_iter().map(Into::into).collect(),
+            positions: positions.into_iter().map(Into::into).collect(),
             radii: None,
             colors: None,
             labels: None,

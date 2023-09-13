@@ -184,12 +184,12 @@ impl<L: Loggable<Name = ComponentName>> Component for L {}
 // ---
 
 re_string_interner::declare_new_type!(
-    /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Point2D`.
+    /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
     pub struct ComponentName;
 );
 
 impl ComponentName {
-    /// Returns the fully-qualified name, e.g. `rerun.components.Point2D`.
+    /// Returns the fully-qualified name, e.g. `rerun.components.Position2D`.
     ///
     /// This is the default `Display` implementation for [`ComponentName`].
     #[inline]
@@ -197,13 +197,13 @@ impl ComponentName {
         self.0.as_str()
     }
 
-    /// Returns the unqualified name, e.g. `Point2D`.
+    /// Returns the unqualified name, e.g. `Position2D`.
     ///
     /// Used for most UI elements.
     ///
     /// ```
     /// # use re_types::ComponentName;
-    /// assert_eq!(ComponentName::from("rerun.components.Point2D").short_name(), "Point2D");
+    /// assert_eq!(ComponentName::from("rerun.components.Position2D").short_name(), "Position2D");
     /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {

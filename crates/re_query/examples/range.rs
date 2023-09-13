@@ -5,11 +5,11 @@
 //! ```
 
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
-use re_components::datagen::{build_frame_nr, build_some_colors, build_some_point2d};
+use re_components::datagen::{build_frame_nr, build_some_colors, build_some_positions2d};
 use re_log_types::{DataRow, EntityPath, RowId, TimeType};
 use re_query::range_entity_with_primary;
 use re_types::{
-    components::{Color, InstanceKey, Point2D},
+    components::{Color, InstanceKey, Position2D},
     Loggable as _,
 };
 
@@ -27,20 +27,20 @@ fn main() {
     let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame1, 2, &colors);
     store.insert_row(&row).unwrap();
 
-    let points = build_some_point2d(2);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame2, 2, &points);
+    let positions = build_some_positions2d(2);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame2, 2, &positions);
     store.insert_row(&row).unwrap();
 
-    let points = build_some_point2d(4);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &points);
+    let positions = build_some_positions2d(4);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &positions);
     store.insert_row(&row).unwrap();
 
     let colors = build_some_colors(3);
     let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors);
     store.insert_row(&row).unwrap();
 
-    let points = build_some_point2d(3);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &points);
+    let positions = build_some_positions2d(3);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &positions);
     store.insert_row(&row).unwrap();
 
     let colors = build_some_colors(3);
@@ -69,8 +69,9 @@ fn main() {
 
     println!("\n-----\n");
 
-    let components = [InstanceKey::name(), Color::name(), Point2D::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let components = [InstanceKey::name(), Color::name(), Position2D::name()];
+    let ent_views =
+        range_entity_with_primary::<Position2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
@@ -78,7 +79,7 @@ fn main() {
                 || "<timeless>".into(),
                 |time| TimeType::Sequence.format(time)
             ),
-            Point2D::name(),
+            Position2D::name(),
             &ent_view.as_df2::<Color>().unwrap()
         );
     }

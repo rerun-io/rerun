@@ -6,13 +6,13 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_components::{
-    datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
+    datagen::{build_frame_nr, build_some_colors, build_some_positions2d, build_some_vec3d},
     LegacyVec3D,
 };
 use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeType, Timeline};
 use re_query::query_entity_with_primary;
 use re_types::{
-    components::{Color, InstanceKey, Point2D},
+    components::{Color, InstanceKey, Position2D},
     Loggable as _,
 };
 
@@ -132,7 +132,7 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
-                    (build_some_point2d(pts), build_some_colors(pts)),
+                    (build_some_positions2d(pts), build_some_colors(pts)),
                 );
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
                 // in debug mode, by the standard test harness.
@@ -174,7 +174,7 @@ fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> DataStore {
 }
 
 struct SavePoint {
-    _pos: Point2D,
+    _pos: Position2D,
     _color: Option<Color>,
 }
 
@@ -186,9 +186,9 @@ fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Sa
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths {
-        query_entity_with_primary::<Point2D>(store, &query, path, &[Color::name()])
+        query_entity_with_primary::<Position2D>(store, &query, path, &[Color::name()])
             .and_then(|entity_view| {
-                entity_view.visit2(|_: InstanceKey, pos: Point2D, color: Option<Color>| {
+                entity_view.visit2(|_: InstanceKey, pos: Position2D, color: Option<Color>| {
                     points.push(SavePoint {
                         _pos: pos,
                         _color: color,

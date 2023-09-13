@@ -7,7 +7,7 @@
 use re_arrow_store::{test_row, DataStore};
 use re_components::datagen::{
     build_frame_nr, build_log_time, build_some_instances, build_some_instances_from,
-    build_some_point2d,
+    build_some_positions2d,
 };
 use re_log_types::{EntityPath, Time};
 use re_types::{components::InstanceKey, testing::build_some_large_structs, Loggable};
@@ -32,18 +32,19 @@ fn main() {
     for ent_path in &ent_paths {
         let row2 = test_row!(ent_path @ [
                 build_frame_nr(2.into())
-            ] => 2; [build_some_instances(2), build_some_point2d(2)]);
+            ] => 2; [build_some_instances(2), build_some_positions2d(2)]);
         store.insert_row(&row2).unwrap();
         // Insert timelessly too!
-        let row2 = test_row!(ent_path @ [] => 2; [build_some_instances(2), build_some_point2d(2)]);
+        let row2 =
+            test_row!(ent_path @ [] => 2; [build_some_instances(2), build_some_positions2d(2)]);
         store.insert_row(&row2).unwrap();
 
         let row3 = test_row!(ent_path @ [
                 build_frame_nr(3.into()), build_log_time(Time::now()),
-            ] => 4; [build_some_instances_from(25..29), build_some_point2d(4)]);
+            ] => 4; [build_some_instances_from(25..29), build_some_positions2d(4)]);
         store.insert_row(&row3).unwrap();
         // Insert timelessly too!
-        let row3 = test_row!(ent_path @ [] => 4; [build_some_instances_from(25..29), build_some_point2d(4)]);
+        let row3 = test_row!(ent_path @ [] => 4; [build_some_instances_from(25..29), build_some_positions2d(4)]);
         store.insert_row(&row3).unwrap();
     }
 
@@ -55,7 +56,7 @@ fn main() {
 
         let row4_15 = test_row!(ent_path @ [
                 build_frame_nr(4.into()),
-            ] => 3; [build_some_instances_from(20..23), build_some_point2d(3)]);
+            ] => 3; [build_some_instances_from(20..23), build_some_positions2d(3)]);
         store.insert_row(&row4_15).unwrap();
 
         let row4_2 = test_row!(ent_path @ [
@@ -65,7 +66,7 @@ fn main() {
 
         let row4_25 = test_row!(ent_path @ [
                 build_frame_nr(4.into()), build_log_time(Time::now()),
-            ] => 3; [build_some_instances_from(25..28), build_some_point2d(3)]);
+            ] => 3; [build_some_instances_from(25..28), build_some_positions2d(3)]);
         store.insert_row(&row4_25).unwrap();
     }
 

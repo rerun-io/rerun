@@ -6,10 +6,10 @@
 
 use polars_core::prelude::JoinType;
 use re_arrow_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
-use re_components::datagen::{build_frame_nr, build_some_point2d};
+use re_components::datagen::{build_frame_nr, build_some_positions2d};
 use re_log_types::{EntityPath, TimeType, Timeline};
 use re_types::{
-    components::{InstanceKey, Point2D},
+    components::{InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
     Loggable as _,
 };
@@ -27,22 +27,22 @@ fn main() {
     let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
     store.insert_row(&row).unwrap();
 
-    let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_point2d(2)]);
+    let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_positions2d(2)]);
     store.insert_row(&row).unwrap();
 
-    let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 4; [build_some_point2d(4)]);
-    store.insert_row(&row).unwrap();
-
-    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_large_structs(3)]);
-    store.insert_row(&row).unwrap();
-
-    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 1; [build_some_point2d(1)]);
+    let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 4; [build_some_positions2d(4)]);
     store.insert_row(&row).unwrap();
 
     let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_large_structs(3)]);
     store.insert_row(&row).unwrap();
 
-    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_point2d(3)]);
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 1; [build_some_positions2d(1)]);
+    store.insert_row(&row).unwrap();
+
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_large_structs(3)]);
+    store.insert_row(&row).unwrap();
+
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_positions2d(3)]);
     store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -57,7 +57,7 @@ fn main() {
         &query,
         &ent_path,
         LargeStruct::name(),
-        [InstanceKey::name(), LargeStruct::name(), Point2D::name()],
+        [InstanceKey::name(), LargeStruct::name(), Position2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
@@ -78,8 +78,8 @@ fn main() {
         &store,
         &query,
         &ent_path,
-        Point2D::name(),
-        [InstanceKey::name(), LargeStruct::name(), Point2D::name()],
+        Position2D::name(),
+        [InstanceKey::name(), LargeStruct::name(), Position2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
@@ -89,7 +89,7 @@ fn main() {
                 || "<timeless>".into(),
                 |time| TimeType::Sequence.format(time)
             ),
-            Point2D::name(),
+            Position2D::name(),
             df,
         );
     }

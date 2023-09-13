@@ -27,16 +27,16 @@ from .common_arrays import (
     radii_expected,
 )
 from .common_arrays import (
-    vec2ds_arrays as points_arrays,
+    vec2ds_arrays as positions_arrays,
 )
 from .common_arrays import (
-    vec2ds_expected as points_expected,
+    vec2ds_expected as positions_expected,
 )
 
 
 def test_points2d() -> None:
     all_arrays = itertools.zip_longest(
-        points_arrays,
+        positions_arrays,
         radii_arrays,
         colors_arrays,
         labels_arrays,
@@ -46,11 +46,11 @@ def test_points2d() -> None:
         instance_keys_arrays,
     )
 
-    for points, radii, colors, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_arrays:
-        points = points if points is not None else points_arrays[-1]
+    for positions, radii, colors, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_arrays:
+        positions = positions if positions is not None else positions_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        points = cast(rrd.Vec2DArrayLike, points)
+        positions = cast(rrd.Vec2DArrayLike, positions)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrd.ColorArrayLike], colors)
         labels = cast(Optional[rrd.Utf8ArrayLike], labels)
@@ -61,7 +61,7 @@ def test_points2d() -> None:
 
         print(
             f"rr2.Points2D(\n"
-            f"    {points}\n"
+            f"    {positions}\n"
             f"    radii={radii}\n"
             f"    colors={colors}\n"
             f"    labels={labels}\n"
@@ -72,7 +72,7 @@ def test_points2d() -> None:
             f")"
         )
         arch = rr2.Points2D(
-            points,
+            positions,
             radii=radii,
             colors=colors,
             labels=labels,
@@ -83,7 +83,7 @@ def test_points2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.points == points_expected(is_empty(points), rrc.Point2DArray)
+        assert arch.positions == positions_expected(is_empty(positions), rrc.Position2DArray)
         assert arch.radii == radii_expected(is_empty(radii))
         assert arch.colors == colors_expected(is_empty(colors))
         assert arch.labels == labels_expected(is_empty(labels))
@@ -104,7 +104,7 @@ def test_points2d() -> None:
     ],
 )
 def test_point2d_single_color(data: rrd.ColorArrayLike) -> None:
-    pts = rr2.Points2D(points=np.zeros((5, 2)), colors=data)
+    pts = rr2.Points2D(positions=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == rrc.ColorArray.from_similar(rrd.Color([0, 128, 0, 255]))
 
@@ -130,7 +130,7 @@ def test_point2d_single_color(data: rrd.ColorArrayLike) -> None:
     ],
 )
 def test_point2d_multiple_colors(data: rrd.ColorArrayLike) -> None:
-    pts = rr2.Points2D(points=np.zeros((5, 2)), colors=data)
+    pts = rr2.Points2D(positions=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == rrc.ColorArray.from_similar(
         [

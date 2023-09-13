@@ -46,7 +46,7 @@ table Boxes2D (
   // --- Recommended ---
 
   /// Optional center positions of the boxes.
-  centers: [rerun.components.Origin2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  centers: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   // TODO(#3247): Add 2D rotation.
   // Optional rotations of the boxes.

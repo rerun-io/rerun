@@ -1,10 +1,10 @@
 use crate::datatypes::Vec3D;
 
-use super::Point3D;
+use super::Position3D;
 
 // ---
 
-impl Point3D {
+impl Position3D {
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
     pub const ONE: Self = Self::new(1.0, 1.0, 1.0);
 
@@ -30,9 +30,9 @@ impl Point3D {
 }
 
 #[cfg(feature = "glam")]
-impl From<Point3D> for glam::Vec3 {
+impl From<Position3D> for glam::Vec3 {
     #[inline]
-    fn from(pt: Point3D) -> Self {
+    fn from(pt: Position3D) -> Self {
         Self::new(pt.x(), pt.y(), pt.z())
     }
 }
