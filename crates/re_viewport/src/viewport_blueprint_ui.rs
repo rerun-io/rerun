@@ -358,7 +358,9 @@ impl ViewportBlueprint<'_> {
         #![allow(clippy::collapsible_if)]
 
         ui.menu_image_button(
-            re_ui::icons::ADD.as_image_with_size(re_ui::ReUi::small_icon_size()),
+            re_ui::icons::ADD
+                .as_image()
+                .fit_to_exact_size(re_ui::ReUi::small_icon_size()),
             |ui| {
                 ui.style_mut().wrap = Some(false);
 

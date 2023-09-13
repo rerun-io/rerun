@@ -552,7 +552,8 @@ impl TabWidget {
 
         let icon_image = self
             .icon
-            .as_image_with_size(self.icon_size)
+            .as_image()
+            .fit_to_exact_size(self.icon_size)
             .tint(self.text_color);
         if let Ok(TexturePoll::Ready { texture }) = icon_image.load(ui) {
             icon_image.paint_at(ui, self.icon_rect, &texture);

@@ -86,7 +86,9 @@ impl App {
                     "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
                 if egui::Button::image_and_text(
-                    re_ui::icons::EXTERNAL_LINK.as_image_with_size(ReUi::small_icon_size()),
+                    re_ui::icons::EXTERNAL_LINK
+                        .as_image()
+                        .fit_to_exact_size(ReUi::small_icon_size()),
                     "Help",
                 )
                 .ui(ui)

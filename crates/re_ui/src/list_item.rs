@@ -179,7 +179,7 @@ impl<'a> ListItem<'a> {
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|_, ui, rect, visuals| {
             if let Ok(TexturePoll::Ready { texture }) =
-                icon.as_image_with_size(rect.size()).load(ui)
+                icon.as_image().fit_to_exact_size(rect.size()).load(ui)
             {
                 let tint = visuals.fg_stroke.color;
 

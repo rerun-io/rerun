@@ -138,7 +138,9 @@ fn url_large_text_button(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>, u
         set_large_button_style(ui);
 
         if egui::Button::image_and_text(
-            re_ui::icons::EXTERNAL_LINK.as_image_with_size(ReUi::small_icon_size()),
+            re_ui::icons::EXTERNAL_LINK
+                .as_image()
+                .fit_to_exact_size(ReUi::small_icon_size()),
             text,
         )
         .ui(ui)

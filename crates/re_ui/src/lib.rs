@@ -335,7 +335,7 @@ impl ReUi {
     pub fn small_icon_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
         // TODO(emilk): change color and size on hover
         ui.add(
-            egui::ImageButton::new(icon.as_image_with_size(Self::small_icon_size()))
+            egui::ImageButton::new(icon.as_image().fit_to_exact_size(Self::small_icon_size()))
                 .tint(ui.visuals().widgets.inactive.fg_stroke.color),
         )
     }
@@ -354,8 +354,8 @@ impl ReUi {
         } else {
             egui::Color32::from_gray(100) // TODO(emilk): get from design tokens
         };
-        let mut response =
-            ui.add(egui::ImageButton::new(icon.as_image_with_size(size_points)).tint(tint));
+        let mut response = ui
+            .add(egui::ImageButton::new(icon.as_image().fit_to_exact_size(size_points)).tint(tint));
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
@@ -390,7 +390,9 @@ impl ReUi {
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
         response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
 
-        let Ok(TexturePoll::Ready { texture }) = icon.as_image_with_size(icon_size).load(ui) else {
+        let Ok(TexturePoll::Ready { texture }) =
+            icon.as_image().fit_to_exact_size(icon_size).load(ui)
+        else {
             return response;
         };
 
@@ -807,7 +809,8 @@ impl ReUi {
                 )),
                 image_size,
             );
-            if let Ok(TexturePoll::Ready { texture }) = icon.as_image_with_size(image_size).load(ui)
+            if let Ok(TexturePoll::Ready { texture }) =
+                icon.as_image().fit_to_exact_size(image_size).load(ui)
             {
                 // TODO(emilk/andreas): change color and size on hover
                 let tint = ui.visuals().widgets.inactive.fg_stroke.color;
