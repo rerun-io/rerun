@@ -165,9 +165,9 @@ fn to_broadcast_stream(
                 }
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!(%msg.source, err, "sender has left unexpectedly");
+                        re_log::warn!("Sender {} has left unexpectedly: {err}", msg.source);
                     } else {
-                        re_log::debug!(%msg.source, "sender has left");
+                        re_log::debug!("Sender {} has left", msg.source);
                     }
                 }
             }

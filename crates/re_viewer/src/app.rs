@@ -712,9 +712,9 @@ impl App {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!(%msg.source, err, "data source has left unexpectedly");
+                        re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
-                        re_log::debug!(%msg.source, "data source has left");
+                        re_log::debug!("Data source {} has left", msg.source);
                     }
                     continue;
                 }

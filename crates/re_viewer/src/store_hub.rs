@@ -108,7 +108,7 @@ impl StoreHub {
                 StoreContext {
                     blueprint,
                     recording,
-                    alternate_recordings: self.store_dbs.recordings().collect_vec(),
+                    all_recordings: self.store_dbs.recordings().collect_vec(),
                 }
             })
     }
