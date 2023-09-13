@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A 3x3 column-major Matrix.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Mat3x3(pub [f32; 9usize]);
 
 impl<'a> From<Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {

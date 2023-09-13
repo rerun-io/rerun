@@ -70,7 +70,7 @@ impl From<Transform3D> for glam::Affine3A {
                 matrix,
                 from_parent: _,
             }) => glam::Affine3A::from_mat3_translation(
-                matrix.unwrap_or_default().into(),
+                matrix.unwrap_or(super::Mat3x3::IDENTITY).into(),
                 translation.map_or(glam::Vec3::ZERO, |v| v.into()),
             ),
 

@@ -47,7 +47,7 @@ impl Boxes2DPart {
         let half_sizes = arch_view.iter_required_component::<HalfSizes2D>()?;
         let origins = arch_view
             .iter_optional_component::<Origin2D>()?
-            .map(|origin| origin.unwrap_or_default());
+            .map(|origin| origin.unwrap_or(Origin2D::ZERO));
         let radii = process_radii(arch_view, ent_path)?;
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let labels = arch_view.iter_optional_component::<re_types::components::Text>()?;

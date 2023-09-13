@@ -22,7 +22,7 @@ table Color (
   "attr.rerun.legacy_fqname": "rerun.colorrgba",
   "attr.python.aliases": "int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]",
   "attr.python.array_aliases": "int, Sequence[Sequence[int]], npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]]",
-  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
   order: 100
 ) {

@@ -72,6 +72,13 @@ from .annotation_context import (
     AnnotationContextType,
 )
 from .class_id import ClassIdArray, ClassIdType
+from .clear_settings import (
+    ClearSettings,
+    ClearSettingsArray,
+    ClearSettingsArrayLike,
+    ClearSettingsLike,
+    ClearSettingsType,
+)
 from .color import ColorArray, ColorType
 from .depth_meter import DepthMeter, DepthMeterArray, DepthMeterArrayLike, DepthMeterLike, DepthMeterType
 from .disconnected_space import (
@@ -176,6 +183,11 @@ __all__ = [
     "AnnotationContextType",
     "ClassIdArray",
     "ClassIdType",
+    "ClearSettings",
+    "ClearSettingsArray",
+    "ClearSettingsArrayLike",
+    "ClearSettingsLike",
+    "ClearSettingsType",
     "ColorArray",
     "ColorType",
     "DepthMeter",
