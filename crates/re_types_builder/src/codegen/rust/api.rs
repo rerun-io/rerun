@@ -775,9 +775,7 @@ fn quote_trait_impls_from_obj(
                             .unwrap_or(fqname)
                     })
                     .chain(extras)
-                    .collect::<Vec<_>>();
-                components.sort();
-                components.dedup();
+                    .collect::<BTreeSet<_>>();
 
                 let num_components = components.len();
                 let quoted_components = quote!(#(#components.into(),)*);
