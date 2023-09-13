@@ -303,7 +303,7 @@ impl PythonCodeGenerator {
                 code.push_text(&format!("# Based on {source_path:?}."), 2, 0);
                 code.push_text(
                     &format!(
-                        "# You can extend this class by creating a \"{}\" class in \"{}\".",
+                        "# You can extend this class by creating a \"{:?}\" class in \"{:?}\".",
                         ext_class.name, ext_class.file_name
                     ),
                     2,
