@@ -16,7 +16,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import tensor_data__init_override, tensor_data__native_to_pa_array_override  # noqa: F401
+from .tensor_data_ext import TensorDataExt
 
 __all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
 
@@ -29,7 +29,7 @@ def _tensor_data__buffer__special_field_converter_override(x: datatypes.TensorBu
 
 
 @define(init=False)
-class TensorData:
+class TensorData(TensorDataExt):
     """
     A multi-dimensional `Tensor` of data.
 
@@ -41,8 +41,7 @@ class TensorData:
     which stores a contiguous array of typed values.
     """
 
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        tensor_data__init_override(self, *args, **kwargs)
+    # __init__ can be found in tensor_data_ext.py
 
     shape: list[datatypes.TensorDimension] = field()
     buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)
@@ -171,7 +170,7 @@ class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        return tensor_data__native_to_pa_array_override(data, data_type)
+        return TensorDataExt.native_to_pa_array_override(data, data_type)
 
 
 TensorDataType._ARRAY_TYPE = TensorDataArray

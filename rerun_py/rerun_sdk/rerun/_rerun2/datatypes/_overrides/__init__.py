@@ -18,8 +18,6 @@ from .rotation3d import rotation3d__inner_converter_override
 from .rotation_axis_angle import rotation_axis_angle__angle__field_converter_override
 from .scale3d import scale3d__inner_converter_override
 from .tensor_buffer import tensor_buffer__inner_converter_override
-from .tensor_data import tensor_data__init_override, tensor_data__native_to_pa_array_override
 from .transform3d import transform3d__native_to_pa_array_override
 from .translation_and_mat3x3 import translation_and_mat3x3__init_override
 from .translation_rotation_scale3d import translation_rotation_scale3d__init_override
-from .utf8 import utf8__native_to_pa_array_override
