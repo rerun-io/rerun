@@ -20,11 +20,8 @@ use re_viewport::{
 
 use re_log_types::{DataRow, StoreKind};
 use rerun::{
-    datatypes::TensorData,
-    log::{PathOp, RowId},
-    sink::MemorySinkStorage,
-    time::TimePoint,
-    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
+    datatypes::TensorData, log::RowId, sink::MemorySinkStorage, time::TimePoint, EntityPath,
+    RecordingStream, RecordingStreamBuilder, StoreId,
 };
 
 pub use rerun::{
@@ -156,7 +153,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // legacy log functions not yet ported to pure python
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-    m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
@@ -1069,23 +1065,6 @@ enum TensorDataMeaning {
 }
 
 // --- Log special ---
-
-#[pyfunction]
-fn log_cleared(
-    entity_path: &str,
-    recursive: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    let entity_path = parse_entity_path(entity_path)?;
-
-    recording.record_path_op(PathOp::clear(recursive, entity_path));
-
-    Ok(())
-}
 
 #[pyfunction]
 fn set_panels(
