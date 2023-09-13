@@ -13,7 +13,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Float32(pub f32);
 
 impl<'a> From<Float32> for ::std::borrow::Cow<'a, Float32> {
