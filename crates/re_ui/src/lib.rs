@@ -702,6 +702,8 @@ impl ReUi {
     }
 
     /// Two-column grid to be used in selection view.
+    ///
+    /// Use this when you expect the right column to have multi-line entries.
     #[allow(clippy::unused_self)]
     pub fn selection_grid(&self, _ui: &mut egui::Ui, id: &str) -> egui::Grid {
         // Spread rows a bit to make it easier to see the groupings

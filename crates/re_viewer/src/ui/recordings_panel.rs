@@ -243,8 +243,8 @@ fn recording_ui(
 }
 
 fn recording_hover_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
-    re_ui
-        .selection_grid(ui, "recording_hover_ui")
+    egui::Grid::new("recording_hover_ui")
+        .num_columns(2)
         .show(ui, |ui| {
             re_ui.grid_left_hand_label(ui, "Store ID");
             ui.label(store_db.store_id().to_string());
