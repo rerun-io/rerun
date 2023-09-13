@@ -19,13 +19,13 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import vec4d__native_to_pa_array_override  # noqa: F401
+from .vec4d_ext import Vec4DExt
 
 __all__ = ["Vec4D", "Vec4DArray", "Vec4DArrayLike", "Vec4DLike", "Vec4DType"]
 
 
 @define
-class Vec4D:
+class Vec4D(Vec4DExt):
     """A vector in 4D space."""
 
     # You can define your own __init__ function as a member of Vec4DExt in vec4d_ext.py
@@ -63,7 +63,7 @@ class Vec4DArray(BaseExtensionArray[Vec4DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Vec4DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return vec4d__native_to_pa_array_override(data, data_type)
+        return Vec4DExt.native_to_pa_array_override(data, data_type)
 
 
 Vec4DType._ARRAY_TYPE = Vec4DArray

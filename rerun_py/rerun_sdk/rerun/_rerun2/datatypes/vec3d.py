@@ -19,13 +19,13 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import vec3d__native_to_pa_array_override  # noqa: F401
+from .vec3d_ext import Vec3DExt
 
 __all__ = ["Vec3D", "Vec3DArray", "Vec3DArrayLike", "Vec3DLike", "Vec3DType"]
 
 
 @define
-class Vec3D:
+class Vec3D(Vec3DExt):
     """A vector in 3D space."""
 
     # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
@@ -63,7 +63,7 @@ class Vec3DArray(BaseExtensionArray[Vec3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return vec3d__native_to_pa_array_override(data, data_type)
+        return Vec3DExt.native_to_pa_array_override(data, data_type)
 
 
 Vec3DType._ARRAY_TYPE = Vec3DArray
