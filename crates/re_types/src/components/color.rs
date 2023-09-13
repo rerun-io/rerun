@@ -17,9 +17,7 @@
 ///
 /// The color is stored as a 32-bit integer, where the most significant
 /// byte is `R` and the least significant byte is `A`.
-#[derive(
-    Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck :: Pod, bytemuck :: Zeroable,
-)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Color(pub crate::datatypes::Color);
 

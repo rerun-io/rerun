@@ -231,6 +231,8 @@ fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
 fn write_file(filepath: &Utf8PathBuf, mut code: String) {
     re_tracing::profile_function!();
 
+    code = code.replace(" :: ", "::"); // Fix `bytemuck :: Pod` -> `bytemuck::Pod`.
+
     // Even though we already have used `prettyplease` we also
     // need to run `cargo fmt`, since it catches some things `prettyplease` missed.
     // We need to run `cago fmt` several times because it is not idempotent;
