@@ -13,8 +13,6 @@ mod toggle_switch;
 pub use command::{UICommand, UICommandSender};
 pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
-use egui::epaint::util::FloatOrd;
-use egui::load::TexturePoll;
 pub use icons::Icon;
 pub use layout_job_builder::LayoutJobBuilder;
 pub use toggle_switch::toggle_switch;
@@ -49,6 +47,8 @@ pub struct TopBarStyle {
 
 use crate::list_item::ListItem;
 use egui::emath::{Rangef, Rot2};
+use egui::epaint::util::FloatOrd;
+use egui::load::TexturePoll;
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
