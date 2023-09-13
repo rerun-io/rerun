@@ -165,13 +165,13 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
 /// # use re_log_types::Timeline;
 /// # use re_types::Component;
 /// # use re_types::components::{Position2D, Color};
-/// # use re_types::archetypes::positions2D;
+/// # use re_types::archetypes::Points2D;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
 /// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
-/// let arch_view = re_query::query_archetype::<positions2D>(
+/// let arch_view = re_query::query_archetype::<Points2D>(
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
