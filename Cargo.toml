@@ -92,7 +92,7 @@ egui_extras = { version = "0.22.0", features = [
   "http",
   "puffin",
 ] }
-egui_plot = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
+egui_plot = { git = "https://github.com/emilk/egui", rev = "c273826" }
 egui_tiles = { version = "0.2" }
 egui-wgpu = "0.22.0"
 ehttp = { version = "0.3" }
@@ -165,14 +165,14 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # Temporary patch until next egui release
-ecolor = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-eframe = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-emath = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-epaint = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "c273826" }
+eframe = { git = "https://github.com/emilk/egui", rev = "c273826" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "c273826" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "c273826" }
+egui = { git = "https://github.com/emilk/egui", rev = "c273826" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "c273826" }
+emath = { git = "https://github.com/emilk/egui", rev = "c273826" }
+epaint = { git = "https://github.com/emilk/egui", rev = "c273826" }
 
 # Temporary patch until next egui_tiles release
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "c66d6cba7ddb5b236be614d1816be4561260274e" }

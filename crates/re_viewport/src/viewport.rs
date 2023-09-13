@@ -5,10 +5,11 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use egui::load::TexturePoll;
 use egui_tiles::Behavior;
 use nohash_hasher::IntMap;
 
-use re_ui::ReUi;
+use re_ui::{Icon, ReUi};
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewHighlights,
     SpaceViewId, SpaceViewState, ViewerContext,
@@ -463,10 +464,10 @@ fn space_view_ui(
 }
 
 struct TabWidget {
-    texture_id: egui::TextureId,
     galley: egui::widget_text::WidgetTextGalley,
     rect: egui::Rect,
     galley_rect: egui::Rect,
+    icon: &'static Icon,
     icon_size: egui::Vec2,
     icon_rect: egui::Rect,
     bg_color: egui::Color32,
@@ -494,14 +495,11 @@ impl TabWidget {
         let space_view_id = space_view.id;
 
         // tab icon
+        let icon_size = ReUi::small_icon_size();
+        let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
         let icon = space_view
             .class(tab_viewer.ctx.space_view_class_registry)
             .icon();
-        let image = tab_viewer.ctx.re_ui.icon_image(icon);
-        let texture_id = image.texture_id(ui.ctx());
-
-        let icon_size = ReUi::small_icon_size();
-        let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
 
         // tab title
         let text = tab_viewer.tab_title_for_tile(tiles, tile_id);
@@ -537,10 +535,10 @@ impl TabWidget {
             .gamma_multiply(gamma);
 
         Some(Self {
-            texture_id,
             galley,
             rect,
             galley_rect,
+            icon,
             icon_size,
             icon_rect,
             bg_color,
@@ -552,9 +550,13 @@ impl TabWidget {
         ui.painter()
             .rect(self.rect, 0.0, self.bg_color, egui::Stroke::NONE);
 
-        let icon_image =
-            egui::widgets::Image::new(self.texture_id, self.icon_size).tint(self.text_color);
-        icon_image.paint_at(ui, self.icon_rect);
+        let icon_image = self
+            .icon
+            .as_image_with_size(self.icon_size)
+            .tint(self.text_color);
+        if let Ok(TexturePoll::Ready { texture }) = icon_image.load(ui) {
+            icon_image.paint_at(ui, self.icon_rect, &texture);
+        }
 
         ui.painter().galley_with_color(
             egui::Align2::CENTER_CENTER

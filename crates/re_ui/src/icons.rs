@@ -1,3 +1,5 @@
+use egui::{Image, ImageSource, Vec2};
+
 #[derive(Clone, Copy, Debug)]
 pub struct Icon {
     /// Human readable unique id
@@ -9,6 +11,16 @@ pub struct Icon {
 impl Icon {
     pub const fn new(id: &'static str, png_bytes: &'static [u8]) -> Self {
         Self { id, png_bytes }
+    }
+
+    pub fn as_image(&self) -> Image<'static> {
+        Image::new(ImageSource::Bytes(self.id.into(), self.png_bytes.into()))
+    }
+
+    pub fn as_image_with_size(&self, size: Vec2) -> Image<'static> {
+        self.as_image()
+            .fit_to_exact_size(size)
+            .maintain_aspect_ratio(false)
     }
 }
 

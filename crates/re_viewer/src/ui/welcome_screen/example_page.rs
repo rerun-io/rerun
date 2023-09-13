@@ -263,7 +263,7 @@ fn example_thumbnail(
         egui::SizeHint::from(size),
     ) {
         Ok(TexturePoll::Ready { texture }) => {
-            ui.add(egui::Image::new(texture.id, size).rounding(rounding))
+            ui.add(egui::Image::new((texture.id, size)).rounding(rounding))
         }
         Ok(TexturePoll::Pending { .. }) => {
             ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.cursor().min, size), |ui| {

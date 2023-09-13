@@ -272,7 +272,7 @@ impl UICommand {
         response
     }
 
-    pub fn menu_button(self, egui_ctx: &egui::Context) -> egui::Button {
+    pub fn menu_button(self, egui_ctx: &egui::Context) -> egui::Button<'static> {
         let mut button = egui::Button::new(self.text());
         if let Some(shortcut) = self.kb_shortcut() {
             button = button.shortcut_text(egui_ctx.format_shortcut(&shortcut));

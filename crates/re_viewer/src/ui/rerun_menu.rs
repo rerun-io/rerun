@@ -18,96 +18,97 @@ impl App {
         let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
         let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
 
-        let icon_image = self.re_ui().icon_image(&re_ui::icons::RERUN_MENU);
-        let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
-        let texture_id = icon_image.texture_id(ui.ctx());
+        ui.menu_image_button(
+            re_ui::icons::RERUN_MENU
+                .as_image()
+                .max_height(desired_icon_height),
+            |ui| {
+                ui.set_min_width(220.0);
+                let spacing = 12.0;
 
-        ui.menu_image_button(texture_id, image_size, |ui| {
-            ui.set_min_width(220.0);
-            let spacing = 12.0;
-
-            ui.menu_button("About", |ui| self.about_rerun_ui(ui));
-
-            ui.add_space(spacing);
-
-            UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
-
-            ui.add_space(spacing);
-
-            UICommand::Open.menu_button_ui(ui, &self.command_sender);
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                self.save_buttons_ui(ui, _store_context);
-
-                UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+                ui.menu_button("About", |ui| self.about_rerun_ui(ui));
 
                 ui.add_space(spacing);
 
-                // On the web the browser controls the zoom
-                let zoom_factor = self.app_options().zoom_factor;
-                ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
-                    .on_hover_text(
-                        "The UI zoom level on top of the operating system's default value",
-                    );
-                UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
-                UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
-                ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
-                    UICommand::ZoomReset.menu_button_ui(ui, &self.command_sender)
-                });
-
-                UICommand::ToggleFullscreen.menu_button_ui(ui, &self.command_sender);
+                UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
                 ui.add_space(spacing);
-            }
 
-            {
-                UICommand::ResetViewer.menu_button_ui(ui, &self.command_sender);
+                UICommand::Open.menu_button_ui(ui, &self.command_sender);
 
                 #[cfg(not(target_arch = "wasm32"))]
-                UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
+                {
+                    self.save_buttons_ui(ui, _store_context);
 
-                UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
+                    UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
 
-                #[cfg(debug_assertions)]
-                UICommand::ToggleStylePanel.menu_button_ui(ui, &self.command_sender);
-            }
+                    ui.add_space(spacing);
 
-            ui.add_space(spacing);
+                    // On the web the browser controls the zoom
+                    let zoom_factor = self.app_options().zoom_factor;
+                    ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
+                        .on_hover_text(
+                            "The UI zoom level on top of the operating system's default value",
+                        );
+                    UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
+                    UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
+                    ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
+                        UICommand::ZoomReset.menu_button_ui(ui, &self.command_sender)
+                    });
 
-            ui.menu_button("Options", |ui| {
-                self.options_menu_ui(ui, frame);
-            });
+                    UICommand::ToggleFullscreen.menu_button_ui(ui, &self.command_sender);
 
-            ui.add_space(spacing);
+                    ui.add_space(spacing);
+                }
 
-            // dont use `hyperlink_to` for styling reasons
-            const HELP_URL: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
+                {
+                    UICommand::ResetViewer.menu_button_ui(ui, &self.command_sender);
 
-            let texture_id = self
-                .re_ui()
-                .icon_image(&re_ui::icons::EXTERNAL_LINK)
-                .texture_id(ui.ctx());
-            if egui::Button::image_and_text(texture_id, ReUi::small_icon_size(), "Help")
+                    #[cfg(not(target_arch = "wasm32"))]
+                    UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
+
+                    UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
+
+                    #[cfg(debug_assertions)]
+                    UICommand::ToggleStylePanel.menu_button_ui(ui, &self.command_sender);
+                }
+
+                ui.add_space(spacing);
+
+                ui.menu_button("Options", |ui| {
+                    self.options_menu_ui(ui, frame);
+                });
+
+                ui.add_space(spacing);
+
+                // dont use `hyperlink_to` for styling reasons
+                const HELP_URL: &str =
+                    "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
+
+                if egui::Button::image_and_text(
+                    re_ui::icons::EXTERNAL_LINK.as_image_with_size(ReUi::small_icon_size()),
+                    "Help",
+                )
                 .ui(ui)
                 .on_hover_cursor(egui::CursorIcon::PointingHand)
                 .on_hover_text(HELP_URL)
                 .clicked()
-            {
-                ui.ctx().output_mut(|o| {
-                    o.open_url = Some(egui::output::OpenUrl {
-                        url: HELP_URL.to_owned(),
-                        new_tab: true,
+                {
+                    ui.ctx().output_mut(|o| {
+                        o.open_url = Some(egui::output::OpenUrl {
+                            url: HELP_URL.to_owned(),
+                            new_tab: true,
+                        });
                     });
-                });
-            }
+                }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                ui.add_space(spacing);
-                UICommand::Quit.menu_button_ui(ui, &self.command_sender);
-            }
-        });
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    ui.add_space(spacing);
+                    UICommand::Quit.menu_button_ui(ui, &self.command_sender);
+                }
+            },
+        );
     }
 
     fn about_rerun_ui(&self, ui: &mut egui::Ui) {

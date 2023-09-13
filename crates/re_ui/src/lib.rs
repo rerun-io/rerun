@@ -7,16 +7,16 @@ pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
 pub mod list_item;
-mod static_image_cache;
 pub mod toasts;
 mod toggle_switch;
 
 pub use command::{UICommand, UICommandSender};
 pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
+use egui::epaint::util::FloatOrd;
+use egui::load::TexturePoll;
 pub use icons::Icon;
 pub use layout_job_builder::LayoutJobBuilder;
-pub use static_image_cache::StaticImageCache;
 pub use toggle_switch::toggle_switch;
 
 // ---------------------------------------------------------------------------
@@ -47,10 +47,6 @@ pub struct TopBarStyle {
 
 // ----------------------------------------------------------------------------
 
-use std::sync::Arc;
-
-use parking_lot::Mutex;
-
 use crate::list_item::ListItem;
 use egui::emath::{Rangef, Rot2};
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
@@ -61,8 +57,6 @@ pub struct ReUi {
 
     /// Colors, styles etc loaded from a design_tokens.json
     pub design_tokens: DesignTokens,
-
-    pub static_image_cache: Arc<Mutex<StaticImageCache>>,
 }
 
 impl ReUi {
@@ -70,24 +64,26 @@ impl ReUi {
     pub fn load_and_apply(egui_ctx: &egui::Context) -> Self {
         egui_extras::loaders::install(egui_ctx);
 
+        egui_ctx.include_bytes(
+            "logo_dark_mode",
+            include_bytes!("../data/logo_dark_mode.png"),
+        );
+        egui_ctx.include_bytes(
+            "logo_light_mode",
+            include_bytes!("../data/logo_light_mode.png"),
+        );
+
         Self {
             egui_ctx: egui_ctx.clone(),
             design_tokens: DesignTokens::load_and_apply(egui_ctx),
-            static_image_cache: Arc::new(Mutex::new(StaticImageCache::default())),
         }
     }
 
-    pub fn rerun_logo(&self) -> Arc<egui_extras::RetainedImage> {
+    pub fn rerun_logo(&self) -> &'static str {
         if self.egui_ctx.style().visuals.dark_mode {
-            self.static_image_cache.lock().get(
-                "logo_dark_mode",
-                include_bytes!("../data/logo_dark_mode.png"),
-            )
+            "logo_dark_mode"
         } else {
-            self.static_image_cache.lock().get(
-                "logo_light_mode",
-                include_bytes!("../data/logo_light_mode.png"),
-            )
+            "logo_light_mode"
         }
     }
 
@@ -269,16 +265,19 @@ impl ReUi {
 
     /// Paint a watermark
     pub fn paint_watermark(&self) {
-        let logo = self.rerun_logo();
-        let screen_rect = self.egui_ctx.screen_rect();
-        let size = logo.size_vec2();
-        let rect = Align2::RIGHT_BOTTOM
-            .align_size_within_rect(size, screen_rect)
-            .translate(-Vec2::splat(16.0));
-        let mut mesh = Mesh::with_texture(logo.texture_id(&self.egui_ctx));
-        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-        mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
-        self.egui_ctx.debug_painter().add(Shape::mesh(mesh));
+        if let Ok(egui::load::TexturePoll::Ready { texture }) = self.egui_ctx.try_load_texture(
+            self.rerun_logo(),
+            egui::TextureOptions::default(),
+            egui::SizeHint::Scale(1.0.ord()),
+        ) {
+            let rect = Align2::RIGHT_BOTTOM
+                .align_size_within_rect(texture.size, self.egui_ctx.screen_rect())
+                .translate(-Vec2::splat(16.0));
+            let mut mesh = Mesh::with_texture(texture.id);
+            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+            mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
+            self.egui_ctx.debug_painter().add(Shape::mesh(mesh));
+        }
     }
 
     pub fn top_bar_style(
@@ -332,19 +331,16 @@ impl ReUi {
         TopBarStyle { height, indent }
     }
 
-    pub fn icon_image(&self, icon: &Icon) -> Arc<egui_extras::RetainedImage> {
-        self.static_image_cache.lock().get(icon.id, icon.png_bytes)
-    }
-
+    #[allow(clippy::unused_self)]
     pub fn small_icon_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
-        let size_points = Self::small_icon_size();
-        let image = self.icon_image(icon);
-        let texture_id = image.texture_id(ui.ctx());
         // TODO(emilk): change color and size on hover
-        let tint = ui.visuals().widgets.inactive.fg_stroke.color;
-        ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint))
+        ui.add(
+            egui::ImageButton::new(icon.as_image_with_size(Self::small_icon_size()))
+                .tint(ui.visuals().widgets.inactive.fg_stroke.color),
+        )
     }
 
+    #[allow(clippy::unused_self)]
     pub fn medium_icon_toggle_button(
         &self,
         ui: &mut egui::Ui,
@@ -353,14 +349,13 @@ impl ReUi {
     ) -> egui::Response {
         let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from design tokens
 
-        let image = self.icon_image(icon);
-        let texture_id = image.texture_id(ui.ctx());
         let tint = if *selected {
             ui.visuals().widgets.inactive.fg_stroke.color
         } else {
             egui::Color32::from_gray(100) // TODO(emilk): get from design tokens
         };
-        let mut response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
+        let mut response =
+            ui.add(egui::ImageButton::new(icon.as_image_with_size(size_points)).tint(tint));
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
@@ -368,6 +363,7 @@ impl ReUi {
         response
     }
 
+    #[allow(clippy::unused_self)]
     fn large_button_impl(
         &self,
         ui: &mut egui::Ui,
@@ -387,15 +383,16 @@ impl ReUi {
             visuals.widgets.open.expansion = 0.0;
         }
 
-        let image = self.icon_image(icon);
-        let texture_id = image.texture_id(ui.ctx());
-
         let button_size = Vec2::splat(28.0);
         let icon_size = Vec2::splat(12.0); // centered inside the button
         let rounding = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
         response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
+
+        let Ok(TexturePoll::Ready { texture }) = icon.as_image_with_size(icon_size).load(ui) else {
+            return response;
+        };
 
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact(&response);
@@ -408,7 +405,7 @@ impl ReUi {
             ui.painter()
                 .rect_filled(rect.expand(visuals.expansion), rounding, bg_fill);
 
-            let mut mesh = egui::Mesh::with_texture(texture_id);
+            let mut mesh = egui::Mesh::with_texture(texture.id);
             let uv = egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
             mesh.add_rect_with_uv(image_rect, uv, tint);
             ui.painter().add(egui::Shape::mesh(mesh));
@@ -758,6 +755,7 @@ impl ReUi {
         ListItem::new(self, text)
     }
 
+    #[allow(clippy::unused_self)]
     pub fn selectable_label_with_icon(
         &self,
         ui: &mut egui::Ui,
@@ -801,23 +799,25 @@ impl ReUi {
             }
 
             // Draw icon
-            let image = self.icon_image(icon);
-            let texture_id = image.texture_id(ui.ctx());
-            // TODO(emilk/andreas): change color and size on hover
-            let tint = ui.visuals().widgets.inactive.fg_stroke.color;
+            let image_size = Self::small_icon_size();
             let image_rect = egui::Rect::from_min_size(
                 ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x.ceil(),
                     (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
                 )),
-                Self::small_icon_size(),
+                image_size,
             );
-            ui.painter().image(
-                texture_id,
-                image_rect,
-                egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                tint,
-            );
+            if let Ok(TexturePoll::Ready { texture }) = icon.as_image_with_size(image_size).load(ui)
+            {
+                // TODO(emilk/andreas): change color and size on hover
+                let tint = ui.visuals().widgets.inactive.fg_stroke.color;
+                ui.painter().image(
+                    texture.id,
+                    image_rect,
+                    egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                    tint,
+                );
+            }
 
             // Draw text next to the icon.
             let mut text_rect = rect;
