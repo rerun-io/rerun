@@ -677,12 +677,17 @@ fn code_for_struct(
             };
 
             let converter = &field_converters[&field.fqname];
+            let type_ignore = if converter.contains("Ext.") {
+                "# type: ignore[misc]".to_owned()
+            } else {
+                String::new()
+            };
             // Note: mypy gets confused using staticmethods for field-converters
             let typ = if !*is_nullable {
-                format!("{typ} = field({metadata}{converter}) # type: ignore[misc]")
+                format!("{typ} = field({metadata}{converter}) {type_ignore}")
             } else {
                 format!(
-                    "{typ} | None = field({metadata}default=None{}{converter}) # type: ignore[misc]",
+                    "{typ} | None = field({metadata}default=None{}{converter}) {type_ignore}",
                     if converter.is_empty() { "" } else { ", " },
                 )
             };
@@ -862,9 +867,15 @@ fn code_for_union(
         String::new()
     };
 
+    let type_ignore = if converter.contains("Ext.") {
+        "# type: ignore[misc]".to_owned()
+    } else {
+        String::new()
+    };
+
     // Note: mypy gets confused using staticmethods for field-converters
     code.push_text(
-        format!("inner: {inner_type} = field({converter}) # type: ignore[misc]"),
+        format!("inner: {inner_type} = field({converter}) {type_ignore}"),
         1,
         4,
     );
