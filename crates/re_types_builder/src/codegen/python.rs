@@ -584,10 +584,10 @@ fn code_for_struct(
         ));
     }
 
-    let superclass_decl = if !superclasses.is_empty() {
-        format!("({})", superclasses.join(","))
-    } else {
+    let superclass_decl = if superclasses.is_empty() {
         String::new()
+    } else {
+        format!("({})", superclasses.join(","))
     };
 
     let define_args = if *kind == ObjectKind::Archetype {
@@ -599,16 +599,16 @@ fn code_for_struct(
         init_define_arg
     };
 
-    let define_args = if !define_args.is_empty() {
-        format!("({define_args})")
-    } else {
+    let define_args = if define_args.is_empty() {
         define_args
+    } else {
+        format!("({define_args})")
     };
 
-    let define_decorator = if !obj.is_delegating_component() {
-        format!("@define{define_args}")
-    } else {
+    let define_decorator = if obj.is_delegating_component() {
         String::new()
+    } else {
+        format!("@define{define_args}")
     };
 
     code.push_unindented_text(
