@@ -16,13 +16,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import keypoint_id__native_to_pa_array_override  # noqa: F401
+from .keypoint_id_ext import KeypointIdExt
 
 __all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
 
 
 @define
-class KeypointId:
+class KeypointId(KeypointIdExt):
     """
     A 16-bit ID representing a type of semantic keypoint within a class.
 
@@ -74,7 +74,7 @@ class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return keypoint_id__native_to_pa_array_override(data, data_type)
+        return KeypointIdExt.native_to_pa_array_override(data, data_type)
 
 
 KeypointIdType._ARRAY_TYPE = KeypointIdArray

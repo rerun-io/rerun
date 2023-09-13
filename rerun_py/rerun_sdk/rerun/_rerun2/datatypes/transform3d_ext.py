@@ -6,7 +6,7 @@ import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from .. import (
+    from . import (
         Mat3x3,
         Rotation3D,
         RotationAxisAngle,
@@ -16,6 +16,36 @@ if TYPE_CHECKING:
         TranslationRotationScale3D,
         Vec3D,
     )
+
+
+class Transform3DExt:
+    @staticmethod
+    def native_to_pa_array_override(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
+        from . import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
+
+        if isinstance(data, Transform3D):
+            data = data.inner
+
+        if isinstance(data, TranslationAndMat3x3):
+            discriminant = "TranslationAndMat3x3"
+            repr_type = _union_discriminant_type(data_type, discriminant)
+            transform_repr = _build_struct_array_from_translation_mat3x3(data, cast(pa.StructType, repr_type))
+        elif isinstance(data, TranslationRotationScale3D):
+            discriminant = "TranslationRotationScale"
+            repr_type = _union_discriminant_type(data_type, discriminant)
+            transform_repr = _build_struct_array_from_translation_rotation_scale(data, cast(pa.StructType, repr_type))
+        else:
+            raise ValueError(
+                f"unknown transform 3d value: {data} (expected `Transform3D`, `TranslationAndMat3x3`, or "
+                "`TranslationRotationScale`"
+            )
+
+        storage = _build_dense_union(data_type, discriminant, transform_repr)
+
+        # TODO(clement) enable extension type wrapper
+        # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
+        return storage
+
 
 # TODO(#2623): lots of boilerplate here that could be auto-generated
 # To address that:
@@ -83,7 +113,7 @@ def _build_struct_array_from_axis_angle_rotation(
 
 
 def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionType) -> pa.Array:
-    from .. import Vec3D
+    from . import Vec3D
 
     if scale is None:
         scale_discriminant = "_null_markers"
@@ -105,7 +135,7 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
 
 
 def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.DenseUnionType) -> pa.Array:
-    from .. import Quaternion, RotationAxisAngle
+    from . import Quaternion, RotationAxisAngle
 
     if rotation is None:
         rotation_discriminant = "_null_markers"
@@ -136,7 +166,7 @@ def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.Dens
 
 
 def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
-    from .. import Mat3x3Type
+    from . import Mat3x3Type
 
     if mat is None:
         return pa.nulls(1, Mat3x3Type().storage_type)
@@ -145,7 +175,7 @@ def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
 
 
 def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
-    from .. import Vec3DType
+    from . import Vec3DType
 
     if translation is None:
         return pa.nulls(1, Vec3DType().storage_type)
@@ -185,30 +215,3 @@ def _build_struct_array_from_translation_rotation_scale(
         ],
         fields=list(type_),
     )
-
-
-def transform3d__native_to_pa_array_override(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-    from .. import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
-
-    if isinstance(data, Transform3D):
-        data = data.inner
-
-    if isinstance(data, TranslationAndMat3x3):
-        discriminant = "TranslationAndMat3x3"
-        repr_type = _union_discriminant_type(data_type, discriminant)
-        transform_repr = _build_struct_array_from_translation_mat3x3(data, cast(pa.StructType, repr_type))
-    elif isinstance(data, TranslationRotationScale3D):
-        discriminant = "TranslationRotationScale"
-        repr_type = _union_discriminant_type(data_type, discriminant)
-        transform_repr = _build_struct_array_from_translation_rotation_scale(data, cast(pa.StructType, repr_type))
-    else:
-        raise ValueError(
-            f"unknown transform 3d value: {data} (expected `Transform3D`, `TranslationAndMat3x3`, or "
-            "`TranslationRotationScale`"
-        )
-
-    storage = _build_dense_union(data_type, discriminant, transform_repr)
-
-    # TODO(clement) enable extension type wrapper
-    # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
-    return storage  # type: ignore[no-any-return]

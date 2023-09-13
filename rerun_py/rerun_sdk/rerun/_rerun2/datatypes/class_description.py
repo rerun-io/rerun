@@ -10,19 +10,12 @@ from typing import TYPE_CHECKING, Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-# noqa: F401
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import (
-    class_description__info__field_converter_override,
-    class_description__init_override,
-    class_description__keypoint_annotations__field_converter_override,
-    class_description__keypoint_connections__field_converter_override,
-    class_description__native_to_pa_array_override,
-)
+from .class_description_ext import ClassDescriptionExt
 
 __all__ = [
     "ClassDescription",
@@ -34,7 +27,7 @@ __all__ = [
 
 
 @define(init=False)
-class ClassDescription:
+class ClassDescription(ClassDescriptionExt):
     """
     The description of a semantic Class.
 
@@ -52,24 +45,19 @@ class ClassDescription:
     colored as described by the class's `AnnotationInfo`.
     """
 
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        class_description__init_override(self, *args, **kwargs)
+    # __init__ can be found in class_description_ext.py
 
-    info: datatypes.AnnotationInfo = field(converter=class_description__info__field_converter_override)
+    info: datatypes.AnnotationInfo = field(converter=ClassDescriptionExt.info__field_converter_override)  # type: ignore[misc]
     """
     The `AnnotationInfo` for the class.
     """
 
-    keypoint_annotations: list[datatypes.AnnotationInfo] = field(
-        converter=class_description__keypoint_annotations__field_converter_override
-    )
+    keypoint_annotations: list[datatypes.AnnotationInfo] = field(converter=ClassDescriptionExt.keypoint_annotations__field_converter_override)  # type: ignore[misc]
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
-    keypoint_connections: list[datatypes.KeypointPair] = field(
-        converter=class_description__keypoint_connections__field_converter_override
-    )
+    keypoint_connections: list[datatypes.KeypointPair] = field(converter=ClassDescriptionExt.keypoint_connections__field_converter_override)  # type: ignore[misc]
     """
     The connections between keypoints.
     """
@@ -156,7 +144,7 @@ class ClassDescriptionArray(BaseExtensionArray[ClassDescriptionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
-        return class_description__native_to_pa_array_override(data, data_type)
+        return ClassDescriptionExt.native_to_pa_array_override(data, data_type)
 
 
 ClassDescriptionType._ARRAY_TYPE = ClassDescriptionArray

@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import annotation_info__native_to_pa_array_override  # noqa: F401
+from .annotation_info_ext import AnnotationInfoExt
 
 __all__ = [
     "AnnotationInfo",
@@ -45,7 +45,7 @@ def _annotation_info__color__special_field_converter_override(x: datatypes.Color
 
 
 @define
-class AnnotationInfo:
+class AnnotationInfo(AnnotationInfoExt):
     """
     Annotation info annotating a class id or key-point id.
 
@@ -110,7 +110,7 @@ class AnnotationInfoArray(BaseExtensionArray[AnnotationInfoArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-        return annotation_info__native_to_pa_array_override(data, data_type)
+        return AnnotationInfoExt.native_to_pa_array_override(data, data_type)
 
 
 AnnotationInfoType._ARRAY_TYPE = AnnotationInfoArray

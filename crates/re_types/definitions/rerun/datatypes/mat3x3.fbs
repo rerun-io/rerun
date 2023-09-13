@@ -10,7 +10,7 @@ namespace rerun.datatypes;
 /// A 3x3 column-major Matrix.
 struct Mat3x3 (
   "attr.arrow.transparent",
-  "attr.python.aliases": "Sequence[float], Sequence[Sequence[float]]",
+  "attr.python.aliases": "Sequence[float], Sequence[Sequence[float]], npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   "attr.rust.tuple_struct",
   order: 500
