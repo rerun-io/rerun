@@ -775,9 +775,11 @@ fn quote_trait_impls_from_obj(
                             .unwrap_or(fqname)
                     })
                     .chain(extras)
-                    .collect::<Vec<_>>();
+                    .collect::<BTreeSet<_>>();
+
                 let num_components = components.len();
                 let quoted_components = quote!(#(#components.into(),)*);
+
                 (num_components, quoted_components)
             }
 
@@ -815,8 +817,16 @@ fn quote_trait_impls_from_obj(
                 objects,
                 [indicator_fqname],
             );
-            let (num_optional, optional) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, objects, []);
+            let (num_optional, optional) = compute_components(
+                obj,
+                ATTR_RERUN_COMPONENT_OPTIONAL,
+                objects,
+                // NOTE: Our internal query systems always need to query for instance keys, and
+                // they need to do so using a compile-time array, so make sure it's there at
+                // compile-time even for archetypes that don't use it.
+                // TODO(cmc): get rid of legacy names
+                ["rerun.instance_key".to_owned()],
+            );
 
             let num_all = num_required + num_recommended + num_optional;
 
