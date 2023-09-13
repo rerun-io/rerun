@@ -73,20 +73,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SegmentationImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.draw_order".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.draw_order".into(), "rerun.instance_key".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.SegmentationImageIndicator".into(),
             "rerun.draw_order".into(),
+            "rerun.instance_key".into(),
         ]
     });
 
 impl SegmentationImage {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`SegmentationImage`] [`crate::Archetype`]

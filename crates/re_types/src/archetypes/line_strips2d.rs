@@ -109,19 +109,19 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.components.LineStrips2DIndicator".into(),
+            "rerun.radius".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.label".into(),
-            "rerun.draw_order".into(),
             "rerun.class_id".into(),
+            "rerun.draw_order".into(),
             "rerun.instance_key".into(),
+            "rerun.label".into(),
         ]
     });
 
@@ -129,13 +129,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.linestrip2d".into(),
-            "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.components.LineStrips2DIndicator".into(),
-            "rerun.label".into(),
-            "rerun.draw_order".into(),
+            "rerun.radius".into(),
             "rerun.class_id".into(),
+            "rerun.draw_order".into(),
             "rerun.instance_key".into(),
+            "rerun.label".into(),
         ]
     });
 
