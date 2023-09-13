@@ -12,14 +12,6 @@ from PIL import Image
 
 from rerun.log.error_utils import _send_warning
 
-if TYPE_CHECKING:
-    from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike, TensorDimension, TensorDimensionLike
-
-
-################################################################################
-# Torch-like array converters
-################################################################################
-
 
 class TorchTensorLike(Protocol):
     """Describes what is need from a Torch Tensor to be loggable to Rerun."""
@@ -28,8 +20,11 @@ class TorchTensorLike(Protocol):
         ...
 
 
-Tensor = Union[TensorDataLike, TorchTensorLike]
-"""Type helper for a tensor-like object that can be logged to Rerun."""
+if TYPE_CHECKING:
+    from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike, TensorDimension, TensorDimensionLike
+
+    Tensor = Union[TensorDataLike, TorchTensorLike]
+    """Type helper for a tensor-like object that can be logged to Rerun."""
 
 
 def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
