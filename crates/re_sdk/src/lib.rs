@@ -74,9 +74,9 @@ pub mod components {
         ScalarPlotProps, ViewCoordinates,
     };
     pub use re_types::components::{
-        AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, HalfSizes2D, InstanceKey,
-        KeypointId, LineStrip2D, LineStrip3D, Origin3D, Position2D, Position3D, Radius, TensorData,
-        Text, Transform3D, Vector3D,
+        AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, HalfSizes2D, HalfSizes3D,
+        InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Origin3D, Position2D, Position3D,
+        Radius, Rotation3D, TensorData, Text, Transform3D, Vector3D,
     };
 }
 

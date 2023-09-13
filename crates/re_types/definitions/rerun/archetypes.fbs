@@ -1,6 +1,7 @@
 include "./archetypes/annotation_context.fbs";
 include "./archetypes/arrows3d.fbs";
 include "./archetypes/boxes2d.fbs";
+include "./archetypes/boxes3d.fbs";
 include "./archetypes/clear.fbs";
 include "./archetypes/depth_image.fbs";
 include "./archetypes/disconnected_space.fbs";

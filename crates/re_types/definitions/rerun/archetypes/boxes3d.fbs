@@ -9,30 +9,45 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// \py Example
 /// \py -------
 /// \py
-/// \py Simple 2D boxes:
+/// \py Simple 3D boxes:
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/box2d_simple.py
+/// \py \include:../../../../../docs/code-examples/box3d_simple.py
+/// \py ```
+/// \py
+/// \py Batch of 3D boxes:
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/box3d_batch.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
-/// \rs Simple 2D boxes:
+/// \rs Simple 3D boxes:
 /// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/box2d_simple.rs
+/// \rs \include:../../../../../docs/code-examples/box3d_simple.rs
+/// \rs ```
+/// \rs
+/// \rs Batch of 3D boxes:
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/box3d_batch.rs
 /// \rs ```
 ///
 /// \cpp ## Example
 /// \cpp
-/// \cpp Simple 2D boxes:
+/// \cpp Simple 3D boxes:
 /// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/box2d_simple.cpp
+/// \cpp \include:../../../../../docs/code-examples/box3d_simple.cpp
 /// \cpp ```
-table Boxes2D (
+/// \cpp
+/// \cpp Batch of 3D boxes:
+/// \cpp ```
+/// \cpp \include:../../../../../docs/code-examples/box3d_batch.cpp
+/// \cpp ```
+table Boxes3D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",
@@ -41,16 +56,15 @@ table Boxes2D (
   // --- Required ---
 
   /// All half-extents that make up the batch of boxes.
-  half_sizes: [rerun.components.HalfSizes2D] ("attr.rerun.component_required", order: 1000);
+  half_sizes: [rerun.components.HalfSizes3D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 
   /// Optional center positions of the boxes.
-  centers: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  centers: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
-  // TODO(#3247): Add 2D rotation.
   // Optional rotations of the boxes.
-  //rotations: [rerun.components.Rotation2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional colors for the boxes.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
@@ -62,12 +76,6 @@ table Boxes2D (
 
   /// Optional text labels for the boxes.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
-
-  /// An optional floating point value that specifies the 2D drawing order.
-  /// Objects with higher values are drawn on top of those with lower values.
-  ///
-  /// The default for 2D boxes is 10.0.
-  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional `ClassId`s for the boxes.
   ///
