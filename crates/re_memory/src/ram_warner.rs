@@ -2,10 +2,15 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub fn total_ram_in_bytes() -> u64 {
     re_tracing::profile_function!();
-    use sysinfo::SystemExt as _;
 
-    let mut sys = sysinfo::System::new_all();
-    sys.refresh_all();
+    use sysinfo::{RefreshKind, SystemExt as _};
+
+    let mut sys = sysinfo::System::new_with_specifics(RefreshKind::new().with_memory());
+
+    {
+        re_tracing::profile_scope!("refresh_memory");
+        sys.refresh_memory();
+    }
 
     sys.total_memory()
 }
