@@ -1,5 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_query::query_archetype;
+use re_query::{query_archetype, QueryError};
 use re_types::Archetype as _;
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -43,16 +43,26 @@ impl ViewPartSystem for TextDocumentSystem {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         for (ent_path, _props) in query.iter_entities_for_system(Self::name()) {
-            let arch_view = query_archetype::<re_types::archetypes::TextDocument>(
+            // TOOD(jleibs): this match can go away once we resolve:
+            // https://github.com/rerun-io/rerun/issues/3320
+            match query_archetype::<re_types::archetypes::TextDocument>(
                 store,
                 &timeline_query,
                 ent_path,
-            )?;
-
-            for text_entry in arch_view.iter_required_component::<re_types::components::Text>()? {
-                let re_types::components::Text(text) = text_entry;
-                self.text_entries.push(TextDocumentEntry { body: text });
-            }
+            ) {
+                Ok(arch_view) => {
+                    for text_entry in
+                        arch_view.iter_required_component::<re_types::components::Text>()?
+                    {
+                        let re_types::components::Text(text) = text_entry;
+                        self.text_entries.push(TextDocumentEntry { body: text });
+                    }
+                }
+                Err(QueryError::PrimaryNotFound(_)) => {}
+                Err(err) => {
+                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
+                }
+            };
         }
 
         Ok(Vec::new())
