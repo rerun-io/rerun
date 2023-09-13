@@ -26,8 +26,8 @@
 //! - `rerun_py/rerun/rerun2/` (at the root of this workspace) contains the code generated for Python.
 //!
 //! While most of the code in this crate is auto-generated, some manual extensions are littered
-//! throughout: look for files ending in `_ext.rs` or `_ext.py` (also see the "Extensions" section
-//! of this document).
+//! throughout: look for files ending in `_ext.rs`, `_ext.py`, or `_ext.cpp` (also see the "Extensions"
+//! section of this document).
 //!
 //!
 //! ### Build cache
