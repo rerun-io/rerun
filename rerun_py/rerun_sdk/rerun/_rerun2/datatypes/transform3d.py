@@ -15,13 +15,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import transform3d__native_to_pa_array_override  # noqa: F401
+from .transform3d_ext import Transform3DExt
 
 __all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform3DLike", "Transform3DType"]
 
 
 @define
-class Transform3D:
+class Transform3D(Transform3DExt):
     """Representation of a 3D affine transform."""
 
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
@@ -194,7 +194,7 @@ class Transform3DArray(BaseExtensionArray[Transform3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return transform3d__native_to_pa_array_override(data, data_type)
+        return Transform3DExt.native_to_pa_array_override(data, data_type)
 
 
 Transform3DType._ARRAY_TYPE = Transform3DArray

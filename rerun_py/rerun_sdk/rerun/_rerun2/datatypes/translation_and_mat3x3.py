@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import translation_and_mat3x3__init_override  # noqa: F401
+from .translation_and_mat3x3_ext import TranslationAndMat3x3Ext
 
 __all__ = [
     "TranslationAndMat3x3",
@@ -49,15 +49,14 @@ def _translation_and_mat3x3__matrix__special_field_converter_override(
 
 
 @define(init=False)
-class TranslationAndMat3x3:
+class TranslationAndMat3x3(TranslationAndMat3x3Ext):
     """
     Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 
     First applies the matrix, then the translation.
     """
 
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        translation_and_mat3x3__init_override(self, *args, **kwargs)
+    # __init__ can be found in translation_and_mat3x3_ext.py
 
     from_parent: bool = field(converter=bool)
     """
