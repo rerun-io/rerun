@@ -16,13 +16,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import depth_meter__native_to_pa_array_override  # noqa: F401
+from .depth_meter_ext import DepthMeterExt
 
 __all__ = ["DepthMeter", "DepthMeterArray", "DepthMeterArrayLike", "DepthMeterLike", "DepthMeterType"]
 
 
 @define
-class DepthMeter:
+class DepthMeter(DepthMeterExt):
     """A component indicating how long a meter is, expressed in native units."""
 
     # You can define your own __init__ function as a member of DepthMeterExt in depth_meter_ext.py
@@ -59,7 +59,7 @@ class DepthMeterArray(BaseExtensionArray[DepthMeterArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DepthMeterArrayLike, data_type: pa.DataType) -> pa.Array:
-        return depth_meter__native_to_pa_array_override(data, data_type)
+        return DepthMeterExt.native_to_pa_array_override(data, data_type)
 
 
 DepthMeterType._ARRAY_TYPE = DepthMeterArray
