@@ -89,9 +89,9 @@ fn data_table_sizes_basics() {
     //  fixedsizelist
     let mut cell = DataCell::from_native(
         [
-            re_types::components::Point2D::from([42.0, 666.0]),
-            re_types::components::Point2D::from([42.0, 666.0]),
-            re_types::components::Point2D::from([42.0, 666.0]),
+            re_types::components::Position2D::from([42.0, 666.0]),
+            re_types::components::Position2D::from([42.0, 666.0]),
+            re_types::components::Position2D::from([42.0, 666.0]),
         ]
         .as_slice(),
     );
@@ -103,7 +103,7 @@ fn data_table_sizes_basics() {
     );
     expect(
         DataCell::from_arrow(
-            re_types::components::Point2D::name(),
+            re_types::components::Position2D::name(),
             cell.to_arrow().sliced(1, 1),
         ),
         10_000, // num_rows
@@ -139,7 +139,7 @@ fn data_table_sizes_basics() {
     );
     expect(
         DataCell::from_arrow(
-            re_types::components::Point2D::name(),
+            re_types::components::Position2D::name(),
             cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows

@@ -8,10 +8,10 @@ use std::sync::Arc;
 use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
-use re_components::datagen::{build_some_instances, build_some_point2d};
+use re_components::datagen::{build_some_instances, build_some_positions2d};
 use re_log_types::{DataCell, SizeBytes as _};
 use re_types::{
-    components::{InstanceKey, Point2D},
+    components::{InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
     Component,
 };
@@ -47,7 +47,7 @@ enum ArrayKind {
     /// E.g. an array of `InstanceKey`.
     Primitive,
 
-    /// E.g. an array of `Point2D`.
+    /// E.g. an array of `Position2D`.
     Struct,
 
     /// An array of `LargeStruct`.
@@ -84,7 +84,7 @@ fn erased_clone(c: &mut Criterion) {
                 bench_native(&mut group, data.as_slice());
             }
             ArrayKind::Struct => {
-                let data = build_some_point2d(NUM_INSTANCES);
+                let data = build_some_positions2d(NUM_INSTANCES);
                 bench_arrow(&mut group, data.as_slice());
                 bench_native(&mut group, data.as_slice());
             }
@@ -194,7 +194,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
                     .map(|_| DataCell::from_native(build_some_instances(NUM_INSTANCES).as_slice()))
                     .collect(),
                 ArrayKind::Struct => (0..NUM_ROWS)
-                    .map(|_| DataCell::from_native(build_some_point2d(NUM_INSTANCES).as_slice()))
+                    .map(|_| {
+                        DataCell::from_native(build_some_positions2d(NUM_INSTANCES).as_slice())
+                    })
                     .collect(),
                 ArrayKind::StructLarge => (0..NUM_ROWS)
                     .map(|_| {
@@ -297,9 +299,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
         }
 
         {
-            fn generate_points() -> Vec<Vec<Point2D>> {
+            fn generate_points() -> Vec<Vec<Position2D>> {
                 (0..NUM_ROWS)
-                    .map(|_| build_some_point2d(NUM_INSTANCES))
+                    .map(|_| build_some_positions2d(NUM_INSTANCES))
                     .collect()
             }
 

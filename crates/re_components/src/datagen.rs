@@ -12,13 +12,13 @@ pub fn build_some_colors(len: usize) -> Vec<re_types::components::Color> {
         .collect()
 }
 
-/// Create `len` dummy `Point2D`
-pub fn build_some_point2d(len: usize) -> Vec<crate::Point2D> {
+/// Create `len` dummy `Position2D`
+pub fn build_some_positions2d(len: usize) -> Vec<crate::Position2D> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
     (0..len)
-        .map(|_| crate::Point2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
+        .map(|_| crate::Position2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
         .collect()
 }
 
@@ -75,7 +75,7 @@ pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Ve
 #[cfg(not(target_arch = "wasm32"))]
 pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
     use re_log_types::{DataRow, DataTable, RowId, TableId, TimePoint};
-    use re_types::components::{Color, Point2D, Text};
+    use re_types::components::{Color, Position2D, Text};
 
     let table_id = TableId::random();
 
@@ -96,7 +96,7 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
 
     let row0 = {
         let num_instances = 2;
-        let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+        let points: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
         let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
         let labels: &[Text] = &[];
 

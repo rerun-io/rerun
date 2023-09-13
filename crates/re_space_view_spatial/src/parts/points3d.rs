@@ -2,7 +2,7 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Points3D,
-    components::{Point3D, Text},
+    components::{Position3D, Text},
     Archetype as _,
 };
 use re_viewer_context::{
@@ -49,7 +49,7 @@ impl Points3DPart {
         re_tracing::profile_function!();
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Point3D>()?,
+            arch_view.iter_required_component::<Position3D>()?,
             arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
@@ -82,12 +82,13 @@ impl Points3DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let (annotation_infos, keypoints) = process_annotations_and_keypoints::<Point3D, Points3D>(
-            query,
-            arch_view,
-            &ent_context.annotations,
-            |p| (*p).into(),
-        )?;
+        let (annotation_infos, keypoints) =
+            process_annotations_and_keypoints::<Position3D, Points3D>(
+                query,
+                arch_view,
+                &ent_context.annotations,
+                |p| (*p).into(),
+            )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let radii = process_radii(arch_view, ent_path)?;
@@ -128,7 +129,7 @@ impl Points3DPart {
                 || {
                     re_tracing::profile_scope!("positions");
                     arch_view
-                        .iter_required_component::<Point3D>()
+                        .iter_required_component::<Position3D>()
                         .map(|p| p.map(glam::Vec3::from).collect_vec())
                 },
                 || {

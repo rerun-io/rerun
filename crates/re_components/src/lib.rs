@@ -69,8 +69,8 @@ pub mod external {
 
 use re_types::components::{
     AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-    LineStrip2D, LineStrip3D, Origin3D, Point2D, Point3D, Radius, TensorData, Text, Transform3D,
-    Vector3D,
+    LineStrip2D, LineStrip3D, Origin3D, Position2D, Position3D, Radius, TensorData, Text,
+    Transform3D, Vector3D,
 };
 
 lazy_static! {
@@ -94,8 +94,8 @@ lazy_static! {
         LineStrip2D::arrow_field(),
         LineStrip3D::arrow_field(),
         Origin3D::arrow_field(),
-        Point2D::arrow_field(),
-        Point3D::arrow_field(),
+        Position2D::arrow_field(),
+        Position3D::arrow_field(),
         Radius::arrow_field(),
         TensorData::arrow_field(),
         Text::arrow_field(),

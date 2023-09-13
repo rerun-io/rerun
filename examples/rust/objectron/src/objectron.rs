@@ -97,17 +97,7 @@ pub struct AvDepthData {
 /// Nested message and enum types in `AVDepthData`.
 pub mod av_depth_data {
     /// Indicates the general accuracy of the depth_data_map.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Accuracy {
         UndefinedAccuracy = 0,
@@ -140,17 +130,7 @@ pub mod av_depth_data {
         }
     }
     /// Quality of the depth_data_map.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Quality {
         UndefinedQuality = 0,
@@ -200,9 +180,7 @@ pub struct ArLightEstimate {
     /// A vector indicating the orientation of the strongest directional light
     /// source, normalized in the world-coordinate space.
     #[prost(message, optional, tag = "4")]
-    pub primary_light_direction: ::core::option::Option<
-        ar_light_estimate::DirectionVector,
-    >,
+    pub primary_light_direction: ::core::option::Option<ar_light_estimate::DirectionVector>,
     /// The estimated intensity, in lumens, of the strongest directional light
     /// source in the scene.
     #[prost(float, optional, tag = "5")]
@@ -280,17 +258,7 @@ pub mod ar_camera {
     }
     /// The general quality of position tracking available when the camera captured
     /// a frame.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum TrackingState {
         UndefinedTrackingState = 0,
@@ -327,17 +295,7 @@ pub mod ar_camera {
     }
     /// A possible diagnosis for limited position tracking quality as of when the
     /// frame was captured.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum TrackingStateReason {
         UndefinedTrackingStateReason = 0,
@@ -372,9 +330,7 @@ pub mod ar_camera {
         /// Creates an enum from field names used in the ProtoBuf definition.
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
-                "UNDEFINED_TRACKING_STATE_REASON" => {
-                    Some(Self::UndefinedTrackingStateReason)
-                }
+                "UNDEFINED_TRACKING_STATE_REASON" => Some(Self::UndefinedTrackingStateReason),
                 "NONE" => Some(Self::None),
                 "INITIALIZING" => Some(Self::Initializing),
                 "EXCESSIVE_MOTION" => Some(Self::ExcessiveMotion),
@@ -395,9 +351,7 @@ pub struct ArFaceGeometry {
     #[prost(int32, optional, tag = "2")]
     pub vertex_count: ::core::option::Option<i32>,
     #[prost(message, repeated, tag = "3")]
-    pub texture_coordinates: ::prost::alloc::vec::Vec<
-        ar_face_geometry::TextureCoordinate,
-    >,
+    pub texture_coordinates: ::prost::alloc::vec::Vec<ar_face_geometry::TextureCoordinate>,
     /// The number of elements in the texture_coordinates list.
     #[prost(int32, optional, tag = "4")]
     pub texture_coordinate_count: ::core::option::Option<i32>,
@@ -491,9 +445,7 @@ pub struct ArPlaneGeometry {
     pub vertex_count: ::core::option::Option<i32>,
     /// A buffer of texture coordinate values for each point in the plane mesh.
     #[prost(message, repeated, tag = "3")]
-    pub texture_coordinates: ::prost::alloc::vec::Vec<
-        ar_plane_geometry::TextureCoordinate,
-    >,
+    pub texture_coordinates: ::prost::alloc::vec::Vec<ar_plane_geometry::TextureCoordinate>,
     /// The number of elements in the texture_coordinates buffer.
     #[prost(int32, optional, tag = "4")]
     pub texture_coordinate_count: ::core::option::Option<i32>,
@@ -576,7 +528,11 @@ pub struct ArPlaneAnchor {
     pub classification_supported: ::core::option::Option<bool>,
     /// A general characterization of what kind of real-world surface the plane
     /// anchor represents.
-    #[prost(enumeration = "ar_plane_anchor::PlaneClassification", optional, tag = "8")]
+    #[prost(
+        enumeration = "ar_plane_anchor::PlaneClassification",
+        optional,
+        tag = "8"
+    )]
     pub classification: ::core::option::Option<i32>,
     /// The current state of process for classifying the plane anchor.
     /// When this property's value is KNOWN, the classification property represents
@@ -603,17 +559,7 @@ pub mod ar_plane_anchor {
         #[prost(float, optional, tag = "3")]
         pub z: ::core::option::Option<f32>,
     }
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Alignment {
         Undefined = 0,
@@ -644,17 +590,7 @@ pub mod ar_plane_anchor {
             }
         }
     }
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum PlaneClassification {
         None = 0,
@@ -693,17 +629,7 @@ pub mod ar_plane_anchor {
         }
     }
     /// The classification status for the plane.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum PlaneClassificationStatus {
         /// The classfication process for the plane anchor has completed but the
@@ -800,17 +726,7 @@ pub struct CmCalibratedMagneticField {
 /// Nested message and enum types in `CMCalibratedMagneticField`.
 pub mod cm_calibrated_magnetic_field {
     /// Indicates the calibration accuracy of a magnetic field estimate.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum CalibrationAccuracy {
         Uncalibrated = 0,
@@ -1029,17 +945,7 @@ pub mod ar_mesh_geometry {
         pub vertex_indices: ::prost::alloc::vec::Vec<i32>,
     }
     /// Type of objects
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum MeshClassification {
         None = 0,
@@ -1181,17 +1087,7 @@ pub struct Object {
 }
 /// Nested message and enum types in `Object`.
 pub mod object {
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
         UndefinedType = 0,
@@ -1224,17 +1120,7 @@ pub mod object {
         }
     }
     /// Enum to reflect how this object is created.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Method {
         UnknownMethod = 0,
@@ -1310,7 +1196,7 @@ pub struct Skeletons {
 /// Projection of a 3D point on an image, and its metric depth.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NormalizedPoint2D {
+pub struct NormalizedPosition2D {
     /// x-y position of the 2d keypoint in the image coordinate system.
     /// u,v \in [0, 1], where top left corner is (0, 0) and the bottom-right corner
     /// is (1, 1).
@@ -1325,7 +1211,7 @@ pub struct NormalizedPoint2D {
 /// The 3D point in the camera coordinate system, the scales are in meters.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Point3D {
+pub struct Position3D {
     #[prost(float, tag = "1")]
     pub x: f32,
     #[prost(float, tag = "2")]
@@ -1339,9 +1225,9 @@ pub struct AnnotatedKeyPoint {
     #[prost(int32, tag = "1")]
     pub id: i32,
     #[prost(message, optional, tag = "2")]
-    pub point_3d: ::core::option::Option<Point3D>,
+    pub point_3d: ::core::option::Option<Position3D>,
     #[prost(message, optional, tag = "3")]
-    pub point_2d: ::core::option::Option<NormalizedPoint2D>,
+    pub point_2d: ::core::option::Option<NormalizedPosition2D>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

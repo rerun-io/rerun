@@ -17,11 +17,11 @@ use re_arrow_store::{
 };
 use re_components::datagen::{
     build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
-    build_some_point2d,
+    build_some_positions2d,
 };
 use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
 use re_types::{
-    components::{Color, InstanceKey, Point2D},
+    components::{Color, InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
     ComponentName, Loggable as _,
 };
@@ -95,10 +95,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            Color::name(),       // added by test, timeless
-            Point2D::name(),     // added by test
-            LargeStruct::name(), // added by test
-            cluster_key,         // always here
+            Color::name(),          // added by test, timeless
+            Position2D::name(),     // added by test
+            LargeStruct::name(),    // added by test
+            cluster_key,            // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -112,7 +112,7 @@ fn all_components() {
 
         let row = test_row!(ent_path @ [
             build_frame_nr(frame2),
-        ] => 2; [build_some_large_structs(2), build_some_point2d(2)]);
+        ] => 2; [build_some_large_structs(2), build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
@@ -151,10 +151,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            Color::name(),       // added by test, timeless
-            LargeStruct::name(), // ⚠ inherited before the buckets got split apart!
-            Point2D::name(),     // added by test
-            cluster_key,         // always here
+            Color::name(),          // added by test, timeless
+            LargeStruct::name(),    // ⚠ inherited before the buckets got split apart!
+            Position2D::name(),     // added by test
+            cluster_key,            // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -171,7 +171,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_point2d(2)]);
+        let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
@@ -213,10 +213,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            Color::name(),       // added by test, timeless
-            Point2D::name(),     // added by test but not contained in the second bucket
-            LargeStruct::name(), // added by test
-            cluster_key,         // always here
+            Color::name(),          // added by test, timeless
+            Position2D::name(),     // added by test but not contained in the second bucket
+            LargeStruct::name(),    // added by test
+            cluster_key,            // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -240,7 +240,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_point2d(2)]);
+        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
@@ -286,10 +286,10 @@ fn latest_at_impl(store: &mut DataStore) {
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_point2d(3);
+    let points2 = build_some_positions2d(3);
     let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
 
-    let points3 = build_some_point2d(10);
+    let points3 = build_some_positions2d(10);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
 
     let colors4 = build_some_colors(5);
@@ -319,7 +319,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-        let components_all = &[Color::name(), Point2D::name()];
+        let components_all = &[Color::name(), Position2D::name()];
 
         let df = polars_util::latest_components(
             &store,
@@ -340,18 +340,27 @@ fn latest_at_impl(store: &mut DataStore) {
 
     assert_latest_components(
         frame0,
-        &[(Color::name(), &row4), (Point2D::name(), &row3)], // timeless
+        &[(Color::name(), &row4), (Position2D::name(), &row3)], // timeless
     );
     assert_latest_components(
         frame1,
         &[
             (Color::name(), &row1),
-            (Point2D::name(), &row3), // timeless
+            (Position2D::name(), &row3), // timeless
         ],
     );
-    assert_latest_components(frame2, &[(Color::name(), &row1), (Point2D::name(), &row2)]);
-    assert_latest_components(frame3, &[(Color::name(), &row1), (Point2D::name(), &row3)]);
-    assert_latest_components(frame4, &[(Color::name(), &row4), (Point2D::name(), &row3)]);
+    assert_latest_components(
+        frame2,
+        &[(Color::name(), &row1), (Position2D::name(), &row2)],
+    );
+    assert_latest_components(
+        frame3,
+        &[(Color::name(), &row1), (Position2D::name(), &row3)],
+    );
+    assert_latest_components(
+        frame4,
+        &[(Color::name(), &row4), (Position2D::name(), &row3)],
+    );
 }
 
 // --- Range ---
@@ -394,11 +403,11 @@ fn range_impl(store: &mut DataStore) {
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [insts1.clone(), colors1]);
     insert(store, &row1);
 
-    let points2 = build_some_point2d(3);
+    let points2 = build_some_positions2d(3);
     let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [insts1, points2]);
     insert(store, &row2);
 
-    let points3 = build_some_point2d(10);
+    let points3 = build_some_positions2d(10);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
     insert(store, &row3);
 
@@ -412,7 +421,7 @@ fn range_impl(store: &mut DataStore) {
     let row4_2 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_2.clone(), colors4_2]);
     insert(store, &row4_2);
 
-    let points4_25 = build_some_point2d(5);
+    let points4_25 = build_some_positions2d(5);
     let row4_25 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_2, points4_25]);
     insert(store, &row4_25);
 
@@ -421,7 +430,7 @@ fn range_impl(store: &mut DataStore) {
     let row4_3 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_3.clone(), colors4_3]);
     insert(store, &row4_3);
 
-    let points4_4 = build_some_point2d(5);
+    let points4_4 = build_some_positions2d(5);
     let row4_4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_3, points4_4]);
     insert(store, &row4_4);
 
@@ -505,145 +514,145 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        [Color::name(), Point2D::name()],
+        [Color::name(), Position2D::name()],
         &[
             (
                 Some(frame0),
-                &[(Color::name(), &row4_3), (Point2D::name(), &row4_4)],
+                &[(Color::name(), &row4_3), (Position2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
                 &[
                     (Color::name(), &row1),
-                    (Point2D::name(), &row4_4), // timeless
+                    (Position2D::name(), &row4_4), // timeless
                 ],
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        [Color::name(), Point2D::name()],
+        [Color::name(), Position2D::name()],
         &[
             (
                 Some(frame1),
                 &[
                     (Color::name(), &row1),
-                    (Point2D::name(), &row4_4), // timeless
+                    (Position2D::name(), &row4_4), // timeless
                 ],
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        [Color::name(), Point2D::name()],
+        [Color::name(), Position2D::name()],
         &[
             (
                 Some(frame2),
-                &[(Color::name(), &row1), (Point2D::name(), &row2)],
+                &[(Color::name(), &row1), (Position2D::name(), &row2)],
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        [Color::name(), Point2D::name()],
+        [Color::name(), Position2D::name()],
         &[
             (
                 Some(frame3),
-                &[(Color::name(), &row1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row1), (Position2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_2), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        [Color::name(), Point2D::name()],
+        [Color::name(), Position2D::name()],
         &[
             (
                 Some(frame4),
-                &[(Color::name(), &row4_3), (Point2D::name(), &row4_4)], // !!!
+                &[(Color::name(), &row4_3), (Position2D::name(), &row4_4)], // !!!
             ), //
         ],
     );
 
-    // Unit ranges (Point2D's PoV)
+    // Unit ranges (Position2D's PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        [Point2D::name(), Color::name()],
+        [Position2D::name(), Color::name()],
         &[
             (
                 Some(frame0),
-                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
+                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
             ), // timeless
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        [Point2D::name(), Color::name()],
+        [Position2D::name(), Color::name()],
         &[
             (
                 Some(frame1),
                 &[
-                    (Point2D::name(), &row4_4), // timeless
+                    (Position2D::name(), &row4_4), // timeless
                     (Color::name(), &row1),
                 ],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (Color::name(), &row1)],
+                &[(Position2D::name(), &row2), (Color::name(), &row1)],
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        [Point2D::name(), Color::name()],
+        [Position2D::name(), Color::name()],
         &[
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (Color::name(), &row1)],
+                &[(Position2D::name(), &row2), (Color::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (Color::name(), &row1)],
+                &[(Position2D::name(), &row3), (Color::name(), &row1)],
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        [Point2D::name(), Color::name()],
+        [Position2D::name(), Color::name()],
         &[
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (Color::name(), &row1)],
+                &[(Position2D::name(), &row3), (Color::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
+                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
+                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        [Point2D::name(), Color::name()],
+        [Position2D::name(), Color::name()],
         &[
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
+                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
             ), //
         ],
     );
@@ -652,59 +661,59 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        [Color::name(), Point2D::name()],
+        [Color::name(), Position2D::name()],
         &[
             (
                 Some(frame0),
-                &[(Color::name(), &row4_3), (Point2D::name(), &row4_4)],
+                &[(Color::name(), &row4_3), (Position2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
                 &[
                     (Color::name(), &row1),
-                    (Point2D::name(), &row4_4), // timeless
+                    (Position2D::name(), &row4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_2), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
             ),
         ],
     );
 
-    // Full range (Point2D's PoV)
+    // Full range (Position2D's PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        [Point2D::name(), Color::name()],
+        [Position2D::name(), Color::name()],
         &[
             (
                 Some(frame0),
-                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
+                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
             ), // timeless
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (Color::name(), &row1)],
+                &[(Position2D::name(), &row2), (Color::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (Color::name(), &row1)],
+                &[(Position2D::name(), &row3), (Color::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
+                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
+                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
         ],
     );
@@ -713,68 +722,74 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [Color::name(), Point2D::name()],
+        [Color::name(), Position2D::name()],
         &[
             (None, &[(Color::name(), &row1)]),
-            (None, &[(Color::name(), &row4_1), (Point2D::name(), &row3)]),
-            (None, &[(Color::name(), &row4_2), (Point2D::name(), &row3)]),
             (
                 None,
-                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
+            ),
+            (
+                None,
+                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
+            ),
+            (
+                None,
+                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
             ),
             (
                 Some(frame1),
                 &[
                     (Color::name(), &row1),
-                    (Point2D::name(), &row4_4), // timeless
+                    (Position2D::name(), &row4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_1), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_2), (Point2D::name(), &row3)],
+                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
+                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
             ),
         ],
     );
 
-    // Infinite range (Point2D's PoV)
+    // Infinite range (Position2D's PoV)
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [Point2D::name(), Color::name()],
+        [Position2D::name(), Color::name()],
         &[
-            (None, &[(Point2D::name(), &row2), (Color::name(), &row1)]),
-            (None, &[(Point2D::name(), &row3), (Color::name(), &row1)]),
+            (None, &[(Position2D::name(), &row2), (Color::name(), &row1)]),
+            (None, &[(Position2D::name(), &row3), (Color::name(), &row1)]),
             (
                 None,
-                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
+                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 None,
-                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
+                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &row2), (Color::name(), &row1)],
+                &[(Position2D::name(), &row2), (Color::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &row3), (Color::name(), &row1)],
+                &[(Position2D::name(), &row3), (Color::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_25), (Color::name(), &row4_2)],
+                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &row4_4), (Color::name(), &row4_3)],
+                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
             ),
         ],
     );
@@ -917,10 +932,10 @@ fn protected_gc_impl(store: &mut DataStore) {
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_point2d(3);
+    let points2 = build_some_positions2d(3);
     let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
 
-    let points3 = build_some_point2d(10);
+    let points3 = build_some_positions2d(10);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
 
     let colors4 = build_some_colors(5);
@@ -947,7 +962,7 @@ fn protected_gc_impl(store: &mut DataStore) {
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-        let components_all = &[Color::name(), Point2D::name()];
+        let components_all = &[Color::name(), Position2D::name()];
 
         let df = polars_util::latest_components(
             store,
@@ -967,23 +982,23 @@ fn protected_gc_impl(store: &mut DataStore) {
     // The timeless data was preserved
     assert_latest_components(
         frame0,
-        &[(Color::name(), &row1), (Point2D::name(), &row2)], // timeless
+        &[(Color::name(), &row1), (Position2D::name(), &row2)], // timeless
     );
 
     //
     assert_latest_components(
         frame3,
         &[
-            (Color::name(), &row1),   // timeless
-            (Point2D::name(), &row3), // protected
+            (Color::name(), &row1),      // timeless
+            (Position2D::name(), &row3), // protected
         ],
     );
 
     assert_latest_components(
         frame4,
         &[
-            (Color::name(), &row4),   //protected
-            (Point2D::name(), &row3), // protected
+            (Color::name(), &row4),      //protected
+            (Position2D::name(), &row3), // protected
         ],
     );
 }
@@ -1012,13 +1027,13 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_point2d(3);
+    let points2 = build_some_positions2d(3);
     let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
 
     let colors2 = build_some_colors(0);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 0; [colors2]);
 
-    let points4 = build_some_point2d(0);
+    let points4 = build_some_positions2d(0);
     let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 0; [points4]);
 
     // Insert the 3 rows as timeless
@@ -1038,7 +1053,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-        let components_all = &[Color::name(), Point2D::name()];
+        let components_all = &[Color::name(), Position2D::name()];
 
         let df = polars_util::latest_components(
             store,
@@ -1056,7 +1071,10 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     };
 
     // Only points are preserved, since colors were cleared and then GC'd
-    assert_latest_components(frame0, &[(Color::name(), &row3), (Point2D::name(), &row2)]);
+    assert_latest_components(
+        frame0,
+        &[(Color::name(), &row3), (Position2D::name(), &row2)],
+    );
 
     // Only the 2 rows should remain in the table
     let stats = DataStoreStats::from_store(store);
@@ -1107,8 +1125,8 @@ fn row_id_ordering() {
 
     let (instances1, points1, points2) = (
         build_some_instances(3),
-        build_some_point2d(3),
-        build_some_point2d(3),
+        build_some_positions2d(3),
+        build_some_positions2d(3),
     );
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), &points1]);
 
@@ -1127,8 +1145,8 @@ fn row_id_ordering() {
         .latest_at(
             &re_arrow_store::LatestAtQuery::latest(timeline),
             &ent_path,
-            re_types::components::Point2D::name(),
-            &[re_types::components::Point2D::name()],
+            re_types::components::Position2D::name(),
+            &[re_types::components::Position2D::name()],
         )
         .unwrap();
 
@@ -1139,6 +1157,6 @@ fn row_id_ordering() {
     let points = results[0]
         .as_ref()
         .unwrap()
-        .to_native::<re_types::components::Point2D>();
+        .to_native::<re_types::components::Position2D>();
     assert_eq!(points1, points);
 }

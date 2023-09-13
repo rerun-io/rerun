@@ -2,7 +2,7 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Points2D,
-    components::{Point2D, Text},
+    components::{Position2D, Text},
     Archetype,
 };
 use re_viewer_context::{
@@ -45,7 +45,7 @@ impl Points2DPart {
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Point2D>()?,
+            arch_view.iter_required_component::<Position2D>()?,
             arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
@@ -76,12 +76,13 @@ impl Points2DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let (annotation_infos, keypoints) = process_annotations_and_keypoints::<Point2D, Points2D>(
-            query,
-            arch_view,
-            &ent_context.annotations,
-            |p| (*p).into(),
-        )?;
+        let (annotation_infos, keypoints) =
+            process_annotations_and_keypoints::<Position2D, Points2D>(
+                query,
+                arch_view,
+                &ent_context.annotations,
+                |p| (*p).into(),
+            )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let radii = process_radii(arch_view, ent_path)?;
@@ -121,7 +122,7 @@ impl Points2DPart {
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let positions = arch_view
-                .iter_required_component::<Point2D>()?
+                .iter_required_component::<Position2D>()?
                 .map(|pt| pt.into());
 
             let picking_instance_ids = arch_view
@@ -171,7 +172,7 @@ impl Points2DPart {
 
         self.data.extend_bounding_box_with_points(
             arch_view
-                .iter_required_component::<Point2D>()?
+                .iter_required_component::<Position2D>()?
                 .map(|pt| pt.into()),
             ent_context.world_from_obj,
         );

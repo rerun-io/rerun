@@ -2,20 +2,23 @@ use itertools::Itertools;
 use re_log_types::RowId;
 use re_query::{ArchetypeView, ComponentWithInstances};
 use re_types::archetypes::Points2D;
-use re_types::components::{Color, InstanceKey, Point2D};
+use re_types::components::{Color, InstanceKey, Position2D};
 
 #[test]
 fn basic_single_iter() {
     let instance_keys = InstanceKey::from_iter(0..2);
     let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
     ];
 
     let component = ComponentWithInstances::from_native(instance_keys, points);
 
-    let results =
-        itertools::izip!(points.into_iter(), component.values::<Point2D>().unwrap()).collect_vec();
+    let results = itertools::izip!(
+        points.into_iter(),
+        component.values::<Position2D>().unwrap()
+    )
+    .collect_vec();
     assert_eq!(results.len(), 2);
     results
         .iter()
@@ -27,9 +30,9 @@ fn directly_joined_iter() {
     let instance_keys = InstanceKey::from_iter(0..3);
 
     let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
     ];
 
     let colors = [
@@ -65,9 +68,9 @@ fn joined_iter_dense_primary() {
     let point_ids = InstanceKey::from_iter(0..3);
 
     let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
     ];
 
     let color_ids = [
@@ -107,9 +110,9 @@ fn joined_iter_dense_secondary() {
     ];
 
     let points = [
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
     ];
 
     let color_ids = InstanceKey::from_iter(0..5);
@@ -154,10 +157,10 @@ fn complex_joined_iter() {
     ];
 
     let points = vec![
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
-        Point2D::new(7.0, 8.0),
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
+        Position2D::new(7.0, 8.0),
     ];
 
     let color_ids = vec![
@@ -203,10 +206,10 @@ fn complex_joined_iter() {
 fn single_visit() {
     let instance_keys = InstanceKey::from_iter(0..4);
     let points = [
-        Point2D::new(1.0, 2.0),
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
-        Point2D::new(7.0, 8.0),
+        Position2D::new(1.0, 2.0),
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
+        Position2D::new(7.0, 8.0),
     ];
 
     let points_comp = ComponentWithInstances::from_native(instance_keys.clone(), points);
@@ -214,11 +217,11 @@ fn single_visit() {
     let arch_view = ArchetypeView::<Points2D>::from_components(RowId::ZERO, [points_comp]);
 
     let mut instance_key_out = Vec::<InstanceKey>::new();
-    let mut points_out = Vec::<Point2D>::new();
+    let mut points_out = Vec::<Position2D>::new();
 
     itertools::izip!(
         arch_view.iter_instance_keys(),
-        arch_view.iter_required_component::<Point2D>().unwrap()
+        arch_view.iter_required_component::<Position2D>().unwrap()
     )
     .for_each(|(inst, point)| {
         instance_key_out.push(inst);
@@ -232,11 +235,11 @@ fn single_visit() {
 #[test]
 fn joint_visit() {
     let points = vec![
-        Point2D::new(1.0, 2.0), //
-        Point2D::new(3.0, 4.0),
-        Point2D::new(5.0, 6.0),
-        Point2D::new(7.0, 8.0),
-        Point2D::new(9.0, 10.0),
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
+        Position2D::new(7.0, 8.0),
+        Position2D::new(9.0, 10.0),
     ];
 
     let point_ids = InstanceKey::from_iter(0..5);
@@ -257,11 +260,11 @@ fn joint_visit() {
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [points_comp, colors_comp]);
 
-    let mut points_out = Vec::<Point2D>::new();
+    let mut points_out = Vec::<Position2D>::new();
     let mut colors_out = Vec::<Option<Color>>::new();
 
     itertools::izip!(
-        arch_view.iter_required_component::<Point2D>().unwrap(),
+        arch_view.iter_required_component::<Position2D>().unwrap(),
         arch_view.iter_optional_component::<Color>().unwrap()
     )
     .for_each(|(point, color)| {

@@ -12,7 +12,7 @@ use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_types::components::Point2D;
+/// # use re_types::components::Position2D;
 /// # use re_log_types::Timeline;
 /// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
@@ -24,12 +24,12 @@ use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
-///   Point2D::name(),
+///   Position2D::name(),
 /// )
 /// .unwrap();
 ///
 /// # #[cfg(feature = "polars")]
-/// let df = component.as_df::<Point2D>().unwrap();
+/// let df = component.as_df::<Position2D>().unwrap();
 ///
 /// //println!("{df:?}");
 /// ```
@@ -85,7 +85,7 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_types::components::{Point2D, Color};
+/// # use re_types::components::{Position2D, Color};
 /// # use re_log_types::Timeline;
 /// # use re_types::Loggable as _;
 /// # let store = re_query::__populate_example_store();
@@ -93,7 +93,7 @@ pub fn get_component_with_instances(
 /// let ent_path = "point";
 /// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
-/// let entity_view = re_query::query_entity_with_primary::<Point2D>(
+/// let entity_view = re_query::query_entity_with_primary::<Position2D>(
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
@@ -164,7 +164,7 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::Timeline;
 /// # use re_types::Component;
-/// # use re_types::components::{Point2D, Color};
+/// # use re_types::components::{Position2D, Color};
 /// # use re_types::archetypes::Points2D;
 /// # let store = re_query::__populate_example_store();
 ///
@@ -179,7 +179,7 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
 /// .unwrap();
 ///
 /// # #[cfg(feature = "polars")]
-/// let df = arch_view.as_df2::<Point2D, Color>().unwrap();
+/// let df = arch_view.as_df2::<Position2D, Color>().unwrap();
 ///
 /// //println!("{df:?}");
 /// ```
@@ -247,7 +247,7 @@ pub fn query_archetype<A: Archetype>(
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
     use re_components::datagen::build_frame_nr;
-    use re_types::components::{Color, Point2D};
+    use re_types::components::{Color, Position2D};
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
@@ -255,7 +255,7 @@ pub fn __populate_example_store() -> DataStore {
     let timepoint = [build_frame_nr(123.into())];
 
     let instances = vec![InstanceKey(42), InstanceKey(96)];
-    let points = vec![Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
+    let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
 
     let row = DataRow::from_cells2_sized(
         RowId::random(),
@@ -286,7 +286,7 @@ pub fn __populate_example_store() -> DataStore {
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::Timeline;
-    use re_types::components::Point2D;
+    use re_types::components::Position2D;
 
     let store = __populate_example_store();
 
@@ -294,15 +294,18 @@ fn simple_get_component() {
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
     let (_, component) =
-        get_component_with_instances(&store, &query, &ent_path.into(), Point2D::name()).unwrap();
+        get_component_with_instances(&store, &query, &ent_path.into(), Position2D::name()).unwrap();
 
     #[cfg(feature = "polars")]
     {
-        let df = component.as_df::<Point2D>().unwrap();
+        let df = component.as_df::<Position2D>().unwrap();
         eprintln!("{df:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
-        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let points = vec![
+            Some(Position2D::new(1.0, 2.0)),
+            Some(Position2D::new(3.0, 4.0)),
+        ];
 
         let expected = crate::dataframe_util::df_builder2(&instances, &points).unwrap();
 
@@ -319,7 +322,7 @@ fn simple_get_component() {
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::Timeline;
-    use re_types::components::{Color, Point2D};
+    use re_types::components::{Color, Position2D};
 
     let store = __populate_example_store();
 
@@ -327,7 +330,7 @@ fn simple_query_entity() {
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
     let entity_view =
-        query_entity_with_primary::<Point2D>(&store, &query, &ent_path.into(), &[Color::name()])
+        query_entity_with_primary::<Position2D>(&store, &query, &ent_path.into(), &[Color::name()])
             .unwrap();
 
     #[cfg(feature = "polars")]
@@ -336,7 +339,10 @@ fn simple_query_entity() {
         eprintln!("{df:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
-        let points = vec![Some(Point2D::new(1.0, 2.0)), Some(Point2D::new(3.0, 4.0))];
+        let points = vec![
+            Some(Position2D::new(1.0, 2.0)),
+            Some(Position2D::new(3.0, 4.0)),
+        ];
         let colors = vec![None, Some(Color::from(0xff000000))];
 
         let expected = crate::dataframe_util::df_builder3(&instances, &points, &colors).unwrap();
@@ -354,7 +360,7 @@ fn simple_query_archetype() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::Timeline;
     use re_types::archetypes::Points2D;
-    use re_types::components::{Color, Point2D};
+    use re_types::components::{Color, Position2D};
 
     let store = __populate_example_store();
 
@@ -363,11 +369,11 @@ fn simple_query_archetype() {
 
     let arch_view = query_archetype::<Points2D>(&store, &query, &ent_path.into()).unwrap();
 
-    let expected_points = [Point2D::new(1.0, 2.0), Point2D::new(3.0, 4.0)];
+    let expected_points = [Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
     let expected_colors = [None, Some(Color::from_unmultiplied_rgba(255, 0, 0, 0))];
 
     let view_points: Vec<_> = arch_view
-        .iter_required_component::<Point2D>()
+        .iter_required_component::<Position2D>()
         .unwrap()
         .collect();
 
@@ -381,7 +387,7 @@ fn simple_query_archetype() {
 
     #[cfg(feature = "polars")]
     {
-        let df = arch_view.as_df2::<Point2D, Color>().unwrap();
+        let df = arch_view.as_df2::<Position2D, Color>().unwrap();
         eprintln!("{df:?}");
     }
 }

@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 
 use rerun::{
     archetypes::{LineStrips3D, Points3D, Transform3D},
-    components::{Color, Point3D},
+    components::{Color, Position3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
     RecordingStream, RecordingStreamResult,
@@ -71,7 +71,7 @@ fn run(rec: &RecordingStream) -> RecordingStreamResult<()> {
             .map(|(n, &[p1, p2])| {
                 let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
                 (
-                    Point3D::from(bounce_lerp(p1, p2, times[n])),
+                    Position3D::from(bounce_lerp(p1, p2, times[n])),
                     Color::from_rgb(c, c, c),
                 )
             })

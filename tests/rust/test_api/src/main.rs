@@ -115,7 +115,7 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
 fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::Points3D,
-        components::{Color, Point3D, Radius, Text},
+        components::{Color, Position3D, Radius, Text},
     };
 
     rec.set_time_seconds("sim_time", 1f64);
@@ -134,7 +134,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
         x: impl Fn(f32) -> f32,
         y: impl Fn(f32) -> f32,
         z: impl Fn(f32) -> f32,
-    ) -> (Vec<Text>, Vec<Point3D>, Vec<Radius>, Vec<Color>) {
+    ) -> (Vec<Text>, Vec<Position3D>, Vec<Radius>, Vec<Color>) {
         use rand::Rng as _;
         let mut rng = rand::thread_rng();
         itertools::multiunzip((0..n).map(|i| {
@@ -142,7 +142,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
             let t = 1.0 - i / (n - 1) as f32;
             (
                 Text(i.to_string().into()),
-                Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
+                Position3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
                 Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
                 Color::from_rgb(rng.gen(), rng.gen(), rng.gen()),
             )
@@ -424,7 +424,7 @@ fn test_text_logs(rec: &RecordingStream) -> anyhow::Result<()> {
 fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::{LineStrips3D, Points3D, Transform3D},
-        components::{Color, Point3D, ViewCoordinates},
+        components::{Color, Position3D, ViewCoordinates},
         coordinates::SignedAxis3,
         datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
     };
@@ -468,7 +468,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     ) -> anyhow::Result<()> {
         rec.log(
             ent_path,
-            &Points3D::new([Point3D::ZERO])
+            &Points3D::new([Position3D::ZERO])
                 .with_radii([radius])
                 .with_colors([Color::from_rgb(color[0], color[1], color[2])]),
         )
@@ -486,7 +486,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
         let radius = rng.gen::<f32>() * planet_to_moon_distance * 0.5;
         let angle = rng.gen::<f32>() * TAU;
         let height = rng.gen::<f32>().powf(0.2) * 0.5 - 0.5;
-        Some(Point3D::new(
+        Some(Position3D::new(
             radius * angle.sin(),
             radius * angle.cos(),
             height,

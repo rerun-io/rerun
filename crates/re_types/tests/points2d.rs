@@ -5,9 +5,9 @@ use re_types::{archetypes::Points2D, components, Archetype as _};
 #[test]
 fn roundtrip() {
     let expected = Points2D {
-        points: vec![
-            components::Point2D::new(1.0, 2.0), //
-            components::Point2D::new(3.0, 4.0),
+        positions: vec![
+            components::Position2D::new(1.0, 2.0), //
+            components::Position2D::new(3.0, 4.0),
         ],
         radii: Some(vec![
             components::Radius(42.0), //
@@ -47,7 +47,7 @@ fn roundtrip() {
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
-        ("points", vec!["rerun.components.Point2D"]),
+        ("points", vec!["rerun.components.Position2D"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
         ("labels", vec!["rerun.components.Label"]),

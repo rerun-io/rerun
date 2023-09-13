@@ -8,7 +8,7 @@ use re_arrow_store::{
     TimeInt, TimeRange, Timeline,
 };
 use re_components::datagen::{
-    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
+    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_positions2d,
 };
 use re_log_types::{DataTable, EntityPath, TableId};
 use re_types::{components::InstanceKey, Loggable as _};
@@ -220,12 +220,12 @@ fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
             build_frame_nr(frame1),
         ] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_point2d(3);
+    let points2 = build_some_positions2d(3);
     let row2 = test_row!(ent_path @ [
             build_frame_nr(frame2),
         ] => 3; [instances1, points2]);
 
-    let points3 = build_some_point2d(10);
+    let points3 = build_some_positions2d(10);
     let row3 = test_row!(ent_path @ [
             build_log_time(frame3.into()) /* ! */, build_frame_nr(frame3),
         ] => 10; [points3]);
@@ -271,7 +271,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
                 build_frame_nr(frame1),
             ] => 3; [instances1, colors1]);
 
-        let (instances2, points2) = (build_some_instances(3), build_some_point2d(3));
+        let (instances2, points2) = (build_some_instances(3), build_some_positions2d(3));
         let row2 = test_row!(ent_path @ [
             build_frame_nr(frame2),
         ] => 3; [instances2, points2]);

@@ -55,7 +55,7 @@ fn main() {
 }
 
 fn log_messages() {
-    use re_components::datagen::{build_frame_nr, build_some_point2d};
+    use re_components::datagen::{build_frame_nr, build_some_positions2d};
     use re_log_types::{LogMsg, TimeInt, TimePoint, Timeline};
 
     // Note: we use Box in this function so that we also count the "static"
@@ -113,7 +113,7 @@ fn log_messages() {
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 1,
-                build_some_point2d(1),
+                build_some_positions2d(1),
             )
             .into_table(),
         );
@@ -139,7 +139,7 @@ fn log_messages() {
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 NUM_POINTS as _,
-                build_some_point2d(NUM_POINTS),
+                build_some_positions2d(NUM_POINTS),
             )
             .into_table(),
         );
