@@ -84,19 +84,19 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Origin3D".into(),
             "rerun.components.Arrows3DIndicator".into(),
+            "rerun.components.Origin3D".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.radius".into(),
-            "rerun.colorrgba".into(),
-            "rerun.label".into(),
             "rerun.class_id".into(),
+            "rerun.colorrgba".into(),
             "rerun.instance_key".into(),
+            "rerun.label".into(),
+            "rerun.radius".into(),
         ]
     });
 
@@ -104,13 +104,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Vector3D".into(),
-            "rerun.components.Origin3D".into(),
             "rerun.components.Arrows3DIndicator".into(),
-            "rerun.radius".into(),
-            "rerun.colorrgba".into(),
-            "rerun.label".into(),
+            "rerun.components.Origin3D".into(),
             "rerun.class_id".into(),
+            "rerun.colorrgba".into(),
             "rerun.instance_key".into(),
+            "rerun.label".into(),
+            "rerun.radius".into(),
         ]
     });
 
