@@ -9,7 +9,6 @@ from rerun import bindings
 
 all = [
     "box",
-    "draw_order",
     "experimental",
     "pinhole",
     "quaternion",

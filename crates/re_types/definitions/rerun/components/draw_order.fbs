@@ -19,7 +19,6 @@ namespace rerun.components;
 struct DrawOrder (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
-  "attr.rerun.legacy_fqname": "rerun.draw_order",
   "attr.rust.derive": "Copy",
   "attr.rust.repr": "transparent",
   order: 100

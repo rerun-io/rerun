@@ -50,7 +50,7 @@ impl crate::Loggable for AnnotationContext {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.annotation_context".into()
+        "rerun.components.AnnotationContext".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

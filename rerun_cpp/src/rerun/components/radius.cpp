@@ -11,7 +11,7 @@
 
 namespace rerun {
     namespace components {
-        const char Radius::NAME[] = "rerun.radius";
+        const char Radius::NAME[] = "rerun.components.Radius";
 
         const std::shared_ptr<arrow::DataType>& Radius::arrow_datatype() {
             static const auto datatype = arrow::float32();

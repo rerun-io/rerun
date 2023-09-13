@@ -106,19 +106,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ClearIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClearSettings".into(),
             "rerun.components.ClearIndicator".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl Clear {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Clear`] [`crate::Archetype`]
@@ -181,7 +182,7 @@ impl crate::Archetype for Clear {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.ClearSettings".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.components.ClearSettings".into()),
+                        None,
                     );
                     (
                         ::arrow2::datatypes::Field::new("settings", datatype, false),

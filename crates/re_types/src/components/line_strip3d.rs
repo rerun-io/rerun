@@ -53,7 +53,7 @@ impl crate::Loggable for LineStrip3D {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.linestrip3d".into()
+        "rerun.components.LineStrip3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

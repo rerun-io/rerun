@@ -61,7 +61,7 @@ impl crate::Loggable for Transform3D {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.transform3d".into()
+        "rerun.components.Transform3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

@@ -58,7 +58,7 @@ impl crate::Loggable for Point2D {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.point2d".into()
+        "rerun.components.Point2D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

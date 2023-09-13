@@ -233,7 +233,7 @@ fn test_df_builder() {
     eprintln!("{df:?}");
     //
     // ┌──────────────┬─────────────────┐
-    // │ rerun.radius ┆ rerun.colorrgba │
+    // │ rerun.components.Radius ┆ rerun.components.Color │
     // │ ---          ┆ ---             │
     // │ f32          ┆ u32             │
     // ╞══════════════╪═════════════════╡

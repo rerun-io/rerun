@@ -63,24 +63,25 @@ pub struct Transform3D {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.transform3d".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.Transform3D".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.transform3d".into(),
+            "rerun.components.Transform3D".into(),
             "rerun.components.Transform3DIndicator".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl Transform3D {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Transform3D`] [`crate::Archetype`]
@@ -143,7 +144,7 @@ impl crate::Archetype for Transform3D {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.Transform3D".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.transform3d".into()),
+                        None,
                     );
                     (
                         ::arrow2::datatypes::Field::new("transform", datatype, false),

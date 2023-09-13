@@ -18,7 +18,6 @@ namespace rerun.components;
 /// path.
 table AnnotationContext (
   "attr.python.array_aliases": "datatypes.ClassDescription, Sequence[datatypes.ClassDescriptionMapElemLike]",
-  "attr.rerun.legacy_fqname": "rerun.annotation_context",
   "attr.rust.derive": "Default, Eq, PartialEq",
   order: 100
 ) {

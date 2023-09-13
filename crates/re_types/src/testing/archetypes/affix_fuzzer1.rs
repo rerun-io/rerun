@@ -91,18 +91,10 @@ pub struct AffixFuzzer1 {
     pub fuzz2118: Option<Vec<crate::testing::components::AffixFuzzer18>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 20usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -113,9 +105,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer19".into(),
-            "rerun.testing.components.AffixFuzzer20".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
+            "rerun.testing.components.AffixFuzzer20".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
             "rerun.testing.components.AffixFuzzer5".into(),
@@ -123,33 +114,17 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer1Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.InstanceKey".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -159,7 +134,6 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize
             "rerun.testing.components.AffixFuzzer16".into(),
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
@@ -168,30 +142,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 40usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -202,9 +159,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer19".into(),
+            "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer20".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
             "rerun.testing.components.AffixFuzzer5".into(),
@@ -212,25 +168,9 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer1Indicator".into(),
+            "rerun.components.InstanceKey".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -240,7 +180,6 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer16".into(),
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
@@ -249,20 +188,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
 
 impl AffixFuzzer1 {
-    pub const NUM_COMPONENTS: usize = 75usize;
+    pub const NUM_COMPONENTS: usize = 40usize;
 }
 
 /// Indicator component for the [`AffixFuzzer1`] [`crate::Archetype`]
@@ -472,7 +402,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer1".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer1".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1001", datatype, false),
@@ -491,7 +421,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer2".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer2".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1002", datatype, false),
@@ -510,7 +440,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer3".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer3".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1003", datatype, false),
@@ -529,7 +459,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer4".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer4".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1004", datatype, false),
@@ -548,7 +478,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer5".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer5".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1005", datatype, false),
@@ -567,7 +497,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer6".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer6".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1006", datatype, false),
@@ -586,7 +516,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer7".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer7".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1007", datatype, false),
@@ -605,7 +535,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer8".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer8".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1008", datatype, false),
@@ -624,7 +554,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer9".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer9".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1009", datatype, false),
@@ -643,7 +573,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer10".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer10".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1010", datatype, false),
@@ -662,7 +592,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer11".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer11".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1011", datatype, false),
@@ -681,7 +611,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer12".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer12".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1012", datatype, false),
@@ -700,7 +630,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer13".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer13".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1013", datatype, false),
@@ -719,7 +649,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer14".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer14".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1014", datatype, false),
@@ -738,7 +668,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer15".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer15".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1015", datatype, false),
@@ -757,7 +687,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer16".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer16".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1016", datatype, false),
@@ -776,7 +706,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer17".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer17".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1017", datatype, false),
@@ -795,7 +725,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer18".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer18".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1018", datatype, false),
@@ -814,7 +744,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer19".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer19".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1019", datatype, false),
@@ -833,7 +763,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer20".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer20".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1020", datatype, false),
@@ -853,7 +783,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer1".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer1".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1101", datatype, false),
@@ -873,7 +803,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer2".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer2".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1102", datatype, false),
@@ -893,7 +823,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer3".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer3".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1103", datatype, false),
@@ -913,7 +843,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer4".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer4".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1104", datatype, false),
@@ -933,7 +863,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer5".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer5".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1105", datatype, false),
@@ -953,7 +883,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer6".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer6".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1106", datatype, false),
@@ -973,7 +903,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer7".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer7".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1107", datatype, false),
@@ -993,7 +923,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer8".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer8".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1108", datatype, false),
@@ -1013,7 +943,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer9".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer9".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1109", datatype, false),
@@ -1033,7 +963,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer10".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer10".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1110", datatype, false),
@@ -1053,7 +983,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer11".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer11".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1111", datatype, false),
@@ -1073,7 +1003,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer12".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer12".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1112", datatype, false),
@@ -1093,7 +1023,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer13".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer13".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1113", datatype, false),
@@ -1113,7 +1043,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer14".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer14".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1114", datatype, false),
@@ -1133,7 +1063,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer15".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer15".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1115", datatype, false),
@@ -1153,7 +1083,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer16".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer16".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1116", datatype, false),
@@ -1173,7 +1103,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer17".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer17".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1117", datatype, false),
@@ -1193,7 +1123,7 @@ impl crate::Archetype for AffixFuzzer1 {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.testing.components.AffixFuzzer18".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.testing.components.AffixFuzzer18".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1118", datatype, false),
@@ -1214,7 +1144,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer1".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer1".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2001", datatype, false),
@@ -1235,7 +1165,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer2".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer2".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2002", datatype, false),
@@ -1256,7 +1186,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer3".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer3".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2003", datatype, false),
@@ -1277,7 +1207,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer4".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer4".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2004", datatype, false),
@@ -1298,7 +1228,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer5".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer5".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2005", datatype, false),
@@ -1319,7 +1249,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer6".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer6".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2006", datatype, false),
@@ -1340,7 +1270,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer7".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer7".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2007", datatype, false),
@@ -1361,7 +1291,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer8".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer8".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2008", datatype, false),
@@ -1382,7 +1312,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer9".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer9".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2009", datatype, false),
@@ -1403,7 +1333,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer10".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer10".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2010", datatype, false),
@@ -1424,7 +1354,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer11".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer11".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2011", datatype, false),
@@ -1445,7 +1375,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer12".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer12".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2012", datatype, false),
@@ -1466,7 +1396,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer13".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer13".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2013", datatype, false),
@@ -1487,7 +1417,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer14".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer14".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2014", datatype, false),
@@ -1508,7 +1438,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer15".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer15".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2015", datatype, false),
@@ -1529,7 +1459,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer16".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer16".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2016", datatype, false),
@@ -1550,7 +1480,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer17".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer17".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2017", datatype, false),
@@ -1571,7 +1501,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer18".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer18".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2018", datatype, false),
@@ -1592,7 +1522,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer1".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer1".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2101", datatype, false),
@@ -1613,7 +1543,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer2".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer2".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2102", datatype, false),
@@ -1634,7 +1564,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer3".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer3".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2103", datatype, false),
@@ -1655,7 +1585,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer4".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer4".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2104", datatype, false),
@@ -1676,7 +1606,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer5".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer5".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2105", datatype, false),
@@ -1697,7 +1627,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer6".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer6".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2106", datatype, false),
@@ -1718,7 +1648,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer7".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer7".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2107", datatype, false),
@@ -1739,7 +1669,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer8".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer8".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2108", datatype, false),
@@ -1760,7 +1690,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer9".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer9".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2109", datatype, false),
@@ -1781,7 +1711,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer10".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer10".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2110", datatype, false),
@@ -1802,7 +1732,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer11".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer11".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2111", datatype, false),
@@ -1823,7 +1753,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer12".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer12".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2112", datatype, false),
@@ -1844,7 +1774,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer13".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer13".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2113", datatype, false),
@@ -1865,7 +1795,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer14".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer14".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2114", datatype, false),
@@ -1886,7 +1816,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer15".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer15".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2115", datatype, false),
@@ -1907,7 +1837,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer16".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer16".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2116", datatype, false),
@@ -1928,7 +1858,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer17".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer17".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2117", datatype, false),
@@ -1949,7 +1879,7 @@ impl crate::Archetype for AffixFuzzer1 {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.testing.components.AffixFuzzer18".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.testing.components.AffixFuzzer18".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2118", datatype, false),

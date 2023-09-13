@@ -20,24 +20,25 @@ pub struct TextDocument {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.label".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.Text".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TextDocumentIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.label".into(),
+            "rerun.components.Text".into(),
             "rerun.components.TextDocumentIndicator".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl TextDocument {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`TextDocument`] [`crate::Archetype`]
@@ -100,7 +101,7 @@ impl crate::Archetype for TextDocument {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.Text".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.label".into()),
+                        None,
                     );
                     (
                         ::arrow2::datatypes::Field::new("body", datatype, false),

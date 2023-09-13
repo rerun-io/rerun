@@ -17,10 +17,3 @@ attribute "attr.rerun.component_recommended";
 ///
 /// Only applies to the fields of an archetype.
 attribute "attr.rerun.component_optional";
-
-/// Applies to any component object in order to override its fully-qualified name.
-///
-/// Only used to match legacy fqnames while we're in the process of migrating.
-//
-// TODO(cmc): remove once legacy is gone.
-attribute "attr.rerun.legacy_fqname";
