@@ -300,11 +300,11 @@ impl PythonCodeGenerator {
             let mut code = String::new();
             code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
             if let Some(source_path) = obj.relative_filepath() {
-                code.push_text(&format!("# Based on {source_path:?}."), 1, 0);
+                code.push_text(&format!("# Based on {source_path:?}."), 2, 0);
                 code.push_text(
                     &format!(
-                        "# You can extend this class by creating a \"{}\" file in this directory.",
-                        ext_class.file_name
+                        "# You can extend this class by creating a \"{}\" class in \"{}\".",
+                        ext_class.name, ext_class.file_name
                     ),
                     2,
                     0,
