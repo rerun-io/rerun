@@ -246,7 +246,7 @@ impl<E: Example + 'static> Application<E> {
                             return;
                         }
                         Err(err) => {
-                            re_log::warn!(%err, "dropped frame");
+                            re_log::warn!("Dropped frame: {err}");
                             return;
                         }
                     };
