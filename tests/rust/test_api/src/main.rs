@@ -77,12 +77,6 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
 fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::archetypes::Boxes2D;
 
-    // TODO(#3023): Cleared archetype
-    fn log_cleared(rec: &RecordingStream, ent_path: impl Into<EntityPath>, recursive: bool) {
-        use rerun::external::re_log_types::PathOp;
-        rec.record_path_op(PathOp::clear(recursive, ent_path.into()));
-    }
-
     rec.set_time_seconds("sim_time", 1f64);
     rec.log(
         "null_test/rect/0",
@@ -98,10 +92,10 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     rec.set_time_seconds("sim_time", 2f64);
-    log_cleared(rec, "null_test/rect/0", false);
+    rec.log("null_test/rect/0", &rerun::archetypes::Clear::flat())?;
 
     rec.set_time_seconds("sim_time", 3f64);
-    log_cleared(rec, "null_test/rect", true);
+    rec.log("null_test/rect", &rerun::archetypes::Clear::recursive())?;
 
     rec.set_time_seconds("sim_time", 4f64);
     rec.log(

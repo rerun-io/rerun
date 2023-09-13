@@ -54,7 +54,7 @@ impl Arrows3DPart {
         )
         .filter_map(
             move |(annotation_info, vector, origin, label, color, labeled_instance)| {
-                let origin = origin.unwrap_or_default();
+                let origin = origin.unwrap_or(Origin3D::ZERO);
                 let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
                 match (vector, label) {
                     (vector, Some(label)) => {
@@ -132,7 +132,7 @@ impl Arrows3DPart {
             itertools::izip!(instance_keys, vectors, origins, radii, colors, pick_ids)
         {
             let vector: glam::Vec3 = vector.0.into();
-            let origin: glam::Vec3 = origin.unwrap_or_default().0.into();
+            let origin: glam::Vec3 = origin.unwrap_or(Origin3D::ZERO).0.into();
             let end = origin + vector;
 
             let segment = line_batch

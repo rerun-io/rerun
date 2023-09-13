@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A 4x4 column-major Matrix.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Mat4x4(pub [f32; 16usize]);
 
 impl<'a> From<Mat4x4> for ::std::borrow::Cow<'a, Mat4x4> {

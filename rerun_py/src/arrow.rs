@@ -37,15 +37,6 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         let mut field = ffi::import_field_from_c(schema.as_ref())
             .map_err(|err| PyValueError::new_err(format!("Error importing Field: {err}")))?;
 
-        // There is a bad incompatibility between pyarrow and arrow2-convert
-        // Force the type to be correct.
-        // https://github.com/rerun-io/rerun/issues/795
-        if let Some(name) = name {
-            if name == <re_components::Rect2D as re_log_types::LegacyComponent>::legacy_name() {
-                field.data_type = <re_components::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            }
-        }
-
         let array = ffi::import_array_from_c(*array, field.data_type.clone())
             .map_err(|err| PyValueError::new_err(format!("Error importing Array: {err}")))?;
 

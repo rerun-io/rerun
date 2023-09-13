@@ -6,13 +6,11 @@
 
 use re_arrow_store::polars_util::latest_component;
 use re_arrow_store::{test_row, DataStore, LatestAtQuery, TimeType, Timeline};
-use re_components::{
-    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Rect2D,
-};
+use re_components::datagen::{build_frame_nr, build_some_point2d};
 use re_log_types::EntityPath;
 use re_types::{
     components::{InstanceKey, Point2D},
+    testing::{build_some_large_structs, LargeStruct},
     Loggable,
 };
 
@@ -21,7 +19,7 @@ fn main() {
 
     let ent_path = EntityPath::from("my/entity");
 
-    let row = test_row!(ent_path @ [build_frame_nr(2.into())] => 4; [build_some_rects(4)]);
+    let row = test_row!(ent_path @ [build_frame_nr(2.into())] => 4; [build_some_large_structs(4)]);
     store.insert_row(&row).unwrap();
 
     let row = test_row!(ent_path @ [build_frame_nr(3.into())] => 2; [build_some_point2d(2)]);
@@ -37,10 +35,10 @@ fn main() {
         &store,
         &LatestAtQuery::new(timeline_frame_nr, 10.into()),
         &ent_path,
-        Rect2D::name(),
+        LargeStruct::name(),
     )
     .unwrap();
-    println!("Query results from {:?}'s PoV:\n{df}", Rect2D::name());
+    println!("Query results from {:?}'s PoV:\n{df}", LargeStruct::name());
 
     println!("\n-----\n");
 
