@@ -16,7 +16,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import disconnected_space__native_to_pa_array_override  # noqa: F401
+from .disconnected_space_ext import DisconnectedSpaceExt
 
 __all__ = [
     "DisconnectedSpace",
@@ -28,7 +28,7 @@ __all__ = [
 
 
 @define
-class DisconnectedSpace:
+class DisconnectedSpace(DisconnectedSpaceExt):
     """
     Specifies that the entity path at which this is logged is disconnected from its parent.
 
@@ -64,7 +64,7 @@ class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
-        return disconnected_space__native_to_pa_array_override(data, data_type)
+        return DisconnectedSpaceExt.native_to_pa_array_override(data, data_type)
 
 
 DisconnectedSpaceType._ARRAY_TYPE = DisconnectedSpaceArray

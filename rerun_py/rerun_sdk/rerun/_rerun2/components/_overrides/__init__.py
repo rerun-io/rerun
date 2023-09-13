@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .disconnected_space import disconnected_space__native_to_pa_array_override
 from .draw_order import draw_order__native_to_pa_array_override
 from .instance_key import instance_key__native_to_pa_array_override
 from .line_strip2d import line_strip2d__native_to_pa_array_override
