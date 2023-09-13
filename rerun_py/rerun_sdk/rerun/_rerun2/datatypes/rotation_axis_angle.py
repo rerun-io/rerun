@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import rotation_axis_angle__angle__field_converter_override  # noqa: F401
+from .rotation_axis_angle_ext import RotationAxisAngleExt
 
 __all__ = [
     "RotationAxisAngle",
@@ -34,7 +34,7 @@ def _rotation_axis_angle__axis__special_field_converter_override(x: datatypes.Ve
 
 
 @define
-class RotationAxisAngle:
+class RotationAxisAngle(RotationAxisAngleExt):
     """3D rotation represented by a rotation around a given axis."""
 
     # You can define your own __init__ function as a member of RotationAxisAngleExt in rotation_axis_angle_ext.py
@@ -48,7 +48,7 @@ class RotationAxisAngle:
     ignored.
     """
 
-    angle: datatypes.Angle = field(converter=rotation_axis_angle__angle__field_converter_override)
+    angle: datatypes.Angle = field(converter=RotationAxisAngleExt.angle__field_converter_override)  # type: ignore[misc]
     """
     How much to rotate around the axis.
     """

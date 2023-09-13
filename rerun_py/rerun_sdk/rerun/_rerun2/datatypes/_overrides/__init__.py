@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from .quaternion import quaternion__init_override
-from .rotation3d import rotation3d__inner_converter_override
-from .rotation_axis_angle import rotation_axis_angle__angle__field_converter_override
-from .scale3d import scale3d__inner_converter_override
 from .tensor_buffer import tensor_buffer__inner_converter_override
 from .transform3d import transform3d__native_to_pa_array_override
 from .translation_and_mat3x3 import translation_and_mat3x3__init_override

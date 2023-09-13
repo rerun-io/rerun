@@ -19,13 +19,13 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
-from ._overrides import quaternion__init_override  # noqa: F401
+from .quaternion_ext import QuaternionExt
 
 __all__ = ["Quaternion", "QuaternionArray", "QuaternionArrayLike", "QuaternionLike", "QuaternionType"]
 
 
 @define(init=False)
-class Quaternion:
+class Quaternion(QuaternionExt):
     """
     A Quaternion represented by 4 real numbers.
 
@@ -33,8 +33,7 @@ class Quaternion:
     datastore as provided, when used in the viewer Quaternions will always be normalized.
     """
 
-    def __init__(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        quaternion__init_override(self, *args, **kwargs)
+    # __init__ can be found in quaternion_ext.py
 
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 

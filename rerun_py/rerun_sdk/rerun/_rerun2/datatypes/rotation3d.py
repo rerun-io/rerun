@@ -15,18 +15,18 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import rotation3d__inner_converter_override  # noqa: F401
+from .rotation3d_ext import Rotation3DExt
 
 __all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLike", "Rotation3DType"]
 
 
 @define
-class Rotation3D:
+class Rotation3D(Rotation3DExt):
     """A 3D rotation."""
 
     # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
 
-    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=rotation3d__inner_converter_override)
+    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=Rotation3DExt.inner__field_converter_override)  # type: ignore[misc]
     """
     Quaternion (datatypes.Quaternion):
         Rotation defined by a quaternion.

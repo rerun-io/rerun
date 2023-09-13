@@ -883,7 +883,7 @@ fn code_for_union(
     // components and datatypes have converters only if manually provided
     let old_converter_override_name =
         format!("{}__inner_converter_override", obj.snake_case_name());
-    let converter_override_name = "inner_converter_override".to_owned();
+    let converter_override_name = format!("inner{FIELD_CONVERTER_SUFFIX}");
 
     let converter = if ext_class
         .field_converter_overrides

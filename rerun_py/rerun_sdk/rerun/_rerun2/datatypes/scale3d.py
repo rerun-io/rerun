@@ -15,13 +15,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import scale3d__inner_converter_override  # noqa: F401
+from .scale3d_ext import Scale3DExt
 
 __all__ = ["Scale3D", "Scale3DArray", "Scale3DArrayLike", "Scale3DLike", "Scale3DType"]
 
 
 @define
-class Scale3D:
+class Scale3D(Scale3DExt):
     """
     3D scaling factor, part of a transform representation.
 
@@ -39,7 +39,7 @@ class Scale3D:
 
     # You can define your own __init__ function as a member of Scale3DExt in scale3d_ext.py
 
-    inner: datatypes.Vec3D | float = field(converter=scale3d__inner_converter_override)
+    inner: datatypes.Vec3D | float = field(converter=Scale3DExt.inner__field_converter_override)  # type: ignore[misc]
     """
     ThreeD (datatypes.Vec3D):
         Individual scaling factors for each axis, distorting the original object.
