@@ -553,7 +553,9 @@ fn code_for_struct(
             field_converters.insert(field.fqname.clone(), converter);
         }
 
-        // init override handling
+        // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
+        // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
+        // take precedence over the `ExtensionClass`.
         let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
         let init_define_arg = if ext_class.has_init || overrides.contains(&old_init_override_name) {
             "init=False".to_owned()
@@ -571,10 +573,10 @@ fn code_for_struct(
             superclasses.push(ext_class.name.as_str());
         }
 
-        let superclass_decl = if !superclasses.is_empty() {
-            format!("({})", superclasses.join(","))
-        } else {
+        let superclass_decl = if superclasses.is_empty() {
             String::new()
+        } else {
+            format!("({})", superclasses.join(","))
         };
 
         let define_args = if *kind == ObjectKind::Archetype {
@@ -586,10 +588,10 @@ fn code_for_struct(
             init_define_arg
         };
 
-        let define_args = if !define_args.is_empty() {
-            format!("({define_args})")
-        } else {
+        let define_args = if define_args.is_empty() {
             define_args
+        } else {
+            format!("({define_args})")
         };
 
         code.push_unindented_text(
@@ -783,10 +785,10 @@ fn code_for_union(
         superclasses.push(ext_class.name.as_str());
     }
 
-    let superclass_decl = if !superclasses.is_empty() {
-        format!("({})", superclasses.join(","))
-    } else {
+    let superclass_decl = if superclasses.is_empty() {
         String::new()
+    } else {
+        format!("({})", superclasses.join(","))
     };
 
     code.push_unindented_text(
