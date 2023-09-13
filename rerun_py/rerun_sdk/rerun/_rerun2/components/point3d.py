@@ -11,7 +11,16 @@ from .._baseclasses import (
     BaseDelegatingExtensionType,
 )
 
-__all__ = ["Point3DArray", "Point3DType"]
+__all__ = ["Point3D", "Point3DArray", "Point3DType"]
+
+
+class Point3D(datatypes.Vec3D):
+    """A point in 3D space."""
+
+    # You can define your own __init__ function as a member of Point3DExt in point3d_ext.py
+
+    # Note: there are no fields here because Point3D delegates to datatypes.Vec3D
+    pass
 
 
 class Point3DType(BaseDelegatingExtensionType):

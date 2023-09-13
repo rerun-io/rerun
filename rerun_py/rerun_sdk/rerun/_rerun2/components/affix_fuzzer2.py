@@ -11,7 +11,14 @@ from .._baseclasses import (
     BaseDelegatingExtensionType,
 )
 
-__all__ = ["AffixFuzzer2Array", "AffixFuzzer2Type"]
+__all__ = ["AffixFuzzer2", "AffixFuzzer2Array", "AffixFuzzer2Type"]
+
+
+class AffixFuzzer2(datatypes.AffixFuzzer1):
+    # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
+
+    # Note: there are no fields here because AffixFuzzer2 delegates to datatypes.AffixFuzzer1
+    pass
 
 
 class AffixFuzzer2Type(BaseDelegatingExtensionType):

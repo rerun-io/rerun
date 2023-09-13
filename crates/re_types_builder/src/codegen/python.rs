@@ -277,7 +277,7 @@ impl PythonCodeGenerator {
                     let name = &obj.name;
 
                     if obj.is_delegating_component() {
-                        vec![format!("{name}Array"), format!("{name}Type")]
+                        vec![name.clone(), format!("{name}Array"), format!("{name}Type")]
                     } else {
                         vec![
                             format!("{name}"),
@@ -516,10 +516,11 @@ fn code_for_struct(
 
     let mut code = String::new();
 
-    if *kind != ObjectKind::Component || obj.is_non_delegating_component() {
-        // field converters preprocessing pass — must be performed here because we must autogen
-        // converter function *before* the class
-        let mut field_converters: HashMap<String, String> = HashMap::new();
+    // field converters preprocessing pass — must be performed here because we must autogen
+    // converter function *before* the class
+    let mut field_converters: HashMap<String, String> = HashMap::new();
+
+    if !obj.is_delegating_component() {
         for field in fields {
             let (default_converter, converter_function) =
                 quote_field_converter_from_field(obj, objects, field);
@@ -552,88 +553,116 @@ fn code_for_struct(
             };
             field_converters.insert(field.fqname.clone(), converter);
         }
+    }
 
-        // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
-        // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
-        // take precedence over the `ExtensionClass`.
-        let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
-        let init_define_arg = if ext_class.has_init || overrides.contains(&old_init_override_name) {
-            "init=False".to_owned()
-        } else {
-            String::new()
-        };
+    // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
+    // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
+    // take precedence over the `ExtensionClass`.
+    let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
+    let init_define_arg = if ext_class.has_init || overrides.contains(&old_init_override_name) {
+        "init=False".to_owned()
+    } else {
+        String::new()
+    };
 
-        let mut superclasses = vec![];
+    let mut superclasses = vec![];
 
-        if *kind == ObjectKind::Archetype {
-            superclasses.push("Archetype");
-        }
+    if *kind == ObjectKind::Archetype {
+        superclasses.push("Archetype".to_owned());
+    }
 
-        if ext_class.found {
-            superclasses.push(ext_class.name.as_str());
-        }
+    if ext_class.found {
+        superclasses.push(ext_class.name.clone());
+    }
 
-        let superclass_decl = if superclasses.is_empty() {
-            String::new()
-        } else {
-            format!("({})", superclasses.join(","))
-        };
+    // Delegating component inheritance comes after the `ExtensionClass`
+    // This way if a component needs to override `__init__` it still can.
+    if obj.is_delegating_component() {
+        superclasses.push(format!(
+            "datatypes.{}",
+            obj.delegate_datatype(objects).unwrap().name
+        ));
+    }
 
-        let define_args = if *kind == ObjectKind::Archetype {
-            format!(
-                "str=False, repr=False{}{init_define_arg}",
-                if init_define_arg.is_empty() { "" } else { ", " }
-            )
-        } else {
-            init_define_arg
-        };
+    let superclass_decl = if superclasses.is_empty() {
+        String::new()
+    } else {
+        format!("({})", superclasses.join(","))
+    };
 
-        let define_args = if define_args.is_empty() {
-            define_args
-        } else {
-            format!("({define_args})")
-        };
+    let define_args = if *kind == ObjectKind::Archetype {
+        format!(
+            "str=False, repr=False{}{init_define_arg}",
+            if init_define_arg.is_empty() { "" } else { ", " }
+        )
+    } else {
+        init_define_arg
+    };
 
-        code.push_unindented_text(
-            format!(
-                r#"
-                @define{define_args}
+    let define_args = if define_args.is_empty() {
+        define_args
+    } else {
+        format!("({define_args})")
+    };
+
+    let define_decorator = if obj.is_delegating_component() {
+        String::new()
+    } else {
+        format!("@define{define_args}")
+    };
+
+    code.push_unindented_text(
+        format!(
+            r#"
+                {define_decorator}
                 class {name}{superclass_decl}:
                 "#
-            ),
-            0,
+        ),
+        0,
+    );
+
+    code.push_text(quote_doc_from_docs(docs), 0, 4);
+
+    if ext_class.has_init {
+        code.push_text(
+            format!("# __init__ can be found in {}", ext_class.file_name),
+            2,
+            4,
         );
+    } else if overrides.contains(&old_init_override_name) {
+        code.push_text(
+            "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
+            1,
+            4,
+        );
+        code.push_text(
+            format!("{old_init_override_name}(self, *args, **kwargs)"),
+            2,
+            8,
+        );
+    } else {
+        code.push_text(
+            format!(
+                "# You can define your own __init__ function as a member of {} in {}",
+                ext_class.name, ext_class.file_name
+            ),
+            2,
+            4,
+        );
+    }
 
-        code.push_text(quote_doc_from_docs(docs), 0, 4);
-
-        if ext_class.has_init {
-            code.push_text(
-                format!("# __init__ can be found in {}", ext_class.file_name),
-                2,
-                4,
-            );
-        } else if overrides.contains(&old_init_override_name) {
-            code.push_text(
-                "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
-                1,
-                4,
-            );
-            code.push_text(
-                format!("{old_init_override_name}(self, *args, **kwargs)"),
-                2,
-                8,
-            );
-        } else {
-            code.push_text(
-                format!(
-                    "# You can define your own __init__ function as a member of {} in {}",
-                    ext_class.name, ext_class.file_name
-                ),
-                2,
-                4,
-            );
-        }
-
+    if obj.is_delegating_component() {
+        code.push_text(
+            format!(
+                "# Note: there are no fields here because {} delegates to datatypes.{}",
+                obj.name,
+                obj.delegate_datatype(objects).unwrap().name
+            ),
+            1,
+            4,
+        );
+        code.push_text("pass", 2, 4);
+    } else {
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
         // complains.
         // TODO(ab, #2641): this is required because fields without default should appear before fields

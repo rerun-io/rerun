@@ -11,7 +11,23 @@ from .._baseclasses import (
     BaseDelegatingExtensionType,
 )
 
-__all__ = ["KeypointIdArray", "KeypointIdType"]
+__all__ = ["KeypointId", "KeypointIdArray", "KeypointIdType"]
+
+
+class KeypointId(datatypes.KeypointId):
+    """
+    A 16-bit ID representing a type of semantic keypoint within a class.
+
+    `KeypointId`s are only meaningful within the context of a [`rerun.components.ClassDescription`][].
+
+    Used to look up an [`rerun.components.AnnotationInfo`][] for a Keypoint within the
+    [`rerun.components.AnnotationContext`].
+    """
+
+    # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
+
+    # Note: there are no fields here because KeypointId delegates to datatypes.KeypointId
+    pass
 
 
 class KeypointIdType(BaseDelegatingExtensionType):

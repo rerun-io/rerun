@@ -10,8 +10,28 @@ from .._baseclasses import (
     BaseDelegatingExtensionArray,
     BaseDelegatingExtensionType,
 )
+from .text_log_level_ext import TextLogLevelExt
 
-__all__ = ["TextLogLevelArray", "TextLogLevelType"]
+__all__ = ["TextLogLevel", "TextLogLevelArray", "TextLogLevelType"]
+
+
+class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
+    """
+    The severity level of a text log message.
+
+    Recommended to be one of:
+    * `"CRITICAL"`
+    * `"ERROR"`
+    * `"WARN"`
+    * `"INFO"`
+    * `"DEBUG"`
+    * `"TRACE"`
+    """
+
+    # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
+
+    # Note: there are no fields here because TextLogLevel delegates to datatypes.Utf8
+    pass
 
 
 class TextLogLevelType(BaseDelegatingExtensionType):
