@@ -150,6 +150,8 @@ impl App {
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
     ) -> Self {
+        re_tracing::profile_function!();
+
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
             // This can happen when `rerun` crate users call `spawn`. TODO(emilk): make `spawn` spawn a new process.
@@ -202,6 +204,8 @@ impl App {
 
         let (command_sender, command_receiver) = command_channel();
 
+        let component_ui_registry = re_data_ui::create_component_ui_registry();
+
         Self {
             build_info,
             startup_options,
@@ -213,7 +217,7 @@ impl App {
             profiler: Default::default(),
 
             text_log_rx,
-            component_ui_registry: re_data_ui::create_component_ui_registry(),
+            component_ui_registry,
             rx: Default::default(),
             #[cfg(target_arch = "wasm32")]
             open_files_promise: Default::default(),
@@ -1099,6 +1103,7 @@ impl eframe::App for App {
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
+    re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;

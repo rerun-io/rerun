@@ -25,9 +25,9 @@ server = []
 
 
 [dependencies]
-re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
+re_log.workspace = true
 re_smart_channel.workspace = true
 
 ahash.workspace = true

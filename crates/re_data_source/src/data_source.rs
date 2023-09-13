@@ -103,6 +103,7 @@ impl DataSource {
         self,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<Receiver<LogMsg>> {
+        re_tracing::profile_function!();
         match self {
             DataSource::RrdHttpUrl(url) => Ok(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url, on_msg),

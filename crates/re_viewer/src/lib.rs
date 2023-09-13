@@ -118,6 +118,7 @@ impl AppEnvironment {
 // ---------------------------------------------------------------------------
 
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
+    re_tracing::profile_function!();
     egui_wgpu::WgpuConfiguration {
             // When running wgpu on native debug builds, we want some extra control over how
             // and when a poisoned surface gets recreated.
@@ -146,6 +147,7 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
 /// Customize eframe and egui to suit the rerun viewer.
 #[must_use]
 pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
+    re_tracing::profile_function!();
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 

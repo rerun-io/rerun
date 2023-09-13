@@ -19,6 +19,7 @@ all-features = true
 [dependencies]
 re_format.workspace = true
 re_log.workspace = true
+re_tracing.workspace = true
 
 ahash.workspace = true
 emath.workspace = true

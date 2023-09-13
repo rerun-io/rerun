@@ -23,6 +23,7 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
 }
 
 fn check_graphics_driver(wgpu_render_state: Option<&egui_wgpu::RenderState>) {
+    re_tracing::profile_function!();
     let wgpu_render_state = wgpu_render_state.expect("Expected wgpu to be enabled");
     let info = wgpu_render_state.adapter.get_info();
 
@@ -77,6 +78,7 @@ fn check_graphics_driver(wgpu_render_state: Option<&egui_wgpu::RenderState>) {
 }
 
 pub fn eframe_options() -> eframe::NativeOptions {
+    re_tracing::profile_function!();
     eframe::NativeOptions {
         // Controls where on disk the app state is persisted.
         app_id: Some(APP_ID.to_owned()),
@@ -108,6 +110,8 @@ pub fn eframe_options() -> eframe::NativeOptions {
 
 #[allow(clippy::unnecessary_wraps)]
 fn icon_data() -> Option<eframe::IconData> {
+    re_tracing::profile_function!();
+
     cfg_if::cfg_if! {
         if #[cfg(target_os = "macos")] {
             let app_icon_png_bytes = include_bytes!("../data/app_icon_mac.png");

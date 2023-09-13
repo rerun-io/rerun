@@ -4254,6 +4254,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "re_format",
  "re_log",
+ "re_tracing",
  "smallvec",
  "sysinfo",
  "wasm-bindgen",

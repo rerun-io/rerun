@@ -6,6 +6,8 @@ use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 use super::{DataUi, EntityDataUi};
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
+    re_tracing::profile_function!();
+
     /// Registers how to show a given component in the ui.
     pub fn add<C: EntityDataUi + re_types::Component>(registry: &mut ComponentUiRegistry) {
         registry.add(
