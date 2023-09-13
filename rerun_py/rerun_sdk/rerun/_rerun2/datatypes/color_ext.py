@@ -79,13 +79,12 @@ class ColorExt:
                         data = data.reshape((1, -1))
                 array = _numpy_array_to_u32(cast(npt.NDArray[Union[np.uint8, np.float32, np.float64]], data))
         else:
+            # Finally try to build a single color with the arguments
+            # if we cannot, data must represent an array of colors
             data_list = list(data)
 
-            # does that array d
             try:
-                # try to build a single color with that
-                # if we cannot, data must represent an array of colors
-                data_list = [Color(data_list)]  # type: ignore[arg-type]
+                data_list = [Color(data_list)]
             except (IndexError, ValueError):
                 pass
 

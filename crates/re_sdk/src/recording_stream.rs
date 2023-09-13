@@ -703,11 +703,11 @@ impl RecordingStream {
                 // NOTE: Unreachable, a top-level Field will always be a component, and thus an
                 // extension.
                 use re_log_types::external::arrow2::datatypes::DataType;
-                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
+                let DataType::Extension(fqname, _, _) = field.data_type else {
                     return Err(SerializationError::missing_extension_metadata(field.name))
                         .map_err(Into::into);
                 };
-                DataCell::try_from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
+                DataCell::try_from_arrow(fqname.into(), array)
             })
             .collect();
         let cells = cells?;
@@ -914,26 +914,6 @@ impl RecordingStream {
 
         this.cmds_tx.send(Command::RecordMsg(msg)).ok();
         this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    }
-
-    /// Records a [`re_log_types::PathOp`].
-    ///
-    /// This is a convenience wrapper for [`Self::record_msg`].
-    #[inline]
-    pub fn record_path_op(&self, path_op: re_log_types::PathOp) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to record_path_op() ignored");
-            return;
-        };
-
-        self.record_msg(LogMsg::EntityPathOpMsg(
-            this.info.store_id.clone(),
-            re_log_types::EntityPathOpMsg {
-                row_id: re_log_types::RowId::random(),
-                time_point: self.now(),
-                path_op,
-            },
-        ));
     }
 
     /// Records a single [`DataRow`].

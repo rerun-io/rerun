@@ -6,13 +6,11 @@
 
 use polars_core::prelude::JoinType;
 use re_arrow_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
-use re_components::{
-    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Rect2D,
-};
+use re_components::datagen::{build_frame_nr, build_some_point2d};
 use re_log_types::{EntityPath, TimeType, Timeline};
 use re_types::{
     components::{InstanceKey, Point2D},
+    testing::{build_some_large_structs, LargeStruct},
     Loggable as _,
 };
 
@@ -26,7 +24,7 @@ fn main() {
     let frame3 = 3.into();
     let frame4 = 4.into();
 
-    let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_rects(2)]);
+    let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
     store.insert_row(&row).unwrap();
 
     let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_point2d(2)]);
@@ -35,13 +33,13 @@ fn main() {
     let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 4; [build_some_point2d(4)]);
     store.insert_row(&row).unwrap();
 
-    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_rects(3)]);
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_large_structs(3)]);
     store.insert_row(&row).unwrap();
 
     let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 1; [build_some_point2d(1)]);
     store.insert_row(&row).unwrap();
 
-    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_rects(3)]);
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_large_structs(3)]);
     store.insert_row(&row).unwrap();
 
     let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_point2d(3)]);
@@ -58,8 +56,8 @@ fn main() {
         &store,
         &query,
         &ent_path,
-        Rect2D::name(),
-        [InstanceKey::name(), Rect2D::name(), Point2D::name()],
+        LargeStruct::name(),
+        [InstanceKey::name(), LargeStruct::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
@@ -69,7 +67,7 @@ fn main() {
                 || "<timeless>".into(),
                 |time| TimeType::Sequence.format(time)
             ),
-            Rect2D::name(),
+            LargeStruct::name(),
             df,
         );
     }
@@ -81,7 +79,7 @@ fn main() {
         &query,
         &ent_path,
         Point2D::name(),
-        [InstanceKey::name(), Rect2D::name(), Point2D::name()],
+        [InstanceKey::name(), LargeStruct::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {

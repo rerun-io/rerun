@@ -48,19 +48,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.TensorIndicator".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl Tensor {
-    pub const NUM_COMPONENTS: usize = 2usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Tensor`] [`crate::Archetype`]
@@ -123,7 +124,7 @@ impl crate::Archetype for Tensor {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.TensorData".into(),
                         Box::new(array.data_type().clone()),
-                        Some("rerun.components.TensorData".into()),
+                        None,
                     );
                     (
                         ::arrow2::datatypes::Field::new("data", datatype, false),

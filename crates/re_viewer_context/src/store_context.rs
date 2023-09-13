@@ -4,5 +4,5 @@ use re_data_store::StoreDb;
 pub struct StoreContext<'a> {
     pub blueprint: &'a StoreDb,
     pub recording: Option<&'a StoreDb>,
-    pub alternate_recordings: Vec<&'a StoreDb>,
+    pub all_recordings: Vec<&'a StoreDb>,
 }

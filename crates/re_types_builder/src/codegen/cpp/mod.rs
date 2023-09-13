@@ -1719,17 +1719,14 @@ fn static_constructor_for_enum_type(
 
 fn quote_constants_header_and_cpp(
     obj: &Object,
-    objects: &Objects,
+    _objects: &Objects,
     obj_type_ident: &Ident,
 ) -> (Vec<TokenStream>, Vec<TokenStream>) {
     let mut hpp = Vec::new();
     let mut cpp = Vec::new();
     match &obj.kind {
         ObjectKind::Component => {
-            let legacy_fqname = objects[&obj.fqname]
-                .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
-                .unwrap_or_else(|| obj.fqname.clone());
-
+            let fqname = &obj.fqname;
             let comment = quote_doc_comment("Name of the component, used for serialization.");
             hpp.push(quote! {
                 #NEWLINE_TOKEN
@@ -1737,7 +1734,7 @@ fn quote_constants_header_and_cpp(
                 #comment
                 static const char NAME[]
             });
-            cpp.push(quote!(const char #obj_type_ident::NAME[] = #legacy_fqname));
+            cpp.push(quote!(const char #obj_type_ident::NAME[] = #fqname));
         }
         ObjectKind::Archetype => {
             let indicator_fqname =

@@ -22,30 +22,31 @@ pub struct TextLog {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.label".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.Text".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.TextLogLevel".into(),
             "rerun.components.TextLogIndicator".into(),
+            "rerun.components.TextLogLevel".into(),
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.label".into(),
-            "rerun.components.TextLogLevel".into(),
+            "rerun.components.Text".into(),
             "rerun.components.TextLogIndicator".into(),
+            "rerun.components.TextLogLevel".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl TextLog {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`TextLog`] [`crate::Archetype`]
@@ -115,7 +116,7 @@ impl crate::Archetype for TextLog {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.Text".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.label".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("body", datatype, false),
@@ -135,7 +136,7 @@ impl crate::Archetype for TextLog {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.TextLogLevel".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.TextLogLevel".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("level", datatype, false),
@@ -155,7 +156,7 @@ impl crate::Archetype for TextLog {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Color".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.colorrgba".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("color", datatype, false),

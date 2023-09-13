@@ -7,7 +7,7 @@ namespace rerun.datatypes;
 
 struct Float32 (
   "attr.arrow.transparent",
-  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   "attr.rust.tuple_struct",
   order: 100
 ) {

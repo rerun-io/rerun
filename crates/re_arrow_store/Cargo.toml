@@ -19,6 +19,9 @@ all-features = true
 [features]
 default = []
 
+## Enables access to re_types' test components/datatypes.
+testing = ["re_types/testing"]
+
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 
@@ -93,7 +96,7 @@ bench = false
 [[example]]
 name = "dump_dataframe"
 path = "examples/dump_dataframe.rs"
-required-features = ["polars"]
+required-features = ["polars", "testing"]
 
 [[example]]
 name = "latest_component"
@@ -114,14 +117,17 @@ required-features = ["polars"]
 [[bench]]
 name = "data_store"
 harness = false
+required-features = ["testing"]
 
 [[bench]]
 name = "arrow2"
 harness = false
+required-features = ["testing"]
 
 [[bench]]
 name = "arrow2_convert"
 harness = false
+required-features = ["testing"]
 
 [[bench]]
 name = "vectors"

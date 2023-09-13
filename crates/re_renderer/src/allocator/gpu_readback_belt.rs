@@ -348,7 +348,7 @@ impl GpuReadbackBelt {
         self.received_chunks = retained;
 
         for chunk in discarded {
-            re_log::debug!(
+            re_log::trace!(
                 "Unread data from a GpuReadbackBelt was discarded. {} ranges remained unread.",
                 chunk.ranges_in_use.len()
             );

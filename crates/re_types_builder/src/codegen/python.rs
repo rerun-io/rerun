@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{autogen_warning, StringExt as _},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
+    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 /// The standard python init method.
@@ -206,7 +206,7 @@ impl ExtensionClass {
                 .unwrap();
 
             // Extract all methods
-            // TODO(jleibs): Maybe pull in regex here
+            // TODO(jleibs): Maybe pull in regex_light here
             let methods: Vec<_> = contents
                 .lines()
                 .map(|l| l.trim())
@@ -259,7 +259,7 @@ impl PythonCodeGenerator {
     ) {
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
 
-        // TODO(jleibs): This can go away once all overrides ported to extensions
+        // TODO(jleibs): This can go away once all old overrides are ported to `_ext.py`
         let overrides = load_overrides(&kind_path);
 
         // (module_name, [object_name])
@@ -300,7 +300,15 @@ impl PythonCodeGenerator {
             let mut code = String::new();
             code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
             if let Some(source_path) = obj.relative_filepath() {
-                code.push_text(&format!("# Based on {source_path:?}.\n\n"), 2, 0);
+                code.push_text(&format!("# Based on {source_path:?}."), 2, 0);
+                code.push_text(
+                    &format!(
+                        "# You can extend this class by creating a {:?} class in {:?}.",
+                        ext_class.name, ext_class.file_name
+                    ),
+                    2,
+                    0,
+                );
             }
 
             let manifest = quote_manifest(names);
@@ -547,7 +555,9 @@ fn code_for_struct(
         }
     }
 
-    // init override handling
+    // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
+    // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
+    // take precedence over the `ExtensionClass`.
     let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
     let init_define_arg = if ext_class.has_init || overrides.contains(&old_init_override_name) {
         "init=False".to_owned()
@@ -555,7 +565,7 @@ fn code_for_struct(
         String::new()
     };
 
-    let mut superclasses: Vec<String> = vec![];
+    let mut superclasses = vec![];
 
     if *kind == ObjectKind::Archetype {
         superclasses.push("Archetype".to_owned());
@@ -698,14 +708,19 @@ fn code_for_struct(
             };
 
             let converter = &field_converters[&field.fqname];
+            let type_ignore = if converter.contains("Ext.") {
+                "# type: ignore[misc]".to_owned()
+            } else {
+                String::new()
+            };
             // Note: mypy gets confused using staticmethods for field-converters
             let typ = if !*is_nullable {
-                format!("{typ} = field({metadata}{converter}) # type: ignore[misc]")
+                format!("{typ} = field({metadata}{converter}) {type_ignore}")
             } else {
                 format!(
-                "{typ} | None = field({metadata}default=None{}{converter}) # type: ignore[misc]",
-                if converter.is_empty() { "" } else { ", " },
-            )
+                    "{typ} | None = field({metadata}default=None{}{converter}) {type_ignore}",
+                    if converter.is_empty() { "" } else { ", " },
+                )
             };
 
             code.push_text(format!("{name}: {typ}"), 1, 4);
@@ -799,10 +814,10 @@ fn code_for_union(
         superclasses.push(ext_class.name.as_str());
     }
 
-    let superclass_decl = if !superclasses.is_empty() {
-        format!("({})", superclasses.join(","))
-    } else {
+    let superclass_decl = if superclasses.is_empty() {
         String::new()
+    } else {
+        format!("({})", superclasses.join(","))
     };
 
     code.push_unindented_text(
@@ -883,9 +898,15 @@ fn code_for_union(
         String::new()
     };
 
+    let type_ignore = if converter.contains("Ext.") {
+        "# type: ignore[misc]".to_owned()
+    } else {
+        String::new()
+    };
+
     // Note: mypy gets confused using staticmethods for field-converters
     code.push_text(
-        format!("inner: {inner_type} = field({converter}) # type: ignore[misc]"),
+        format!("inner: {inner_type} = field({converter}) {type_ignore}"),
         1,
         4,
     );
@@ -1421,19 +1442,15 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
     let dtype_extension_array = format!("{}Array", dtype_obj.name);
     let dtype_extension_array_like = format!("{}ArrayLike", dtype_obj.name);
 
-    let legacy_fqname = obj
-        .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
-        .unwrap_or_else(|| fqname.clone());
-
     unindent::unindent(&format!(
         r#"
 
         class {extension_type}(BaseDelegatingExtensionType):
-            _TYPE_NAME = "{legacy_fqname}"
+            _TYPE_NAME = "{fqname}"
             _DELEGATED_EXTENSION_TYPE = datatypes.{dtype_extension_type}
 
         class {extension_array}(BaseDelegatingExtensionArray[datatypes.{dtype_extension_array_like}]):
-            _EXTENSION_NAME = "{legacy_fqname}"
+            _EXTENSION_NAME = "{fqname}"
             _EXTENSION_TYPE = {extension_type}
             _DELEGATED_ARRAY_TYPE = datatypes.{dtype_extension_array}
 
@@ -1474,10 +1491,6 @@ fn quote_arrow_support_from_obj(
     let extension_type = format!("{name}Type");
     let many_aliases = format!("{name}ArrayLike");
 
-    let legacy_fqname = obj
-        .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
-        .unwrap_or_else(|| fqname.clone());
-
     let old_override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
     let override_ = if ext_class.has_native_to_pa_array {
         format!(
@@ -1501,11 +1514,11 @@ fn quote_arrow_support_from_obj(
         class {extension_type}({ext_type_base}):
             def __init__(self) -> None:
                 pa.ExtensionType.__init__(
-                    self, {datatype}, "{legacy_fqname}"
+                    self, {datatype}, "{fqname}"
                 )
 
         class {extension_array}({ext_array_base}[{many_aliases}]):
-            _EXTENSION_NAME = "{legacy_fqname}"
+            _EXTENSION_NAME = "{fqname}"
             _EXTENSION_TYPE = {extension_type}
 
             @staticmethod

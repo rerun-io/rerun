@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char LineStrip3D::NAME[] = "rerun.linestrip3d";
+        const char LineStrip3D::NAME[] = "rerun.components.LineStrip3D";
 
         const std::shared_ptr<arrow::DataType> &LineStrip3D::arrow_datatype() {
             static const auto datatype =

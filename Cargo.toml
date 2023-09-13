@@ -175,4 +175,4 @@ emath = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4
 epaint = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
 
 # Temporary patch until next egui_tiles release
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f835c4df1cc260a58122a8d37c7c3738902b9643" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "c66d6cba7ddb5b236be614d1816be4561260274e" }

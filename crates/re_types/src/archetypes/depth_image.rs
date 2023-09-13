@@ -63,26 +63,28 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DepthImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.DepthMeter".into(),
-            "rerun.draw_order".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
-            "rerun.draw_order".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl DepthImage {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`DepthImage`] [`crate::Archetype`]
@@ -152,7 +154,7 @@ impl crate::Archetype for DepthImage {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.TensorData".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.components.TensorData".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("data", datatype, false),
@@ -172,7 +174,7 @@ impl crate::Archetype for DepthImage {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DepthMeter".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.DepthMeter".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("meter", datatype, false),
@@ -192,7 +194,7 @@ impl crate::Archetype for DepthImage {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DrawOrder".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.draw_order".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("draw_order", datatype, false),

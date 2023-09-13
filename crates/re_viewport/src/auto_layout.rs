@@ -21,6 +21,8 @@ pub(crate) fn tree_from_space_views(
     space_view_class_registry: &re_viewer_context::SpaceViewClassRegistry,
     space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> egui_tiles::Tree<SpaceViewId> {
+    re_log::trace!("Auto-layout of {} space views", space_views.len());
+
     if space_views.is_empty() {
         return egui_tiles::Tree::empty();
     }

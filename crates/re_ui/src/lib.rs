@@ -702,12 +702,13 @@ impl ReUi {
     }
 
     /// Two-column grid to be used in selection view.
+    ///
+    /// Use this when you expect the right column to have multi-line entries.
     #[allow(clippy::unused_self)]
-    pub fn selection_grid(&self, ui: &mut egui::Ui, id: &str) -> egui::Grid {
+    pub fn selection_grid(&self, _ui: &mut egui::Ui, id: &str) -> egui::Grid {
         // Spread rows a bit to make it easier to see the groupings
-        egui::Grid::new(id)
-            .num_columns(2)
-            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
+        let spacing = egui::vec2(8.0, 16.0);
+        egui::Grid::new(id).num_columns(2).spacing(spacing)
     }
 
     /// Draws a shadow into the given rect with the shadow direction given from dark to light

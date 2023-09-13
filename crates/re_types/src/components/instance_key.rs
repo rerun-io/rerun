@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A unique numeric identifier for each individual instance within a batch.
-#[derive(Clone, Debug, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct InstanceKey(pub u64);
 
@@ -37,7 +37,7 @@ impl crate::Loggable for InstanceKey {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.instance_key".into()
+        "rerun.components.InstanceKey".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

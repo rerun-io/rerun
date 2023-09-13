@@ -5,14 +5,11 @@
 //! ```
 
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
-use re_components::{
-    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Rect2D,
-};
+use re_components::datagen::{build_frame_nr, build_some_colors, build_some_point2d};
 use re_log_types::{DataRow, EntityPath, RowId, TimeType};
 use re_query::range_entity_with_primary;
 use re_types::{
-    components::{InstanceKey, Point2D},
+    components::{Color, InstanceKey, Point2D},
     Loggable as _,
 };
 
@@ -26,8 +23,8 @@ fn main() {
     let frame3 = [build_frame_nr(3.into())];
     let frame4 = [build_frame_nr(4.into())];
 
-    let rects = build_some_rects(2);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame1, 2, &rects);
+    let colors = build_some_colors(2);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame1, 2, &colors);
     store.insert_row(&row).unwrap();
 
     let points = build_some_point2d(2);
@@ -38,41 +35,41 @@ fn main() {
     let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &points);
     store.insert_row(&row).unwrap();
 
-    let rects = build_some_rects(3);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &rects);
+    let colors = build_some_colors(3);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors);
     store.insert_row(&row).unwrap();
 
     let points = build_some_point2d(3);
     let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &points);
     store.insert_row(&row).unwrap();
 
-    let rects = build_some_rects(3);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &rects);
+    let colors = build_some_colors(3);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors);
     store.insert_row(&row).unwrap();
 
     let query = RangeQuery::new(frame2[0].0, TimeRange::new(frame2[0].1, frame4[0].1));
 
     println!("Store contents:\n{}", store.to_dataframe());
 
+    // TODO(andreas): range_entity_with_primary only works with legacy components.
+    // println!("\n-----\n");
+    // let components = [InstanceKey::name(), Color::name(), Point2D::name()];
+    // let ent_views = range_entity_with_primary::<Color, 3>(&store, &query, &ent_path, components);
+    // for (time, ent_view) in ent_views {
+    //     eprintln!(
+    //         "Found data at time {} from {}'s PoV:\n{}",
+    //         time.map_or_else(
+    //             || "<timeless>".into(),
+    //             |time| TimeType::Sequence.format(time)
+    //         ),
+    //         Color::name(),
+    //         &ent_view.as_df2::<Point2D>().unwrap()
+    //     );
+    // }
+
     println!("\n-----\n");
 
-    let components = [InstanceKey::name(), Rect2D::name(), Point2D::name()];
-    let ent_views = range_entity_with_primary::<Rect2D, 3>(&store, &query, &ent_path, components);
-    for (time, ent_view) in ent_views {
-        eprintln!(
-            "Found data at time {} from {}'s PoV:\n{}",
-            time.map_or_else(
-                || "<timeless>".into(),
-                |time| TimeType::Sequence.format(time)
-            ),
-            Rect2D::name(),
-            &ent_view.as_df2::<Point2D>().unwrap()
-        );
-    }
-
-    println!("\n-----\n");
-
-    let components = [InstanceKey::name(), Rect2D::name(), Point2D::name()];
+    let components = [InstanceKey::name(), Color::name(), Point2D::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
@@ -82,7 +79,7 @@ fn main() {
                 |time| TimeType::Sequence.format(time)
             ),
             Point2D::name(),
-            &ent_view.as_df2::<Rect2D>().unwrap()
+            &ent_view.as_df2::<Color>().unwrap()
         );
     }
 }

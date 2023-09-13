@@ -177,7 +177,7 @@ def log(
     _add_indicator_component(type(entity).__name__, num_instances, instanced)
 
     if splats:
-        splats["rerun.instance_key"] = _splat()
+        splats["rerun.components.InstanceKey"] = _splat()
         bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
             entity_path,
             components=splats,

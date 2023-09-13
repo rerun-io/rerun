@@ -5,23 +5,11 @@
 use re_log_types::{Time, TimeInt, TimeType, Timeline};
 use re_types::components::InstanceKey;
 
-/// Create `len` dummy rectangles
-pub fn build_some_rects(len: usize) -> Vec<crate::Rect2D> {
-    (0..len)
-        .map(|i| crate::Rect2D::from_xywh(i as f32, i as f32, (i / 2) as f32, (i / 2) as f32))
-        .collect()
-}
-
 /// Create `len` dummy colors
 pub fn build_some_colors(len: usize) -> Vec<re_types::components::Color> {
     (0..len)
         .map(|i| re_types::components::Color::from(i as u32))
         .collect()
-}
-
-/// Create `len` dummy labels
-pub fn build_some_labels(len: usize) -> Vec<String> {
-    (0..len).map(|i| format!("label{i}")).collect()
 }
 
 /// Create `len` dummy `Point2D`
