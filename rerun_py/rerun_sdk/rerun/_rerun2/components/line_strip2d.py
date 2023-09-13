@@ -17,13 +17,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import line_strip2d__native_to_pa_array_override  # noqa: F401
+from .line_strip2d_ext import LineStrip2DExt
 
 __all__ = ["LineStrip2D", "LineStrip2DArray", "LineStrip2DArrayLike", "LineStrip2DLike", "LineStrip2DType"]
 
 
 @define
-class LineStrip2D:
+class LineStrip2D(LineStrip2DExt):
     r"""
     A line strip in 2D space.
 
@@ -77,7 +77,7 @@ class LineStrip2DArray(BaseExtensionArray[LineStrip2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return line_strip2d__native_to_pa_array_override(data, data_type)
+        return LineStrip2DExt.native_to_pa_array_override(data, data_type)
 
 
 LineStrip2DType._ARRAY_TYPE = LineStrip2DArray
