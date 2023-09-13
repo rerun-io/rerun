@@ -37,7 +37,7 @@ impl crate::Loggable for InstanceKey {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.instance_key".into()
+        "rerun.components.InstanceKey".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

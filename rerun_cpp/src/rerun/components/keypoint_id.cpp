@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace components {
-        const char KeypointId::NAME[] = "rerun.keypoint_id";
+        const char KeypointId::NAME[] = "rerun.components.KeypointId";
 
         const std::shared_ptr<arrow::DataType> &KeypointId::arrow_datatype() {
             static const auto datatype = rerun::datatypes::KeypointId::arrow_datatype();

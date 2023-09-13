@@ -9,7 +9,6 @@ namespace rerun.archetypes;
 
 /// A log entry in a text log, comprised of a text body and its log level.
 table TextLog (
-  "attr.rerun.legacy_fqname": "rerun.text_entry",
   "attr.rust.derive": "PartialEq, Eq",
   order: 100
 ) {

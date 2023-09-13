@@ -67,8 +67,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.DepthMeter".into(),
-            "rerun.draw_order".into(),
-            "rerun.instance_key".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
@@ -78,8 +78,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
             "rerun.components.TensorData".into(),
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
-            "rerun.draw_order".into(),
-            "rerun.instance_key".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
         ]
     });
 
@@ -154,7 +154,7 @@ impl crate::Archetype for DepthImage {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.TensorData".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.components.TensorData".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("data", datatype, false),
@@ -174,7 +174,7 @@ impl crate::Archetype for DepthImage {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DepthMeter".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.DepthMeter".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("meter", datatype, false),
@@ -194,7 +194,7 @@ impl crate::Archetype for DepthImage {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DrawOrder".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.draw_order".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("draw_order", datatype, false),

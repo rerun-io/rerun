@@ -37,7 +37,7 @@ impl crate::Loggable for Utf8 {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.label".into()
+        "rerun.datatypes.Utf8".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

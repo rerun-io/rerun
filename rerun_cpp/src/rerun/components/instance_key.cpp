@@ -11,7 +11,7 @@
 
 namespace rerun {
     namespace components {
-        const char InstanceKey::NAME[] = "rerun.instance_key";
+        const char InstanceKey::NAME[] = "rerun.components.InstanceKey";
 
         const std::shared_ptr<arrow::DataType>& InstanceKey::arrow_datatype() {
             static const auto datatype = arrow::uint64();

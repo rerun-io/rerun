@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{autogen_warning, StringExt as _},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_RERUN_LEGACY_FQNAME,
+    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 // ---
@@ -1161,19 +1161,15 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
     let dtype_extension_array = format!("{}Array", dtype_obj.name);
     let dtype_extension_array_like = format!("{}ArrayLike", dtype_obj.name);
 
-    let legacy_fqname = obj
-        .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
-        .unwrap_or_else(|| fqname.clone());
-
     unindent::unindent(&format!(
         r#"
 
         class {extension_type}(BaseDelegatingExtensionType):
-            _TYPE_NAME = "{legacy_fqname}"
+            _TYPE_NAME = "{fqname}"
             _DELEGATED_EXTENSION_TYPE = datatypes.{dtype_extension_type}
 
         class {extension_array}(BaseDelegatingExtensionArray[datatypes.{dtype_extension_array_like}]):
-            _EXTENSION_NAME = "{legacy_fqname}"
+            _EXTENSION_NAME = "{fqname}"
             _EXTENSION_TYPE = {extension_type}
             _DELEGATED_ARRAY_TYPE = datatypes.{dtype_extension_array}
 
@@ -1213,10 +1209,6 @@ fn quote_arrow_support_from_obj(
     let extension_type = format!("{name}Type");
     let many_aliases = format!("{name}ArrayLike");
 
-    let legacy_fqname = obj
-        .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
-        .unwrap_or_else(|| fqname.clone());
-
     let override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
     let override_ = if overrides.contains(&override_name) {
         format!("return {override_name}(data, data_type)")
@@ -1237,11 +1229,11 @@ fn quote_arrow_support_from_obj(
         class {extension_type}({ext_type_base}):
             def __init__(self) -> None:
                 pa.ExtensionType.__init__(
-                    self, {datatype}, "{legacy_fqname}"
+                    self, {datatype}, "{fqname}"
                 )
 
         class {extension_array}({ext_array_base}[{many_aliases}]):
-            _EXTENSION_NAME = "{legacy_fqname}"
+            _EXTENSION_NAME = "{fqname}"
             _EXTENSION_TYPE = {extension_type}
 
             @staticmethod

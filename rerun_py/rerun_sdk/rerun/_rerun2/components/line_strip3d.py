@@ -66,12 +66,12 @@ class LineStrip3DType(BaseExtensionType):
                     metadata={},
                 )
             ),
-            "rerun.linestrip3d",
+            "rerun.components.LineStrip3D",
         )
 
 
 class LineStrip3DArray(BaseExtensionArray[LineStrip3DArrayLike]):
-    _EXTENSION_NAME = "rerun.linestrip3d"
+    _EXTENSION_NAME = "rerun.components.LineStrip3D"
     _EXTENSION_TYPE = LineStrip3DType
 
     @staticmethod

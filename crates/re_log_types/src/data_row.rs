@@ -197,7 +197,7 @@ impl std::ops::DerefMut for RowId {
 /// Visualized in the context of a larger table, it is simply a row of cells:
 /// ```text
 /// ┌──────────────────────────────────┬─────────────────┬─────────────┐
-/// │ rerun.point2d                    ┆ rerun.colorrgba ┆ rerun.label │
+/// │ rerun.components.Point2D                    ┆ rerun.components.Color ┆  │
 /// ╞══════════════════════════════════╪═════════════════╪═════════════╡
 /// │ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    ┆ []          │
 /// └──────────────────────────────────┴─────────────────┴─────────────┘

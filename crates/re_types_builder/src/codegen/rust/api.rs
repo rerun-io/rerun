@@ -23,8 +23,8 @@ use crate::{
     },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_CUSTOM_CLAUSE,
-    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
+    ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
@@ -659,10 +659,6 @@ fn quote_trait_impls_from_obj(
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
-            let legacy_fqname = obj
-                .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
-                .unwrap_or_else(|| fqname.clone());
-
             let quoted_serializer =
                 quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
             let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
@@ -722,7 +718,7 @@ fn quote_trait_impls_from_obj(
 
                     #[inline]
                     fn name() -> Self::Name {
-                        #legacy_fqname.into()
+                        #fqname.into()
                     }
 
                     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -765,15 +761,9 @@ fn quote_trait_impls_from_obj(
             fn compute_components(
                 obj: &Object,
                 attr: &'static str,
-                objects: &Objects,
                 extras: impl IntoIterator<Item = String>,
             ) -> (usize, TokenStream) {
                 let mut components = iter_archetype_components(obj, attr)
-                    .map(|fqname| {
-                        objects[fqname.as_str()]
-                            .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
-                            .unwrap_or(fqname)
-                    })
                     .chain(extras)
                     .collect::<BTreeSet<_>>();
 
@@ -810,22 +800,16 @@ fn quote_trait_impls_from_obj(
                 format!("Indicator component for the [`{name}`] [`crate::Archetype`]");
 
             let (num_required, required) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, objects, []);
-            let (num_recommended, recommended) = compute_components(
-                obj,
-                ATTR_RERUN_COMPONENT_RECOMMENDED,
-                objects,
-                [indicator_fqname],
-            );
+                compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, []);
+            let (num_recommended, recommended) =
+                compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, [indicator_fqname]);
             let (num_optional, optional) = compute_components(
                 obj,
                 ATTR_RERUN_COMPONENT_OPTIONAL,
-                objects,
                 // NOTE: Our internal query systems always need to query for instance keys, and
                 // they need to do so using a compile-time array, so make sure it's there at
                 // compile-time even for archetypes that don't use it.
-                // TODO(cmc): get rid of legacy names
-                ["rerun.instance_key".to_owned()],
+                ["rerun.components.InstanceKey".to_owned()],
             );
 
             let num_all = num_required + num_recommended + num_optional;
@@ -874,9 +858,6 @@ fn quote_trait_impls_from_obj(
                     let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
 
                     let fqname = obj_field.typ.fqname().unwrap();
-                    let legacy_fqname = objects[fqname]
-                        .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
-                        .unwrap_or_else(|| fqname.to_owned());
 
                     let extract_datatype_and_return = quote! {
                         array.map(|array| {
@@ -887,7 +868,7 @@ fn quote_trait_impls_from_obj(
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 #fqname.into(),
                                 Box::new(array.data_type().clone()),
-                                Some(#legacy_fqname.into()),
+                                None,
                             );
                             (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
                         })

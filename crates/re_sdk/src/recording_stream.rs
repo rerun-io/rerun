@@ -703,11 +703,11 @@ impl RecordingStream {
                 // NOTE: Unreachable, a top-level Field will always be a component, and thus an
                 // extension.
                 use re_log_types::external::arrow2::datatypes::DataType;
-                let DataType::Extension(fqname, _, legacy_fqname) = field.data_type else {
+                let DataType::Extension(fqname, _, _) = field.data_type else {
                     return Err(SerializationError::missing_extension_metadata(field.name))
                         .map_err(Into::into);
                 };
-                DataCell::try_from_arrow(legacy_fqname.unwrap_or(fqname).into(), array)
+                DataCell::try_from_arrow(fqname.into(), array)
             })
             .collect();
         let cells = cells?;

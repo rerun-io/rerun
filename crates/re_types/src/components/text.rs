@@ -59,7 +59,7 @@ impl crate::Loggable for Text {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.label".into()
+        "rerun.components.Text".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

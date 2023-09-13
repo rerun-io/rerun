@@ -43,7 +43,7 @@ impl crate::Loggable for DrawOrder {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.draw_order".into()
+        "rerun.components.DrawOrder".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
