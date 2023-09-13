@@ -1196,7 +1196,7 @@ pub struct Skeletons {
 /// Projection of a 3D point on an image, and its metric depth.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NormalizedPosition2D {
+pub struct NormalizedPoint2D {
     /// x-y position of the 2d keypoint in the image coordinate system.
     /// u,v \in [0, 1], where top left corner is (0, 0) and the bottom-right corner
     /// is (1, 1).
@@ -1211,7 +1211,7 @@ pub struct NormalizedPosition2D {
 /// The 3D point in the camera coordinate system, the scales are in meters.
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Position3D {
+pub struct Point3D {
     #[prost(float, tag = "1")]
     pub x: f32,
     #[prost(float, tag = "2")]
@@ -1225,9 +1225,9 @@ pub struct AnnotatedKeyPoint {
     #[prost(int32, tag = "1")]
     pub id: i32,
     #[prost(message, optional, tag = "2")]
-    pub point_3d: ::core::option::Option<Position3D>,
+    pub point_3d: ::core::option::Option<Point3D>,
     #[prost(message, optional, tag = "3")]
-    pub point_2d: ::core::option::Option<NormalizedPosition2D>,
+    pub point_2d: ::core::option::Option<NormalizedPoint2D>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
