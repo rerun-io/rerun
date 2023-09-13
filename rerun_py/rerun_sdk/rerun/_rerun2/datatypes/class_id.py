@@ -16,13 +16,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import class_id__native_to_pa_array_override  # noqa: F401
+from .class_id_ext import ClassIdExt
 
 __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
 
 
 @define
-class ClassId:
+class ClassId(ClassIdExt):
     """A 16-bit ID representing a type of semantic class."""
 
     # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
@@ -67,7 +67,7 @@ class ClassIdArray(BaseExtensionArray[ClassIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return class_id__native_to_pa_array_override(data, data_type)
+        return ClassIdExt.native_to_pa_array_override(data, data_type)
 
 
 ClassIdType._ARRAY_TYPE = ClassIdArray

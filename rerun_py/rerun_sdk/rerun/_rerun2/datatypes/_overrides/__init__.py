@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from .class_id import class_id__native_to_pa_array_override
-from .keypoint_id import keypoint_id__native_to_pa_array_override
 from .matnxn import mat3x3__coeffs__field_converter_override, mat4x4__coeffs__field_converter_override
 from .quaternion import quaternion__init_override
 from .rotation3d import rotation3d__inner_converter_override
