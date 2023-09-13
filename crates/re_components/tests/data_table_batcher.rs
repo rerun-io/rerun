@@ -281,7 +281,7 @@ fn create_table() -> DataTable {
 
     let row0 = {
         let num_instances = 2;
-        let points: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+        let positions: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
         let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
         let labels: &[Text] = &[];
 
@@ -290,7 +290,7 @@ fn create_table() -> DataTable {
             "a",
             timepoint(1),
             num_instances,
-            (points, colors, labels),
+            (positions, colors, labels),
         )
     };
 

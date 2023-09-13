@@ -17,9 +17,9 @@ fn simple_query() {
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
 
-    // Create some points with implicit instances
-    let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
-    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
+    // Create some positions with implicit instances
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, positions);
     store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance
@@ -41,7 +41,7 @@ fn simple_query() {
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬───────────┬────────────┐
-    // │ instance ┆ point2d   ┆ colorrgba  │
+    // │ instance ┆ positions2D┆ colorrgba  │
     // │ ---      ┆ ---       ┆ ---        │
     // │ u64      ┆ struct[2] ┆ u32        │
     // ╞══════════╪═══════════╪════════════╡
@@ -56,12 +56,12 @@ fn simple_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
+        let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
+        let expected = df_builder3(&instances, &positions, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
@@ -82,9 +82,9 @@ fn timeless_query() {
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
 
-    // Create some points with implicit instances
-    let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
-    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
+    // Create some positions with implicit instances
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, positions);
     store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance.. timelessly!
@@ -101,7 +101,7 @@ fn timeless_query() {
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬───────────┬────────────┐
-    // │ instance ┆ point2d   ┆ colorrgba  │
+    // │ instance ┆ Position2D┆ colorrgba  │
     // │ ---      ┆ ---       ┆ ---        │
     // │ u64      ┆ struct[2] ┆ u32        │
     // ╞══════════╪═══════════╪════════════╡
@@ -116,12 +116,12 @@ fn timeless_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
+        let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
+        let expected = df_builder3(&instances, &positions, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
@@ -142,9 +142,9 @@ fn no_instance_join_query() {
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
 
-    // Create some points with an implicit instance
-    let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
-    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
+    // Create some positions with an implicit instance
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, positions);
     store.insert_row(&row).unwrap();
 
     // Assign them colors with explicit instances
@@ -159,7 +159,7 @@ fn no_instance_join_query() {
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬───────────┬────────────┐
-    // │ instance ┆ point2d   ┆ colorrgba  │
+    // │ instance ┆ Position2D┆ colorrgba  │
     // │ ---      ┆ ---       ┆ ---        │
     // │ u64      ┆ struct[2] ┆ u32        │
     // ╞══════════╪═══════════╪════════════╡
@@ -174,7 +174,7 @@ fn no_instance_join_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
+        let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
@@ -182,7 +182,7 @@ fn no_instance_join_query() {
             Some(Color::from_rgb(255, 0, 0)),
             Some(Color::from_rgb(0, 255, 0)),
         ];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
+        let expected = df_builder3(&instances, &positions, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
@@ -203,9 +203,9 @@ fn missing_column_join_query() {
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
 
-    // Create some points with an implicit instance
-    let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
-    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
+    // Create some positions with an implicit instance
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, positions);
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
@@ -216,7 +216,7 @@ fn missing_column_join_query() {
     // We expect this to generate the following `DataFrame`
     //
     // ┌──────────┬───────────┐
-    // │ instance ┆ point2d   │
+    // │ instance ┆ Position2D   │
     // │ ---      ┆ ---       │
     // │ u64      ┆ struct[2] │
     // ╞══════════╪═══════════╡
@@ -230,11 +230,11 @@ fn missing_column_join_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
+        let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
-        let expected = df_builder2(&instances, &points).unwrap();
+        let expected = df_builder2(&instances, &positions).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
@@ -255,9 +255,9 @@ fn splatted_query() {
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
 
-    // Create some points with implicit instances
-    let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
-    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
+    // Create some positions with implicit instances
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, positions);
     store.insert_row(&row).unwrap();
 
     // Assign all of them a color via splat
@@ -279,7 +279,7 @@ fn splatted_query() {
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬───────────┬────────────┐
-    // │ instance ┆ point2d   ┆ colorrgba  │
+    // │ instance ┆ Position2D┆ colorrgba  │
     // │ ---      ┆ ---       ┆ ---        │
     // │ u64      ┆ struct[2] ┆ u32        │
     // ╞══════════╪═══════════╪════════════╡
@@ -294,7 +294,7 @@ fn splatted_query() {
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let points = vec![
+        let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
@@ -302,7 +302,7 @@ fn splatted_query() {
             Some(Color::from_rgb(255, 0, 0)),
             Some(Color::from_rgb(255, 0, 0)),
         ];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
+        let expected = df_builder3(&instances, &positions, &colors).unwrap();
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");

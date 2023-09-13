@@ -27,20 +27,20 @@ fn main() {
     let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame1, 2, &colors);
     store.insert_row(&row).unwrap();
 
-    let points = build_some_positions2d(2);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame2, 2, &points);
+    let positions = build_some_positions2d(2);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame2, 2, &positions);
     store.insert_row(&row).unwrap();
 
-    let points = build_some_positions2d(4);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &points);
+    let positions = build_some_positions2d(4);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &positions);
     store.insert_row(&row).unwrap();
 
     let colors = build_some_colors(3);
     let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors);
     store.insert_row(&row).unwrap();
 
-    let points = build_some_positions2d(3);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &points);
+    let positions = build_some_positions2d(3);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &positions);
     store.insert_row(&row).unwrap();
 
     let colors = build_some_colors(3);

@@ -222,10 +222,10 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let points = build_some_positions2d(3);
+    let positions = build_some_positions2d(3);
     let colors = build_some_colors(3);
     let row =
-        test_row!(ent_path @ [build_frame_nr(42.into())] => 3; [points.clone(), colors.clone()]);
+        test_row!(ent_path @ [build_frame_nr(42.into())] => 3; [positions.clone(), colors.clone()]);
     store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -246,14 +246,14 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
     let df_expected = {
         let instances = InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]);
-        let points = Position2D::to_arrow(points);
+        let positions = Position2D::to_arrow(positions);
         let colors = Color::to_arrow(colors);
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
             Series::try_from((
                 Position2D::name().as_ref(),
-                points.as_ref().clean_for_polars(),
+                positions.as_ref().clean_for_polars(),
             ))
             .unwrap(),
             Series::try_from((Color::name().as_ref(), colors)).unwrap(),

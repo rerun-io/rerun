@@ -165,13 +165,13 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
 /// # use re_log_types::Timeline;
 /// # use re_types::Component;
 /// # use re_types::components::{Position2D, Color};
-/// # use re_types::archetypes::Points2D;
+/// # use re_types::archetypes::positions2D;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
 /// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
-/// let arch_view = re_query::query_archetype::<Points2D>(
+/// let arch_view = re_query::query_archetype::<positions2D>(
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
@@ -255,14 +255,14 @@ pub fn __populate_example_store() -> DataStore {
     let timepoint = [build_frame_nr(123.into())];
 
     let instances = vec![InstanceKey(42), InstanceKey(96)];
-    let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
 
     let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
         timepoint,
         instances.len() as _,
-        (&instances, &points),
+        (&instances, &positions),
     );
     store.insert_row(&row).unwrap();
 
@@ -302,12 +302,12 @@ fn simple_get_component() {
         eprintln!("{df:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
-        let points = vec![
+        let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
 
-        let expected = crate::dataframe_util::df_builder2(&instances, &points).unwrap();
+        let expected = crate::dataframe_util::df_builder2(&instances, &positions).unwrap();
 
         assert_eq!(expected, df);
     }
@@ -339,13 +339,13 @@ fn simple_query_entity() {
         eprintln!("{df:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
-        let points = vec![
+        let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors = vec![None, Some(Color::from(0xff000000))];
 
-        let expected = crate::dataframe_util::df_builder3(&instances, &points, &colors).unwrap();
+        let expected = crate::dataframe_util::df_builder3(&instances, &positions, &colors).unwrap();
         assert_eq!(expected, df);
     }
     #[cfg(not(feature = "polars"))]
@@ -369,10 +369,10 @@ fn simple_query_archetype() {
 
     let arch_view = query_archetype::<Points2D>(&store, &query, &ent_path.into()).unwrap();
 
-    let expected_points = [Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let expected_positions = [Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
     let expected_colors = [None, Some(Color::from_unmultiplied_rgba(255, 0, 0, 0))];
 
-    let view_points: Vec<_> = arch_view
+    let view_positions: Vec<_> = arch_view
         .iter_required_component::<Position2D>()
         .unwrap()
         .collect();
@@ -382,7 +382,7 @@ fn simple_query_archetype() {
         .unwrap()
         .collect();
 
-    assert_eq!(expected_points, view_points.as_slice());
+    assert_eq!(expected_positions, view_positions.as_slice());
     assert_eq!(expected_colors, view_colors.as_slice());
 
     #[cfg(feature = "polars")]

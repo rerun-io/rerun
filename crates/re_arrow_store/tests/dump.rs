@@ -220,15 +220,15 @@ fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
             build_frame_nr(frame1),
         ] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_positions2d(3);
+    let positions2 = build_some_positions2d(3);
     let row2 = test_row!(ent_path @ [
             build_frame_nr(frame2),
-        ] => 3; [instances1, points2]);
+        ] => 3; [instances1, positions2]);
 
-    let points3 = build_some_positions2d(10);
+    let positions3 = build_some_positions2d(10);
     let row3 = test_row!(ent_path @ [
             build_log_time(frame3.into()) /* ! */, build_frame_nr(frame3),
-        ] => 10; [points3]);
+        ] => 10; [positions3]);
 
     let colors4 = build_some_colors(5);
     let row4 = test_row!(ent_path @ [
@@ -271,10 +271,10 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
                 build_frame_nr(frame1),
             ] => 3; [instances1, colors1]);
 
-        let (instances2, points2) = (build_some_instances(3), build_some_positions2d(3));
+        let (instances2, positions2) = (build_some_instances(3), build_some_positions2d(3));
         let row2 = test_row!(ent_path @ [
             build_frame_nr(frame2),
-        ] => 3; [instances2, points2]);
+        ] => 3; [instances2, positions2]);
         let mut table = DataTable::from_rows(TableId::random(), [row1, row2]);
         table.compute_all_size_bytes();
         store.insert_table(&table).unwrap();
@@ -282,10 +282,10 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
 
     // Now insert another table with points only.
     {
-        let (instances3, points3) = (build_some_instances(3), build_some_colors(3));
+        let (instances3, positions3) = (build_some_instances(3), build_some_colors(3));
         let row3 = test_row!(ent_path @ [
                 build_frame_nr(frame3),
-            ] => 3; [instances3, points3]);
+            ] => 3; [instances3, positions3]);
         let mut table = DataTable::from_rows(TableId::random(), [row3]);
         table.compute_all_size_bytes();
         store.insert_table(&table).unwrap();

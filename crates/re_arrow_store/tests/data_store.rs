@@ -286,8 +286,8 @@ fn latest_at_impl(store: &mut DataStore) {
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
+    let positions2 = build_some_positions2d(3);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
 
     let points3 = build_some_positions2d(10);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
@@ -403,8 +403,8 @@ fn range_impl(store: &mut DataStore) {
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [insts1.clone(), colors1]);
     insert(store, &row1);
 
-    let points2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [insts1, points2]);
+    let positions2 = build_some_positions2d(3);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [insts1, positions2]);
     insert(store, &row2);
 
     let points3 = build_some_positions2d(10);
@@ -932,8 +932,8 @@ fn protected_gc_impl(store: &mut DataStore) {
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
+    let positions2 = build_some_positions2d(3);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
 
     let points3 = build_some_positions2d(10);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
@@ -1027,8 +1027,8 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
-    let points2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
+    let positions2 = build_some_positions2d(3);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
 
     let colors2 = build_some_colors(0);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 0; [colors2]);
@@ -1123,7 +1123,7 @@ fn row_id_ordering() {
 
     let frame1 = TimeInt::from(1);
 
-    let (instances1, points1, points2) = (
+    let (instances1, points1, positions2) = (
         build_some_instances(3),
         build_some_positions2d(3),
         build_some_positions2d(3),
@@ -1131,7 +1131,7 @@ fn row_id_ordering() {
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), &points1]);
 
     let mut row2 =
-        test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), points2]);
+        test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), positions2]);
     // NOTE: This should always come before `row1` in frame #1.
     row2.row_id = re_log_types::RowId::ZERO;
 

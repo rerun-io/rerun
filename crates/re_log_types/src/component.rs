@@ -18,7 +18,7 @@ pub trait LegacyComponent: ArrowField {
     }
 }
 
-// NOTE: We have a ton of legacy tests that rely on the old APIs and `Position2D`.
+// NOTE: We have a ton of legacy tests that rely on the old APIs and `Position2D`, formerly `Point2D`.
 // Since the new `Position2D` is binary compatible with the old we can easily drop the old one, but
 // for that we need the new one to implement the `LegacyComponent` trait.
 // TODO(cmc): remove once the migration is over
