@@ -299,7 +299,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
         }
 
         {
-            fn generate_points() -> Vec<Vec<Position2D>> {
+            fn generate_positions() -> Vec<Vec<Position2D>> {
                 (0..NUM_ROWS)
                     .map(|_| build_some_positions2d(NUM_INSTANCES))
                     .collect()
@@ -319,7 +319,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
 
             match kind {
                 ArrayKind::Primitive => bench_std(&mut group, generate_keys()),
-                ArrayKind::Struct => bench_std(&mut group, generate_points()),
+                ArrayKind::Struct => bench_std(&mut group, generate_positions()),
                 ArrayKind::StructLarge => bench_std(&mut group, generate_rects()),
             }
 

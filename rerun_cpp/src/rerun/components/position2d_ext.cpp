@@ -1,4 +1,4 @@
-#include "point2d.hpp"
+#include "position2d.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
