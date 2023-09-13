@@ -206,7 +206,7 @@ impl ExtensionClass {
                 .unwrap();
 
             // Extract all methods
-            // TODO(jleibs): Maybe pull in regex here
+            // TODO(jleibs): Maybe pull in regex_light here
             let methods: Vec<_> = contents
                 .lines()
                 .map(|l| l.trim())
@@ -259,7 +259,7 @@ impl PythonCodeGenerator {
     ) {
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
 
-        // TODO(jleibs): This can go away once all overrides ported to extensions
+        // TODO(jleibs): This can go away once all old overrides are ported to `_ext.py`
         let overrides = load_overrides(&kind_path);
 
         // (module_name, [object_name])
@@ -300,7 +300,15 @@ impl PythonCodeGenerator {
             let mut code = String::new();
             code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
             if let Some(source_path) = obj.relative_filepath() {
-                code.push_text(&format!("# Based on {source_path:?}.\n\n"), 2, 0);
+                code.push_text(&format!("# Based on {source_path:?}."), 1, 0);
+                code.push_text(
+                    &format!(
+                        "# You can extend this class by creating a \"{}\" file in this directory.",
+                        ext_class.file_name
+                    ),
+                    2,
+                    0,
+                );
             }
 
             let manifest = quote_manifest(names);
