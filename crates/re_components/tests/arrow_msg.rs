@@ -1,4 +1,4 @@
-use re_components::datagen::{build_frame_nr, build_some_point2d, build_some_rects};
+use re_components::datagen::{build_frame_nr, build_some_colors, build_some_point2d};
 use re_log_types::{ArrowMsg, DataRow, DataTable, RowId};
 
 #[test]
@@ -8,7 +8,7 @@ fn arrow_msg_roundtrip() {
         "world/rects",
         [build_frame_nr(0.into())],
         1,
-        (build_some_point2d(1), build_some_rects(1)),
+        (build_some_point2d(1), build_some_colors(1)),
     );
 
     let table_in = {
