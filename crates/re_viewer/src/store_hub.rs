@@ -57,6 +57,7 @@ impl StoreHub {
     /// by `[StoreHub::welcome_screen_app_id]`. It should be used as a marker to display the welcome
     /// screen.
     pub fn new() -> Self {
+        re_tracing::profile_function!();
         let mut blueprints = HashMap::new();
         blueprints.insert(
             Self::welcome_screen_app_id(),

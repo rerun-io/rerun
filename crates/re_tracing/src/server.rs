@@ -16,6 +16,7 @@ impl Drop for Profiler {
 impl Profiler {
     pub fn start(&mut self) {
         puffin::set_scopes_on(true);
+        crate::profile_function!();
 
         if self.server.is_none() {
             self.start_server();
@@ -24,6 +25,7 @@ impl Profiler {
     }
 
     fn start_server(&mut self) {
+        crate::profile_function!();
         let bind_addr = format!("0.0.0.0:{PORT}");
         self.server = match puffin_http::Server::new(&bind_addr) {
             Ok(puffin_server) => {
@@ -41,6 +43,7 @@ impl Profiler {
 }
 
 fn start_puffin_viewer() {
+    crate::profile_function!();
     let url = format!("0.0.0.0:{PORT}");
     let child = std::process::Command::new("puffin_viewer")
         .arg("--url")

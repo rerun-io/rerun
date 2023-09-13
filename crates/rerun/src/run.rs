@@ -414,21 +414,24 @@ async fn run_impl(
     let profiler = profiler(&args);
 
     #[cfg(feature = "native_viewer")]
-    let startup_options = re_viewer::StartupOptions {
-        memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
-            .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}")),
-        persist_state: args.persist_state,
-        is_in_notebook: false,
-        screenshot_to_path_then_quit: args.screenshot_to.clone(),
+    let startup_options = {
+        re_tracing::profile_scope!("StartupOptions");
+        re_viewer::StartupOptions {
+            memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
+                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}")),
+            persist_state: args.persist_state,
+            is_in_notebook: false,
+            screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
-        skip_welcome_screen: args.skip_welcome_screen,
+            skip_welcome_screen: args.skip_welcome_screen,
 
-        // TODO(emilk): make it easy to set this on eframe instead
-        resolution_in_points: if let Some(size) = &args.window_size {
-            Some(parse_size(size)?)
-        } else {
-            None
-        },
+            // TODO(emilk): make it easy to set this on eframe instead
+            resolution_in_points: if let Some(size) = &args.window_size {
+                Some(parse_size(size)?)
+            } else {
+                None
+            },
+        }
     };
 
     // Where do we get the data from?

@@ -25,6 +25,8 @@ pub struct ViewerAnalytics {
 impl ViewerAnalytics {
     #[allow(unused_mut, clippy::let_and_return)]
     pub fn new(startup_options: &StartupOptions) -> Self {
+        re_tracing::profile_function!();
+
         // We only want to have analytics on `*.rerun.io`,
         // so we early-out if we detect we're running in a notebook.
         if startup_options.is_in_notebook {
@@ -87,6 +89,7 @@ impl ViewerAnalytics {
         build_info: &re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
     ) {
+        re_tracing::profile_function!();
         use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::CSdk => "c_sdk",
