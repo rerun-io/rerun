@@ -16,13 +16,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import clear_settings__native_to_pa_array_override  # noqa: F401
+from .clear_settings_ext import ClearSettingsExt
 
 __all__ = ["ClearSettings", "ClearSettingsArray", "ClearSettingsArrayLike", "ClearSettingsLike", "ClearSettingsType"]
 
 
 @define
-class ClearSettings:
+class ClearSettings(ClearSettingsExt):
     """Configures how a clear operation should behave."""
 
     # You can define your own __init__ function as a member of ClearSettingsExt in clear_settings_ext.py
@@ -55,7 +55,7 @@ class ClearSettingsArray(BaseExtensionArray[ClearSettingsArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClearSettingsArrayLike, data_type: pa.DataType) -> pa.Array:
-        return clear_settings__native_to_pa_array_override(data, data_type)
+        return ClearSettingsExt.native_to_pa_array_override(data, data_type)
 
 
 ClearSettingsType._ARRAY_TYPE = ClearSettingsArray

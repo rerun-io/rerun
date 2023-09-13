@@ -16,13 +16,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import radius__native_to_pa_array_override  # noqa: F401
+from .radius_ext import RadiusExt
 
 __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType"]
 
 
 @define
-class Radius:
+class Radius(RadiusExt):
     """A Radius component."""
 
     # You can define your own __init__ function as a member of RadiusExt in radius_ext.py
@@ -59,7 +59,7 @@ class RadiusArray(BaseExtensionArray[RadiusArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:
-        return radius__native_to_pa_array_override(data, data_type)
+        return RadiusExt.native_to_pa_array_override(data, data_type)
 
 
 RadiusType._ARRAY_TYPE = RadiusArray

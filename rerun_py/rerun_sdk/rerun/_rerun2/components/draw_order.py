@@ -16,13 +16,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import draw_order__native_to_pa_array_override  # noqa: F401
+from .draw_order_ext import DrawOrderExt
 
 __all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
 
 
 @define
-class DrawOrder:
+class DrawOrder(DrawOrderExt):
     """
     Draw order used for the display order of 2D elements.
 
@@ -67,7 +67,7 @@ class DrawOrderArray(BaseExtensionArray[DrawOrderArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
-        return draw_order__native_to_pa_array_override(data, data_type)
+        return DrawOrderExt.native_to_pa_array_override(data, data_type)
 
 
 DrawOrderType._ARRAY_TYPE = DrawOrderArray

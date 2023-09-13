@@ -10,16 +10,12 @@ from typing import Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-# noqa: F401
 from .. import datatypes
 from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import (
-    annotation_context__class_map__field_converter_override,
-    annotation_context__native_to_pa_array_override,
-)
+from .annotation_context_ext import AnnotationContextExt
 
 __all__ = [
     "AnnotationContext",
@@ -31,7 +27,7 @@ __all__ = [
 
 
 @define
-class AnnotationContext:
+class AnnotationContext(AnnotationContextExt):
     """
     The `AnnotationContext` provides additional information on how to display entities.
 
@@ -44,9 +40,7 @@ class AnnotationContext:
 
     # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
 
-    class_map: list[datatypes.ClassDescriptionMapElem] = field(
-        converter=annotation_context__class_map__field_converter_override
-    )
+    class_map: list[datatypes.ClassDescriptionMapElem] = field(converter=AnnotationContextExt.class_map__field_converter_override)  # type: ignore[misc]
 
 
 AnnotationContextLike = AnnotationContext
@@ -149,7 +143,7 @@ class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-        return annotation_context__native_to_pa_array_override(data, data_type)
+        return AnnotationContextExt.native_to_pa_array_override(data, data_type)
 
 
 AnnotationContextType._ARRAY_TYPE = AnnotationContextArray

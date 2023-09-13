@@ -16,13 +16,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import instance_key__native_to_pa_array_override  # noqa: F401
+from .instance_key_ext import InstanceKeyExt
 
 __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
 
 
 @define
-class InstanceKey:
+class InstanceKey(InstanceKeyExt):
     """A unique numeric identifier for each individual instance within a batch."""
 
     # You can define your own __init__ function as a member of InstanceKeyExt in instance_key_ext.py
@@ -59,7 +59,7 @@ class InstanceKeyArray(BaseExtensionArray[InstanceKeyArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
-        return instance_key__native_to_pa_array_override(data, data_type)
+        return InstanceKeyExt.native_to_pa_array_override(data, data_type)
 
 
 InstanceKeyType._ARRAY_TYPE = InstanceKeyArray
