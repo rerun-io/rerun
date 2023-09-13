@@ -10,8 +10,6 @@ namespace rerun {
         struct ClearExt {
             rerun::components::ClearSettings clear;
 
-#define Clear ClearExt
-
             // [CODEGEN COPY TO HEADER START]
 
             static Clear flat() {
@@ -27,9 +25,6 @@ namespace rerun {
             // [CODEGEN COPY TO HEADER END]
         };
 
-#undef ClearExt
-#else
-#define ClearExt Clear
 #endif
 
     } // namespace archetypes
