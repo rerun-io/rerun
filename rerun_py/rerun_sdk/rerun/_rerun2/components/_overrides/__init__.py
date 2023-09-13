@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .clear_settings import clear_settings__native_to_pa_array_override
 from .depth_meter import depth_meter__native_to_pa_array_override
 from .disconnected_space import disconnected_space__native_to_pa_array_override
 from .draw_order import draw_order__native_to_pa_array_override
