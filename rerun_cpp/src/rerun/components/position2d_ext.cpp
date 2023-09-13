@@ -7,14 +7,14 @@ namespace rerun {
     namespace components {
 
 #ifdef EDIT_EXTENSION
-        struct Point2DExt {
+        struct Position2DExt {
             float xy[2];
-#define Point2D Point2DExt
+#define Position2D Position2DExt
 
             // [CODEGEN COPY TO HEADER START]
 
-            /// Construct Point2D from x/y values.
-            Point2D(float x, float y) : xy{x, y} {}
+            /// Construct Position2D from x/y values.
+            Position2D(float x, float y) : xy{x, y} {}
 
             float x() const {
                 return xy.x();
