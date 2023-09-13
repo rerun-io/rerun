@@ -133,7 +133,7 @@ fn recording_ui(
         })
         .unwrap_or("<unknown time>".to_owned());
 
-    re_ui
+    let response = re_ui
         .list_item(format!("{prefix}{name}"))
         .with_buttons(|re_ui, ui| {
             let resp = re_ui
@@ -155,7 +155,69 @@ fn recording_ui(
             ui.painter()
                 .circle(rect.center(), 4.0, color, egui::Stroke::NONE);
         })
-        .show(ui)
+        .show(ui);
+
+    response.on_hover_ui(|ui| {
+        recording_hover_ui(re_ui, ui, store_db);
+    })
+}
+
+fn recording_hover_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
+    re_ui
+        .selection_grid(ui, "recording_hover_ui")
+        .show(ui, |ui| {
+            re_ui.grid_left_hand_label(ui, "Store ID");
+            ui.label(store_db.store_id().to_string());
+            ui.end_row();
+
+            if let Some(data_source) = &store_db.data_source {
+                re_ui.grid_left_hand_label(ui, "Data source");
+                ui.label(data_source_string(data_source));
+                ui.end_row();
+            }
+
+            if let Some(set_store_info) = store_db.recording_msg() {
+                let re_log_types::StoreInfo {
+                    application_id,
+                    store_id: _,
+                    is_official_example: _,
+                    started,
+                    store_source,
+                    store_kind,
+                } = &set_store_info.info;
+
+                re_ui.grid_left_hand_label(ui, "Application ID");
+                ui.label(application_id.to_string());
+                ui.end_row();
+
+                re_ui.grid_left_hand_label(ui, "Recording started");
+                ui.label(started.format());
+                ui.end_row();
+
+                re_ui.grid_left_hand_label(ui, "Source");
+                ui.label(store_source.to_string());
+                ui.end_row();
+
+                // We are in the recordings menu, we know the kind
+                if false {
+                    re_ui.grid_left_hand_label(ui, "Kind");
+                    ui.label(store_kind.to_string());
+                    ui.end_row();
+                }
+            }
+        });
+}
+
+fn data_source_string(data_source: &re_smart_channel::SmartChannelSource) -> String {
+    use re_smart_channel::SmartChannelSource;
+    match data_source {
+        SmartChannelSource::File(path) => path.display().to_string(),
+        SmartChannelSource::RrdHttpStream { url } => url.clone(),
+        SmartChannelSource::RrdWebEventListener => "Web Event Listener".to_owned(),
+        SmartChannelSource::Sdk => "SDK".to_owned(),
+        SmartChannelSource::WsClient { ws_server_url } => ws_server_url.clone(),
+        SmartChannelSource::TcpServer { port } => format!("TCP Server, port {port}"),
+    }
 }
 
 fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
