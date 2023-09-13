@@ -48,7 +48,9 @@ class RotationAxisAngle(RotationAxisAngleExt):
     ignored.
     """
 
-    angle: datatypes.Angle = field(converter=RotationAxisAngleExt.angle__field_converter_override)  # type: ignore[misc]
+    angle: datatypes.Angle = field(
+        converter=RotationAxisAngleExt.angle__field_converter_override,  # type: ignore[misc]
+    )
     """
     How much to rotate around the axis.
     """

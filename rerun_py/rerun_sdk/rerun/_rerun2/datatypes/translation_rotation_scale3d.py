@@ -60,7 +60,10 @@ class TranslationRotationScale3D(TranslationRotationScale3DExt):
     Otherwise, the transform maps from the space to its parent.
     """
 
-    translation: datatypes.Vec3D | None = field(default=None, converter=TranslationRotationScale3DExt.translation__field_converter_override)  # type: ignore[misc]
+    translation: datatypes.Vec3D | None = field(
+        default=None,
+        converter=TranslationRotationScale3DExt.translation__field_converter_override,  # type: ignore[misc]
+    )
     """
     3D translation vector, applied last.
     """

@@ -27,7 +27,9 @@ class Mat3x3(Mat3x3Ext):
 
     # You can define your own __init__ function as a member of Mat3x3Ext in mat3x3_ext.py
 
-    coeffs: npt.NDArray[np.float32] = field(converter=Mat3x3Ext.coeffs__field_converter_override)  # type: ignore[misc]
+    coeffs: npt.NDArray[np.float32] = field(
+        converter=Mat3x3Ext.coeffs__field_converter_override,  # type: ignore[misc]
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat3x3Ext in mat3x3_ext.py

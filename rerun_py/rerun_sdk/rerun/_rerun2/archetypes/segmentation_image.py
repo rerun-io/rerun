@@ -53,8 +53,9 @@ class SegmentationImage(Archetype, SegmentationImageExt):
     # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"}, converter=SegmentationImageExt.data__field_converter_override
-    )  # type: ignore[misc]
+        metadata={"component": "primary"},
+        converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
+    )
     """
     The image data. Should always be a rank-2 tensor.
     """

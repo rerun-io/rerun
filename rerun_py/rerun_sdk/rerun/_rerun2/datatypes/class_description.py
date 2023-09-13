@@ -47,17 +47,23 @@ class ClassDescription(ClassDescriptionExt):
 
     # __init__ can be found in class_description_ext.py
 
-    info: datatypes.AnnotationInfo = field(converter=ClassDescriptionExt.info__field_converter_override)  # type: ignore[misc]
+    info: datatypes.AnnotationInfo = field(
+        converter=ClassDescriptionExt.info__field_converter_override,  # type: ignore[misc]
+    )
     """
     The `AnnotationInfo` for the class.
     """
 
-    keypoint_annotations: list[datatypes.AnnotationInfo] = field(converter=ClassDescriptionExt.keypoint_annotations__field_converter_override)  # type: ignore[misc]
+    keypoint_annotations: list[datatypes.AnnotationInfo] = field(
+        converter=ClassDescriptionExt.keypoint_annotations__field_converter_override,  # type: ignore[misc]
+    )
     """
     The `AnnotationInfo` for all of the keypoints.
     """
 
-    keypoint_connections: list[datatypes.KeypointPair] = field(converter=ClassDescriptionExt.keypoint_connections__field_converter_override)  # type: ignore[misc]
+    keypoint_connections: list[datatypes.KeypointPair] = field(
+        converter=ClassDescriptionExt.keypoint_connections__field_converter_override,  # type: ignore[misc]
+    )
     """
     The connections between keypoints.
     """

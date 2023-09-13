@@ -51,8 +51,9 @@ class Image(Archetype, ImageExt):
     # You can define your own __init__ function as a member of ImageExt in image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"}, converter=ImageExt.data__field_converter_override
-    )  # type: ignore[misc]
+        metadata={"component": "primary"},
+        converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
+    )
     """
     The image data. Should always be a rank-2 or rank-3 tensor.
     """

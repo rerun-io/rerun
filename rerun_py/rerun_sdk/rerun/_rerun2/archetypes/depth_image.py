@@ -47,8 +47,9 @@ class DepthImage(Archetype, DepthImageExt):
     # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"}, converter=DepthImageExt.data__field_converter_override
-    )  # type: ignore[misc]
+        metadata={"component": "primary"},
+        converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
+    )
     """
     The depth-image data. Should always be a rank-2 tensor.
     """
