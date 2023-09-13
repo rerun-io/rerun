@@ -151,9 +151,9 @@ TODO(ab):
 
 Implementing a Pythonic API for a component or datatype sometime require a subtle interplay between various hand-coded overrides and auto-generated methods. The `Color` component is a good illustration:
 
-- The `rgba__field_converter_override()` converter flexibly normalises user input into a `int` RGBA storage.
+- The `ColorExt.rgba__field_converter_override()` converter flexibly normalises user input into a `int` RGBA storage.
 - The auto-generated `__int__()` method facilitates the conversion of a `Color` instance into a `int`, which is recognised by Numpy array creation functions.
-- The `native_to_pa_array()` exploits these capabilities of the `Color` native object to simplify its implementation (even though, in most cases, the user code wills skip using actual `Color` instances).
+- The `ColorExt.native_to_pa_array()` exploits these capabilities of the `Color` native object to simplify its implementation (even though, in most cases, the user code will skip using actual `Color` instances).
 
 ### Converter must be functions
 
