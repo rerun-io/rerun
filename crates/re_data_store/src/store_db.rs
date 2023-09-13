@@ -88,7 +88,8 @@ impl EntityDb {
                 } else {
                     PathOp::ClearComponents(row.entity_path.clone())
                 };
-                self.add_path_op(row.row_id(), row.timepoint(), &path_op);
+                // NOTE: We've just added the row itself, so make sure to bump the row ID already!
+                self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
             }
         }
 
