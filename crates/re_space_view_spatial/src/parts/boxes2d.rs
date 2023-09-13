@@ -2,7 +2,7 @@ use re_data_store::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
-    components::{HalfSizes2D, Origin2D},
+    components::{HalfSizes2D, Position2D},
     Archetype,
 };
 use re_viewer_context::{
@@ -45,9 +45,9 @@ impl Boxes2DPart {
 
         let instance_keys = arch_view.iter_instance_keys();
         let half_sizes = arch_view.iter_required_component::<HalfSizes2D>()?;
-        let origins = arch_view
-            .iter_optional_component::<Origin2D>()?
-            .map(|origin| origin.unwrap_or(Origin2D::ZERO));
+        let positions = arch_view
+            .iter_optional_component::<Position2D>()?
+            .map(|position| position.unwrap_or(Position2D::ZERO));
         let radii = process_radii(arch_view, ent_path)?;
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let labels = arch_view.iter_optional_component::<re_types::components::Text>()?;
@@ -60,13 +60,13 @@ impl Boxes2DPart {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        for (instance_key, half_extent, origin, radius, color, label) in
-            itertools::izip!(instance_keys, half_sizes, origins, radii, colors, labels)
+        for (instance_key, half_extent, position, radius, color, label) in
+            itertools::izip!(instance_keys, half_sizes, positions, radii, colors, labels)
         {
             let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
 
-            let min = half_extent.box_min(origin);
-            let max = half_extent.box_max(origin);
+            let min = half_extent.box_min(position);
+            let max = half_extent.box_max(position);
 
             self.0.extend_bounding_box(
                 macaw::BoundingBox {

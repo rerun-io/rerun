@@ -24,7 +24,7 @@ impl HalfSizes2D {
     ///
     /// In "image space axis semantics" (y-axis points down, x-axis points right), this is the top-left corner.
     #[cfg(feature = "glam")]
-    pub fn box_min(self, box_center: super::Origin2D) -> glam::Vec2 {
+    pub fn box_min(self, box_center: super::Position2D) -> glam::Vec2 {
         glam::Vec2::from(box_center) - glam::Vec2::from(self)
     }
 
@@ -32,7 +32,7 @@ impl HalfSizes2D {
     ///
     /// In "image space axis semantics" (y-axis points down, x-axis points right), this is the bottom-right corner.
     #[cfg(feature = "glam")]
-    pub fn box_max(self, box_center: super::Origin2D) -> glam::Vec2 {
+    pub fn box_max(self, box_center: super::Position2D) -> glam::Vec2 {
         glam::Vec2::from(box_center) + glam::Vec2::from(self)
     }
 }
