@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use arrow2::array::UnionArray;
+use arrow2::array::{Array as _, StructArray, UnionArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{
@@ -109,7 +109,7 @@ fn latest_at(c: &mut Criterion) {
                     .unwrap()
                     .as_arrow_ref()
                     .as_any()
-                    .downcast_ref::<UnionArray>()
+                    .downcast_ref::<StructArray>()
                     .unwrap();
                 assert_eq!(NUM_INSTANCES as usize, large_structs.len());
             });
@@ -128,14 +128,14 @@ fn latest_at(c: &mut Criterion) {
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
                     let cells = latest_data_at(&store, LargeStruct::name(), &[LargeStruct::name()]);
-                    let rects = cells[0]
+                    let large_structs = cells[0]
                         .as_ref()
                         .unwrap()
                         .as_arrow_ref()
                         .as_any()
-                        .downcast_ref::<UnionArray>()
+                        .downcast_ref::<StructArray>()
                         .unwrap();
-                    assert_eq!(NUM_INSTANCES as usize, rects.len());
+                    assert_eq!(NUM_INSTANCES as usize, large_structs.len());
                 });
             });
         }
@@ -253,14 +253,14 @@ fn range(c: &mut Criterion) {
                         let time = time.unwrap();
                         assert_eq!(cur_time as i64, time.as_i64());
 
-                        let rects = cells[0]
+                        let large_structs = cells[0]
                             .as_ref()
                             .unwrap()
                             .as_arrow_ref()
                             .as_any()
                             .downcast_ref::<UnionArray>()
                             .unwrap();
-                        assert_eq!(NUM_INSTANCES as usize, rects.len());
+                        assert_eq!(NUM_INSTANCES as usize, large_structs.len());
                     }
                 });
             });
@@ -326,7 +326,7 @@ fn build_table(n: usize, packed: bool) -> DataTable {
         (0..NUM_ROWS).map(move |frame_idx| {
             DataRow::from_cells2(
                 RowId::random(),
-                "rects",
+                "large_structs",
                 [build_frame_nr(frame_idx.into())],
                 n as _,
                 (build_some_instances(n), build_some_large_structs(n)),
@@ -366,7 +366,7 @@ fn latest_data_at<const N: usize>(
 ) -> [Option<DataCell>; N] {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = LatestAtQuery::new(timeline_frame_nr, (NUM_ROWS / 2).into());
-    let ent_path = EntityPath::from("rects");
+    let ent_path = EntityPath::from("large_structs");
 
     store
         .latest_at(&timeline_query, &ent_path, primary, secondaries)
@@ -379,7 +379,7 @@ fn range_data<const N: usize>(
 ) -> impl Iterator<Item = (Option<TimeInt>, [Option<DataCell>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(0.into(), NUM_ROWS.into()));
-    let ent_path = EntityPath::from("rects");
+    let ent_path = EntityPath::from("large_structs");
 
     store
         .range(&query, &ent_path, components)
