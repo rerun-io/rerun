@@ -20,7 +20,8 @@ fn roundtrip() {
 
     let arch = AnnotationContext::new(expected);
 
-    let expected_extensions: HashMap<_, _> = [("context", vec!["rerun.components.AnnotationContext"])].into();
+    let expected_extensions: HashMap<_, _> =
+        [("context", vec!["rerun.components.AnnotationContext"])].into();
 
     eprintln!("arch = {arch:#?}");
     let serialized = arch.to_arrow();

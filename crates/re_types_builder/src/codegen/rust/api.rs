@@ -763,7 +763,7 @@ fn quote_trait_impls_from_obj(
                 attr: &'static str,
                 extras: impl IntoIterator<Item = String>,
             ) -> (usize, TokenStream) {
-                let mut components = iter_archetype_components(obj, attr)
+                let components = iter_archetype_components(obj, attr)
                     .chain(extras)
                     .collect::<BTreeSet<_>>();
 
