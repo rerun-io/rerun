@@ -66,14 +66,19 @@ fn loading_receivers_ui(
     for source in rx.sources() {
         let (always_show, string) = match source.as_ref() {
             SmartChannelSource::File(path) => (false, format!("Loading {}…", path.display())),
+
             SmartChannelSource::RrdHttpStream { url } => (false, format!("Loading {url}…")),
+
             SmartChannelSource::RrdWebEventListener => {
                 (false, "Waiting on Web Event Listener…".to_owned())
             }
+
             SmartChannelSource::Sdk => (false, "Waiting on SDK…".to_owned()),
+
             SmartChannelSource::WsClient { ws_server_url } => {
                 (false, format!("Loading from {ws_server_url}…"))
             }
+
             SmartChannelSource::TcpServer { port } => {
                 // We have a TcpServer when running just `cargo rerun`
                 (true, format!("Hosting a TCP Server on port {port}"))
@@ -86,7 +91,10 @@ fn loading_receivers_ui(
         // but it is possible to send multiple recordings over the same channel.
         if always_show || !sources_with_stores.contains(&source) {
             any_shown = true;
-            ctx.re_ui.list_item(string).show(ui);
+            let response = ctx.re_ui.list_item(string).show(ui);
+            if let SmartChannelSource::TcpServer { .. } = source.as_ref() {
+                response.on_hover_text("You can connect to this viewer from a Rerun SDK");
+            }
         }
     }
 
