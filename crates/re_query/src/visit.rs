@@ -28,18 +28,18 @@
 //!     (&instances, &colors),
 //! );
 //!
-//! let mut points_out = Vec::<Position2D>::new();
+//! let mut positions_out = Vec::<Position2D>::new();
 //! let mut colors_out = Vec::<Color>::new();
 //!
 //! entity_view
 //!     .visit2(|_: InstanceKey, point: Position2D, color: Option<Color>| {
-//!         points_out.push(point);
+//!         positions_out.push(point);
 //!         colors_out.push(color.unwrap());
 //!     })
 //!     .ok()
 //!     .unwrap();
 //!
-//! assert_eq!(points.as_slice(), points_out.as_slice());
+//! assert_eq!(points.as_slice(), positions_out.as_slice());
 //! assert_eq!(colors.as_slice(), colors_out.as_slice());
 //! ```
 

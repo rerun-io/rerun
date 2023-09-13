@@ -260,7 +260,7 @@ fn joint_visit() {
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
 
-    let mut points_out = Vec::<Position2D>::new();
+    let mut positions_out = Vec::<Position2D>::new();
     let mut colors_out = Vec::<Option<Color>>::new();
 
     itertools::izip!(
@@ -268,7 +268,7 @@ fn joint_visit() {
         arch_view.iter_optional_component::<Color>().unwrap()
     )
     .for_each(|(point, color)| {
-        points_out.push(point);
+        positions_out.push(point);
         colors_out.push(color);
     });
 
@@ -280,6 +280,6 @@ fn joint_visit() {
         Some(Color::from(0x00ff0000)),
     ];
 
-    assert_eq!(positions, points_out);
+    assert_eq!(positions, positions_out);
     assert_eq!(expected_colors, colors_out);
 }
