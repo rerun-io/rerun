@@ -80,20 +80,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.components.Points2DIndicator".into(),
+            "rerun.radius".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.label".into(),
-            "rerun.draw_order".into(),
             "rerun.class_id".into(),
-            "rerun.keypoint_id".into(),
+            "rerun.draw_order".into(),
             "rerun.instance_key".into(),
+            "rerun.keypoint_id".into(),
+            "rerun.label".into(),
         ]
     });
 
@@ -101,14 +101,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.point2d".into(),
-            "rerun.radius".into(),
             "rerun.colorrgba".into(),
             "rerun.components.Points2DIndicator".into(),
-            "rerun.label".into(),
-            "rerun.draw_order".into(),
+            "rerun.radius".into(),
             "rerun.class_id".into(),
-            "rerun.keypoint_id".into(),
+            "rerun.draw_order".into(),
             "rerun.instance_key".into(),
+            "rerun.keypoint_id".into(),
+            "rerun.label".into(),
         ]
     });
 

@@ -91,18 +91,10 @@ pub struct AffixFuzzer1 {
     pub fuzz2118: Option<Vec<crate::testing::components::AffixFuzzer18>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 20usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -113,9 +105,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer19".into(),
-            "rerun.testing.components.AffixFuzzer20".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
+            "rerun.testing.components.AffixFuzzer20".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
             "rerun.testing.components.AffixFuzzer5".into(),
@@ -123,33 +114,17 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 38usize
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer1Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.instance_key".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -159,7 +134,6 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize
             "rerun.testing.components.AffixFuzzer16".into(),
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
@@ -168,30 +142,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 36usize
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 40usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -202,9 +159,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer19".into(),
+            "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer20".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
             "rerun.testing.components.AffixFuzzer5".into(),
@@ -212,25 +168,9 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
             "rerun.testing.components.AffixFuzzer1Indicator".into(),
+            "rerun.instance_key".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
-            "rerun.testing.components.AffixFuzzer2".into(),
-            "rerun.testing.components.AffixFuzzer3".into(),
-            "rerun.testing.components.AffixFuzzer4".into(),
-            "rerun.testing.components.AffixFuzzer5".into(),
-            "rerun.testing.components.AffixFuzzer6".into(),
-            "rerun.testing.components.AffixFuzzer7".into(),
-            "rerun.testing.components.AffixFuzzer8".into(),
-            "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
             "rerun.testing.components.AffixFuzzer12".into(),
@@ -240,7 +180,6 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer16".into(),
             "rerun.testing.components.AffixFuzzer17".into(),
             "rerun.testing.components.AffixFuzzer18".into(),
-            "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer2".into(),
             "rerun.testing.components.AffixFuzzer3".into(),
             "rerun.testing.components.AffixFuzzer4".into(),
@@ -249,20 +188,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 75usize]> =
             "rerun.testing.components.AffixFuzzer7".into(),
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
-            "rerun.testing.components.AffixFuzzer10".into(),
-            "rerun.testing.components.AffixFuzzer11".into(),
-            "rerun.testing.components.AffixFuzzer12".into(),
-            "rerun.testing.components.AffixFuzzer13".into(),
-            "rerun.testing.components.AffixFuzzer14".into(),
-            "rerun.testing.components.AffixFuzzer15".into(),
-            "rerun.testing.components.AffixFuzzer16".into(),
-            "rerun.testing.components.AffixFuzzer17".into(),
-            "rerun.testing.components.AffixFuzzer18".into(),
         ]
     });
 
 impl AffixFuzzer1 {
-    pub const NUM_COMPONENTS: usize = 75usize;
+    pub const NUM_COMPONENTS: usize = 40usize;
 }
 
 /// Indicator component for the [`AffixFuzzer1`] [`crate::Archetype`]
