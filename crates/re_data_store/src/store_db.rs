@@ -73,7 +73,24 @@ impl EntityDb {
 
         // TODO(cmc): batch all of this
         for row in table.to_rows() {
+            self.register_entity_path(&row.entity_path);
+
             self.try_add_data_row(&row)?;
+
+            // Look for a `ClearSettings` component, and if it's there, go through the clear path
+            // instead.
+            use re_types::components::ClearSettings;
+            if let Some(idx) = row.find_cell(&ClearSettings::name()) {
+                let cell = &row.cells()[idx];
+                let settings = cell.try_to_native_mono::<ClearSettings>().unwrap();
+                let path_op = if settings.map_or(false, |s| s.0) {
+                    PathOp::ClearRecursive(row.entity_path.clone())
+                } else {
+                    PathOp::ClearComponents(row.entity_path.clone())
+                };
+                // NOTE: We've just added the row itself, so make sure to bump the row ID already!
+                self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
+            }
         }
 
         Ok(())
@@ -87,8 +104,6 @@ impl EntityDb {
         for (&timeline, &time_int) in row.timepoint().iter() {
             self.times_per_timeline.insert(timeline, time_int);
         }
-
-        self.register_entity_path(&row.entity_path);
 
         for cell in row.cells().iter() {
             let component_path =

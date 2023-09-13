@@ -6,6 +6,7 @@ from .affix_fuzzer1 import AffixFuzzer1
 from .annotation_context import AnnotationContext
 from .arrows3d import Arrows3D
 from .boxes2d import Boxes2D
+from .clear import Clear
 from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
 from .image import Image
@@ -24,6 +25,7 @@ __all__ = [
     "AnnotationContext",
     "Arrows3D",
     "Boxes2D",
+    "Clear",
     "DepthImage",
     "DisconnectedSpace",
     "Image",
