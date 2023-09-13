@@ -43,11 +43,11 @@ Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str]]
 
 class Utf8Type(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), "rerun.label")
+        pa.ExtensionType.__init__(self, pa.utf8(), "rerun.datatypes.Utf8")
 
 
 class Utf8Array(BaseExtensionArray[Utf8ArrayLike]):
-    _EXTENSION_NAME = "rerun.label"
+    _EXTENSION_NAME = "rerun.datatypes.Utf8"
     _EXTENSION_TYPE = Utf8Type
 
     @staticmethod

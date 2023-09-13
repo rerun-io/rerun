@@ -63,7 +63,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// Or, visualized as a cell within a larger table:
 /// ```text
 /// ┌──────────────────────────────────────────────────┐
-/// │ rerun.point2d                                    │
+/// │ rerun.components.Point2D                                    │
 /// ╞══════════════════════════════════════════════════╡
 /// │ [{x: 10, y: 10}, {x: 20, y: 20}, {x: 30, y: 30}] │
 /// └──────────────────────────────────────────────────┘

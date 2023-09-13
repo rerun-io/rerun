@@ -133,12 +133,12 @@ def log_extension_components(
     splats: dict[str, Any] = {}
 
     if len(identifiers_np):
-        instanced["rerun.instance_key"] = rrc.InstanceKeyArray.from_similar(identifiers_np).storage
+        instanced["rerun.components.InstanceKey"] = rrc.InstanceKeyArray.from_similar(identifiers_np).storage
 
     _add_extension_components(instanced, splats, ext, identifiers_np)
 
     if splats:
-        splats["rerun.instance_key"] = instance_key_splat()
+        splats["rerun.components.InstanceKey"] = instance_key_splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)

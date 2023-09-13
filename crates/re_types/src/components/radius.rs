@@ -36,7 +36,7 @@ impl crate::Loggable for Radius {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.radius".into()
+        "rerun.components.Radius".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

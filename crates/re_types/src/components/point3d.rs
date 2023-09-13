@@ -58,7 +58,7 @@ impl crate::Loggable for Point3D {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.point3d".into()
+        "rerun.components.Point3D".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

@@ -49,11 +49,11 @@ InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], int, npt.ND
 
 class InstanceKeyType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint64(), "rerun.instance_key")
+        pa.ExtensionType.__init__(self, pa.uint64(), "rerun.components.InstanceKey")
 
 
 class InstanceKeyArray(BaseExtensionArray[InstanceKeyArrayLike]):
-    _EXTENSION_NAME = "rerun.instance_key"
+    _EXTENSION_NAME = "rerun.components.InstanceKey"
     _EXTENSION_TYPE = InstanceKeyType
 
     @staticmethod

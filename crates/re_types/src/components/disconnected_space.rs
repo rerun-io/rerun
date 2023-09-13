@@ -40,7 +40,7 @@ impl crate::Loggable for DisconnectedSpace {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.disconnected_space".into()
+        "rerun.components.DisconnectedSpace".into()
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]

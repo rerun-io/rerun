@@ -187,7 +187,7 @@ pub fn query_entity_with_primary<Primary: LegacyComponent + Component>(
 /// Outputs:
 /// ```text
 /// ┌────────────────────┬───────────────┬─────────────────┐
-/// │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+/// │ rerun.components.InstanceKey ┆ rerun.components.Point2D ┆ rerun.components.Color │
 /// │ ---                ┆ ---           ┆ ---             │
 /// │ u64                ┆ struct[2]     ┆ u32             │
 /// ╞════════════════════╪═══════════════╪═════════════════╡

@@ -57,11 +57,11 @@ DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], float, npt.NDArra
 
 class DrawOrderType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), "rerun.draw_order")
+        pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.DrawOrder")
 
 
 class DrawOrderArray(BaseExtensionArray[DrawOrderArrayLike]):
-    _EXTENSION_NAME = "rerun.draw_order"
+    _EXTENSION_NAME = "rerun.components.DrawOrder"
     _EXTENSION_TYPE = DrawOrderType
 
     @staticmethod

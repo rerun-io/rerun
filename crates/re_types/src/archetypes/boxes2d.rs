@@ -76,8 +76,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.colorrgba".into(),
             "rerun.components.Boxes2DIndicator".into(),
+            "rerun.components.Color".into(),
             "rerun.components.Origin2D".into(),
         ]
     });
@@ -85,11 +85,11 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usi
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.class_id".into(),
-            "rerun.draw_order".into(),
-            "rerun.instance_key".into(),
-            "rerun.label".into(),
-            "rerun.radius".into(),
+            "rerun.components.ClassId".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
+            "rerun.components.Radius".into(),
+            "rerun.components.Text".into(),
         ]
     });
 
@@ -97,14 +97,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSizes2D".into(),
-            "rerun.colorrgba".into(),
             "rerun.components.Boxes2DIndicator".into(),
+            "rerun.components.Color".into(),
             "rerun.components.Origin2D".into(),
-            "rerun.class_id".into(),
-            "rerun.draw_order".into(),
-            "rerun.instance_key".into(),
-            "rerun.label".into(),
-            "rerun.radius".into(),
+            "rerun.components.ClassId".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.InstanceKey".into(),
+            "rerun.components.Radius".into(),
+            "rerun.components.Text".into(),
         ]
     });
 
@@ -195,7 +195,7 @@ impl crate::Archetype for Boxes2D {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
                             "rerun.components.HalfSizes2D".into(),
                             Box::new(array.data_type().clone()),
-                            Some("rerun.components.HalfSizes2D".into()),
+                            None,
                         );
                         (
                             ::arrow2::datatypes::Field::new("half_sizes", datatype, false),
@@ -215,7 +215,7 @@ impl crate::Archetype for Boxes2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Origin2D".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.components.Origin2D".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("centers", datatype, false),
@@ -235,7 +235,7 @@ impl crate::Archetype for Boxes2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Radius".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.radius".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("radii", datatype, false),
@@ -255,7 +255,7 @@ impl crate::Archetype for Boxes2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Color".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.colorrgba".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("colors", datatype, false),
@@ -275,7 +275,7 @@ impl crate::Archetype for Boxes2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.Text".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.label".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("labels", datatype, false),
@@ -295,7 +295,7 @@ impl crate::Archetype for Boxes2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.DrawOrder".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.draw_order".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("draw_order", datatype, false),
@@ -315,7 +315,7 @@ impl crate::Archetype for Boxes2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.ClassId".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.class_id".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("class_ids", datatype, false),
@@ -335,7 +335,7 @@ impl crate::Archetype for Boxes2D {
                             let datatype = ::arrow2::datatypes::DataType::Extension(
                                 "rerun.components.InstanceKey".into(),
                                 Box::new(array.data_type().clone()),
-                                Some("rerun.instance_key".into()),
+                                None,
                             );
                             (
                                 ::arrow2::datatypes::Field::new("instance_keys", datatype, false),

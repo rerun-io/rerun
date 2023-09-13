@@ -49,11 +49,11 @@ RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.NDArray[np.floa
 
 class RadiusType(BaseExtensionType):
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), "rerun.radius")
+        pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.Radius")
 
 
 class RadiusArray(BaseExtensionArray[RadiusArrayLike]):
-    _EXTENSION_NAME = "rerun.radius"
+    _EXTENSION_NAME = "rerun.components.Radius"
     _EXTENSION_TYPE = RadiusType
 
     @staticmethod
