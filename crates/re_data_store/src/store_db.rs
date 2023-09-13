@@ -75,11 +75,10 @@ impl EntityDb {
         for row in table.to_rows() {
             self.register_entity_path(&row.entity_path);
 
+            self.try_add_data_row(&row)?;
+
             // Look for a `ClearSettings` component, and if it's there, go through the clear path
             // instead.
-            //
-            // TODO(#3287): If the row contains `ClearSettings`, then we make the arbitrary
-            // decision that everything else on that row is void.
             use re_types::components::ClearSettings;
             if let Some(idx) = row.find_cell(&ClearSettings::name()) {
                 let cell = &row.cells()[idx];
@@ -90,8 +89,6 @@ impl EntityDb {
                     PathOp::ClearComponents(row.entity_path.clone())
                 };
                 self.add_path_op(row.row_id(), row.timepoint(), &path_op);
-            } else {
-                self.try_add_data_row(&row)?;
             }
         }
 

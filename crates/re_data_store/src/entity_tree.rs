@@ -4,7 +4,7 @@ use itertools::Itertools;
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
 };
-use re_types::ComponentName;
+use re_types::{ComponentName, Loggable};
 
 // ----------------------------------------------------------------------------
 
@@ -182,12 +182,23 @@ impl EntityTree {
         time_point: &TimePoint,
         path_op: &PathOp,
     ) -> Vec<ComponentPath> {
+        use re_types::{archetypes::Clear, components::ClearSettings, Archetype as _};
+
         re_tracing::profile_function!();
 
         let entity_path = path_op.entity_path();
 
         // Look up the leaf at which we will execute the path operation
         let leaf = self.create_subtrees_recursively(entity_path.as_slice(), 0, time_point);
+
+        fn filter_out_clear_components(comp_name: &ComponentName) -> bool {
+            let is_clear_component = [
+                Clear::indicator_component(), //
+                ClearSettings::name(),        //
+            ]
+            .contains(comp_name);
+            !is_clear_component
+        }
 
         // TODO(jleibs): Refactor this as separate functions
         match path_op {
@@ -201,6 +212,7 @@ impl EntityTree {
                 // For every existing field return a clear event
                 leaf.components
                     .keys()
+                    .filter(|comp_name| filter_out_clear_components(comp_name))
                     .map(|component_name| ComponentPath::new(entity_path.clone(), *component_name))
                     .collect_vec()
             }
@@ -225,9 +237,14 @@ impl EntityTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.components.keys().map(|component_name| {
-                        ComponentPath::new(next.path.clone(), *component_name)
-                    }));
+                    results.extend(
+                        next.components
+                            .keys()
+                            .filter(|comp_name| filter_out_clear_components(comp_name))
+                            .map(|component_name| {
+                                ComponentPath::new(next.path.clone(), *component_name)
+                            }),
+                    );
                 }
                 results
             }
