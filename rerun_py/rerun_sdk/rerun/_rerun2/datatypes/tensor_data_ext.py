@@ -13,7 +13,7 @@ from PIL import Image
 from rerun.log.error_utils import _send_warning
 
 if TYPE_CHECKING:
-    from . import TensorBufferLike, TensorDataArrayLike, TensorDimension, TensorDimensionLike
+    from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike, TensorDimension, TensorDimensionLike
 
 
 ################################################################################
@@ -28,7 +28,7 @@ class TorchTensorLike(Protocol):
         ...
 
 
-Tensor = Union[npt.ArrayLike, TorchTensorLike]
+Tensor = Union[TensorDataLike, TorchTensorLike]
 """Type helper for a tensor-like object that can be logged to Rerun."""
 
 
@@ -55,7 +55,7 @@ class TensorDataExt:
         shape: Sequence[TensorDimensionLike] | None = None,
         buffer: TensorBufferLike | None = None,
         array: Tensor | None = None,
-        names: Sequence[str] | None = None,
+        names: Sequence[str | None] | None = None,
         jpeg_quality: int | None = None,
     ) -> None:
         """
@@ -136,7 +136,7 @@ class TensorDataExt:
                             ),
                             2,
                         )
-                    resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, names)]
+                    resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, names)]  # type: ignore[arg-type]
                 else:
                     resolved_shape = [TensorDimension(size) for size in array.shape]
 

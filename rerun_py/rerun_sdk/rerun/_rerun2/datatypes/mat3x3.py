@@ -35,7 +35,7 @@ class Mat3x3(Mat3x3Ext):
 
 
 if TYPE_CHECKING:
-    Mat3x3Like = Union[Mat3x3, Sequence[float], Sequence[Sequence[float]]]
+    Mat3x3Like = Union[Mat3x3, Sequence[float], Sequence[Sequence[float]], npt.ArrayLike]
 else:
     Mat3x3Like = Any
 

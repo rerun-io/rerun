@@ -35,9 +35,14 @@ class ClassDescriptionExt:
         self: Any,
         *,
         info: AnnotationInfoLike,
-        keypoint_annotations: Sequence[AnnotationInfoLike] = [],
-        keypoint_connections: Sequence[KeypointPairLike] = [],
+        keypoint_annotations: Sequence[AnnotationInfoLike] | None = [],
+        keypoint_connections: Sequence[KeypointPairLike] | None = [],
     ) -> None:
+        # Always convert None to empty list
+        if keypoint_annotations is None:
+            keypoint_annotations = []
+        if keypoint_connections is None:
+            keypoint_connections = []
         self.__attrs_init__(
             info=info, keypoint_annotations=keypoint_annotations, keypoint_connections=keypoint_connections
         )

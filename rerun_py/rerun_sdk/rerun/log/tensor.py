@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Protocol, Union
+from typing import Any, Protocol, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -43,7 +43,7 @@ def log_tensor(
     entity_path: str,
     tensor: TensorDataLike,
     *,
-    names: Iterable[str | None] | None = None,
+    names: Sequence[str | None] | None = None,
     meter: float | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
@@ -88,7 +88,7 @@ def log_tensor(
 def _log_tensor(
     entity_path: str,
     tensor: TensorDataLike,
-    names: Iterable[str | None] | None = None,
+    names: Sequence[str | None] | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
