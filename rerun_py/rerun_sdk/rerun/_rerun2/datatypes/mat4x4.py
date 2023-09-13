@@ -16,18 +16,18 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import mat4x4__coeffs__field_converter_override  # noqa: F401
+from .mat4x4_ext import Mat4x4Ext
 
 __all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type"]
 
 
 @define
-class Mat4x4:
+class Mat4x4(Mat4x4Ext):
     """A 4x4 column-major Matrix."""
 
     # You can define your own __init__ function as a member of Mat4x4Ext in mat4x4_ext.py
 
-    coeffs: npt.NDArray[np.float32] = field(converter=mat4x4__coeffs__field_converter_override)
+    coeffs: npt.NDArray[np.float32] = field(converter=Mat4x4Ext.coeffs__field_converter_override)  # type: ignore[misc]
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat4x4Ext in mat4x4_ext.py

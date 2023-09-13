@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .matnxn import mat3x3__coeffs__field_converter_override, mat4x4__coeffs__field_converter_override
 from .quaternion import quaternion__init_override
 from .rotation3d import rotation3d__inner_converter_override
 from .rotation_axis_angle import rotation_axis_angle__angle__field_converter_override
