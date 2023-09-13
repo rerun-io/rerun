@@ -14,13 +14,13 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import utf8__native_to_pa_array_override  # noqa: F401
+from .utf8_ext import Utf8Ext
 
 __all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
 
 
 @define
-class Utf8:
+class Utf8(Utf8Ext):
     """A string of text, encoded as UTF-8."""
 
     # You can define your own __init__ function as a member of Utf8Ext in utf8_ext.py
@@ -53,7 +53,7 @@ class Utf8Array(BaseExtensionArray[Utf8ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
-        return utf8__native_to_pa_array_override(data, data_type)
+        return Utf8Ext.native_to_pa_array_override(data, data_type)
 
 
 Utf8Type._ARRAY_TYPE = Utf8Array

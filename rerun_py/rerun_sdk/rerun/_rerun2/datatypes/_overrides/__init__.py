@@ -23,8 +23,3 @@ from .transform3d import transform3d__native_to_pa_array_override
 from .translation_and_mat3x3 import translation_and_mat3x3__init_override
 from .translation_rotation_scale3d import translation_rotation_scale3d__init_override
 from .utf8 import utf8__native_to_pa_array_override
-from .vecxd import (
-    vec2d__native_to_pa_array_override,
-    vec3d__native_to_pa_array_override,
-    vec4d__native_to_pa_array_override,
-)
