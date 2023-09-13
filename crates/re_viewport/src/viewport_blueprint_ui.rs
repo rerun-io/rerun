@@ -357,37 +357,40 @@ impl ViewportBlueprint<'_> {
     ) {
         #![allow(clippy::collapsible_if)]
 
-        let icon_image = ctx.re_ui.icon_image(&re_ui::icons::ADD);
-        let texture_id = icon_image.texture_id(ui.ctx());
-        ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
-            ui.style_mut().wrap = Some(false);
+        ui.menu_image_button(
+            re_ui::icons::ADD
+                .as_image()
+                .fit_to_exact_size(re_ui::ReUi::small_icon_size()),
+            |ui| {
+                ui.style_mut().wrap = Some(false);
 
-            let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
-            for space_view in
-                all_possible_space_views(ctx, spaces_info, &entities_per_system_per_class)
-                    .into_iter()
-                    .sorted_by_key(|space_view| space_view.space_origin.to_string())
-            {
-                if ctx
-                    .re_ui
-                    .selectable_label_with_icon(
-                        ui,
-                        space_view.class(ctx.space_view_class_registry).icon(),
-                        if space_view.space_origin.is_root() {
-                            space_view.display_name.clone()
-                        } else {
-                            space_view.space_origin.to_string()
-                        },
-                        false,
-                    )
-                    .clicked()
+                let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
+                for space_view in
+                    all_possible_space_views(ctx, spaces_info, &entities_per_system_per_class)
+                        .into_iter()
+                        .sorted_by_key(|space_view| space_view.space_origin.to_string())
                 {
-                    ui.close_menu();
-                    let new_space_view_id = self.add_space_view(space_view);
-                    ctx.set_single_selection(&Item::SpaceView(new_space_view_id));
+                    if ctx
+                        .re_ui
+                        .selectable_label_with_icon(
+                            ui,
+                            space_view.class(ctx.space_view_class_registry).icon(),
+                            if space_view.space_origin.is_root() {
+                                space_view.display_name.clone()
+                            } else {
+                                space_view.space_origin.to_string()
+                            },
+                            false,
+                        )
+                        .clicked()
+                    {
+                        ui.close_menu();
+                        let new_space_view_id = self.add_space_view(space_view);
+                        ctx.set_single_selection(&Item::SpaceView(new_space_view_id));
+                    }
                 }
-            }
-        })
+            },
+        )
         .response
         .on_hover_text("Add new Space View");
     }

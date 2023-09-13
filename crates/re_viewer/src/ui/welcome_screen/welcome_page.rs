@@ -2,7 +2,7 @@ use super::{large_text_button, status_strings, url_large_text_button, WelcomeScr
 use egui::{NumExt, Ui};
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
-use re_ui::{ReUi, UICommandSender};
+use re_ui::UICommandSender;
 
 //const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
 const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
@@ -13,7 +13,6 @@ const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer
 ///
 /// Return `true` if the user wants to switch to the example page.
 pub(super) fn welcome_page_ui(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
@@ -26,7 +25,7 @@ pub(super) fn welcome_page_ui(
     }
     .show(ui, |ui| {
         ui.vertical(|ui| {
-            let show_example = onboarding_content_ui(re_ui, ui, command_sender);
+            let show_example = onboarding_content_ui(ui, command_sender);
 
             for status_strings in status_strings(rx) {
                 if status_strings.long_term {
@@ -56,7 +55,6 @@ struct WelcomePagePanel<'a> {
 }
 
 fn onboarding_content_ui(
-    re_ui: &ReUi,
     ui: &mut Ui,
     command_sender: &re_viewer_context::CommandSender,
 ) -> WelcomeScreenResponse {
@@ -70,9 +68,9 @@ fn onboarding_content_ui(
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
                 // TODO(ab): activate when C++ is ready!
-                // url_large_text_button(re_ui, ui, "C++", CPP_QUICKSTART);
-                url_large_text_button(re_ui, ui, "Python", PYTHON_QUICKSTART);
-                url_large_text_button(re_ui, ui, "Rust", RUST_QUICKSTART);
+                // url_large_text_button(ui, "C++", CPP_QUICKSTART);
+                url_large_text_button(ui, "Python", PYTHON_QUICKSTART);
+                url_large_text_button(ui, "Rust", RUST_QUICKSTART);
 
                 false
             }),
@@ -97,7 +95,7 @@ fn onboarding_content_ui(
                 interactively in the viewer or (coming soon) directly from code in the SDK.",
             image: &re_ui::icons::WELCOME_SCREEN_CONFIGURE,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
-                url_large_text_button(re_ui, ui, "Learn about Views", SPACE_VIEWS_HELP);
+                url_large_text_button(ui, "Learn about Views", SPACE_VIEWS_HELP);
 
                 false
             }),
@@ -174,7 +172,7 @@ fn onboarding_content_ui(
                 for panels in panels.chunks(column_count) {
                     if column_count == panel_count {
                         for panel in panels {
-                            image_banner(re_ui, ui, panel.image, column_width);
+                            image_banner(ui, panel.image, column_width);
                         }
                     } else {
                         for _ in panels {
@@ -225,12 +223,10 @@ fn onboarding_content_ui(
     .inner
 }
 
-fn image_banner(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, image: &re_ui::Icon, column_width: f32) {
-    let image = re_ui.icon_image(image);
-    let texture_id = image.texture_id(ui.ctx());
-    let height = column_width * image.size()[1] as f32 / image.size()[0] as f32;
+fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32) {
     ui.add(
-        egui::Image::new(texture_id, egui::vec2(column_width, height))
+        icon.as_image()
+            .fit_to_exact_size(egui::Vec2::new(column_width, f32::INFINITY))
             .rounding(egui::Rounding::same(8.)),
     );
 }

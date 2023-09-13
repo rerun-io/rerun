@@ -74,7 +74,7 @@ fn top_bar_ui(
     app.rerun_menu_button_ui(store_context, ui, frame);
 
     ui.add_space(12.0);
-    website_link_ui(ui, app);
+    website_link_ui(ui);
 
     if app.app_options().show_metrics {
         ui.separator();
@@ -158,17 +158,17 @@ fn top_bar_ui(
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)
-fn website_link_ui(ui: &mut egui::Ui, app: &mut App) {
-    let icon_image = app.re_ui().icon_image(&re_ui::icons::RERUN_IO_TEXT);
-
+fn website_link_ui(ui: &mut egui::Ui) {
     let desired_height = ui.max_rect().height();
     let desired_height = desired_height.at_most(28.0); // figma size 2023-02-03
 
-    let image_size = icon_image.size_vec2() * (desired_height / icon_image.size_vec2().y);
-    let texture_id = icon_image.texture_id(ui.ctx());
+    let image = re_ui::icons::RERUN_IO_TEXT
+        .as_image()
+        .max_height(desired_height);
+
     let url = "https://rerun.io/";
     let response = ui
-        .add(egui::ImageButton::new(texture_id, image_size))
+        .add(egui::ImageButton::new(image))
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(url);
     if response.clicked() {

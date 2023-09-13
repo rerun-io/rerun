@@ -41,7 +41,6 @@ impl WelcomeScreen {
     /// Welcome screen shown in place of the viewport when no data is loaded.
     pub fn ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
@@ -76,7 +75,7 @@ impl WelcomeScreen {
             .id_source(("welcome_screen_page", &self.current_page))
             .auto_shrink([false, false])
             .show(ui, |ui| match self.current_page {
-                WelcomeScreenPage::Welcome => welcome_page_ui(re_ui, ui, rx, command_sender),
+                WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
                 WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
             })
             .inner;
@@ -134,22 +133,19 @@ fn set_large_button_style(ui: &mut egui::Ui) {
     visuals.widgets.inactive.weak_bg_fill = visuals.widgets.inactive.bg_fill;
 }
 
-fn url_large_text_button(
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    url: &str,
-) {
+fn url_large_text_button(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>, url: &str) {
     ui.scope(|ui| {
         set_large_button_style(ui);
 
-        let image = re_ui.icon_image(&re_ui::icons::EXTERNAL_LINK);
-        let texture_id = image.texture_id(ui.ctx());
-
-        if egui::Button::image_and_text(texture_id, ReUi::small_icon_size(), text)
-            .ui(ui)
-            .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .clicked()
+        if egui::Button::image_and_text(
+            re_ui::icons::EXTERNAL_LINK
+                .as_image()
+                .fit_to_exact_size(ReUi::small_icon_size()),
+            text,
+        )
+        .ui(ui)
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
         {
             ui.ctx().output_mut(|o| {
                 o.open_url = Some(egui::output::OpenUrl {

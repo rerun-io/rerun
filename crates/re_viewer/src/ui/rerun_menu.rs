@@ -18,11 +18,10 @@ impl App {
         let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
         let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
 
-        let icon_image = self.re_ui().icon_image(&re_ui::icons::RERUN_MENU);
-        let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
-        let texture_id = icon_image.texture_id(ui.ctx());
-
-        ui.menu_image_button(texture_id, image_size, |ui| {
+        let image = re_ui::icons::RERUN_MENU
+            .as_image()
+            .max_height(desired_icon_height);
+        ui.menu_image_button(image, |ui| {
             ui.set_min_width(220.0);
             let spacing = 12.0;
 
@@ -84,15 +83,16 @@ impl App {
             // dont use `hyperlink_to` for styling reasons
             const HELP_URL: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
-            let texture_id = self
-                .re_ui()
-                .icon_image(&re_ui::icons::EXTERNAL_LINK)
-                .texture_id(ui.ctx());
-            if egui::Button::image_and_text(texture_id, ReUi::small_icon_size(), "Help")
-                .ui(ui)
-                .on_hover_cursor(egui::CursorIcon::PointingHand)
-                .on_hover_text(HELP_URL)
-                .clicked()
+            if egui::Button::image_and_text(
+                re_ui::icons::EXTERNAL_LINK
+                    .as_image()
+                    .fit_to_exact_size(ReUi::small_icon_size()),
+                "Help",
+            )
+            .ui(ui)
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .on_hover_text(HELP_URL)
+            .clicked()
             {
                 ui.ctx().output_mut(|o| {
                     o.open_url = Some(egui::output::OpenUrl {

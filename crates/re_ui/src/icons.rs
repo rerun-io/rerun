@@ -1,3 +1,5 @@
+use egui::{Image, ImageSource};
+
 #[derive(Clone, Copy, Debug)]
 pub struct Icon {
     /// Human readable unique id
@@ -9,6 +11,10 @@ pub struct Icon {
 impl Icon {
     pub const fn new(id: &'static str, png_bytes: &'static [u8]) -> Self {
         Self { id, png_bytes }
+    }
+
+    pub fn as_image(&self) -> Image<'static> {
+        Image::new(ImageSource::Bytes(self.id.into(), self.png_bytes.into()))
     }
 }
 

@@ -82,17 +82,22 @@ crossbeam = "0.8"
 ecolor = "0.22.0"
 eframe = { version = "0.22.0", default-features = false, features = [
   "default_fonts",
+  "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
+egui = { version = "0.22.0", features = [
+  "extra_debug_asserts",
+  "log",
+  "puffin",
+] }
 egui_extras = { version = "0.22.0", features = [
   "log",
   "image",
   "http",
   "puffin",
 ] }
-egui_plot = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
+egui_plot = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
 egui_tiles = { version = "0.2" }
 egui-wgpu = "0.22.0"
 ehttp = { version = "0.3" }
@@ -165,14 +170,14 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # Temporary patch until next egui release
-ecolor = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-eframe = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-emath = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
-epaint = { git = "https://github.com/emilk/egui", rev = "2338a854f932658ad0548aa4f00874b3427970c1" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
+eframe = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
+egui = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
+emath = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
+epaint = { git = "https://github.com/emilk/egui", rev = "67a3fcae383044def7450b311ddc1f79e36eaae0" }
 
 # Temporary patch until next egui_tiles release
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "c66d6cba7ddb5b236be614d1816be4561260274e" }
