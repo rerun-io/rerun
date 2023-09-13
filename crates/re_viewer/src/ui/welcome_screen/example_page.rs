@@ -1,9 +1,10 @@
-use super::WelcomeScreenResponse;
-use egui::load::TexturePoll;
-use egui::{NumExt, TextureOptions, Ui};
+use egui::{NumExt as _, Ui};
+
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
 use re_viewer_context::SystemCommandSender;
+
+use super::WelcomeScreenResponse;
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -257,33 +258,11 @@ fn example_thumbnail(
 ) {
     let rounding = egui::Rounding::same(THUMBNAIL_RADIUS);
 
-    let resp = match ui.ctx().try_load_texture(
-        example.thumbnail.url.as_str(),
-        TextureOptions::LINEAR,
-        egui::SizeHint::from(size),
-    ) {
-        Ok(TexturePoll::Ready { texture }) => {
-            ui.add(egui::Image::new((texture.id, size)).rounding(rounding))
-        }
-        Ok(TexturePoll::Pending { .. }) => {
-            ui.allocate_ui_at_rect(egui::Rect::from_min_size(ui.cursor().min, size), |ui| {
-                // add some space before the spinner
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.add_space(4.0);
-                    ui.spinner()
-                        .on_hover_text(format!("Loading thumbnail for {} example…", example.title));
-                });
-
-                // Eat all available space so the spinner container has the same size as the
-                // thumbnail itself.
-                ui.allocate_exact_size(ui.max_rect().max - ui.cursor().min, egui::Sense::hover());
-            })
-            .response
-        }
-
-        Err(err) => ui.colored_label(ui.visuals().error_fg_color, err.to_string()),
-    };
+    let response = ui.add(
+        egui::Image::new(&example.thumbnail.url)
+            .rounding(rounding)
+            .fit_to_exact_size(size),
+    );
 
     // TODO(ab): use design tokens
     let border_color = if hovered {
@@ -293,19 +272,19 @@ fn example_thumbnail(
     };
 
     ui.painter()
-        .rect_stroke(resp.rect, rounding, (1.0, border_color));
+        .rect_stroke(response.rect, rounding, (1.0, border_color));
 
-    // spinner overlay
+    // Show spinner overlay while loading the example:
     if is_loading(rx, example) {
         ui.painter().rect_filled(
-            resp.rect,
+            response.rect,
             rounding,
             egui::Color32::BLACK.gamma_multiply(0.75),
         );
 
-        let spinner_size = resp.rect.size().min_elem().at_most(72.0);
+        let spinner_size = response.rect.size().min_elem().at_most(72.0);
         let spinner_rect =
-            egui::Rect::from_center_size(resp.rect.center(), egui::Vec2::splat(spinner_size));
+            egui::Rect::from_center_size(response.rect.center(), egui::Vec2::splat(spinner_size));
         ui.allocate_ui_at_rect(spinner_rect, |ui| {
             ui.add(egui::Spinner::new().size(spinner_size));
         });
