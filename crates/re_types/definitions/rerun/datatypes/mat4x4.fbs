@@ -11,7 +11,7 @@ namespace rerun.datatypes;
 struct Mat4x4 (
   "attr.arrow.transparent",
   "attr.python.aliases": "Sequence[float], Sequence[Sequence[float]]",
-  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   "attr.rust.tuple_struct",
   order: 600
 ) {

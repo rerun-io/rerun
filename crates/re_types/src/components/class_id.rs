@@ -16,7 +16,7 @@
 /// A 16-bit ID representing a type of semantic class.
 ///
 /// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ClassId(pub crate::datatypes::ClassId);

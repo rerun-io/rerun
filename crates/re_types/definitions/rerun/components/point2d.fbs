@@ -14,7 +14,7 @@ struct Point2D (
   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
   "attr.rerun.legacy_fqname": "rerun.point2d",
-  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   order: 100
 ) {
   xy: rerun.datatypes.Vec2D (order: 100);

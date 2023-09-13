@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A point in 2D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Point2D(pub crate::datatypes::Vec2D);
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for Point2D {

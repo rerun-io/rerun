@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A point of origin in 3D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Origin3D(pub crate::datatypes::Vec3D);
 
 impl<T: Into<crate::datatypes::Vec3D>> From<T> for Origin3D {
