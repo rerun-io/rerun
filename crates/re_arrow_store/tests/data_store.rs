@@ -95,10 +95,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            Color::name(),          // added by test, timeless
-            Position2D::name(),     // added by test
-            LargeStruct::name(),    // added by test
-            cluster_key,            // always here
+            Color::name(),       // added by test, timeless
+            Position2D::name(),  // added by test
+            LargeStruct::name(), // added by test
+            cluster_key,         // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -151,10 +151,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            Color::name(),          // added by test, timeless
-            LargeStruct::name(),    // ⚠ inherited before the buckets got split apart!
-            Position2D::name(),     // added by test
-            cluster_key,            // always here
+            Color::name(),       // added by test, timeless
+            LargeStruct::name(), // ⚠ inherited before the buckets got split apart!
+            Position2D::name(),  // added by test
+            cluster_key,         // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -213,10 +213,10 @@ fn all_components() {
         ];
 
         let components_b = &[
-            Color::name(),          // added by test, timeless
-            Position2D::name(),     // added by test but not contained in the second bucket
-            LargeStruct::name(),    // added by test
-            cluster_key,            // always here
+            Color::name(),       // added by test, timeless
+            Position2D::name(),  // added by test but not contained in the second bucket
+            LargeStruct::name(), // added by test
+            cluster_key,         // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);

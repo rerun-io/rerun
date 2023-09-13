@@ -55,8 +55,8 @@ fn data_row_error_duped_components() {
 
     let positions: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 
-    let err =
-        DataRow::try_from_cells2(row_id, "a/b/c", timepoint, 2, (positions, positions)).unwrap_err();
+    let err = DataRow::try_from_cells2(row_id, "a/b/c", timepoint, 2, (positions, positions))
+        .unwrap_err();
 
     match err {
         DataRowError::DupedComponent {
