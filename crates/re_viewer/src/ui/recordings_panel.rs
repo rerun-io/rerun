@@ -91,7 +91,19 @@ fn loading_receivers_ui(
         // but it is possible to send multiple recordings over the same channel.
         if always_show || !sources_with_stores.contains(&source) {
             any_shown = true;
-            let response = ctx.re_ui.list_item(string).show(ui);
+            let response = ctx
+                .re_ui
+                .list_item(string)
+                .with_buttons(|re_ui, ui| {
+                    let resp = re_ui
+                        .small_icon_button(ui, &re_ui::icons::REMOVE)
+                        .on_hover_text("Disconnect from this source");
+                    if resp.clicked() {
+                        rx.remove(&source);
+                    }
+                    resp
+                })
+                .show(ui);
             if let SmartChannelSource::TcpServer { .. } = source.as_ref() {
                 response.on_hover_text("You can connect to this viewer from a Rerun SDK");
             }

@@ -31,6 +31,11 @@ impl<T: Send> ReceiveSet<T> {
         rx.push(r);
     }
 
+    /// Diconnect from any channel with the given source.
+    pub fn remove(&self, source: &SmartChannelSource) {
+        self.receivers.lock().retain(|r| r.source() != source);
+    }
+
     /// List of connected receiver sources.
     ///
     /// This gets culled after calling one of the `recv` methods.
