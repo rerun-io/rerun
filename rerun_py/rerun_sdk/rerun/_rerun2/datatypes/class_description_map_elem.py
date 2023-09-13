@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import class_description_map_elem__native_to_pa_array_override  # noqa: F401
+from .class_description_map_elem_ext import ClassDescriptionMapElemExt
 
 __all__ = [
     "ClassDescriptionMapElem",
@@ -36,7 +36,7 @@ def _class_description_map_elem__class_id__special_field_converter_override(
 
 
 @define
-class ClassDescriptionMapElem:
+class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     """
     A helper type for mapping class IDs to class descriptions.
 
@@ -142,7 +142,7 @@ class ClassDescriptionMapElemArray(BaseExtensionArray[ClassDescriptionMapElemArr
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
-        return class_description_map_elem__native_to_pa_array_override(data, data_type)
+        return ClassDescriptionMapElemExt.native_to_pa_array_override(data, data_type)
 
 
 ClassDescriptionMapElemType._ARRAY_TYPE = ClassDescriptionMapElemArray

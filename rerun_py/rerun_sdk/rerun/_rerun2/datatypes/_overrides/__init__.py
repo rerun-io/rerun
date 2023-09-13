@@ -1,15 +1,5 @@
 from __future__ import annotations
 
-from .annotation_context import (
-    annotation_info__native_to_pa_array_override,
-    class_description__info__field_converter_override,
-    class_description__init_override,
-    class_description__keypoint_annotations__field_converter_override,
-    class_description__keypoint_connections__field_converter_override,
-    class_description__native_to_pa_array_override,
-    class_description_map_elem__native_to_pa_array_override,
-    keypoint_pair__native_to_pa_array_override,
-)
 from .class_id import class_id__native_to_pa_array_override
 from .keypoint_id import keypoint_id__native_to_pa_array_override
 from .matnxn import mat3x3__coeffs__field_converter_override, mat4x4__coeffs__field_converter_override

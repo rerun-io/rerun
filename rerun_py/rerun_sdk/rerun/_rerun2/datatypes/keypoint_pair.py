@@ -15,7 +15,7 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from ._overrides import keypoint_pair__native_to_pa_array_override  # noqa: F401
+from .keypoint_pair_ext import KeypointPairExt
 
 __all__ = ["KeypointPair", "KeypointPairArray", "KeypointPairArrayLike", "KeypointPairLike", "KeypointPairType"]
 
@@ -35,7 +35,7 @@ def _keypoint_pair__keypoint1__special_field_converter_override(x: datatypes.Key
 
 
 @define
-class KeypointPair:
+class KeypointPair(KeypointPairExt):
     """A connection between two `Keypoints`."""
 
     # You can define your own __init__ function as a member of KeypointPairExt in keypoint_pair_ext.py
@@ -78,7 +78,7 @@ class KeypointPairArray(BaseExtensionArray[KeypointPairArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
-        return keypoint_pair__native_to_pa_array_override(data, data_type)
+        return KeypointPairExt.native_to_pa_array_override(data, data_type)
 
 
 KeypointPairType._ARRAY_TYPE = KeypointPairArray
