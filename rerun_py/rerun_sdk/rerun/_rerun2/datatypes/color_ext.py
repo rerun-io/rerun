@@ -42,7 +42,6 @@ class ColorExt:
 
     @staticmethod
     def rgba__field_converter_override(data: ColorLike) -> int:
-        print("foo")
         from . import Color
 
         if isinstance(data, Color):
