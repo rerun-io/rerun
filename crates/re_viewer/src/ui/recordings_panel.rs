@@ -1,15 +1,24 @@
-use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender, ViewerContext};
 use std::collections::BTreeMap;
+
 use time::macros::format_description;
+
+use re_log_types::LogMsg;
+use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender, ViewerContext};
 
 static TIME_FORMAT_DESCRIPTION: once_cell::sync::Lazy<
     &'static [time::format_description::FormatItem<'static>],
 > = once_cell::sync::Lazy::new(|| format_description!(version = 2, "[hour]:[minute]:[second]Z"));
 
 /// Show the currently open Recordings in a selectable list.
+/// Also shows the currently loading receivers.
 ///
 /// Returns `true` if any recordings were shown.
-pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
+pub fn recordings_panel_ui(
+    ctx: &mut ViewerContext<'_>,
+    rx: &ReceiveSet<LogMsg>,
+    ui: &mut egui::Ui,
+) -> bool {
     ctx.re_ui.panel_content(ui, |re_ui, ui| {
         re_ui.panel_title_bar_with_buttons(
             ui,
@@ -26,16 +35,67 @@ pub fn recordings_panel_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bo
         .auto_shrink([false, true])
         .max_height(300.)
         .show(ui, |ui| {
-            ctx.re_ui
-                .panel_content(ui, |_re_ui, ui| recording_list_ui(ctx, ui))
+            ctx.re_ui.panel_content(ui, |_re_ui, ui| {
+                let mut any_shown = false;
+                any_shown |= recording_list_ui(ctx, ui);
+
+                // Show currently loading things after.
+                // They will likely end up here as recordings soon.
+                any_shown |= loading_receivers_ui(ctx, rx, ui);
+
+                any_shown
+            })
         })
         .inner
+}
+
+fn loading_receivers_ui(
+    ctx: &mut ViewerContext<'_>,
+    rx: &ReceiveSet<LogMsg>,
+    ui: &mut egui::Ui,
+) -> bool {
+    let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
+        .store_context
+        .all_recordings
+        .iter()
+        .filter_map(|store| store.data_source.clone())
+        .collect();
+
+    let mut any_shown = false;
+
+    for source in rx.sources() {
+        let (always_show, string) = match source.as_ref() {
+            SmartChannelSource::File(path) => (false, format!("Loading {}…", path.display())),
+            SmartChannelSource::RrdHttpStream { url } => (false, format!("Loading {url}…")),
+            SmartChannelSource::RrdWebEventListener => {
+                (false, "Waiting on Web Event Listener…".to_owned())
+            }
+            SmartChannelSource::Sdk => (false, "Waiting on SDK…".to_owned()),
+            SmartChannelSource::WsClient { ws_server_url } => {
+                (false, format!("Loading from {ws_server_url}…"))
+            }
+            SmartChannelSource::TcpServer { port } => {
+                // We have a TcpServer when running just `cargo rerun`
+                (true, format!("Hosting a TCP Server on port {port}"))
+            }
+        };
+
+        // Only show if we don't have a recording for this source,
+        // i.e. if this source hasn't sent anything yet.
+        // Note that usually there is a one-to-one mapping between a source and a recording,
+        // but it is possible to send multiple recordings over the same channel.
+        if always_show || !sources_with_stores.contains(&source) {
+            any_shown = true;
+            ctx.re_ui.list_item(string).show(ui);
+        }
+    }
+
+    any_shown
 }
 
 /// Draw the recording list.
 ///
 /// Returns `true` if any recordings were shown.
-#[allow(clippy::blocks_in_if_conditions)]
 fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     let ViewerContext {
         store_context,
@@ -44,7 +104,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     } = ctx;
 
     let mut store_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
-    for store_db in &store_context.alternate_recordings {
+    for store_db in &store_context.all_recordings {
         let key = store_db
             .store_info()
             .map_or("<unknown>", |info| info.application_id.as_str());
@@ -209,7 +269,6 @@ fn recording_hover_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, store_db: &re_data
 }
 
 fn data_source_string(data_source: &re_smart_channel::SmartChannelSource) -> String {
-    use re_smart_channel::SmartChannelSource;
     match data_source {
         SmartChannelSource::File(path) => path.display().to_string(),
         SmartChannelSource::RrdHttpStream { url } => url.clone(),
