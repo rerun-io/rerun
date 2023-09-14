@@ -389,16 +389,16 @@ pub fn view_2d(
 }
 
 fn setup_target_config(
-    painter: &egui::Painter,
+    egui_painter: &egui::Painter,
     canvas_from_ui: RectTransform,
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
     pinhole: Option<Pinhole>,
 ) -> anyhow::Result<TargetConfiguration> {
-    let pixels_from_points = painter.ctx().pixels_per_point();
+    let pixels_from_points = egui_painter.ctx().pixels_per_point();
     let resolution_in_pixel =
-        gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
+        gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
     // TODO(#1988):
@@ -457,8 +457,8 @@ fn setup_target_config(
 
     // Cut to the portion of the currently visible ui area.
     let mut viewport_transformation = re_renderer::RectTransform {
-        region_of_interest: egui_rect_to_re_renderer(painter.clip_rect()),
-        region: egui_rect_to_re_renderer(*canvas_from_ui.from()),
+        region_of_interest: re_render_rect_from_egui_rect(egui_painter.clip_rect()),
+        region: re_render_rect_from_egui_rect(*canvas_from_ui.from()),
     };
 
     // The principal point might not be quite centered.
@@ -478,12 +478,12 @@ fn setup_target_config(
             viewport_transformation,
             pixels_from_point: pixels_from_points,
             auto_size_config,
-            outline_config: any_outlines.then(|| outline_config(painter.ctx())),
+            outline_config: any_outlines.then(|| outline_config(egui_painter.ctx())),
         }
     })
 }
 
-fn egui_rect_to_re_renderer(rect: egui::Rect) -> re_renderer::RectF32 {
+fn re_render_rect_from_egui_rect(rect: egui::Rect) -> re_renderer::RectF32 {
     re_renderer::RectF32 {
         min: glam::vec2(rect.left(), rect.top()),
         extent: glam::vec2(rect.width(), rect.height()),

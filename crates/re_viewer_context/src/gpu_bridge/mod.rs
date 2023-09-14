@@ -117,7 +117,7 @@ pub fn get_or_create_texture<'a>(
 /// Render the given image, respecting the clip rectangle of the given painter.
 pub fn render_image(
     render_ctx: &mut re_renderer::RenderContext,
-    painter: &egui::Painter,
+    egui_painter: &egui::Painter,
     image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
@@ -127,12 +127,13 @@ pub fn render_image(
 
     use re_renderer::renderer::{TextureFilterMag, TextureFilterMin};
 
-    let clip_rect = painter.clip_rect().intersect(image_rect_on_screen);
-    if !clip_rect.is_positive() {
+    let viewport = egui_painter.clip_rect().intersect(image_rect_on_screen);
+    if !viewport.is_positive() {
         return Ok(());
     }
 
     // Where in "world space" to paint the image.
+    // This is an arbitrary selection.
     let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, image_rect_on_screen.size());
 
     let textured_rectangle = re_renderer::renderer::TexturedRect {
@@ -156,19 +157,20 @@ pub fn render_image(
 
     // ------------------------------------------------------------------------
 
-    let pixels_from_points = painter.ctx().pixels_per_point();
+    let pixels_from_points = egui_painter.ctx().pixels_per_point();
     let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_rect_on_screen);
     let space_from_ui = ui_from_space.inverse();
     let space_from_points = space_from_ui.scale().y;
-    let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
+    let points_from_pixels = 1.0 / egui_painter.ctx().pixels_per_point();
     let space_from_pixel = space_from_points * points_from_pixels;
 
-    let resolution_in_pixel = viewport_resolution_in_pixels(clip_rect, pixels_from_points);
+    let resolution_in_pixel = viewport_resolution_in_pixels(viewport, pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
-    let camera_position_space = space_from_ui.transform_pos(clip_rect.min);
+    let camera_position_space = space_from_ui.transform_pos(viewport.min);
 
     let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
+
     let target_config = re_renderer::view_builder::TargetConfiguration {
         name: debug_name.into(),
         resolution_in_pixel,
@@ -191,10 +193,10 @@ pub fn render_image(
         &[textured_rectangle],
     )?);
 
-    painter.add(new_renderer_callback(
+    egui_painter.add(new_renderer_callback(
         render_ctx,
         view_builder,
-        clip_rect,
+        viewport,
         re_renderer::Rgba::TRANSPARENT,
     ));
 
