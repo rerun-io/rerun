@@ -3,6 +3,7 @@ use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash
 use re_log_types::{RowId, TimeInt, Timeline};
 use re_types::components::TensorData;
 use re_types::tensor_data::DecodedTensor;
+use re_types::Archetype;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
@@ -32,7 +33,9 @@ impl ViewPartSystem for TensorSystem {
         ent_path: &EntityPath,
         components: &[ComponentName],
     ) -> bool {
-        if !components.contains(&TensorData::name()) {
+        if !components.contains(&re_types::archetypes::Tensor::indicator_component())
+            || !components.contains(&TensorData::name())
+        {
             return false;
         }
 

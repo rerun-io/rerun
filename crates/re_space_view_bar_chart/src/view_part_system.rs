@@ -34,7 +34,9 @@ impl ViewPartSystem for BarChartViewPartSystem {
         ent_path: &EntityPath,
         components: &[ComponentName],
     ) -> bool {
-        if !components.contains(&re_types::components::TensorData::name()) {
+        if !components.contains(&re_types::archetypes::Tensor::indicator_component())
+            || !components.contains(&re_types::components::TensorData::name())
+        {
             return false;
         }
 

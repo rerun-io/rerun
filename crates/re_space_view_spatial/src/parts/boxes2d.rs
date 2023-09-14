@@ -121,6 +121,15 @@ impl ViewPartSystem for Boxes2DPart {
         Boxes2D::all_components().try_into().unwrap()
     }
 
+    fn queries_any_components_of(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
+        components: &[re_types::ComponentName],
+    ) -> bool {
+        components.contains(&Boxes2D::indicator_component())
+    }
+
     fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,

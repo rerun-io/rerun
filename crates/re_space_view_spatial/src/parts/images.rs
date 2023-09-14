@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use egui::NumExt;
 
@@ -17,7 +17,7 @@ use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
     components::{Color, DrawOrder, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Archetype as _, Loggable,
+    Archetype as _,
 };
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
@@ -609,10 +609,16 @@ impl NamedViewSystem for ImagesPart {
 
 impl ViewPartSystem for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(jleibs): Figure out the right thing to do here.
-        // What this actually wants to do is indicate that it is interested
-        // in all 3 indicator archetypes.
-        vec1::vec1![TensorData::name()]
+        Image::all_components()
+            .iter()
+            .chain(DepthImage::all_components().iter())
+            .chain(SegmentationImage::all_components().iter())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .map(ToOwned::to_owned)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
     }
 
     // TODO(jleibs): Once the above is working properly this can go away all together.
@@ -620,8 +626,15 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        _components: &[ComponentName],
+        components: &[ComponentName],
     ) -> bool {
+        let is_image = components.contains(&Image::indicator_component())
+            || components.contains(&DepthImage::indicator_component())
+            || components.contains(&SegmentationImage::indicator_component());
+        if !is_image {
+            return false;
+        }
+
         if let Some(tensor) = store.query_latest_component::<TensorData>(
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),

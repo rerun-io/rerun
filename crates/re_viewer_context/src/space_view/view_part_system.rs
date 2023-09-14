@@ -23,13 +23,14 @@ pub trait ViewPartSystem {
     ///
     /// Override this method only if a more detailed condition is required to inform heuristics whether
     /// the given entity is relevant for this system.
+    //
+    // TODO(andreas): Use new archetype definitions which also allows for several primaries.
     fn queries_any_components_of(
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
         components: &[ComponentName],
     ) -> bool {
-        // TODO(andreas): Use new archetype definitions which also allows for several primaries.
         let archetype = self.archetype();
         components.contains(archetype.first())
     }

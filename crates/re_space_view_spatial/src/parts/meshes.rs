@@ -89,6 +89,21 @@ impl ViewPartSystem for MeshPart {
         vec1::vec1![Mesh3D::name(), InstanceKey::name(), Color::name()]
     }
 
+    // TODO(#2788): use this instead
+    // fn archetype(&self) -> ArchetypeDefinition {
+    //     Mesh3D::all_components().try_into().unwrap()
+    // }
+
+    // TODO(#2788): use this instead
+    // fn queries_any_components_of(
+    //     &self,
+    //     _store: &re_arrow_store::DataStore,
+    //     _ent_path: &EntityPath,
+    //     components: &[re_types::ComponentName],
+    // ) -> bool {
+    //     components.contains(&Mesh3D::indicator_component())
+    // }
+
     fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,

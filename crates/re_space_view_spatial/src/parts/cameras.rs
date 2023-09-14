@@ -175,8 +175,23 @@ impl CamerasPart {
 
 impl ViewPartSystem for CamerasPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Pinhole::name(),]
+        vec1::vec1![Pinhole::name()]
     }
+
+    // TODO(#2816): use this instead
+    // fn archetype(&self) -> ArchetypeDefinition {
+    //     Pinhole::all_components().try_into().unwrap()
+    // }
+
+    // TODO(#2816): use this instead
+    // fn queries_any_components_of(
+    //     &self,
+    //     _store: &re_arrow_store::DataStore,
+    //     _ent_path: &EntityPath,
+    //     components: &[re_types::ComponentName],
+    // ) -> bool {
+    //     components.contains(&Pinhole::indicator_component())
+    // }
 
     fn execute(
         &mut self,

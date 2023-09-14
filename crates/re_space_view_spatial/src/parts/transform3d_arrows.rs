@@ -3,7 +3,7 @@ use re_log_types::EntityPath;
 use re_renderer::LineStripSeriesBuilder;
 use re_types::{
     components::{InstanceKey, Transform3D},
-    Loggable as _,
+    Archetype,
 };
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -33,7 +33,18 @@ impl NamedViewSystem for Transform3DArrowsPart {
 
 impl ViewPartSystem for Transform3DArrowsPart {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Transform3D::name()]
+        re_types::archetypes::Transform3D::all_components()
+            .try_into()
+            .unwrap()
+    }
+
+    fn queries_any_components_of(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
+        components: &[re_types::ComponentName],
+    ) -> bool {
+        components.contains(&re_types::archetypes::Transform3D::indicator_component())
     }
 
     fn execute(

@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
-use re_query::{query_archetype, QueryError};
-use re_types::{Archetype as _, Loggable as _};
+use re_query::query_archetype;
+use re_types::{archetypes::TextDocument, Archetype as _};
 use re_viewer_context::{
     ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartSystem, ViewQuery, ViewerContext,
@@ -27,12 +27,16 @@ impl NamedViewSystem for TextDocumentSystem {
 
 impl ViewPartSystem for TextDocumentSystem {
     fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(#3159): use actual archetype definition
-        // TextDocument::all_components().try_into().unwrap()
-        vec1::vec1![
-            re_types::archetypes::TextDocument::indicator_component(),
-            re_types::components::Text::name(),
-        ]
+        TextDocument::all_components().try_into().unwrap()
+    }
+
+    fn queries_any_components_of(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &re_viewer_context::external::re_log_types::EntityPath,
+        components: &[re_types::ComponentName],
+    ) -> bool {
+        components.contains(&TextDocument::indicator_component())
     }
 
     fn execute(
@@ -46,26 +50,16 @@ impl ViewPartSystem for TextDocumentSystem {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         for (ent_path, _props) in query.iter_entities_for_system(Self::name()) {
-            // TODO(jleibs): this match can go away once we resolve:
-            // https://github.com/rerun-io/rerun/issues/3320
-            match query_archetype::<re_types::archetypes::TextDocument>(
+            let arch_view = query_archetype::<re_types::archetypes::TextDocument>(
                 store,
                 &timeline_query,
                 ent_path,
-            ) {
-                Ok(arch_view) => {
-                    for text_entry in
-                        arch_view.iter_required_component::<re_types::components::Text>()?
-                    {
-                        let re_types::components::Text(text) = text_entry;
-                        self.text_entries.push(TextDocumentEntry { body: text });
-                    }
-                }
-                Err(QueryError::PrimaryNotFound(_)) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
-            };
+            )?;
+
+            for text_entry in arch_view.iter_required_component::<re_types::components::Text>()? {
+                let re_types::components::Text(text) = text_entry;
+                self.text_entries.push(TextDocumentEntry { body: text });
+            }
         }
 
         Ok(Vec::new())

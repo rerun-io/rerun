@@ -3,6 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::RowId;
 use re_query::{range_entity_with_primary, QueryError};
 use re_types::{
+    archetypes::TextLog,
     components::{Color, InstanceKey, Text, TextLogLevel},
     Archetype as _, Loggable as _,
 };
@@ -42,14 +43,16 @@ impl NamedViewSystem for TextLogSystem {
 
 impl ViewPartSystem for TextLogSystem {
     fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(#3159): use actual archetype definition
-        // TextLog::all_components().try_into().unwrap()
-        vec1::vec1![
-            re_types::archetypes::TextLog::indicator_component(),
-            Text::name(),
-            TextLogLevel::name(),
-            Color::name(),
-        ]
+        TextLog::all_components().try_into().unwrap()
+    }
+
+    fn queries_any_components_of(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
+        components: &[re_types::ComponentName],
+    ) -> bool {
+        components.contains(&TextLog::indicator_component())
     }
 
     fn execute(

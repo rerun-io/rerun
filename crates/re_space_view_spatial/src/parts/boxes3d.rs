@@ -123,6 +123,21 @@ impl ViewPartSystem for Boxes3DPart {
         ]
     }
 
+    // TODO(#2786): use this instead
+    // fn archetype(&self) -> ArchetypeDefinition {
+    //     Box3D::all_components().try_into().unwrap()
+    // }
+
+    // TODO(#2786): use this instead
+    // fn queries_any_components_of(
+    //     &self,
+    //     _store: &re_arrow_store::DataStore,
+    //     _ent_path: &EntityPath,
+    //     components: &[re_types::ComponentName],
+    // ) -> bool {
+    //     components.contains(&Box3D::indicator_component())
+    // }
+
     fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
