@@ -132,7 +132,7 @@ impl ViewPartSystem for Boxes3DPart {
     // }
 
     // TODO(#2786): use this instead
-    // fn queries_any_components_of(
+    // fn heuristic_filter(
     //     &self,
     //     _store: &re_arrow_store::DataStore,
     //     _ent_path: &EntityPath,

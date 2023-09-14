@@ -185,7 +185,7 @@ impl ViewPartSystem for CamerasPart {
     // }
 
     // TODO(#2816): use this instead
-    // fn queries_any_components_of(
+    // fn heuristic_filter(
     //     &self,
     //     _store: &re_arrow_store::DataStore,
     //     _ent_path: &EntityPath,

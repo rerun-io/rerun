@@ -513,7 +513,7 @@ pub fn identify_entities_per_system_per_class(
 
                 for system in systems {
                     // TODO(andreas/jleibs): This is only needed because of images.
-                    // The `queries_any_components_of` method should go away entirely after #3032 lands
+                    // The `heuristic_filter` method should go away entirely after #3032 lands
                     if let Ok(view_part_system) = part_collection.get_by_name(*system) {
                         if !view_part_system.heuristic_filter(store, ent_path, &all_components) {
                             continue;
