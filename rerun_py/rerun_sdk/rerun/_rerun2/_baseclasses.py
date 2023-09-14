@@ -106,7 +106,7 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
         that the top-level datatype implements it.
 
         A hand-coded override must be provided for the code generator to implement this method. The override must be
-        namd `native_to_pa_array_override()` and exist as a static member of the `<TYPE>Ext` class located in
+        named `native_to_pa_array_override()` and exist as a static member of the `<TYPE>Ext` class located in
         `<type>_ext.py`.
 
         `ColorExt.native_to_pa_array_override()` in `color_ext.py` is a good example of how to implement this method, in
