@@ -8,6 +8,8 @@ import pyarrow as pa
 if TYPE_CHECKING:
     from . import Quaternion, Rotation3DArrayLike, Rotation3DLike, RotationAxisAngle
 
+from .._unions import union_discriminant_type
+
 
 class Rotation3DExt:
     @staticmethod
@@ -73,9 +75,9 @@ class Rotation3DExt:
             ],
             children=[
                 pa.nulls(num_nulls, pa.null()),
-                QuaternionArray._native_to_pa_array(quaternions, _union_discriminant_type(data_type, "Quaternion")),
+                QuaternionArray._native_to_pa_array(quaternions, union_discriminant_type(data_type, "Quaternion")),
                 RotationAxisAngleArray._native_to_pa_array(
-                    rotation_axis_angles, _union_discriminant_type(data_type, "AxisAngle")
+                    rotation_axis_angles, union_discriminant_type(data_type, "AxisAngle")
                 ),
             ],
         )
@@ -84,9 +86,3 @@ class Rotation3DExt:
 def is_sequence(obj: Any) -> bool:
     t = type(obj)
     return hasattr(t, "__len__") and hasattr(t, "__getitem__")
-
-
-# TODO: move
-def _union_discriminant_type(data_type: pa.DenseUnionType, discriminant: str) -> pa.DataType:
-    """Return the data type of the given discriminant."""
-    return next(f.type for f in list(data_type) if f.name == discriminant)

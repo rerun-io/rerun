@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import pyarrow as pa
 
+from .._unions import build_dense_union, union_discriminant_type
+
 if TYPE_CHECKING:
     from . import (
         Mat3x3,
         Rotation3D,
-        RotationAxisAngle,
         Scale3D,
         Transform3DArrayLike,
         TranslationAndMat3x3,
@@ -28,11 +29,11 @@ class Transform3DExt:
 
         if isinstance(data, TranslationAndMat3x3):
             discriminant = "TranslationAndMat3x3"
-            repr_type = _union_discriminant_type(data_type, discriminant)
+            repr_type = union_discriminant_type(data_type, discriminant)
             transform_repr = _build_struct_array_from_translation_mat3x3(data, cast(pa.StructType, repr_type))
         elif isinstance(data, TranslationRotationScale3D):
             discriminant = "TranslationRotationScale"
-            repr_type = _union_discriminant_type(data_type, discriminant)
+            repr_type = union_discriminant_type(data_type, discriminant)
             transform_repr = _build_struct_array_from_translation_rotation_scale(data, cast(pa.StructType, repr_type))
         else:
             raise ValueError(
@@ -40,7 +41,7 @@ class Transform3DExt:
                 "`TranslationRotationScale`"
             )
 
-        storage = _build_dense_union(data_type, discriminant, transform_repr)
+        storage = build_dense_union(data_type, discriminant, transform_repr)
 
         # TODO(clement) enable extension type wrapper
         # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
@@ -54,48 +55,13 @@ class Transform3DExt:
 # 3) identify regularities and auto-gen them
 
 
-def _union_discriminant_type(data_type: pa.DenseUnionType, discriminant: str) -> pa.DataType:
-    """Return the data type of the given discriminant."""
-    return next(f.type for f in list(data_type) if f.name == discriminant)
-
-
-def _build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa.Array) -> pa.Array:
-    """
-    Build a dense UnionArray given the `data_type`, a discriminant, and the child value array.
-
-    If the discriminant string doesn't match any possible value, a `ValueError` is raised.
-    """
-    try:
-        idx = [f.name for f in list(data_type)].index(discriminant)
-        type_ids = pa.array([idx] * len(child), type=pa.int8())
-        value_offsets = pa.array(range(len(child)), type=pa.int32())
-
-        children = [pa.nulls(0, type=f.type) for f in list(data_type)]
-        try:
-            children[idx] = child.cast(data_type[idx].type, safe=False)
-        except pa.ArrowInvalid:
-            # Since we're having issues with nullability in union types (see below),
-            # the cast sometimes fails but can be skipped.
-            children[idx] = child
-
-        return pa.Array.from_buffers(
-            type=data_type,
-            length=len(child),
-            buffers=[None, type_ids.buffers()[1], value_offsets.buffers()[1]],
-            children=children,
-        )
-
-    except ValueError as e:
-        raise ValueError(e.args)
-
-
 def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionType) -> pa.Array:
     from . import Vec3D
 
     if scale is None:
         scale_discriminant = "_null_markers"
         scale_pa_arr = pa.nulls(1, pa.null())
-        return _build_dense_union(type_, scale_discriminant, scale_pa_arr)
+        return build_dense_union(type_, scale_discriminant, scale_pa_arr)
 
     scale_arm = scale.inner
 
@@ -105,10 +71,10 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
     else:
         scale_discriminant = "ThreeD"
         scale_pa_arr = pa.FixedSizeListArray.from_arrays(
-            cast(Vec3D, scale_arm).xyz, type=_union_discriminant_type(type_, scale_discriminant)
+            cast(Vec3D, scale_arm).xyz, type=union_discriminant_type(type_, scale_discriminant)
         )
 
-    return _build_dense_union(type_, scale_discriminant, scale_pa_arr)
+    return build_dense_union(type_, scale_discriminant, scale_pa_arr)
 
 
 def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
