@@ -177,11 +177,11 @@ impl ViewPartSystem for Arrows3DPart {
             .collect()
     }
 
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
-        components: &[re_types::ComponentName],
+        components: &IntSet<ComponentName>,
     ) -> bool {
         components.contains(&Arrows3D::indicator_component())
     }

@@ -17,26 +17,25 @@ pub trait ViewPartSystem {
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
     fn required_components(&self) -> IntSet<ComponentName>;
 
-    /// Returns true if the system queries given components on the given path in its [`Self::execute`] method.
+    /// Implements a filter to heuristically determine whether or not to instantiate the system.
     ///
-    /// List of components is expected to be all components that have ever been logged on the entity path.
-    /// By default, this only checks if the primary components of the archetype are contained
-    /// in the list of components.
+    /// If and when the system can be instantiated (i.e. because there is at least one entity that satisfies
+    /// the minimal set of required components), this method applies an arbitrary filter to determine whether
+    /// or not the system should be instantiated by default.
     ///
-    /// Override this method only if a more detailed condition is required to inform heuristics whether
+    /// The passed-in set of `components` corresponds to all the different component that have ever been logged
+    /// on the entity path.
+    ///
+    /// By default, this always returns true.
+    /// Override this method only if a more detailed condition is required to inform heuristics whether or not
     /// the given entity is relevant for this system.
-    //
-    // TODO(andreas): Use new archetype definitions which also allows for several primaries.
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
-        components: &[ComponentName],
+        _components: &IntSet<ComponentName>,
     ) -> bool {
-        let required_components = self.required_components();
-        components
-            .iter()
-            .any(|comp_name| required_components.contains(comp_name))
+        true
     }
 
     /// Queries the data store and performs data conversions to make it ready for display.

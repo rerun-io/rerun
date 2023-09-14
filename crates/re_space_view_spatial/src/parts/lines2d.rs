@@ -169,11 +169,11 @@ impl ViewPartSystem for Lines2DPart {
             .collect()
     }
 
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
-        components: &[re_types::ComponentName],
+        components: &IntSet<ComponentName>,
     ) -> bool {
         components.contains(&LineStrips2D::indicator_component())
     }

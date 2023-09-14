@@ -5,7 +5,7 @@ use re_types::{
     archetypes::Tensor,
     components::{InstanceKey, TensorData},
     tensor_data::DecodedTensor,
-    Archetype, ComponentName, Loggable as _,
+    Archetype, ComponentName,
 };
 use re_viewer_context::{
     external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
@@ -32,19 +32,15 @@ impl ViewPartSystem for TensorSystem {
     }
 
     /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        components: &[ComponentName],
+        components: &IntSet<re_types::ComponentName>,
     ) -> bool {
-        if !components.contains(&re_types::archetypes::Tensor::indicator_component())
-            || !components.contains(&TensorData::name())
-        {
+        if !components.contains(&re_types::archetypes::Tensor::indicator_component()) {
             return false;
         }
-
-        // TODO(jleibs): Use indicator components
 
         if let Some(tensor) = store.query_latest_component::<TensorData>(
             ent_path,

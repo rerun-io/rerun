@@ -3,9 +3,7 @@ use std::collections::BTreeMap;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::{TimeInt, Timeline};
-use re_types::{
-    archetypes::Tensor, datatypes::TensorData, Archetype, ComponentName, Loggable as _,
-};
+use re_types::{archetypes::Tensor, datatypes::TensorData, Archetype, ComponentName};
 use re_viewer_context::{
     external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
@@ -31,15 +29,13 @@ impl ViewPartSystem for BarChartViewPartSystem {
             .collect()
     }
 
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        components: &[ComponentName],
+        components: &IntSet<ComponentName>,
     ) -> bool {
-        if !components.contains(&re_types::archetypes::Tensor::indicator_component())
-            || !components.contains(&re_types::components::TensorData::name())
-        {
+        if !components.contains(&re_types::archetypes::Tensor::indicator_component()) {
             return false;
         }
 

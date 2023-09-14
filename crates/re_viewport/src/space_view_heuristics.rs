@@ -429,9 +429,11 @@ fn is_entity_processed_by_part_collection(
     let timeline = Timeline::log_time();
     let components = store
         .all_components(&timeline, ent_path)
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
     for part in parts.iter() {
-        if part.queries_any_components_of(store, ent_path, &components) {
+        if part.heuristic_filter(store, ent_path, &components) {
             return true;
         }
     }
@@ -497,7 +499,7 @@ pub fn identify_entities_per_system_per_class(
             continue;
         };
 
-        let all_components: IntSet<_> = components.clone().into_iter().collect();
+        let all_components: IntSet<_> = components.into_iter().collect();
 
         for (required_components, systems_per_class) in &systems_per_required_components {
             if !all_components.is_superset(&required_components.0) {
@@ -513,8 +515,7 @@ pub fn identify_entities_per_system_per_class(
                     // TODO(andreas/jleibs): This is only needed because of images.
                     // The `queries_any_components_of` method should go away entirely after #3032 lands
                     if let Ok(view_part_system) = part_collection.get_by_name(*system) {
-                        if !view_part_system.queries_any_components_of(store, ent_path, &components)
-                        {
+                        if !view_part_system.heuristic_filter(store, ent_path, &all_components) {
                             continue;
                         }
                     }

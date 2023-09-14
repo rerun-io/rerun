@@ -33,11 +33,11 @@ impl ViewPartSystem for TextDocumentSystem {
             .collect()
     }
 
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &re_viewer_context::external::re_log_types::EntityPath,
-        components: &[re_types::ComponentName],
+        components: &IntSet<re_types::ComponentName>,
     ) -> bool {
         components.contains(&TextDocument::indicator_component())
     }

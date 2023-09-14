@@ -617,12 +617,11 @@ impl ViewPartSystem for ImagesPart {
             .collect()
     }
 
-    // TODO(jleibs): Once the above is working properly this can go away all together.
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        components: &[ComponentName],
+        components: &IntSet<ComponentName>,
     ) -> bool {
         let is_image = components.contains(&Image::indicator_component())
             || components.contains(&DepthImage::indicator_component())
