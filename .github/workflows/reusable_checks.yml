@@ -52,6 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
+
       - uses: extractions/setup-just@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -85,6 +88,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -113,6 +118,8 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -196,6 +203,8 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -227,6 +236,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
@@ -244,6 +255,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -274,6 +287,8 @@ jobs:
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Check spelling of entire workspace
         uses: crate-ci/typos@master
@@ -287,6 +302,8 @@ jobs:
       image: rerunio/ci_docker:0.9
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Cargo Deny
         shell: bash
@@ -300,6 +317,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Run clang format on all relevant files
         uses: jidicula/clang-format-action@v4.11.0
@@ -317,6 +336,8 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -338,3 +359,4 @@ jobs:
       - name: Build code examples
         shell: bash
         run: ./docs/code-examples/build_all.sh --werror
+
