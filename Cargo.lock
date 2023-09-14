@@ -4497,6 +4497,7 @@ version = "0.9.0-alpha.4"
 dependencies = [
  "egui",
  "re_arrow_store",
+ "re_log",
  "re_query",
  "re_renderer",
  "re_types",

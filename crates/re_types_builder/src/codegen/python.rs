@@ -79,26 +79,6 @@ impl PythonCodeGenerator {
     }
 }
 
-/// Inspect `_overrides` sub-packages for manual override of the generated code.
-///
-/// Returns function names.
-///
-/// This is the hacky way. We extract all identifiers from `__init__.py` which contains, but don't
-/// start with, a underscore (`_`).
-fn load_overrides(path: &Utf8Path) -> HashSet<String> {
-    let path = path.join("_overrides").join("__init__.py");
-    let contents = std::fs::read_to_string(&path)
-        .with_context(|| format!("couldn't load overrides module at {path:?}"))
-        .unwrap();
-
-    // extract words from contents
-    contents
-        .split_whitespace()
-        .filter(|word| !word.starts_with('_') && !word.starts_with('.') && word.contains('_'))
-        .map(|word| word.trim_end_matches(',').to_owned())
-        .collect()
-}
-
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
@@ -259,9 +239,6 @@ impl PythonCodeGenerator {
     ) {
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
 
-        // TODO(jleibs): This can go away once all old overrides are ported to `_ext.py`
-        let overrides = load_overrides(&kind_path);
-
         // (module_name, [object_name])
         let mut mods = HashMap::<String, Vec<String>>::new();
 
@@ -362,29 +339,6 @@ impl PythonCodeGenerator {
                 );
             }
 
-            // TODO(jleibs): This can go away once all overrides ported to extensions
-            // Import all overrides. Overrides always start with `type_name_` and ends with `_override`.
-            let override_names: Vec<_> = overrides
-                .iter()
-                .filter(|o| o.starts_with(&obj.snake_case_name()))
-                .filter(|o| o.ends_with("_override"))
-                .map(|o| o.as_str())
-                .collect::<Vec<_>>();
-
-            // TODO(jleibs): This can go away once all overrides ported to extensions
-            // TODO(ab): remove this noqa—useful for checking what overrides are extracted
-            if !override_names.is_empty() {
-                code.push_unindented_text(
-                    format!(
-                        "
-                    from ._overrides import {}  # noqa: F401
-                    ",
-                        override_names.join(", ")
-                    ),
-                    0,
-                );
-            }
-
             let import_clauses: HashSet<_> = obj
                 .fields
                 .iter()
@@ -405,9 +359,9 @@ impl PythonCodeGenerator {
             );
 
             let obj_code = if obj.is_struct() {
-                code_for_struct(arrow_registry, &ext_class, &overrides, objects, obj)
+                code_for_struct(arrow_registry, &ext_class, objects, obj)
             } else {
-                code_for_union(arrow_registry, &ext_class, &overrides, objects, obj)
+                code_for_union(arrow_registry, &ext_class, objects, obj)
             };
             code.push_text(&obj_code, 1, 0);
 
@@ -500,7 +454,6 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 fn code_for_struct(
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
-    overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
 ) -> String {
@@ -525,12 +478,6 @@ fn code_for_struct(
             let (default_converter, converter_function) =
                 quote_field_converter_from_field(obj, objects, field);
 
-            let old_converter_override_name = format!(
-                "{}__{}__field_converter_override",
-                obj.snake_case_name(),
-                field.name
-            );
-
             let converter_override_name = format!("{}{FIELD_CONVERTER_SUFFIX}", field.name);
 
             let converter = if ext_class
@@ -538,8 +485,6 @@ fn code_for_struct(
                 .contains(&converter_override_name)
             {
                 format!("converter={}.{converter_override_name}", ext_class.name)
-            } else if overrides.contains(&old_converter_override_name) {
-                format!("converter={old_converter_override_name}")
             } else if *kind == ObjectKind::Archetype {
                 // Archetypes default to using `from_similar` from the Component
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
@@ -558,8 +503,7 @@ fn code_for_struct(
     // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
     // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
     // take precedence over the `ExtensionClass`.
-    let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
-    let init_define_arg = if ext_class.has_init || overrides.contains(&old_init_override_name) {
+    let init_define_arg = if ext_class.has_init {
         "init=False".to_owned()
     } else {
         String::new()
@@ -628,17 +572,6 @@ fn code_for_struct(
             format!("# __init__ can be found in {}", ext_class.file_name),
             2,
             4,
-        );
-    } else if overrides.contains(&old_init_override_name) {
-        code.push_text(
-            "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
-            1,
-            4,
-        );
-        code.push_text(
-            format!("{old_init_override_name}(self, *args, **kwargs)"),
-            2,
-            8,
         );
     } else {
         code.push_text(
@@ -735,11 +668,7 @@ fn code_for_struct(
             code.push_text("__repr__ = Archetype.__repr__", 1, 4);
         }
 
-        code.push_text(
-            quote_array_method_from_obj(ext_class, overrides, objects, obj),
-            1,
-            4,
-        );
+        code.push_text(quote_array_method_from_obj(ext_class, objects, obj), 1, 4);
         code.push_text(quote_native_types_method_from_obj(objects, obj), 1, 4);
 
         if *kind != ObjectKind::Archetype {
@@ -760,7 +689,7 @@ fn code_for_struct(
                 );
             } else {
                 code.push_text(
-                    quote_arrow_support_from_obj(arrow_registry, ext_class, overrides, obj),
+                    quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
                     1,
                     0,
                 );
@@ -768,7 +697,7 @@ fn code_for_struct(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, ext_class, overrides, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
                 1,
                 0,
             );
@@ -781,7 +710,6 @@ fn code_for_struct(
 fn code_for_union(
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
-    overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
 ) -> String {
@@ -799,8 +727,7 @@ fn code_for_union(
     let mut code = String::new();
 
     // init override handling
-    let old_init_override_name = format!("{}__init_override", obj.snake_case_name());
-    let define_args = if ext_class.has_init || overrides.contains(&old_init_override_name) {
+    let define_args = if ext_class.has_init {
         "(init=False)".to_owned()
     } else {
         String::new()
@@ -841,17 +768,6 @@ fn code_for_union(
             2,
             4,
         );
-    } else if overrides.contains(&old_init_override_name) {
-        code.push_text(
-            "def __init__(self, *args, **kwargs):  #type: ignore[no-untyped-def]",
-            1,
-            4,
-        );
-        code.push_text(
-            format!("{old_init_override_name}(self, *args, **kwargs)"),
-            2,
-            8,
-        );
     } else {
         code.push_text(
             format!(
@@ -883,8 +799,6 @@ fn code_for_union(
     };
 
     // components and datatypes have converters only if manually provided
-    let old_converter_override_name =
-        format!("{}__inner_converter_override", obj.snake_case_name());
     let converter_override_name = format!("inner{FIELD_CONVERTER_SUFFIX}");
 
     let converter = if ext_class
@@ -892,8 +806,6 @@ fn code_for_union(
         .contains(&converter_override_name)
     {
         format!("converter={}.{converter_override_name}", ext_class.name)
-    } else if overrides.contains(&old_converter_override_name) {
-        format!("converter={old_converter_override_name}")
     } else if !default_converter.is_empty() {
         format!("converter={default_converter}")
     } else {
@@ -938,7 +850,7 @@ fn code_for_union(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, ext_class, overrides, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
                 1,
                 0,
             );
@@ -1014,7 +926,6 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
 /// Only applies to datatypes and components.
 fn quote_array_method_from_obj(
     ext_class: &ExtensionClass,
-    overrides: &HashSet<String>,
     objects: &Objects,
     obj: &Object,
 ) -> String {
@@ -1022,16 +933,8 @@ fn quote_array_method_from_obj(
     let typ = quote_field_type_from_field(objects, &obj.fields[0], false).0;
 
     // allow overriding the __array__ function
-    let old_override_name = format!("{}__as_array_override", obj.snake_case_name());
     if ext_class.has_array {
         return format!("# __array__ can be found in {}", ext_class.file_name);
-    } else if overrides.contains(&old_override_name) {
-        return unindent::unindent(&format!(
-            "
-            def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
-                return {old_override_name}(self, dtype=dtype)
-            "
-        ));
     }
 
     // exclude archetypes, objects which dont have a single field, and anything that isn't an numpy
@@ -1471,7 +1374,6 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
 fn quote_arrow_support_from_obj(
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
-    overrides: &HashSet<String>,
     obj: &Object,
 ) -> String {
     let Object { fqname, name, .. } = obj;
@@ -1493,14 +1395,11 @@ fn quote_arrow_support_from_obj(
     let extension_type = format!("{name}Type");
     let many_aliases = format!("{name}ArrayLike");
 
-    let old_override_name = format!("{}__native_to_pa_array_override", obj.snake_case_name());
     let override_ = if ext_class.has_native_to_pa_array {
         format!(
             "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
             ext_class.name
         )
-    } else if overrides.contains(&old_override_name) {
-        format!("return {old_override_name}(data, data_type)")
     } else {
         format!(
             "raise NotImplementedError # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}",
