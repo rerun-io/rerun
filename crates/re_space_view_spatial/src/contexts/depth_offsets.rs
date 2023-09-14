@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_log_types::EntityPathHash;
-use re_types::{components::DrawOrder, Loggable as _};
-use re_viewer_context::{ArchetypeDefinition, NamedViewSystem, ViewContextSystem};
+use re_types::{components::DrawOrder, ComponentName, Loggable as _};
+use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]
@@ -26,8 +26,8 @@ impl NamedViewSystem for EntityDepthOffsets {
 }
 
 impl ViewContextSystem for EntityDepthOffsets {
-    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
-        vec![vec1::vec1![DrawOrder::name()]]
+    fn all_required_components(&self) -> Vec<IntSet<ComponentName>> {
+        vec![std::iter::once(DrawOrder::name()).collect()]
     }
 
     fn execute(

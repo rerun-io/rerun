@@ -1,13 +1,14 @@
+use nohash_hasher::IntSet;
 use re_data_store::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
     components::{HalfSizes2D, Position2D},
-    Archetype,
+    Archetype, ComponentName,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -117,8 +118,11 @@ impl NamedViewSystem for Boxes2DPart {
 }
 
 impl ViewPartSystem for Boxes2DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Boxes2D::all_components().try_into().unwrap()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        Boxes2D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn queries_any_components_of(

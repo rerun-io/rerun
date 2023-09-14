@@ -5,11 +5,11 @@ use re_query::{range_entity_with_primary, QueryError};
 use re_types::{
     archetypes::TextLog,
     components::{Color, InstanceKey, Text, TextLogLevel},
-    Archetype as _, Loggable as _,
+    Archetype as _, ComponentName, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Debug, Clone)]
@@ -42,8 +42,11 @@ impl NamedViewSystem for TextLogSystem {
 }
 
 impl ViewPartSystem for TextLogSystem {
-    fn archetype(&self) -> ArchetypeDefinition {
-        TextLog::all_components().try_into().unwrap()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        TextLog::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn queries_any_components_of(

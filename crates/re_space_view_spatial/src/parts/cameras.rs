@@ -1,14 +1,15 @@
 use glam::vec3;
+use nohash_hasher::IntSet;
 use re_components::{Pinhole, ViewCoordinates};
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     components::{InstanceKey, Transform3D},
-    Loggable as _,
+    ComponentName, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::SpatialViewPartData;
@@ -174,13 +175,13 @@ impl CamerasPart {
 }
 
 impl ViewPartSystem for CamerasPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Pinhole::name()]
+    fn required_components(&self) -> IntSet<ComponentName> {
+        std::iter::once(Pinhole::name()).collect()
     }
 
     // TODO(#2816): use this instead
-    // fn archetype(&self) -> ArchetypeDefinition {
-    //     Pinhole::all_components().try_into().unwrap()
+    // fn required_components(&self) -> IntSet<ComponentName> {
+    //     Pinhole::required_components().to_vec()
     // }
 
     // TODO(#2816): use this instead

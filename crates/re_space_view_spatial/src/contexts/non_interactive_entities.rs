@@ -1,5 +1,6 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPathHash;
+use re_types::ComponentName;
 use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
 /// List of all non-interactive entities for lookup during picking evaluation.
@@ -15,7 +16,7 @@ impl NamedViewSystem for NonInteractiveEntities {
 }
 
 impl ViewContextSystem for NonInteractiveEntities {
-    fn archetypes(&self) -> Vec<re_viewer_context::ArchetypeDefinition> {
+    fn all_required_components(&self) -> Vec<IntSet<ComponentName>> {
         Vec::new()
     }
 

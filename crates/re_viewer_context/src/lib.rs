@@ -39,8 +39,8 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, NamedViewSystem, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
+    AutoSpawnHeuristic, DynSpaceViewClass, NamedViewSystem, PerSystemEntities, SpaceViewClass,
+    SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
     ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
@@ -58,6 +58,7 @@ mod clipboard;
 pub use clipboard::Clipboard;
 
 pub mod external {
+    pub use nohash_hasher;
     pub use {re_arrow_store, re_data_store, re_log_types, re_query, re_ui};
 }
 

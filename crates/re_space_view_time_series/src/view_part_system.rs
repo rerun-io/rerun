@@ -2,8 +2,8 @@ use re_arrow_store::TimeRange;
 use re_query::{range_entity_with_primary, QueryError};
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    external::nohash_hasher::IntSet, AnnotationMap, DefaultColor, NamedViewSystem,
+    SpaceViewSystemExecutionError, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Clone, Debug)]
@@ -67,20 +67,16 @@ impl NamedViewSystem for TimeSeriesSystem {
 }
 
 impl ViewPartSystem for TimeSeriesSystem {
-    fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
-        vec1::Vec1::try_from_vec(
-            Self::archetype_array()
-                .into_iter()
-                .skip(1) // Skip [`InstanceKey`]
-                .collect::<Vec<_>>(),
-        )
-        .unwrap()
-        // TODO(wumpf): `archetype` should return a fixed sized array.
+    fn required_components(&self) -> IntSet<ComponentName> {
+        Self::archetype_array()
+            .into_iter()
+            .skip(1) // Skip [`InstanceKey`]
+            .collect()
     }
 
     // TODO(#3174): use this instead
-    // fn archetype(&self) -> ArchetypeDefinition {
-    //     ScalarOrWhateverItllBeCalled::all_components().try_into().unwrap()
+    // fn required_components(&self) -> IntSet<ComponentName> {
+    //     ScalarOrWhateverItllBeCalled::required_components().to_vec()
     // }
 
     // TODO(#3174): use this instead

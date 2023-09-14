@@ -7,11 +7,6 @@ use crate::{
     SpaceViewSystemRegistry, ViewQuery, ViewerContext,
 };
 
-/// First element is the primary component, all others are optional.
-///
-/// TODO(andreas/clement): More formal definition of an archetype.
-pub type ArchetypeDefinition = vec1::Vec1<ComponentName>;
-
 re_string_interner::declare_new_type!(
     /// The unique name of a space view type.
     #[derive(serde::Deserialize, serde::Serialize)]
@@ -77,7 +72,7 @@ pub trait DynSpaceViewClass {
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition>;
+    fn blueprint_archetype(&self) -> Option<Vec<ComponentName>>;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32>;

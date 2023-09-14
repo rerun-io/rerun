@@ -1,13 +1,14 @@
+use nohash_hasher::IntSet;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips2D,
     components::{LineStrip2D, Text},
-    Archetype as _,
+    Archetype as _, ComponentName,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -161,8 +162,11 @@ impl NamedViewSystem for Lines2DPart {
 }
 
 impl ViewPartSystem for Lines2DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        LineStrips2D::all_components().try_into().unwrap()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        LineStrips2D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn queries_any_components_of(

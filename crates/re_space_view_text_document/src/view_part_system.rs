@@ -1,9 +1,9 @@
 use re_arrow_store::LatestAtQuery;
 use re_query::query_archetype;
-use re_types::{archetypes::TextDocument, Archetype as _};
+use re_types::{archetypes::TextDocument, Archetype as _, ComponentName};
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 // ---
@@ -26,8 +26,11 @@ impl NamedViewSystem for TextDocumentSystem {
 }
 
 impl ViewPartSystem for TextDocumentSystem {
-    fn archetype(&self) -> ArchetypeDefinition {
-        TextDocument::all_components().try_into().unwrap()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        TextDocument::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn queries_any_components_of(

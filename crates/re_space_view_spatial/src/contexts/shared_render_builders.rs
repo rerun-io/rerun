@@ -1,6 +1,8 @@
+use nohash_hasher::IntSet;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder, RenderContext};
-use re_viewer_context::{ArchetypeDefinition, NamedViewSystem, ViewContextSystem};
+use re_types::ComponentName;
+use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
 use crate::parts::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -63,7 +65,7 @@ impl SharedRenderBuilders {
 }
 
 impl ViewContextSystem for SharedRenderBuilders {
-    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
+    fn all_required_components(&self) -> Vec<IntSet<ComponentName>> {
         Vec::new()
     }
 

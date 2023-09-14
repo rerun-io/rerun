@@ -17,8 +17,7 @@ mod view_query;
 
 pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
-    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName,
-    SpaceViewState,
+    DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewState,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use named_system::{NamedViewSystem, PerSystemEntities, ViewSystemName};

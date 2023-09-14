@@ -1,13 +1,14 @@
 use egui::Color32;
+use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 use re_renderer::LineStripSeriesBuilder;
 use re_types::{
     components::{InstanceKey, Transform3D},
-    Archetype,
+    Archetype, ComponentName,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -32,10 +33,11 @@ impl NamedViewSystem for Transform3DArrowsPart {
 }
 
 impl ViewPartSystem for Transform3DArrowsPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        re_types::archetypes::Transform3D::all_components()
-            .try_into()
-            .unwrap()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        re_types::archetypes::Transform3D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn queries_any_components_of(

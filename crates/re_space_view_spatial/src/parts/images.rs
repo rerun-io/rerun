@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use egui::NumExt;
-
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+
 use re_arrow_store::LatestAtQuery;
 use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
@@ -20,8 +20,8 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
-    TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
+    gpu_bridge, DefaultColor, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 
@@ -608,17 +608,13 @@ impl NamedViewSystem for ImagesPart {
 }
 
 impl ViewPartSystem for ImagesPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Image::all_components()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        Image::required_components()
             .iter()
-            .chain(DepthImage::all_components().iter())
-            .chain(SegmentationImage::all_components().iter())
-            .collect::<BTreeSet<_>>()
-            .into_iter()
+            .chain(DepthImage::required_components().iter())
+            .chain(SegmentationImage::required_components().iter())
             .map(ToOwned::to_owned)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap()
+            .collect()
     }
 
     // TODO(jleibs): Once the above is working properly this can go away all together.

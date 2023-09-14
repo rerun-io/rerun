@@ -1,13 +1,15 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
 use re_log_types::{RowId, TimeInt, Timeline};
-use re_types::components::TensorData;
-use re_types::tensor_data::DecodedTensor;
-use re_types::Archetype;
-use re_types::{components::InstanceKey, ComponentName, Loggable as _};
+use re_types::{
+    archetypes::Tensor,
+    components::{InstanceKey, TensorData},
+    tensor_data::DecodedTensor,
+    Archetype, ComponentName, Loggable as _,
+};
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
+    TensorDecodeCache, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
@@ -22,8 +24,11 @@ impl NamedViewSystem for TensorSystem {
 }
 
 impl ViewPartSystem for TensorSystem {
-    fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![TensorData::name()]
+    fn required_components(&self) -> IntSet<ComponentName> {
+        Tensor::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]

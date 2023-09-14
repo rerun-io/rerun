@@ -7,8 +7,8 @@ use re_types::{
     archetypes::Tensor, datatypes::TensorData, Archetype, ComponentName, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -24,8 +24,11 @@ impl NamedViewSystem for BarChartViewPartSystem {
 }
 
 impl ViewPartSystem for BarChartViewPartSystem {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Tensor::all_components().try_into().unwrap()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        Tensor::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn queries_any_components_of(

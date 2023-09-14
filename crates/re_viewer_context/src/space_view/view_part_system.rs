@@ -1,9 +1,11 @@
 use ahash::HashMap;
+use nohash_hasher::IntSet;
+
 use re_log_types::{ComponentName, EntityPath};
 
 use crate::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewSystemName, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewSystemName, ViewerContext,
 };
 
 /// Element of a scene derived from a single archetype query.
@@ -12,8 +14,8 @@ use crate::{
 pub trait ViewPartSystem {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
-    /// The archetype queried by this scene element.
-    fn archetype(&self) -> ArchetypeDefinition;
+    /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
+    fn required_components(&self) -> IntSet<ComponentName>;
 
     /// Returns true if the system queries given components on the given path in its [`Self::execute`] method.
     ///
@@ -31,8 +33,10 @@ pub trait ViewPartSystem {
         _ent_path: &EntityPath,
         components: &[ComponentName],
     ) -> bool {
-        let archetype = self.archetype();
-        components.contains(archetype.first())
+        let required_components = self.required_components();
+        components
+            .iter()
+            .any(|comp_name| required_components.contains(comp_name))
     }
 
     /// Queries the data store and performs data conversions to make it ready for display.

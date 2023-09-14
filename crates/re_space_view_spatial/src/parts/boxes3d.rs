@@ -1,14 +1,15 @@
+use nohash_hasher::IntSet;
 use re_components::{Box3D, LegacyVec3D, Quaternion};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
     components::{ClassId, Color, InstanceKey, Radius, Text},
-    Loggable as _,
+    ComponentName, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -110,8 +111,8 @@ impl NamedViewSystem for Boxes3DPart {
 }
 
 impl ViewPartSystem for Boxes3DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![
+    fn required_components(&self) -> IntSet<ComponentName> {
+        [
             Box3D::name(),
             InstanceKey::name(),
             LegacyVec3D::name(), // obb.position
@@ -121,11 +122,13 @@ impl ViewPartSystem for Boxes3DPart {
             Text::name(),
             ClassId::name(),
         ]
+        .into_iter()
+        .collect()
     }
 
     // TODO(#2786): use this instead
-    // fn archetype(&self) -> ArchetypeDefinition {
-    //     Box3D::all_components().try_into().unwrap()
+    // fn required_components(&self) -> IntSet<ComponentName> {
+    //     Box3D::required_components().to_vec()
     // }
 
     // TODO(#2786): use this instead
@@ -149,7 +152,7 @@ impl ViewPartSystem for Boxes3DPart {
             query,
             view_ctx,
             0,
-            self.archetype(),
+            self.required_components().into_iter().collect(),
             |_ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },

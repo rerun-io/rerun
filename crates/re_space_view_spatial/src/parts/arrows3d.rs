@@ -1,14 +1,15 @@
+use nohash_hasher::IntSet;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
     components::{Origin3D, Text, Vector3D},
-    Archetype as _,
+    Archetype as _, ComponentName,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
@@ -169,8 +170,11 @@ impl NamedViewSystem for Arrows3DPart {
 }
 
 impl ViewPartSystem for Arrows3DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Arrows3D::all_components().try_into().unwrap()
+    fn required_components(&self) -> IntSet<ComponentName> {
+        Arrows3D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn queries_any_components_of(

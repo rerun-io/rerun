@@ -1,11 +1,11 @@
 use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
+use re_types::ComponentName;
 
 use crate::{
-    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities,
-    SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassName,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -61,7 +61,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+    fn blueprint_archetype(&self) -> Option<Vec<ComponentName>> {
         None
     }
 
@@ -163,7 +163,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     }
 
     #[inline]
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+    fn blueprint_archetype(&self) -> Option<Vec<ComponentName>> {
         self.blueprint_archetype()
     }
 
