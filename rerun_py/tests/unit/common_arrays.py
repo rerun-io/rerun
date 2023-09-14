@@ -77,6 +77,46 @@ def vec3ds_expected(empty: bool, type_: Any | None) -> Any:
         return rrd.Vec3DArray.from_similar([] if empty else [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
 
+rotations_arrays: list[rrd.Rotation3DArrayLike] = [
+    [],
+    np.array([]),
+    # Rotation3D
+    rrd.Rotation3D(rrd.Quaternion(xyzw=[1, 2, 3, 4])),
+    rrd.Rotation3D(rrd.RotationAxisAngle([1.0, 2.0, 3.0], rrd.Angle(4))),
+    # Quaternion
+    rrd.Quaternion(xyzw=[1, 2, 3, 4]),
+    rrd.Quaternion(xyzw=[1.0, 2.0, 3.0, 4.0]),
+    rrd.Quaternion(xyzw=np.array([1, 2, 3, 4])),
+    # RotationAxisAngle
+    rrd.RotationAxisAngle([1, 2, 3], 4),
+    rrd.RotationAxisAngle([1.0, 2.0, 3.0], rrd.Angle(4)),
+    rrd.RotationAxisAngle(rrd.Vec3D([1, 2, 3]), rrd.Angle(4)),
+    rrd.RotationAxisAngle(np.array([1, 2, 3], dtype=np.uint8), rrd.Angle(rad=4)),
+    # Sequence[Rotation3DArray]
+    [
+        rrd.Rotation3D(rrd.Quaternion(xyzw=[1, 2, 3, 4])),
+        [1, 2, 3, 4],
+        None,
+        rrd.Quaternion(xyzw=[1, 2, 3, 4]),
+        rrd.RotationAxisAngle([1, 2, 3], 4),
+    ],
+]
+
+
+def expected_rotations(rotations: rrd.Rotation3DArrayLike, type_: Any) -> Any:
+    if is_empty(rotations):
+        return type_.from_similar([])
+    elif isinstance(rotations, rrd.Rotation3D):
+        return type_.from_similar(rotations)
+    elif isinstance(rotations, rrd.RotationAxisAngle):
+        return type_.from_similar(rrd.RotationAxisAngle([1, 2, 3], 4))
+    elif isinstance(rotations, rrd.Quaternion):
+        return type_.from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
+    else:  # sequence of Rotation3DLike
+        return type_.from_similar([rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 2 + [None, rrd.Quaternion(xyzw=[1, 2, 3, 4]), rrd.RotationAxisAngle([1, 2, 3], 4)])
+
+
+
 radii_arrays: list[rrc.RadiusArrayLike | None] = [
     None,
     [],
