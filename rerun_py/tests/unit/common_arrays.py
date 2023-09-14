@@ -113,8 +113,10 @@ def expected_rotations(rotations: rrd.Rotation3DArrayLike, type_: Any) -> Any:
     elif isinstance(rotations, rrd.Quaternion):
         return type_.from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_.from_similar([rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 2 + [None, rrd.Quaternion(xyzw=[1, 2, 3, 4]), rrd.RotationAxisAngle([1, 2, 3], 4)])
-
+        return type_.from_similar(
+            [rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 2
+            + [None, rrd.Quaternion(xyzw=[1, 2, 3, 4]), rrd.RotationAxisAngle([1, 2, 3], 4)]
+        )
 
 
 radii_arrays: list[rrc.RadiusArrayLike | None] = [
