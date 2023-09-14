@@ -102,7 +102,7 @@ class RotationAxisAngleArray(BaseExtensionArray[RotationAxisAngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in rotation_axis_angle_ext.py
+        return RotationAxisAngleExt.native_to_pa_array_override(data, data_type)
 
 
 RotationAxisAngleType._ARRAY_TYPE = RotationAxisAngleArray
