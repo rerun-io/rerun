@@ -112,18 +112,7 @@ impl NamedViewSystem for Boxes3DPart {
 
 impl ViewPartSystem for Boxes3DPart {
     fn required_components(&self) -> IntSet<ComponentName> {
-        [
-            Box3D::name(),
-            InstanceKey::name(),
-            LegacyVec3D::name(), // obb.position
-            Quaternion::name(),  // obb.rotation
-            Color::name(),
-            Radius::name(), // stroke_width
-            Text::name(),
-            ClassId::name(),
-        ]
-        .into_iter()
-        .collect()
+        std::iter::once(Box3D::name()).collect()
     }
 
     // TODO(#2786): use this instead
@@ -147,12 +136,23 @@ impl ViewPartSystem for Boxes3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let components = [
+            Box3D::name(),
+            InstanceKey::name(),
+            LegacyVec3D::name(), // obb.position
+            Quaternion::name(),  // obb.rotation
+            Color::name(),
+            Radius::name(), // stroke_width
+            Text::name(),
+            ClassId::name(),
+        ];
+
         process_entity_views::<Boxes3DPart, Box3D, 8, _>(
             ctx,
             query,
             view_ctx,
             0,
-            self.required_components().into_iter().collect(),
+            components.into_iter().collect(),
             |_ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
