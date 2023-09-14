@@ -11,13 +11,13 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ._overrides import image__data__field_converter_override  # noqa: F401
+from .image_ext import ImageExt
 
 __all__ = ["Image"]
 
 
 @define(str=False, repr=False)
-class Image(Archetype):
+class Image(Archetype, ImageExt):
     """
     A monochrome or color image.
 
@@ -51,7 +51,8 @@ class Image(Archetype):
     # You can define your own __init__ function as a member of ImageExt in image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"}, converter=image__data__field_converter_override
+        metadata={"component": "primary"},
+        converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
     )
     """
     The image data. Should always be a rank-2 or rank-3 tensor.

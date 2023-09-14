@@ -36,7 +36,9 @@ class Color(ColorExt):
 
     # You can define your own __init__ function as a member of ColorExt in color_ext.py
 
-    rgba: int = field(converter=ColorExt.rgba__field_converter_override)  # type: ignore[misc]
+    rgba: int = field(
+        converter=ColorExt.rgba__field_converter_override,  # type: ignore[misc]
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of ColorExt in color_ext.py

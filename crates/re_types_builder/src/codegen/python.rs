@@ -709,16 +709,18 @@ fn code_for_struct(
 
             let converter = &field_converters[&field.fqname];
             let type_ignore = if converter.contains("Ext.") {
-                "# type: ignore[misc]".to_owned()
+                // Leading commas is important here to force predictable wrapping
+                // or else the ignore ends up on the wrong line.
+                ", # type: ignore[misc]".to_owned()
             } else {
                 String::new()
             };
             // Note: mypy gets confused using staticmethods for field-converters
             let typ = if !*is_nullable {
-                format!("{typ} = field({metadata}{converter}) {type_ignore}")
+                format!("{typ} = field(\n{metadata}{converter}{type_ignore}\n)")
             } else {
                 format!(
-                    "{typ} | None = field({metadata}default=None{}{converter}) {type_ignore}",
+                    "{typ} | None = field(\n{metadata}default=None{}{converter}{type_ignore}\n)",
                     if converter.is_empty() { "" } else { ", " },
                 )
             };

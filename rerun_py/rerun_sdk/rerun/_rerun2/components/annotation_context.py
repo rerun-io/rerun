@@ -40,7 +40,9 @@ class AnnotationContext(AnnotationContextExt):
 
     # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
 
-    class_map: list[datatypes.ClassDescriptionMapElem] = field(converter=AnnotationContextExt.class_map__field_converter_override)  # type: ignore[misc]
+    class_map: list[datatypes.ClassDescriptionMapElem] = field(
+        converter=AnnotationContextExt.class_map__field_converter_override,  # type: ignore[misc]
+    )
 
 
 AnnotationContextLike = AnnotationContext
