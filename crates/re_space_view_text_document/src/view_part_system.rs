@@ -46,7 +46,7 @@ impl ViewPartSystem for TextDocumentSystem {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         for (ent_path, _props) in query.iter_entities_for_system(Self::name()) {
-            // TOOD(jleibs): this match can go away once we resolve:
+            // TODO(jleibs): this match can go away once we resolve:
             // https://github.com/rerun-io/rerun/issues/3320
             match query_archetype::<re_types::archetypes::TextDocument>(
                 store,
