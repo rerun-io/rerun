@@ -5,7 +5,7 @@ type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, Option<re_renderer::Vi
 pub fn new_renderer_callback(
     render_ctx: &mut re_renderer::RenderContext,
     view_builder: re_renderer::ViewBuilder,
-    clip_rect: egui::Rect,
+    viewport: egui::Rect,
     clear_color: re_renderer::Rgba,
 ) -> egui::PaintCallback {
     let composition_view_builder_map = render_ctx
@@ -16,7 +16,7 @@ pub fn new_renderer_callback(
     let view_builder_handle = composition_view_builder_map.insert(Some(view_builder));
 
     egui_wgpu::Callback::new_paint_callback(
-        clip_rect,
+        viewport,
         ReRendererCallback {
             view_builder: view_builder_handle,
             clear_color,

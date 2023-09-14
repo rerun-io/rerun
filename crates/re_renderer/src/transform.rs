@@ -36,7 +36,7 @@ pub fn ndc_from_pixel(pixel_coord: glam::Vec2, screen_extent: glam::UVec2) -> gl
 
 /// Defines a transformation from a rectangular region of interest into a rectangular target region.
 ///
-/// Transforms map the range of `region_of_interest` to the range of `region`.
+/// Transforms the range of `region_of_interest` to the range of `region`.
 #[derive(Clone, Debug)]
 pub struct RectTransform {
     pub region_of_interest: RectF32,

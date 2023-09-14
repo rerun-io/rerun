@@ -152,6 +152,7 @@ impl Default for AutoSizeConfig {
 pub struct TargetConfiguration {
     pub name: DebugLabel,
 
+    /// The viewport resolution in physical pixels.
     pub resolution_in_pixel: [u32; 2],
     pub view_from_world: macaw::IsoTransform,
     pub projection_from_view: Projection,
