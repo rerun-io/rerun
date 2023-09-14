@@ -534,6 +534,8 @@ pub fn identify_entities_per_system_per_class(
     entities_per_system_per_class
 }
 
+// ---
+
 #[derive(Debug, Clone, Eq)]
 struct HashableIntSet<T: nohash_hasher::IsEnabled + std::hash::Hash>(IntSet<T>);
 
@@ -548,7 +550,6 @@ impl<T: nohash_hasher::IsEnabled + std::hash::Hash + PartialEq> PartialEq for Ha
     }
 }
 
-// TODO
 impl<T: nohash_hasher::IsEnabled + std::hash::Hash> std::hash::Hash for HashableIntSet<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         for value in &self.0 {
