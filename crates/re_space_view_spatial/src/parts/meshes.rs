@@ -87,9 +87,7 @@ impl NamedViewSystem for MeshPart {
 
 impl ViewPartSystem for MeshPart {
     fn required_components(&self) -> IntSet<ComponentName> {
-        [Mesh3D::name(), InstanceKey::name(), Color::name()]
-            .into_iter()
-            .collect()
+        std::iter::once(Mesh3D::name()).collect()
     }
 
     // TODO(#2788): use this instead
@@ -115,12 +113,13 @@ impl ViewPartSystem for MeshPart {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut instances = Vec::new();
 
+        let components = [Mesh3D::name(), InstanceKey::name(), Color::name()];
         process_entity_views::<MeshPart, _, 3, _>(
             ctx,
             query,
             view_ctx,
             0,
-            self.required_components().into_iter().collect(),
+            components.into_iter().collect(),
             |ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(ctx, &mut instances, &entity_view, ent_path, ent_context)
             },
