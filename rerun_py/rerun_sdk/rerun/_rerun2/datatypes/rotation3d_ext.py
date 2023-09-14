@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import Quaternion, Rotation3DLike, RotationAxisAngle
+    from . import Quaternion, Rotation3DArrayLike, Rotation3DLike, RotationAxisAngle
 
 
 class Rotation3DExt:
@@ -21,3 +22,71 @@ class Rotation3DExt:
             return data
         else:
             return Quaternion(xyzw=np.array(data))
+
+    @staticmethod
+    def native_to_pa_array_override(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
+        from . import Quaternion, QuaternionArray, Rotation3D, RotationAxisAngle, RotationAxisAngleArray
+
+        if isinstance(data, Rotation3D) or isinstance(data, RotationAxisAngle) or isinstance(data, Quaternion):
+            data = [data]
+
+        types: list[int] = []
+        value_offsets: list[int] = []
+
+        num_nulls = 0
+        rotation_axis_angles: list[RotationAxisAngle] = []
+        quaternions: list[Quaternion] = []
+
+        null_type_idx = 0
+        quaternion_type_idx = 1
+        rotation_axis_angle_type_idx = 2
+
+        for rotation in data:
+            if rotation is None:
+                value_offsets.append(num_nulls)
+                num_nulls += 1
+                types.append(null_type_idx)
+            else:
+                rotation_arm = Rotation3DExt.inner__field_converter_override(rotation)
+
+                if isinstance(rotation_arm, RotationAxisAngle):
+                    value_offsets.append(len(rotation_axis_angles))
+                    rotation_axis_angles.append(rotation_arm)
+                    types.append(rotation_axis_angle_type_idx)
+                elif isinstance(rotation_arm, Quaternion):
+                    value_offsets.append(len(quaternions))
+                    quaternions.append(rotation_arm)
+                    types.append(quaternion_type_idx)
+                else:
+                    raise ValueError(
+                        f"Unknown 3d rotation representation: {rotation_arm} (expected `Rotation3D`, `RotationAxisAngle`, "
+                        "`Quaternion`, or `None`."
+                    )
+        # don't use pa.UnionArray.from_dense because it makes all fields nullable.
+        return pa.UnionArray.from_buffers(
+            type=data_type,
+            length=len(data),
+            buffers=[
+                None,
+                pa.array(types, type=pa.int8()).buffers()[1],
+                pa.array(value_offsets, type=pa.int32()).buffers()[1],
+            ],
+            children=[
+                pa.nulls(num_nulls, pa.null()),
+                QuaternionArray._native_to_pa_array(quaternions, _union_discriminant_type(data_type, "Quaternion")),
+                RotationAxisAngleArray._native_to_pa_array(
+                    rotation_axis_angles, _union_discriminant_type(data_type, "AxisAngle")
+                ),
+            ],
+        )
+
+
+def is_sequence(obj: Any) -> bool:
+    t = type(obj)
+    return hasattr(t, "__len__") and hasattr(t, "__getitem__")
+
+
+# TODO: move
+def _union_discriminant_type(data_type: pa.DenseUnionType, discriminant: str) -> pa.DataType:
+    """Return the data type of the given discriminant."""
+    return next(f.type for f in list(data_type) if f.name == discriminant)

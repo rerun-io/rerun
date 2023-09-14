@@ -89,29 +89,6 @@ def _build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: p
         raise ValueError(e.args)
 
 
-def _build_struct_array_from_axis_angle_rotation(
-    rotation: RotationAxisAngle, axis_angle_type: pa.StructType
-) -> pa.StructArray:
-    axis = pa.FixedSizeListArray.from_arrays(
-        np.array(rotation.axis.xyz, dtype=np.float32).flatten(), type=axis_angle_type["axis"].type
-    )
-
-    angle = pa.array([rotation.angle.inner], type=pa.float32())
-    if rotation.angle.kind == "degrees":
-        angle_variant = "Degrees"
-    else:
-        angle_variant = "Radians"
-    angle_pa_arr = _build_dense_union(axis_angle_type["angle"].type, angle_variant, angle)
-
-    return pa.StructArray.from_arrays(
-        [
-            axis,
-            angle_pa_arr,
-        ],
-        fields=list(axis_angle_type),
-    )
-
-
 def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionType) -> pa.Array:
     from . import Vec3D
 
@@ -134,37 +111,6 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
     return _build_dense_union(type_, scale_discriminant, scale_pa_arr)
 
 
-def _build_union_array_from_rotation(rotation: Rotation3D | None, type_: pa.DenseUnionType) -> pa.Array:
-    from . import Quaternion, RotationAxisAngle
-
-    if rotation is None:
-        rotation_discriminant = "_null_markers"
-        rotation_pa_arr = pa.nulls(1, pa.null())
-        return _build_dense_union(type_, rotation_discriminant, rotation_pa_arr)
-
-    rotation_arm = rotation.inner
-
-    if isinstance(rotation_arm, RotationAxisAngle):
-        rotation_discriminant = "AxisAngle"
-        axis_angle_type = _union_discriminant_type(type_, rotation_discriminant)
-        stored_rotation = _build_struct_array_from_axis_angle_rotation(
-            rotation_arm, cast(pa.StructType, axis_angle_type)
-        )
-    elif isinstance(rotation_arm, Quaternion):
-        rotation_discriminant = "Quaternion"
-        np_rotation = np.array(rotation_arm.xyzw, dtype=np.float32).flatten()
-        stored_rotation = pa.FixedSizeListArray.from_arrays(
-            np_rotation, type=_union_discriminant_type(type_, rotation_discriminant)
-        )
-    else:
-        raise ValueError(
-            f"Unknown 3d rotation representation: {rotation_arm} (expected `Rotation3D`, `RotationAxisAngle`, "
-            "`Quaternion`, or `None`."
-        )
-
-    return _build_dense_union(type_, rotation_discriminant, stored_rotation)
-
-
 def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
     from . import Mat3x3Type
 
@@ -181,6 +127,15 @@ def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
         return pa.nulls(1, Vec3DType().storage_type)
     else:
         return pa.FixedSizeListArray.from_arrays(translation.xyz, type=Vec3DType().storage_type)
+
+
+def _optional_rotation_to_arrow(rotation: Rotation3D | None, storage_type: pa.DataType) -> pa.Array:
+    from . import Rotation3DArray
+
+    if rotation is None:
+        return pa.nulls(1, storage_type)
+    else:
+        return Rotation3DArray._native_to_pa_array(rotation, storage_type)
 
 
 def _build_struct_array_from_translation_mat3x3(
@@ -203,7 +158,7 @@ def _build_struct_array_from_translation_rotation_scale(
     transform: TranslationRotationScale3D, type_: pa.StructType
 ) -> pa.StructArray:
     translation = _optional_translation_to_arrow(transform.translation)
-    rotation = _build_union_array_from_rotation(transform.rotation, type_["rotation"].type)
+    rotation = _optional_rotation_to_arrow(transform.rotation, type_["rotation"].type)
     scale = _build_union_array_from_scale(transform.scale, type_["scale"].type)
 
     return pa.StructArray.from_arrays(
