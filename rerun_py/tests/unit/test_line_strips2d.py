@@ -29,8 +29,8 @@ strips_arrays: list[rrc.LineStrip2DArrayLike] = [
     [],
     np.array([]),
     [
-        [rrd.Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],
-        [rrd.Vec2D([0, 3]), (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
+        [rrd.Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],  # type: ignore[list-item]
+        [rrd.Vec2D([0, 3]), (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],  # type: ignore[list-item]
     ],
     [
         [0, 0, 2, 1, 4, -1, 6, 0],
