@@ -77,7 +77,7 @@ fn loading_receivers_ui(
                 format!("Loading from {ws_server_url}…")
             }
 
-            SmartChannelSource::TcpServer { port } => {
+            SmartChannelSource::TcpServer { .. } => {
                 continue; // TODO(#3046): show this in status bar
             }
         };
