@@ -1,11 +1,28 @@
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, cast
 
 import pyarrow as pa
 from attrs import define, fields
 
 T = TypeVar("T")
+
+if TYPE_CHECKING:
+    from .log import ComponentBatchLike
+
+
+class IndicatorComponent:
+    """Indicator component."""
+
+    def __init__(self, archetype_name: str, num_instances: int) -> None:
+        self._archetype_name = archetype_name
+        self._num_instances = num_instances
+
+    def component_name(self) -> str:
+        return f"rerun.components.{self._archetype_name}Indicator"
+
+    def as_arrow_batch(self) -> pa.Array:
+        return pa.nulls(self._num_instances, type=pa.null())
 
 
 @define
@@ -25,6 +42,28 @@ class Archetype:
         s += ")"
 
         return s
+
+    def archetype_name(self) -> str:
+        return type(self).__name__
+
+    def num_instances(self) -> int:
+        for fld in fields(type(self)):
+            if "component" in fld.metadata and fld.metadata["component"] == "primary":
+                return len(getattr(self, fld.name))
+        raise ValueError("Archetype has no primary component")
+
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        """Extract the components from an entity, yielding (component, is_primary) tuples."""
+
+        yield IndicatorComponent(self.archetype_name(), self.num_instances())
+
+        for fld in fields(type(self)):
+            if "component" in fld.metadata:
+                comp = getattr(self, fld.name)
+                # TODO(#2825): For now we just don't log anything for unspecified components, to match the
+                # historical behavior.
+                if comp is not None:
+                    yield getattr(self, fld.name)
 
     __repr__ = __str__
 
@@ -60,14 +99,14 @@ class NamedExtensionArray(pa.ExtensionArray):  # type: ignore[misc]
         return self._EXTENSION_NAME
 
 
-class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
+class BaseExtensionArray(NamedExtensionArray, Generic[T]):
     """Extension array for datatypes and non-delegating components."""
 
     _EXTENSION_TYPE = pa.ExtensionType
     """The extension type class associated with this class."""
 
     @classmethod
-    def from_similar(cls, data: T | None) -> BaseExtensionArray[T]:
+    def from_similar(cls, data: T | None) -> BaseExtensionArray[T] | None:
         """
         Primary method for creating Arrow arrays for components.
 
@@ -89,7 +128,9 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
         data_type = cls._EXTENSION_TYPE()
 
         if data is None:
-            pa_array = _empty_pa_array(data_type.storage_type)
+            # TODO(jleibs): Need to be consistent about when we use None vs. empty arrays.
+            # pa_array = _empty_pa_array(data_type.storage_type)
+            return None
         else:
             pa_array = cls._native_to_pa_array(data, data_type.storage_type)
         return cast(BaseExtensionArray[T], data_type.wrap_array(pa_array))
@@ -124,6 +165,12 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
         The Arrow array encapsulating the data.
         """
         raise NotImplementedError
+
+    def component_name(self) -> str:
+        return self.extension_name
+
+    def as_arrow_batch(self) -> pa.Array:
+        return self
 
 
 def _empty_pa_array(type: pa.DataType) -> pa.Array:
@@ -179,15 +226,17 @@ class BaseDelegatingExtensionType(pa.ExtensionType):  # type: ignore[misc]
         return self._ARRAY_TYPE  # type: ignore[no-any-return]
 
 
-class BaseDelegatingExtensionArray(BaseExtensionArray[T]):  # type: ignore[misc]
+class BaseDelegatingExtensionArray(BaseExtensionArray[T]):
     """Extension array for delegating components."""
 
     _DELEGATED_ARRAY_TYPE = BaseExtensionArray[T]  # type: ignore[valid-type]
     """The extension array class associated with this component's datatype."""
 
     @classmethod
-    def from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T]:
+    def from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T] | None:
         arr = cls._DELEGATED_ARRAY_TYPE.from_similar(data)
+        if arr is None:
+            return None
 
         # TODO(ab, cmc): we unwrap the type here because we can't have two layers of extension types for now
         return cast(BaseDelegatingExtensionArray[T], cls._EXTENSION_TYPE().wrap_array(arr.storage))
