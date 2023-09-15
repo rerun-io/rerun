@@ -12,11 +12,15 @@
 //! cargo run -p test_api -- --test rects
 //! ```
 
-use std::{collections::HashSet, f32::consts::TAU};
+use std::{
+    collections::HashSet,
+    f32::consts::{PI, TAU},
+};
 
 use itertools::Itertools;
 use rerun::{
     archetypes::{SegmentationImage, TextLog},
+    datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
     EntityPath, RecordingStream,
 };
@@ -24,43 +28,36 @@ use rerun::{
 // --- Rerun logging ---
 
 fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
-    use rerun::{
-        archetypes::{Boxes3D, Transform3D},
-        components::Color,
-        datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D},
-    };
+    use rerun::{archetypes::Boxes3D, components::Color};
 
     rec.set_time_seconds("sim_time", 0f64);
     rec.log(
         "bbox_test/bbox",
         &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
             .with_colors([0x00FF00FF])
+            .with_rotations([Quaternion::from_xyzw([
+                0.0,
+                0.0,
+                (PI / 4.0).sin(),
+                (PI / 4.0).cos(),
+            ])])
             .with_radii([0.005])
             .with_labels(["box/t0"]),
     )?;
-    rec.log(
-        "bbox_test/bbox",
-        &Transform3D::new(TranslationRotationScale3D::rigid(
-            glam::Vec3::ZERO,
-            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
-        )),
-    )?;
-
     rec.set_time_seconds("sim_time", 1f64);
 
     rec.log(
         "bbox_test/bbox",
-        &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
+        &Boxes3D::from_centers_and_half_sizes([(1.0, 0.0, 0.0)], [(1.0, 0.5, 0.25)])
             .with_colors([Color::from_rgb(255, 255, 0)])
+            .with_rotations([Quaternion::from_xyzw([
+                0.0,
+                0.0,
+                (PI / 4.0).sin(),
+                (PI / 4.0).cos(),
+            ])])
             .with_radii([0.01])
             .with_labels(["box/t1"]),
-    )?;
-    rec.log(
-        "bbox_test/bbox",
-        &Transform3D::new(TranslationRotationScale3D::rigid(
-            [1.0, 0.0, 0.0],
-            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
-        )),
     )?;
 
     Ok(())
