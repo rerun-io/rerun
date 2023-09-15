@@ -65,20 +65,16 @@ fn loading_receivers_ui(
 
     for source in rx.sources() {
         let string = match source.as_ref() {
+            // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
-
             SmartChannelSource::RrdHttpStream { url } => format!("Loading {url}…"),
 
-            SmartChannelSource::RrdWebEventListener => "Waiting for data…".to_owned(),
-
-            SmartChannelSource::Sdk => "Waiting on SDK…".to_owned(),
-
-            SmartChannelSource::WsClient { ws_server_url } => {
-                format!("Loading from {ws_server_url}…")
-            }
-
-            SmartChannelSource::TcpServer { .. } => {
-                continue; // TODO(#3046): show this in status bar
+            SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::WsClient { .. }
+            | SmartChannelSource::TcpServer { .. } => {
+                // TODO(#3046): show these in status bar
+                continue;
             }
         };
 
