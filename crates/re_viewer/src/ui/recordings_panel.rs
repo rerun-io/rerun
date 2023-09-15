@@ -64,24 +64,17 @@ fn loading_receivers_ui(
     let mut any_shown = false;
 
     for source in rx.sources() {
-        let (always_show, string) = match source.as_ref() {
-            SmartChannelSource::File(path) => (false, format!("Loading {}…", path.display())),
+        let string = match source.as_ref() {
+            // We only show things we know are very-soon-to-be recordings:
+            SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
+            SmartChannelSource::RrdHttpStream { url } => format!("Loading {url}…"),
 
-            SmartChannelSource::RrdHttpStream { url } => (false, format!("Loading {url}…")),
-
-            SmartChannelSource::RrdWebEventListener => {
-                (false, "Waiting on Web Event Listener…".to_owned())
-            }
-
-            SmartChannelSource::Sdk => (false, "Waiting on SDK…".to_owned()),
-
-            SmartChannelSource::WsClient { ws_server_url } => {
-                (false, format!("Loading from {ws_server_url}…"))
-            }
-
-            SmartChannelSource::TcpServer { port } => {
-                // We have a TcpServer when running just `cargo rerun`
-                (true, format!("Hosting a TCP Server on port {port}"))
+            SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::WsClient { .. }
+            | SmartChannelSource::TcpServer { .. } => {
+                // TODO(#3046): show these in status bar
+                continue;
             }
         };
 
@@ -89,7 +82,7 @@ fn loading_receivers_ui(
         // i.e. if this source hasn't sent anything yet.
         // Note that usually there is a one-to-one mapping between a source and a recording,
         // but it is possible to send multiple recordings over the same channel.
-        if always_show || !sources_with_stores.contains(&source) {
+        if !sources_with_stores.contains(&source) {
             any_shown = true;
             let response = ctx
                 .re_ui
