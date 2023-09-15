@@ -142,13 +142,55 @@ def log(
     if not isinstance(entity, ArchetypeLike):
         raise TypeError(f"Expected ArchetypeLike, got {type(entity)}")
 
+    num_instances = entity.num_instances()
+    components = entity.as_component_batches()
+
+    log_components(entity_path, components, num_instances, ext, timeless, recording)
+
+
+def log_components(
+    entity_path: str,
+    components: Iterable[ComponentBatchLike],
+    num_instances: int | None = None,
+    ext: dict[str, Any] | None = None,
+    timeless: bool = False,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Log an entity from a collection of `ComponentBatchLike` objects.
+
+    All of the batches should have the same length as the value of
+    `num_instances`, or length 1 if the component is a splat., or 0 if the
+    component is being cleared.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the entity in the space hierarchy.
+    components:
+        A collection of `ComponentBatchLike` objects.
+    num_instances:
+        Optional. The number of instances in each batch. If not provided, the max of all
+        components will be used instead.
+    ext:
+        Optional dictionary of extension components. See
+        [rerun.log_extension_components][]
+    timeless:
+        If true, the entity will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
+        defaults to the current active data recording, if there is one. See
+        also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
     instanced: dict[str, NamedExtensionArray] = {}
     splats: dict[str, NamedExtensionArray] = {}
 
-    num_instances = entity.num_instances()
-    components = list(entity.as_component_batches())
     names = [comp.component_name() for comp in components]
     arrow_arrays = [comp.as_arrow_batch() for comp in components]
+
+    if num_instances is None:
+        num_instances = max(len(arr) for arr in arrow_arrays)
 
     for name, array in zip(names, arrow_arrays):
         # Strip off the ExtensionArray if it's present. We will always log via component_name.
