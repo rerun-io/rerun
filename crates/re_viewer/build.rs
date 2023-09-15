@@ -122,8 +122,8 @@ impl TryFrom<Example> for ManifestEntry {
             title: get!(example, title),
             description: get!(example, description),
             tags: get!(example, tags),
-            demo_url: format!("{base_url}/examples/arkit_scenes/"),
-            rrd_url: format!("{base_url}/examples/arkit_scenes/data.rrd"),
+            demo_url: format!("{base_url}/examples/{}/", example.name),
+            rrd_url: format!("{base_url}/examples/{}/data.rrd", example.name),
             thumbnail: Thumbnail {
                 url: get!(example, thumbnail),
                 width: thumbnail_dimensions[0],
