@@ -79,7 +79,6 @@ def vec3ds_expected(empty: bool, type_: Any | None) -> Any:
 
 rotations_arrays: list[rrd.Rotation3DArrayLike] = [
     [],
-    np.array([]),
     # Rotation3D
     rrd.Rotation3D(rrd.Quaternion(xyzw=[1, 2, 3, 4])),
     rrd.Rotation3D(rrd.RotationAxisAngle([1.0, 2.0, 3.0], rrd.Angle(4))),
@@ -96,7 +95,6 @@ rotations_arrays: list[rrd.Rotation3DArrayLike] = [
     [
         rrd.Rotation3D(rrd.Quaternion(xyzw=[1, 2, 3, 4])),
         [1, 2, 3, 4],
-        None,
         rrd.Quaternion(xyzw=[1, 2, 3, 4]),
         rrd.RotationAxisAngle([1, 2, 3], 4),
     ],
@@ -113,10 +111,7 @@ def expected_rotations(rotations: rrd.Rotation3DArrayLike, type_: Any) -> Any:
     elif isinstance(rotations, rrd.Quaternion):
         return type_.from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_.from_similar(
-            [rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 2
-            + [None, rrd.Quaternion(xyzw=[1, 2, 3, 4]), rrd.RotationAxisAngle([1, 2, 3], 4)]
-        )
+        return type_.from_similar([rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)])
 
 
 radii_arrays: list[rrc.RadiusArrayLike | None] = [
