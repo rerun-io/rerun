@@ -1,6 +1,5 @@
 use crate::{Icon, ReUi};
 use egui::epaint::text::TextWrapping;
-use egui::load::TexturePoll;
 use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
 
@@ -178,18 +177,8 @@ impl<'a> ListItem<'a> {
     /// Provide an [`Icon`] to be displayed on the left of the item.
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|_, ui, rect, visuals| {
-            if let Ok(TexturePoll::Ready { texture }) =
-                icon.as_image().fit_to_exact_size(rect.size()).load(ui)
-            {
-                let tint = visuals.fg_stroke.color;
-
-                ui.painter().image(
-                    texture.id,
-                    rect,
-                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                    tint,
-                );
-            }
+            let tint = visuals.fg_stroke.color;
+            icon.as_image().tint(tint).paint_at(ui, rect);
         })
     }
 

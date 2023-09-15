@@ -22,7 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.RELEASE_COMMIT || github.sha }}
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha) }}
 
       - name: Install dependencies
         run: |

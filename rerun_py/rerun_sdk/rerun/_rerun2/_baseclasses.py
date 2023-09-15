@@ -89,11 +89,10 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
         data_type = cls._EXTENSION_TYPE()
 
         if data is None:
-            return cast(BaseExtensionArray[T], data_type.wrap_array(pa.array([], type=data_type.storage_type)))
+            pa_array = _empty_pa_array(data_type.storage_type)
         else:
-            return cast(
-                BaseExtensionArray[T], data_type.wrap_array(cls._native_to_pa_array(data, data_type.storage_type))
-            )
+            pa_array = cls._native_to_pa_array(data, data_type.storage_type)
+        return cast(BaseExtensionArray[T], data_type.wrap_array(pa_array))
 
     @staticmethod
     def _native_to_pa_array(data: T, data_type: pa.DataType) -> pa.Array:
@@ -125,6 +124,29 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
         The Arrow array encapsulating the data.
         """
         raise NotImplementedError
+
+
+def _empty_pa_array(type: pa.DataType) -> pa.Array:
+    if isinstance(type, pa.ExtensionType):
+        return _empty_pa_array(type.storage_type)
+
+    # Creation of empty arrays of dense unions aren't implemented in pyarrow yet.
+    if isinstance(type, pa.UnionType):
+        return pa.UnionArray.from_buffers(
+            type=type,
+            length=0,
+            buffers=[
+                None,
+                pa.array([], type=pa.int8()).buffers()[1],
+                pa.array([], type=pa.int32()).buffers()[1],
+            ],
+            children=[_empty_pa_array(field_type.type) for field_type in type],
+        )
+    # This also affects structs *containing* dense unions.
+    if isinstance(type, pa.StructType):
+        return pa.StructArray.from_arrays([_empty_pa_array(field_type.type) for field_type in type], fields=list(type))
+
+    return pa.array([], type=type)
 
 
 class BaseDelegatingExtensionType(pa.ExtensionType):  # type: ignore[misc]

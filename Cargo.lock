@@ -1363,7 +1363,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1372,7 +1372,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1405,7 +1405,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
@@ -1420,7 +1420,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1435,7 +1435,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "arboard",
  "egui",
@@ -1452,10 +1452,11 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "egui",
  "ehttp",
+ "enum-map",
  "image",
  "log",
  "mime_guess",
@@ -1466,7 +1467,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1482,7 +1483,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "egui",
 ]
@@ -1524,7 +1525,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1535,6 +1536,27 @@ name = "encode_unicode"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
+
+[[package]]
+name = "enum-map"
+version = "2.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c188012f8542dee7b3996e44dd89461d64aa471b0a7c71a1ae2f595d259e96e5"
+dependencies = [
+ "enum-map-derive",
+ "serde",
+]
+
+[[package]]
+name = "enum-map-derive"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04d0b288e3bb1d861c4403c1774a6f7a798781dfc519b3647df2a3dd4ae95f25"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.28",
+]
 
 [[package]]
 name = "enumflags2"
@@ -1605,7 +1627,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=67a3fcae383044def7450b311ddc1f79e36eaae0#67a3fcae383044def7450b311ddc1f79e36eaae0"
+source = "git+https://github.com/emilk/egui?rev=2bbceb856b8c26cd7d7a749baba13cb7ffe41d89#2bbceb856b8c26cd7d7a749baba13cb7ffe41d89"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.3",

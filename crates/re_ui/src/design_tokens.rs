@@ -188,7 +188,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // don't color hyperlinks #2733
     egui_style.visuals.hyperlink_color = default;
 
-    egui_style.image_loading_spinners = false;
+    egui_style.visuals.image_loading_spinners = false;
 
     ctx.set_style(egui_style);
 

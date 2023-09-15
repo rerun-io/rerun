@@ -103,7 +103,7 @@ class Rotation3DArray(BaseExtensionArray[Rotation3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in rotation3d_ext.py
+        return Rotation3DExt.native_to_pa_array_override(data, data_type)
 
 
 Rotation3DType._ARRAY_TYPE = Rotation3DArray
