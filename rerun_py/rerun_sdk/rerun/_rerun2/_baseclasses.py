@@ -60,10 +60,10 @@ class Archetype:
         for fld in fields(type(self)):
             if "component" in fld.metadata:
                 comp = getattr(self, fld.name)
-                # TODO(#2825): For now we just don't log anything for unspecified components, to match the
-                # historical behavior.
+                # TODO(https://github.com/rerun-io/rerun/issues/3341): Depending on what we decide
+                # to do with optional components, we may need to make this instead call `_empty_pa_array`
                 if comp is not None:
-                    yield getattr(self, fld.name)
+                    yield comp
 
     __repr__ = __str__
 
@@ -128,7 +128,8 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
         data_type = cls._EXTENSION_TYPE()
 
         if data is None:
-            # TODO(jleibs): Need to be consistent about when we use None vs. empty arrays.
+            # TODO(https://github.com/rerun-io/rerun/issues/3341): Depending on what we decide
+            # to do with optional components, we may want to rever this.
             # pa_array = _empty_pa_array(data_type.storage_type)
             return None
         else:
@@ -235,6 +236,8 @@ class BaseDelegatingExtensionArray(BaseExtensionArray[T]):
     @classmethod
     def from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T] | None:
         arr = cls._DELEGATED_ARRAY_TYPE.from_similar(data)
+        # TODO(https://github.com/rerun-io/rerun/issues/3341): Depending on what we decide
+        # to do with optional components, we may need to make this instead call `_empty_pa_array`
         if arr is None:
             return None
 
