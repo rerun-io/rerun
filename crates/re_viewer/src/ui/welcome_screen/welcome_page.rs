@@ -17,32 +17,23 @@ pub(super) fn welcome_page_ui(
     rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
 ) -> WelcomeScreenResponse {
-    let mut margin = egui::Margin::same(40.0);
-    margin.bottom = 0.0;
-    egui::Frame {
-        inner_margin: margin,
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        ui.vertical(|ui| {
-            let show_example = onboarding_content_ui(ui, command_sender);
+    ui.vertical(|ui| {
+        let show_example = onboarding_content_ui(ui, command_sender);
 
-            for status_strings in status_strings(rx) {
-                if status_strings.long_term {
-                    ui.add_space(55.0);
-                    ui.vertical_centered(|ui| {
-                        ui.label(status_strings.status);
-                        ui.label(
-                            egui::RichText::new(status_strings.source)
-                                .color(ui.visuals().weak_text_color()),
-                        );
-                    });
-                }
+        for status_strings in status_strings(rx) {
+            if status_strings.long_term {
+                ui.add_space(55.0);
+                ui.vertical_centered(|ui| {
+                    ui.label(status_strings.status);
+                    ui.label(
+                        egui::RichText::new(status_strings.source)
+                            .color(ui.visuals().weak_text_color()),
+                    );
+                });
             }
+        }
 
-            show_example
-        })
-        .inner
+        show_example
     })
     .inner
 }
@@ -111,6 +102,12 @@ fn onboarding_content_ui(
         },
     ];
 
+    // Shrink images if needed so user can see all of the content buttons
+    let max_image_height = ui.available_height() - 300.0;
+
+    let centering_vspace = (ui.available_height() - 650.0) / 2.0;
+    ui.add_space(centering_vspace.at_least(0.0));
+
     let panel_count = panels.len();
 
     const MAX_COLUMN_WIDTH: f32 = 255.0;
@@ -133,15 +130,13 @@ fn onboarding_content_ui(
         .floor()
         .at_most(MAX_COLUMN_WIDTH);
 
-    // this space is added on the left so that the grid is centered
-    let centering_space = (ui.available_width()
-        - column_count as f32 * column_width
-        - (column_count - 1) as f32 * grid_spacing.x)
-        .max(0.0)
-        / 2.0;
-
     ui.horizontal(|ui| {
-        ui.add_space(centering_space);
+        // this space is added on the left so that the grid is centered
+        let centering_hspace = (ui.available_width()
+            - column_count as f32 * column_width
+            - (column_count - 1) as f32 * grid_spacing.x)
+            / 2.0;
+        ui.add_space(centering_hspace.at_least(0.0));
 
         ui.vertical(|ui| {
             ui.horizontal_wrapped(|ui| {
@@ -172,7 +167,7 @@ fn onboarding_content_ui(
                 for panels in panels.chunks(column_count) {
                     if column_count == panel_count {
                         for panel in panels {
-                            image_banner(ui, panel.image, column_width);
+                            image_banner(ui, panel.image, column_width, max_image_height);
                         }
                     } else {
                         for _ in panels {
@@ -223,10 +218,16 @@ fn onboarding_content_ui(
     .inner
 }
 
-fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32) {
-    ui.add(
-        icon.as_image()
-            .fit_to_exact_size(egui::Vec2::new(column_width, f32::INFINITY))
-            .rounding(egui::Rounding::same(8.)),
-    );
+fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_image_height: f32) {
+    if max_image_height < 96.0 {
+        return; // skip the image if it is too small
+    }
+
+    ui.centered_and_justified(|ui| {
+        ui.add(
+            icon.as_image()
+                .fit_to_exact_size(egui::Vec2::new(column_width, max_image_height))
+                .rounding(egui::Rounding::same(8.)),
+        );
+    });
 }
