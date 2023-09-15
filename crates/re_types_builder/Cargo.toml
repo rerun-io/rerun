@@ -37,7 +37,7 @@ rayon.workspace = true
 rust-format = "0.3"
 syn = "2.0"
 unindent.workspace = true
-xshell = "0.2"
+xshell.workspace = true
 
 
 [build-dependencies]
@@ -46,4 +46,4 @@ xshell = "0.2"
 re_build_tools.workspace = true
 
 # External
-xshell = "0.2"
+xshell.workspace = true

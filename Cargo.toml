@@ -137,6 +137,7 @@ web-time = "0.2.0"
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
 wgpu = { version = "0.17.0", features = ["fragile-send-sync-non-atomic-wasm"] }
 wgpu-core = "0.17.0"
+xshell = "0.2"
 
 
 [profile.dev]
