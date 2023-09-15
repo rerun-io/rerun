@@ -3,12 +3,10 @@ use std::collections::BTreeMap;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::{TimeInt, Timeline};
-use re_types::{
-    archetypes::Tensor, datatypes::TensorData, Archetype, ComponentName, Loggable as _,
-};
+use re_types::{archetypes::Tensor, datatypes::TensorData, Archetype, ComponentNameSet};
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -24,17 +22,25 @@ impl NamedViewSystem for BarChartViewPartSystem {
 }
 
 impl ViewPartSystem for BarChartViewPartSystem {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Tensor::all_components().try_into().unwrap()
+    fn required_components(&self) -> ComponentNameSet {
+        // TODO(#3327): make barchart an actual archetype
+        Tensor::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
-    fn queries_any_components_of(
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Tensor::indicator_component()).collect()
+    }
+
+    fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        components: &[ComponentName],
+        entity_components: &ComponentNameSet,
     ) -> bool {
-        if !components.contains(&re_types::components::TensorData::name()) {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 

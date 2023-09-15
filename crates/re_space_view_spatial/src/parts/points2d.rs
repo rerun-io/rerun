@@ -3,11 +3,11 @@ use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Points2D,
     components::{Position2D, Text},
-    Archetype,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -188,8 +188,15 @@ impl NamedViewSystem for Points2DPart {
 }
 
 impl ViewPartSystem for Points2DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Points2D::all_components().try_into().unwrap()
+    fn required_components(&self) -> ComponentNameSet {
+        Points2D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Points2D::indicator_component()).collect()
     }
 
     fn execute(

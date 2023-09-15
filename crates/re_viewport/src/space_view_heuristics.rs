@@ -6,7 +6,7 @@ use re_arrow_store::{LatestAtQuery, Timeline};
 use re_components::Pinhole;
 use re_data_store::EntityPath;
 use re_types::components::{DisconnectedSpace, TensorData};
-use re_types::ComponentName;
+use re_types::ComponentNameSet;
 use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
     ViewSystemName, ViewerContext,
@@ -429,9 +429,11 @@ fn is_entity_processed_by_part_collection(
     let timeline = Timeline::log_time();
     let components = store
         .all_components(&timeline, ent_path)
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
     for part in parts.iter() {
-        if part.queries_any_components_of(store, ent_path, &components) {
+        if part.heuristic_filter(store, ent_path, &components) {
             return true;
         }
     }
@@ -444,8 +446,6 @@ pub fn identify_entities_per_system_per_class(
 ) -> EntitiesPerSystemPerClass {
     re_tracing::profile_function!();
 
-    // TODO(andreas): Handle several primary components.
-    // This code currently assumes the first component for each archetype is the primary.
     let system_collections_per_class: IntMap<
         SpaceViewClassName,
         (ViewContextCollection, ViewPartCollection),
@@ -460,26 +460,26 @@ pub fn identify_entities_per_system_per_class(
         })
         .collect();
 
-    let primary_component_per_system = {
-        re_tracing::profile_scope!("gather primary component per system");
+    let systems_per_required_components = {
+        re_tracing::profile_scope!("gather required components per systems");
 
-        let mut primary_component_per_system: IntMap<
-            ComponentName,
+        let mut systems_per_required_components: HashMap<
+            ComponentNameSet,
             IntMap<SpaceViewClassName, TinyVec<[ViewSystemName; 2]>>,
-        > = IntMap::default();
+        > = HashMap::default();
         for (class_name, (context_collection, part_collection)) in &system_collections_per_class {
             for (system_name, part) in part_collection.iter_with_names() {
-                primary_component_per_system
-                    .entry(*part.archetype().first())
+                systems_per_required_components
+                    .entry(part.required_components().into_iter().collect())
                     .or_default()
                     .entry(*class_name)
                     .or_default()
                     .push(system_name);
             }
             for (system_name, part) in context_collection.iter_with_names() {
-                for archetype in part.archetypes() {
-                    primary_component_per_system
-                        .entry(*archetype.first())
+                for components in part.compatible_component_sets() {
+                    systems_per_required_components
+                        .entry(components.into_iter().collect())
                         .or_default()
                         .entry(*class_name)
                         .or_default()
@@ -487,10 +487,10 @@ pub fn identify_entities_per_system_per_class(
                 }
             }
         }
-        primary_component_per_system
+        systems_per_required_components
     };
 
-    let mut per_class_per_system_entities = EntitiesPerSystemPerClass::default();
+    let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
 
     let store = ctx.store_db.store();
     for ent_path in ctx.store_db.entity_db.entity_paths() {
@@ -499,37 +499,35 @@ pub fn identify_entities_per_system_per_class(
             continue;
         };
 
-        for component in &components {
-            if let Some(systems_per_class) = primary_component_per_system.get(component) {
-                for (class, systems) in systems_per_class {
-                    let Some((_, part_collection)) = system_collections_per_class.get(class) else {
-                        continue;
-                    };
+        let all_components: ComponentNameSet = components.into_iter().collect();
 
-                    for system in systems {
-                        // TODO(andreas/jleibs): This is only needed because of images.
-                        // The `queries_any_components_of` method should go away entirely after #3032 lands
-                        if let Ok(view_part_system) = part_collection.get_by_name(*system) {
-                            if !view_part_system.queries_any_components_of(
-                                store,
-                                ent_path,
-                                &components,
-                            ) {
-                                continue;
-                            }
+        for (required_components, systems_per_class) in &systems_per_required_components {
+            if !all_components.is_superset(required_components) {
+                continue;
+            }
+
+            for (class, systems) in systems_per_class {
+                let Some((_, part_collection)) = system_collections_per_class.get(class) else {
+                    continue;
+                };
+
+                for system in systems {
+                    if let Ok(view_part_system) = part_collection.get_by_name(*system) {
+                        if !view_part_system.heuristic_filter(store, ent_path, &all_components) {
+                            continue;
                         }
-
-                        per_class_per_system_entities
-                            .entry(*class)
-                            .or_default()
-                            .entry(*system)
-                            .or_default()
-                            .insert(ent_path.clone());
                     }
+
+                    entities_per_system_per_class
+                        .entry(*class)
+                        .or_default()
+                        .entry(*system)
+                        .or_default()
+                        .insert(ent_path.clone());
                 }
             }
         }
     }
 
-    per_class_per_system_entities
+    entities_per_system_per_class
 }

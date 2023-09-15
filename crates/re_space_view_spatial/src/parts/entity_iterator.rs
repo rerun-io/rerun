@@ -5,8 +5,7 @@ use re_query::{
 use re_renderer::DepthOffset;
 use re_types::{Archetype, ComponentName};
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
 };
 
 use crate::contexts::{
@@ -23,7 +22,7 @@ pub fn process_entity_views<'a, System: NamedViewSystem, Primary, const N: usize
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
     default_depth_offset: DepthOffset,
-    archetype: ArchetypeDefinition,
+    archetype: Vec<ComponentName>,
     mut fun: F,
 ) -> Result<(), SpaceViewSystemExecutionError>
 where

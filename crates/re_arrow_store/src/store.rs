@@ -3,9 +3,9 @@ use std::sync::atomic::AtomicU64;
 
 use ahash::HashMap;
 use arrow2::datatypes::DataType;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-use re_types::ComponentName;
+use re_types::{ComponentName, ComponentNameSet};
 use smallvec::SmallVec;
 
 use re_log_types::{
@@ -400,7 +400,7 @@ pub struct IndexedTable {
     /// Note that this set will never be purged and will continue to return components that may
     /// have been set in the past even if all instances of that component have since been purged
     /// to free up space.
-    pub all_components: IntSet<ComponentName>,
+    pub all_components: ComponentNameSet,
 
     /// The number of rows stored in this table, across all of its buckets.
     pub buckets_num_rows: u64,

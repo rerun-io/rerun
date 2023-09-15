@@ -1,6 +1,6 @@
 use re_arrow_store::TimeRange;
 use re_query::{range_entity_with_primary, QueryError};
-use re_types::{components::InstanceKey, ComponentName, Loggable as _};
+use re_types::{components::InstanceKey, ComponentName, ComponentNameSet, Loggable as _};
 use re_viewer_context::{
     AnnotationMap, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewPartSystem,
     ViewQuery, ViewerContext,
@@ -67,16 +67,24 @@ impl NamedViewSystem for TimeSeriesSystem {
 }
 
 impl ViewPartSystem for TimeSeriesSystem {
-    fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
-        vec1::Vec1::try_from_vec(
-            Self::archetype_array()
-                .into_iter()
-                .skip(1) // Skip [`InstanceKey`]
-                .collect::<Vec<_>>(),
-        )
-        .unwrap()
-        // TODO(wumpf): `archetype` should return a fixed sized array.
+    fn required_components(&self) -> ComponentNameSet {
+        std::iter::once(re_components::Scalar::name()).collect()
     }
+
+    // TODO(#3174): use this instead
+    // fn required_components(&self) -> ComponentNameSet {
+    //     ScalarOrWhateverItllBeCalled::required_components().to_vec()
+    // }
+
+    // TODO(#3174): use this instead
+    // fn heuristic_filter(
+    //     &self,
+    //     _store: &re_arrow_store::DataStore,
+    //     _ent_path: &EntityPath,
+    //     components: &[re_types::ComponentName],
+    // ) -> bool {
+    //     components.contains(&ScalarOrWhateverItllBeCalled::indicator_component())
+    // }
 
     fn execute(
         &mut self,

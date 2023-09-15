@@ -123,7 +123,9 @@ mod result;
 mod size_bytes;
 
 pub use self::archetype::{Archetype, ArchetypeName, GenericIndicatorComponent};
-pub use self::loggable::{Component, ComponentName, Datatype, DatatypeName, Loggable};
+pub use self::loggable::{
+    Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable,
+};
 pub use self::loggable_batch::{
     ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch,
 };

@@ -3,10 +3,12 @@ use re_viewer::external::{
     re_log_types::EntityPath,
     re_query::query_archetype,
     re_renderer,
-    re_types::{self, components::InstanceKey, Archetype, ComponentName, Loggable as _},
+    re_types::{
+        self, components::InstanceKey, Archetype, ComponentName, ComponentNameSet, Loggable as _,
+    },
     re_viewer_context::{
-        ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-        ViewPartSystem, ViewQuery, ViewSystemName, ViewerContext,
+        NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+        ViewQuery, ViewSystemName, ViewerContext,
     },
 };
 
@@ -42,12 +44,11 @@ impl NamedViewSystem for InstanceColorSystem {
 }
 
 impl ViewPartSystem for InstanceColorSystem {
-    /// The archetype this scene part is querying from the store.
-    ///
-    /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries
-    ///              within the `populate` method to this archetype.
-    fn archetype(&self) -> ArchetypeDefinition {
-        ColorArchetype::all_components().try_into().unwrap()
+    fn required_components(&self) -> ComponentNameSet {
+        ColorArchetype::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     /// Populates the scene part with data from the store.

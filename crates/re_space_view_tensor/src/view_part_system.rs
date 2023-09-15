@@ -1,11 +1,14 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
 use re_log_types::{RowId, TimeInt, Timeline};
-use re_types::components::TensorData;
-use re_types::tensor_data::DecodedTensor;
-use re_types::{components::InstanceKey, ComponentName, Loggable as _};
+use re_types::{
+    archetypes::Tensor,
+    components::{InstanceKey, TensorData},
+    tensor_data::DecodedTensor,
+    Archetype, ComponentNameSet,
+};
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
+    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -21,22 +24,27 @@ impl NamedViewSystem for TensorSystem {
 }
 
 impl ViewPartSystem for TensorSystem {
-    fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![TensorData::name()]
+    fn required_components(&self) -> ComponentNameSet {
+        Tensor::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Tensor::indicator_component()).collect()
     }
 
     /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]
-    fn queries_any_components_of(
+    fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        components: &[ComponentName],
+        entity_components: &ComponentNameSet,
     ) -> bool {
-        if !components.contains(&TensorData::name()) {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
-
-        // TODO(jleibs): Use indicator components
 
         if let Some(tensor) = store.query_latest_component::<TensorData>(
             ent_path,

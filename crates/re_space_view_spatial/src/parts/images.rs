@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
 use egui::NumExt;
-
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+
 use re_arrow_store::LatestAtQuery;
 use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
-use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
+use re_log_types::{EntityPathHash, TimeInt, Timeline};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -17,10 +17,10 @@ use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
     components::{Color, DrawOrder, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Archetype as _, Loggable,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge, ArchetypeDefinition, DefaultColor, SpaceViewSystemExecutionError,
+    default_heuristic_filter, gpu_bridge, DefaultColor, SpaceViewSystemExecutionError,
     TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextCollection};
@@ -608,20 +608,49 @@ impl NamedViewSystem for ImagesPart {
 }
 
 impl ViewPartSystem for ImagesPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(jleibs): Figure out the right thing to do here.
-        // What this actually wants to do is indicate that it is interested
-        // in all 3 indicator archetypes.
-        vec1::vec1![TensorData::name()]
+    fn required_components(&self) -> ComponentNameSet {
+        let image: ComponentNameSet = Image::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect();
+        let depth_image: ComponentNameSet = DepthImage::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect();
+        let segmentation_image: ComponentNameSet = SegmentationImage::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect();
+
+        image
+            .intersection(&depth_image)
+            .map(ToOwned::to_owned)
+            .collect::<ComponentNameSet>()
+            .intersection(&segmentation_image)
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
-    // TODO(jleibs): Once the above is working properly this can go away all together.
-    fn queries_any_components_of(
+    fn indicator_components(&self) -> ComponentNameSet {
+        [
+            Image::indicator_component(),
+            DepthImage::indicator_component(),
+            SegmentationImage::indicator_component(),
+        ]
+        .into_iter()
+        .collect()
+    }
+
+    fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        _components: &[ComponentName],
+        entity_components: &ComponentNameSet,
     ) -> bool {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
         if let Some(tensor) = store.query_latest_component::<TensorData>(
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),

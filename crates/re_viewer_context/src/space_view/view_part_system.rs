@@ -1,9 +1,11 @@
 use ahash::HashMap;
-use re_log_types::{ComponentName, EntityPath};
+
+use re_log_types::EntityPath;
+use re_types::ComponentNameSet;
 
 use crate::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewSystemName, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewSystemName, ViewerContext,
 };
 
 /// Element of a scene derived from a single archetype query.
@@ -12,26 +14,40 @@ use crate::{
 pub trait ViewPartSystem {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
-    /// The archetype queried by this scene element.
-    fn archetype(&self) -> ArchetypeDefinition;
+    /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
+    ///
+    /// This does not include indicator components.
+    fn required_components(&self) -> ComponentNameSet;
 
-    /// Returns true if the system queries given components on the given path in its [`Self::execute`] method.
+    /// These are not required, but if _any_ of these are found, it is a strong indication that this
+    /// system should be active (if also the `required_components` are found).
+    #[inline]
+    fn indicator_components(&self) -> ComponentNameSet {
+        Default::default()
+    }
+
+    /// Implements a filter to heuristically determine whether or not to instantiate the system.
     ///
-    /// List of components is expected to be all components that have ever been logged on the entity path.
-    /// By default, this only checks if the primary components of the archetype are contained
-    /// in the list of components.
+    /// If and when the system can be instantiated (i.e. because there is at least one entity that satisfies
+    /// the minimal set of required components), this method applies an arbitrary filter to determine whether
+    /// or not the system should be instantiated by default.
     ///
-    /// Override this method only if a more detailed condition is required to inform heuristics whether
+    /// The passed-in set of `entity_components` corresponds to all the different components that have ever
+    /// been logged on the entity path.
+    ///
+    /// By default, this returns true if eiher [`Self::indicator_components`] is empty or
+    /// `entity_components` contains at least one of these indicator components.
+    ///
+    /// Override this method only if a more detailed condition is required to inform heuristics whether or not
     /// the given entity is relevant for this system.
-    fn queries_any_components_of(
+    #[inline]
+    fn heuristic_filter(
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
-        components: &[ComponentName],
+        entity_components: &ComponentNameSet,
     ) -> bool {
-        // TODO(andreas): Use new archetype definitions which also allows for several primaries.
-        let archetype = self.archetype();
-        components.contains(archetype.first())
+        default_heuristic_filter(entity_components, &self.indicator_components())
     }
 
     /// Queries the data store and performs data conversions to make it ready for display.
@@ -58,6 +74,25 @@ pub trait ViewPartSystem {
     }
 
     fn as_any(&self) -> &dyn std::any::Any;
+}
+
+/// The default implementation for [`ViewPartSystem::heuristic_filter`].
+///
+/// Returns true if eiher `indicator_components` is empty or `entity_components` contains at least one
+/// of these indicator components.
+///
+/// Exported as a standalone function to simplify the implementation of custom filters.
+#[inline]
+pub fn default_heuristic_filter(
+    entity_components: &ComponentNameSet,
+    indicator_components: &ComponentNameSet,
+) -> bool {
+    if indicator_components.is_empty() {
+        true // if there are no indicator components, then show anything with the required compoonents
+    } else {
+        // do we have at least one of the indicator components?
+        entity_components.intersection(indicator_components).count() > 0
+    }
 }
 
 pub struct ViewPartCollection {

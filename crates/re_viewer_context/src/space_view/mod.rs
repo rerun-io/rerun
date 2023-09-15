@@ -17,8 +17,7 @@ mod view_query;
 
 pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
-    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName,
-    SpaceViewState,
+    DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewState,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use named_system::{NamedViewSystem, PerSystemEntities, ViewSystemName};
@@ -27,7 +26,7 @@ pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
 };
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
-pub use view_part_system::{ViewPartCollection, ViewPartSystem};
+pub use view_part_system::{default_heuristic_filter, ViewPartCollection, ViewPartSystem};
 pub use view_query::ViewQuery;
 
 // ---------------------------------------------------------------------------

@@ -4,11 +4,11 @@ use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
     components::{ClassId, Color, InstanceKey, Radius, Text},
-    Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -110,8 +110,32 @@ impl NamedViewSystem for Boxes3DPart {
 }
 
 impl ViewPartSystem for Boxes3DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![
+    fn required_components(&self) -> ComponentNameSet {
+        std::iter::once(Box3D::name()).collect()
+    }
+
+    // TODO(#2786): use this instead
+    // fn required_components(&self) -> ComponentNameSet {
+    //     Box3D::required_components().to_vec()
+    // }
+
+    // TODO(#2786): use this instead
+    // fn heuristic_filter(
+    //     &self,
+    //     _store: &re_arrow_store::DataStore,
+    //     _ent_path: &EntityPath,
+    //     components: &[re_types::ComponentName],
+    // ) -> bool {
+    //     components.contains(&Box3D::indicator_component())
+    // }
+
+    fn execute(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &ViewQuery<'_>,
+        view_ctx: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let components = [
             Box3D::name(),
             InstanceKey::name(),
             LegacyVec3D::name(), // obb.position
@@ -120,21 +144,14 @@ impl ViewPartSystem for Boxes3DPart {
             Radius::name(), // stroke_width
             Text::name(),
             ClassId::name(),
-        ]
-    }
+        ];
 
-    fn execute(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &ViewQuery<'_>,
-        view_ctx: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         process_entity_views::<Boxes3DPart, Box3D, 8, _>(
             ctx,
             query,
             view_ctx,
             0,
-            self.archetype(),
+            components.into_iter().collect(),
             |_ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },

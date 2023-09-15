@@ -9,7 +9,7 @@ use re_log_types::{
     DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, SizeBytes as _, TimeInt,
     TimePoint, TimeRange,
 };
-use re_types::{components::InstanceKey, ComponentName, Loggable};
+use re_types::{components::InstanceKey, ComponentName, ComponentNameSet, Loggable};
 
 use crate::{
     store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
@@ -283,7 +283,7 @@ impl IndexedTable {
     ) {
         re_tracing::profile_function!();
 
-        let components: IntSet<_> = row.component_names().collect();
+        let components: ComponentNameSet = row.component_names().collect();
 
         // borrowck workaround
         let timeline = self.timeline;
@@ -427,7 +427,7 @@ impl IndexedBucket {
         time: TimeInt,
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
-        components: &IntSet<ComponentName>,
+        components: &ComponentNameSet,
     ) -> u64 {
         re_tracing::profile_function!();
 
