@@ -69,7 +69,7 @@ fn loading_receivers_ui(
 
             SmartChannelSource::RrdHttpStream { url } => format!("Loading {url}…"),
 
-            SmartChannelSource::RrdWebEventListener => "Waiting on Web Event Listener…".to_owned(),
+            SmartChannelSource::RrdWebEventListener => "Waiting for data…".to_owned(),
 
             SmartChannelSource::Sdk => "Waiting on SDK…".to_owned(),
 
