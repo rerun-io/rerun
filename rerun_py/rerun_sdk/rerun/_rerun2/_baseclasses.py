@@ -53,7 +53,7 @@ class Archetype:
         raise ValueError("Archetype has no primary component")
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
-        """Extract the components from an entity, yielding (component, is_primary) tuples."""
+        """Return all the component batches that make up the archetype."""
 
         yield IndicatorComponent(self.archetype_name(), self.num_instances())
 
@@ -129,7 +129,7 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
 
         if data is None:
             # TODO(https://github.com/rerun-io/rerun/issues/3341): Depending on what we decide
-            # to do with optional components, we may want to rever this.
+            # to do with optional components, we may want to revert this.
             # pa_array = _empty_pa_array(data_type.storage_type)
             return None
         else:

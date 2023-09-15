@@ -11,6 +11,13 @@ U64_MAX = 2**64 - 1
 
 
 def none_empty_or_value(obj: Any, value: Any) -> Any:
+    """
+    Helper function to make value align with None / Empty types.
+
+    If obj is None or an empty list, it is returned. Otherwise value
+    is returned. This is useful for creating the `_expected` functions.
+    """
+
     if obj is None:
         return None
     elif hasattr(obj, "__len__") and len(obj) == 0:
