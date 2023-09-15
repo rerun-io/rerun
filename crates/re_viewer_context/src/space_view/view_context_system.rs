@@ -10,13 +10,15 @@ use crate::{
 ///
 /// Is always populated before view part systems.
 pub trait ViewContextSystem {
-    /// Each scene context may _require_ several different set of components in order to be
-    /// instantiated.
+    /// Returns all the component sets that the system is compatible with.
     ///
-    /// This lists all sets that the context requires.
+    /// If an entity path satisfies any of these sets, then the system will automatically run for
+    /// that entity path.
     ///
-    /// A context may also not require any components at all and merely prepare caches or viewer
-    /// related data instead.
+    /// Return an empty vec to specify that the system should never run automatically for any
+    /// specific entities.
+    /// It may still run once per frame as part of the global context if it has been registered to
+    /// do so, see [`crate::SpaceViewSystemRegistry`].
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
