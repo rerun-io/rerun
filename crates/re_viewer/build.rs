@@ -8,16 +8,20 @@ type Result<T, E = AnyError> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 struct Error(String);
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
     }
 }
+
 impl std::error::Error for Error {}
+
 macro_rules! error {
     ($lit:literal) => (Error($lit.to_owned()));
     ($($tt:tt)*) => (Error(format!($($tt)*)));
 }
+
 macro_rules! bail {
     ($lit:literal) => (return Err(error!($lit)));
     ($($tt:tt)*) => (return Err(error!($($tt)*).into()));
@@ -81,6 +85,7 @@ struct Thumbnail {
 
 impl TryFrom<Example> for ManifestEntry {
     type Error = AnyError;
+
     fn try_from(example: Example) -> Result<Self, Self::Error> {
         macro_rules! get {
             ($e:ident, $f:ident) => {
@@ -194,8 +199,8 @@ fn write_examples_manifest_if_necessary() {
     }
     re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
 
-    if let Err(e) = write_examples_manifest() {
-        panic!("{e}");
+    if let Err(err) = write_examples_manifest() {
+        panic!("{err}");
     }
 }
 
