@@ -58,20 +58,26 @@ impl StoreHub {
     /// screen.
     pub fn new() -> Self {
         re_tracing::profile_function!();
-        let mut blueprints = HashMap::new();
-        blueprints.insert(
-            Self::welcome_screen_app_id(),
-            StoreId::from_string(
-                StoreKind::Blueprint,
-                Self::welcome_screen_app_id().to_string(),
-            ),
+        let mut blueprint_by_app_id = HashMap::new();
+        let mut store_dbs = StoreBundle::default();
+
+        let welcome_screen_store_id = StoreId::from_string(
+            StoreKind::Blueprint,
+            Self::welcome_screen_app_id().to_string(),
         );
+        blueprint_by_app_id.insert(
+            Self::welcome_screen_app_id(),
+            welcome_screen_store_id.clone(),
+        );
+
+        let welcome_screen_blueprint = store_dbs.blueprint_entry(&welcome_screen_store_id);
+        crate::app_blueprint::setup_welcome_screen_blueprint(welcome_screen_blueprint);
 
         Self {
             selected_rec_id: None,
             selected_application_id: None,
-            blueprint_by_app_id: blueprints,
-            store_dbs: Default::default(),
+            blueprint_by_app_id,
+            store_dbs,
 
             was_recording_active: false,
 
