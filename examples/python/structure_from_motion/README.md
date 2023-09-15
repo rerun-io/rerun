@@ -4,6 +4,7 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/structure_
 tags: [2D, 3D, colmap, pinhole-camera, time-series]
 description: "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline."
 thumbnail: https://static.rerun.io/033edff752f86bcdc9a81f7877e0b4411ff4e6c5_structure_from_motion_480w.png
+build_args: ["--dataset=colmap_fiat", "--resize=800x600"]
 ---
 
 <picture>
