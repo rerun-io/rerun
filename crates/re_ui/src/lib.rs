@@ -48,7 +48,6 @@ pub struct TopBarStyle {
 use crate::list_item::ListItem;
 use egui::emath::{Rangef, Rot2};
 use egui::epaint::util::FloatOrd;
-use egui::load::TexturePoll;
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
@@ -62,14 +61,14 @@ pub struct ReUi {
 impl ReUi {
     /// Create [`ReUi`] and apply style to the given egui context.
     pub fn load_and_apply(egui_ctx: &egui::Context) -> Self {
-        egui_extras::loaders::install(egui_ctx);
+        egui_extras::install_image_loaders(egui_ctx);
 
         egui_ctx.include_bytes(
-            "logo_dark_mode",
+            "bytes://logo_dark_mode",
             include_bytes!("../data/logo_dark_mode.png"),
         );
         egui_ctx.include_bytes(
-            "logo_light_mode",
+            "bytes://logo_light_mode",
             include_bytes!("../data/logo_light_mode.png"),
         );
 
@@ -79,11 +78,11 @@ impl ReUi {
         }
     }
 
-    pub fn rerun_logo(&self) -> &'static str {
+    fn rerun_logo_uri(&self) -> &'static str {
         if self.egui_ctx.style().visuals.dark_mode {
-            "logo_dark_mode"
+            "bytes://logo_dark_mode"
         } else {
-            "logo_light_mode"
+            "bytes://logo_light_mode"
         }
     }
 
@@ -266,7 +265,7 @@ impl ReUi {
     /// Paint a watermark
     pub fn paint_watermark(&self) {
         if let Ok(egui::load::TexturePoll::Ready { texture }) = self.egui_ctx.try_load_texture(
-            self.rerun_logo(),
+            self.rerun_logo_uri(),
             egui::TextureOptions::default(),
             egui::SizeHint::Scale(1.0.ord()),
         ) {
@@ -390,12 +389,6 @@ impl ReUi {
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
         response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
 
-        let Ok(TexturePoll::Ready { texture }) =
-            icon.as_image().fit_to_exact_size(icon_size).load(ui)
-        else {
-            return response;
-        };
-
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact(&response);
             let bg_fill = bg_fill.unwrap_or(visuals.bg_fill);
@@ -407,10 +400,7 @@ impl ReUi {
             ui.painter()
                 .rect_filled(rect.expand(visuals.expansion), rounding, bg_fill);
 
-            let mut mesh = egui::Mesh::with_texture(texture.id);
-            let uv = egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-            mesh.add_rect_with_uv(image_rect, uv, tint);
-            ui.painter().add(egui::Shape::mesh(mesh));
+            icon.as_image().tint(tint).paint_at(ui, image_rect);
         }
 
         ui.set_style(prev_style);
@@ -810,18 +800,10 @@ impl ReUi {
                 )),
                 image_size,
             );
-            if let Ok(TexturePoll::Ready { texture }) =
-                icon.as_image().fit_to_exact_size(image_size).load(ui)
-            {
-                // TODO(emilk/andreas): change color and size on hover
-                let tint = ui.visuals().widgets.inactive.fg_stroke.color;
-                ui.painter().image(
-                    texture.id,
-                    image_rect,
-                    egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                    tint,
-                );
-            }
+
+            // TODO(emilk/andreas): change color and size on hover
+            let tint = ui.visuals().widgets.inactive.fg_stroke.color;
+            icon.as_image().tint(tint).paint_at(ui, image_rect);
 
             // Draw text next to the icon.
             let mut text_rect = rect;

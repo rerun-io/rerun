@@ -5,7 +5,6 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui::load::TexturePoll;
 use egui_tiles::Behavior;
 use nohash_hasher::IntMap;
 
@@ -555,9 +554,7 @@ impl TabWidget {
             .as_image()
             .fit_to_exact_size(self.icon_size)
             .tint(self.text_color);
-        if let Ok(TexturePoll::Ready { texture }) = icon_image.load(ui) {
-            icon_image.paint_at(ui, self.icon_rect, &texture);
-        }
+        icon_image.paint_at(ui, self.icon_rect);
 
         ui.painter().galley_with_color(
             egui::Align2::CENTER_CENTER
