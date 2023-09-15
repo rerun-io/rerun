@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
@@ -501,7 +499,7 @@ pub fn identify_entities_per_system_per_class(
             continue;
         };
 
-        let all_components: BTreeSet<_> = components.into_iter().collect();
+        let all_components: ComponentNameSet = components.into_iter().collect();
 
         for (required_components, systems_per_class) in &systems_per_required_components {
             if !all_components.is_superset(required_components) {
