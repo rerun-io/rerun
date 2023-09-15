@@ -41,7 +41,7 @@ impl NamedViewSystem for PrimitiveCounter {
 }
 
 impl ViewContextSystem for PrimitiveCounter {
-    fn all_required_components(&self) -> Vec<nohash_hasher::IntSet<re_types::ComponentName>> {
+    fn compatible_component_sets(&self) -> Vec<re_types::ComponentNameSet> {
         Vec::new()
     }
 

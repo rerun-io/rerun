@@ -1,9 +1,9 @@
 use re_arrow_store::LatestAtQuery;
 use re_query::query_archetype;
-use re_types::{archetypes::TextDocument, Archetype as _, ComponentName};
+use re_types::{archetypes::TextDocument, Archetype as _, ComponentNameSet};
 use re_viewer_context::{
-    external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 // ---
@@ -26,20 +26,15 @@ impl NamedViewSystem for TextDocumentSystem {
 }
 
 impl ViewPartSystem for TextDocumentSystem {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         TextDocument::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &re_viewer_context::external::re_log_types::EntityPath,
-        components: &IntSet<re_types::ComponentName>,
-    ) -> bool {
-        components.contains(&TextDocument::indicator_component())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(TextDocument::indicator_component()).collect()
     }
 
     fn execute(

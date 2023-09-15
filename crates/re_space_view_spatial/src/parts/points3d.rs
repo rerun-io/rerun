@@ -1,10 +1,9 @@
-use nohash_hasher::IntSet;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Points3D,
     components::{Position3D, Text},
-    Archetype as _, ComponentName,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -192,20 +191,15 @@ impl NamedViewSystem for Points3DPart {
 }
 
 impl ViewPartSystem for Points3DPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         Points3D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
-        components: &IntSet<ComponentName>,
-    ) -> bool {
-        components.contains(&Points3D::indicator_component())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Points3D::indicator_component()).collect()
     }
 
     fn execute(

@@ -1,10 +1,9 @@
 use egui::Color32;
-use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 use re_renderer::LineStripSeriesBuilder;
 use re_types::{
     components::{InstanceKey, Transform3D},
-    Archetype, ComponentName,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
@@ -33,20 +32,15 @@ impl NamedViewSystem for Transform3DArrowsPart {
 }
 
 impl ViewPartSystem for Transform3DArrowsPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         re_types::archetypes::Transform3D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
-        components: &IntSet<ComponentName>,
-    ) -> bool {
-        components.contains(&re_types::archetypes::Transform3D::indicator_component())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(re_types::archetypes::Transform3D::indicator_component()).collect()
     }
 
     fn execute(

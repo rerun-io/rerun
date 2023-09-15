@@ -1,4 +1,4 @@
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_components::{Pinhole, ViewCoordinates};
@@ -6,7 +6,7 @@ use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
     components::{DisconnectedSpace, Transform3D},
-    ComponentName, Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
@@ -64,7 +64,7 @@ impl Default for TransformContext {
 }
 
 impl ViewContextSystem for TransformContext {
-    fn all_required_components(&self) -> Vec<IntSet<ComponentName>> {
+    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
             std::iter::once(Transform3D::name()).collect(),
             std::iter::once(Pinhole::name()).collect(),

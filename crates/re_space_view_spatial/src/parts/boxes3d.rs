@@ -1,11 +1,10 @@
-use nohash_hasher::IntSet;
 use re_components::{Box3D, LegacyVec3D, Quaternion};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
 use re_types::{
     components::{ClassId, Color, InstanceKey, Radius, Text},
-    ComponentName, Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
     DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -111,12 +110,12 @@ impl NamedViewSystem for Boxes3DPart {
 }
 
 impl ViewPartSystem for Boxes3DPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         std::iter::once(Box3D::name()).collect()
     }
 
     // TODO(#2786): use this instead
-    // fn required_components(&self) -> IntSet<ComponentName> {
+    // fn required_components(&self) -> ComponentNameSet {
     //     Box3D::required_components().to_vec()
     // }
 

@@ -1,7 +1,6 @@
-use nohash_hasher::IntSet;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder, RenderContext};
-use re_types::ComponentName;
+use re_types::ComponentNameSet;
 use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
 use crate::parts::{
@@ -65,7 +64,7 @@ impl SharedRenderBuilders {
 }
 
 impl ViewContextSystem for SharedRenderBuilders {
-    fn all_required_components(&self) -> Vec<IntSet<ComponentName>> {
+    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         Vec::new()
     }
 

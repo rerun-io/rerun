@@ -1,10 +1,11 @@
 use re_viewer::external::{
     egui,
-    nohash_hasher::IntSet,
     re_log_types::EntityPath,
     re_query::query_archetype,
     re_renderer,
-    re_types::{self, components::InstanceKey, Archetype, ComponentName, Loggable as _},
+    re_types::{
+        self, components::InstanceKey, Archetype, ComponentName, ComponentNameSet, Loggable as _,
+    },
     re_viewer_context::{
         NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
         ViewQuery, ViewSystemName, ViewerContext,
@@ -43,7 +44,7 @@ impl NamedViewSystem for InstanceColorSystem {
 }
 
 impl ViewPartSystem for InstanceColorSystem {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         ColorArchetype::required_components()
             .iter()
             .map(ToOwned::to_owned)

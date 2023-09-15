@@ -1,5 +1,4 @@
-use nohash_hasher::IntSet;
-use re_types::{components::AnnotationContext, ComponentName, Loggable};
+use re_types::{archetypes::AnnotationContext, Archetype, ComponentNameSet};
 use re_viewer_context::{AnnotationMap, NamedViewSystem, ViewContextSystem, ViewSystemName};
 
 #[derive(Default)]
@@ -12,8 +11,13 @@ impl NamedViewSystem for AnnotationSceneContext {
 }
 
 impl ViewContextSystem for AnnotationSceneContext {
-    fn all_required_components(&self) -> Vec<IntSet<ComponentName>> {
-        vec![std::iter::once(AnnotationContext::name()).collect()]
+    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
+        vec![
+            AnnotationContext::required_components()
+                .iter()
+                .map(ToOwned::to_owned)
+                .collect(), //
+        ]
     }
 
     fn execute(

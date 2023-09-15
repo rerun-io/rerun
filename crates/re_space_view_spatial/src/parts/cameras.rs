@@ -1,11 +1,10 @@
 use glam::vec3;
-use nohash_hasher::IntSet;
 use re_components::{Pinhole, ViewCoordinates};
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     components::{InstanceKey, Transform3D},
-    ComponentName, Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
     NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -175,12 +174,12 @@ impl CamerasPart {
 }
 
 impl ViewPartSystem for CamerasPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         std::iter::once(Pinhole::name()).collect()
     }
 
     // TODO(#2816): use this instead
-    // fn required_components(&self) -> IntSet<ComponentName> {
+    // fn required_components(&self) -> ComponentNameSet {
     //     Pinhole::required_components().to_vec()
     // }
 

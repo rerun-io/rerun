@@ -61,6 +61,8 @@ pub trait Archetype {
 
     // ---
 
+    // TODO(cmc): Should we also generate and return static IntSets?
+
     /// Returns the names of all components that _must_ be provided by the user when constructing
     /// this archetype.
     fn required_components() -> std::borrow::Cow<'static, [ComponentName]>;

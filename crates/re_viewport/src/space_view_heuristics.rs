@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
@@ -6,7 +8,7 @@ use re_arrow_store::{LatestAtQuery, Timeline};
 use re_components::Pinhole;
 use re_data_store::EntityPath;
 use re_types::components::{DisconnectedSpace, TensorData};
-use re_types::ComponentName;
+use re_types::ComponentNameSet;
 use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
     ViewSystemName, ViewerContext,
@@ -464,22 +466,22 @@ pub fn identify_entities_per_system_per_class(
         re_tracing::profile_scope!("gather required components per systems");
 
         let mut systems_per_required_components: HashMap<
-            HashableIntSet<ComponentName>,
+            ComponentNameSet,
             IntMap<SpaceViewClassName, TinyVec<[ViewSystemName; 2]>>,
         > = HashMap::default();
         for (class_name, (context_collection, part_collection)) in &system_collections_per_class {
             for (system_name, part) in part_collection.iter_with_names() {
                 systems_per_required_components
-                    .entry(HashableIntSet(part.required_components()))
+                    .entry(part.required_components().into_iter().collect())
                     .or_default()
                     .entry(*class_name)
                     .or_default()
                     .push(system_name);
             }
             for (system_name, part) in context_collection.iter_with_names() {
-                for required_components in part.all_required_components() {
+                for components in part.compatible_component_sets() {
                     systems_per_required_components
-                        .entry(HashableIntSet(required_components))
+                        .entry(components.into_iter().collect())
                         .or_default()
                         .entry(*class_name)
                         .or_default()
@@ -499,10 +501,10 @@ pub fn identify_entities_per_system_per_class(
             continue;
         };
 
-        let all_components: IntSet<_> = components.into_iter().collect();
+        let all_components: BTreeSet<_> = components.into_iter().collect();
 
         for (required_components, systems_per_class) in &systems_per_required_components {
-            if !all_components.is_superset(&required_components.0) {
+            if !all_components.is_superset(required_components) {
                 continue;
             }
 
@@ -530,28 +532,4 @@ pub fn identify_entities_per_system_per_class(
     }
 
     entities_per_system_per_class
-}
-
-// ---
-
-#[derive(Debug, Clone, Eq)]
-struct HashableIntSet<T: nohash_hasher::IsEnabled + std::hash::Hash>(IntSet<T>);
-
-impl<T: nohash_hasher::IsEnabled + std::hash::Hash + PartialEq> PartialEq for HashableIntSet<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.len() == other.0.len()
-            && self
-                .0
-                .iter()
-                .zip(other.0.iter())
-                .all(|(left, right)| left == right)
-    }
-}
-
-impl<T: nohash_hasher::IsEnabled + std::hash::Hash> std::hash::Hash for HashableIntSet<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        for value in &self.0 {
-            value.hash(state);
-        }
-    }
 }

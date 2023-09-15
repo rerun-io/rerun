@@ -1,11 +1,10 @@
-use nohash_hasher::IntSet;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
     components::{Origin3D, Text, Vector3D},
-    Archetype as _, ComponentName,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -170,20 +169,15 @@ impl NamedViewSystem for Arrows3DPart {
 }
 
 impl ViewPartSystem for Arrows3DPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         Arrows3D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
-        components: &IntSet<ComponentName>,
-    ) -> bool {
-        components.contains(&Arrows3D::indicator_component())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Arrows3D::indicator_component()).collect()
     }
 
     fn execute(

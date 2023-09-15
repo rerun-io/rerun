@@ -1,7 +1,6 @@
 use ahash::HashMap;
-use nohash_hasher::IntSet;
 
-use re_types::ComponentName;
+use re_types::ComponentNameSet;
 
 use crate::{
     NamedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewSystemName, ViewerContext,
@@ -18,7 +17,7 @@ pub trait ViewContextSystem {
     ///
     /// A context may also not require any components at all and merely prepare caches or viewer
     /// related data instead.
-    fn all_required_components(&self) -> Vec<IntSet<ComponentName>>;
+    fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
     fn execute(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>);

@@ -26,7 +26,7 @@ pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
 };
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
-pub use view_part_system::{ViewPartCollection, ViewPartSystem};
+pub use view_part_system::{default_heuristic_filter, ViewPartCollection, ViewPartSystem};
 pub use view_query::ViewQuery;
 
 // ---------------------------------------------------------------------------

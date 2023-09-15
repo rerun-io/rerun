@@ -1,10 +1,9 @@
-use nohash_hasher::IntSet;
 use re_data_store::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
     components::{HalfSizes2D, Position2D},
-    Archetype, ComponentName,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
@@ -118,20 +117,15 @@ impl NamedViewSystem for Boxes2DPart {
 }
 
 impl ViewPartSystem for Boxes2DPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         Boxes2D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
-        components: &IntSet<ComponentName>,
-    ) -> bool {
-        components.contains(&Boxes2D::indicator_component())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Boxes2D::indicator_component()).collect()
     }
 
     fn execute(

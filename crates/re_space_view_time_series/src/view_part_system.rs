@@ -1,9 +1,9 @@
 use re_arrow_store::TimeRange;
 use re_query::{range_entity_with_primary, QueryError};
-use re_types::{components::InstanceKey, ComponentName, Loggable as _};
+use re_types::{components::InstanceKey, ComponentName, ComponentNameSet, Loggable as _};
 use re_viewer_context::{
-    external::nohash_hasher::IntSet, AnnotationMap, DefaultColor, NamedViewSystem,
-    SpaceViewSystemExecutionError, ViewPartSystem, ViewQuery, ViewerContext,
+    AnnotationMap, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 #[derive(Clone, Debug)]
@@ -67,7 +67,7 @@ impl NamedViewSystem for TimeSeriesSystem {
 }
 
 impl ViewPartSystem for TimeSeriesSystem {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         Self::archetype_array()
             .into_iter()
             .skip(1) // Skip [`InstanceKey`]
@@ -75,7 +75,7 @@ impl ViewPartSystem for TimeSeriesSystem {
     }
 
     // TODO(#3174): use this instead
-    // fn required_components(&self) -> IntSet<ComponentName> {
+    // fn required_components(&self) -> ComponentNameSet {
     //     ScalarOrWhateverItllBeCalled::required_components().to_vec()
     // }
 

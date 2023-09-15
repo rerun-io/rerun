@@ -7,7 +7,7 @@ use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
 use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
-use re_log_types::{ComponentName, EntityPathHash, TimeInt, Timeline};
+use re_log_types::{EntityPathHash, TimeInt, Timeline};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -17,11 +17,11 @@ use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
     components::{Color, DrawOrder, TensorData},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Archetype as _,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge, DefaultColor, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, gpu_bridge, DefaultColor, SpaceViewSystemExecutionError,
+    TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 
@@ -608,25 +608,46 @@ impl NamedViewSystem for ImagesPart {
 }
 
 impl ViewPartSystem for ImagesPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
-        Image::required_components()
+    fn required_components(&self) -> ComponentNameSet {
+        let image: ComponentNameSet = Image::required_components()
             .iter()
-            .chain(DepthImage::required_components().iter())
-            .chain(SegmentationImage::required_components().iter())
+            .map(ToOwned::to_owned)
+            .collect();
+        let depth_image: ComponentNameSet = DepthImage::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect();
+        let segmentation_image: ComponentNameSet = SegmentationImage::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect();
+
+        image
+            .intersection(&depth_image)
+            .map(ToOwned::to_owned)
+            .collect::<ComponentNameSet>()
+            .intersection(&segmentation_image)
             .map(ToOwned::to_owned)
             .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        [
+            Image::indicator_component(),
+            DepthImage::indicator_component(),
+            SegmentationImage::indicator_component(),
+        ]
+        .into_iter()
+        .collect()
     }
 
     fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        components: &IntSet<ComponentName>,
+        entity_components: &ComponentNameSet,
     ) -> bool {
-        let is_image = components.contains(&Image::indicator_component())
-            || components.contains(&DepthImage::indicator_component())
-            || components.contains(&SegmentationImage::indicator_component());
-        if !is_image {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 

@@ -1,11 +1,10 @@
-use nohash_hasher::IntSet;
 use re_components::Mesh3D;
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     components::{Color, InstanceKey},
-    ComponentName, Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
     DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -86,7 +85,7 @@ impl NamedViewSystem for MeshPart {
 }
 
 impl ViewPartSystem for MeshPart {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         std::iter::once(Mesh3D::name()).collect()
     }
 

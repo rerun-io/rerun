@@ -5,11 +5,11 @@ use re_types::{
     archetypes::Tensor,
     components::{InstanceKey, TensorData},
     tensor_data::DecodedTensor,
-    Archetype, ComponentName,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
-    TensorDecodeCache, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
@@ -24,11 +24,15 @@ impl NamedViewSystem for TensorSystem {
 }
 
 impl ViewPartSystem for TensorSystem {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         Tensor::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Tensor::indicator_component()).collect()
     }
 
     /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]
@@ -36,9 +40,9 @@ impl ViewPartSystem for TensorSystem {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        components: &IntSet<re_types::ComponentName>,
+        entity_components: &ComponentNameSet,
     ) -> bool {
-        if !components.contains(&re_types::archetypes::Tensor::indicator_component()) {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 

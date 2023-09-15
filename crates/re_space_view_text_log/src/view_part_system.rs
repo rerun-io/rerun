@@ -5,11 +5,11 @@ use re_query::{range_entity_with_primary, QueryError};
 use re_types::{
     archetypes::TextLog,
     components::{Color, InstanceKey, Text, TextLogLevel},
-    Archetype as _, ComponentName, Loggable as _,
+    Archetype as _, ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
-    external::nohash_hasher::IntSet, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 #[derive(Debug, Clone)]
@@ -42,20 +42,15 @@ impl NamedViewSystem for TextLogSystem {
 }
 
 impl ViewPartSystem for TextLogSystem {
-    fn required_components(&self) -> IntSet<ComponentName> {
+    fn required_components(&self) -> ComponentNameSet {
         TextLog::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
-        components: &IntSet<ComponentName>,
-    ) -> bool {
-        components.contains(&TextLog::indicator_component())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(TextLog::indicator_component()).collect()
     }
 
     fn execute(
