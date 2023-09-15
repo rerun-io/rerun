@@ -68,10 +68,7 @@ impl NamedViewSystem for TimeSeriesSystem {
 
 impl ViewPartSystem for TimeSeriesSystem {
     fn required_components(&self) -> ComponentNameSet {
-        Self::archetype_array()
-            .into_iter()
-            .skip(1) // Skip [`InstanceKey`]
-            .collect()
+        std::iter::once(re_components::Scalar::name()).collect()
     }
 
     // TODO(#3174): use this instead
