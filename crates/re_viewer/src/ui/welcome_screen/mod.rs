@@ -74,9 +74,22 @@ impl WelcomeScreen {
         let response: WelcomeScreenResponse = egui::ScrollArea::vertical()
             .id_source(("welcome_screen_page", &self.current_page))
             .auto_shrink([false, false])
-            .show(ui, |ui| match self.current_page {
-                WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
-                WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
+            .show(ui, |ui| {
+                let margin = egui::Margin {
+                    left: 40.0,
+                    right: 40.0,
+                    top: 16.0,
+                    bottom: 8.0,
+                };
+                egui::Frame {
+                    inner_margin: margin,
+                    ..Default::default()
+                }
+                .show(ui, |ui| match self.current_page {
+                    WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
+                    WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
+                })
+                .inner
             })
             .inner;
 

@@ -38,7 +38,6 @@ fn load_example_manifest() -> Vec<ExampleDesc> {
 }
 
 // TODO(ab): use design tokens
-const MARGINS: f32 = 40.0;
 const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 340.0;
 const MAX_COLUMN_COUNT: usize = 3;
@@ -108,129 +107,118 @@ impl ExamplePage {
         rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) -> WelcomeScreenResponse {
-        let mut margin = egui::Margin::same(MARGINS);
-        margin.bottom = MARGINS - ROW_VSPACE;
-        egui::Frame {
-            inner_margin: margin,
-            ..Default::default()
-        }
-        .show(ui, |ui| {
-            // vertical spacing isn't homogeneous so it's handled manually
-            let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
-            let column_count = (((ui.available_width() + grid_spacing.x)
-                / (MIN_COLUMN_WIDTH + grid_spacing.x))
-                .floor() as usize)
-                .clamp(1, MAX_COLUMN_COUNT);
-            let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
-                - grid_spacing.x)
-                .floor()
-                .at_most(MAX_COLUMN_WIDTH);
+        // vertical spacing isn't homogeneous so it's handled manually
+        let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
+        let column_count = (((ui.available_width() + grid_spacing.x)
+            / (MIN_COLUMN_WIDTH + grid_spacing.x))
+            .floor() as usize)
+            .clamp(1, MAX_COLUMN_COUNT);
+        let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
+            - grid_spacing.x)
+            .floor()
+            .at_most(MAX_COLUMN_WIDTH);
 
-            // this space is added on the left so that the grid is centered
-            let centering_space = (ui.available_width()
-                - column_count as f32 * column_width
-                - (column_count - 1) as f32 * grid_spacing.x)
-                .max(0.0)
-                / 2.0;
+        // this space is added on the left so that the grid is centered
+        let centering_hspace = (ui.available_width()
+            - column_count as f32 * column_width
+            - (column_count - 1) as f32 * grid_spacing.x)
+            .max(0.0)
+            / 2.0;
 
-            ui.horizontal(|ui| {
-                ui.add_space(centering_space);
+        ui.horizontal(|ui| {
+            ui.add_space(centering_hspace);
 
-                ui.vertical(|ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.add(egui::Label::new(
-                            egui::RichText::new("Examples.")
-                                .strong()
-                                .line_height(Some(32.0))
-                                .text_style(re_ui::ReUi::welcome_screen_h1()),
-                        ));
+            ui.vertical(|ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.add(egui::Label::new(
+                        egui::RichText::new("Examples.")
+                            .strong()
+                            .line_height(Some(32.0))
+                            .text_style(re_ui::ReUi::welcome_screen_h1()),
+                    ));
 
-                        ui.add(egui::Label::new(
-                            egui::RichText::new("Explore what you can build.")
-                                .line_height(Some(32.0))
-                                .text_style(re_ui::ReUi::welcome_screen_h1()),
-                        ));
+                    ui.add(egui::Label::new(
+                        egui::RichText::new("Explore what you can build.")
+                            .line_height(Some(32.0))
+                            .text_style(re_ui::ReUi::welcome_screen_h1()),
+                    ));
+                });
+
+                ui.add_space(TITLE_TO_GRID_VSPACE);
+
+                egui::Grid::new("example_page_grid")
+                    .spacing(grid_spacing)
+                    .min_col_width(column_width)
+                    .max_col_width(column_width)
+                    .show(ui, |ui| {
+                        self.examples
+                            .chunks_mut(column_count)
+                            .for_each(|example_layouts| {
+                                for example in &mut *example_layouts {
+                                    // this is the beginning of the first cell for this example
+                                    example.set_top_left(ui.cursor().min);
+
+                                    let thumbnail = &example.desc.thumbnail;
+                                    let width = thumbnail.width as f32;
+                                    let height = thumbnail.height as f32;
+                                    ui.vertical(|ui| {
+                                        let size =
+                                            egui::vec2(column_width, height * column_width / width);
+
+                                        example_thumbnail(
+                                            ui,
+                                            rx,
+                                            &example.desc,
+                                            size,
+                                            example.hovered(ui, self.id),
+                                        );
+
+                                        ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
+                                    });
+                                }
+
+                                ui.end_row();
+
+                                for example in &mut *example_layouts {
+                                    ui.vertical(|ui| {
+                                        example_description(
+                                            ui,
+                                            &example.desc,
+                                            example.hovered(ui, self.id),
+                                        );
+
+                                        ui.add_space(DESCRIPTION_TO_TAGS_VSPACE);
+                                    });
+                                }
+
+                                ui.end_row();
+
+                                for example in &mut *example_layouts {
+                                    ui.vertical(|ui| {
+                                        example_tags(ui, &example.desc);
+
+                                        // this is the end of the last cell for this example
+                                        example.set_bottom_right(egui::pos2(
+                                            ui.cursor().min.x + column_width,
+                                            ui.cursor().min.y,
+                                        ));
+
+                                        ui.add_space(ROW_VSPACE);
+                                    });
+                                }
+
+                                ui.end_row();
+                            });
                     });
 
-                    ui.add_space(TITLE_TO_GRID_VSPACE);
-
-                    egui::Grid::new("example_page_grid")
-                        .spacing(grid_spacing)
-                        .min_col_width(column_width)
-                        .max_col_width(column_width)
-                        .show(ui, |ui| {
-                            self.examples
-                                .chunks_mut(column_count)
-                                .for_each(|example_layouts| {
-                                    for example in &mut *example_layouts {
-                                        // this is the beginning of the first cell for this example
-                                        example.set_top_left(ui.cursor().min);
-
-                                        let thumbnail = &example.desc.thumbnail;
-                                        let width = thumbnail.width as f32;
-                                        let height = thumbnail.height as f32;
-                                        ui.vertical(|ui| {
-                                            let size = egui::vec2(
-                                                column_width,
-                                                height * column_width / width,
-                                            );
-
-                                            example_thumbnail(
-                                                ui,
-                                                rx,
-                                                &example.desc,
-                                                size,
-                                                example.hovered(ui, self.id),
-                                            );
-
-                                            ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
-                                        });
-                                    }
-
-                                    ui.end_row();
-
-                                    for example in &mut *example_layouts {
-                                        ui.vertical(|ui| {
-                                            example_description(
-                                                ui,
-                                                &example.desc,
-                                                example.hovered(ui, self.id),
-                                            );
-
-                                            ui.add_space(DESCRIPTION_TO_TAGS_VSPACE);
-                                        });
-                                    }
-
-                                    ui.end_row();
-
-                                    for example in &mut *example_layouts {
-                                        ui.vertical(|ui| {
-                                            example_tags(ui, &example.desc);
-
-                                            // this is the end of the last cell for this example
-                                            example.set_bottom_right(egui::pos2(
-                                                ui.cursor().min.x + column_width,
-                                                ui.cursor().min.y,
-                                            ));
-
-                                            ui.add_space(ROW_VSPACE);
-                                        });
-                                    }
-
-                                    ui.end_row();
-                                });
-                        });
-
-                    self.examples.iter().for_each(|example| {
-                        if example.clicked(ui, self.id) {
-                            let data_source = re_data_source::DataSource::RrdHttpUrl(
-                                example.desc.rrd_url.clone(),
-                            );
-                            command_sender.send_system(
-                                re_viewer_context::SystemCommand::LoadDataSource(data_source),
-                            );
-                        }
-                    });
+                self.examples.iter().for_each(|example| {
+                    if example.clicked(ui, self.id) {
+                        let data_source =
+                            re_data_source::DataSource::RrdHttpUrl(example.desc.rrd_url.clone());
+                        command_sender.send_system(
+                            re_viewer_context::SystemCommand::LoadDataSource(data_source),
+                        );
+                    }
                 });
             });
         });
