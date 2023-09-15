@@ -266,6 +266,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install gitignore_parser python-frontmatter
+          pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints
         run: |
@@ -278,6 +279,10 @@ jobs:
       - name: Check Python example requirements
         run: |
           ./scripts/ci/check_requirements.py
+
+      - name: Check Python example thumbnails
+        run: |
+          ./scripits/ci/thumbnails.py check
 
   # ---------------------------------------------------------------------------
 
