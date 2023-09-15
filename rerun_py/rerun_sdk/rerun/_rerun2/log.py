@@ -147,6 +147,11 @@ def log(
     arrow_arrays = [comp.as_arrow_batch() for comp in components]
 
     for name, array in zip(names, arrow_arrays):
+        # Stip off the ExtensionArray if it's present. We will always log via component_name.
+        # TODO(jleibs): Maybe warn if there is a name mismatch here.
+        if isinstance(array, pa.ExtensionArray):
+            array = array.storage
+
         if len(array) == 1 and num_instances > 1:
             splats[name] = array
         else:
