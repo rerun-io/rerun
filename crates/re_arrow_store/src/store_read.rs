@@ -1,10 +1,9 @@
 use std::{ops::RangeBounds, sync::atomic::Ordering};
 
 use itertools::Itertools;
-use nohash_hasher::IntSet;
 use re_log::trace;
 use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
-use re_types::ComponentName;
+use re_types::{ComponentName, ComponentNameSet};
 use smallvec::SmallVec;
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
@@ -107,7 +106,7 @@ impl DataStore {
             "query started…"
         );
 
-        let timeless: Option<IntSet<_>> = self
+        let timeless: Option<ComponentNameSet> = self
             .timeless_tables
             .get(&ent_path_hash)
             .map(|table| table.columns.keys().cloned().collect());

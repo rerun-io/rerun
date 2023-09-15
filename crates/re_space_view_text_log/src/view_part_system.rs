@@ -3,12 +3,13 @@ use re_data_store::EntityPath;
 use re_log_types::RowId;
 use re_query::{range_entity_with_primary, QueryError};
 use re_types::{
+    archetypes::TextLog,
     components::{Color, InstanceKey, Text, TextLogLevel},
-    Archetype as _, Loggable as _,
+    Archetype as _, ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 #[derive(Debug, Clone)]
@@ -41,15 +42,15 @@ impl NamedViewSystem for TextLogSystem {
 }
 
 impl ViewPartSystem for TextLogSystem {
-    fn archetype(&self) -> ArchetypeDefinition {
-        // TODO(#3159): use actual archetype definition
-        // TextLog::all_components().try_into().unwrap()
-        vec1::vec1![
-            re_types::archetypes::TextLog::indicator_component(),
-            Text::name(),
-            TextLogLevel::name(),
-            Color::name(),
-        ]
+    fn required_components(&self) -> ComponentNameSet {
+        TextLog::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(TextLog::indicator_component()).collect()
     }
 
     fn execute(

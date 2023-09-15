@@ -1,11 +1,11 @@
 use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
+use re_types::ComponentName;
 
 use crate::{
-    ArchetypeDefinition, AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities,
-    SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassName,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -48,7 +48,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Heuristic used to determine which space view is the best fit for a set of paths.
     ///
     /// For each path in `ent_paths`, at least one of the registered [`crate::ViewPartSystem`] for this class
-    /// returned true when calling [`crate::ViewPartSystem::queries_any_components_of`].
+    /// returned true when calling [`crate::ViewPartSystem::heuristic_filter`].
     fn auto_spawn_heuristic(
         &self,
         _ctx: &ViewerContext<'_>,
@@ -61,7 +61,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+    fn blueprint_archetype(&self) -> Option<Vec<ComponentName>> {
         None
     }
 
@@ -163,7 +163,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     }
 
     #[inline]
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+    fn blueprint_archetype(&self) -> Option<Vec<ComponentName>> {
         self.blueprint_archetype()
     }
 

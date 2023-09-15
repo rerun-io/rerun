@@ -4,11 +4,11 @@ use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     components::{InstanceKey, Transform3D},
-    Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::SpatialViewPartData;
@@ -174,9 +174,24 @@ impl CamerasPart {
 }
 
 impl ViewPartSystem for CamerasPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Pinhole::name(),]
+    fn required_components(&self) -> ComponentNameSet {
+        std::iter::once(Pinhole::name()).collect()
     }
+
+    // TODO(#2816): use this instead
+    // fn required_components(&self) -> ComponentNameSet {
+    //     Pinhole::required_components().to_vec()
+    // }
+
+    // TODO(#2816): use this instead
+    // fn heuristic_filter(
+    //     &self,
+    //     _store: &re_arrow_store::DataStore,
+    //     _ent_path: &EntityPath,
+    //     components: &[re_types::ComponentName],
+    // ) -> bool {
+    //     components.contains(&Pinhole::indicator_component())
+    // }
 
     fn execute(
         &mut self,

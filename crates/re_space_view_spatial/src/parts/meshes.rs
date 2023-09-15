@@ -4,11 +4,11 @@ use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     components::{Color, InstanceKey},
-    Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::SpatialViewPartData;
@@ -85,9 +85,24 @@ impl NamedViewSystem for MeshPart {
 }
 
 impl ViewPartSystem for MeshPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![Mesh3D::name(), InstanceKey::name(), Color::name()]
+    fn required_components(&self) -> ComponentNameSet {
+        std::iter::once(Mesh3D::name()).collect()
     }
+
+    // TODO(#2788): use this instead
+    // fn archetype(&self) -> Vec<ComponentName> {
+    //     Mesh3D::required_components().to_vec()
+    // }
+
+    // TODO(#2788): use this instead
+    // fn heuristic_filter(
+    //     &self,
+    //     _store: &re_arrow_store::DataStore,
+    //     _ent_path: &EntityPath,
+    //     components: &[re_types::ComponentName],
+    // ) -> bool {
+    //     components.contains(&Mesh3D::indicator_component())
+    // }
 
     fn execute(
         &mut self,
@@ -97,12 +112,13 @@ impl ViewPartSystem for MeshPart {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut instances = Vec::new();
 
+        let components = [Mesh3D::name(), InstanceKey::name(), Color::name()];
         process_entity_views::<MeshPart, _, 3, _>(
             ctx,
             query,
             view_ctx,
             0,
-            self.archetype(),
+            components.into_iter().collect(),
             |ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(ctx, &mut instances, &entity_view, ent_path, ent_context)
             },

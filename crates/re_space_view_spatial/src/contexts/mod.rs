@@ -41,7 +41,7 @@ impl NamedViewSystem for PrimitiveCounter {
 }
 
 impl ViewContextSystem for PrimitiveCounter {
-    fn archetypes(&self) -> Vec<re_viewer_context::ArchetypeDefinition> {
+    fn compatible_component_sets(&self) -> Vec<re_types::ComponentNameSet> {
         Vec::new()
     }
 

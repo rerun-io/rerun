@@ -1,19 +1,25 @@
 use ahash::HashMap;
 
+use re_types::ComponentNameSet;
+
 use crate::{
-    ArchetypeDefinition, NamedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewSystemName,
-    ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewSystemName, ViewerContext,
 };
 
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
 ///
 /// Is always populated before view part systems.
 pub trait ViewContextSystem {
-    /// Each scene context may query several archetypes.
+    /// Returns all the component sets that the system is compatible with.
     ///
-    /// This lists all archetypes that the context queries.
-    /// A context may also query no archetypes at all and prepare caches or viewer related data instead.
-    fn archetypes(&self) -> Vec<ArchetypeDefinition>;
+    /// If an entity path satisfies any of these sets, then the system will automatically run for
+    /// that entity path.
+    ///
+    /// Return an empty vec to specify that the system should never run automatically for any
+    /// specific entities.
+    /// It may still run once per frame as part of the global context if it has been registered to
+    /// do so, see [`crate::SpaceViewSystemRegistry`].
+    fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
     fn execute(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>);

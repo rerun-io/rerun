@@ -1,7 +1,5 @@
-use re_types::{components::AnnotationContext, Loggable};
-use re_viewer_context::{
-    AnnotationMap, ArchetypeDefinition, NamedViewSystem, ViewContextSystem, ViewSystemName,
-};
+use re_types::{archetypes::AnnotationContext, Archetype, ComponentNameSet};
+use re_viewer_context::{AnnotationMap, NamedViewSystem, ViewContextSystem, ViewSystemName};
 
 #[derive(Default)]
 pub struct AnnotationSceneContext(pub AnnotationMap);
@@ -13,8 +11,13 @@ impl NamedViewSystem for AnnotationSceneContext {
 }
 
 impl ViewContextSystem for AnnotationSceneContext {
-    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
-        vec![vec1::vec1![AnnotationContext::name()]]
+    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
+        vec![
+            AnnotationContext::required_components()
+                .iter()
+                .map(ToOwned::to_owned)
+                .collect(), //
+        ]
     }
 
     fn execute(

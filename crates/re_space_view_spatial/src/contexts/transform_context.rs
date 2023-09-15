@@ -6,9 +6,9 @@ use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
     components::{DisconnectedSpace, Transform3D},
-    Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
-use re_viewer_context::{ArchetypeDefinition, NamedViewSystem, ViewContextSystem};
+use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
 use crate::parts::image_view_coordinates;
 
@@ -64,11 +64,11 @@ impl Default for TransformContext {
 }
 
 impl ViewContextSystem for TransformContext {
-    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
+    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
-            vec1::vec1![Transform3D::name()],
-            vec1::vec1![Pinhole::name()],
-            vec1::vec1![DisconnectedSpace::name()],
+            std::iter::once(Transform3D::name()).collect(),
+            std::iter::once(Pinhole::name()).collect(),
+            std::iter::once(DisconnectedSpace::name()).collect(),
         ]
     }
 

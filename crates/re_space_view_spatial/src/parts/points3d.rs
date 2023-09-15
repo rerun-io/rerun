@@ -3,11 +3,11 @@ use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Points3D,
     components::{Position3D, Text},
-    Archetype as _,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use itertools::Itertools as _;
@@ -191,8 +191,15 @@ impl NamedViewSystem for Points3DPart {
 }
 
 impl ViewPartSystem for Points3DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Points3D::all_components().try_into().unwrap()
+    fn required_components(&self) -> ComponentNameSet {
+        Points3D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Points3D::indicator_component()).collect()
     }
 
     fn execute(

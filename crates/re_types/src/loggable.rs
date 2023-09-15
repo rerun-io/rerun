@@ -183,6 +183,8 @@ impl<L: Loggable<Name = ComponentName>> Component for L {}
 
 // ---
 
+pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
+
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
     pub struct ComponentName;

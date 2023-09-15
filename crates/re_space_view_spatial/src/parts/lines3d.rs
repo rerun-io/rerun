@@ -3,11 +3,11 @@ use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips3D,
     components::{LineStrip3D, Text},
-    Archetype as _,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -169,8 +169,15 @@ impl NamedViewSystem for Lines3DPart {
 }
 
 impl ViewPartSystem for Lines3DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        LineStrips3D::all_components().try_into().unwrap()
+    fn required_components(&self) -> ComponentNameSet {
+        LineStrips3D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(LineStrips3D::indicator_component()).collect()
     }
 
     fn execute(

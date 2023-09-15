@@ -4,11 +4,11 @@ use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
     components::{Origin3D, Text, Vector3D},
-    Archetype as _,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    ArchetypeDefinition, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
@@ -169,8 +169,15 @@ impl NamedViewSystem for Arrows3DPart {
 }
 
 impl ViewPartSystem for Arrows3DPart {
-    fn archetype(&self) -> ArchetypeDefinition {
-        Arrows3D::all_components().try_into().unwrap()
+    fn required_components(&self) -> ComponentNameSet {
+        Arrows3D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Arrows3D::indicator_component()).collect()
     }
 
     fn execute(
