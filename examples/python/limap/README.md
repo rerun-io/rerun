@@ -3,6 +3,7 @@ title: "3D Line Mapping Revisited"
 python: hhttps://github.com/rerun-io/limap
 tags: [2D, 3D, structure-from-motion, time-series, line-detection, pinhole-camera]
 thumbnail: https://static.rerun.io/1c99ab95ad2a9e673effa0e104f5240912c80850_limap_480w.png
+thumbnail_dimensions: [480, 277]
 ---
 
 Human-made environments contain a lot of straight lines, which are currently not exploited by most mapping approaches. With their recent work "3D Line Mapping Revisited" Shaohui Liu et al. take steps towards changing that.

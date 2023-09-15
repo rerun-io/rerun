@@ -4,6 +4,7 @@ python: https://github.com/rerun-io/rerun/blob/latest/examples/python/arkit_scen
 tags: [2D, 3D, depth, mesh, object-detection, pinhole-camera]
 description: "Visualize the ARKitScenes dataset, which contains color+depth images, the reconstructed mesh and labeled bounding boxes."
 thumbnail: https://static.rerun.io/8b90a80c72b27fad289806b7e5dff0c9ac97e87c_arkit_scenes_480w.png
+thumbnail_dimensions: [480, 243]
 build_args: []
 ---
 

@@ -4,6 +4,7 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/plots/main
 tags: [2d, plots, api-example]
 description: "Demonstration of various plots and charts supported by Rerun."
 thumbnail: https://static.rerun.io/ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4_plots_480w.png
+thumbnail_dimensions: [480, 271]
 build_args: []
 ---
 

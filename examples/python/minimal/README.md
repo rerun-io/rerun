@@ -3,6 +3,7 @@ title: Minimal example
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/minimal/main.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/minimal/src/main.rs
 thumbnail: https://static.rerun.io/92a1f80b5cf2cd2c04a10d8ced35849da8f1c0ed_minimal_480w.png
+thumbnail_dimensions: [480, 322]
 ---
 
 <picture>

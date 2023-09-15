@@ -3,6 +3,7 @@ title: Live Camera Edge Detection
 python: https://github.com/rerun-io/rerun/blob/latest/examples/python/live_camera_edge_detection/main.py
 tags: [2D, canny, live, opencv]
 thumbnail: https://static.rerun.io/06752fd08215ecd575219474dd886688c44acea8_live_camera_edge_detection_480w.png
+thumbnail_dimensions: [480, 364]
 ---
 
 <picture>
