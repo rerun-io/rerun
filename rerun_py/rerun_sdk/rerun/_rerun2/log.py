@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Protocol
+from typing import Any, Iterable, Protocol, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -19,6 +19,7 @@ EXT_PREFIX = "ext."
 ext_component_types: dict[str, Any] = {}
 
 
+@runtime_checkable
 class ComponentBatchLike(Protocol):
     """Describes interface for objects that can be converted to rerun Components."""
 
@@ -36,6 +37,7 @@ class ComponentBatchLike(Protocol):
         ...
 
 
+@runtime_checkable
 class ArchetypeLike(Protocol):
     """Describes interface for objects that can be logged via rr.log."""
 
@@ -137,6 +139,8 @@ def log(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    if not isinstance(entity, ArchetypeLike):
+        raise TypeError(f"Expected ArchetypeLike, got {type(entity)}")
 
     instanced: dict[str, NamedExtensionArray] = {}
     splats: dict[str, NamedExtensionArray] = {}
