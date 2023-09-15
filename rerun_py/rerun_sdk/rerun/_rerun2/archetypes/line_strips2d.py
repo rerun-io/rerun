@@ -77,7 +77,7 @@ class LineStrips2D(Archetype):
     radii: components.RadiusArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the line strips.
@@ -86,7 +86,7 @@ class LineStrips2D(Archetype):
     colors: components.ColorArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the line strips.
@@ -95,7 +95,7 @@ class LineStrips2D(Archetype):
     labels: components.TextArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the line strips.
@@ -104,7 +104,7 @@ class LineStrips2D(Archetype):
     draw_order: components.DrawOrderArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order of each line strip.
@@ -114,7 +114,7 @@ class LineStrips2D(Archetype):
     class_ids: components.ClassIdArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
+        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional `ClassId`s for the lines.
@@ -125,7 +125,7 @@ class LineStrips2D(Archetype):
     instance_keys: components.InstanceKeyArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual line strip in the batch.

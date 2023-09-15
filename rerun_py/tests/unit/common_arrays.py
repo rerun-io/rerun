@@ -56,7 +56,7 @@ def vec2ds_expected(obj: Any, type_: Any | None) -> Any:
 
     expected = none_empty_or_value(obj, [[1.0, 2.0], [3.0, 4.0]])
 
-    return type_.from_similar(expected)
+    return type_.optional_from_similar(expected)
 
 
 vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
@@ -89,7 +89,7 @@ def vec3ds_expected(obj: Any, type_: Any | None) -> Any:
 
     expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
-    return type_.from_similar(expected)
+    return type_.optional_from_similar(expected)
 
 
 rotations_arrays: list[rrd.Rotation3DArrayLike] = [
@@ -118,17 +118,19 @@ rotations_arrays: list[rrd.Rotation3DArrayLike] = [
 
 def expected_rotations(rotations: rrd.Rotation3DArrayLike, type_: Any) -> Any:
     if rotations is None:
-        return type_.from_similar(None)
+        return type_.optional_from_similar(None)
     elif hasattr(rotations, "__len__") and len(rotations) == 0:
-        return type_.from_similar(rotations)
+        return type_.optional_from_similar(rotations)
     elif isinstance(rotations, rrd.Rotation3D):
-        return type_.from_similar(rotations)
+        return type_.optional_from_similar(rotations)
     elif isinstance(rotations, rrd.RotationAxisAngle):
-        return type_.from_similar(rrd.RotationAxisAngle([1, 2, 3], 4))
+        return type_.optional_from_similar(rrd.RotationAxisAngle([1, 2, 3], 4))
     elif isinstance(rotations, rrd.Quaternion):
-        return type_.from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
+        return type_.optional_from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_.from_similar([rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)])
+        return type_.optional_from_similar(
+            [rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)]
+        )
 
 
 radii_arrays: list[rrc.RadiusArrayLike | None] = [
@@ -150,7 +152,7 @@ radii_arrays: list[rrc.RadiusArrayLike | None] = [
 def radii_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [1, 10])
 
-    return rrc.RadiusArray.from_similar(expected)
+    return rrc.RadiusArray.optional_from_similar(expected)
 
 
 colors_arrays: list[rrd.ColorArrayLike | None] = [
@@ -254,7 +256,7 @@ colors_arrays: list[rrd.ColorArrayLike | None] = [
 
 def colors_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [0xAA0000CC, 0x00BB00DD])
-    return rrc.ColorArray.from_similar(expected)
+    return rrc.ColorArray.optional_from_similar(expected)
 
 
 labels_arrays: list[rrd.Utf8ArrayLike | None] = [
@@ -272,7 +274,7 @@ labels_arrays: list[rrd.Utf8ArrayLike | None] = [
 
 def labels_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, ["hello", "friend"])
-    return rrc.TextArray.from_similar(expected)
+    return rrc.TextArray.optional_from_similar(expected)
 
 
 draw_orders: list[rrc.DrawOrderLike | None] = [
@@ -286,7 +288,7 @@ draw_orders: list[rrc.DrawOrderLike | None] = [
 
 def draw_order_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [300])
-    return rrc.DrawOrderArray.from_similar(expected)
+    return rrc.DrawOrderArray.optional_from_similar(expected)
 
 
 class_ids_arrays = [
@@ -309,7 +311,7 @@ class_ids_arrays = [
 
 def class_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [126, 127])
-    return rrc.ClassIdArray.from_similar(expected)
+    return rrc.ClassIdArray.optional_from_similar(expected)
 
 
 keypoint_ids_arrays = [
@@ -332,7 +334,7 @@ keypoint_ids_arrays = [
 
 def keypoint_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [2, 3])
-    return rrc.KeypointIdArray.from_similar(expected)
+    return rrc.KeypointIdArray.optional_from_similar(expected)
 
 
 instance_keys_arrays = [
@@ -349,4 +351,4 @@ instance_keys_arrays = [
 
 def instance_keys_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [U64_MAX_MINUS_1, U64_MAX])
-    return rrc.InstanceKeyArray.from_similar(expected)
+    return rrc.InstanceKeyArray.optional_from_similar(expected)

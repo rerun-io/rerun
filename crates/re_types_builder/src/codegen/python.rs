@@ -489,7 +489,11 @@ fn code_for_struct(
                 // Archetypes default to using `from_similar` from the Component
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
                 // archetype always delegate field init to the component array object
-                format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                if field.is_nullable {
+                    format!("converter={typ_unwrapped}Array.optional_from_similar, # type: ignore[misc]\n")
+                } else {
+                    format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                }
             } else if !default_converter.is_empty() {
                 code.push_text(&converter_function, 1, 0);
                 format!("converter={default_converter}")

@@ -48,7 +48,7 @@ class Points2D(Archetype):
     radii: components.RadiusArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the points, effectively turning them into circles.
@@ -57,7 +57,7 @@ class Points2D(Archetype):
     colors: components.ColorArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the points.
@@ -69,7 +69,7 @@ class Points2D(Archetype):
     labels: components.TextArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the points.
@@ -78,7 +78,7 @@ class Points2D(Archetype):
     draw_order: components.DrawOrderArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.
@@ -88,7 +88,7 @@ class Points2D(Archetype):
     class_ids: components.ClassIdArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
+        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional class Ids for the points.
@@ -99,7 +99,7 @@ class Points2D(Archetype):
     keypoint_ids: components.KeypointIdArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.KeypointIdArray.from_similar,  # type: ignore[misc]
+        converter=components.KeypointIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional keypoint IDs for the points, identifying them within a class.
@@ -115,7 +115,7 @@ class Points2D(Archetype):
     instance_keys: components.InstanceKeyArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual point in the batch.

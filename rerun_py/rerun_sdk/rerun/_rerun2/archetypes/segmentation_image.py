@@ -63,7 +63,7 @@ class SegmentationImage(Archetype, SegmentationImageExt):
     draw_order: components.DrawOrderArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.

@@ -28,12 +28,12 @@ class TextLog(Archetype):
     level: components.TextLogLevelArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.TextLogLevelArray.from_similar,  # type: ignore[misc]
+        converter=components.TextLogLevelArray.optional_from_similar,  # type: ignore[misc]
     )
     color: components.ColorArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

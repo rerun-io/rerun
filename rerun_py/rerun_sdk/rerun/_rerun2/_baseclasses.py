@@ -106,7 +106,14 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
     """The extension type class associated with this class."""
 
     @classmethod
-    def from_similar(cls, data: T | None) -> BaseExtensionArray[T] | None:
+    def optional_from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T] | None:
+        if data is None:
+            return None
+        else:
+            return cls.from_similar(data)
+
+    @classmethod
+    def from_similar(cls, data: T | None) -> BaseExtensionArray[T]:
         """
         Primary method for creating Arrow arrays for components.
 
@@ -130,8 +137,7 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
         if data is None:
             # TODO(https://github.com/rerun-io/rerun/issues/3341): Depending on what we decide
             # to do with optional components, we may want to revert this.
-            # pa_array = _empty_pa_array(data_type.storage_type)
-            return None
+            pa_array = _empty_pa_array(data_type.storage_type)
         else:
             pa_array = cls._native_to_pa_array(data, data_type.storage_type)
         return cast(BaseExtensionArray[T], data_type.wrap_array(pa_array))
@@ -234,12 +240,8 @@ class BaseDelegatingExtensionArray(BaseExtensionArray[T]):
     """The extension array class associated with this component's datatype."""
 
     @classmethod
-    def from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T] | None:
+    def from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T]:
         arr = cls._DELEGATED_ARRAY_TYPE.from_similar(data)
-        # TODO(https://github.com/rerun-io/rerun/issues/3341): Depending on what we decide
-        # to do with optional components, we may need to make this instead call `_empty_pa_array`
-        if arr is None:
-            return None
 
         # TODO(ab, cmc): we unwrap the type here because we can't have two layers of extension types for now
         return cast(BaseDelegatingExtensionArray[T], cls._EXTENSION_TYPE().wrap_array(arr.storage))

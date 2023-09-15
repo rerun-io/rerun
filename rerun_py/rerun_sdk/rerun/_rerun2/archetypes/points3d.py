@@ -45,7 +45,7 @@ class Points3D(Archetype):
     radii: components.RadiusArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the points, effectively turning them into circles.
@@ -54,7 +54,7 @@ class Points3D(Archetype):
     colors: components.ColorArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the points.
@@ -66,7 +66,7 @@ class Points3D(Archetype):
     labels: components.TextArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the points.
@@ -75,7 +75,7 @@ class Points3D(Archetype):
     class_ids: components.ClassIdArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
+        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional class Ids for the points.
@@ -86,7 +86,7 @@ class Points3D(Archetype):
     keypoint_ids: components.KeypointIdArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.KeypointIdArray.from_similar,  # type: ignore[misc]
+        converter=components.KeypointIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional keypoint IDs for the points, identifying them within a class.
@@ -102,7 +102,7 @@ class Points3D(Archetype):
     instance_keys: components.InstanceKeyArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual point in the batch.

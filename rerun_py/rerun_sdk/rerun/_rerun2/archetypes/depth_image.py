@@ -57,7 +57,7 @@ class DepthImage(Archetype, DepthImageExt):
     meter: components.DepthMeterArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.DepthMeterArray.from_similar,  # type: ignore[misc]
+        converter=components.DepthMeterArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies how long a meter is in the native depth units.
@@ -69,7 +69,7 @@ class DepthImage(Archetype, DepthImageExt):
     draw_order: components.DrawOrderArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.

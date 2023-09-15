@@ -51,7 +51,7 @@ def test_arrows3d() -> None:
         instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"rr2.Arrows3D(\n"
+            f"E: rr2.Arrows3D(\n"
             f"    {vectors}\n"
             f"    origins={origins}\n"
             f"    radii={radii}\n"
@@ -70,7 +70,7 @@ def test_arrows3d() -> None:
             class_ids=class_ids,
             instance_keys=instance_keys,
         )
-        print(f"{arch}\n")
+        print(f"A: {arch}\n")
 
         assert arch.vectors == vec3ds_expected(vectors, rrc.Vector3DArray)
         assert arch.origins == vec3ds_expected(origins, rrc.Origin3DArray)

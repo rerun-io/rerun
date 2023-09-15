@@ -95,7 +95,7 @@ class LineStrips3D(Archetype):
     radii: components.RadiusArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the line strips.
@@ -104,7 +104,7 @@ class LineStrips3D(Archetype):
     colors: components.ColorArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the line strips.
@@ -113,7 +113,7 @@ class LineStrips3D(Archetype):
     labels: components.TextArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the line strips.
@@ -122,7 +122,7 @@ class LineStrips3D(Archetype):
     class_ids: components.ClassIdArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
+        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional `ClassId`s for the lines.
@@ -133,7 +133,7 @@ class LineStrips3D(Archetype):
     instance_keys: components.InstanceKeyArray | None = field(
         metadata={"component": "secondary"},
         default=None,
-        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual line strip in the batch.
