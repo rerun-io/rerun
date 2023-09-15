@@ -102,6 +102,12 @@ fn onboarding_content_ui(
         },
     ];
 
+    // Shrink images if needed so user can see all of the content buttons
+    let max_image_height = ui.available_height() - 300.0;
+
+    let centering_vspace = (ui.available_height() - 650.0) / 2.0;
+    ui.add_space(centering_vspace.at_least(0.0));
+
     let panel_count = panels.len();
 
     const MAX_COLUMN_WIDTH: f32 = 255.0;
@@ -124,18 +130,13 @@ fn onboarding_content_ui(
         .floor()
         .at_most(MAX_COLUMN_WIDTH);
 
-    // this space is added on the left so that the grid is centered
-    let centering_hspace = (ui.available_width()
-        - column_count as f32 * column_width
-        - (column_count - 1) as f32 * grid_spacing.x)
-        .at_least(0.0)
-        / 2.0;
-
-    // Shrink images if needed so user can see the buttons
-    let max_image_height = ui.available_height() - 300.0;
-
     ui.horizontal(|ui| {
-        ui.add_space(centering_hspace);
+        // this space is added on the left so that the grid is centered
+        let centering_hspace = (ui.available_width()
+            - column_count as f32 * column_width
+            - (column_count - 1) as f32 * grid_spacing.x)
+            / 2.0;
+        ui.add_space(centering_hspace.at_least(0.0));
 
         ui.vertical(|ui| {
             ui.horizontal_wrapped(|ui| {
