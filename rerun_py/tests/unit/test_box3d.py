@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
-import numpy as np
 import rerun.experimental as rr2
 from rerun.experimental import cmp as rrc
 from rerun.experimental import dt as rrd
@@ -13,6 +12,7 @@ from .common_arrays import (
     class_ids_expected,
     colors_arrays,
     colors_expected,
+    expected_rotations,
     instance_keys_arrays,
     instance_keys_expected,
     is_empty,
@@ -21,7 +21,6 @@ from .common_arrays import (
     radii_arrays,
     radii_expected,
     rotations_arrays,
-    expected_rotations
 )
 from .common_arrays import (
     vec3ds_arrays as centers_arrays,
@@ -55,7 +54,7 @@ def test_boxes3d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         half_sizes = cast(rrd.Vec3DArrayLike, half_sizes)
         centers = cast(rrd.Vec3DArrayLike, centers)
-        rotations = cast(Optional[rrd.Rotation3DArrayLike], rotations)
+        rotations = cast(rrd.Rotation3DArrayLike, rotations)
         radii = cast(Optional[rrc.RadiusArrayLike], radii)
         colors = cast(Optional[rrd.ColorArrayLike], colors)
         labels = cast(Optional[rrd.Utf8ArrayLike], labels)
@@ -93,6 +92,7 @@ def test_boxes3d() -> None:
         assert arch.labels == labels_expected(is_empty(labels))
         assert arch.class_ids == class_ids_expected(is_empty(class_ids))
         assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+
 
 if __name__ == "__main__":
     test_boxes3d()
