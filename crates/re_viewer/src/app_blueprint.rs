@@ -79,6 +79,28 @@ impl<'a> AppBlueprint<'a> {
     }
 }
 
+pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut StoreDb) {
+    for (panel_name, expanded) in [
+        (PanelState::BLUEPRINT_VIEW_PATH, true),
+        (PanelState::SELECTION_VIEW_PATH, false),
+        (PanelState::TIMELINE_VIEW_PATH, false),
+    ] {
+        let entity_path = EntityPath::from(panel_name);
+        // TODO(jleibs): Seq instead of timeless?
+        let timepoint = TimePoint::timeless();
+
+        let component = PanelState { expanded };
+
+        let row =
+            DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component]);
+
+        welcome_screen_blueprint
+            .entity_db
+            .try_add_data_row(&row)
+            .unwrap();
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 impl<'a> AppBlueprint<'a> {
