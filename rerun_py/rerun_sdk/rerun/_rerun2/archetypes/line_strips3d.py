@@ -85,7 +85,7 @@ class LineStrips3D(Archetype):
     # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
 
     strips: components.LineStrip3DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.LineStrip3DArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -93,7 +93,7 @@ class LineStrips3D(Archetype):
     """
 
     radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -102,7 +102,7 @@ class LineStrips3D(Archetype):
     """
 
     colors: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -111,7 +111,7 @@ class LineStrips3D(Archetype):
     """
 
     labels: components.TextArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -120,7 +120,7 @@ class LineStrips3D(Archetype):
     """
 
     class_ids: components.ClassIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -131,7 +131,7 @@ class LineStrips3D(Archetype):
     """
 
     instance_keys: components.InstanceKeyArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )

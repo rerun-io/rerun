@@ -47,7 +47,7 @@ class DepthImage(Archetype, DepthImageExt):
     # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
     )
     """
@@ -55,7 +55,7 @@ class DepthImage(Archetype, DepthImageExt):
     """
 
     meter: components.DepthMeterArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.DepthMeterArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -67,7 +67,7 @@ class DepthImage(Archetype, DepthImageExt):
     """
 
     draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )

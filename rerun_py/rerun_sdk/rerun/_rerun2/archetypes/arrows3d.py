@@ -43,7 +43,7 @@ class Arrows3D(Archetype):
     # You can define your own __init__ function as a member of Arrows3DExt in arrows3d_ext.py
 
     vectors: components.Vector3DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.Vector3DArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -51,7 +51,7 @@ class Arrows3D(Archetype):
     """
 
     origins: components.Origin3DArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.Origin3DArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -60,7 +60,7 @@ class Arrows3D(Archetype):
     """
 
     radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -72,7 +72,7 @@ class Arrows3D(Archetype):
     """
 
     colors: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -81,7 +81,7 @@ class Arrows3D(Archetype):
     """
 
     labels: components.TextArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -90,7 +90,7 @@ class Arrows3D(Archetype):
     """
 
     class_ids: components.ClassIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -101,7 +101,7 @@ class Arrows3D(Archetype):
     """
 
     instance_keys: components.InstanceKeyArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )

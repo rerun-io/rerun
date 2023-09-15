@@ -47,8 +47,14 @@ class Archetype:
         return type(self).__name__
 
     def num_instances(self) -> int:
+        """
+        The number of instances that make up the batch.
+
+        Part of the `ArchetypeLike` interface.
+        """
         for fld in fields(type(self)):
-            if "component" in fld.metadata and fld.metadata["component"] == "primary":
+            # TODO(jleibs): What to do if multiple required components have different lengths?
+            if "component" in fld.metadata and fld.metadata["component"] == "required":
                 return len(getattr(self, fld.name))
         raise ValueError("Archetype has no primary component")
 

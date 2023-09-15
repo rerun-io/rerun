@@ -53,7 +53,7 @@ class SegmentationImage(Archetype, SegmentationImageExt):
     # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
     )
     """
@@ -61,7 +61,7 @@ class SegmentationImage(Archetype, SegmentationImageExt):
     """
 
     draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )

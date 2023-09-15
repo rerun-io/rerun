@@ -38,7 +38,7 @@ class Points2D(Archetype):
     # You can define your own __init__ function as a member of Points2DExt in points2d_ext.py
 
     positions: components.Position2DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.Position2DArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -46,7 +46,7 @@ class Points2D(Archetype):
     """
 
     radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -55,7 +55,7 @@ class Points2D(Archetype):
     """
 
     colors: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -67,7 +67,7 @@ class Points2D(Archetype):
     """
 
     labels: components.TextArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -76,7 +76,7 @@ class Points2D(Archetype):
     """
 
     draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -86,7 +86,7 @@ class Points2D(Archetype):
     """
 
     class_ids: components.ClassIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -97,7 +97,7 @@ class Points2D(Archetype):
     """
 
     keypoint_ids: components.KeypointIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.KeypointIdArray.optional_from_similar,  # type: ignore[misc]
     )
@@ -113,7 +113,7 @@ class Points2D(Archetype):
     """
 
     instance_keys: components.InstanceKeyArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )

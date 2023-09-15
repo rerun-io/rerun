@@ -638,7 +638,7 @@ fn code_for_struct(
             let metadata = if *kind == ObjectKind::Archetype {
                 format!(
                     "\nmetadata={{'component': '{}'}}, ",
-                    if *is_nullable { "secondary" } else { "primary" }
+                    if *is_nullable { "optional" } else { "required" }
                 )
             } else {
                 String::new()

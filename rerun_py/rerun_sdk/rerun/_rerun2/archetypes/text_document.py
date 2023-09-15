@@ -22,7 +22,7 @@ class TextDocument(Archetype):
     # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
 
     body: components.TextArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.TextArray.from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
