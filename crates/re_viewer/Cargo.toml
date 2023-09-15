@@ -113,6 +113,9 @@ web-sys = { version = "0.3.52", features = ["Window"] }
 
 [build-dependencies]
 re_build_tools.workspace = true
+
+# External
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+xshell = "0.2"

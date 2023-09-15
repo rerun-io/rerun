@@ -20,9 +20,6 @@ run-wasm = "run --release --package run_wasm --"
 # so that we don't run them on cargo publish or on users machines.
 IS_IN_RERUN_WORKSPACE = "yes"
 
-# The build script in `re_viewer` uses this to build the `example_manifest.json`.
-EXAMPLES_MANIFEST_BASE_URL = "https://demo.rerun.io/version/nightly"
-
 # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses,
 # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
 # as well as WebGPU apis.

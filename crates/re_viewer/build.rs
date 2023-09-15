@@ -1,5 +1,8 @@
 use std::path::Path;
 
+use xshell::cmd;
+use xshell::Shell;
+
 type AnyError = Box<dyn std::error::Error + Send + Sync + 'static>;
 type Result<T, E = AnyError> = std::result::Result<T, E>;
 
@@ -18,6 +21,34 @@ macro_rules! error {
 macro_rules! bail {
     ($lit:literal) => (return Err(error!($lit)));
     ($($tt:tt)*) => (return Err(error!($($tt)*).into()));
+}
+
+fn git_branch_name(sh: &Shell) -> Result<String> {
+    Ok(String::from_utf8(
+        cmd!(sh, "git rev-parse --abbrev-ref HEAD").output()?.stdout,
+    )?)
+}
+
+fn git_short_hash(sh: &Shell) -> Result<String> {
+    let full_hash = String::from_utf8(cmd!(sh, "git rev-parse HEAD").output()?.stdout)?;
+    Ok(full_hash.trim()[0..7].to_string())
+}
+
+fn parse_release_version(branch: &str) -> Option<String> {
+    // release-\d+.\d+.\d+
+
+    let branch = branch.strip_prefix("release-")?;
+
+    let mut version_parts = branch.split('.');
+    let major = version_parts.next()?.parse::<u8>().ok()?;
+    let minor = version_parts.next()?.parse::<u8>().ok()?;
+    let patch = version_parts.next()?.parse::<u8>().ok()?;
+
+    if version_parts.next().is_some() {
+        return None;
+    }
+
+    Some(format!("{major}.{minor}.{patch}"))
 }
 
 #[derive(serde::Deserialize)]
@@ -49,7 +80,7 @@ struct Thumbnail {
 }
 
 impl TryFrom<Example> for ManifestEntry {
-    type Error = Error;
+    type Error = AnyError;
     fn try_from(example: Example) -> Result<Self, Self::Error> {
         macro_rules! get {
             ($e:ident, $f:ident) => {
@@ -60,8 +91,25 @@ impl TryFrom<Example> for ManifestEntry {
             };
         }
 
-        let base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
+        let mut base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
             .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
+
+        if std::env::var("CI").is_ok() {
+            // We're in CI:
+            let sh = Shell::new()?;
+            let branch = git_branch_name(&sh)?;
+            // If we are on `main`, leave the base url at `version/nightly`
+            if branch != "main" {
+                if let Some(version) = parse_release_version(&branch) {
+                    // In builds on `release-x.y.z` branches, use `version/{x.y.z}`.
+                    base_url = format!("https://demo.rerun.io/version/{version}");
+                } else {
+                    // On any other branch, use `commit/{short_sha}`.
+                    let sha = git_short_hash(&sh)?;
+                    base_url = format!("https://demo.rerun.io/commit/{sha}");
+                }
+            }
+        }
 
         let thumbnail_dimensions = get!(example, thumbnail_dimensions);
 

@@ -4792,6 +4792,7 @@ dependencies = [
  "web-time",
  "wgpu",
  "winapi",
+ "xshell",
 ]
 
 [[package]]
