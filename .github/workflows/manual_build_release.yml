@@ -116,7 +116,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
-      MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: true
       RRD_ARTIFACT_NAME: linux-rrd
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
@@ -137,7 +136,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
-      MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: true
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
