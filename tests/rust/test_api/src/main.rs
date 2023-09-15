@@ -25,23 +25,18 @@ use rerun::{
 
 fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
-        archetypes::Transform3D,
-        components::{Box3D, Color, Radius, Text},
+        archetypes::{Boxes3D, Transform3D},
+        components::Color,
         datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D},
     };
 
     rec.set_time_seconds("sim_time", 0f64);
-    // TODO(#2786): Box3D archetype
-    rec.log_component_batches(
+    rec.log(
         "bbox_test/bbox",
-        false,
-        1,
-        [
-            &Box3D::new(1.0, 0.5, 0.25) as _,
-            &Color::from(0x00FF00FF) as _,
-            &Radius(0.005) as _,
-            &Text("box/t0".into()) as _,
-        ],
+        &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
+            .with_colors([0x00FF00FF])
+            .with_radii([0.005])
+            .with_labels(["box/t0"]),
     )?;
     rec.log(
         "bbox_test/bbox",
@@ -52,16 +47,13 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     rec.set_time_seconds("sim_time", 1f64);
-    rec.log_component_batches(
+
+    rec.log(
         "bbox_test/bbox",
-        false,
-        1,
-        [
-            &Box3D::new(1.0, 0.5, 0.25) as _,
-            &Color::from_rgb(255, 255, 0) as _,
-            &Radius(0.01) as _,
-            &Text("box/t1".into()) as _,
-        ],
+        &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
+            .with_colors([Color::from_rgb(255, 255, 0)])
+            .with_radii([0.01])
+            .with_labels(["box/t1"]),
     )?;
     rec.log(
         "bbox_test/bbox",

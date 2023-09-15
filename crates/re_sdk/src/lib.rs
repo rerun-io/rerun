@@ -70,8 +70,8 @@ pub mod time {
 /// and can be used in [`RecordingStream::log_component_batches`].
 pub mod components {
     pub use re_components::{
-        Box3D, EncodedMesh3D, Mesh3D, MeshFormat, Pinhole, Quaternion, RawMesh3D, Scalar,
-        ScalarPlotProps, ViewCoordinates,
+        EncodedMesh3D, Mesh3D, MeshFormat, Pinhole, Quaternion, RawMesh3D, Scalar, ScalarPlotProps,
+        ViewCoordinates,
     };
     pub use re_types::components::{
         AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, HalfSizes2D, HalfSizes3D,
