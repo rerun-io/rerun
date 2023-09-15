@@ -145,7 +145,14 @@ def log(
     num_instances = entity.num_instances()
     components = entity.as_component_batches()
 
-    log_components(entity_path, components, num_instances, ext, timeless, recording)
+    log_components(
+        entity_path=entity_path,
+        components=components,
+        num_instances=num_instances,
+        ext=ext,
+        timeless=timeless,
+        recording=recording,
+    )
 
 
 def log_components(
@@ -185,6 +192,8 @@ def log_components(
     """
     instanced: dict[str, NamedExtensionArray] = {}
     splats: dict[str, NamedExtensionArray] = {}
+
+    components = list(components)
 
     names = [comp.component_name() for comp in components]
     arrow_arrays = [comp.as_arrow_batch() for comp in components]
