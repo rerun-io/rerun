@@ -56,7 +56,7 @@ class Archetype:
             # TODO(jleibs): What to do if multiple required components have different lengths?
             if "component" in fld.metadata and fld.metadata["component"] == "required":
                 return len(getattr(self, fld.name))
-        raise ValueError("Archetype has no primary component")
+        raise ValueError("Archetype has no required components")
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """Return all the component batches that make up the archetype."""
