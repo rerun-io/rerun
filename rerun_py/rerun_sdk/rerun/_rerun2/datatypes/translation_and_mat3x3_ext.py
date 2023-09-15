@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
+    from ..log import ComponentBatchLike
     from . import Mat3x3Like, Vec3DLike
 
 
@@ -17,3 +18,13 @@ class TranslationAndMat3x3Ext:
         self.__attrs_init__(  # pyright: ignore[reportGeneralTypeIssues]
             translation=translation, matrix=matrix, from_parent=from_parent
         )
+
+    # Implement the ArchetypeLike protocol
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        from ..archetypes import Transform3D
+
+        return Transform3D(self).as_component_batches()
+
+    def num_instances(self) -> int:
+        # Always a mono-component
+        return 1

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Iterable, cast
 
 import numpy as np
 import pyarrow as pa
@@ -8,6 +8,7 @@ import pyarrow as pa
 from .._unions import build_dense_union, union_discriminant_type
 
 if TYPE_CHECKING:
+    from ..log import ComponentBatchLike
     from . import (
         Mat3x3,
         Rotation3D,
@@ -46,6 +47,16 @@ class Transform3DExt:
         # TODO(clement) enable extension type wrapper
         # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
         return storage
+
+    # Implement the ArchetypeLike protocol
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        from ..archetypes import Transform3D
+
+        return Transform3D(self).as_component_batches()
+
+    def num_instances(self) -> int:
+        # Always a mono-component
+        return 1
 
 
 # TODO(#2623): lots of boilerplate here that could be auto-generated
