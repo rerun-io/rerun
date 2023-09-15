@@ -161,8 +161,6 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
         data_type = cls._EXTENSION_TYPE()
 
         if data is None:
-            # TODO(https://github.com/rerun-io/rerun/issues/3341): Depending on what we decide
-            # to do with optional components, we may want to revert this.
             pa_array = _empty_pa_array(data_type.storage_type)
         else:
             pa_array = cls._native_to_pa_array(data, data_type.storage_type)

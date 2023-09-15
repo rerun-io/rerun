@@ -169,7 +169,7 @@ def log(
             recording=recording,
         )
 
-    # Always the instanced components last so range-based queries will include the other data. See(#1215)
+    # Always log the instanced components last so range-based queries will include the other data. See(#1215)
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,
         components=instanced,
