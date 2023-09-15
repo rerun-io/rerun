@@ -50,7 +50,7 @@ class Archetype:
         """
         The number of instances that make up the batch.
 
-        Part of the `ArchetypeLike` interface.
+        Part of the `ArchetypeLike` logging interface.
         """
         for fld in fields(type(self)):
             # TODO(jleibs): What to do if multiple required components have different lengths?
@@ -59,7 +59,11 @@ class Archetype:
         raise ValueError("Archetype has no required components")
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
-        """Return all the component batches that make up the archetype."""
+        """
+        Return all the component batches that make up the archetype.
+
+        Part of the `ArchetypeLike` logging interface.
+        """
 
         yield IndicatorComponent(self.archetype_name(), self.num_instances())
 
@@ -198,9 +202,19 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
         raise NotImplementedError
 
     def component_name(self) -> str:
+        """
+        The name of the component.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
         return self.extension_name
 
     def as_arrow_batch(self) -> pa.Array:
+        """
+        The component as an arrow batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
         return self
 
 
