@@ -107,6 +107,23 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
 
     @classmethod
     def optional_from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T] | None:
+        """
+        Primary method for creating Arrow arrays for optional components.
+
+        For optional components, the default value of None is preserved in the field to indicate that the optional
+        field was not specified.
+
+        If any value other than None is provided, it is passed through to `from_similar`.
+
+        Parameters
+        ----------
+        data : T | None
+            The data to convert into an Arrow array.
+
+        Returns
+        -------
+        The Arrow array encapsulating the data.
+        """
         if data is None:
             return None
         else:
@@ -115,10 +132,13 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
     @classmethod
     def from_similar(cls, data: T | None) -> BaseExtensionArray[T]:
         """
-        Primary method for creating Arrow arrays for components.
+        Primary method for creating Arrow arrays for required components.
 
         This method must flexibly accept native data (which comply with type `T`). Subclasses must provide a type
         parameter specifying the type of the native data (this is automatically handled by the code generator).
+
+        A value of None indicates that the component should be cleared and results in the creation of an empty
+        array.
 
         The actual creation of the Arrow array is delegated to the `_native_to_pa_array()` method, which is not
         implemented by default.
