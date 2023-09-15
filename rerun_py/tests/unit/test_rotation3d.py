@@ -13,6 +13,8 @@ def test_rotation3d() -> None:
         print(f"rrd.Rotation3DArray.from_similar({rotations})")
         datatype = rrd.Rotation3DArray.from_similar(rotations)
         print(f"{datatype}\n")
+        expected = expected_rotations(rotations, rrd.Rotation3DArray)
+        print(f"{expected}\n")
 
         assert datatype == expected_rotations(rotations, rrd.Rotation3DArray)
 

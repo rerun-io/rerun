@@ -14,7 +14,6 @@ from .common_arrays import (
     colors_expected,
     instance_keys_arrays,
     instance_keys_expected,
-    is_empty,
     labels_arrays,
     labels_expected,
     radii_arrays,
@@ -73,13 +72,13 @@ def test_arrows3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.vectors == vec3ds_expected(is_empty(vectors), rrc.Vector3DArray)
-        assert arch.origins == vec3ds_expected(is_empty(origins), rrc.Origin3DArray)
-        assert arch.radii == radii_expected(is_empty(radii))
-        assert arch.colors == colors_expected(is_empty(colors))
-        assert arch.labels == labels_expected(is_empty(labels))
-        assert arch.class_ids == class_ids_expected(is_empty(class_ids))
-        assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+        assert arch.vectors == vec3ds_expected(vectors, rrc.Vector3DArray)
+        assert arch.origins == vec3ds_expected(origins, rrc.Origin3DArray)
+        assert arch.radii == radii_expected(radii)
+        assert arch.colors == colors_expected(colors)
+        assert arch.labels == labels_expected(labels)
+        assert arch.class_ids == class_ids_expected(class_ids)
+        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 if __name__ == "__main__":

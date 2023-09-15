@@ -18,9 +18,9 @@ from .common_arrays import (
     draw_orders,
     instance_keys_arrays,
     instance_keys_expected,
-    is_empty,
     labels_arrays,
     labels_expected,
+    none_empty_or_value,
     radii_arrays,
     radii_expected,
 )
@@ -29,8 +29,8 @@ strips_arrays: list[rrc.LineStrip2DArrayLike] = [
     [],
     np.array([]),
     [
-        [rrd.Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],  # type: ignore[list-item]
-        [rrd.Vec2D([0, 3]), (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],  # type: ignore[list-item]
+        [rrd.Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],
+        [rrd.Vec2D([0, 3]), (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
     ],
     [
         [0, 0, 2, 1, 4, -1, 6, 0],
@@ -52,15 +52,16 @@ strips_arrays: list[rrc.LineStrip2DArrayLike] = [
 ]
 
 
-def line_strips2d_expected(empty: bool) -> Any:
-    return rrc.LineStrip2DArray.from_similar(
-        []
-        if empty
-        else [
+def line_strips2d_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(
+        obj,
+        [
             [[0, 0], [2, 1], [4, -1], [6, 0]],
             [[0, 3], [1, 4], [2, 2], [3, 4], [4, 2], [5, 4], [6, 3]],
-        ]
+        ],
     )
+
+    return rrc.LineStrip2DArray.from_similar(expected)
 
 
 def test_line_strips2d() -> None:
@@ -108,13 +109,13 @@ def test_line_strips2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.strips == line_strips2d_expected(is_empty(strips))
-        assert arch.radii == radii_expected(is_empty(radii))
-        assert arch.colors == colors_expected(is_empty(colors))
-        assert arch.labels == labels_expected(is_empty(labels))
-        assert arch.draw_order == draw_order_expected(is_empty(draw_order))
-        assert arch.class_ids == class_ids_expected(is_empty(class_ids))
-        assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+        assert arch.strips == line_strips2d_expected(strips)
+        assert arch.radii == radii_expected(radii)
+        assert arch.colors == colors_expected(colors)
+        assert arch.labels == labels_expected(labels)
+        assert arch.draw_order == draw_order_expected(draw_order)
+        assert arch.class_ids == class_ids_expected(class_ids)
+        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 @pytest.mark.parametrize(
