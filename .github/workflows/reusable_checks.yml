@@ -282,7 +282,7 @@ jobs:
 
       - name: Check Python example thumbnails
         run: |
-          ./scripits/ci/thumbnails.py check
+          ./scripts/ci/thumbnails.py check
 
   # ---------------------------------------------------------------------------
 
