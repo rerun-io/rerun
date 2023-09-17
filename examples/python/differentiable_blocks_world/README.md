@@ -5,7 +5,7 @@ tags: [3D, mesh, pinhole-camera]
 thumbnail: https://static.rerun.io/fd44aa668cdebc6a4c14ff038e28f48cfb83c5ee_dbw_480w.png
 ---
 
-Finding a textured mesh decomposition from a collection of posed images is a very challenging optimization problem. "Differentiable Block Worlds" by Tom Monnier et al. shows impressive results using differentiable rendering. I visualized how this optimization works using the Rerun SDK.
+Finding a textured mesh decomposition from a collection of posed images is a very challenging optimization problem. "Differentiable Block Worlds" by Tom Monnier et al. shows impressive results using differentiable rendering. Here we visualize how this optimization works using the Rerun SDK.
 
 <div style="aspect-ratio:1/0.7309;position:relative;margin-left:auto;margin-right:auto;margin-bottom:1.25rem;max-height:22rem;color-scheme:none;"><iframe src="https://player.vimeo.com/video/865326948?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
