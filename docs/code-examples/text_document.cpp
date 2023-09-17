@@ -14,7 +14,8 @@ int main() {
     rr_stream.log("text_document", rr::archetypes::TextDocument("Hello, TextDocument!"));
     rr_stream.log(
         "markdown",
-        rr::archetypes::TextDocument("# Hello\nMarkdown with `code`!")
-            .with_media_type(MediaType::markdown())
+        rr::archetypes::TextDocument("# Hello\nMarkdown with `code`!\n\nA random image:\n![A "
+                                     "random image](https://picsum.photos/640/480)")
+            .with_media_type(rr::components::MediaType::markdown())
     );
 }

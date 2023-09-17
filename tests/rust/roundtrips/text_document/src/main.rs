@@ -17,7 +17,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log("text_document", &TextDocument::new("Hello, TextDocument!"))?;
     rec.log(
         "markdown",
-        &TextDocument::new("# Hello\nMarkdown with `code`!").with_media_type(MediaType::markdown()),
+        &TextDocument::new("# Hello\nMarkdown with `code`!\n\nA random image:\n\n![A random image](https://picsum.photos/640/480)").with_media_type(MediaType::markdown()),
     )?;
     Ok(())
 }
