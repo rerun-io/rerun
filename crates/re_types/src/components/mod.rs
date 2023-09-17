@@ -23,6 +23,7 @@ mod line_strip2d_ext;
 mod line_strip3d;
 mod line_strip3d_ext;
 mod media_type;
+mod media_type_ext;
 mod origin2d;
 mod origin2d_ext;
 mod origin3d;

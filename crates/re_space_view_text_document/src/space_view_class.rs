@@ -1,17 +1,23 @@
 use egui::Label;
+
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
+use crate::view_part_system::TextDocumentEntry;
+
 use super::view_part_system::TextDocumentSystem;
 
 // TODO(andreas): This should be a blueprint component.
-#[derive(Clone, PartialEq, Eq)]
+
 pub struct TextDocumentSpaceViewState {
     monospace: bool,
     word_wrap: bool,
+
+    #[cfg(feature = "markdown")]
+    commonmark_cache: egui_commonmark::CommonMarkCache,
 }
 
 impl Default for TextDocumentSpaceViewState {
@@ -19,6 +25,9 @@ impl Default for TextDocumentSpaceViewState {
         Self {
             monospace: false,
             word_wrap: true,
+
+            #[cfg(feature = "markdown")]
+            commonmark_cache: Default::default(),
         }
     }
 }
@@ -108,8 +117,25 @@ impl SpaceViewClass for TextDocumentSpaceView {
                         if text_document.text_entries.is_empty() {
                             ui.label("No TextDocument entries found.");
                         } else if text_document.text_entries.len() == 1 {
-                            let mut text =
-                                egui::RichText::new(text_document.text_entries[0].body.as_str());
+                            let TextDocumentEntry { body, media_type } =
+                                &text_document.text_entries[0];
+
+                            #[cfg(feature = "markdown")]
+                            {
+                                if media_type == &re_types::components::MediaType::markdown() {
+                                    re_tracing::profile_scope!("egui_commonmark");
+                                    egui_commonmark::CommonMarkViewer::new("markdown_viewer")
+                                        .max_image_width(Some(ui.available_width().floor() as _))
+                                        .show(ui, &mut state.commonmark_cache, body);
+                                    return;
+                                }
+                            }
+                            #[cfg(not(feature = "markdown"))]
+                            {
+                                _ = media_type;
+                            }
+
+                            let mut text = egui::RichText::new(body.as_str());
 
                             if state.monospace {
                                 text = text.monospace();

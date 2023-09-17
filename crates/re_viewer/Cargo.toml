@@ -55,7 +55,7 @@ re_smart_channel.workspace = true
 re_space_view_bar_chart.workspace = true
 re_space_view_spatial.workspace = true
 re_space_view_tensor.workspace = true
-re_space_view_text_document.workspace = true
+re_space_view_text_document = { workspace = true, features = ["markdown"] }
 re_space_view_text_log.workspace = true
 re_space_view_time_series.workspace = true
 re_time_panel.workspace = true
