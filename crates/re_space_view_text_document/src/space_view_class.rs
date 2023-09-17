@@ -113,9 +113,9 @@ impl SpaceViewClass for TextDocumentSpaceView {
                 egui::ScrollArea::both()
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
-                        // TODO(jleibs): better handling for multiple results
                         if text_document.text_entries.is_empty() {
-                            ui.label("No TextDocument entries found.");
+                            // We get here if we scroll back time to before the first text document was logged.
+                            ui.weak("(empty)");
                         } else if text_document.text_entries.len() == 1 {
                             let TextDocumentEntry { body, media_type } =
                                 &text_document.text_entries[0];
@@ -143,6 +143,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
 
                             ui.add(Label::new(text).wrap(state.word_wrap));
                         } else {
+                            // TODO(jleibs): better handling for multiple results
                             ui.label(format!(
                                 "Can only show one text document at a time; was given {}.",
                                 text_document.text_entries.len()
