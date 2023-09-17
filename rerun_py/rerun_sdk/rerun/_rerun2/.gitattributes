@@ -53,6 +53,7 @@ components/instance_key.py linguist-generated=true
 components/keypoint_id.py linguist-generated=true
 components/line_strip2d.py linguist-generated=true
 components/line_strip3d.py linguist-generated=true
+components/media_type.py linguist-generated=true
 components/origin2d.py linguist-generated=true
 components/origin3d.py linguist-generated=true
 components/position2d.py linguist-generated=true

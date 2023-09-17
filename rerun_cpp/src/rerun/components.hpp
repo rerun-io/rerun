@@ -14,6 +14,7 @@
 #include "components/keypoint_id.hpp"
 #include "components/line_strip2d.hpp"
 #include "components/line_strip3d.hpp"
+#include "components/media_type.hpp"
 #include "components/origin2d.hpp"
 #include "components/origin3d.hpp"
 #include "components/position2d.hpp"
