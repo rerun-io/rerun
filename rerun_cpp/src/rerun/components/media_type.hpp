@@ -32,6 +32,21 @@ namespace rerun {
             static const char NAME[];
 
           public:
+            // Extensions to generated type defined in 'media_type_ext.cpp'
+
+            MediaType(const char* media_type) : value(media_type) {}
+
+            /// `text/plain`
+            static MediaType plain_text() {
+                return "text/plain";
+            }
+
+            /// `text/markdown`
+            static MediaType markdown() {
+                return "text/markdown";
+            }
+
+          public:
             MediaType() = default;
 
             MediaType(rerun::datatypes::Utf8 _value) : value(std::move(_value)) {}

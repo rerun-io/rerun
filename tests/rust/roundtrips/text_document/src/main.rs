@@ -1,6 +1,10 @@
 //! Logs a `Tensor` archetype for roundtrip checks.
 
-use rerun::{archetypes::TextDocument, external::re_log, RecordingStream};
+use rerun::{
+    archetypes::TextDocument,
+    external::{re_log, re_types::components::MediaType},
+    RecordingStream,
+};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -10,8 +14,12 @@ struct Args {
 }
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    rec.log("text_document", &TextDocument::new("Hello, TextDocument!"))
-        .map_err(Into::into)
+    rec.log("text_document", &TextDocument::new("Hello, TextDocument!"))?;
+    rec.log(
+        "markdown",
+        &TextDocument::new("# Hello\nMarkdown with `code`!").with_media_type(MediaType::markdown()),
+    )?;
+    Ok(())
 }
 
 fn main() -> anyhow::Result<()> {
