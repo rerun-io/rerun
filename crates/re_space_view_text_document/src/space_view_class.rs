@@ -144,7 +144,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
                             ui.add(Label::new(text).wrap(state.word_wrap));
                         } else {
                             ui.label(format!(
-                                "Unexpected number of text entries: {}. Limit your query to 1.",
+                                "Can only show one text document at a time; was given {}.",
                                 text_document.text_entries.len()
                             ));
                         }
