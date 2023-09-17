@@ -25,6 +25,7 @@ pub enum SpaceInfoConnection {
 /// ⚠️ Transforms used for this are latest known, i.e. the "right most location in the timeline" ⚠️
 ///
 /// Expected to be recreated every frame (or whenever new data is available).
+#[derive(Debug)]
 pub struct SpaceInfo {
     pub path: EntityPath,
 
@@ -106,7 +107,7 @@ impl SpaceInfo {
 /// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
 ///
 /// Expected to be recreated every frame (or whenever new data is available).
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct SpaceInfoCollection {
     spaces: BTreeMap<EntityPath, SpaceInfo>,
 }

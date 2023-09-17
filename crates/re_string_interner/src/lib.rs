@@ -260,24 +260,35 @@ macro_rules! declare_new_type {
         }
 
         impl std::fmt::Debug for $StructName {
+            #[inline]
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.as_str().fmt(f)
             }
         }
 
         impl std::fmt::Display for $StructName {
+            #[inline]
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.as_str().fmt(f)
             }
         }
 
         impl<'a> PartialEq<&'a str> for $StructName {
+            #[inline]
+            fn eq(&self, other: &&'a str) -> bool {
+                self.as_str() == *other
+            }
+        }
+
+        impl<'a> PartialEq<&'a str> for &$StructName {
+            #[inline]
             fn eq(&self, other: &&'a str) -> bool {
                 self.as_str() == *other
             }
         }
 
         impl<'a> PartialEq<$StructName> for &'a str {
+            #[inline]
             fn eq(&self, other: &$StructName) -> bool {
                 *self == other.as_str()
             }
