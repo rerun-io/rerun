@@ -32,9 +32,13 @@ To stabilize the optimization and avoid local minima, a 3-stage optimization is 
 2. the full resolution texture is optimized, and
 3. transparency-based optimization is deactivated, only optimizing the opaque meshes from here.
 
-<div style="padding:64.97% 0 0 0;position:relative;margin-bottom:1.25rem;"><iframe src="https://player.vimeo.com/video/865329177?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+https://vimeo.com/865329177
 
 https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1
+
+<div style="padding:64.97% 0 0 0;position:relative;margin-bottom:1.25rem;color-scheme:unset;"><iframe src="https://player.vimeo.com/video/865329177?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+
+<div style="padding:64.97% 0 0 0;position:relative;margin-bottom:1.25rem;color-scheme:unset;"><iframe src="https://player.vimeo.com/video/865329177?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 Check out the [project page](https://www.tmonnier.com/DBW/), which also contains examples of physical simulation and scene editing enabled by this kind of scene decomposition.
 
