@@ -1,6 +1,6 @@
 //! This build script generates the `data/examples_manifest.json` file.
 //! It looks at all examples in the workspace (under `examples/python`),
-//! and only includes those with a `build_args` set in their `README.md`
+//! and only includes those with `demo` set to `true` in their `README.md`
 //! frontmatter.
 //!
 //! The URLs embedded in the `example_manifest.json` file point to a specific version.
