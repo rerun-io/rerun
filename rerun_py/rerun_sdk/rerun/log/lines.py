@@ -159,7 +159,7 @@ def log_line_strips_2d(
 
     recording = RecordingStream.to_native(recording)
 
-    identifiers_np = np.array((), dtype="uint64")
+    identifiers_np = None
     if identifiers is not None:
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")
@@ -236,7 +236,7 @@ def log_line_strips_3d(
 
     recording = RecordingStream.to_native(recording)
 
-    identifiers_np = np.array((), dtype="uint64")
+    identifiers_np = None
     if identifiers is not None:
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")

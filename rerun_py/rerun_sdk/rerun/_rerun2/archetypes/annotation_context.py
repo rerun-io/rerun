@@ -49,7 +49,7 @@ class AnnotationContext(Archetype):
     # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
 
     context: components.AnnotationContextArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.AnnotationContextArray.from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__

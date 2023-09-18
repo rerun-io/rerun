@@ -51,7 +51,7 @@ class Image(Archetype, ImageExt):
     # You can define your own __init__ function as a member of ImageExt in image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
     )
     """
@@ -59,9 +59,9 @@ class Image(Archetype, ImageExt):
     """
 
     draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.

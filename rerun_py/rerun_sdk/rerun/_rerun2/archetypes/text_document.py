@@ -22,13 +22,13 @@ class TextDocument(Archetype):
     # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
 
     body: components.TextArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.TextArray.from_similar,  # type: ignore[misc]
     )
     media_type: components.MediaTypeArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.MediaTypeArray.from_similar,  # type: ignore[misc]
+        converter=components.MediaTypeArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     The Media Type of the text.

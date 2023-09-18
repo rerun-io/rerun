@@ -6,13 +6,24 @@ import numpy as np
 from rerun.experimental import cmp as rrc
 from rerun.experimental import dt as rrd
 
-
-def is_empty(v: object) -> bool:
-    return v is None or (hasattr(v, "__len__") and len(v) == 0)  # type: ignore[arg-type]
-
-
 U64_MAX_MINUS_1 = 2**64 - 2
 U64_MAX = 2**64 - 1
+
+
+def none_empty_or_value(obj: Any, value: Any) -> Any:
+    """
+    Helper function to make value align with None / Empty types.
+
+    If obj is None or an empty list, it is returned. Otherwise value
+    is returned. This is useful for creating the `_expected` functions.
+    """
+
+    if obj is None:
+        return None
+    elif hasattr(obj, "__len__") and len(obj) == 0:
+        return []
+    else:
+        return value
 
 
 vec2ds_arrays: list[rrd.Vec2DArrayLike] = [
@@ -39,11 +50,13 @@ vec2ds_arrays: list[rrd.Vec2DArrayLike] = [
 ]
 
 
-def vec2ds_expected(empty: bool, type_: Any | None) -> Any:
-    if type_:
-        return type_.from_similar([] if empty else [[1.0, 2.0], [3.0, 4.0]])
-    else:
-        return rrd.Vec2DArray.from_similar([] if empty else [[1.0, 2.0], [3.0, 4.0]])
+def vec2ds_expected(obj: Any, type_: Any | None) -> Any:
+    if type_ is None:
+        type_ = rrd.Vec2DArray
+
+    expected = none_empty_or_value(obj, [[1.0, 2.0], [3.0, 4.0]])
+
+    return type_.optional_from_similar(expected)
 
 
 vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
@@ -70,11 +83,13 @@ vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
 ]
 
 
-def vec3ds_expected(empty: bool, type_: Any | None) -> Any:
-    if type_:
-        return type_.from_similar([] if empty else [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    else:
-        return rrd.Vec3DArray.from_similar([] if empty else [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+def vec3ds_expected(obj: Any, type_: Any | None) -> Any:
+    if type_ is None:
+        type_ = rrd.Vec3DArray
+
+    expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
+    return type_.optional_from_similar(expected)
 
 
 rotations_arrays: list[rrd.Rotation3DArrayLike] = [
@@ -102,16 +117,20 @@ rotations_arrays: list[rrd.Rotation3DArrayLike] = [
 
 
 def expected_rotations(rotations: rrd.Rotation3DArrayLike, type_: Any) -> Any:
-    if is_empty(rotations):
-        return type_.from_similar([])
+    if rotations is None:
+        return type_.optional_from_similar(None)
+    elif hasattr(rotations, "__len__") and len(rotations) == 0:
+        return type_.optional_from_similar(rotations)
     elif isinstance(rotations, rrd.Rotation3D):
-        return type_.from_similar(rotations)
+        return type_.optional_from_similar(rotations)
     elif isinstance(rotations, rrd.RotationAxisAngle):
-        return type_.from_similar(rrd.RotationAxisAngle([1, 2, 3], 4))
+        return type_.optional_from_similar(rrd.RotationAxisAngle([1, 2, 3], 4))
     elif isinstance(rotations, rrd.Quaternion):
-        return type_.from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
+        return type_.optional_from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_.from_similar([rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)])
+        return type_.optional_from_similar(
+            [rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)]
+        )
 
 
 radii_arrays: list[rrc.RadiusArrayLike | None] = [
@@ -130,8 +149,10 @@ radii_arrays: list[rrc.RadiusArrayLike | None] = [
 ]
 
 
-def radii_expected(empty: bool) -> Any:
-    return rrc.RadiusArray.from_similar([] if empty else [1, 10])
+def radii_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, [1, 10])
+
+    return rrc.RadiusArray.optional_from_similar(expected)
 
 
 colors_arrays: list[rrd.ColorArrayLike | None] = [
@@ -233,8 +254,9 @@ colors_arrays: list[rrd.ColorArrayLike | None] = [
 ]
 
 
-def colors_expected(empty: bool) -> Any:
-    return rrc.ColorArray.from_similar([] if empty else [0xAA0000CC, 0x00BB00DD])
+def colors_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, [0xAA0000CC, 0x00BB00DD])
+    return rrc.ColorArray.optional_from_similar(expected)
 
 
 labels_arrays: list[rrd.Utf8ArrayLike | None] = [
@@ -250,8 +272,9 @@ labels_arrays: list[rrd.Utf8ArrayLike | None] = [
 ]
 
 
-def labels_expected(empty: bool) -> Any:
-    return rrc.TextArray.from_similar([] if empty else ["hello", "friend"])
+def labels_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, ["hello", "friend"])
+    return rrc.TextArray.optional_from_similar(expected)
 
 
 draw_orders: list[rrc.DrawOrderLike | None] = [
@@ -263,8 +286,9 @@ draw_orders: list[rrc.DrawOrderLike | None] = [
 ]
 
 
-def draw_order_expected(empty: bool) -> Any:
-    return rrc.DrawOrderArray.from_similar([] if empty else [300])
+def draw_order_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, [300])
+    return rrc.DrawOrderArray.optional_from_similar(expected)
 
 
 class_ids_arrays = [
@@ -285,8 +309,9 @@ class_ids_arrays = [
 ]
 
 
-def class_ids_expected(empty: bool) -> Any:
-    return rrc.ClassIdArray.from_similar([] if empty else [126, 127])
+def class_ids_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, [126, 127])
+    return rrc.ClassIdArray.optional_from_similar(expected)
 
 
 keypoint_ids_arrays = [
@@ -307,8 +332,9 @@ keypoint_ids_arrays = [
 ]
 
 
-def keypoint_ids_expected(empty: bool) -> Any:
-    return rrc.KeypointIdArray.from_similar([] if empty else [2, 3])
+def keypoint_ids_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, [2, 3])
+    return rrc.KeypointIdArray.optional_from_similar(expected)
 
 
 instance_keys_arrays = [
@@ -323,5 +349,6 @@ instance_keys_arrays = [
 ]
 
 
-def instance_keys_expected(empty: bool) -> Any:
-    return rrc.InstanceKeyArray.from_similar([] if empty else [U64_MAX_MINUS_1, U64_MAX])
+def instance_keys_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, [U64_MAX_MINUS_1, U64_MAX])
+    return rrc.InstanceKeyArray.optional_from_similar(expected)

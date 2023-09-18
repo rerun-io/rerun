@@ -16,7 +16,6 @@ from .common_arrays import (
     colors_expected,
     instance_keys_arrays,
     instance_keys_expected,
-    is_empty,
     keypoint_ids_arrays,
     keypoint_ids_expected,
     labels_arrays,
@@ -77,13 +76,13 @@ def test_points3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.positions == positions_expected(is_empty(positions), rrc.Position3DArray)
-        assert arch.radii == radii_expected(is_empty(radii))
-        assert arch.colors == colors_expected(is_empty(colors))
-        assert arch.labels == labels_expected(is_empty(labels))
-        assert arch.class_ids == class_ids_expected(is_empty(class_ids))
-        assert arch.keypoint_ids == keypoint_ids_expected(is_empty(keypoint_ids))
-        assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+        assert arch.positions == positions_expected(positions, rrc.Position3DArray)
+        assert arch.radii == radii_expected(radii)
+        assert arch.colors == colors_expected(colors)
+        assert arch.labels == labels_expected(labels)
+        assert arch.class_ids == class_ids_expected(class_ids)
+        assert arch.keypoint_ids == keypoint_ids_expected(keypoint_ids)
+        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 @pytest.mark.parametrize(

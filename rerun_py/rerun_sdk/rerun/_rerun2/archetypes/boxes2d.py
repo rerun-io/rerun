@@ -40,7 +40,7 @@ class Boxes2D(Archetype):
     # You can define your own __init__ function as a member of Boxes2DExt in boxes2d_ext.py
 
     half_sizes: components.HalfSizes2DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.HalfSizes2DArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -48,45 +48,45 @@ class Boxes2D(Archetype):
     """
 
     centers: components.Position2DArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.Position2DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position2DArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional center positions of the boxes.
     """
 
     radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the lines that make up the boxes.
     """
 
     colors: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the boxes.
     """
 
     labels: components.TextArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the boxes.
     """
 
     draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.
@@ -96,9 +96,9 @@ class Boxes2D(Archetype):
     """
 
     class_ids: components.ClassIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
+        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional `ClassId`s for the boxes.
@@ -107,9 +107,9 @@ class Boxes2D(Archetype):
     """
 
     instance_keys: components.InstanceKeyArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual boxes in the batch.
