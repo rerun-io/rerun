@@ -14,7 +14,7 @@ impl DataUi for components::Rotation3D {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        self.0.data_ui(ctx, ui, verbosity, query)
+        self.0.data_ui(ctx, ui, verbosity, query);
     }
 }
 
