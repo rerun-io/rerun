@@ -81,7 +81,7 @@ class AffixFuzzer3Type(BaseExtensionType):
                                         pa.field("single_string_optional", pa.utf8(), nullable=True, metadata={}),
                                         pa.field(
                                             "many_floats_optional",
-                                            pa.list_(pa.field("item", pa.float32(), nullable=True, metadata={})),
+                                            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
                                             nullable=True,
                                             metadata={},
                                         ),
@@ -93,7 +93,7 @@ class AffixFuzzer3Type(BaseExtensionType):
                                         ),
                                         pa.field(
                                             "many_strings_optional",
-                                            pa.list_(pa.field("item", pa.utf8(), nullable=True, metadata={})),
+                                            pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
                                             nullable=True,
                                             metadata={},
                                         ),
