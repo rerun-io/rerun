@@ -1,3 +1,18 @@
+//! This build script generates the `data/examples_manifest.json` file.
+//! It looks at all examples in the workspace (under `examples/python`),
+//! and only includes those with a `build_args` set in their `README.md`
+//! frontmatter.
+//!
+//! The URLs embedded in the `example_manifest.json` file point to a specific version.
+//! This version is resolved according to the current environment:
+//!
+//! If the `CI` env var is set + the branch name is not `main`, then:
+//! - On any `release-x.y.z` branch, the version is `version/x.y.z`
+//! - On any other branch, the version is `commit/$COMMIT_SHORT_HASH`
+//!
+//! Otherwise, the version is `version/nightly`. This means local builds,
+//! and builds on `main` point to `version/nightly`.
+
 use std::path::Path;
 
 use xshell::cmd;
