@@ -554,7 +554,7 @@ impl RecordingStream {
     ) -> RecordingStreamResult<Self> {
         let sink = forced_sink_path().map_or(sink, |path| {
             re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
-            // UInwrap is ok since this force sinks are only used in tests.
+            // `unwrap` is ok since this force sinks are only used in tests.
             Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
         });
         RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
