@@ -42,8 +42,8 @@ class CustomPoints3D(rr2.BundleProtocol):
 
 
 def log_custom_data() -> None:
-    lin = np.linspace(-10, 10, 10)
-    x, y, z = np.meshgrid(lin, lin, lin)
+    lin = np.linspace(-5, 5, 3)
+    z, y, x = np.meshgrid(lin, lin, lin, indexing="ij")
     point_grid = np.vstack([x.flatten(), y.flatten(), z.flatten()]).T
 
     rr2.log(

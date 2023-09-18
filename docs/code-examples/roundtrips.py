@@ -26,6 +26,7 @@ opt_out_entirely = {
     "annotation_context_segmentation": ["cpp"],
     "box3d_batch": ["cpp", "rust"],
     "box3d_simple": ["cpp"],
+    "custom_data": ["cpp"],
     "depth_image_3d": ["cpp"],
     "depth_image_simple": ["cpp"],
     "image_advanced": ["cpp", "rust"],

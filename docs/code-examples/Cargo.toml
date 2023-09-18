@@ -40,6 +40,10 @@ name = "clear_simple"
 path = "clear_simple.rs"
 
 [[bin]]
+name = "custom_data"
+path = "custom_data.rs"
+
+[[bin]]
 name = "depth_image_3d"
 path = "depth_image_3d.rs"
 
