@@ -52,6 +52,10 @@ impl FileSink {
 
         re_log::debug!("Saving file to {path:?}…");
 
+        // TODO(andreas): Can we ensure that a single process doesn't
+        // have multiple file sinks for the same file live?
+        // This likely caused an instability in the past, see https://github.com/rerun-io/rerun/issues/3306
+
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
         let mut encoder = crate::encoder::Encoder::new(encoding_options, file)?;
