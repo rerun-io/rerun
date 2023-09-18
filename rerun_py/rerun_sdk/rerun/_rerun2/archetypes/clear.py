@@ -68,7 +68,7 @@ class Clear(Archetype):
     # You can define your own __init__ function as a member of ClearExt in clear_ext.py
 
     settings: components.ClearSettingsArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.ClearSettingsArray.from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__

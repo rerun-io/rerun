@@ -60,7 +60,7 @@ class Boxes3D(Archetype):
     # You can define your own __init__ function as a member of Boxes3DExt in boxes3d_ext.py
 
     half_sizes: components.HalfSizes3DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.HalfSizes3DArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -68,50 +68,50 @@ class Boxes3D(Archetype):
     """
 
     centers: components.Position3DArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.Position3DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position3DArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional center positions of the boxes.
     """
 
     rotations: components.Rotation3DArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.Rotation3DArray.from_similar,  # type: ignore[misc]
+        converter=components.Rotation3DArray.optional_from_similar,  # type: ignore[misc]
     )
     colors: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the boxes.
     """
 
     radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the lines that make up the boxes.
     """
 
     labels: components.TextArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the boxes.
     """
 
     class_ids: components.ClassIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
+        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional `ClassId`s for the boxes.
@@ -120,9 +120,9 @@ class Boxes3D(Archetype):
     """
 
     instance_keys: components.InstanceKeyArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual boxes in the batch.

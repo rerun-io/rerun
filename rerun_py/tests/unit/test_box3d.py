@@ -15,7 +15,6 @@ from .common_arrays import (
     expected_rotations,
     instance_keys_arrays,
     instance_keys_expected,
-    is_empty,
     labels_arrays,
     labels_expected,
     radii_arrays,
@@ -84,14 +83,14 @@ def test_boxes3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(is_empty(half_sizes), rrc.HalfSizes3DArray)
-        assert arch.centers == centers_expected(is_empty(centers), rrc.Position3DArray)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes3DArray)
+        assert arch.centers == centers_expected(centers, rrc.Position3DArray)
         assert arch.rotations == expected_rotations(rotations, rrc.Rotation3DArray)
-        assert arch.colors == colors_expected(is_empty(colors))
-        assert arch.radii == radii_expected(is_empty(radii))
-        assert arch.labels == labels_expected(is_empty(labels))
-        assert arch.class_ids == class_ids_expected(is_empty(class_ids))
-        assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+        assert arch.colors == colors_expected(colors)
+        assert arch.radii == radii_expected(radii)
+        assert arch.labels == labels_expected(labels)
+        assert arch.class_ids == class_ids_expected(class_ids)
+        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 if __name__ == "__main__":

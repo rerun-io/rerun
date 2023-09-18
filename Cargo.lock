@@ -1205,13 +1205,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom_data"
-version = "0.9.0-alpha.4"
-dependencies = [
- "rerun",
-]
-
-[[package]]
 name = "custom_space_view"
 version = "0.9.0-alpha.4"
 dependencies = [

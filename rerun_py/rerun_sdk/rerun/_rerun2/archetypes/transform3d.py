@@ -55,7 +55,7 @@ class Transform3D(Archetype):
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
     transform: components.Transform3DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.Transform3DArray.from_similar,  # type: ignore[misc]
     )
     """

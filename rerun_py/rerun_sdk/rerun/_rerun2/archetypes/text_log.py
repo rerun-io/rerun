@@ -22,18 +22,18 @@ class TextLog(Archetype):
     # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
 
     body: components.TextArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.TextArray.from_similar,  # type: ignore[misc]
     )
     level: components.TextLogLevelArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.TextLogLevelArray.from_similar,  # type: ignore[misc]
+        converter=components.TextLogLevelArray.optional_from_similar,  # type: ignore[misc]
     )
     color: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

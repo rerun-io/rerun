@@ -18,7 +18,6 @@ from .common_arrays import (
     draw_orders,
     instance_keys_arrays,
     instance_keys_expected,
-    is_empty,
     keypoint_ids_arrays,
     keypoint_ids_expected,
     labels_arrays,
@@ -83,14 +82,14 @@ def test_points2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.positions == positions_expected(is_empty(positions), rrc.Position2DArray)
-        assert arch.radii == radii_expected(is_empty(radii))
-        assert arch.colors == colors_expected(is_empty(colors))
-        assert arch.labels == labels_expected(is_empty(labels))
-        assert arch.draw_order == draw_order_expected(is_empty(draw_order))
-        assert arch.class_ids == class_ids_expected(is_empty(class_ids))
-        assert arch.keypoint_ids == keypoint_ids_expected(is_empty(keypoint_ids))
-        assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+        assert arch.positions == positions_expected(positions, rrc.Position2DArray)
+        assert arch.radii == radii_expected(radii)
+        assert arch.colors == colors_expected(colors)
+        assert arch.labels == labels_expected(labels)
+        assert arch.draw_order == draw_order_expected(draw_order)
+        assert arch.class_ids == class_ids_expected(class_ids)
+        assert arch.keypoint_ids == keypoint_ids_expected(keypoint_ids)
+        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 @pytest.mark.parametrize(
