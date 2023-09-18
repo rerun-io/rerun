@@ -87,13 +87,13 @@ namespace rerun {
             /// Optional center positions of the boxes.
             std::optional<std::vector<rerun::components::Position3D>> centers;
 
-            /// Optional radii for the lines that make up the boxes.
-            std::optional<std::vector<rerun::components::Radius>> radii;
-
             std::optional<std::vector<rerun::components::Rotation3D>> rotations;
 
             /// Optional colors for the boxes.
             std::optional<std::vector<rerun::components::Color>> colors;
+
+            /// Optional radii for the lines that make up the boxes.
+            std::optional<std::vector<rerun::components::Radius>> radii;
 
             /// Optional text labels for the boxes.
             std::optional<std::vector<rerun::components::Text>> labels;
@@ -172,18 +172,6 @@ namespace rerun {
                 return *this;
             }
 
-            /// Optional radii for the lines that make up the boxes.
-            Boxes3D& with_radii(std::vector<rerun::components::Radius> _radii) {
-                radii = std::move(_radii);
-                return *this;
-            }
-
-            /// Optional radii for the lines that make up the boxes.
-            Boxes3D& with_radii(rerun::components::Radius _radii) {
-                radii = std::vector(1, std::move(_radii));
-                return *this;
-            }
-
             Boxes3D& with_rotations(std::vector<rerun::components::Rotation3D> _rotations) {
                 rotations = std::move(_rotations);
                 return *this;
@@ -203,6 +191,18 @@ namespace rerun {
             /// Optional colors for the boxes.
             Boxes3D& with_colors(rerun::components::Color _colors) {
                 colors = std::vector(1, std::move(_colors));
+                return *this;
+            }
+
+            /// Optional radii for the lines that make up the boxes.
+            Boxes3D& with_radii(std::vector<rerun::components::Radius> _radii) {
+                radii = std::move(_radii);
+                return *this;
+            }
+
+            /// Optional radii for the lines that make up the boxes.
+            Boxes3D& with_radii(rerun::components::Radius _radii) {
+                radii = std::vector(1, std::move(_radii));
                 return *this;
             }
 

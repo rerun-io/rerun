@@ -76,15 +76,6 @@ class Boxes3D(Archetype):
     Optional center positions of the boxes.
     """
 
-    radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
-        default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
-    )
-    """
-    Optional radii for the lines that make up the boxes.
-    """
-
     rotations: components.Rotation3DArray | None = field(
         metadata={"component": "secondary"},
         default=None,
@@ -97,6 +88,15 @@ class Boxes3D(Archetype):
     )
     """
     Optional colors for the boxes.
+    """
+
+    radii: components.RadiusArray | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+    )
+    """
+    Optional radii for the lines that make up the boxes.
     """
 
     labels: components.TextArray | None = field(

@@ -77,13 +77,13 @@ pub struct Boxes3D {
 
     /// Optional center positions of the boxes.
     pub centers: Option<Vec<crate::components::Position3D>>,
-
-    /// Optional radii for the lines that make up the boxes.
-    pub radii: Option<Vec<crate::components::Radius>>,
     pub rotations: Option<Vec<crate::components::Rotation3D>>,
 
     /// Optional colors for the boxes.
     pub colors: Option<Vec<crate::components::Color>>,
+
+    /// Optional radii for the lines that make up the boxes.
+    pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional text labels for the boxes.
     pub labels: Option<Vec<crate::components::Text>>,
@@ -182,13 +182,13 @@ impl crate::Archetype for Boxes3D {
             self.centers
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
-            self.radii
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.rotations
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.colors
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+            self.radii
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.labels
@@ -254,26 +254,6 @@ impl crate::Archetype for Boxes3D {
                     .with_context("rerun.archetypes.Boxes3D#centers")?
             },
             {
-                self.radii
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::Radius>::try_to_arrow(many.iter());
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Radius".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("radii", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Boxes3D#radii")?
-            },
-            {
                 self.rotations
                     .as_ref()
                     .map(|many| {
@@ -312,6 +292,26 @@ impl crate::Archetype for Boxes3D {
                     })
                     .transpose()
                     .with_context("rerun.archetypes.Boxes3D#colors")?
+            },
+            {
+                self.radii
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::Radius>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.components.Radius".into(),
+                                Box::new(array.data_type().clone()),
+                                None,
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("radii", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()
+                    .with_context("rerun.archetypes.Boxes3D#radii")?
             },
             {
                 self.labels
@@ -414,18 +414,6 @@ impl crate::Archetype for Boxes3D {
         } else {
             None
         };
-        let radii = if let Some(array) = arrays_by_name.get("radii") {
-            Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes3D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes3D#radii")?
-            })
-        } else {
-            None
-        };
         let rotations = if let Some(array) = arrays_by_name.get("rotations") {
             Some({
                 <crate::components::Rotation3D>::try_from_arrow_opt(&**array)
@@ -446,6 +434,18 @@ impl crate::Archetype for Boxes3D {
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes3D#colors")?
+            })
+        } else {
+            None
+        };
+        let radii = if let Some(array) = arrays_by_name.get("radii") {
+            Some({
+                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Boxes3D#radii")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Boxes3D#radii")?
             })
         } else {
             None
@@ -489,9 +489,9 @@ impl crate::Archetype for Boxes3D {
         Ok(Self {
             half_sizes,
             centers,
-            radii,
             rotations,
             colors,
+            radii,
             labels,
             class_ids,
             instance_keys,
@@ -506,9 +506,9 @@ impl Boxes3D {
         Self {
             half_sizes: half_sizes.into_iter().map(Into::into).collect(),
             centers: None,
-            radii: None,
             rotations: None,
             colors: None,
+            radii: None,
             labels: None,
             class_ids: None,
             instance_keys: None,
@@ -520,14 +520,6 @@ impl Boxes3D {
         centers: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
     ) -> Self {
         self.centers = Some(centers.into_iter().map(Into::into).collect());
-        self
-    }
-
-    pub fn with_radii(
-        mut self,
-        radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
-    ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
         self
     }
 
@@ -544,6 +536,14 @@ impl Boxes3D {
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
         self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_radii(
+        mut self,
+        radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
+    ) -> Self {
+        self.radii = Some(radii.into_iter().map(Into::into).collect());
         self
     }
 
