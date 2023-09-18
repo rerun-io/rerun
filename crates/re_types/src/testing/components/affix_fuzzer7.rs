@@ -53,7 +53,7 @@ impl crate::Loggable for AffixFuzzer7 {
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
             data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-            is_nullable: true,
+            is_nullable: false,
             metadata: [].into(),
         }))
     }
@@ -134,7 +134,7 @@ impl crate::Loggable for AffixFuzzer7 {
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
                             data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         })),
                         arrow_data.data_type().clone(),
