@@ -48,7 +48,7 @@ class Transform3DExt:
         # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
         return storage
 
-    # Implement the BundleProtocol
+    # Implement the ArchetypeLike
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import Transform3D
 

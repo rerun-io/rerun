@@ -36,7 +36,7 @@ class Archetype:
         """
         The number of instances that make up the batch.
 
-        Part of the `BundleProtocol` logging interface.
+        Part of the `ArchetypeLike` logging interface.
         """
         for fld in fields(type(self)):
             # TODO(jleibs): What to do if multiple required components have different lengths?
@@ -48,7 +48,7 @@ class Archetype:
         """
         Return all the component batches that make up the archetype.
 
-        Part of the `BundleProtocol` logging interface.
+        Part of the `ArchetypeLike` logging interface.
         """
         from .log import IndicatorComponentBatch
 

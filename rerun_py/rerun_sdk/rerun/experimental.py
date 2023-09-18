@@ -10,8 +10,7 @@ from rerun.log.experimental.blueprint import add_space_view, new_blueprint, set_
 
 __all__ = [
     "AnnotationContext",
-    "BundleProtocol",
-    "BundleLike",
+    "ArchetypeLike",
     "Arrows3D",
     "Boxes2D",
     "Boxes3D",
@@ -64,4 +63,4 @@ from ._rerun2.archetypes import (
     TextLog,
     Transform3D,
 )
-from ._rerun2.log import BundleLike, BundleProtocol, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from ._rerun2.log import ArchetypeLike, ComponentBatchLike, IndicatorComponentBatch, log, log_components

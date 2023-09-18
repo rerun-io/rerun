@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Protocol, Union
+from typing import Any, Iterable, Protocol
 
 import numpy as np
 import numpy.typing as npt
@@ -9,9 +9,9 @@ import pyarrow as pa
 from .. import RecordingStream, bindings
 from ..log import error_utils
 from . import components as cmp
-from ._baseclasses import Archetype, NamedExtensionArray
+from ._baseclasses import NamedExtensionArray
 
-__all__ = ["log", "IndicatorComponentBatch", "BundleLike", "BundleProtocol"]
+__all__ = ["log", "IndicatorComponentBatch", "ArchetypeLike"]
 
 
 EXT_PREFIX = "ext."
@@ -65,8 +65,8 @@ class ComponentBatchLike(Protocol):
         ...
 
 
-class BundleProtocol(Protocol):
-    """Describes interface for interpreting an object as a bundle of multiple `ComponentBatch`s."""
+class ArchetypeLike(Protocol):
+    """Describes interface for interpreting an object as a rerun Archetype."""
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -91,10 +91,6 @@ class BundleProtocol(Protocol):
         component is being cleared.
         """
         return None
-
-
-BundleLike = Union[Archetype, BundleProtocol, Iterable[ComponentBatchLike]]
-"""A Union representing types that can be passed to `rerun.log`."""
 
 
 # adapted from rerun.log._add_extension_components
@@ -149,7 +145,7 @@ def _splat() -> cmp.InstanceKeyArray:
 
 def log(
     entity_path: str,
-    entity: BundleLike,
+    entity: ArchetypeLike | Iterable[ComponentBatchLike],
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -161,8 +157,8 @@ def log(
     ----------
     entity_path:
         Path to the entity in the space hierarchy.
-    entity: BundleLike
-        Anything that can be converted to a bundle of components.
+    entity:
+        Anything that can be converted into a rerun Archetype.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
