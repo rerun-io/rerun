@@ -3,6 +3,7 @@ title: Depth Guided Stable Diffusion
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/depth_guided_stable_diffusion/main.py
 tags: [2D, depth, huggingface, stable-diffusion, tensor, text]
 thumbnail: https://static.rerun.io/15e7ff64aef69deba8bd036e0018e2bf3c7ef587_depth_guided_stable_diffusion_480w.png
+thumbnail_dimensions: [480, 253]
 ---
 
 <picture>
