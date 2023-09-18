@@ -53,30 +53,35 @@ fn git_short_hash(sh: &Shell) -> Result<String> {
     Ok(full_hash.trim()[0..7].to_string())
 }
 
-fn parse_release_version(branch: &str) -> Option<String> {
+fn parse_release_version(branch: &str) -> Option<&str> {
     // release-\d+.\d+.\d+
 
-    let branch = branch.strip_prefix("release-")?;
+    let version = branch.strip_prefix("release-")?;
 
-    let mut version_parts = branch.split('.');
-    let major = version_parts.next()?.parse::<u8>().ok()?;
-    let minor = version_parts.next()?.parse::<u8>().ok()?;
-    let patch = version_parts.next()?.parse::<u8>().ok()?;
+    let mut version_parts = version.split('.');
+    version_parts.next()?.parse::<u8>().ok()?;
+    version_parts.next()?.parse::<u8>().ok()?;
+    version_parts.next()?.parse::<u8>().ok()?;
 
     if version_parts.next().is_some() {
         return None;
     }
 
-    Some(format!("{major}.{minor}.{patch}"))
+    Some(version)
 }
 
 #[derive(serde::Deserialize)]
 struct Frontmatter {
-    title: Option<String>,
-    tags: Option<Vec<String>>,
-    description: Option<String>,
-    thumbnail: Option<String>,
-    thumbnail_dimensions: Option<[u64; 2]>,
+    #[serde(default)]
+    title: String,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    thumbnail: String,
+    #[serde(default)]
+    thumbnail_dimensions: [u64; 2],
     #[serde(default)]
     demo: bool,
 }
@@ -93,31 +98,21 @@ struct ManifestEntry {
 }
 
 impl ManifestEntry {
-    fn new(example: Example, base_url: &str) -> Result<Self> {
-        macro_rules! get {
-            ($e:ident, $f:ident) => {
-                match $e.readme.$f {
-                    Some(value) => value,
-                    None => bail!("{:?} is missing field {:?}", $e.name, stringify!($f)),
-                }
-            };
-        }
-
-        let thumbnail_dimensions = get!(example, thumbnail_dimensions);
-
-        Ok(Self {
-            title: get!(example, title),
-            description: get!(example, description),
-            tags: get!(example, tags),
-            demo_url: format!("{base_url}/examples/{}/", example.name),
-            rrd_url: format!("{base_url}/examples/{}/data.rrd", example.name),
+    fn new(example: Example, base_url: &str) -> Self {
+        let Example { name, readme } = example;
+        Self {
+            title: readme.title,
+            description: readme.description,
+            tags: readme.tags,
+            demo_url: format!("{base_url}/examples/{name}/"),
+            rrd_url: format!("{base_url}/examples/{name}/data.rrd"),
             thumbnail: Thumbnail {
-                url: get!(example, thumbnail),
-                width: thumbnail_dimensions[0],
-                height: thumbnail_dimensions[1],
+                url: readme.thumbnail,
+                width: readme.thumbnail_dimensions[0],
+                height: readme.thumbnail_dimensions[1],
             },
-            name: example.name,
-        })
+            name,
+        }
     }
 }
 
@@ -203,7 +198,7 @@ fn write_examples_manifest() -> Result<()> {
 
     let mut manifest = vec![];
     for example in examples()? {
-        manifest.push(ManifestEntry::new(example, &base_url)?);
+        manifest.push(ManifestEntry::new(example, &base_url));
     }
     re_build_tools::write_file_if_necessary(
         MANIFEST_PATH,
