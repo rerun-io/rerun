@@ -328,8 +328,11 @@
 
             check_for_panic();
 
-            let url = determine_url();
-            handle.start("the_canvas_id", url).then(on_app_started).catch(on_wasm_error);
+            let url = new URLSearchParams(window.location.search).get("url");
+            handle
+                .start("the_canvas_id", url)
+                .then(on_app_started)
+                .catch(on_wasm_error);
         }
 
         function on_app_started(handle) {
@@ -343,37 +346,6 @@
             if (window.location !== window.parent.location) {
                 window.parent.postMessage("READY", "*");
             }
-        }
-
-        function determine_url() {
-            // If a 'url' is provided as a url-param, use it.
-            // Although `web.rs` can also parse the url-param itself,
-            // it won't do so if we pass in a non-null url. We could
-            // arguably return null here instead and achieve the same
-            // behavior, but as long as we've queried it anyways, we
-            // may as well just pass it in for consistency.
-
-            const url_params = new URLSearchParams(window.location.search);
-
-            let url = url_params.get('url');
-
-            if (url) {
-                return url;
-            }
-
-            // Otherwise, look up an rrd in the data path.
-
-            // The expected data path is the current pathname relocated to inside of "/data" with the
-            // index.html stripped off if it's present.
-            // exa: 'https://app.rerun.io/version/v4.0.0/index.html' -> '/data/version/v4.0.0/'
-            let data_path = '/data/' + window.location.pathname.replace(/index\.html$/, '') + '/';
-
-            const rrd_file = url_params.get('file') || 'colmap_fiat.rrd';
-
-            // Normalize the extra slashes from the url
-            const normalized = (data_path + rrd_file).replace(/\/{2,}/g, '/');
-            window.location.search = `?url=${normalized}`;
-            return normalized;
         }
 
         function on_wasm_error(error) {

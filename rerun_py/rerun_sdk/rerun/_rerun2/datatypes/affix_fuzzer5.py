@@ -98,7 +98,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                         pa.field(
                                                                             "item",
                                                                             pa.float32(),
-                                                                            nullable=True,
+                                                                            nullable=False,
                                                                             metadata={},
                                                                         )
                                                                     ),
@@ -124,7 +124,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                         pa.field(
                                                                             "item",
                                                                             pa.utf8(),
-                                                                            nullable=True,
+                                                                            nullable=False,
                                                                             metadata={},
                                                                         )
                                                                     ),
@@ -221,7 +221,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                                 pa.field(
                                                                                     "item",
                                                                                     pa.float32(),
-                                                                                    nullable=True,
+                                                                                    nullable=False,
                                                                                     metadata={},
                                                                                 )
                                                                             ),
@@ -247,7 +247,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                                 pa.field(
                                                                                     "item",
                                                                                     pa.utf8(),
-                                                                                    nullable=True,
+                                                                                    nullable=False,
                                                                                     metadata={},
                                                                                 )
                                                                             ),
@@ -349,7 +349,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                                 pa.field(
                                                                                     "item",
                                                                                     pa.float32(),
-                                                                                    nullable=True,
+                                                                                    nullable=False,
                                                                                     metadata={},
                                                                                 )
                                                                             ),
@@ -375,7 +375,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                                                 pa.field(
                                                                                     "item",
                                                                                     pa.utf8(),
-                                                                                    nullable=True,
+                                                                                    nullable=False,
                                                                                     metadata={},
                                                                                 )
                                                                             ),
@@ -429,7 +429,7 @@ class AffixFuzzer5Type(BaseExtensionType):
                                                     ),
                                                 ]
                                             ),
-                                            nullable=True,
+                                            nullable=False,
                                             metadata={},
                                         )
                                     ),

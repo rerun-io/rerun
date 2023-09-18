@@ -39,7 +39,7 @@ class AffixFuzzer13Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.list_(pa.field("item", pa.utf8(), nullable=True, metadata={})),
+            pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
             "rerun.testing.components.AffixFuzzer13",
         )
 
