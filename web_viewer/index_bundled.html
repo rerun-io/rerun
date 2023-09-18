@@ -326,7 +326,11 @@
             check_for_panic();
 
             let url = null; // you can use this to point to an .rrd file over http, or a WebSocket Rerun server.
-            handle.start("the_canvas_id", url).then(on_app_started).catch(on_wasm_error);
+            let fallback_to_websockets = true; // we're in the bundled HTML, so we always want to fall back to WebSockets.
+            handle
+                .start("the_canvas_id", url, fallback_to_websockets)
+                .then(on_app_started)
+                .catch(on_wasm_error);
         }
 
         function on_app_started(handle) {

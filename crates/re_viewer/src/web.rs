@@ -32,6 +32,7 @@ impl WebHandle {
         &self,
         canvas_id: &str,
         url: Option<String>,
+        fallback_to_ws: bool,
     ) -> Result<(), wasm_bindgen::JsValue> {
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
@@ -45,7 +46,7 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let app = create_app(cc, url.clone());
+                    let app = create_app(cc, url.clone(), fallback_to_ws);
                     Box::new(app)
                 }),
             )
@@ -77,7 +78,11 @@ impl WebHandle {
     }
 }
 
-fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::App {
+fn create_app(
+    cc: &eframe::CreationContext<'_>,
+    url: Option<String>,
+    fallback_to_ws: bool,
+) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web;
     let startup_options = crate::StartupOptions {
@@ -91,7 +96,6 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
         skip_welcome_screen: false,
     };
     let re_ui = crate::customize_eframe(cc);
-    let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
 
     let egui_ctx = cc.egui_ctx.clone();
     let wake_up_ui_on_msg = Box::new(move || {
@@ -100,6 +104,15 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
         egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
     });
 
+    let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+
+    if url.is_none() && !fallback_to_ws {
+        // We didn't get a `url` to connect to, and we also aren't supposed to
+        // start the WebSocket client, so just show the welcome screen.
+        return app;
+    }
+
+    let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
     let rx = match categorize_uri(url) {
         EndpointCategory::HttpRrd(url) => {
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
@@ -139,7 +152,6 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
         }
     };
 
-    let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
     app.add_receiver(rx);
     app
 }
