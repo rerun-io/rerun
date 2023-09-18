@@ -64,18 +64,18 @@ table Boxes3D (
   centers: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   // Optional rotations of the boxes.
-  rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   /// Optional colors for the boxes.
-  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2200);
 
   // --- Optional ---
 
   /// Optional radii for the lines that make up the boxes.
-  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 2000);
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// Optional text labels for the boxes.
-  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional `ClassId`s for the boxes.
   ///
@@ -83,5 +83,5 @@ table Boxes3D (
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Unique identifiers for each individual boxes in the batch.
-  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3300);
 }
