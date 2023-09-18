@@ -15,14 +15,28 @@ include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["markdown"]
+## Show `text/markdown` as Markdown.
+markdown = ["dep:egui_commonmark"]
+
 [dependencies]
 re_arrow_store.workspace = true
 re_log.workspace = true
 re_query.workspace = true
 re_renderer.workspace = true
+re_tracing.workspace = true
 re_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 
 egui.workspace = true
+itertools.workspace = true
 vec1.workspace = true
+
+# Optional dependencies:
+
+# egui_commonmark is a 3rd party crate.
+# By making it an optional dependency we can easily drop it if we need to,
+# .e.g if isn't release a new version quickly enough after an egui release.
+egui_commonmark = { workspace = true, optional = true, default-features = false }
