@@ -951,11 +951,6 @@ impl RecordingStream {
         // 1. Flush the batcher down the table channel
         this.batcher.flush_blocking();
 
-        if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new sink since _RERUN_FORCE_SINK is set");
-            return;
-        }
-
         // 2. Receive pending tables from the batcher's channel
         this.cmds_tx.send(Command::PopPendingTables).ok();
 
@@ -1041,6 +1036,11 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self, addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            return;
+        }
+
         self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)));
     }
 
@@ -1053,6 +1053,11 @@ impl RecordingStream {
     pub fn memory(&self) -> MemorySinkStorage {
         let sink = crate::sink::MemorySink::default();
         let buffer = sink.buffer();
+
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new memory sink since _RERUN_FORCE_SINK is set");
+            return buffer;
+        }
 
         self.set_sink(Box::new(sink));
 
@@ -1068,6 +1073,11 @@ impl RecordingStream {
         &self,
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            return Ok(());
+        }
+
         let sink = crate::sink::FileSink::new(path)?;
         self.set_sink(Box::new(sink));
 
