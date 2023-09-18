@@ -10,10 +10,11 @@ int main(int argc, char** argv) {
 
     rec.log(
         "points2d",
-        rr::archetypes::Points2D({{1.0, 2.0}, {4.0, 5.0}})
+        rr::archetypes::Points2D({{1.0, 2.0}, {3.0, 4.0}})
             .with_radii({0.42f, 0.43f})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
+            .with_draw_order(300.0)
             .with_class_ids({126, 127})
             .with_keypoint_ids({2, 3})
             .with_instance_keys({66, 666})
