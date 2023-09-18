@@ -81,7 +81,7 @@ jobs:
           parent: false
 
       - name: "Upload web demo (prerelease)"
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_demo"
@@ -89,7 +89,7 @@ jobs:
           parent: false
 
       - name: "Upload web demo (nightly)"
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_demo"
