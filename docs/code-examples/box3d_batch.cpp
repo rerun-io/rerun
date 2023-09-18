@@ -15,7 +15,7 @@ int main() {
             {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
         )
             .with_rotations({
-                rr::datatypes::Rotation3D::IDENTITY,
+                rr::datatypes::Quaternion::IDENTITY,
                 rr::datatypes::Quaternion(0.0f, 0.0f, 0.382683f, 0.923880f), // 45 degrees around Z
                 rr::datatypes::RotationAxisAngle(
                     {0.0f, 1.0f, 0.0f},
