@@ -1,13 +1,13 @@
-use re_data_store::EntityPath;
+use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
-    components::{HalfSizes2D, Position2D},
+    components::{HalfSizes2D, Position2D, Text},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -21,15 +21,56 @@ use super::{
     process_colors, process_radii, SpatialViewPartData,
 };
 
-pub struct Boxes2DPart(SpatialViewPartData);
+pub struct Boxes2DPart {
+    /// If the number of points in the batch is > max_labels, don't render box labels.
+    pub max_labels: usize,
+    pub data: SpatialViewPartData,
+}
 
 impl Default for Boxes2DPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)))
+        Self {
+            max_labels: 20,
+            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
+        }
     }
 }
 
 impl Boxes2DPart {
+    fn process_labels<'a>(
+        arch_view: &'a ArchetypeView<Boxes2D>,
+        instance_path_hashes: &'a [InstancePathHash],
+        colors: &'a [egui::Color32],
+        annotation_infos: &'a ResolvedAnnotationInfos,
+    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
+        let labels = itertools::izip!(
+            annotation_infos.iter(),
+            arch_view.iter_required_component::<HalfSizes2D>()?,
+            arch_view.iter_optional_component::<Position2D>()?,
+            arch_view.iter_optional_component::<Text>()?,
+            colors,
+            instance_path_hashes,
+        )
+        .filter_map(
+            move |(annotation_info, half_size, center, label, color, labeled_instance)| {
+                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                let center = center.unwrap_or(Position2D::ZERO);
+                let min = half_size.box_min(center);
+                let max = half_size.box_max(center);
+                label.map(|label| UiLabel {
+                    text: label,
+                    color: *color,
+                    target: UiLabelTarget::Rect(egui::Rect::from_min_max(
+                        egui::pos2(min.x, min.y),
+                        egui::pos2(max.x, max.y),
+                    )),
+                    labeled_instance: *labeled_instance,
+                })
+            },
+        );
+        Ok(labels)
+    }
+
     fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
@@ -50,7 +91,27 @@ impl Boxes2DPart {
             .map(|position| position.unwrap_or(Position2D::ZERO));
         let radii = process_radii(arch_view, ent_path)?;
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let labels = arch_view.iter_optional_component::<re_types::components::Text>()?;
+
+        if arch_view.num_instances() <= self.max_labels {
+            // Max labels is small enough that we can afford iterating on the colors again.
+            let colors =
+                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+
+            let instance_path_hashes_for_picking = {
+                re_tracing::profile_scope!("instance_hashes");
+                arch_view
+                    .iter_instance_keys()
+                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
+                    .collect::<Vec<_>>()
+            };
+
+            self.data.ui_labels.extend(Self::process_labels(
+                arch_view,
+                &instance_path_hashes_for_picking,
+                &colors,
+                &annotation_infos,
+            )?);
+        }
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
@@ -60,15 +121,15 @@ impl Boxes2DPart {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        for (instance_key, half_extent, position, radius, color, label) in
-            itertools::izip!(instance_keys, half_sizes, positions, radii, colors, labels)
+        for (instance_key, half_size, position, radius, color) in
+            itertools::izip!(instance_keys, half_sizes, positions, radii, colors)
         {
             let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
 
-            let min = half_extent.box_min(position);
-            let max = half_extent.box_max(position);
+            let min = half_size.box_min(position);
+            let max = half_size.box_max(position);
 
-            self.0.extend_bounding_box(
+            self.data.extend_bounding_box(
                 macaw::BoundingBox {
                     min: min.extend(0.),
                     max: max.extend(0.),
@@ -79,8 +140,8 @@ impl Boxes2DPart {
             let rectangle = line_batch
                 .add_rectangle_outline_2d(
                     min,
-                    glam::vec2(half_extent.width(), 0.0),
-                    glam::vec2(0.0, half_extent.height()),
+                    glam::vec2(half_size.width(), 0.0),
+                    glam::vec2(0.0, half_size.height()),
                 )
                 .color(color)
                 .radius(radius)
@@ -91,18 +152,6 @@ impl Boxes2DPart {
                 .get(&instance_hash.instance_key)
             {
                 rectangle.outline_mask_ids(*outline_mask_ids);
-            }
-
-            if let Some(text) = label {
-                self.0.ui_labels.push(UiLabel {
-                    text: text.to_string(),
-                    color,
-                    target: UiLabelTarget::Rect(egui::Rect::from_min_max(
-                        egui::pos2(min.x, min.y),
-                        egui::pos2(max.x, max.y),
-                    )),
-                    labeled_instance: instance_hash,
-                });
             }
         }
 
@@ -148,7 +197,7 @@ impl ViewPartSystem for Boxes2DPart {
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+        Some(self.data.as_any())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

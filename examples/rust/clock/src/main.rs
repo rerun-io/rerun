@@ -10,8 +10,8 @@
 use std::f32::consts::TAU;
 
 use rerun::{
-    archetypes::{Arrows3D, Points3D},
-    components::{Box3D, Color, ViewCoordinates},
+    archetypes::{Arrows3D, Boxes3D, Points3D},
+    components::{Color, ViewCoordinates},
     coordinates::SignedAxis3,
     external::re_log,
     RecordingStream,
@@ -42,12 +42,9 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     );
     rec.log_component_batches("world", true, 1, [&view_coords as _])?;
 
-    // TODO(#2786): Box3D archetype
-    rec.log_component_batches(
+    rec.log(
         "world/frame",
-        true,
-        1,
-        [&Box3D::new(LENGTH_S, LENGTH_S, 1.0) as _],
+        &Boxes3D::from_half_sizes([(LENGTH_S, LENGTH_S, 1.0)]),
     )?;
 
     fn pos(angle: f32, length: f32) -> [f32; 3] {
