@@ -7,6 +7,13 @@
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 * [`RELEASES.md`](RELEASES.md)
 
+## Languages
+We prefer Rust.
+
+We have a bunch of Bash and Python scripts that [we want to replace with Rust](https://github.com/rerun-io/rerun/issues/3349).
+
+For configs we like JSON and TOML, and [dislike YAML](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell).
+
 ## Rust code
 
 ### Avoid `unsafe`
@@ -116,6 +123,8 @@ Use debug-formatting (`{:?}`) when logging strings in logs and error messages. T
 Use `re_error::format(err)` when displaying an error.
 
 ## Naming
+We prefer `snake_case` to `kebab-case` for most things (e.g. crate names, crate features, …). `snake_case` is a valid identifier in almost any programming language, while `kebab-case` is not. This means one can use the same `snake_case` identifier everywhere, and not think about whether it needs to be written as `snake_case` in some circumstances.
+
 When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
 
 Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg_id`.
