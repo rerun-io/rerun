@@ -45,7 +45,7 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let app = create_app(cc, url);
+                    let app = create_app(cc, url.as_deref());
                     Box::new(app)
                 }),
             )
@@ -77,7 +77,7 @@ impl WebHandle {
     }
 }
 
-fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::App {
+fn create_app(cc: &eframe::CreationContext<'_>, url: Option<&str>) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web;
     let startup_options = crate::StartupOptions {
@@ -101,9 +101,15 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::A
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 
-    let url = match url.as_ref() {
+    let url = match url {
         Some(url) => Some(url),
-        None => cc.integration_info.web_info.location.query_map.get("url"),
+        None => cc
+            .integration_info
+            .web_info
+            .location
+            .query_map
+            .get("url")
+            .map(String::as_str),
     };
     if let Some(url) = url {
         let rx = match categorize_uri(url) {
