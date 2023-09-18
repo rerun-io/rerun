@@ -64,4 +64,4 @@ from ._rerun2.archetypes import (
     TextLog,
     Transform3D,
 )
-from ._rerun2.log import BundleLike, IndicatorComponentBatch, BundleProtocol, ComponentBatchLike, log, log_components
+from ._rerun2.log import BundleLike, BundleProtocol, ComponentBatchLike, IndicatorComponentBatch, log, log_components

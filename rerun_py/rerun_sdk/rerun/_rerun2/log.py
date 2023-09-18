@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Protocol, Union, runtime_checkable
+from typing import Any, Iterable, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -11,7 +11,7 @@ from ..log import error_utils
 from . import components as cmp
 from ._baseclasses import Archetype, NamedExtensionArray
 
-__all__ = ["log"]
+__all__ = ["log", "IndicatorComponentBatch", "BundleLike", "BundleProtocol"]
 
 
 EXT_PREFIX = "ext."
@@ -48,7 +48,6 @@ class IndicatorComponentBatch:
         return pa.nulls(self._num_instances, type=pa.null())
 
 
-@runtime_checkable
 class ComponentBatchLike(Protocol):
     """Describes interface for objects that can be converted to batch of rerun Components."""
 
@@ -66,7 +65,6 @@ class ComponentBatchLike(Protocol):
         ...
 
 
-@runtime_checkable
 class BundleProtocol(Protocol):
     """Describes interface for interpreting an object as a bundle of multiple `ComponentBatch`s."""
 
@@ -81,15 +79,18 @@ class BundleProtocol(Protocol):
         """
         ...
 
-    def num_instances(self) -> int:
+    def num_instances(self) -> int | None:
         """
-        The number of instances in each batch.
+        (Optional) The number of instances in each batch.
+
+        If not implemented, the number of instances will be determined by the longest
+        batch in the bundle.
 
         Each batch returned by `as_component_batches` should have this number of
         elements, or 1 in the case it is a splat, or 0 in the case that
         component is being cleared.
         """
-        ...
+        return None
 
 
 BundleLike = Union[Archetype, BundleProtocol, Iterable[ComponentBatchLike]]
@@ -172,13 +173,22 @@ def log(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if isinstance(entity, BundleProtocol):
-        num_instances = entity.num_instances()
+    # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
+    # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
+    #
+    # An isinstance() check against a runtime-checkable protocol can be
+    # surprisingly slow compared to an isinstance() check against a non-protocol
+    # class. Consider using alternative idioms such as hasattr() calls for
+    # structural checks in performance-sensitive code. hasattr is
+    if hasattr(entity, "as_component_batches"):
         components = entity.as_component_batches()
     else:
-        # num_instances will be based on the longest component
-        num_instances = None
         components = entity
+
+    if hasattr(entity, "num_instances"):
+        num_instances = entity.num_instances()
+    else:
+        num_instances = None
 
     log_components(
         entity_path=entity_path,
