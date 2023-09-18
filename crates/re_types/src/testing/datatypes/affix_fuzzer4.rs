@@ -76,7 +76,7 @@ impl crate::Loggable for AffixFuzzer4 {
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
                         data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                        is_nullable: true,
+                        is_nullable: false,
                         metadata: [].into(),
                     })),
                     is_nullable: false,
@@ -239,7 +239,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                     name: "item".to_owned(),
                                     data_type:
                                         <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                                    is_nullable: true,
+                                    is_nullable: false,
                                     metadata: [].into(),
                                 })),
                                 offsets,
@@ -321,8 +321,8 @@ impl crate::Loggable for AffixFuzzer4 {
                             "many_optional".to_owned(), data_type :
                             DataType::List(Box::new(Field { name : "item".to_owned(),
                             data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                            ::arrow_datatype(), is_nullable : true, metadata : [].into(),
-                            })), is_nullable : false, metadata : [].into(), },
+                            ::arrow_datatype(), is_nullable : false, metadata : []
+                            .into(), })), is_nullable : false, metadata : [].into(), },
                         ],
                             Some(vec![0i32, 1i32, 2i32, 3i32]),
                             UnionMode::Dense,
@@ -451,7 +451,7 @@ impl crate::Loggable for AffixFuzzer4 {
                                     Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                                        is_nullable: true,
+                                        is_nullable: false,
                                         metadata: [].into(),
                                     }),
                                 ),

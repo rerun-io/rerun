@@ -45,7 +45,7 @@ impl crate::Loggable for AffixFuzzer11 {
         DataType::List(Box::new(Field {
             name: "item".to_owned(),
             data_type: DataType::Float32,
-            is_nullable: true,
+            is_nullable: false,
             metadata: [].into(),
         }))
     }
@@ -125,7 +125,7 @@ impl crate::Loggable for AffixFuzzer11 {
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
                             data_type: DataType::Float32,
-                            is_nullable: true,
+                            is_nullable: false,
                             metadata: [].into(),
                         })),
                         arrow_data.data_type().clone(),
