@@ -94,5 +94,20 @@ def test_boxes2d() -> None:
         assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
+def test_with_sizes() -> None:
+    assert rr2.Boxes2D(sizes=[1, 2]) == rr2.Boxes2D(half_sizes=[0.5, 1])
+
+
+def test_with_centers_and_sizes() -> None:
+    assert rr2.Boxes2D(centers=[1, 2], sizes=[4, 6]) == rr2.Boxes2D(centers=[1, 2], half_sizes=[2, 3])
+
+
+def test_with_mins_and_sizes() -> None:
+    assert rr2.Boxes2D(mins=[-1, -1], sizes=[2, 4]) == rr2.Boxes2D(centers=[0, 1], half_sizes=[1, 2])
+
+
 if __name__ == "__main__":
     test_boxes2d()
+    test_with_sizes()
+    test_with_centers_and_sizes()
+    test_with_mins_and_sizes()
