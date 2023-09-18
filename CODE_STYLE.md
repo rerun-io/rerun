@@ -123,7 +123,7 @@ Use debug-formatting (`{:?}`) when logging strings in logs and error messages. T
 Use `re_error::format(err)` when displaying an error.
 
 ## Naming
-We prefer `snake_case` to `kebab-case` for most things (e.g. crate names, crate features, …). `snake_case` is a valid identifier in almost any programming language, while `kebab-case` is not. This means one can use the same `snake_case` identifier everywhere, and not think about wether it needs to be written as `snake_case` in some circumstances.
+We prefer `snake_case` to `kebab-case` for most things (e.g. crate names, crate features, …). `snake_case` is a valid identifier in almost any programming language, while `kebab-case` is not. This means one can use the same `snake_case` identifier everywhere, and not think about whether it needs to be written as `snake_case` in some circumstances.
 
 When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
 
