@@ -29,7 +29,7 @@ namespace rerun.archetypes;
 /// \cpp ## Example
 /// \cpp
 /// \cpp Simple 2D boxes:
-/// \cpp ```ignore
+/// \cpp ```
 /// \cpp \include:../../../../../docs/code-examples/box2d_simple.cpp
 /// \cpp ```
 table Boxes2D (

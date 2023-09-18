@@ -1,0 +1,16 @@
+include "arrow/attributes.fbs";
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A 3D rotation, represented either by a quaternion or a rotation around axis.
+table Rotation3D (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  /// Representation of the rotation.
+  repr: rerun.datatypes.Rotation3D (order: 100);
+}

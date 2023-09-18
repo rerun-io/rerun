@@ -1,0 +1,87 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+include "cpp/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
+///
+/// \py Example
+/// \py -------
+/// \py
+/// \py Simple 3D boxes:
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/box3d_simple.py
+/// \py ```
+/// \py
+/// \py Batch of 3D boxes:
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/box3d_batch.py
+/// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs Simple 3D boxes:
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/box3d_simple.rs
+/// \rs ```
+/// \rs
+/// \rs Batch of 3D boxes:
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/box3d_batch.rs
+/// \rs ```
+///
+/// \cpp ## Example
+/// \cpp
+/// \cpp Simple 3D boxes:
+/// \cpp ```
+/// \cpp \include:../../../../../docs/code-examples/box3d_simple.cpp
+/// \cpp ```
+/// \cpp
+/// \cpp Batch of 3D boxes:
+/// \cpp ```
+/// \cpp \include:../../../../../docs/code-examples/box3d_batch.cpp
+/// \cpp ```
+table Boxes3D (
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate",
+  "attr.cpp.no_field_ctors",
+  order: 100
+) {
+  // --- Required ---
+
+  /// All half-extents that make up the batch of boxes.
+  half_sizes: [rerun.components.HalfSizes3D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional center positions of the boxes.
+  centers: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // Optional rotations of the boxes.
+  rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  /// Optional colors for the boxes.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2200);
+
+  // --- Optional ---
+
+  /// Optional radii for the lines that make up the boxes.
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional text labels for the boxes.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional `ClassId`s for the boxes.
+  ///
+  /// The class ID provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Unique identifiers for each individual boxes in the batch.
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3300);
+}

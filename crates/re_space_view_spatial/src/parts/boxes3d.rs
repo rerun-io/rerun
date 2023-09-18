@@ -1,23 +1,25 @@
-use re_components::{Box3D, LegacyVec3D, Quaternion};
 use re_data_store::EntityPath;
-use re_query::{EntityView, QueryError};
-use re_renderer::Size;
+use re_query::{ArchetypeView, QueryError};
 use re_types::{
-    components::{ClassId, Color, InstanceKey, Radius, Text},
-    ComponentNameSet, Loggable as _,
+    archetypes::Boxes3D,
+    components::{HalfSizes3D, Position3D, Rotation3D},
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
-    parts::{entity_iterator::process_entity_views, UiLabel, UiLabelTarget},
+    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    parts::{UiLabel, UiLabelTarget},
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{
+    entity_iterator::process_archetype_views, picking_id_from_instance_key, process_annotations,
+    process_colors, process_labels, process_radii, SpatialViewPartData,
+};
 
 pub struct Boxes3DPart(SpatialViewPartData);
 
@@ -28,78 +30,90 @@ impl Default for Boxes3DPart {
 }
 
 impl Boxes3DPart {
-    fn process_entity_view(
+    fn process_arch_view(
         &mut self,
-        _query: &ViewQuery<'_>,
-        ent_view: &EntityView<Box3D>,
+        query: &ViewQuery<'_>,
+        arch_view: &ArchetypeView<Boxes3D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let default_color = DefaultColor::EntityPath(ent_path);
+        let annotation_infos = process_annotations::<HalfSizes3D, Boxes3D>(
+            query,
+            arch_view,
+            &ent_context.annotations,
+        )?;
+
+        let instance_keys = arch_view.iter_instance_keys();
+        let half_sizes = arch_view.iter_required_component::<HalfSizes3D>()?;
+        let positions = arch_view
+            .iter_optional_component::<Position3D>()?
+            .map(|position| position.unwrap_or(Position3D::ZERO));
+        let rotation = arch_view
+            .iter_optional_component::<Rotation3D>()?
+            .map(|position| position.unwrap_or(Rotation3D::IDENTITY));
+        let radii = process_radii(arch_view, ent_path)?;
+        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let labels = process_labels(arch_view, &annotation_infos)?;
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
-            .batch("box 3d")
+            .batch("boxes3d")
+            .depth_offset(ent_context.depth_offset)
             .world_from_obj(ent_context.world_from_obj)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        let visitor = |instance_key: InstanceKey,
-                       half_size: Box3D,
-                       position: Option<LegacyVec3D>,
-                       rotation: Option<Quaternion>,
-                       color: Option<Color>,
-                       radius: Option<Radius>,
-                       label: Option<Text>,
-                       class_id: Option<ClassId>| {
-            let class_description = ent_context.annotations.resolved_class_description(class_id);
-            let annotation_info = class_description.annotation_info();
-
-            let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
-            let color =
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
-
-            let half_size = glam::Vec3::from(half_size);
-            let rot = rotation.map(glam::Quat::from).unwrap_or_default();
-            let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
-            let transform =
-                glam::Affine3A::from_scale_rotation_translation(half_size * 2.0, rot, tran);
-
-            let box_lines = line_batch
-                .add_box_outline_from_transform(transform)
-                .radius(radius)
-                .color(color)
-                .picking_instance_id(picking_id_from_instance_key(instance_key));
-
-            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
-                box_lines.outline_mask_ids(*outline_mask_ids);
-            }
-
-            if let Some(label) = annotation_info.label(label.as_ref().map(|s| s.as_str())) {
-                self.0.ui_labels.push(UiLabel {
-                    text: label,
-                    target: UiLabelTarget::Position3D(
-                        ent_context.world_from_obj.transform_point3(tran),
-                    ),
-                    color,
-                    labeled_instance: re_data_store::InstancePathHash::instance(
-                        ent_path,
-                        instance_key,
-                    ),
-                });
-            }
+        for (instance_key, half_extent, position, rotation, radius, color, label) in itertools::izip!(
+            instance_keys,
+            half_sizes,
+            positions,
+            rotation,
+            radii,
+            colors,
+            labels
+        ) {
+            let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
 
             self.0.extend_bounding_box(
-                // Good enough for now.
-                macaw::BoundingBox::from_center_size(
-                    tran,
-                    glam::Vec3::splat(half_size.max_element()),
-                ),
+                macaw::BoundingBox {
+                    min: half_extent.box_min(position),
+                    max: half_extent.box_max(position),
+                },
                 ent_context.world_from_obj,
             );
-        };
 
-        ent_view.visit7(visitor)
+            let position = position.into();
+
+            let box3d = line_batch
+                .add_box_outline_from_transform(glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::from(half_extent) * 2.0,
+                    rotation.into(),
+                    position,
+                ))
+                .color(color)
+                .radius(radius)
+                .picking_instance_id(picking_id_from_instance_key(instance_key));
+            if let Some(outline_mask_ids) = ent_context
+                .highlight
+                .instances
+                .get(&instance_hash.instance_key)
+            {
+                box3d.outline_mask_ids(*outline_mask_ids);
+            }
+
+            if let Some(text) = label {
+                self.0.ui_labels.push(UiLabel {
+                    text,
+                    color,
+                    target: UiLabelTarget::Position3D(
+                        ent_context.world_from_obj.transform_point3(position),
+                    ),
+                    labeled_instance: instance_hash,
+                });
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -111,23 +125,20 @@ impl NamedViewSystem for Boxes3DPart {
 
 impl ViewPartSystem for Boxes3DPart {
     fn required_components(&self) -> ComponentNameSet {
-        std::iter::once(Box3D::name()).collect()
+        Boxes3D::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
-    // TODO(#2786): use this instead
-    // fn required_components(&self) -> ComponentNameSet {
-    //     Box3D::required_components().to_vec()
-    // }
-
-    // TODO(#2786): use this instead
-    // fn heuristic_filter(
-    //     &self,
-    //     _store: &re_arrow_store::DataStore,
-    //     _ent_path: &EntityPath,
-    //     components: &[re_types::ComponentName],
-    // ) -> bool {
-    //     components.contains(&Box3D::indicator_component())
-    // }
+    fn heuristic_filter(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
+        components: &std::collections::BTreeSet<re_types::ComponentName>,
+    ) -> bool {
+        components.contains(&Boxes3D::indicator_component())
+    }
 
     fn execute(
         &mut self,
@@ -135,25 +146,13 @@ impl ViewPartSystem for Boxes3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let components = [
-            Box3D::name(),
-            InstanceKey::name(),
-            LegacyVec3D::name(), // obb.position
-            Quaternion::name(),  // obb.rotation
-            Color::name(),
-            Radius::name(), // stroke_width
-            Text::name(),
-            ClassId::name(),
-        ];
-
-        process_entity_views::<Boxes3DPart, Box3D, 8, _>(
+        process_archetype_views::<Boxes3DPart, Boxes3D, { Boxes3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,
-            0,
-            components.into_iter().collect(),
-            |_ctx, ent_path, entity_view, ent_context| {
-                self.process_entity_view(query, &entity_view, ent_path, ent_context)
+            view_ctx.get::<EntityDepthOffsets>()?.box2d,
+            |_ctx, ent_path, arch_view, ent_context| {
+                self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },
         )?;
 
