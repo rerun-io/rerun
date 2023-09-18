@@ -32,7 +32,7 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// Furthermore, [`RecordingStream::set_sink`] calls after this should not swap out to a new sink but re-use the existing one.
 /// Note that creating a new [`crate::sink::FileSink`] to the same file path (even temporarily) can cause
 /// a race between file cration (and thus clearing) and pending file writes.
-fn force_sink() -> Option<String> {
+fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
 }
 
@@ -552,7 +552,7 @@ impl RecordingStream {
         batcher_config: DataTableBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let sink = force_sink().map_or(sink, |path| {
+        let sink = forced_sink_path().map_or(sink, |path| {
             re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
             // UInwrap is ok since this force sinks are only used in tests.
             Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
@@ -951,7 +951,7 @@ impl RecordingStream {
         // 1. Flush the batcher down the table channel
         this.batcher.flush_blocking();
 
-        if force_sink().is_some() {
+        if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new sink since _RERUN_FORCE_SINK is set");
             return;
         }
