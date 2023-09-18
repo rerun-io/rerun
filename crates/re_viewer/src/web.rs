@@ -32,7 +32,6 @@ impl WebHandle {
         &self,
         canvas_id: &str,
         url: Option<String>,
-        fallback_to_ws: bool,
     ) -> Result<(), wasm_bindgen::JsValue> {
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
@@ -46,7 +45,7 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let app = create_app(cc, url.clone(), fallback_to_ws);
+                    let app = create_app(cc, url);
                     Box::new(app)
                 }),
             )
@@ -78,11 +77,7 @@ impl WebHandle {
     }
 }
 
-fn create_app(
-    cc: &eframe::CreationContext<'_>,
-    url: Option<String>,
-    fallback_to_ws: bool,
-) -> crate::App {
+fn create_app(cc: &eframe::CreationContext<'_>, url: Option<String>) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web;
     let startup_options = crate::StartupOptions {
@@ -106,53 +101,52 @@ fn create_app(
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 
-    if url.is_none() && !fallback_to_ws {
-        // We didn't get a `url` to connect to, and we also aren't supposed to
-        // start the WebSocket client, so just show the welcome screen.
-        return app;
+    let url = match url.as_ref() {
+        Some(url) => Some(url),
+        None => cc.integration_info.web_info.location.query_map.get("url"),
+    };
+    if let Some(url) = url {
+        let rx = match categorize_uri(url) {
+            EndpointCategory::HttpRrd(url) => {
+                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
+                    url,
+                    Some(wake_up_ui_on_msg),
+                )
+            }
+            EndpointCategory::WebEventListener => {
+                // Process an rrd when it's posted via `window.postMessage`
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    re_smart_channel::SmartMessageSource::RrdWebEventCallback,
+                    re_smart_channel::SmartChannelSource::RrdWebEventListener,
+                );
+                re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
+                    move |msg| {
+                        wake_up_ui_on_msg();
+                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                        match msg {
+                            HttpMessage::LogMsg(msg) => {
+                                tx.send(msg).warn_on_err_once("failed to send message")
+                            }
+                            HttpMessage::Success => {
+                                tx.quit(None).warn_on_err_once("failed to send quit marker")
+                            }
+                            HttpMessage::Failure(err) => tx
+                                .quit(Some(err))
+                                .warn_on_err_once("failed to send quit marker"),
+                        };
+                    }
+                }));
+                rx
+            }
+            EndpointCategory::WebSocket(url) => {
+                re_data_source::connect_to_ws_url(&url, Some(wake_up_ui_on_msg)).unwrap_or_else(
+                    |err| panic!("Failed to connect to WebSocket server at {url}: {err}"),
+                )
+            }
+        };
+        app.add_receiver(rx);
     }
 
-    let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
-    let rx = match categorize_uri(url) {
-        EndpointCategory::HttpRrd(url) => {
-            re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
-                url,
-                Some(wake_up_ui_on_msg),
-            )
-        }
-        EndpointCategory::WebEventListener => {
-            // Process an rrd when it's posted via `window.postMessage`
-            let (tx, rx) = re_smart_channel::smart_channel(
-                re_smart_channel::SmartMessageSource::RrdWebEventCallback,
-                re_smart_channel::SmartChannelSource::RrdWebEventListener,
-            );
-            re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
-                move |msg| {
-                    wake_up_ui_on_msg();
-                    use re_log_encoding::stream_rrd_from_http::HttpMessage;
-                    match msg {
-                        HttpMessage::LogMsg(msg) => {
-                            tx.send(msg).warn_on_err_once("failed to send message")
-                        }
-                        HttpMessage::Success => {
-                            tx.quit(None).warn_on_err_once("failed to send quit marker")
-                        }
-                        HttpMessage::Failure(err) => tx
-                            .quit(Some(err))
-                            .warn_on_err_once("failed to send quit marker"),
-                    };
-                }
-            }));
-            rx
-        }
-        EndpointCategory::WebSocket(url) => {
-            re_data_source::connect_to_ws_url(&url, Some(wake_up_ui_on_msg)).unwrap_or_else(|err| {
-                panic!("Failed to connect to WebSocket server at {url}: {err}")
-            })
-        }
-    };
-
-    app.add_receiver(rx);
     app
 }
 
@@ -185,11 +179,11 @@ enum EndpointCategory {
     WebEventListener,
 }
 
-fn categorize_uri(mut uri: String) -> EndpointCategory {
+fn categorize_uri(uri: &str) -> EndpointCategory {
     if uri.starts_with("http") || uri.ends_with(".rrd") {
-        EndpointCategory::HttpRrd(uri)
+        EndpointCategory::HttpRrd(uri.into())
     } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-        EndpointCategory::WebSocket(uri)
+        EndpointCategory::WebSocket(uri.into())
     } else if uri.starts_with("web_event:") {
         EndpointCategory::WebEventListener
     } else {
@@ -197,26 +191,10 @@ fn categorize_uri(mut uri: String) -> EndpointCategory {
         // We could/should connect and see what it is, but for now we just take a wild guess instead:
         re_log::info!("Assuming WebSocket endpoint");
         if !uri.contains("://") {
-            uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+            EndpointCategory::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
+        } else {
+            EndpointCategory::WebSocket(uri.into())
         }
-        EndpointCategory::WebSocket(uri)
-    }
-}
-
-fn get_url(info: &eframe::IntegrationInfo) -> String {
-    let mut url = String::new();
-    if let Some(param) = info.web_info.location.query_map.get("url") {
-        url = param.clone();
-    }
-    if url.is_empty() {
-        format!(
-            "{}://{}:{}",
-            re_ws_comms::PROTOCOL,
-            &info.web_info.location.hostname,
-            re_ws_comms::DEFAULT_WS_SERVER_PORT
-        )
-    } else {
-        url
     }
 }
 

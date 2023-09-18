@@ -170,9 +170,8 @@ function on_wasm_loaded() {
   check_for_panic();
 
   let url = determine_url();
-  let fallback_to_websockets = false; // We're on `demo.rerun.io`, so don't fallback to WebSockets.
   handle
-    .start("the_canvas_id", url, fallback_to_websockets)
+    .start("the_canvas_id", url)
     .then(on_app_started)
     .catch(on_wasm_error);
 }
