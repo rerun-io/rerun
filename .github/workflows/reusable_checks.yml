@@ -253,6 +253,8 @@ jobs:
   misc-rerun-lints:
     name: Rerun lints
     runs-on: ubuntu-latest
+    container:
+      image: rerunio/ci_docker:0.9
     steps:
       - uses: actions/checkout@v4
         with:
