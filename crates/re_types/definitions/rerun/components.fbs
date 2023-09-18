@@ -11,6 +11,7 @@ include "./components/instance_key.fbs";
 include "./components/keypoint_id.fbs";
 include "./components/line_strip2d.fbs";
 include "./components/line_strip3d.fbs";
+include "./components/media_type.fbs";
 include "./components/origin2d.fbs";
 include "./components/origin3d.fbs";
 include "./components/position2d.fbs";
