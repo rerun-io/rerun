@@ -55,7 +55,7 @@
 ///        .with_rotations([
 ///            Rotation3D::IDENTITY,
 ///            Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]).into(), // 45 degrees around Z
-///            RotationAxisAngle::new((0.0, 1.0, 1.0), Angle::Degrees(30.0)).into(),
+///            RotationAxisAngle::new((0.0, 1.0, 0.0), Angle::Degrees(30.0)).into(),
 ///        ])
 ///        .with_radii([0.025])
 ///        .with_colors([
