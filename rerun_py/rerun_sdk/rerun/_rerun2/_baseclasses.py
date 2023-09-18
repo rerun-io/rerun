@@ -11,20 +11,6 @@ if TYPE_CHECKING:
     from .log import ComponentBatchLike
 
 
-class IndicatorComponent:
-    """Indicator component."""
-
-    def __init__(self, archetype_name: str, num_instances: int) -> None:
-        self._archetype_name = archetype_name
-        self._num_instances = num_instances
-
-    def component_name(self) -> str:
-        return f"rerun.components.{self._archetype_name}Indicator"
-
-    def as_arrow_batch(self) -> pa.Array:
-        return pa.nulls(self._num_instances, type=pa.null())
-
-
 @define
 class Archetype:
     """Base class for all archetypes."""
@@ -64,8 +50,9 @@ class Archetype:
 
         Part of the `ArchetypeLike` logging interface.
         """
+        from .log import IndicatorComponentBatch
 
-        yield IndicatorComponent(self.archetype_name(), self.num_instances())
+        yield IndicatorComponentBatch(self.archetype_name(), self.num_instances())
 
         for fld in fields(type(self)):
             if "component" in fld.metadata:

@@ -19,9 +19,38 @@ EXT_PREFIX = "ext."
 ext_component_types: dict[str, Any] = {}
 
 
+class IndicatorComponentBatch:
+    """
+    A batch of Indicator Components that can be included in a Bundle.
+
+    Indicator Components signal that a given Bundle should prefer to be interpreted as a
+    given archetype. This helps the view heuristics choose the correct view in situations
+    where multiple archetypes would otherwise be overlapping.
+
+    This implements the `ComponentBatchLike` interface.
+
+    Parameters
+    ----------
+    archetype_name:
+        The name of the Archetype.
+    num_instances:
+        The number of instances of the in this batch.
+    """
+
+    def __init__(self, archetype_name: str, num_instances: int) -> None:
+        self._archetype_name = archetype_name
+        self._num_instances = num_instances
+
+    def component_name(self) -> str:
+        return f"rerun.components.{self._archetype_name}Indicator"
+
+    def as_arrow_batch(self) -> pa.Array:
+        return pa.nulls(self._num_instances, type=pa.null())
+
+
 @runtime_checkable
 class ComponentBatchLike(Protocol):
-    """Describes interface for objects that can be converted to rerun Components."""
+    """Describes interface for objects that can be converted to batch of rerun Components."""
 
     def component_name(self) -> str:
         """Returns the name of the component."""
