@@ -121,13 +121,13 @@ impl Boxes2DPart {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        for (instance_key, half_extent, position, radius, color) in
+        for (instance_key, half_size, position, radius, color) in
             itertools::izip!(instance_keys, half_sizes, positions, radii, colors)
         {
             let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
 
-            let min = half_extent.box_min(position);
-            let max = half_extent.box_max(position);
+            let min = half_size.box_min(position);
+            let max = half_size.box_max(position);
 
             self.data.extend_bounding_box(
                 macaw::BoundingBox {
@@ -140,8 +140,8 @@ impl Boxes2DPart {
             let rectangle = line_batch
                 .add_rectangle_outline_2d(
                     min,
-                    glam::vec2(half_extent.width(), 0.0),
-                    glam::vec2(0.0, half_extent.height()),
+                    glam::vec2(half_size.width(), 0.0),
+                    glam::vec2(0.0, half_size.height()),
                 )
                 .color(color)
                 .radius(radius)

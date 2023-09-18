@@ -6,12 +6,18 @@ import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import Quaternion, Rotation3DArrayLike, Rotation3DLike, RotationAxisAngle
+    from . import Quaternion, Rotation3D, Rotation3DArrayLike, Rotation3DLike, RotationAxisAngle
 
 from .._unions import union_discriminant_type
 
 
 class Rotation3DExt:
+    @staticmethod
+    def identity() -> Rotation3D:
+        from . import Quaternion, Rotation3D
+
+        return Rotation3D(Quaternion.identity())
+
     @staticmethod
     def inner__field_converter_override(
         data: Rotation3DLike,

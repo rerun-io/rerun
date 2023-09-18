@@ -17,6 +17,7 @@ mod transform3d_arrows;
 pub use cameras::CamerasPart;
 pub use images::ImagesPart;
 pub use images::ViewerImage;
+use re_types::components::Text;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
@@ -116,6 +117,23 @@ pub fn process_colors<'a, A: Archetype>(
     )
     .map(move |(annotation_info, color)| {
         annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
+    }))
+}
+
+/// Process [`Text`] components using annotations.
+#[allow(dead_code)]
+pub fn process_labels<'a, A: Archetype>(
+    arch_view: &'a re_query::ArchetypeView<A>,
+    annotation_infos: &'a ResolvedAnnotationInfos,
+) -> Result<impl Iterator<Item = Option<String>> + 'a, re_query::QueryError> {
+    re_tracing::profile_function!();
+
+    Ok(itertools::izip!(
+        annotation_infos.iter(),
+        arch_view.iter_optional_component::<Text>()?,
+    )
+    .map(move |(annotation_info, text)| {
+        annotation_info.label(text.as_ref().map(move |t| t.as_str()))
     }))
 }
 

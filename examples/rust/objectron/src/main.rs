@@ -20,10 +20,11 @@ use anyhow::{anyhow, Context as _};
 
 use rerun::{
     archetypes::{Image, LineStrips2D, Points2D, Points3D, Transform3D},
+    components::HalfSizes3D,
     datatypes::TranslationRotationScale3D,
     external::re_log,
     time::{Time, TimePoint, TimeType, Timeline},
-    ComponentBatch, RecordingStream,
+    RecordingStream,
 };
 
 // --- Rerun logging ---
@@ -113,8 +114,7 @@ fn log_baseline_objects(
     rec: &RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    use rerun::components::{Box3D, Color, Text, Transform3D};
-    use rerun::transform::TranslationAndMat3x3;
+    use rerun::{components::Color, transform::TranslationAndMat3x3};
 
     let boxes = objects.iter().filter_map(|object| {
         Some({
@@ -123,31 +123,28 @@ fn log_baseline_objects(
                 return None;
             }
 
-            let box3: Box3D = (glam::Vec3::from_slice(&object.scale) * 0.5).into();
+            let box_half_size: HalfSizes3D = (glam::Vec3::from_slice(&object.scale) * 0.5).into();
             let transform = {
                 let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                Transform3D::new(TranslationAndMat3x3::new(translation, rotation))
+                TranslationAndMat3x3::new(translation, rotation)
             };
-            let label = Text(object.category.clone().into());
+            let label = object.category.as_str();
 
-            (object.id, box3, transform, label)
+            (object.id, box_half_size, transform, label)
         })
     });
 
-    for (id, bbox, transform, label) in boxes {
-        rec.log_component_batches(
-            format!("world/annotations/box-{id}"),
-            true,
-            1,
-            [
-                &bbox as &dyn ComponentBatch,
-                &transform,
-                &label,
-                &Color::from_rgb(160, 230, 130),
-            ],
+    for (id, bbox_half_size, transform, label) in boxes {
+        let path = format!("world/annotations/box-{id}");
+        rec.log(
+            path.clone(),
+            &rerun::archetypes::Boxes3D::from_half_sizes([bbox_half_size])
+                .with_labels([label])
+                .with_colors([Color::from_rgb(160, 230, 130)]),
         )?;
+        rec.log(path, &rerun::archetypes::Transform3D::new(transform))?;
     }
 
     Ok(())
