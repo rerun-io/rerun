@@ -515,12 +515,13 @@ fn code_for_struct(
 
     let mut superclasses = vec![];
 
-    if *kind == ObjectKind::Archetype {
-        superclasses.push("Archetype".to_owned());
-    }
-
+    // Extension class needs to come first, so its __init__ method is called if there is one.
     if ext_class.found {
         superclasses.push(ext_class.name.clone());
+    }
+
+    if *kind == ObjectKind::Archetype {
+        superclasses.push("Archetype".to_owned());
     }
 
     // Delegating component inheritance comes after the `ExtensionClass`
@@ -739,12 +740,13 @@ fn code_for_union(
 
     let mut superclasses = vec![];
 
-    if *kind == ObjectKind::Archetype {
-        superclasses.push("Archetype");
-    }
-
+    // Extension class needs to come first, so its __init__ method is called if there is one.
     if ext_class.found {
         superclasses.push(ext_class.name.as_str());
+    }
+
+    if *kind == ObjectKind::Archetype {
+        superclasses.push("Archetype");
     }
 
     let superclass_decl = if superclasses.is_empty() {
