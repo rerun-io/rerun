@@ -30,13 +30,13 @@ class Archetype:
         return s
 
     def archetype_name(self) -> str:
-        return type(self).__name__
+        return "rerun.archetypes." + type(self).__name__
 
     def num_instances(self) -> int:
         """
         The number of instances that make up the batch.
 
-        Part of the `ArchetypeLike` logging interface.
+        Part of the `BundleProtocol` logging interface.
         """
         for fld in fields(type(self)):
             # TODO(jleibs): What to do if multiple required components have different lengths?
@@ -48,7 +48,7 @@ class Archetype:
         """
         Return all the component batches that make up the archetype.
 
-        Part of the `ArchetypeLike` logging interface.
+        Part of the `BundleProtocol` logging interface.
         """
         from .log import IndicatorComponentBatch
 

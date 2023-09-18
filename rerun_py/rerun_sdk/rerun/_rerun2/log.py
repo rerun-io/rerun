@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Protocol, runtime_checkable
+from typing import Any, Iterable, Protocol, Union, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +9,7 @@ import pyarrow as pa
 from .. import RecordingStream, bindings
 from ..log import error_utils
 from . import components as cmp
-from ._baseclasses import NamedExtensionArray
+from ._baseclasses import Archetype, NamedExtensionArray
 
 __all__ = ["log"]
 
@@ -32,7 +32,7 @@ class IndicatorComponentBatch:
     Parameters
     ----------
     archetype_name:
-        The name of the Archetype.
+        The fully qualified name of the Archetype.
     num_instances:
         The number of instances of the in this batch.
     """
@@ -42,7 +42,7 @@ class IndicatorComponentBatch:
         self._num_instances = num_instances
 
     def component_name(self) -> str:
-        return f"rerun.components.{self._archetype_name}Indicator"
+        return self._archetype_name.replace("archetypes", "components") + "Indicator"
 
     def as_arrow_batch(self) -> pa.Array:
         return pa.nulls(self._num_instances, type=pa.null())
@@ -67,8 +67,8 @@ class ComponentBatchLike(Protocol):
 
 
 @runtime_checkable
-class ArchetypeLike(Protocol):
-    """Describes interface for objects that can be logged via rr.log."""
+class BundleProtocol(Protocol):
+    """Describes interface for interpreting an object as a bundle of multiple `ComponentBatch`s."""
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -90,6 +90,10 @@ class ArchetypeLike(Protocol):
         component is being cleared.
         """
         ...
+
+
+BundleLike = Union[Archetype, BundleProtocol, Iterable[ComponentBatchLike]]
+"""A Union representing types that can be passed to `rerun.log`."""
 
 
 # adapted from rerun.log._add_extension_components
@@ -144,7 +148,7 @@ def _splat() -> cmp.InstanceKeyArray:
 
 def log(
     entity_path: str,
-    entity: ArchetypeLike,
+    entity: BundleLike,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -156,8 +160,8 @@ def log(
     ----------
     entity_path:
         Path to the entity in the space hierarchy.
-    entity: Archetype
-        The archetype object representing the entity.
+    entity: BundleLike
+        Anything that can be converted to a bundle of components.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -168,11 +172,13 @@ def log(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if not isinstance(entity, ArchetypeLike):
-        raise TypeError(f"Expected ArchetypeLike, got {type(entity)}")
-
-    num_instances = entity.num_instances()
-    components = entity.as_component_batches()
+    if isinstance(entity, BundleProtocol):
+        num_instances = entity.num_instances()
+        components = entity.as_component_batches()
+    else:
+        # num_instances will be based on the longest component
+        num_instances = None
+        components = entity
 
     log_components(
         entity_path=entity_path,
@@ -204,7 +210,7 @@ def log_components(
     entity_path:
         Path to the entity in the space hierarchy.
     components:
-        A collection of `ComponentBatchLike` objects.
+        A collection of `ComponentBatchLike` objects that
     num_instances:
         Optional. The number of instances in each batch. If not provided, the max of all
         components will be used instead.

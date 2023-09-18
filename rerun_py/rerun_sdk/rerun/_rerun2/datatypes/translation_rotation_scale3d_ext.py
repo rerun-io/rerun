@@ -29,7 +29,7 @@ class TranslationRotationScale3DExt:
 
             return Vec3D(data)
 
-    # Implement the ArchetypeLike protocol
+    # Implement the BundleProtocol protocol
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import Transform3D
 
