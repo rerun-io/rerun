@@ -14,5 +14,12 @@ table TextDocument (
 ) {
   body: rerun.components.Text ("attr.rerun.component_required", order: 100);
 
-  // TODO(emilk): text_format: rerun.components.TextFormat # (txt, md, …)
+  /// The Media Type of the text.
+  ///
+  /// For instance:
+  /// * `text/plain`
+  /// * `text/markdown`
+  ///
+  /// If omitted, `text/plain` is assumed.
+  media_type: rerun.components.MediaType ("attr.rerun.component_optional", nullable, order: 100);
 }

@@ -32,6 +32,7 @@ src/components/instance_key.rs linguist-generated=true
 src/components/keypoint_id.rs linguist-generated=true
 src/components/line_strip2d.rs linguist-generated=true
 src/components/line_strip3d.rs linguist-generated=true
+src/components/media_type.rs linguist-generated=true
 src/components/mod.rs linguist-generated=true
 src/components/origin2d.rs linguist-generated=true
 src/components/origin3d.rs linguist-generated=true

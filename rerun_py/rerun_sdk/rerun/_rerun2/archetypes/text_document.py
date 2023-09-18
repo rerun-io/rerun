@@ -25,5 +25,20 @@ class TextDocument(Archetype):
         metadata={"component": "primary"},
         converter=components.TextArray.from_similar,  # type: ignore[misc]
     )
+    media_type: components.MediaTypeArray | None = field(
+        metadata={"component": "secondary"},
+        default=None,
+        converter=components.MediaTypeArray.from_similar,  # type: ignore[misc]
+    )
+    """
+    The Media Type of the text.
+
+    For instance:
+    * `text/plain`
+    * `text/markdown`
+
+    If omitted, `text/plain` is assumed.
+    """
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
