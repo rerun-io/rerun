@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Check or update example thumbnails."""
+"""Checks or updates cached thumbnail dimensions in example READMEs."""
 from __future__ import annotations
 
 import argparse
