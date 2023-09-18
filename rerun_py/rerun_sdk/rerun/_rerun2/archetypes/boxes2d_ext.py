@@ -9,7 +9,7 @@ from ..datatypes import Vec2DArrayLike
 
 class Boxes2DExt:
     def __init__(
-        self: Any, *, sizes: Vec2DArrayLike | None = None, mins: Vec2DArrayLike | None = None, **kwargs
+        self: Any, *, sizes: Vec2DArrayLike | None = None, mins: Vec2DArrayLike | None = None, **kwargs: Any
     ) -> None:
         if sizes is not None:
             if kwargs.get("half_sizes") is not None:
