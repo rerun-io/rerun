@@ -5,7 +5,7 @@ tags: [mediapipe, keypoint-detection, 2D, 3D]
 description: "Use the MediaPipe Pose solution to detect and track a human pose in video."
 thumbnail: https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png
 thumbnail_dimensions: [480, 272]
-build_args: []
+demo: true
 ---
 
 <picture>

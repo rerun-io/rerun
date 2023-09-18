@@ -77,7 +77,8 @@ struct Frontmatter {
     description: Option<String>,
     thumbnail: Option<String>,
     thumbnail_dimensions: Option<[u64; 2]>,
-    build_args: Option<Vec<String>>,
+    #[serde(default)]
+    demo: bool,
 }
 
 #[derive(serde::Serialize)]
@@ -142,7 +143,7 @@ fn examples() -> Result<Vec<Example>> {
         if metadata.is_dir() && readme.exists() {
             let readme = parse_frontmatter(readme)?;
             let Some(readme) = readme else { continue };
-            if readme.build_args.is_none() {
+            if !readme.demo {
                 continue;
             }
             examples.push(Example { name, readme });
@@ -154,6 +155,7 @@ fn examples() -> Result<Vec<Example>> {
 fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
     let path = path.as_ref();
     let content = std::fs::read_to_string(path)?;
+    re_build_tools::rerun_if_changed(path);
     let Some(content) = content.strip_prefix("---\n") else {
         return Ok(None);
     };
