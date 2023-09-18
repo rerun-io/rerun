@@ -112,6 +112,7 @@ jobs:
           parent: false
 
       - name: "Upload web-viewer (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
@@ -120,6 +121,7 @@ jobs:
           parent: false
 
       - name: "Upload RRD (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
