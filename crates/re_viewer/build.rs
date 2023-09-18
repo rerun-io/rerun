@@ -91,17 +91,8 @@ struct ManifestEntry {
     thumbnail: Thumbnail,
 }
 
-#[derive(serde::Serialize)]
-struct Thumbnail {
-    url: String,
-    width: u64,
-    height: u64,
-}
-
-impl TryFrom<Example> for ManifestEntry {
-    type Error = AnyError;
-
-    fn try_from(example: Example) -> Result<Self, Self::Error> {
+impl ManifestEntry {
+    fn new(example: Example, base_url: &str) -> Result<Self> {
         macro_rules! get {
             ($e:ident, $f:ident) => {
                 match $e.readme.$f {
@@ -109,26 +100,6 @@ impl TryFrom<Example> for ManifestEntry {
                     None => bail!("{:?} is missing field {:?}", $e.name, stringify!($f)),
                 }
             };
-        }
-
-        let mut base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
-            .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
-
-        if std::env::var("CI").is_ok() {
-            // We're in CI:
-            let sh = Shell::new()?;
-            let branch = git_branch_name(&sh)?;
-            // If we are on `main`, leave the base url at `version/nightly`
-            if branch != "main" {
-                if let Some(version) = parse_release_version(&branch) {
-                    // In builds on `release-x.y.z` branches, use `version/{x.y.z}`.
-                    base_url = format!("https://demo.rerun.io/version/{version}");
-                } else {
-                    // On any other branch, use `commit/{short_sha}`.
-                    let sha = git_short_hash(&sh)?;
-                    base_url = format!("https://demo.rerun.io/commit/{sha}");
-                }
-            }
         }
 
         let thumbnail_dimensions = get!(example, thumbnail_dimensions);
@@ -147,6 +118,13 @@ impl TryFrom<Example> for ManifestEntry {
             name: example.name,
         })
     }
+}
+
+#[derive(serde::Serialize)]
+struct Thumbnail {
+    url: String,
+    width: u64,
+    height: u64,
 }
 
 struct Example {
@@ -192,12 +170,38 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
     )?))
 }
 
+fn get_base_url() -> Result<String> {
+    let mut base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
+        .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
+
+    if std::env::var("CI").is_ok() {
+        // We're in CI:
+        let sh = Shell::new()?;
+        let branch = git_branch_name(&sh)?;
+        // If we are on `main`, leave the base url at `version/nightly`
+        if branch != "main" {
+            if let Some(version) = parse_release_version(&branch) {
+                // In builds on `release-x.y.z` branches, use `version/{x.y.z}`.
+                base_url = format!("https://demo.rerun.io/version/{version}");
+            } else {
+                // On any other branch, use `commit/{short_sha}`.
+                let sha = git_short_hash(&sh)?;
+                base_url = format!("https://demo.rerun.io/commit/{sha}");
+            }
+        }
+    }
+
+    Ok(base_url)
+}
+
 const MANIFEST_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/examples_manifest.json");
 
 fn write_examples_manifest() -> Result<()> {
+    let base_url = get_base_url()?;
+
     let mut manifest = vec![];
     for example in examples()? {
-        manifest.push(ManifestEntry::try_from(example)?);
+        manifest.push(ManifestEntry::new(example, &base_url)?);
     }
     re_build_tools::write_file_if_necessary(
         MANIFEST_PATH,
