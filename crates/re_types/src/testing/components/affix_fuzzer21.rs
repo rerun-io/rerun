@@ -72,7 +72,7 @@ impl crate::Loggable for AffixFuzzer21 {
                 metadata: [].into(),
             },
             Field {
-                name: "many_halfs".to_owned(),
+                name: "many_halves".to_owned(),
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float16,

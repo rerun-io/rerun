@@ -43,7 +43,7 @@ impl Objects {
 
         let include_dir_path = include_dir_path.as_ref();
 
-        // TODO(jleibs) Do we need real attributes here?
+        // TODO(jleibs): Do we need real attributes here?
         let attrs = Attributes::default();
 
         // resolve enums

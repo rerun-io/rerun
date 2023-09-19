@@ -12,7 +12,7 @@ namespace rerun {
             static const auto datatype = arrow::struct_({
                 arrow::field("single_half", arrow::float16(), false),
                 arrow::field(
-                    "many_halfs",
+                    "many_halves",
                     arrow::list(arrow::field("item", arrow::float16(), false)),
                     false
                 ),
@@ -72,8 +72,8 @@ namespace rerun {
                     const auto &element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                        element.many_halfs.data(),
-                        static_cast<int64_t>(element.many_halfs.size()),
+                        element.many_halves.data(),
+                        static_cast<int64_t>(element.many_halves.size()),
                         nullptr
                     ));
                 }

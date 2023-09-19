@@ -103,5 +103,5 @@ table AffixFuzzer21 (
   order: 700
 ) {
   single_half: ushort (order: 100, "attr.rerun.override_type": "half");
-  many_halfs: [ushort] (order: 200, "attr.rerun.override_type": "half");
+  many_halves: [ushort] (order: 200, "attr.rerun.override_type": "half");
 }

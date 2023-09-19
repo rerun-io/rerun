@@ -28,7 +28,7 @@ class AffixFuzzer21:
     # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py
 
     single_half: float = field(converter=float)
-    many_halfs: npt.NDArray[np.float16] = field(converter=to_np_float16)
+    many_halves: npt.NDArray[np.float16] = field(converter=to_np_float16)
 
 
 AffixFuzzer21Like = AffixFuzzer21
@@ -49,7 +49,7 @@ class AffixFuzzer21Type(BaseExtensionType):
                 [
                     pa.field("single_half", pa.float16(), nullable=False, metadata={}),
                     pa.field(
-                        "many_halfs",
+                        "many_halves",
                         pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
                         nullable=False,
                         metadata={},

@@ -16,7 +16,7 @@
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer21 {
     pub single_half: arrow2::types::f16,
-    pub many_halfs: crate::ArrowBuffer<arrow2::types::f16>,
+    pub many_halves: crate::ArrowBuffer<arrow2::types::f16>,
 }
 
 impl<'a> From<AffixFuzzer21> for ::std::borrow::Cow<'a, AffixFuzzer21> {
@@ -53,7 +53,7 @@ impl crate::Loggable for AffixFuzzer21 {
                 metadata: [].into(),
             },
             Field {
-                name: "many_halfs".to_owned(),
+                name: "many_halves".to_owned(),
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float16,
@@ -116,32 +116,32 @@ impl crate::Loggable for AffixFuzzer21 {
                         .boxed()
                     },
                     {
-                        let (somes, many_halfs): (Vec<_>, Vec<_>) = data
+                        let (somes, many_halves): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
                                 let datum = datum.as_ref().map(|datum| {
-                                    let Self { many_halfs, .. } = &**datum;
-                                    many_halfs.clone()
+                                    let Self { many_halves, .. } = &**datum;
+                                    many_halves.clone()
                                 });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let many_halfs_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let many_halves_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_halfs_inner_data: Buffer<_> = many_halfs
+                            let many_halves_inner_data: Buffer<_> = many_halves
                                 .iter()
                                 .flatten()
                                 .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let many_halfs_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let many_halves_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                             let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_halfs.iter().map(|opt| {
+                                many_halves.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -159,11 +159,11 @@ impl crate::Loggable for AffixFuzzer21 {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::Float16,
-                                    many_halfs_inner_data,
-                                    many_halfs_inner_bitmap,
+                                    many_halves_inner_data,
+                                    many_halves_inner_bitmap,
                                 )
                                 .boxed(),
-                                many_halfs_bitmap,
+                                many_halves_bitmap,
                             )
                             .boxed()
                         }
@@ -198,7 +198,7 @@ impl crate::Loggable for AffixFuzzer21 {
                                 metadata: [].into(),
                             },
                             Field {
-                                name: "many_halfs".to_owned(),
+                                name: "many_halves".to_owned(),
                                 data_type: DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float16,
@@ -245,15 +245,15 @@ impl crate::Loggable for AffixFuzzer21 {
                         .into_iter()
                         .map(|opt| opt.copied())
                 };
-                let many_halfs = {
-                    if !arrays_by_name.contains_key("many_halfs") {
+                let many_halves = {
+                    if !arrays_by_name.contains_key("many_halves") {
                         return Err(crate::DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "many_halfs",
+                            "many_halves",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer21");
                     }
-                    let arrow_data = &**arrays_by_name["many_halfs"];
+                    let arrow_data = &**arrays_by_name["many_halves"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -269,7 +269,7 @@ impl crate::Loggable for AffixFuzzer21 {
                                     arrow_data.data_type().clone(),
                                 )
                             })
-                            .with_context("rerun.testing.datatypes.AffixFuzzer21#many_halfs")?;
+                            .with_context("rerun.testing.datatypes.AffixFuzzer21#many_halves")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -285,7 +285,7 @@ impl crate::Loggable for AffixFuzzer21 {
                                         )
                                     })
                                     .with_context(
-                                        "rerun.testing.datatypes.AffixFuzzer21#many_halfs",
+                                        "rerun.testing.datatypes.AffixFuzzer21#many_halves",
                                     )?
                                     .values()
                             };
@@ -322,20 +322,22 @@ impl crate::Loggable for AffixFuzzer21 {
                     }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(single_half, many_halfs),
+                    ::itertools::izip!(single_half, many_halves),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(single_half, many_halfs)| {
+                    opt.map(|(single_half, many_halves)| {
                         Ok(Self {
                             single_half: single_half
                                 .ok_or_else(crate::DeserializationError::missing_data)
                                 .with_context(
                                     "rerun.testing.datatypes.AffixFuzzer21#single_half",
                                 )?,
-                            many_halfs: many_halfs
+                            many_halves: many_halves
                                 .ok_or_else(crate::DeserializationError::missing_data)
-                                .with_context("rerun.testing.datatypes.AffixFuzzer21#many_halfs")?,
+                                .with_context(
+                                    "rerun.testing.datatypes.AffixFuzzer21#many_halves",
+                                )?,
                         })
                     })
                     .transpose()

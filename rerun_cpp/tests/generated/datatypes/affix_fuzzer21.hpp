@@ -19,7 +19,7 @@ namespace rerun {
         struct AffixFuzzer21 {
             uint16_t single_half;
 
-            std::vector<uint16_t> many_halfs;
+            std::vector<uint16_t> many_halves;
 
           public:
             AffixFuzzer21() = default;

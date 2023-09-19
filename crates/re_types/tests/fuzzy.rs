@@ -207,7 +207,7 @@ fn roundtrip() {
 
     let fuzzy21 = components::AffixFuzzer21(datatypes::AffixFuzzer21 {
         single_half: f16::from_f32(123.4),
-        many_halfs: vec![f16::from_f32(123.4), f16::from_f32(567.8)].into(),
+        many_halves: vec![f16::from_f32(123.4), f16::from_f32(567.8)].into(),
     });
 
     let arch = AffixFuzzer1::new(
