@@ -16,6 +16,7 @@
 #include "../components/affix_fuzzer19.hpp"
 #include "../components/affix_fuzzer2.hpp"
 #include "../components/affix_fuzzer20.hpp"
+#include "../components/affix_fuzzer21.hpp"
 #include "../components/affix_fuzzer3.hpp"
 #include "../components/affix_fuzzer4.hpp"
 #include "../components/affix_fuzzer5.hpp"
@@ -75,6 +76,8 @@ namespace rerun {
             rerun::components::AffixFuzzer19 fuzz1019;
 
             rerun::components::AffixFuzzer20 fuzz1020;
+
+            rerun::components::AffixFuzzer21 fuzz1021;
 
             std::vector<rerun::components::AffixFuzzer1> fuzz1101;
 
@@ -212,6 +215,7 @@ namespace rerun {
                 rerun::components::AffixFuzzer18 _fuzz1018,
                 rerun::components::AffixFuzzer19 _fuzz1019,
                 rerun::components::AffixFuzzer20 _fuzz1020,
+                rerun::components::AffixFuzzer21 _fuzz1021,
                 std::vector<rerun::components::AffixFuzzer1> _fuzz1101,
                 std::vector<rerun::components::AffixFuzzer2> _fuzz1102,
                 std::vector<rerun::components::AffixFuzzer3> _fuzz1103,
@@ -251,6 +255,7 @@ namespace rerun {
                   fuzz1018(std::move(_fuzz1018)),
                   fuzz1019(std::move(_fuzz1019)),
                   fuzz1020(std::move(_fuzz1020)),
+                  fuzz1021(std::move(_fuzz1021)),
                   fuzz1101(std::move(_fuzz1101)),
                   fuzz1102(std::move(_fuzz1102)),
                   fuzz1103(std::move(_fuzz1103)),
@@ -291,6 +296,7 @@ namespace rerun {
                 rerun::components::AffixFuzzer18 _fuzz1018,
                 rerun::components::AffixFuzzer19 _fuzz1019,
                 rerun::components::AffixFuzzer20 _fuzz1020,
+                rerun::components::AffixFuzzer21 _fuzz1021,
                 rerun::components::AffixFuzzer1 _fuzz1101,
                 rerun::components::AffixFuzzer2 _fuzz1102,
                 rerun::components::AffixFuzzer3 _fuzz1103,
@@ -330,6 +336,7 @@ namespace rerun {
                   fuzz1018(std::move(_fuzz1018)),
                   fuzz1019(std::move(_fuzz1019)),
                   fuzz1020(std::move(_fuzz1020)),
+                  fuzz1021(std::move(_fuzz1021)),
                   fuzz1101(1, std::move(_fuzz1101)),
                   fuzz1102(1, std::move(_fuzz1102)),
                   fuzz1103(1, std::move(_fuzz1103)),

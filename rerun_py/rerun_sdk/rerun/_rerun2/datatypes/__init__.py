@@ -14,6 +14,13 @@ from .affix_fuzzer20 import (
     AffixFuzzer20Like,
     AffixFuzzer20Type,
 )
+from .affix_fuzzer21 import (
+    AffixFuzzer21,
+    AffixFuzzer21Array,
+    AffixFuzzer21ArrayLike,
+    AffixFuzzer21Like,
+    AffixFuzzer21Type,
+)
 from .angle import Angle, AngleArray, AngleArrayLike, AngleLike, AngleType
 from .annotation_info import (
     AnnotationInfo,
@@ -115,6 +122,11 @@ __all__ = [
     "AffixFuzzer20ArrayLike",
     "AffixFuzzer20Like",
     "AffixFuzzer20Type",
+    "AffixFuzzer21",
+    "AffixFuzzer21Array",
+    "AffixFuzzer21ArrayLike",
+    "AffixFuzzer21Like",
+    "AffixFuzzer21Type",
     "AffixFuzzer2Array",
     "AffixFuzzer2ArrayLike",
     "AffixFuzzer2Like",

@@ -551,7 +551,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Int32 => quote!(i32),
             Type::Int64 => quote!(i64),
             Type::Bool => quote!(bool),
-            Type::Float16 => unimplemented!("{typ:#?}"),
+            Type::Float16 => quote!(arrow2::types::f16),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
             Type::String => quote!(crate::ArrowString),

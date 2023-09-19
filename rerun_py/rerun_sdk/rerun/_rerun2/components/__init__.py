@@ -64,6 +64,7 @@ from .affix_fuzzer18 import (
 )
 from .affix_fuzzer19 import AffixFuzzer19, AffixFuzzer19Array, AffixFuzzer19Type
 from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Array, AffixFuzzer20Type
+from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Array, AffixFuzzer21Type
 from .annotation_context import (
     AnnotationContext,
     AnnotationContextArray,
@@ -160,6 +161,9 @@ __all__ = [
     "AffixFuzzer20",
     "AffixFuzzer20Array",
     "AffixFuzzer20Type",
+    "AffixFuzzer21",
+    "AffixFuzzer21Array",
+    "AffixFuzzer21Type",
     "AffixFuzzer2Array",
     "AffixFuzzer2Type",
     "AffixFuzzer3",
