@@ -373,7 +373,7 @@ impl StoreDb {
         re_tracing::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
+        let (deleted, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
@@ -382,12 +382,11 @@ impl StoreDb {
             purge_empty_tables: false,
         });
         re_log::trace!(
-            num_row_ids_dropped = drop_row_ids.len(),
+            num_row_ids_dropped = deleted.row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
             "purged datastore"
         );
 
-        let drop_row_ids: ahash::HashSet<_> = drop_row_ids.into_iter().collect();
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
@@ -400,10 +399,10 @@ impl StoreDb {
 
         {
             re_tracing::profile_scope!("entity_op_msgs");
-            entity_op_msgs.retain(|row_id, _| !drop_row_ids.contains(row_id));
+            entity_op_msgs.retain(|row_id, _| !deleted.row_ids.contains(row_id));
         }
 
-        entity_db.purge(&cutoff_times, &drop_row_ids);
+        entity_db.purge(&cutoff_times, &deleted.row_ids);
     }
 
     /// Key used for sorting recordings in the UI.

@@ -880,13 +880,13 @@ fn gc_impl(store: &mut DataStore) {
 
         let stats = DataStoreStats::from_store(store);
 
-        let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions {
+        let (deleted, stats_diff) = store.gc(GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             gc_timeless: false,
             protect_latest: 0,
             purge_empty_tables: false,
         });
-        for row_id in &row_ids {
+        for row_id in &deleted.row_ids {
             assert!(store.get_msg_metadata(row_id).is_none());
         }
 
