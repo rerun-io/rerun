@@ -78,3 +78,18 @@ impl From<Color> for ecolor::Color32 {
         Self::from_rgba_unmultiplied(r, g, b, a)
     }
 }
+
+#[cfg(feature = "ecolor")]
+impl From<Color> for ecolor::Rgba {
+    fn from(color: Color) -> Self {
+        let color: ecolor::Color32 = color.into();
+        color.into()
+    }
+}
+
+#[cfg(feature = "ecolor")]
+impl From<ecolor::Rgba> for Color {
+    fn from(val: ecolor::Rgba) -> Self {
+        val.to_srgba_unmultiplied().into()
+    }
+}
