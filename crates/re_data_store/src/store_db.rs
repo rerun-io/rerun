@@ -377,8 +377,8 @@ impl StoreDb {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
-            gc_timeless: false,
-            protect_latest: 0,
+            gc_timeless: true,
+            protect_latest: 1,
             purge_empty_tables: false,
         });
         re_log::trace!(
