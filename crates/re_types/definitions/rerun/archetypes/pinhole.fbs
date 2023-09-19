@@ -54,6 +54,6 @@ table Pinhole (
   /// [1920.0, 1440.0]
   /// ```
   ///
-  /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
+  /// `image_from_cam` project onto the space spanned by `(0,0)` and `resolution - 1`.
   resolution: rerun.components.Resolution ("attr.rerun.component_recommended", nullable, order: 2000);
 }
