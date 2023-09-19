@@ -40,7 +40,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
-      MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: false
       ADHOC_NAME: ${{ github.event.inputs.ADHOC_NAME }}
       RRD_ARTIFACT_NAME: linux-rrd-fast
@@ -62,7 +61,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
-      MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: false
       ADHOC_NAME: ${{ github.event.inputs.ADHOC_NAME }}
       UPLOAD_COMMIT: false

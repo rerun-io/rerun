@@ -3,7 +3,7 @@
 use rerun::{archetypes::Boxes2D, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_rect2d").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
 
     rec.log(
         "simple",

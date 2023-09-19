@@ -1,6 +1,9 @@
 use re_arrow_store::LatestAtQuery;
 use re_query::{query_archetype, QueryError};
-use re_types::{archetypes::TextDocument, Archetype as _, ComponentNameSet};
+use re_types::{
+    archetypes::{self, TextDocument},
+    components, Archetype as _, ComponentNameSet,
+};
 use re_viewer_context::{
     NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,
@@ -10,7 +13,8 @@ use re_viewer_context::{
 
 #[derive(Debug, Clone)]
 pub struct TextDocumentEntry {
-    pub body: re_types::datatypes::Utf8,
+    pub body: components::Text,
+    pub media_type: components::MediaType,
 }
 
 /// A text scene, with everything needed to render it.
@@ -50,17 +54,16 @@ impl ViewPartSystem for TextDocumentSystem {
         for (ent_path, _props) in query.iter_entities_for_system(Self::name()) {
             // TODO(jleibs): this match can go away once we resolve:
             // https://github.com/rerun-io/rerun/issues/3320
-            match query_archetype::<re_types::archetypes::TextDocument>(
-                store,
-                &timeline_query,
-                ent_path,
-            ) {
+            match query_archetype::<archetypes::TextDocument>(store, &timeline_query, ent_path) {
                 Ok(arch_view) => {
-                    for text_entry in
-                        arch_view.iter_required_component::<re_types::components::Text>()?
-                    {
-                        let re_types::components::Text(text) = text_entry;
-                        self.text_entries.push(TextDocumentEntry { body: text });
+                    let bodies = arch_view.iter_required_component::<components::Text>()?;
+                    let media_types =
+                        arch_view.iter_optional_component::<components::MediaType>()?;
+
+                    for (body, media_type) in itertools::izip!(bodies, media_types) {
+                        let media_type = media_type.unwrap_or(components::MediaType::plain_text());
+                        self.text_entries
+                            .push(TextDocumentEntry { body, media_type });
                     }
                 }
                 Err(QueryError::PrimaryNotFound(_)) => {}

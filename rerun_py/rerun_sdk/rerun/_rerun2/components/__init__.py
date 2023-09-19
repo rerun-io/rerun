@@ -90,15 +90,18 @@ from .disconnected_space import (
 )
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
 from .half_sizes2d import HalfSizes2D, HalfSizes2DArray, HalfSizes2DType
+from .half_sizes3d import HalfSizes3D, HalfSizes3DArray, HalfSizes3DType
 from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArray, LineStrip3DArrayLike, LineStrip3DLike, LineStrip3DType
+from .media_type import MediaType, MediaTypeArray, MediaTypeType
 from .origin2d import Origin2D, Origin2DArray, Origin2DType
 from .origin3d import Origin3D, Origin3DArray, Origin3DType
 from .position2d import Position2D, Position2DArray, Position2DType
 from .position3d import Position3D, Position3DArray, Position3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
+from .rotation3d import Rotation3D, Rotation3DArray, Rotation3DType
 from .tensor_data import TensorData, TensorDataArray, TensorDataType
 from .text import Text, TextArray, TextType
 from .text_log_level import TextLogLevel, TextLogLevelArray, TextLogLevelType
@@ -220,6 +223,9 @@ __all__ = [
     "HalfSizes2D",
     "HalfSizes2DArray",
     "HalfSizes2DType",
+    "HalfSizes3D",
+    "HalfSizes3DArray",
+    "HalfSizes3DType",
     "InstanceKey",
     "InstanceKeyArray",
     "InstanceKeyArrayLike",
@@ -238,6 +244,9 @@ __all__ = [
     "LineStrip3DArrayLike",
     "LineStrip3DLike",
     "LineStrip3DType",
+    "MediaType",
+    "MediaTypeArray",
+    "MediaTypeType",
     "Origin2D",
     "Origin2DArray",
     "Origin2DType",
@@ -255,6 +264,9 @@ __all__ = [
     "RadiusArrayLike",
     "RadiusLike",
     "RadiusType",
+    "Rotation3D",
+    "Rotation3DArray",
+    "Rotation3DType",
     "TensorData",
     "TensorDataArray",
     "TensorDataType",

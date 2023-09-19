@@ -35,7 +35,7 @@ class Points3D(Archetype):
     # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
 
     positions: components.Position3DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.Position3DArray.from_similar,  # type: ignore[misc]
     )
     """
@@ -43,18 +43,18 @@ class Points3D(Archetype):
     """
 
     radii: components.RadiusArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.from_similar,  # type: ignore[misc]
+        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional radii for the points, effectively turning them into circles.
     """
 
     colors: components.ColorArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.from_similar,  # type: ignore[misc]
+        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional colors for the points.
@@ -64,18 +64,18 @@ class Points3D(Archetype):
     """
 
     labels: components.TextArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional text labels for the points.
     """
 
     class_ids: components.ClassIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.from_similar,  # type: ignore[misc]
+        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional class Ids for the points.
@@ -84,9 +84,9 @@ class Points3D(Archetype):
     """
 
     keypoint_ids: components.KeypointIdArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.KeypointIdArray.from_similar,  # type: ignore[misc]
+        converter=components.KeypointIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Optional keypoint IDs for the points, identifying them within a class.
@@ -100,9 +100,9 @@ class Points3D(Archetype):
     """
 
     instance_keys: components.InstanceKeyArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual point in the batch.

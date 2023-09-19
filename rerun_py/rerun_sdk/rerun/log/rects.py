@@ -181,7 +181,7 @@ def log_rects(
 
     recording = RecordingStream.to_native(recording)
 
-    identifiers_np = np.array((), dtype="uint64")
+    identifiers_np = None
     if identifiers is not None:
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")
@@ -189,7 +189,7 @@ def log_rects(
             _send_warning("Only integer identifiers supported", 1)
 
     arch = Boxes2D(
-        half_sizes,
+        half_sizes=half_sizes,
         centers=centers,
         colors=colors,
         draw_order=draw_order,

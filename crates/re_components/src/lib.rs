@@ -20,7 +20,6 @@ use lazy_static::lazy_static;
 
 use re_types::Loggable;
 
-mod bbox;
 pub mod coordinates;
 mod mat;
 mod mesh3d;
@@ -40,7 +39,6 @@ pub mod datagen;
 pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
 
 pub use self::{
-    bbox::Box3D,
     coordinates::ViewCoordinates,
     mat::LegacyMat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D},
@@ -68,15 +66,14 @@ pub mod external {
 // ----------------------------------------------------------------------------
 
 use re_types::components::{
-    AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey, KeypointId,
-    LineStrip2D, LineStrip3D, Origin3D, Position2D, Position3D, Radius, TensorData, Text,
-    Transform3D, Vector3D,
+    AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, HalfSizes2D, HalfSizes3D,
+    InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Origin3D, Position2D, Position3D, Radius,
+    Rotation3D, TensorData, Text, Transform3D, Vector3D,
 };
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 25] = [
-        <Box3D as LegacyComponent>::field(),
+    static ref FIELDS: [Field; 27] = [
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Pinhole as LegacyComponent>::field(),
@@ -89,6 +86,9 @@ lazy_static! {
         Color::arrow_field(),
         DisconnectedSpace::arrow_field(),
         DrawOrder::arrow_field(),
+        HalfSizes2D::arrow_field(),
+        HalfSizes3D::arrow_field(),
+        Rotation3D::arrow_field(),
         InstanceKey::arrow_field(),
         KeypointId::arrow_field(),
         LineStrip2D::arrow_field(),

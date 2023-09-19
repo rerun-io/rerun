@@ -3,6 +3,7 @@ title: "Single Image 3D Reconstruction using MCC, SAM, and ZoeDepth"
 python: https://github.com/rerun-io/MCC
 tags: [2D, 3D, segmentation, point-cloud, sam]
 thumbnail: https://static.rerun.io/e62757c5953407373f2279be37a80748334cb6d7_mcc_480w.png
+thumbnail_dimensions: [480, 274]
 ---
 
 By combining MetaAI's [Segment Anything Model (SAM)](https://github.com/facebookresearch/segment-anything) and [Multiview Compressive Coding (MCC)](https://github.com/facebookresearch/MCC) we can get a 3D object from a single image.

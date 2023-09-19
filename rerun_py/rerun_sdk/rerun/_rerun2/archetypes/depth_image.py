@@ -17,7 +17,7 @@ __all__ = ["DepthImage"]
 
 
 @define(str=False, repr=False)
-class DepthImage(Archetype, DepthImageExt):
+class DepthImage(DepthImageExt, Archetype):
     """
     A depth image.
 
@@ -47,7 +47,7 @@ class DepthImage(Archetype, DepthImageExt):
     # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
     )
     """
@@ -55,9 +55,9 @@ class DepthImage(Archetype, DepthImageExt):
     """
 
     meter: components.DepthMeterArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.DepthMeterArray.from_similar,  # type: ignore[misc]
+        converter=components.DepthMeterArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies how long a meter is in the native depth units.
@@ -67,9 +67,9 @@ class DepthImage(Archetype, DepthImageExt):
     """
 
     draw_order: components.DrawOrderArray | None = field(
-        metadata={"component": "secondary"},
+        metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.

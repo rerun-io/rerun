@@ -28,12 +28,20 @@ name = "box3d_simple"
 path = "box3d_simple.rs"
 
 [[bin]]
+name = "box3d_batch"
+path = "box3d_batch.rs"
+
+[[bin]]
 name = "clear_recursive"
 path = "clear_recursive.rs"
 
 [[bin]]
 name = "clear_simple"
 path = "clear_simple.rs"
+
+[[bin]]
+name = "custom_data"
+path = "custom_data.rs"
 
 [[bin]]
 name = "depth_image_3d"

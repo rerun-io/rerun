@@ -16,9 +16,9 @@ from .common_arrays import (
     colors_expected,
     instance_keys_arrays,
     instance_keys_expected,
-    is_empty,
     labels_arrays,
     labels_expected,
+    none_empty_or_value,
     radii_arrays,
     radii_expected,
 )
@@ -27,9 +27,9 @@ from .common_arrays import (
 strips_arrays: list[rrc.LineStrip3DArrayLike] = [
     [],
     [
-        [rrd.Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)],  # type: ignore[list-item]
+        [rrd.Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
         [rrd.Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),
-                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)]],  # type: ignore[list-item]
+                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)]], # type: ignore[list-item]
     [
         [0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2],
         [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1],
@@ -51,15 +51,15 @@ strips_arrays: list[rrc.LineStrip3DArrayLike] = [
 # fmt: on
 
 
-def line_strips3d_expected(empty: bool) -> Any:
-    return rrc.LineStrip3DArray.from_similar(
-        []
-        if empty
-        else [
+def line_strips3d_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(
+        obj,
+        [
             [[0, 0, 2], [1, 0, 2], [1, 1, 2], [0, 1, 2]],
             [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1], [0, 1, 0], [0, 1, 1]],
-        ]
+        ],
     )
+    return rrc.LineStrip3DArray.from_similar(expected)
 
 
 def test_line_strips3d() -> None:
@@ -103,12 +103,12 @@ def test_line_strips3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.strips == line_strips3d_expected(is_empty(strips))
-        assert arch.radii == radii_expected(is_empty(radii))
-        assert arch.colors == colors_expected(is_empty(colors))
-        assert arch.labels == labels_expected(is_empty(labels))
-        assert arch.class_ids == class_ids_expected(is_empty(class_ids))
-        assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+        assert arch.strips == line_strips3d_expected(strips)
+        assert arch.radii == radii_expected(radii)
+        assert arch.colors == colors_expected(colors)
+        assert arch.labels == labels_expected(labels)
+        assert arch.class_ids == class_ids_expected(class_ids)
+        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 @pytest.mark.parametrize(

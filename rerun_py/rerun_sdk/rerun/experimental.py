@@ -10,12 +10,16 @@ from rerun.log.experimental.blueprint import add_space_view, new_blueprint, set_
 
 __all__ = [
     "AnnotationContext",
+    "ArchetypeLike",
     "Arrows3D",
     "Boxes2D",
+    "Boxes3D",
     "Clear",
+    "ComponentBatchLike",
     "DepthImage",
     "DisconnectedSpace",
     "Image",
+    "IndicatorComponentBatch",
     "LineStrips2D",
     "LineStrips3D",
     "Points2D",
@@ -30,6 +34,7 @@ __all__ = [
     "cmp",
     "dt",
     "log",
+    "log_components",
     "new_blueprint",
     "set_auto_space_views",
     "set_panels",
@@ -43,6 +48,7 @@ from ._rerun2.archetypes import (
     AnnotationContext,
     Arrows3D,
     Boxes2D,
+    Boxes3D,
     Clear,
     DepthImage,
     DisconnectedSpace,
@@ -57,4 +63,4 @@ from ._rerun2.archetypes import (
     TextLog,
     Transform3D,
 )
-from ._rerun2.log import log
+from ._rerun2.log import ArchetypeLike, ComponentBatchLike, IndicatorComponentBatch, log, log_components

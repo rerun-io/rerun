@@ -10,5 +10,6 @@ int main() {
 
     rec.log("points", rr::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}}));
 
-    // TODO(#2786): Rect2D archetype
+    // Log an extra rect to set the view bounds
+    rec.log("bounds", rr::Boxes2D::from_half_sizes({{2.0f, 1.5f}}));
 }

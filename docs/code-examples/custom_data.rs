@@ -107,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "left/my_confident_point_cloud",
         &CustomPoints3D {
-            points3d: Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
+            points3d: Points3D::new(grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 3)),
             confidences: Some(vec![42f32.into()]),
         },
     )?;
@@ -115,8 +115,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "right/my_polarized_point_cloud",
         &CustomPoints3D {
-            points3d: Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
-            confidences: Some((0..1000).map(|i| i as f32).map(Into::into).collect()),
+            points3d: Points3D::new(grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 3)),
+            confidences: Some((0..27).map(|i| i as f32).map(Into::into).collect()),
         },
     )?;
 

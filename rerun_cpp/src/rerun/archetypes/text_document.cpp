@@ -12,9 +12,12 @@ namespace rerun {
 
         std::vector<AnonymousComponentBatch> TextDocument::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
+            comp_batches.reserve(2);
 
             comp_batches.emplace_back(body);
+            if (media_type.has_value()) {
+                comp_batches.emplace_back(media_type.value());
+            }
             comp_batches.emplace_back(
                 ComponentBatch<
                     components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME>>(

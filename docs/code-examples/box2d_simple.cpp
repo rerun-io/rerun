@@ -5,7 +5,7 @@
 namespace rr = rerun;
 
 int main() {
-    auto rec = rr::RecordingStream("rerun_example_rect2d");
+    auto rec = rr::RecordingStream("rerun_example_box2d");
     rec.connect("127.0.0.1:9876").throw_on_failure();
 
     rec.log("simple", rr::Boxes2D::from_mins_and_sizes({{-1.f, -1.f}}, {{2.f, 2.f}}));

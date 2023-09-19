@@ -170,7 +170,10 @@ function on_wasm_loaded() {
   check_for_panic();
 
   let url = determine_url();
-  handle.start("the_canvas_id", url).then(on_app_started).catch(on_wasm_error);
+  handle
+    .start("the_canvas_id", url)
+    .then(on_app_started)
+    .catch(on_wasm_error);
 }
 
 function on_app_started(handle) {

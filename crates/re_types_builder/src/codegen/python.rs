@@ -489,7 +489,11 @@ fn code_for_struct(
                 // Archetypes default to using `from_similar` from the Component
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
                 // archetype always delegate field init to the component array object
-                format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                if field.is_nullable {
+                    format!("converter={typ_unwrapped}Array.optional_from_similar, # type: ignore[misc]\n")
+                } else {
+                    format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                }
             } else if !default_converter.is_empty() {
                 code.push_text(&converter_function, 1, 0);
                 format!("converter={default_converter}")
@@ -511,12 +515,13 @@ fn code_for_struct(
 
     let mut superclasses = vec![];
 
-    if *kind == ObjectKind::Archetype {
-        superclasses.push("Archetype".to_owned());
-    }
-
+    // Extension class needs to come first, so its __init__ method is called if there is one.
     if ext_class.found {
         superclasses.push(ext_class.name.clone());
+    }
+
+    if *kind == ObjectKind::Archetype {
+        superclasses.push("Archetype".to_owned());
     }
 
     // Delegating component inheritance comes after the `ExtensionClass`
@@ -634,7 +639,7 @@ fn code_for_struct(
             let metadata = if *kind == ObjectKind::Archetype {
                 format!(
                     "\nmetadata={{'component': '{}'}}, ",
-                    if *is_nullable { "secondary" } else { "primary" }
+                    if *is_nullable { "optional" } else { "required" }
                 )
             } else {
                 String::new()
@@ -735,12 +740,13 @@ fn code_for_union(
 
     let mut superclasses = vec![];
 
-    if *kind == ObjectKind::Archetype {
-        superclasses.push("Archetype");
-    }
-
+    // Extension class needs to come first, so its __init__ method is called if there is one.
     if ext_class.found {
         superclasses.push(ext_class.name.as_str());
+    }
+
+    if *kind == ObjectKind::Archetype {
+        superclasses.push("Archetype");
     }
 
     let superclass_decl = if superclasses.is_empty() {

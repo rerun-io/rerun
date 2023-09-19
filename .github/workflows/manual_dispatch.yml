@@ -213,7 +213,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
-      MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: false
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
@@ -235,7 +234,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
-      MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: false
     secrets: inherit
 

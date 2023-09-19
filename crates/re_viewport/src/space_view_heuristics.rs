@@ -27,8 +27,10 @@ fn is_spatial_class(class: &SpaceViewClassName) -> bool {
     class.as_str() == "3D" || class.as_str() == "2D"
 }
 
-fn is_tensor_class(class: &SpaceViewClassName) -> bool {
-    class.as_str() == "Tensor"
+fn spawn_one_space_view_per_entity(class: &SpaceViewClassName) -> bool {
+    // For tensors create one space view for each tensor (even though we're able to stack them in one view)
+    // TODO(emilk): query the actual [`ViewPartSystem`] instead.
+    class == "Tensor" || class == "Text Document"
 }
 
 // ---------------------------------------------------------------------------
@@ -252,8 +254,7 @@ pub fn default_created_space_views(
             }
         }
 
-        // For tensors create one space view for each tensor (even though we're able to stack them in one view)
-        if is_tensor_class(candidate.class_name()) {
+        if spawn_one_space_view_per_entity(candidate.class_name()) {
             for entity_path in candidate.contents.entity_paths() {
                 let mut space_view = SpaceViewBlueprint::new(
                     *candidate.class_name(),

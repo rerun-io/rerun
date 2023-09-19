@@ -26,6 +26,8 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'quaternion_ext.cpp'
 
+            static const Quaternion IDENTITY;
+
             /// Construct Quaternion from x/y/z/w values.
             Quaternion(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
 

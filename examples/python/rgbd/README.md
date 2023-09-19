@@ -3,6 +3,7 @@ title: RGBD
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/rgbd/main.py
 tags: [2D, 3D, depth, nyud, pinhole-camera]
 thumbnail: https://static.rerun.io/f9092d1915455dae9c5c5cabc083748444eae90b_rgbd_480w.png
+thumbnail_dimensions: [480, 254]
 ---
 
 <picture>

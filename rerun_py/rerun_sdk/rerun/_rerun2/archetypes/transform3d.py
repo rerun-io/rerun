@@ -36,7 +36,7 @@ class Transform3D(Archetype):
 
     rr.log_arrow("base", origin=origin, vector=base_vector)
 
-    rr2.log("base/translated", rr2.Transform3D(rrd.TranslationRotationScale3D(translation=[1, 0, 0])))
+    rr2.log("base/translated", rrd.TranslationRotationScale3D(translation=[1, 0, 0]))
 
     rr.log_arrow("base/translated", origin=origin, vector=base_vector)
 
@@ -55,7 +55,7 @@ class Transform3D(Archetype):
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
     transform: components.Transform3DArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.Transform3DArray.from_similar,  # type: ignore[misc]
     )
     """
