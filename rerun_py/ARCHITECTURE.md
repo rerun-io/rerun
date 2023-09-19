@@ -4,16 +4,16 @@
 
 Rerun primarily logs components, which are pieces of data with well-defined memory layout and semantics. For example, the `Color` component is stored as a `uint32` and represent a sRGB, RGBA color information. Components are typically logged in array form.
 
-In most cases, multiple components are needed to represent an object to be logged and displayed in the Rerun viewer. For example, a 3D point cloud might need a `Point3D` component with the coordinates, a `Colors` component with the colors, and a `Label` component with the text labels.
+In most cases, multiple components are needed to represent an object to be logged and displayed in the Rerun viewer. For example, a 3D point cloud might need a `Position3D` component with the coordinates, a `Colors` component with the colors, and a `Label` component with the text labels.
 
 We call an `Archetype` a well-define collection of component that represent a give type of high-level object understood by the Rerun viewer. For example, the `Points3D` archetype (note the plural form) includes the following components:
-- `Point3D`: the point coordinates (note the singular form)
+- `Position3D`: the point coordinates (note the singular form)
 - `Color`: the color information, if any
 - `Label`: the textual label, if any
 - `Radii`: the radius of the point, if any
 - etc.
 
-Some complex components are build using combination of another type of object called "datatype". These objects have well-defined memory layout but typically lack semantics. For example, the `Vec3D` datatype is a size 3 array of `float32`, and can be used by various components (for example, the `Point3D` component use the `Vec3D` datatype).
+Some complex components are build using combination of another type of object called "datatype". These objects have well-defined memory layout but typically lack semantics. For example, the `Vec3D` datatype is a size 3 array of `float32`, and can be used by various components (for example, the `Position3D` component use the `Vec3D` datatype).
 
 The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and datatypes needed to build them. In addition, the SDK provides the `rr.log()` function to log any archetype-conforming object, and several support function for initialisation, recording session management, etc.
 
