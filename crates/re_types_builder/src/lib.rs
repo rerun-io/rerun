@@ -356,7 +356,8 @@ pub fn generate_rust_code(
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
 /// re_types_builder::generate_python_code(
-///     "./rerun_py",
+///     "./rerun_py/rerun_sdk",
+///     "./rerun_py/tests",
 ///     &objects,
 ///     &arrow_registry,
 /// );
