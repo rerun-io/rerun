@@ -169,7 +169,7 @@ def log_obbs(
         radii = None
 
     arch = Boxes3D(
-        half_sizes,
+        half_sizes=half_sizes,
         centers=positions,
         rotations=rotations,
         radii=radii,
