@@ -99,6 +99,10 @@ class AffixFuzzer1(Archetype):
         metadata={"component": "required"},
         converter=components.AffixFuzzer20Array.from_similar,  # type: ignore[misc]
     )
+    fuzz1021: components.AffixFuzzer21Array = field(
+        metadata={"component": "required"},
+        converter=components.AffixFuzzer21Array.from_similar,  # type: ignore[misc]
+    )
     fuzz1101: components.AffixFuzzer1Array = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer1Array.from_similar,  # type: ignore[misc]

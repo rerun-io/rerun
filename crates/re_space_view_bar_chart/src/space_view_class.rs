@@ -147,12 +147,9 @@ impl SpaceViewClass for BarChartSpaceView {
                             TensorBuffer::I64(data) => {
                                 create_bar_chart(ent_path, data.iter().copied().map(|v| v as f64))
                             }
-                            // TODO(jleibs): F16 Support
-                            /*
                             TensorBuffer::F16(data) => {
                                 create_bar_chart(ent_path, data.iter().map(|f| f.to_f32()))
                             }
-                            */
                             TensorBuffer::F32(data) => {
                                 create_bar_chart(ent_path, data.iter().copied())
                             }

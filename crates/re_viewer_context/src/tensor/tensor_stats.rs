@@ -57,8 +57,6 @@ impl TensorStats {
         declare_tensor_range_float!(tensor_range_f64, f64);
 
         #[allow(clippy::needless_pass_by_value)]
-        // TODO(jleibs): F16 Support
-        #[allow(dead_code)]
         fn tensor_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) = tensor
@@ -93,8 +91,6 @@ impl TensorStats {
         declare_tensor_finite_range_float!(tensor_finite_range_f64, f64);
 
         #[allow(clippy::needless_pass_by_value)]
-        // TODO(jleibs): F16 Support
-        #[allow(dead_code)]
         fn tensor_finite_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) =
@@ -118,8 +114,7 @@ impl TensorStats {
             TensorDataType::I16 => ArrayViewD::<i16>::try_from(tensor).map(tensor_range_i16),
             TensorDataType::I32 => ArrayViewD::<i32>::try_from(tensor).map(tensor_range_i32),
             TensorDataType::I64 => ArrayViewD::<i64>::try_from(tensor).map(tensor_range_i64),
-            // TODO(jleibs): F16 Support
-            //TensorDataType::F16 => ArrayViewD::<f16>::try_from(tensor).map(tensor_range_f16),
+            TensorDataType::F16 => ArrayViewD::<f16>::try_from(tensor).map(tensor_range_f16),
             TensorDataType::F32 => ArrayViewD::<f32>::try_from(tensor).map(tensor_range_f32),
             TensorDataType::F64 => ArrayViewD::<f64>::try_from(tensor).map(tensor_range_f64),
         };
@@ -141,12 +136,9 @@ impl TensorStats {
                 | TensorDataType::I32
                 | TensorDataType::I64 => range.clone(),
 
-                // TODO(jleibs): F16 Support
-                /*
                 TensorDataType::F16 => {
                     ArrayViewD::<f16>::try_from(tensor).map(tensor_finite_range_f16)
                 }
-                */
                 TensorDataType::F32 => {
                     ArrayViewD::<f32>::try_from(tensor).map(tensor_finite_range_f32)
                 }

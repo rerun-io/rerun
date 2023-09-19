@@ -31,7 +31,7 @@ class TensorBuffer(TensorBufferExt):
 
     # You can define your own __init__ function as a member of TensorBufferExt in tensor_buffer_ext.py
 
-    inner: npt.NDArray[np.float32] | (npt.NDArray[np.float64] | (npt.NDArray[np.int16] | (npt.NDArray[np.int32] | (npt.NDArray[np.int64] | (npt.NDArray[np.int8] | (npt.NDArray[np.uint16] | (npt.NDArray[np.uint32] | (npt.NDArray[np.uint64] | npt.NDArray[np.uint8])))))))) = field(converter=TensorBufferExt.inner__field_converter_override)  # type: ignore[misc]
+    inner: npt.NDArray[np.float16] | npt.NDArray[np.float32] | npt.NDArray[np.float64] | npt.NDArray[np.int16] | npt.NDArray[np.int32] | npt.NDArray[np.int64] | npt.NDArray[np.int8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[np.uint64] | npt.NDArray[np.uint8] = field(converter=TensorBufferExt.inner__field_converter_override)  # type: ignore[misc]
     """
     U8 (npt.NDArray[np.uint8]):
 
@@ -49,6 +49,8 @@ class TensorBuffer(TensorBufferExt):
 
     I64 (npt.NDArray[np.int64]):
 
+    F16 (npt.NDArray[np.float16]):
+
     F32 (npt.NDArray[np.float32]):
 
     F64 (npt.NDArray[np.float64]):
@@ -56,12 +58,15 @@ class TensorBuffer(TensorBufferExt):
     JPEG (npt.NDArray[np.uint8]):
     """
 
-    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f32", "f64", "jpeg"] = field(default="u8")
+    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg"] = field(
+        default="u8"
+    )
 
 
 if TYPE_CHECKING:
     TensorBufferLike = Union[
         TensorBuffer,
+        npt.NDArray[np.float16],
         npt.NDArray[np.float32],
         npt.NDArray[np.float64],
         npt.NDArray[np.int16],
@@ -75,6 +80,7 @@ if TYPE_CHECKING:
     ]
     TensorBufferArrayLike = Union[
         TensorBuffer,
+        npt.NDArray[np.float16],
         npt.NDArray[np.float32],
         npt.NDArray[np.float64],
         npt.NDArray[np.int16],
@@ -146,6 +152,12 @@ class TensorBufferType(BaseExtensionType):
                     pa.field(
                         "I64",
                         pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field(
+                        "F16",
+                        pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
                         nullable=False,
                         metadata={},
                     ),

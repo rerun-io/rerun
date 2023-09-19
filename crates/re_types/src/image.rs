@@ -3,8 +3,11 @@ use smallvec::{smallvec, SmallVec};
 use crate::datatypes::{TensorData, TensorDimension};
 
 #[derive(thiserror::Error, Clone, Debug)]
-pub enum ImageConstructionError<T: TryInto<TensorData>> {
-    #[error("Could not convert source to TensorData")]
+pub enum ImageConstructionError<T: TryInto<TensorData>>
+where
+    T::Error: std::error::Error,
+{
+    #[error("Could not convert source to TensorData: {0}")]
     TensorDataConversion(T::Error),
 
     #[error("Could not create Image from TensorData with shape {0:?}")]

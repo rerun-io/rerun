@@ -35,6 +35,7 @@ table AffixFuzzer1 (
   fuzz1018: rerun.testing.components.AffixFuzzer18 ("attr.rerun.component_required", order: 1018);
   fuzz1019: rerun.testing.components.AffixFuzzer19 ("attr.rerun.component_required", order: 1019);
   fuzz1020: rerun.testing.components.AffixFuzzer20 ("attr.rerun.component_required", order: 1020);
+  fuzz1021: rerun.testing.components.AffixFuzzer21 ("attr.rerun.component_required", order: 1021);
 
   fuzz1101: [rerun.testing.components.AffixFuzzer1] ("attr.rerun.component_required", order: 1101);
   fuzz1102: [rerun.testing.components.AffixFuzzer2] ("attr.rerun.component_required", order: 1102);

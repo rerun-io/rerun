@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType,
+    FbsType, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -514,6 +514,7 @@ impl Object {
         let docs = Docs::from_raw_docs(&filepath, enm.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
 
+        let attrs = Attributes::from_raw_attrs(enm.attributes());
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
                 // This is a union.
@@ -524,10 +525,10 @@ impl Object {
                     objs,
                     enm.underlying_type(),
                     enm.underlying_type().base_type(),
+                    &attrs,
                 ))
             }
         };
-        let attrs = Attributes::from_raw_attrs(enm.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = enm
@@ -730,8 +731,8 @@ impl ObjectField {
 
         let docs = Docs::from_raw_docs(&filepath, field.documentation());
 
-        let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
+        let typ = Type::from_raw_type(enums, objs, field.type_(), &attrs);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -776,14 +777,16 @@ impl ObjectField {
 
         let docs = Docs::from_raw_docs(&filepath, val.documentation());
 
+        let attrs = Attributes::from_raw_attrs(val.attributes());
+
         let typ = Type::from_raw_type(
             enums,
             objs,
             // NOTE: Unwrapping is safe, we never resolve enums without union types.
             val.union_type().unwrap(),
+            &attrs,
         );
 
-        let attrs = Attributes::from_raw_attrs(val.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -889,8 +892,23 @@ impl Type {
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
+        attrs: &Attributes,
     ) -> Self {
+        // TODO(jleibs): Clean up fqname plumbing
+        let fqname = "???";
+
         let typ = field_type.base_type();
+
+        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
+            match (typ, type_override.as_str()) {
+                (FbsBaseType::UShort, "float16") => {
+                    return Self::Float16;
+                },
+                (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
+                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
+            }
+        }
+
         match typ {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -901,7 +919,6 @@ impl Type {
             FbsBaseType::UInt => Self::UInt32,
             FbsBaseType::Long => Self::Int64,
             FbsBaseType::ULong => Self::UInt64,
-            // TODO(cmc): half support
             FbsBaseType::Float => Self::Float32,
             FbsBaseType::Double => Self::Float64,
             FbsBaseType::String => Self::String,
@@ -919,6 +936,7 @@ impl Type {
                     objs,
                     field_type,
                     field_type.element(),
+                    attrs,
                 ),
                 length: field_type.fixed_length() as usize,
             },
@@ -928,6 +946,7 @@ impl Type {
                     objs,
                     field_type,
                     field_type.element(),
+                    attrs,
                 ),
             },
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
@@ -1039,7 +1058,19 @@ impl ElementType {
         objs: &[FbsObject<'_>],
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
+        attrs: &Attributes,
     ) -> Self {
+        // TODO(jleibs): Clean up fqname plumbing
+        let fqname = "???";
+        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
+            match (inner_type, type_override.as_str()) {
+                (FbsBaseType::UShort, "float16") => {
+                    return Self::Float16;
+                }
+                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"),
+            }
+        }
+
         #[allow(clippy::match_same_arms)]
         match inner_type {
             FbsBaseType::Bool => Self::Bool,

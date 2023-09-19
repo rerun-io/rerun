@@ -1785,6 +1785,7 @@ fn quote_variable(
 ) -> TokenStream {
     if obj_field.is_nullable {
         includes.insert_system("optional");
+        #[allow(clippy::match_same_arms)]
         match &obj_field.typ {
             Type::UInt8 => quote! { std::optional<uint8_t> #name },
             Type::UInt16 => quote! { std::optional<uint16_t> #name },
@@ -1795,7 +1796,7 @@ fn quote_variable(
             Type::Int32 => quote! { std::optional<int32_t> #name },
             Type::Int64 => quote! { std::optional<int64_t> #name },
             Type::Bool => quote! { std::optional<bool> #name },
-            Type::Float16 => unimplemented!("float16 not yet implemented for C++"),
+            Type::Float16 => quote! { std::optional<uint16_t> #name },
             Type::Float32 => quote! { std::optional<float> #name },
             Type::Float64 => quote! { std::optional<double> #name },
             Type::String => {
@@ -1819,6 +1820,7 @@ fn quote_variable(
             }
         }
     } else {
+        #[allow(clippy::match_same_arms)]
         match &obj_field.typ {
             Type::UInt8 => quote! { uint8_t #name },
             Type::UInt16 => quote! { uint16_t #name },
@@ -1829,7 +1831,7 @@ fn quote_variable(
             Type::Int32 => quote! { int32_t #name },
             Type::Int64 => quote! { int64_t #name },
             Type::Bool => quote! { bool #name },
-            Type::Float16 => unimplemented!("float16 not yet implemented for C++"),
+            Type::Float16 => quote! { uint16_t #name },
             Type::Float32 => quote! { float #name },
             Type::Float64 => quote! { double #name },
             Type::String => {
@@ -1856,6 +1858,7 @@ fn quote_variable(
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
+    #[allow(clippy::match_same_arms)]
     match typ {
         ElementType::UInt8 => quote! { uint8_t },
         ElementType::UInt16 => quote! { uint16_t },
@@ -1866,7 +1869,7 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => unimplemented!("float16 not yet implemented for C++"),
+        ElementType::Float16 => quote! { uint16_t },
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {

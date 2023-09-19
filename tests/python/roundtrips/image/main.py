@@ -30,6 +30,16 @@ def main() -> None:
 
     rr2.log("image", rr2.Image(image))
 
+    # 4x5 mono image. Pixel = x * y * 123.4
+    image = np.zeros((4, 5), dtype=np.float16)
+    for i in range(4):
+        for j in range(5):
+            image[i, j] = i * j * 123.4
+
+    image = rr2.dt.TensorData(array=image)
+
+    rr2.log("image_f16", rr2.Image(image))
+
     rr.script_teardown(args)
 
 

@@ -136,6 +136,12 @@ class TensorDataType(BaseExtensionType):
                                     metadata={},
                                 ),
                                 pa.field(
+                                    "F16",
+                                    pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                                pa.field(
                                     "F32",
                                     pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
                                     nullable=False,

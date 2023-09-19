@@ -39,7 +39,7 @@ fn arrow_array_builder_type_and_declaration(
                 Type::UInt16 => "UInt16",
                 Type::UInt32 => "UInt32",
                 Type::UInt64 => "UInt64",
-                Type::Float16 => "Float16",
+                Type::Float16 => "HalfFloat",
                 Type::Float32 => "Float",
                 Type::Float64 => "Double",
                 _ => {
