@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Final
 
-from rerun.log import Color, _normalize_colors
+from rerun.log_deprecated import Color, _normalize_colors
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 

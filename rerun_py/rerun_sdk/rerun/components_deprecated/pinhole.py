@@ -6,8 +6,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
-from rerun.log import _normalize_matrix3
+from rerun.components_deprecated import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
+from rerun.log_deprecated import _normalize_matrix3
 
 __all__ = [
     "PinholeArray",

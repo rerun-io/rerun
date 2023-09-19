@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rerun.log import Color, _normalize_colors
+from rerun.log_deprecated import Color, _normalize_colors
 from rerun.recording_stream import RecordingStream
 
 # Fully qualified to avoid circular import

@@ -5,7 +5,7 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from rerun.log import (
+from rerun.log_deprecated import (
     Color,
     Colors,
     OptionalClassIds,

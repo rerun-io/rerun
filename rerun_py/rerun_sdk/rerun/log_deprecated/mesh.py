@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.log import Colors, _normalize_colors
+from rerun.log_deprecated import Colors, _normalize_colors
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
