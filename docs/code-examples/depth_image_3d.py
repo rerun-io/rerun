@@ -2,6 +2,7 @@
 
 import numpy as np
 import rerun as rr
+import rerun.experimental as rr2
 
 # Create a dummy depth image
 image = 65535 * np.ones((8, 12), dtype=np.uint16)
@@ -12,12 +13,14 @@ image[4:8, 6:12] = 45000
 rr.init("rerun_example_depth_image", spawn=True)
 
 # If we log a pinhole camera model, the depth gets automatically back-projected to 3D
-rr.log_pinhole(
+rr2.log(
     "world/camera",
-    width=image.shape[1],
-    height=image.shape[0],
-    focal_length_px=200,
+    rr2.Pinhole(
+        width=image.shape[1],
+        height=image.shape[0],
+        focal_length_px=200,
+    ),
 )
 
 # Log the tensor, assigning names to each dimension
-rr.log_depth_image("world/camera/depth", image, meter=10000.0)
+rr2.log("depth", rr2.DepthImage(image, meter=10_000.0))

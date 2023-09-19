@@ -18,10 +18,14 @@ use arrow2_convert::{
 };
 use lazy_static::lazy_static;
 
+use re_types::{
+    components::{ImageFromCamera, Resolution},
+    Loggable,
+};
+
 pub mod coordinates;
 mod mat;
 mod mesh3d;
-mod pinhole;
 mod quaternion;
 mod scalar;
 mod vec;
@@ -39,7 +43,7 @@ pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
 pub use self::{
     coordinates::ViewCoordinates,
     mat::LegacyMat3x3,
-    mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat},
+    mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D},
     pinhole::Pinhole,
     quaternion::Quaternion,
     scalar::{Scalar, ScalarPlotProps},
@@ -65,14 +69,33 @@ pub mod external {
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 7] = [
+    static ref FIELDS: [Field; 27] = [
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
-        <Pinhole as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
+        AnnotationContext::arrow_field(),
+        ClassId::arrow_field(),
+        Color::arrow_field(),
+        DisconnectedSpace::arrow_field(),
+        DrawOrder::arrow_field(),
+        HalfSizes2D::arrow_field(),
+        HalfSizes3D::arrow_field(),
+        Rotation3D::arrow_field(),
+        InstanceKey::arrow_field(),
+        KeypointId::arrow_field(),
+        LineStrip2D::arrow_field(),
+        LineStrip3D::arrow_field(),
+        Origin3D::arrow_field(),
+        Position2D::arrow_field(),
+        Position3D::arrow_field(),
+        Radius::arrow_field(),
+        TensorData::arrow_field(),
+        Text::arrow_field(),
+        Transform3D::arrow_field(),
+        Vector3D::arrow_field(),
     ];
 }
 

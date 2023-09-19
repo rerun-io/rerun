@@ -70,14 +70,14 @@ pub mod time {
 /// and can be used in [`RecordingStream::log_component_batches`].
 pub mod components {
     pub use re_components::{
-        EncodedMesh3D, Mesh3D, MeshFormat, Pinhole, Quaternion, Scalar, ScalarPlotProps,
-        ViewCoordinates,
+        EncodedMesh3D, Mesh3D, MeshFormat, Quaternion, Scalar, ScalarPlotProps, ViewCoordinates,
     };
     pub use re_types::components::{
         AnnotationContext, ClassId, ClearSettings, Color, DepthMeter, DisconnectedSpace, DrawOrder,
-        HalfSizes2D, HalfSizes3D, InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Material,
-        MediaType, MeshProperties, Origin2D, Origin3D, Position2D, Position3D, Radius, Rotation3D,
-        TensorData, Text, TextLogLevel, Transform3D, Vector3D,
+        HalfSizes2D, HalfSizes3D, ImageFromCamera, InstanceKey, KeypointId, LineStrip2D,
+        LineStrip3D, Material, MediaType, MeshProperties, Origin2D, Origin3D, Position2D,
+        Position3D, Radius, Resolution, Rotation3D, TensorData, Text, TextLogLevel, Transform3D,
+        Vector3D,
     };
 }
 

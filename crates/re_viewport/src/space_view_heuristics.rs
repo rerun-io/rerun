@@ -3,7 +3,6 @@ use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_components::Pinhole;
 use re_data_store::EntityPath;
 use re_types::components::{DisconnectedSpace, TensorData};
 use re_types::ComponentNameSet;
@@ -13,6 +12,7 @@ use re_viewer_context::{
 };
 use tinyvec::TinyVec;
 
+use crate::query_pinhole;
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
 pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
@@ -177,9 +177,7 @@ fn is_interesting_space_view_not_at_root(
     //    .. a disconnect transform, the children can't be shown otherwise
     //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
     if is_spatial_class(candidate.class_name())
-        && (store
-            .query_latest_component::<Pinhole>(&candidate.space_origin, query)
-            .is_some()
+        && (query_pinhole(store, query, &candidate.space_origin).is_some()
             || store
                 .query_latest_component::<DisconnectedSpace>(&candidate.space_origin, query)
                 .map_or(false, |dp| dp.0))

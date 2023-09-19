@@ -5,7 +5,6 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
 use re_log_types::{EntityPathHash, TimeInt, Timeline};
 use re_query::{ArchetypeView, QueryError};
@@ -28,6 +27,7 @@ use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
     parts::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    query_pinhole,
     view_kind::SpatialSpaceViewKind,
 };
 
@@ -512,8 +512,7 @@ impl ImagesPart {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        let Some(intrinsics) =
-            store.query_latest_component::<Pinhole>(parent_pinhole_path, &ctx.current_query())
+        let Some(intrinsics) = query_pinhole(store, &ctx.current_query(), parent_pinhole_path)
         else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
@@ -576,7 +575,7 @@ impl ImagesPart {
 
         Ok(DepthCloud {
             world_from_rdf,
-            depth_camera_intrinsics: intrinsics.image_from_cam.into(),
+            depth_camera_intrinsics: intrinsics.image_from_cam.0.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
             max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],

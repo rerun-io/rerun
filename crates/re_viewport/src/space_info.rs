@@ -3,9 +3,13 @@ use re_space_view::UnreachableTransformReason;
 use std::collections::BTreeMap;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_components::Pinhole;
 use re_data_store::{store_db::EntityDb, EntityPath, EntityTree};
-use re_types::components::{DisconnectedSpace, Transform3D};
+use re_types::{
+    archetypes::Pinhole,
+    components::{DisconnectedSpace, Transform3D},
+};
+
+use crate::query_pinhole;
 
 /// Transform connecting two space paths.
 #[derive(Clone, Debug)]
@@ -130,9 +134,7 @@ impl SpaceInfoCollection {
             let transform3d = store
                 .query_latest_component::<Transform3D>(&tree.path, query)
                 .map(|c| c.value);
-            let pinhole = store
-                .query_latest_component::<Pinhole>(&tree.path, query)
-                .map(|c| c.value);
+            let pinhole = query_pinhole(store, query, &tree.path);
 
             let connection = if transform3d.is_some() || pinhole.is_some() {
                 Some(SpaceInfoConnection::Connected {

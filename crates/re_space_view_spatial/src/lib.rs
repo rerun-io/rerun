@@ -29,3 +29,22 @@ mod view_kind {
         ThreeD,
     }
 }
+
+/// Utility for querying a pinhole archetype instance.
+///
+/// TODO(andreas): It should be possible to convert [`re_query::ArchetypeView`] to its corresponding Archetype for situations like this.
+/// TODO(andreas): This is duplicated into `re_viewport`
+fn query_pinhole(
+    store: &re_arrow_store::DataStore,
+    query: &re_arrow_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+) -> Option<re_types::archetypes::Pinhole> {
+    store
+        .query_latest_component(entity_path, query)
+        .map(|image_from_cam| re_types::archetypes::Pinhole {
+            image_from_cam: image_from_cam.value,
+            resolution: store
+                .query_latest_component(entity_path, query)
+                .map(|c| c.value),
+        })
+}
