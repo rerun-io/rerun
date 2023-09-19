@@ -34,7 +34,9 @@ To stabilize the optimization and avoid local minima, a 3-stage optimization is 
 
 https://vimeo.com/865329177
 
-https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1
+https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1:0.8845
+
+https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1:0.8845
 
 <div style="aspect-ratio:1/0.8845;position:relative;margin-left:auto;margin-right:auto;margin-bottom:1.25rem;max-height:22rem;color-scheme:none;"><iframe src="https://player.vimeo.com/video/865329177?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
