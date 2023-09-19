@@ -64,10 +64,10 @@ impl Mesh3DPart {
             },
             mesh_properties: arch_view
                 .iter_raw_optional_component::<MeshProperties>()?
-                .and_then(|mut comp_batch| comp_batch.next()), // albedo_factor: arch_view.iter_optional_component::<Color>()?,
+                .and_then(|mut comp_batch| comp_batch.next()),
             mesh_material: arch_view
                 .iter_raw_optional_component::<Material>()?
-                .and_then(|mut comp_batch| comp_batch.next()), // albedo_factor: arch_view.iter_optional_component::<Color>()?,
+                .and_then(|mut comp_batch| comp_batch.next()),
             class_ids: None,
             instance_keys: None,
         };

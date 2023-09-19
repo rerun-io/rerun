@@ -43,9 +43,9 @@ class Mesh3D(Archetype):
 
     Partial updates:
     ```python
+    import numpy as np
     import rerun as rr
     import rerun.experimental as rr2
-    import numpy as np
 
     rr.init("rerun_example_mesh3d_partial_updates", spawn=True)
 

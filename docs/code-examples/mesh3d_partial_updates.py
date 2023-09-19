@@ -1,7 +1,7 @@
 """Log a simple colored triangle, then update its vertices' positions each frame."""
+import numpy as np
 import rerun as rr
 import rerun.experimental as rr2
-import numpy as np
 
 rr.init("rerun_example_mesh3d_partial_updates", spawn=True)
 

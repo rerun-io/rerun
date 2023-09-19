@@ -114,5 +114,35 @@ def test_mesh3d() -> None:
         assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
+def test_nullable_albedo_factor() -> None:
+    # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
+    assert (
+        len(
+            rr2.cmp.MaterialArray.from_similar(
+                [
+                    rr2.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+                    rr2.cmp.Material(),
+                ]
+            )
+        )
+        == 2
+    )
+
+
+def test_nullable_triangle_indices() -> None:
+    # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
+    assert (
+        len(
+            rr2.cmp.MeshPropertiesArray.from_similar(
+                [
+                    rr2.cmp.MeshProperties(triangle_indices=[1, 2, 3, 4, 5, 6]),
+                    rr2.cmp.MeshProperties(),
+                ]
+            )
+        )
+        == 2
+    )
+
+
 if __name__ == "__main__":
     test_mesh3d()
