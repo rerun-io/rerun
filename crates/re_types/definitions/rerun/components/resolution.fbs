@@ -1,0 +1,17 @@
+include "rust/attributes.fbs";
+
+include "../datatypes/vec2d.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// Pixel resolution width & height, e.g. of a camera sensor.
+///
+/// Typically in integer units, but for some usecases floating point may be used.
+struct Resolution (
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  resolution: rerun.datatypes.Vec2D (order: 100);
+}

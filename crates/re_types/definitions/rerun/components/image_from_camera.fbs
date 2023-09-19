@@ -1,0 +1,15 @@
+include "rust/attributes.fbs";
+
+include "../datatypes/mat3x3.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// Camera projection, from image coordinates to view coordinates.
+struct ImageFromCamera (
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  image_from_cam: rerun.datatypes.Mat3x3 (order: 100);
+}

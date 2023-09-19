@@ -1,0 +1,59 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+
+/// Camera perspective projection (a.k.a. intrinsics).
+///
+/// \py Example
+/// \py -------
+/// \py
+/// \py ```python
+/// \py \include:../../../../../docs/code-examples/pinhole_simple.py
+/// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/pinhole_simple.rs
+/// \rs ```
+///
+/// \cpp ## Example
+/// \cpp
+/// \cpp ```ignore
+/// \cpp \include:../../../../../docs/code-examples/pinhole_simple.cpp
+/// \cpp ```
+table Pinhole (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  // --- Required ---
+
+  /// Column-major projection matrix.
+  ///
+  /// Child from parent.
+  /// Image coordinates from camera view coordinates.
+  ///
+  /// Example:
+  /// ```text
+  /// [[1496.1, 0.0,    0.0], // col 0
+  ///  [0.0,    1496.1, 0.0], // col 1
+  ///  [980.5,  744.5,  1.0]] // col 2
+  /// ```
+  image_from_cam: rerun.components.ImageFromCamera ("attr.rerun.component_required", required, order: 1000);
+
+  // --- Recommended ---
+
+  /// Pixel resolution (usually integers) of child image space. Width and height.
+  ///
+  /// Example:
+  /// ```text
+  /// [1920.0, 1440.0]
+  /// ```
+  ///
+  /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
+  resolution: rerun.components.Resolution ("attr.rerun.component_recommended", nullable, order: 2000);
+}
