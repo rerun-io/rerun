@@ -108,3 +108,22 @@ jobs:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
+
+  # Check that a CLEAN container with just rust on it can build rerun:
+  clean-build:
+    name: cargo build on clean container
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.72.0
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo build -p rerun
+        run: cargo build -p rerun
