@@ -988,6 +988,7 @@ impl eframe::App for App {
                 for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                            FileSource::FileDialog,
                             file.clone(),
                         )));
                 }
