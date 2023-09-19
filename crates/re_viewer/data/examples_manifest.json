@@ -20,19 +20,22 @@
     }
   },
   {
-    "name": "dna",
-    "title": "Helix",
-    "description": "Simple example of logging point and line primitives to draw a 3D helix.",
+    "name": "detect_and_track_objects",
+    "title": "Detect and Track Objects",
+    "description": "Visualize object detection and segmentation using the Huggingface `transformers` library.",
     "tags": [
-      "3d",
-      "api-example"
+      "2D",
+      "huggingface",
+      "object-detection",
+      "object-tracking",
+      "opencv"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/dna/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dna/data.rrd",
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e_helix_480w.png",
+      "url": "https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
       "width": 480,
-      "height": 285
+      "height": 279
     }
   },
   {
@@ -53,22 +56,37 @@
     }
   },
   {
-    "name": "structure_from_motion",
-    "title": "Structure from Motion",
-    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline.",
+    "name": "dna",
+    "title": "Helix",
+    "description": "Simple example of logging point and line primitives to draw a 3D helix.",
     "tags": [
-      "2D",
-      "3D",
-      "colmap",
-      "pinhole-camera",
-      "time-series"
+      "3d",
+      "api-example"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/data.rrd",
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/dna/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dna/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/033edff752f86bcdc9a81f7877e0b4411ff4e6c5_structure_from_motion_480w.png",
+      "url": "https://static.rerun.io/ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e_helix_480w.png",
       "width": 480,
-      "height": 275
+      "height": 285
+    }
+  },
+  {
+    "name": "human_pose_tracking",
+    "title": "Human Pose Tracking",
+    "description": "Use the MediaPipe Pose solution to detect and track a human pose in video.",
+    "tags": [
+      "mediapipe",
+      "keypoint-detection",
+      "2D",
+      "3D"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
+      "width": 480,
+      "height": 272
     }
   },
   {
@@ -89,40 +107,22 @@
     }
   },
   {
-    "name": "detect_and_track_objects",
-    "title": "Detect and Track Objects",
-    "description": "Visualize object detection and segmentation using the Huggingface `transformers` library.",
+    "name": "structure_from_motion",
+    "title": "Structure from Motion",
+    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline.",
     "tags": [
       "2D",
-      "huggingface",
-      "object-detection",
-      "object-tracking",
-      "opencv"
+      "3D",
+      "colmap",
+      "pinhole-camera",
+      "time-series"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
+      "url": "https://static.rerun.io/033edff752f86bcdc9a81f7877e0b4411ff4e6c5_structure_from_motion_480w.png",
       "width": 480,
-      "height": 279
-    }
-  },
-  {
-    "name": "human_pose_tracking",
-    "title": "Human Pose Tracking",
-    "description": "Use the MediaPipe Pose solution to detect and track a human pose in video.",
-    "tags": [
-      "mediapipe",
-      "keypoint-detection",
-      "2D",
-      "3D"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
-      "width": 480,
-      "height": 272
+      "height": 275
     }
   }
 ]

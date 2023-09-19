@@ -144,6 +144,7 @@ fn examples() -> Result<Vec<Example>> {
             examples.push(Example { name, readme });
         }
     }
+    examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(examples)
 }
 
