@@ -51,13 +51,16 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
         if mesh:
-            albedo_factor = None
-            # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
-            # as an albedo factor for the whole primitive.
+            vertex_colors = None
+            mesh_material = None
             try:
                 colors = mesh.visual.to_color().vertex_colors
                 if len(colors) == 4:
-                    albedo_factor = np.array(colors)
+                    # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
+                    # as an albedo factor for the whole primitive.
+                    mesh_material = rr2.cmp.Material(albedo_factor=np.array(colors))
+                else:
+                    vertex_colors = colors
             except Exception:
                 pass
 
@@ -65,9 +68,10 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                 path,
                 rr2.Mesh3D(
                     mesh.vertices,
+                    vertex_colors=vertex_colors,
                     vertex_normals=mesh.vertex_normals,
                     mesh_properties=rr2.cmp.MeshProperties(triangle_indices=mesh.faces),
-                    mesh_material=rr2.cmp.Material(albedo_factor=albedo_factor),
+                    mesh_material=mesh_material,
                 ),
             )
 
