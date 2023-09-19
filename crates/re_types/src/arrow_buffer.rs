@@ -43,6 +43,8 @@ impl<T> ArrowBuffer<T> {
     }
 }
 
+impl<T: Eq> Eq for ArrowBuffer<T> {}
+
 impl<T: Clone> ArrowBuffer<T> {
     #[inline]
     pub fn to_vec(&self) -> Vec<T> {
@@ -61,6 +63,12 @@ impl<T> From<Vec<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: Vec<T>) -> Self {
         Self(value.into())
+    }
+}
+
+impl<T> FromIterator<T> for ArrowBuffer<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
     }
 }
 
