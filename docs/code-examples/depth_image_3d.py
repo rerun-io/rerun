@@ -18,9 +18,9 @@ rr2.log(
     rr2.Pinhole(
         width=image.shape[1],
         height=image.shape[0],
-        focal_length_px=200,
+        focal_length_px=20,
     ),
 )
 
-# Log the tensor, assigning names to each dimension
-rr2.log("depth", rr2.DepthImage(image, meter=10_000.0))
+# Log the tensor.
+rr2.log("world/camera/depth", rr2.DepthImage(image, meter=10_000.0))

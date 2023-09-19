@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "world/camera",
         &Pinhole::from_focal_length_and_resolution(
-            [200.0, 200.0],
+            [20.0, 20.0],
             [image.shape()[1] as f32, image.shape()[0] as f32],
         ),
     )?;
