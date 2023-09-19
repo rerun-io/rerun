@@ -331,13 +331,13 @@ impl<'a> ListItem<'a> {
                 ));
                 let triangle_rect =
                     egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_size());
-                let resp = ui.interact(
-                    triangle_rect,
+                let triangle_response = ui.interact(
+                    triangle_rect.expand(3.0), // make it easier to click
                     id.unwrap_or(ui.id()).with("collapsing_triangle"),
                     egui::Sense::click(),
                 );
-                ReUi::paint_collapsing_triangle(ui, openness, &resp);
-                collapse_response = Some(resp);
+                ReUi::paint_collapsing_triangle(ui, openness, triangle_rect, &triangle_response);
+                collapse_response = Some(triangle_response);
             }
 
             // Draw icon
