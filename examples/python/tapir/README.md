@@ -9,7 +9,7 @@ thumbnail_dimensions: [480, 288]
 
 Tracking any point in a video is a fundamental problem in computer vision. The paper “TAPIR: Tracking Any Point with per-frame Initialization and temporal Refinement” by Carl Doersch et al. significantly improved over prior state-of-the-art.
 
-https://www.youtube.com/watch?v=5EixnuJnFdo?playlist=5EixnuJnFdo&loop=1&hd=1&rel=0&autoplay=1
+https://vimeo.com/865975034?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:9015
 
 “TAPIR: Tracking Any Point with per-frame Initialization and temporal Refinement” proposes a two-stage approach:
 1. compare the query point's feature with the target image features to estimate an initial track, and
@@ -23,14 +23,14 @@ https://www.youtube.com/watch?v=5EixnuJnFdo?playlist=5EixnuJnFdo&loop=1&hd=1&rel
 
 In the first stage the image features in the query image at the query point are compared to the feature maps of the other images using the dot product. The resulting similarity map (or “cost volume”) gives a high score for similar image features.
 
-https://www.youtube.com/watch?v=dqvcIlk55AM?playlist=dqvcIlk55AM&loop=1&hd=1&rel=0&autoplay=1
+https://vimeo.com/865975051?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1:1
 
 From here, the position of the point is predicted as a heatmap. In addition, the probabilities that the point is occluded and whether its position is accurate are predicted. Only when predicted as non-occluded and accurate a point is classified as visible for a given frame.
 
-https://www.youtube.com/watch?v=T7w8dXEGFzY?playlist=T7w8dXEGFzY&loop=1&hd=1&rel=0&autoplay=1
+https://vimeo.com/865975071?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:5052
 
 The previous step gives an initial track but it is still noisy since the inference is done on a per-frame basis. Next, the position, occlusion and accuracy probabilities are iteratively refined using a spatially and temporally local feature volumes.
 
-https://www.youtube.com/watch?v=mVA_svY5wC4?playlist=mVA_svY5wC4&loop=1&hd=1&rel=0&autoplay=1
+https://vimeo.com/865975078?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:6699
 
 Check out the [paper](https://arxiv.org/abs/2306.08637) by Carl Doersch, Yi Yang, Mel Vecerik, Dilara Gokay, Ankush Gupta, Yusuf Aytar, Joao Carreira, and Andrew Zisserman. It also includes a nice visual comparison to previous approaches.

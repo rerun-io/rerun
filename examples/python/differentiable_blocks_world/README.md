@@ -8,7 +8,7 @@ thumbnail_dimensions: [480, 311]
 
 Finding a textured mesh decomposition from a collection of posed images is a very challenging optimization problem. "Differentiable Block Worlds" by Tom Monnier et al. shows impressive results using differentiable rendering. Here we visualize how this optimization works using the Rerun SDK.
 
-<div style="aspect-ratio:1/0.7309;position:relative;margin-left:auto;margin-right:auto;margin-bottom:1.25rem;max-height:22rem;color-scheme:none;"><iframe src="https://player.vimeo.com/video/865326948?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+https://vimeo.com/865326948?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:7309
 
 In "Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives" the authors describe an optimization of a background icosphere, a ground plane, and multiple superquadrics. The goal is to find the shapes and textures that best explain the observations.
 
@@ -22,26 +22,18 @@ In "Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primi
 
 The optimization is initialized with an initial set of superquadrics ("blocks"), a ground plane, and a sphere for the background. From here, the optimization can only reduce the number of blocks, not add additional ones.
 
-<div style="aspect-ratio:1/0.6497;position:relative;margin-left:auto;margin-right:auto;margin-bottom:1.25rem;max-height:22rem;color-scheme:none;"><iframe src="https://player.vimeo.com/video/865327350?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+https://vimeo.com/865327350?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:6497
 
 A key difference to other differentiable renderers is the addition of transparency handling. Each mesh has an opacity associated with it that is optimized. When the opacity becomes lower than a threshold the mesh is discarded in the visualization. This allows to optimize the number of meshes.
 
-<div style="aspect-ratio:1/0.7037;position:relative;margin-left:auto;margin-right:auto;margin-bottom:1.25rem;max-height:22rem;color-scheme:none;"><iframe src="https://player.vimeo.com/video/865327387?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+https://vimeo.com/865327387?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:7037
 
 To stabilize the optimization and avoid local minima, a 3-stage optimization is employed:
 1. the texture resolution is reduced by a factor of 8,
 2. the full resolution texture is optimized, and
 3. transparency-based optimization is deactivated, only optimizing the opaque meshes from here.
 
-https://vimeo.com/865329177
-
-https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1:0.8845
-
-https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1:0.8845
-
-<div style="aspect-ratio:1/0.8845;position:relative;margin-left:auto;margin-right:auto;margin-bottom:1.25rem;max-height:22rem;color-scheme:none;"><iframe src="https://player.vimeo.com/video/865329177?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&background=1&muted=1&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
-
-<div style="aspect-ratio:1/0.8845;position:relative;margin-left:auto;margin-right:auto;margin-bottom:1.25rem;max-height:22rem;color-scheme:none;"><iframe src="https://player.vimeo.com/video/865329177?h=9c5b7559c9&autoplay=1&loop=1&autopause=0&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:8845
 
 Check out the [project page](https://www.tmonnier.com/DBW/), which also contains examples of physical simulation and scene editing enabled by this kind of scene decomposition.
 
