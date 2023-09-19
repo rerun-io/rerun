@@ -430,10 +430,11 @@ fn colormap_preview_ui(
     re_tracing::profile_function!();
 
     let desired_size = egui::vec2(128.0, 16.0);
-    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    let rect = response.rect;
 
     if ui.is_rect_visible(rect) {
-        if let Err(err) = paint_colormap_gradient(render_ctx, colormap, ui, rect) {
+        if let Err(err) = paint_colormap_gradient(render_ctx, colormap, &painter, rect) {
             re_log::error_once!("Failed to paint colormap preview: {err}");
         }
     }
@@ -444,7 +445,7 @@ fn colormap_preview_ui(
 fn paint_colormap_gradient(
     render_ctx: &mut re_renderer::RenderContext,
     colormap: Colormap,
-    ui: &mut egui::Ui,
+    painter: &egui::Painter,
     rect: egui::Rect,
 ) -> anyhow::Result<()> {
     let horizontal_gradient_id = egui::util::hash("horizontal_gradient");
@@ -481,7 +482,7 @@ fn paint_colormap_gradient(
     let debug_name = format!("colormap_{colormap}");
     gpu_bridge::render_image(
         render_ctx,
-        ui.painter(),
+        painter,
         rect,
         colormapped_texture,
         egui::TextureOptions::LINEAR,
