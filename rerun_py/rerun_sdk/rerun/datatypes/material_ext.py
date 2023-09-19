@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class MaterialExt:
     @staticmethod
     def native_to_pa_array_override(data: MaterialArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Material, ColorType
+        from . import ColorType, Material
 
         if isinstance(data, Material):
             data = [data]
