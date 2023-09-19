@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import pyarrow as pa
 
-from rerun.log.error_utils import _send_warning
+from rerun.error_utils import _send_warning
 
 from .._validators import find_non_empty_dim_indices
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from ..datatypes import TensorDataArrayLike
 
 
-class DepthImageExt:
+class ImageExt:
     @staticmethod
     def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataArray:
         from ..components import TensorDataArray
@@ -32,13 +32,22 @@ class DepthImageExt:
         num_non_empty_dims = len(non_empty_dims)
 
         # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
-        if num_non_empty_dims != 2:
-            _send_warning(f"Expected depth image, got array of shape {shape_dims}", 1, recording=None)
+        if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
+            _send_warning(f"Expected image, got array of shape {shape_dims}", 1, recording=None)
+
+        if num_non_empty_dims == 3:
+            depth = shape_dims[non_empty_dims[-1]]
+            if depth not in (3, 4):
+                _send_warning(
+                    f"Expected image 3 (RGB) or 4 (RGBA). Instead got array of shape {shape_dims}",
+                    1,
+                    recording=None,
+                )
 
         # IF no labels are set, add them
         # TODO(jleibs): Again, needing to do this at the arrow level is awful
         if all(label is None for label in shape_names):
-            for ind, label in zip(non_empty_dims, ["height", "width"]):
+            for ind, label in zip(non_empty_dims, ["height", "width", "depth"]):
                 shape_names[ind] = label
 
             tensor_data_type = TensorDataType().storage_type

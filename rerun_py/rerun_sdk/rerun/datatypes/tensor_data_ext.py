@@ -10,7 +10,7 @@ import numpy.typing as npt
 import pyarrow as pa
 from PIL import Image
 
-from rerun.log.error_utils import _send_warning
+from rerun.error_utils import _send_warning
 
 from .._unions import build_dense_union
 

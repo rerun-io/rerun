@@ -1,7 +1,5 @@
 # Rerun Python SDK Architecture
 
-**NOTE**: this document applies to the next generation, WIP API, currently residing in `rerun_sdk/rerun/_rerun2`.
-
 ## Background
 
 Rerun primarily logs components, which are pieces of data with well-defined memory layout and semantics. For example, the `Color` component is stored as a `uint32` and represent a sRGB, RGBA color information. Components are typically logged in array form.

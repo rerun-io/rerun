@@ -94,10 +94,13 @@ impl CodeGenerator for PythonCodeGenerator {
                 .iter()
                 .map(|o| o.name.clone())
                 .collect_vec();
+            // TODO(jleibs): Should we still be generating an equivalent to this?
+            /*
             files_to_write.insert(
                 self.pkg_path.join("__init__.py"),
                 lib_source_code(&archetype_names),
             );
+            */
         }
 
         write_files(&self.pkg_path, &files_to_write);

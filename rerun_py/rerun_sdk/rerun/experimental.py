@@ -6,7 +6,7 @@ going through the normal deprecation cycle.
 """
 from __future__ import annotations
 
-from rerun.log.experimental.blueprint import add_space_view, new_blueprint, set_auto_space_views, set_panels
+from rerun.log_deprecated.experimental.blueprint import add_space_view, new_blueprint, set_auto_space_views, set_panels
 
 __all__ = [
     "AnnotationContext",
@@ -41,10 +41,10 @@ __all__ = [
 ]
 
 # Next-gen API imports
-from ._rerun2 import archetypes as arch
-from ._rerun2 import components as cmp
-from ._rerun2 import datatypes as dt
-from ._rerun2.archetypes import (
+from . import archetypes as arch
+from . import components as cmp
+from . import datatypes as dt
+from .archetypes import (
     AnnotationContext,
     Arrows3D,
     Boxes2D,
@@ -63,4 +63,4 @@ from ._rerun2.archetypes import (
     TextLog,
     Transform3D,
 )
-from ._rerun2.log import ArchetypeLike, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from .log import ArchetypeLike, ComponentBatchLike, IndicatorComponentBatch, log, log_components
