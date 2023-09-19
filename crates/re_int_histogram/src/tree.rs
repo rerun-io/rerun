@@ -1,6 +1,10 @@
-//! The histogram is implemented as a tree.
+//! The histogram is implemented as a trie.
 //!
-//! The branches are based on the next few bits of the key (also known as the "address").
+//! Each node in the trie stores a count of a key/address sharing a prefix up to `depth * LEVEL_STEP` bits.
+//! The key/address is always 64 bits.
+//!
+//! There are branch nodes, and two types of leaf nodes: dense, and sparse.
+//! Dense leaves are only found at the very bottom of the trie.
 
 use smallvec::{smallvec, SmallVec};
 
