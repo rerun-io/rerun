@@ -60,19 +60,22 @@ class PinholeExt:
         focal_length_px: float | npt.ArrayLike | None = None,
         principal_point_px: npt.ArrayLike | None = None,
     ) -> None:
-        if resolution is None:
-            if width is None or height is None:
-                _send_warning("log_pinhole: either resolution or width and height must be set", 1)
-            resolution = [width or 1, height or 1]
+        if resolution is None and width is not None and height is not None:
+            resolution = [width, height]
+        elif resolution is not None and (width is not None or height is not None):
+            _send_warning("Can't set both resolution and width/height", 1)
 
         # TODO(andreas): Use a union type for the Pinhole component instead ~Zof converting to a matrix here
         if image_from_cam is None:
+            # Resolution is needed for various fallbacks/error cases below.
+            if resolution is None:
+                resolution = [1.0, 1.0]
             resolution = Vec2D(resolution)
             width = cast(float, resolution.xy[0])
             height = cast(float, resolution.xy[1])
 
             if focal_length_px is None:
-                _send_warning("log_pinhole: either child_from_parent or focal_length_px must be set", 1)
+                _send_warning("either child_from_parent or focal_length_px must be set", 1)
                 focal_length_px = (width * height) ** 0.5  # a reasonable default
             if principal_point_px is None:
                 principal_point_px = [width / 2, height / 2]
@@ -85,7 +88,7 @@ class PinholeExt:
                     fl_x = focal_length_px[0]  # type: ignore[index]
                     fl_y = focal_length_px[1]  # type: ignore[index]
                 except Exception:
-                    _send_warning("log_pinhole: expected focal_length_px to be one or two floats", 1)
+                    _send_warning("Expected focal_length_px to be one or two floats", 1)
                     fl_x = width / 2
                     fl_y = fl_x
 
@@ -93,15 +96,15 @@ class PinholeExt:
                 u_cen = principal_point_px[0]  # type: ignore[index]
                 v_cen = principal_point_px[1]  # type: ignore[index]
             except Exception:
-                _send_warning("log_pinhole: expected principal_point_px to be one or two floats", 1)
+                _send_warning("Expected principal_point_px to be one or two floats", 1)
                 u_cen = width / 2
                 v_cen = height / 2
 
             image_from_cam = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
         else:
             if focal_length_px is not None:
-                _send_warning("log_pinhole: both child_from_parent and focal_length_px set", 1)
+                _send_warning("Both child_from_parent and focal_length_px set", 1)
             if principal_point_px is not None:
-                _send_warning("log_pinhole: both child_from_parent and principal_point_px set", 1)
+                _send_warning("Both child_from_parent and principal_point_px set", 1)
 
         self.__attrs_init__(image_from_cam=image_from_cam, resolution=resolution)
