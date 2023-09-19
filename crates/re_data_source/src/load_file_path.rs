@@ -1,12 +1,13 @@
 use anyhow::Context as _;
 
-use re_log_types::LogMsg;
+use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
 /// Non-blocking.
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 pub fn load_file_path(
     store_id: re_log_types::StoreId,
+    file_source: FileSource,
     path: std::path::PathBuf,
     tx: Sender<LogMsg>,
 ) -> anyhow::Result<()> {
@@ -28,7 +29,7 @@ pub fn load_file_path(
         stream_rrd_file(path, tx)
     } else {
         rayon::spawn(move || {
-            if let Err(err) = load_and_send(store_id, &path, &tx) {
+            if let Err(err) = load_and_send(store_id, file_source, &path, &tx) {
                 re_log::error!("Failed to load {path:?}: {err}");
             }
         });
@@ -38,12 +39,15 @@ pub fn load_file_path(
 
 fn load_and_send(
     store_id: re_log_types::StoreId,
+    file_source: FileSource,
     path: &std::path::Path,
     tx: &Sender<LogMsg>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!(path.display().to_string());
 
     use re_log_types::SetStoreInfo;
+
+    let store_source = re_log_types::StoreSource::File { file_source };
 
     // First, set a store info since this is the first thing the application expects.
     tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
@@ -53,10 +57,7 @@ fn load_and_send(
             store_id: store_id.clone(),
             is_official_example: false,
             started: re_log_types::Time::now(),
-            store_source: re_log_types::StoreSource::FileFromCli {
-                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-            },
+            store_source,
             store_kind: re_log_types::StoreKind::Recording,
         },
     }))
