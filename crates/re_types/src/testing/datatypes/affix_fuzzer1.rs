@@ -76,7 +76,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 })),
                 is_nullable: true,
@@ -98,7 +98,7 @@ impl crate::Loggable for AffixFuzzer1 {
                 data_type: DataType::List(Box::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 })),
                 is_nullable: true,
@@ -315,7 +315,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
-                                    is_nullable: true,
+                                    is_nullable: false,
                                     metadata: [].into(),
                                 })),
                                 offsets,
@@ -452,7 +452,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Utf8,
-                                    is_nullable: true,
+                                    is_nullable: false,
                                     metadata: [].into(),
                                 })),
                                 offsets,
@@ -615,7 +615,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 data_type: DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
-                                    is_nullable: true,
+                                    is_nullable: false,
                                     metadata: [].into(),
                                 })),
                                 is_nullable: true,
@@ -637,7 +637,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                 data_type: DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Utf8,
-                                    is_nullable: true,
+                                    is_nullable: false,
                                     metadata: [].into(),
                                 })),
                                 is_nullable: true,
@@ -829,7 +829,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
-                                        is_nullable: true,
+                                        is_nullable: false,
                                         metadata: [].into(),
                                     })),
                                     arrow_data.data_type().clone(),
@@ -1026,7 +1026,7 @@ impl crate::Loggable for AffixFuzzer1 {
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Utf8,
-                                        is_nullable: true,
+                                        is_nullable: false,
                                         metadata: [].into(),
                                     })),
                                     arrow_data.data_type().clone(),

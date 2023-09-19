@@ -147,7 +147,11 @@ impl ArrowRegistry {
                 Box::new(LazyField {
                     name: "item".into(),
                     datatype: self.arrow_datatype_from_element_type(elem_type),
-                    is_nullable: field.is_nullable,
+                    // NOTE: Do _not_ confuse this with the nullability of the field itself!
+                    // This would be the nullability of the elements of the list itself, which our IDL
+                    // literally is unable to express at the moment, so you can be certain this is
+                    // always false.
+                    is_nullable: false,
                     metadata: Default::default(),
                 }),
                 length,
@@ -155,7 +159,11 @@ impl ArrowRegistry {
             Type::Vector { elem_type } => LazyDatatype::List(Box::new(LazyField {
                 name: "item".into(),
                 datatype: self.arrow_datatype_from_element_type(elem_type),
-                is_nullable: field.is_nullable,
+                // NOTE: Do _not_ confuse this with the nullability of the field itself!
+                // This would be the nullability of the elements of the list itself, which our IDL
+                // literally is unable to express at the moment, so you can be certain this is
+                // always false.
+                is_nullable: false,
                 metadata: Default::default(),
             })),
             Type::Object(fqname) => LazyDatatype::Unresolved(fqname),

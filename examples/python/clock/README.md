@@ -3,6 +3,7 @@ title: Clock
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/clock/main.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/clock/src/main.rs
 thumbnail: https://static.rerun.io/52f791f1bcc092fb4e3cd4d825b6ad361c016220_clock_480w.png
+thumbnail_dimensions: [480, 350]
 ---
 
 <picture>

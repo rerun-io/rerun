@@ -22,7 +22,7 @@ class Tensor(Archetype):
     # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
 
     data: components.TensorDataArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.TensorDataArray.from_similar,  # type: ignore[misc]
     )
     """

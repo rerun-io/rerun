@@ -79,6 +79,11 @@ namespace rerun {
                 return *this;
             }
 
+          public:
+            // Extensions to generated type defined in 'rotation3d_ext.cpp'
+
+            // static const Rotation3D IDENTITY;
+
             void swap(Rotation3D &other) noexcept {
                 auto tag_temp = this->_tag;
                 this->_tag = other._tag;

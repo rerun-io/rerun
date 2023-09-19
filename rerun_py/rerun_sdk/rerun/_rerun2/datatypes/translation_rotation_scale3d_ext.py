@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
+    from ..log import ComponentBatchLike
     from . import Rotation3DLike, Scale3DLike, Vec3D, Vec3DLike
 
 
@@ -27,3 +28,13 @@ class TranslationRotationScale3DExt:
             from . import Vec3D
 
             return Vec3D(data)
+
+    # Implement the ArchetypeLike protocol
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        from ..archetypes import Transform3D
+
+        return Transform3D(self).as_component_batches()
+
+    def num_instances(self) -> int:
+        # Always a mono-component
+        return 1

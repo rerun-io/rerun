@@ -20,19 +20,15 @@ from os.path import isfile, join
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 opt_out_entirely = {
-    "annotation_context_arrows": ["py", "rust"], # TODO(#3207): should be rects, but not available in cpp yet
     "annotation_context_connections": ["cpp"],
-    "annotation_context_rects": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
-    "box3d_batch": ["cpp", "rust"],
-    "box3d_simple": ["cpp"],
+    "custom_data": ["cpp"],
     "depth_image_3d": ["cpp"],
     "depth_image_simple": ["cpp"],
     "image_advanced": ["cpp", "rust"],
     "image_simple": ["cpp"],
     "mesh_simple": ["cpp"],
     "pinhole_simple": ["cpp"],
-    "point2d_random": ["cpp"],
     "segmentation_image_simple": ["cpp"],
     "scalar_simple": ["cpp"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_one_dim": ["cpp"],
@@ -49,13 +45,8 @@ opt_out_entirely = {
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
     "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "line_segments2d_simple": ["cpp"],
-    "line_strip2d_batch": ["cpp"],
-    "line_strip2d_simple": ["cpp"],
-    "line_strip3d_batch": ["cpp"], # TODO(emilk): fix spurious failure
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point2d_random": ["py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point2d_simple": ["cpp"],
+    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "scalar_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_one_dim": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.

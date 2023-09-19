@@ -1,8 +1,14 @@
+use crate::datatypes::Quaternion;
+
 use super::Rotation3D;
 
-impl From<crate::datatypes::Quaternion> for Rotation3D {
+impl Rotation3D {
+    pub const IDENTITY: Rotation3D = Rotation3D::Quaternion(Quaternion::IDENTITY);
+}
+
+impl From<Quaternion> for Rotation3D {
     #[inline]
-    fn from(q: crate::datatypes::Quaternion) -> Self {
+    fn from(q: Quaternion) -> Self {
         Self::Quaternion(q)
     }
 }

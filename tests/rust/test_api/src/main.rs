@@ -12,11 +12,15 @@
 //! cargo run -p test_api -- --test rects
 //! ```
 
-use std::{collections::HashSet, f32::consts::TAU};
+use std::{
+    collections::HashSet,
+    f32::consts::{PI, TAU},
+};
 
 use itertools::Itertools;
 use rerun::{
     archetypes::{SegmentationImage, TextLog},
+    datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
     EntityPath, RecordingStream,
 };
@@ -24,51 +28,36 @@ use rerun::{
 // --- Rerun logging ---
 
 fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
-    use rerun::{
-        archetypes::Transform3D,
-        components::{Box3D, Color, Radius, Text},
-        datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D},
-    };
+    use rerun::{archetypes::Boxes3D, components::Color};
 
     rec.set_time_seconds("sim_time", 0f64);
-    // TODO(#2786): Box3D archetype
-    rec.log_component_batches(
-        "bbox_test/bbox",
-        false,
-        1,
-        [
-            &Box3D::new(1.0, 0.5, 0.25) as _,
-            &Color::from(0x00FF00FF) as _,
-            &Radius(0.005) as _,
-            &Text("box/t0".into()) as _,
-        ],
-    )?;
     rec.log(
         "bbox_test/bbox",
-        &Transform3D::new(TranslationRotationScale3D::rigid(
-            glam::Vec3::ZERO,
-            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
-        )),
+        &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
+            .with_colors([0x00FF00FF])
+            .with_rotations([Quaternion::from_xyzw([
+                0.0,
+                0.0,
+                (PI / 4.0).sin(),
+                (PI / 4.0).cos(),
+            ])])
+            .with_radii([0.005])
+            .with_labels(["box/t0"]),
     )?;
-
     rec.set_time_seconds("sim_time", 1f64);
-    rec.log_component_batches(
-        "bbox_test/bbox",
-        false,
-        1,
-        [
-            &Box3D::new(1.0, 0.5, 0.25) as _,
-            &Color::from_rgb(255, 255, 0) as _,
-            &Radius(0.01) as _,
-            &Text("box/t1".into()) as _,
-        ],
-    )?;
+
     rec.log(
         "bbox_test/bbox",
-        &Transform3D::new(TranslationRotationScale3D::rigid(
-            [1.0, 0.0, 0.0],
-            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
-        )),
+        &Boxes3D::from_centers_and_half_sizes([(1.0, 0.0, 0.0)], [(1.0, 0.5, 0.25)])
+            .with_colors([Color::from_rgb(255, 255, 0)])
+            .with_rotations([Quaternion::from_xyzw([
+                0.0,
+                0.0,
+                (PI / 4.0).sin(),
+                (PI / 4.0).cos(),
+            ])])
+            .with_radii([0.01])
+            .with_labels(["box/t1"]),
     )?;
 
     Ok(())

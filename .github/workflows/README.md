@@ -42,7 +42,6 @@ uploaded anywhere.
   - `RELEASE_VERSION` - If producing a release, the version number. This must match the version in `Cargo.toml`.
 - [reusable_upload_web.yml](reusable_upload_web.yml) - This job uploads the web assets to google cloud. By default this
   only uploads to: `app.rerun.io/commit/<commit>/`
-  - `MARK_PRERELEASE_FOR_MAINLINE` - If true, then the web assets will go to `app.rerun.io/prelease/
   - `MARK_TAGGED_VERSION` - If true, then the web assets will go to `app.rerun.io/version/<RELEASE_VERSION>`
   - `RELEASE_VERSION` - If producing a release, the version number.
   - `RRD_ARTIFACT_NAME` - Intermediate name of the GitHub rrd artifact. This should match the name passed to
@@ -54,7 +53,6 @@ uploaded anywhere.
   source source code link in the built app always points to the pull request's `HEAD`.
 - [reusable_upload_web_demo.yml](reusable_upload_web_demo.yml) - This job uploads the `demo.rerun.io` assets to google cloud. By default this
   only uploads to: `demo.rerun.io/commit/<commit>/`
-  - `MARK_PRERELEASE_FOR_MAINLINE` - If true, then the web assets will go to `demo.rerun.io/prelease/
   - `MARK_TAGGED_VERSION` - If true, then the web assets will go to `demo.rerun.io/version/<RELEASE_VERSION>`
   - `RELEASE_VERSION` - If producing a release, the version number.
   - `UPLOAD_COMMIT_OVERRIDE` - If set, will replace the value of `<commit>`. This is necessary because we want pull

@@ -16,7 +16,6 @@ from .common_arrays import (
     draw_orders,
     instance_keys_arrays,
     instance_keys_expected,
-    is_empty,
     labels_arrays,
     labels_expected,
     radii_arrays,
@@ -85,15 +84,30 @@ def test_boxes2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(is_empty(half_sizes), rrc.HalfSizes2DArray)
-        assert arch.centers == centers_expected(is_empty(centers), rrc.Position2DArray)
-        assert arch.colors == colors_expected(is_empty(colors))
-        assert arch.radii == radii_expected(is_empty(radii))
-        assert arch.labels == labels_expected(is_empty(labels))
-        assert arch.draw_order == draw_order_expected(is_empty(draw_order))
-        assert arch.class_ids == class_ids_expected(is_empty(class_ids))
-        assert arch.instance_keys == instance_keys_expected(is_empty(instance_keys))
+        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes2DArray)
+        assert arch.centers == centers_expected(centers, rrc.Position2DArray)
+        assert arch.colors == colors_expected(colors)
+        assert arch.radii == radii_expected(radii)
+        assert arch.labels == labels_expected(labels)
+        assert arch.draw_order == draw_order_expected(draw_order)
+        assert arch.class_ids == class_ids_expected(class_ids)
+        assert arch.instance_keys == instance_keys_expected(instance_keys)
+
+
+def test_with_sizes() -> None:
+    assert rr2.Boxes2D(sizes=[1, 2]) == rr2.Boxes2D(half_sizes=[0.5, 1])
+
+
+def test_with_centers_and_sizes() -> None:
+    assert rr2.Boxes2D(centers=[1, 2], sizes=[4, 6]) == rr2.Boxes2D(centers=[1, 2], half_sizes=[2, 3])
+
+
+def test_with_mins_and_sizes() -> None:
+    assert rr2.Boxes2D(mins=[-1, -1], sizes=[2, 4]) == rr2.Boxes2D(centers=[0, 1], half_sizes=[1, 2])
 
 
 if __name__ == "__main__":
     test_boxes2d()
+    test_with_sizes()
+    test_with_centers_and_sizes()
+    test_with_mins_and_sizes()

@@ -10,10 +10,6 @@ on:
         type: string
         required: false
         default: ""
-      MARK_PRERELEASE_FOR_MAINLINE:
-        required: false
-        type: boolean
-        default: false
       MARK_TAGGED_VERSION:
         required: false
         type: boolean
@@ -100,7 +96,7 @@ jobs:
           parent: false
 
       - name: "Upload web-viewer (prerelease)"
-        if: inputs.MARK_PRERELEASE_FOR_MAINLINE
+        if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_viewer"
@@ -108,11 +104,29 @@ jobs:
           parent: false
 
       - name: "Upload RRD (prerelease)"
-        if: inputs.MARK_PRERELEASE_FOR_MAINLINE
+        if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "rrd"
           destination: "rerun-example-rrd/prerelease"
+          parent: false
+
+      - name: "Upload web-viewer (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/version/nightly"
+          parent: false
+
+      - name: "Upload RRD (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/version/nightly"
           parent: false
 
       - name: "Upload web-viewer (tagged)"

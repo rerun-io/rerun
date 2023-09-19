@@ -1,6 +1,6 @@
 //! This module contains utilities to support Rerun examples.
 
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
 
 #[cfg(feature = "glam")]
 use crate::external::glam;
@@ -9,14 +9,17 @@ use crate::external::glam;
 
 /// Linear interpolator.
 #[inline]
-pub fn lerp<T>(a: T, b: T, t: f32) -> <<f32 as Mul<T>>::Output as std::ops::Add>::Output
+pub fn lerp<T>(
+    a: T,
+    b: T,
+    t: f32,
+) -> <<T as Sub<<f32 as Mul<T>>::Output>>::Output as Add<<f32 as Mul<T>>::Output>>::Output
 where
-    T: Mul<f32>,
+    T: Copy + Mul<f32> + Sub<<f32 as Mul<T>>::Output>,
     f32: Mul<T>,
-    <T as Mul<f32>>::Output: Add<<f32 as Mul<T>>::Output>,
-    <f32 as Mul<T>>::Output: Add,
+    <T as Sub<<f32 as Mul<T>>::Output>>::Output: Add<<f32 as Mul<T>>::Output>,
 {
-    (1.0 - t) * a + t * b
+    a - t * a + t * b
 }
 
 /// A linear interpolator that bounces between `a` and `b` as `t` goes above `1.0`.
@@ -43,12 +46,13 @@ pub fn linspace<T>(
     a: T,
     b: T,
     n: usize,
-) -> impl Iterator<Item = <<f32 as Mul<T>>::Output as std::ops::Add>::Output>
+) -> impl Iterator<
+    Item = <<T as Sub<<f32 as Mul<T>>::Output>>::Output as Add<<f32 as Mul<T>>::Output>>::Output,
+>
 where
-    T: Copy + Mul<f32>,
+    T: Copy + Mul<f32> + Sub<<f32 as Mul<T>>::Output>,
     f32: Mul<T>,
-    <T as Mul<f32>>::Output: Add<<f32 as Mul<T>>::Output>,
-    <f32 as Mul<T>>::Output: Add,
+    <T as Sub<<f32 as Mul<T>>::Output>>::Output: Add<<f32 as Mul<T>>::Output>,
 {
     (0..n).map(move |t| lerp(a, b, t as f32 / (n - 1) as f32))
 }

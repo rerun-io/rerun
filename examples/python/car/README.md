@@ -2,6 +2,7 @@
 title: Car
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/car/main.py
 thumbnail: https://static.rerun.io/8a3845b71f90bc36af78978f83e60ddd65e40667_car_480w.png
+thumbnail_dimensions: [480, 235]
 ---
 
 <picture>

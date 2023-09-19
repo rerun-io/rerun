@@ -4,6 +4,7 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/objectron/
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/objectron/src/main.rs
 tags: [2D, 3D, object-detection, pinhole-camera]
 thumbnail: https://static.rerun.io/d218170b8f4bfbc38ea5918747e595cff841029e_objectron_480w.png
+thumbnail_dimensions: [480, 268]
 ---
 
 <picture>

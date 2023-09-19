@@ -46,7 +46,7 @@ class DisconnectedSpace(Archetype):
     # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
 
     disconnected_space: components.DisconnectedSpaceArray = field(
-        metadata={"component": "primary"},
+        metadata={"component": "required"},
         converter=components.DisconnectedSpaceArray.from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__

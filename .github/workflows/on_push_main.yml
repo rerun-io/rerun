@@ -47,7 +47,6 @@ jobs:
     with:
       CONCURRENCY: push-${{ github.ref_name }}
       RRD_ARTIFACT_NAME: linux-rrd
-      MARK_PRERELEASE_FOR_MAINLINE: true
     secrets: inherit
 
   build-web-demo:
@@ -73,7 +72,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
-      MARK_PRERELEASE_FOR_MAINLINE: true
     secrets: inherit
 
   build-rerun_c-and-upload-linux:
@@ -273,3 +271,4 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           replacesArtifacts: true
+

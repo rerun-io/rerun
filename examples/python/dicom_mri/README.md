@@ -4,6 +4,8 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/dicom_mri/
 tags: [tensor, mri, dicom]
 description: "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer."
 thumbnail: https://static.rerun.io/b8b25dd01e892e6daf5177e6fc05ff5feb19ee8d_dicom_mri_480w.png
+thumbnail_dimensions: [480, 285]
+demo: true
 ---
 
 <picture>

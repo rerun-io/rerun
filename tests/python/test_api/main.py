@@ -459,7 +459,6 @@ def run_bounding_box(experimental_api: bool) -> None:
     rr.log_obb(
         "bbox_test/bbox",
         half_size=[1.0, 0.5, 0.25],
-        position=np.array([0.0, 0.0, 0.0]),
         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
         color=[0, 255, 0],
         stroke_width=0.01,
@@ -469,8 +468,8 @@ def run_bounding_box(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 1)
     rr.log_obb(
         "bbox_test/bbox",
-        half_size=[1.0, 0.5, 0.25],
         position=np.array([1.0, 0.0, 0.0]),
+        half_size=[1.0, 0.5, 0.25],
         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
         color=[255, 255, 0],
         stroke_width=0.02,

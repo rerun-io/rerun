@@ -3,6 +3,7 @@ title: Decoupling Human and Camera Motion from Videos in the Wild
 python: https://github.com/rerun-io/slahmr
 tags: [3D, SLAM, keypoint-detection, mesh, time-series]
 thumbnail: https://static.rerun.io/43709757e7179f0272d3749560f529747f3e9149_slahmr_480w.png
+thumbnail_dimensions: [480, 293]
 ---
 
 SLAHMR robustly tracks the motion of multiple moving people filmed with a moving camera and works well on “in-the-wild” videos. It’s a great showcase of how to build working computer vision systems by intelligently combining several single purpose models.
