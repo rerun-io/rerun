@@ -3,6 +3,30 @@ use crate::datatypes::Vec2D;
 use super::Pinhole;
 
 impl Pinhole {
+    /// Creates a pinhole from the focal length of the camera in pixels & a resolution in pixel.
+    ///
+    /// The focal length is the diagonal of the projection matrix.
+    /// Set the same value for x & y value for symmetric cameras, or two values for anamorphic cameras.
+    ///
+    /// Assumes the principal point to be in the middle of the sensor.
+    pub fn from_focal_length_and_resolution(
+        focal_length_px: impl Into<Vec2D>,
+        resolution: impl Into<Vec2D>,
+    ) -> Self {
+        let resolution = resolution.into();
+        let focal_length_px = focal_length_px.into();
+
+        let u_cen = resolution.x() / 2.0;
+        let v_cen = resolution.y() / 2.0;
+
+        Self::new([
+            [focal_length_px.x(), 0.0, u_cen],
+            [0.0, focal_length_px.y(), v_cen],
+            [0.0, 0.0, 1.0],
+        ])
+        .with_resolution(resolution)
+    }
+
     /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
     #[inline]
     pub fn fov_y(&self) -> Option<f32> {
