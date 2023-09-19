@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions, TimeInt};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
 use re_log_types::{
     ApplicationId, ArrowMsg, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
     EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo,
@@ -175,11 +175,7 @@ impl EntityDb {
         }
     }
 
-    pub fn purge(
-        &mut self,
-        cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>,
-        drop_row_ids: &ahash::HashSet<RowId>,
-    ) {
+    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted) {
         re_tracing::profile_function!();
 
         let Self {
@@ -191,12 +187,25 @@ impl EntityDb {
 
         {
             re_tracing::profile_scope!("times_per_timeline");
-            times_per_timeline.purge(cutoff_times);
+            times_per_timeline.purge(deleted);
         }
+
+        let mut actually_deleted = Default::default();
 
         {
             re_tracing::profile_scope!("tree");
-            tree.purge(cutoff_times, drop_row_ids);
+            tree.purge(deleted, &mut actually_deleted);
+        }
+
+        {
+            re_tracing::profile_scope!("times_per_timeline");
+            for (timeline, times) in actually_deleted.timeful {
+                if let Some(time_set) = times_per_timeline.get_mut(&timeline) {
+                    for time in times {
+                        time_set.remove(&time);
+                    }
+                }
+            }
         }
     }
 }
@@ -387,8 +396,6 @@ impl StoreDb {
             "purged datastore"
         );
 
-        let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
-
         let Self {
             store_id: _,
             entity_op_msgs,
@@ -402,7 +409,7 @@ impl StoreDb {
             entity_op_msgs.retain(|row_id, _| !deleted.row_ids.contains(row_id));
         }
 
-        entity_db.purge(&cutoff_times, &deleted.row_ids);
+        entity_db.purge(&deleted);
     }
 
     /// Key used for sorting recordings in the UI.

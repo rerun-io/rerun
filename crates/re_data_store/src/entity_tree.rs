@@ -1,17 +1,33 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
+use nohash_hasher::IntMap;
+
 use re_log_types::{
-    ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
+    ComponentPath, EntityPath, EntityPathHash, EntityPathPart, PathOp, RowId, TimeInt, TimePoint,
+    Timeline,
 };
 use re_types::{ComponentName, Loggable};
+
+// ----------------------------------------------------------------------------
+
+/// Book-keeping required after a GC purge to keep track
+/// of what was removed from children, so it can also be removed
+/// from the parents.
+#[derive(Default)]
+pub struct ActuallyDeleted {
+    pub timeful: IntMap<Timeline, Vec<TimeInt>>,
+    pub timeless: u64,
+}
 
 // ----------------------------------------------------------------------------
 
 /// Number of messages per time
 pub type TimeHistogram = re_int_histogram::Int64Histogram;
 
-/// Number of messages per time per timeline
+/// Number of messages per time per timeline.
+///
+/// Does NOT include timeless.
 #[derive(Default)]
 pub struct TimeHistogramPerTimeline(BTreeMap<Timeline, TimeHistogram>);
 
@@ -35,11 +51,42 @@ impl TimeHistogramPerTimeline {
     pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&Timeline, &mut TimeHistogram)> {
         self.0.iter_mut()
     }
+
+    pub fn purge(
+        &mut self,
+        ent_path_hash: EntityPathHash,
+        deleted: &re_arrow_store::Deleted,
+        deleted_by_us_and_children: &mut ActuallyDeleted,
+    ) {
+        re_tracing::profile_function!();
+
+        for (timeline, histogram) in &mut self.0 {
+            if let Some(times) = deleted
+                .timeful
+                .get(&ent_path_hash)
+                .and_then(|map| map.get(timeline))
+            {
+                for &time in times {
+                    histogram.decrement(time.as_i64(), 1);
+
+                    deleted_by_us_and_children
+                        .timeful
+                        .entry(*timeline)
+                        .or_default()
+                        .push(time);
+                }
+            }
+
+            // NOTE: we don't include timeless in the histogram.
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
 
-/// Number of messages per time per timeline
+/// Number of messages per time per timeline.
+///
+/// Does NOT include timeless.
 pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeSet<TimeInt>>);
 
 impl TimesPerTimeline {
@@ -51,16 +98,28 @@ impl TimesPerTimeline {
         self.0.get(timeline)
     }
 
+    pub fn get_mut(&mut self, timeline: &Timeline) -> Option<&mut BTreeSet<TimeInt>> {
+        self.0.get_mut(timeline)
+    }
+
     pub fn insert(&mut self, timeline: Timeline, time: TimeInt) {
         self.0.entry(timeline).or_default().insert(time);
     }
 
-    pub fn purge(&mut self, cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>) {
-        for (timeline, time_set) in &mut self.0 {
-            if let Some(cutoff_time) = cutoff_times.get(timeline) {
-                time_set.retain(|time| cutoff_time <= time);
+    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted) {
+        re_tracing::profile_function!();
+
+        for deleted_times in deleted.timeful.values() {
+            for (timeline, time_set) in &mut self.0 {
+                if let Some(times) = deleted_times.get(timeline) {
+                    for &time in times {
+                        time_set.remove(&time);
+                    }
+                }
             }
         }
+
+        // NOTE: we don't include timeless.
     }
 
     pub fn has_timeline(&self, timeline: &Timeline) -> bool {
@@ -301,45 +360,82 @@ impl EntityTree {
     /// Purge all times before the cutoff, or in the given set
     pub fn purge(
         &mut self,
-        cutoff_times: &BTreeMap<Timeline, TimeInt>,
-        drop_row_ids: &ahash::HashSet<RowId>,
+        deleted: &re_arrow_store::Deleted,
+        deleted_by_us_and_children: &mut ActuallyDeleted,
     ) {
         let Self {
-            path: _,
+            path,
             children,
             prefix_times,
-            num_timeless_messages: _,
+            num_timeless_messages,
             nonrecursive_clears,
             recursive_clears,
-            components: fields,
+            components,
         } = self;
+
+        if let Some(decrement) = deleted.timeless.get(&path.hash()) {
+            *num_timeless_messages = num_timeless_messages.saturating_sub(*decrement as _);
+            deleted_by_us_and_children.timeless += decrement;
+        }
 
         {
             re_tracing::profile_scope!("prefix_times");
-            for (timeline, histogram) in &mut prefix_times.0 {
-                if let Some(cutoff_time) = cutoff_times.get(timeline) {
-                    histogram.remove(..cutoff_time.as_i64());
-                }
-            }
+            prefix_times.purge(path.hash(), deleted, deleted_by_us_and_children);
         }
         {
             re_tracing::profile_scope!("nonrecursive_clears");
-            nonrecursive_clears.retain(|row_id, _| !drop_row_ids.contains(row_id));
+            nonrecursive_clears.retain(|row_id, _| !deleted.row_ids.contains(row_id));
         }
         {
             re_tracing::profile_scope!("recursive_clears");
-            recursive_clears.retain(|row_id, _| !drop_row_ids.contains(row_id));
+            recursive_clears.retain(|row_id, _| !deleted.row_ids.contains(row_id));
         }
 
         {
-            re_tracing::profile_scope!("fields");
-            for columns in fields.values_mut() {
-                columns.purge(cutoff_times);
+            re_tracing::profile_scope!("ComponentStats");
+            for stats in components.values_mut() {
+                let ComponentStats {
+                    times,
+                    num_timeless_messages,
+                } = stats;
+
+                times.purge(path.hash(), deleted, deleted_by_us_and_children);
+
+                if let Some(decrement) = deleted.timeless.get(&path.hash()) {
+                    *num_timeless_messages = num_timeless_messages.saturating_sub(*decrement as _);
+                }
             }
         }
 
+        let mut deleted_by_children = ActuallyDeleted::default();
+
         for child in children.values_mut() {
-            child.purge(cutoff_times, drop_row_ids);
+            child.purge(deleted, &mut deleted_by_children);
+        }
+
+        {
+            re_tracing::profile_scope!("apply_children");
+            let ActuallyDeleted { timeful, timeless } = deleted_by_children;
+
+            // Apply things that where deleted in children.
+            // For instance - if `/foo/bar` has some things deleted,
+            // we need to note it in `/foo` and `/` too.
+            for (timeline, mut times) in timeful {
+                if let Some(time_histogram) = prefix_times.0.get_mut(&timeline) {
+                    for &time in &times {
+                        time_histogram.decrement(time.as_i64(), 1);
+                    }
+                }
+
+                deleted_by_us_and_children
+                    .timeful
+                    .entry(timeline)
+                    .or_default()
+                    .append(&mut times);
+            }
+
+            *num_timeless_messages = num_timeless_messages.saturating_sub(timeless as _);
+            deleted_by_us_and_children.timeless += timeless;
         }
     }
 
@@ -377,19 +473,6 @@ impl ComponentStats {
                     .entry(*timeline)
                     .or_default()
                     .increment(time_value.as_i64(), 1);
-            }
-        }
-    }
-
-    pub fn purge(&mut self, cutoff_times: &BTreeMap<Timeline, TimeInt>) {
-        let Self {
-            times,
-            num_timeless_messages: _,
-        } = self;
-
-        for (timeline, histogram) in &mut times.0 {
-            if let Some(cutoff_time) = cutoff_times.get(timeline) {
-                histogram.remove(..cutoff_time.as_i64());
             }
         }
     }
