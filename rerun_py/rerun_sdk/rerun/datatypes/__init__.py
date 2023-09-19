@@ -2,25 +2,6 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1Array, AffixFuzzer1ArrayLike, AffixFuzzer1Like, AffixFuzzer1Type
-from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2Array, AffixFuzzer2ArrayLike, AffixFuzzer2Like, AffixFuzzer2Type
-from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3Array, AffixFuzzer3ArrayLike, AffixFuzzer3Like, AffixFuzzer3Type
-from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4Array, AffixFuzzer4ArrayLike, AffixFuzzer4Like, AffixFuzzer4Type
-from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5Array, AffixFuzzer5ArrayLike, AffixFuzzer5Like, AffixFuzzer5Type
-from .affix_fuzzer20 import (
-    AffixFuzzer20,
-    AffixFuzzer20Array,
-    AffixFuzzer20ArrayLike,
-    AffixFuzzer20Like,
-    AffixFuzzer20Type,
-)
-from .affix_fuzzer21 import (
-    AffixFuzzer21,
-    AffixFuzzer21Array,
-    AffixFuzzer21ArrayLike,
-    AffixFuzzer21Like,
-    AffixFuzzer21Type,
-)
 from .angle import Angle, AngleArray, AngleArrayLike, AngleLike, AngleType
 from .annotation_info import (
     AnnotationInfo,
@@ -45,25 +26,11 @@ from .class_description_map_elem import (
 )
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
-from .flattened_scalar import (
-    FlattenedScalar,
-    FlattenedScalarArray,
-    FlattenedScalarArrayLike,
-    FlattenedScalarLike,
-    FlattenedScalarType,
-)
 from .float32 import Float32, Float32Array, Float32ArrayLike, Float32Like, Float32Type
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArray, KeypointPairArrayLike, KeypointPairLike, KeypointPairType
 from .mat3x3 import Mat3x3, Mat3x3Array, Mat3x3ArrayLike, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4Array, Mat4x4ArrayLike, Mat4x4Like, Mat4x4Type
-from .primitive_component import (
-    PrimitiveComponent,
-    PrimitiveComponentArray,
-    PrimitiveComponentArrayLike,
-    PrimitiveComponentLike,
-    PrimitiveComponentType,
-)
 from .quaternion import Quaternion, QuaternionArray, QuaternionArrayLike, QuaternionLike, QuaternionType
 from .rotation3d import Rotation3D, Rotation3DArray, Rotation3DArrayLike, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
@@ -74,13 +41,6 @@ from .rotation_axis_angle import (
     RotationAxisAngleType,
 )
 from .scale3d import Scale3D, Scale3DArray, Scale3DArrayLike, Scale3DLike, Scale3DType
-from .string_component import (
-    StringComponent,
-    StringComponentArray,
-    StringComponentArrayLike,
-    StringComponentLike,
-    StringComponentType,
-)
 from .tensor_buffer import TensorBuffer, TensorBufferArray, TensorBufferArrayLike, TensorBufferLike, TensorBufferType
 from .tensor_data import TensorData, TensorDataArray, TensorDataArrayLike, TensorDataLike, TensorDataType
 from .tensor_dimension import (
@@ -111,41 +71,6 @@ from .vec3d import Vec3D, Vec3DArray, Vec3DArrayLike, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArray, Vec4DArrayLike, Vec4DLike, Vec4DType
 
 __all__ = [
-    "AffixFuzzer1",
-    "AffixFuzzer1Array",
-    "AffixFuzzer1ArrayLike",
-    "AffixFuzzer1Like",
-    "AffixFuzzer1Type",
-    "AffixFuzzer2",
-    "AffixFuzzer20",
-    "AffixFuzzer20Array",
-    "AffixFuzzer20ArrayLike",
-    "AffixFuzzer20Like",
-    "AffixFuzzer20Type",
-    "AffixFuzzer21",
-    "AffixFuzzer21Array",
-    "AffixFuzzer21ArrayLike",
-    "AffixFuzzer21Like",
-    "AffixFuzzer21Type",
-    "AffixFuzzer2Array",
-    "AffixFuzzer2ArrayLike",
-    "AffixFuzzer2Like",
-    "AffixFuzzer2Type",
-    "AffixFuzzer3",
-    "AffixFuzzer3Array",
-    "AffixFuzzer3ArrayLike",
-    "AffixFuzzer3Like",
-    "AffixFuzzer3Type",
-    "AffixFuzzer4",
-    "AffixFuzzer4Array",
-    "AffixFuzzer4ArrayLike",
-    "AffixFuzzer4Like",
-    "AffixFuzzer4Type",
-    "AffixFuzzer5",
-    "AffixFuzzer5Array",
-    "AffixFuzzer5ArrayLike",
-    "AffixFuzzer5Like",
-    "AffixFuzzer5Type",
     "Angle",
     "AngleArray",
     "AngleArrayLike",
@@ -176,11 +101,6 @@ __all__ = [
     "ColorArrayLike",
     "ColorLike",
     "ColorType",
-    "FlattenedScalar",
-    "FlattenedScalarArray",
-    "FlattenedScalarArrayLike",
-    "FlattenedScalarLike",
-    "FlattenedScalarType",
     "Float32",
     "Float32Array",
     "Float32ArrayLike",
@@ -206,11 +126,6 @@ __all__ = [
     "Mat4x4ArrayLike",
     "Mat4x4Like",
     "Mat4x4Type",
-    "PrimitiveComponent",
-    "PrimitiveComponentArray",
-    "PrimitiveComponentArrayLike",
-    "PrimitiveComponentLike",
-    "PrimitiveComponentType",
     "Quaternion",
     "QuaternionArray",
     "QuaternionArrayLike",
@@ -231,11 +146,6 @@ __all__ = [
     "Scale3DArrayLike",
     "Scale3DLike",
     "Scale3DType",
-    "StringComponent",
-    "StringComponentArray",
-    "StringComponentArrayLike",
-    "StringComponentLike",
-    "StringComponentType",
     "TensorBuffer",
     "TensorBufferArray",
     "TensorBufferArrayLike",

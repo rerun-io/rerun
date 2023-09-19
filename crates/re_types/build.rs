@@ -15,6 +15,7 @@ const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun";
+const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "../../rerun_py/tests/test_types";
 
 fn main() {
     if cfg!(target_os = "windows") {
@@ -92,6 +93,7 @@ fn main() {
         || {
             re_types_builder::generate_python_code(
                 PYTHON_OUTPUT_DIR_PATH,
+                PYTHON_TESTING_OUTPUT_DIR_PATH,
                 &objects,
                 &arrow_registry,
             );

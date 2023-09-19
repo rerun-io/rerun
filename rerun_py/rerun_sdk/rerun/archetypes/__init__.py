@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1
 from .annotation_context import AnnotationContext
 from .arrows3d import Arrows3D
 from .boxes2d import Boxes2D
@@ -22,7 +21,6 @@ from .text_log import TextLog
 from .transform3d import Transform3D
 
 __all__ = [
-    "AffixFuzzer1",
     "AnnotationContext",
     "Arrows3D",
     "Boxes2D",
