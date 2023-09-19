@@ -4,7 +4,6 @@ import inspect
 import logging
 
 import rerun
-from rerun.log.text_internal import log_text_entry_internal
 from rerun.recording_stream import RecordingStream
 
 __all__ = [
@@ -30,11 +29,13 @@ def _send_warning(
     You can also use this for unrecoverable problems,
     or raise an exception and let the @log_decorator handle it instead.
     """
+    from rerun.experimental import TextLog, log
 
     if rerun.strict_mode():
         raise TypeError(message)
 
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
-    log_text_entry_internal("rerun", warning, level="WARN", recording=recording)
+
+    log("rerun", TextLog(body=warning, level="WARN"), recording=recording)
     logging.warning(warning)

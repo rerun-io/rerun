@@ -6,8 +6,8 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun.log import Color, Colors, _normalize_radii
-from rerun.log.error_utils import _send_warning
-from rerun.log.log_decorator import log_decorator
+from rerun.error_utils import _send_warning
+from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 __all__ = [

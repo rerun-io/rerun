@@ -10,7 +10,7 @@ from rerun.log import (
     Colors,
     OptionalClassIds,
 )
-from rerun.log.log_decorator import log_decorator
+from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 __all__ = [

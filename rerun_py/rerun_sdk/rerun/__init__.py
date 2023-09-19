@@ -92,22 +92,22 @@ from .components.transform3d import (
     TranslationAndMat3,
     TranslationRotationScale3D,
 )
-from .log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
-from .log.arrow import log_arrow
-from .log.bounding_box import log_obb, log_obbs
-from .log.camera import log_pinhole
-from .log.clear import log_cleared
-from .log.extension_components import log_extension_components
-from .log.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
-from .log.image import log_depth_image, log_image, log_segmentation_image
-from .log.lines import log_line_segments, log_line_strip, log_line_strips_2d, log_line_strips_3d
-from .log.mesh import log_mesh, log_meshes
-from .log.points import log_point, log_points
-from .log.rects import RectFormat, log_rect, log_rects
-from .log.scalar import log_scalar
-from .log.tensor import log_tensor
-from .log.text import LoggingHandler, log_text_entry
-from .log.transform import (
+from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
+from .log_deprecated.arrow import log_arrow
+from .log_deprecated.bounding_box import log_obb, log_obbs
+from .log_deprecated.camera import log_pinhole
+from .log_deprecated.clear import log_cleared
+from .log_deprecated.extension_components import log_extension_components
+from .log_deprecated.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
+from .log_deprecated.image import log_depth_image, log_image, log_segmentation_image
+from .log_deprecated.lines import log_line_segments, log_line_strip, log_line_strips_2d, log_line_strips_3d
+from .log_deprecated.mesh import log_mesh, log_meshes
+from .log_deprecated.points import log_point, log_points
+from .log_deprecated.rects import RectFormat, log_rect, log_rects
+from .log_deprecated.scalar import log_scalar
+from .log_deprecated.tensor import log_tensor
+from .log_deprecated.text import LoggingHandler, log_text_entry
+from .log_deprecated.transform import (
     log_disconnected_space,
     log_rigid3,
     log_transform3d,
@@ -162,7 +162,7 @@ def _init_recording_stream() -> None:
         [connect, save, disconnect, memory_recording, serve, spawn]
         + [set_time_sequence, set_time_seconds, set_time_nanos, reset_time]
         + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
-    )  # type: ignore[no-untyped-call]
+    )
 
 
 _init_recording_stream()

@@ -18,8 +18,8 @@ from rerun.components.transform3d import (
     TranslationAndMat3,
     TranslationRotationScale3D,
 )
-from rerun.log.error_utils import _send_warning
-from rerun.log.log_decorator import log_decorator
+from rerun.error_utils import _send_warning
+from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 __all__ = [

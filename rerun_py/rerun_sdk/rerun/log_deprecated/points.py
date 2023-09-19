@@ -11,8 +11,8 @@ from rerun.log import (
     OptionalClassIds,
     OptionalKeyPointIds,
 )
-from rerun.log.error_utils import _send_warning
-from rerun.log.log_decorator import log_decorator
+from rerun.error_utils import _send_warning
+from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 __all__ = [

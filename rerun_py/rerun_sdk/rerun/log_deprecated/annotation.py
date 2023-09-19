@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from rerun._rerun2.datatypes import AnnotationInfo, ClassDescription, ClassDescriptionLike
-from rerun.log.log_decorator import log_decorator
+from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 __all__ = ["log_annotation_context", "AnnotationInfo", "ClassDescription", "ClassDescriptionLike"]

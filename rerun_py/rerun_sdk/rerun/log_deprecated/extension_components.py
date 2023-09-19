@@ -6,10 +6,10 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-import rerun.log.error_utils
+import rerun.error_utils
 from rerun import bindings
 from rerun.components import instance_key_splat
-from rerun.log.log_decorator import log_decorator
+from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 # Fully qualified to avoid circular import
@@ -50,7 +50,7 @@ def _add_extension_components(
                 pa_value = pa.array(np_value)
                 EXT_COMPONENT_TYPES[name] = (np_value.dtype, pa_value.type)
         except Exception as ex:
-            rerun.log.error_utils._send_warning(
+            rerun.error_utils._send_warning(
                 f"Error converting extension data to arrow for component {name}. Dropping.\n{type(ex).__name__}: {ex}",
                 1,
             )
@@ -127,7 +127,7 @@ def log_extension_components(
             identifiers = [int(id) for id in identifiers]
             identifiers_np = np.array(identifiers, dtype="uint64")
         except ValueError:
-            rerun.log.error_utils._send_warning("Only integer identifiers supported", 1)
+            rerun.error_utils._send_warning("Only integer identifiers supported", 1)
 
     instanced: dict[str, Any] = {}
     splats: dict[str, Any] = {}
