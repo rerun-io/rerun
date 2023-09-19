@@ -128,8 +128,26 @@ impl Int64Histogram {
     ///
     /// Incrementing with one is similar to inserting the key in a multi-set.
     pub fn increment(&mut self, key: i64, inc: u32) {
-        self.root
-            .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
+        if inc != 0 {
+            self.root
+                .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
+        }
+    }
+
+    /// Decremenmt the count for the given key.
+    ///
+    /// The decrement is saturating.
+    ///
+    /// Returns how much was actually decremented (found).
+    /// If the returned value is less than the given value,
+    /// it means that the key was either no found, or had a lower count.
+    pub fn decrement(&mut self, key: i64, dec: u32) -> u32 {
+        if dec == 0 {
+            0
+        } else {
+            self.root
+                .decrement(ROOT_LEVEL, u64_key_from_i64_key(key), dec)
+        }
     }
 
     /// Is the total count zero?
@@ -311,6 +329,14 @@ impl Node {
         }
     }
 
+    fn decrement(&mut self, level: Level, addr: u64, dec: u32) -> u32 {
+        match self {
+            Node::BranchNode(node) => node.decrement(level, addr, dec),
+            Node::SparseLeaf(sparse) => sparse.decrement(addr, dec),
+            Node::DenseLeaf(dense) => dense.decrement(addr, dec),
+        }
+    }
+
     fn is_empty(&self) -> bool {
         match self {
             Node::BranchNode(node) => node.is_empty(),
@@ -379,6 +405,22 @@ impl BranchNode {
             .get_or_insert_with(|| Box::new(Node::for_level(child_level)))
             .increment(child_level, addr, inc);
         self.total_count += inc as u64;
+    }
+
+    fn decrement(&mut self, level: Level, addr: u64, dec: u32) -> u32 {
+        debug_assert!(level != BOTTOM_LEVEL);
+        let child_level = level - LEVEL_STEP;
+        let top_addr = (addr >> level) & ADDR_MASK;
+        if let Some(child) = &mut self.children[top_addr as usize] {
+            let actually_decremented = child.decrement(child_level, addr, dec);
+            if child.is_empty() {
+                self.children[top_addr as usize] = None;
+            }
+            self.total_count = self.total_count.saturating_sub(actually_decremented as _);
+            actually_decremented
+        } else {
+            0
+        }
     }
 
     fn is_empty(&self) -> bool {
@@ -513,6 +555,25 @@ impl SparseLeaf {
         }
     }
 
+    fn decrement(&mut self, abs_addr: u64, dec: u32) -> u32 {
+        let index = self.addrs.partition_point(|&addr| addr < abs_addr);
+
+        if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
+            if *addr == abs_addr {
+                return if dec <= *count {
+                    *count -= dec;
+                    dec
+                } else {
+                    let actually_decremented = *count;
+                    *count = 0;
+                    actually_decremented
+                };
+            }
+        }
+
+        0 // not found
+    }
+
     fn is_empty(&self) -> bool {
         self.addrs.is_empty()
     }
@@ -562,6 +623,18 @@ impl SparseLeaf {
 impl DenseLeaf {
     fn increment(&mut self, abs_addr: u64, inc: u32) {
         self.counts[(abs_addr & (NUM_CHILDREN_IN_DENSE - 1)) as usize] += inc;
+    }
+
+    fn decrement(&mut self, abs_addr: u64, dec: u32) -> u32 {
+        let bucket = &mut self.counts[(abs_addr & (NUM_CHILDREN_IN_DENSE - 1)) as usize];
+        if dec <= *bucket {
+            *bucket -= dec;
+            dec
+        } else {
+            let actually_decremented = *bucket;
+            *bucket = 0;
+            actually_decremented
+        }
     }
 
     fn is_empty(&self) -> bool {
@@ -736,6 +809,11 @@ mod tests {
 
         assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
         assert_eq!(set.range(..10, 1).count(), 10);
+
+        assert_eq!(set.decrement(5, 1), 1);
+        assert_eq!(set.range(..10, 1).count(), 9);
+        assert_eq!(set.decrement(5, 1), 0);
+        assert_eq!(set.range(..10, 1).count(), 9);
     }
 
     #[test]
@@ -910,5 +988,36 @@ mod tests {
             set.range(.., 1).collect::<Vec<_>>(),
             vec![(RangeI64::single(i64::MAX - 1), 2),]
         );
+    }
+
+    #[test]
+    fn test_decrement() {
+        let mut set = Int64Histogram::default();
+
+        for i in 0..100 {
+            set.increment(i, 2);
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(0), Some(99)));
+
+        for i in 0..100 {
+            assert_eq!(set.decrement(i, 1), 1);
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(0), Some(99)));
+
+        for i in 0..50 {
+            assert_eq!(set.decrement(i, 1), 1);
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(50), Some(99)));
+
+        for i in 0..50 {
+            assert_eq!(
+                set.decrement(i, 1),
+                0,
+                "Should already have been decremented"
+            );
+        }
     }
 }
