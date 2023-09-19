@@ -11,21 +11,17 @@ if TYPE_CHECKING:
 class MaterialExt:
     @staticmethod
     def native_to_pa_array_override(data: MaterialArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Color, ColorArray, Material
+        from . import Material, ColorType
 
         if isinstance(data, Material):
             data = [data]
 
         field_albedo_factors = data_type.field("albedo_factor")
 
-        albedo_factors_no_null = [
-            datum.albedo_factor if datum.albedo_factor is not None else Color(0x00000000) for datum in data
-        ]
-        albedo_factors = ColorArray.from_similar(albedo_factors_no_null).storage
-
-        albedo_factors_null_mask = pa.array([datum.albedo_factor is None for datum in data])
-        if len(albedo_factors_null_mask) > 0:
-            albedo_factors.filter(albedo_factors_null_mask, null_selection_behavior="emit_null")
+        albedo_factors = pa.array(
+            [datum.albedo_factor.rgba if datum.albedo_factor is not None else None for datum in data],
+            type=ColorType().storage_type,
+        )
 
         return pa.StructArray.from_arrays(
             arrays=[albedo_factors],
