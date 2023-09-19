@@ -55,7 +55,7 @@ namespace rerun {
         ///    );
         ///
         ///    // Log an extra rect to set the view bounds
-        ///    rec.log("bounds", rr::Boxes2D::from_mins_and_sizes({{0.0f, 0.0f}}, {{5.0f, 5.0f}}));
+        ///    rec.log("bounds", rr::Boxes2D::from_half_sizes({{2.5f, 2.5f}}));
         /// }
         ///```
         struct AnnotationContext {
