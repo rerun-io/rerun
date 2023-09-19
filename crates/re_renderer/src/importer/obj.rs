@@ -43,6 +43,13 @@ pub fn load_obj_from_buffer(
                 .map(|p| glam::vec3(p[0], p[1], p[2]))
                 .collect();
 
+            let triangle_indices = mesh
+                .indices
+                .chunks_exact(3)
+                .map(|p| glam::uvec3(p[0], p[1], p[2]))
+                .collect();
+            let num_triangle_indices = mesh.indices.len() * 3;
+
             let mut vertex_colors: Vec<Rgba32Unmul> = mesh
                 .vertex_color
                 .chunks_exact(3)
@@ -73,11 +80,9 @@ pub fn load_obj_from_buffer(
 
             let texture = ctx.texture_manager_2d.white_texture_unorm_handle();
 
-            let num_indices = mesh.indices.len();
-
             let mesh = Mesh {
                 label: model.name.into(),
-                indices: mesh.indices,
+                triangle_indices,
                 vertex_positions,
                 vertex_colors,
                 vertex_normals,
@@ -86,7 +91,7 @@ pub fn load_obj_from_buffer(
                 // TODO(andreas): proper material loading
                 materials: smallvec![Material {
                     label: "default material".into(),
-                    index_range: 0..num_indices as u32,
+                    index_range: 0..num_triangle_indices as u32,
                     albedo: texture.clone(),
                     albedo_multiplier: crate::Rgba::WHITE,
                 }],
