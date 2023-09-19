@@ -312,7 +312,7 @@ def track_objects(video_path: str) -> None:
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
-        rr.log.annotation.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
+        rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
     rr.log_annotation_context("/", class_descriptions, timeless=True)
 
@@ -368,9 +368,9 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
     return str(destination_path)
 
 
-def setup_looging() -> None:
+def setup_logging() -> None:
     logger = logging.getLogger()
-    rerun_handler = rr.log.text.LoggingHandler("logs")
+    rerun_handler = rr.LoggingHandler("logs")
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
 
@@ -395,7 +395,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_detect_and_track_objects")
 
-    setup_looging()
+    setup_logging()
 
     video_path: str = args.video_path
     if not video_path:
