@@ -9,8 +9,8 @@ import numpy.typing as npt
 from deprecated import deprecated
 
 from rerun import bindings
-from rerun.components.quaternion import Quaternion
-from rerun.components.transform3d import (
+from rerun.components_deprecated.quaternion import Quaternion
+from rerun.components_deprecated.transform3d import (
     Rigid3D,
     RotationAxisAngle,
     Scale3D,

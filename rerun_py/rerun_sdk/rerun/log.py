@@ -5,11 +5,12 @@ from typing import Any, Iterable, Protocol
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+import rerun_bindings as bindings
 
-from .. import RecordingStream, bindings
-from ..log import error_utils
 from . import components as cmp
 from ._baseclasses import NamedExtensionArray
+from .error_utils import _send_warning
+from .recording_stream import RecordingStream
 
 __all__ = ["log", "IndicatorComponentBatch", "ArchetypeLike"]
 
@@ -122,7 +123,7 @@ def _add_extension_components(
                 pa_value = pa.array(np_value)
                 ext_component_types[name] = (np_value.dtype, pa_value.type)
         except Exception as ex:
-            error_utils._send_warning(
+            _send_warning(
                 f"Error converting extension data to arrow for component {name}. Dropping.\n{type(ex).__name__}: {ex}",
                 1,
             )

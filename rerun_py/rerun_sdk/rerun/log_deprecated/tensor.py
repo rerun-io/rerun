@@ -5,7 +5,7 @@ from typing import Any, Protocol, Sequence, Union
 import numpy as np
 import numpy.typing as npt
 
-from rerun._rerun2.datatypes.tensor_data import TensorDataLike
+from rerun.datatypes.tensor_data import TensorDataLike
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream

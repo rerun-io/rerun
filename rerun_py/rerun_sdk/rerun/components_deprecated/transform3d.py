@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import numpy.typing as npt
 
-from rerun.components.quaternion import Quaternion
+from rerun.components_deprecated.quaternion import Quaternion
 
 __all__ = [
     "Quaternion",

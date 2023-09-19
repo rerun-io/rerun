@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
+from rerun.components_deprecated import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "Box3DArray",

@@ -82,7 +82,7 @@ __all__ = [
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
-from .components.transform3d import (
+from .components_deprecated.transform3d import (
     Quaternion,
     Rigid3D,
     RotationAxisAngle,

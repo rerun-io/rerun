@@ -158,7 +158,7 @@ Implementing a Pythonic API for a component or datatype sometime require a subtl
 The `converter` attribute of [`attrs.field()`] can be any callable. Often, `lambda` would make for a concise and efficient converter implementation, but, unfortunately, mypy doesn't support anything else than regular functions and emits error otherwise. For this reason, the code generator always uses regular functions when generating default converter. This is done by either of the following means:
 
 - using built-in function (e.g. `int()`, for non-nullable `int` fields);
-- using one of the functions provided in `_rerun2/_converters.py` (e.g. `int_or_none()` for nullable `int` fields);
+- using one of the functions provided in `_converters.py` (e.g. `int_or_none()` for nullable `int` fields);
 - locally generating a bespoke converter function (e.g. for field using datatypes, nullable or otherwise).
 
 

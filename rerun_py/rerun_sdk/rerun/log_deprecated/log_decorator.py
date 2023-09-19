@@ -7,7 +7,6 @@ from typing import Any, Callable, TypeVar, cast
 
 import rerun
 from rerun import bindings
-from rerun.log.text_internal import log_text_entry_internal
 from rerun.recording_stream import RecordingStream
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
@@ -33,6 +32,8 @@ def log_decorator(func: _TFunc) -> _TFunc:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
+        from rerun.experimental import TextLog, log
+
         recording = RecordingStream.to_native(kwargs.get("recording"))
         if not bindings.is_enabled(recording):
             # NOTE: use `warnings` which handles runtime deduplication.
@@ -51,7 +52,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
                 return func(*args, **kwargs)
             except Exception as e:
                 warning = "".join(traceback.format_exception(e.__class__, e, e.__traceback__))
-                log_text_entry_internal("rerun", warning, level="WARN", recording=recording)
+                log("rerun", TextLog(body=warning, level="WARN"), recording=recording)
                 warnings.warn(f"Ignoring rerun log call: {warning}", category=RerunWarning, stacklevel=2)
 
     return cast(_TFunc, wrapper)
