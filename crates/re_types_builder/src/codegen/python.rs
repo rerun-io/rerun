@@ -397,8 +397,12 @@ impl PythonCodeGenerator {
 fn write_files(pkg_path: &Utf8Path, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
     re_tracing::profile_function!();
 
+    // Running `black` once for each file is very slow, so we write all
+    // files to a temporary folder, format it, and copy back the results.
+
     let tempdir = tempfile::tempdir().unwrap();
     let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
+
     files_to_write.par_iter().for_each(|(filepath, source)| {
         let formatted_source_path = tempdir_path.join(filepath.strip_prefix(pkg_path).unwrap());
         super::common::write_file(&formatted_source_path, source);
@@ -1544,10 +1548,10 @@ fn run_black_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     use std::process::{Command, Stdio};
 
     let proc = Command::new("black")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .arg(format!("--config={}", python_project_path()))
         .arg(dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()?;
 
     let output = proc.wait_with_output()?;
@@ -1566,11 +1570,11 @@ fn run_ruff_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     use std::process::{Command, Stdio};
 
     let proc = Command::new("ruff")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .arg(format!("--config={}", python_project_path()))
         .arg("--fix")
         .arg(dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()?;
 
     let output = proc.wait_with_output()?;
