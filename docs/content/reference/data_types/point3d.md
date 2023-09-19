@@ -1,8 +1,8 @@
 ---
-title: Point3D
+title: Position3D
 order: 8
 ---
-`Point3D` represents a singular point in three-dimensional space with optional color, radii, and label. `Point3D` entities will be drawn as part of the 3D Spatial SpaceView.
+`Position3D` represents a singular point in three-dimensional space with optional color, radii, and label. `Position3D` entities will be drawn as part of the 3D Spatial SpaceView.
 
 It is compatible with [`AnnotationContext`](../../concepts/annotation-context.md). `class_id` can be used to provide
 colors and labels from the annotation context, and `keypoint_id` can be used to make connected edges between points. See
@@ -15,7 +15,7 @@ Secondary components: `colorrgba`, `radius`, `label`, `classid`, `keypointid`
 
 Python APIs: [log_point](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_point), [log_points](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_points)
 
-Rust API: [Point3D](https://docs.rs/rerun/latest/rerun/components/struct.Point3D.html)
+Rust API: [Position3D](https://docs.rs/rerun/latest/rerun/components/struct.Position3D.html)
 
 ## Simple Example
 code-example: point3d_simple

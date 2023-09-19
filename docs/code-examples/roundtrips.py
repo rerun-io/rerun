@@ -27,7 +27,6 @@ opt_out_entirely = {
     "depth_image_simple": ["cpp"],
     "image_advanced": ["cpp", "rust"],
     "image_simple": ["cpp"],
-    "mesh_simple": ["cpp"],
     "pinhole_simple": ["cpp"],
     "segmentation_image_simple": ["cpp"],
     "scalar_simple": ["cpp"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.

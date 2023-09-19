@@ -84,8 +84,12 @@ name = "line_strip3d_batch"
 path = "line_strip3d_batch.rs"
 
 [[bin]]
-name = "mesh_simple"
-path = "mesh_simple.rs"
+name = "mesh3d_simple"
+path = "mesh3d_simple.rs"
+
+[[bin]]
+name = "mesh3d_indexed"
+path = "mesh3d_indexed.rs"
 
 [[bin]]
 name = "pinhole_simple"

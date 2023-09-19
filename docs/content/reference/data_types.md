@@ -24,7 +24,7 @@ generally support spatial transformations. All of these types can be visualized 
 * [Linestrip3D](data_types/linestrip3d.md)
 * [Mesh](data_types/mesh.md)
 * [Point2D](data_types/point2d.md)
-* [Point3D](data_types/point3d.md)
+* [Position3D](data_types/point3d.md)
 * [Transform3D](data_types/transform3d.md)
 * [Pinhole](data_types/pinhole.md)
 
