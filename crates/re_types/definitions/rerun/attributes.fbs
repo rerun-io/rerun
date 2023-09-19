@@ -17,3 +17,11 @@ attribute "attr.rerun.component_recommended";
 ///
 /// Only applies to the fields of an archetype.
 attribute "attr.rerun.component_optional";
+
+/// Override the type of a field.
+///
+/// The only permitted value is "half".
+///
+/// Because fbs schema doesn't have an equivalent of a half type, mark when we want the type to be
+/// treated as half / float16 intead. For Lists this will apply to the inner element.
+attribute "attr.rerun.override_type";

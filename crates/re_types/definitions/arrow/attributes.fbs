@@ -16,5 +16,4 @@ attribute "attr.arrow.sparse_union";
 /// This is generally most useful for getting rid of extraneous `struct` layers.
 attribute "attr.arrow.transparent";
 
-/// Marks this type as being a float16.
-attribute "attr.arrow.float16_type";
+

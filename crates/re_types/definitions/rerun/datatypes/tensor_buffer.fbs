@@ -38,7 +38,7 @@ table I64Buffer(order: 100, transparent) {
 }
 
 table F16Buffer(order: 100, transparent) {
-  data: [ushort] (order: 100, "attr.arrow.float16_type");
+  data: [ushort] (order: 100, "attr.rerun.override_type": "half");
 }
 
 table F32Buffer(order: 100, transparent) {

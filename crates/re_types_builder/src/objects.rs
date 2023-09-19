@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType, ATTR_ARROW_FLOAT16_TYPE,
+    FbsType, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -901,17 +901,19 @@ impl Type {
     ) -> Self {
         // TODO(jleibs): Clean up fqname plumbing
         let fqname = "???";
-        let is_float16 = attrs
-            .try_get::<String>(fqname, ATTR_ARROW_FLOAT16_TYPE)
-            .is_some();
+
         let typ = field_type.base_type();
-        if is_float16 {
-            match typ {
-                FbsBaseType::UShort => return Self::Float16,
-                FbsBaseType::Array | FbsBaseType::Vector => {}
-                _ => unreachable!("float16_type incompatible with {typ:#?}"),
+
+        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
+            match (typ, type_override.as_str()) {
+                (FbsBaseType::UShort, "half") => {
+                    return Self::Float16;
+                },
+                (FbsBaseType::Array | FbsBaseType::Vector, "half") => {}
+                _ => unreachable!("UShort -> half is the only permitted type override. Not {typ:#?}->{type_override}"),
             }
         }
+
         match typ {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -1065,14 +1067,12 @@ impl ElementType {
     ) -> Self {
         // TODO(jleibs): Clean up fqname plumbing
         let fqname = "???";
-        let is_float16 = attrs
-            .try_get::<String>(fqname, ATTR_ARROW_FLOAT16_TYPE)
-            .is_some();
-
-        if is_float16 {
-            match inner_type {
-                FbsBaseType::UShort => return Self::Float16,
-                _ => unreachable!("float16_type incompatible with {inner_type:#?}"),
+        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
+            match (inner_type, type_override.as_str()) {
+                (FbsBaseType::UShort, "half") => {
+                    return Self::Float16;
+                }
+                _ => unreachable!("UShort -> half is the only permitted type override. Not {inner_type:#?}->{type_override}"),
             }
         }
 
