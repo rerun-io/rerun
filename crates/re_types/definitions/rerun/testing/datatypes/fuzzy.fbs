@@ -102,6 +102,6 @@ table AffixFuzzer21 (
   "attr.rust.derive": "Default, PartialEq",
   order: 700
 ) {
-  single_half: ushort (order: 100, "attr.rerun.override_type": "half");
-  many_halves: [ushort] (order: 200, "attr.rerun.override_type": "half");
+  single_half: ushort (order: 100, "attr.rerun.override_type": "float16");
+  many_halves: [ushort] (order: 200, "attr.rerun.override_type": "float16");
 }

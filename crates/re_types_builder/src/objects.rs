@@ -906,11 +906,11 @@ impl Type {
 
         if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
             match (typ, type_override.as_str()) {
-                (FbsBaseType::UShort, "half") => {
+                (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
                 },
-                (FbsBaseType::Array | FbsBaseType::Vector, "half") => {}
-                _ => unreachable!("UShort -> half is the only permitted type override. Not {typ:#?}->{type_override}"),
+                (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
+                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
             }
         }
 
@@ -1069,10 +1069,10 @@ impl ElementType {
         let fqname = "???";
         if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
             match (inner_type, type_override.as_str()) {
-                (FbsBaseType::UShort, "half") => {
+                (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
                 }
-                _ => unreachable!("UShort -> half is the only permitted type override. Not {inner_type:#?}->{type_override}"),
+                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"),
             }
         }
 
