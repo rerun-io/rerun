@@ -43,13 +43,9 @@ impl Objects {
 
         let include_dir_path = include_dir_path.as_ref();
 
-        // TODO(jleibs): Do we need real attributes here?
-        let attrs = Attributes::default();
-
         // resolve enums
         for enm in schema.enums() {
-            let resolved_enum =
-                Object::from_raw_enum(include_dir_path, &enums, &objs, &enm, &attrs);
+            let resolved_enum = Object::from_raw_enum(include_dir_path, &enums, &objs, &enm);
             resolved_enums.insert(resolved_enum.fqname.clone(), resolved_enum);
         }
 
@@ -498,7 +494,6 @@ impl Object {
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
-        attrs: &Attributes,
     ) -> Self {
         let include_dir_path = include_dir_path.as_ref();
 
@@ -519,6 +514,7 @@ impl Object {
         let docs = Docs::from_raw_docs(&filepath, enm.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
 
+        let attrs = Attributes::from_raw_attrs(enm.attributes());
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
                 // This is a union.
@@ -529,11 +525,10 @@ impl Object {
                     objs,
                     enm.underlying_type(),
                     enm.underlying_type().base_type(),
-                    attrs,
+                    &attrs,
                 ))
             }
         };
-        let attrs = Attributes::from_raw_attrs(enm.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = enm
