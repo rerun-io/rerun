@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+// Global properties of a mesh.
+table MeshProperties (
+  "attr.rust.derive": "PartialEq, Eq",
+  order: 100
+) {
+  // TODO(#3353): this is what this should be.
+  // triangle_indices: [rerun.datatypes.UVec3D] (nullable, order: 100);
+
+  /// If specified, is a flattened array of indices that describe the mesh's triangles,
+  /// i.e. its length must be divisible by 3.
+  triangle_indices: [uint] (nullable, order: 100);
+}

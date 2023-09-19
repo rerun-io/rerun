@@ -1,0 +1,18 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+// Material properties of a mesh.
+struct Material (
+  "attr.rust.derive": "PartialEq, Eq",
+  order: 100
+) {
+  /// Optional color multiplier.
+  albedo_factor: rerun.datatypes.Color (nullable, order: 100);
+}

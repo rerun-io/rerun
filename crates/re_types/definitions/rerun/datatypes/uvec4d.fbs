@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "fbs/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A uint vector in 4D space.
+struct UVec4D (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[int]",
+  "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int]",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.tuple_struct",
+  "attr.rust.repr": "C",
+  order: 100
+) {
+  xyzw: [uint: 4] (order: 100);
+}
