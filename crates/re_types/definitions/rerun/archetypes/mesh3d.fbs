@@ -71,11 +71,11 @@ table Mesh3D (
   /// Optional material properties for the mesh as a whole.
   mesh_material: rerun.components.Material ("attr.rerun.component_optional", nullable, order: 3200);
 
-  /// Optional class Ids for the points.
+  /// Optional class Ids for the vertices.
   ///
   /// The class ID provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
 
-  /// Unique identifiers for each individual point in the batch.
+  /// Unique identifiers for each individual vertex in the batch.
   instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
 }

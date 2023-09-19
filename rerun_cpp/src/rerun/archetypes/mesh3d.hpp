@@ -85,12 +85,12 @@ namespace rerun {
             /// Optional material properties for the mesh as a whole.
             std::optional<rerun::components::Material> mesh_material;
 
-            /// Optional class Ids for the points.
+            /// Optional class Ids for the vertices.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
             std::optional<std::vector<rerun::components::ClassId>> class_ids;
 
-            /// Unique identifiers for each individual point in the batch.
+            /// Unique identifiers for each individual vertex in the batch.
             std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
@@ -146,7 +146,7 @@ namespace rerun {
                 return *this;
             }
 
-            /// Optional class Ids for the points.
+            /// Optional class Ids for the vertices.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
             Mesh3D& with_class_ids(std::vector<rerun::components::ClassId> _class_ids) {
@@ -154,7 +154,7 @@ namespace rerun {
                 return *this;
             }
 
-            /// Optional class Ids for the points.
+            /// Optional class Ids for the vertices.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
             Mesh3D& with_class_ids(rerun::components::ClassId _class_ids) {
@@ -162,13 +162,13 @@ namespace rerun {
                 return *this;
             }
 
-            /// Unique identifiers for each individual point in the batch.
+            /// Unique identifiers for each individual vertex in the batch.
             Mesh3D& with_instance_keys(std::vector<rerun::components::InstanceKey> _instance_keys) {
                 instance_keys = std::move(_instance_keys);
                 return *this;
             }
 
-            /// Unique identifiers for each individual point in the batch.
+            /// Unique identifiers for each individual vertex in the batch.
             Mesh3D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
                 instance_keys = std::vector(1, std::move(_instance_keys));
                 return *this;

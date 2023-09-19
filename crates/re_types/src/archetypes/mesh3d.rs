@@ -103,12 +103,12 @@ pub struct Mesh3D {
     /// Optional material properties for the mesh as a whole.
     pub mesh_material: Option<crate::components::Material>,
 
-    /// Optional class Ids for the points.
+    /// Optional class Ids for the vertices.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 
-    /// Unique identifiers for each individual point in the batch.
+    /// Unique identifiers for each individual vertex in the batch.
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 

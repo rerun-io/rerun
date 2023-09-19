@@ -126,7 +126,7 @@ class Mesh3D(Archetype):
         converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
     )
     """
-    Optional class Ids for the points.
+    Optional class Ids for the vertices.
 
     The class ID provides colors and labels if not specified explicitly.
     """
@@ -137,7 +137,7 @@ class Mesh3D(Archetype):
         converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
-    Unique identifiers for each individual point in the batch.
+    Unique identifiers for each individual vertex in the batch.
     """
 
     __str__ = Archetype.__str__
