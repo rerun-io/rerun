@@ -40,7 +40,7 @@ namespace rerun {
         ///    auto rec = rr::RecordingStream("rerun_example_box3d_simple");
         ///    rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    rec.log("bounds", rr::Boxes3D::from_half_sizes({{2.f, 2.f, 1.0f}}));
+        ///    rec.log("simple", rr::Boxes3D::from_half_sizes({{2.f, 2.f, 1.0f}}));
         /// }
         ///```
         ///
@@ -63,10 +63,10 @@ namespace rerun {
         ///            {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
         ///        )
         ///            .with_rotations({
-        ///                rr::datatypes::Rotation3D::IDENTITY,
+        ///                rr::datatypes::Quaternion::IDENTITY,
         ///                rr::datatypes::Quaternion(0.0f, 0.0f, 0.382683f, 0.923880f), // 45
         ///                degrees around Z rr::datatypes::RotationAxisAngle(
-        ///                    {0.0f, 1.0f, 1.0f},
+        ///                    {0.0f, 1.0f, 0.0f},
         ///                    rr::datatypes::Angle::degrees(30.0f)
         ///                ),
         ///            })
