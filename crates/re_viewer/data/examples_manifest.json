@@ -1,5 +1,24 @@
 [
   {
+    "name": "detect_and_track_objects",
+    "title": "Detect and Track Objects",
+    "description": "Visualize object detection and segmentation using the Huggingface `transformers` library.",
+    "tags": [
+      "2D",
+      "huggingface",
+      "object-detection",
+      "object-tracking",
+      "opencv"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
+      "width": 480,
+      "height": 279
+    }
+  },
+  {
     "name": "arkit_scenes",
     "title": "ARKit Scenes",
     "description": "Visualize the ARKitScenes dataset, which contains color+depth images, the reconstructed mesh and labeled bounding boxes.",
@@ -20,19 +39,21 @@
     }
   },
   {
-    "name": "dna",
-    "title": "Helix",
-    "description": "Simple example of logging point and line primitives to draw a 3D helix.",
+    "name": "human_pose_tracking",
+    "title": "Human Pose Tracking",
+    "description": "Use the MediaPipe Pose solution to detect and track a human pose in video.",
     "tags": [
-      "3d",
-      "api-example"
+      "mediapipe",
+      "keypoint-detection",
+      "2D",
+      "3D"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/dna/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dna/data.rrd",
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e_helix_480w.png",
+      "url": "https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
       "width": 480,
-      "height": 285
+      "height": 272
     }
   },
   {
@@ -72,6 +93,22 @@
     }
   },
   {
+    "name": "dna",
+    "title": "Helix",
+    "description": "Simple example of logging point and line primitives to draw a 3D helix.",
+    "tags": [
+      "3d",
+      "api-example"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/dna/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dna/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e_helix_480w.png",
+      "width": 480,
+      "height": 285
+    }
+  },
+  {
     "name": "plots",
     "title": "Plots",
     "description": "Demonstration of various plots and charts supported by Rerun.",
@@ -86,43 +123,6 @@
       "url": "https://static.rerun.io/ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4_plots_480w.png",
       "width": 480,
       "height": 271
-    }
-  },
-  {
-    "name": "detect_and_track_objects",
-    "title": "Detect and Track Objects",
-    "description": "Visualize object detection and segmentation using the Huggingface `transformers` library.",
-    "tags": [
-      "2D",
-      "huggingface",
-      "object-detection",
-      "object-tracking",
-      "opencv"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
-      "width": 480,
-      "height": 279
-    }
-  },
-  {
-    "name": "human_pose_tracking",
-    "title": "Human Pose Tracking",
-    "description": "Use the MediaPipe Pose solution to detect and track a human pose in video.",
-    "tags": [
-      "mediapipe",
-      "keypoint-detection",
-      "2D",
-      "3D"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
-      "width": 480,
-      "height": 272
     }
   }
 ]
