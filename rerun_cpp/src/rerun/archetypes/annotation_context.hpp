@@ -45,11 +45,17 @@ namespace rerun {
         ///        })
         ///    );
         ///
-        ///    // Log a batch of 2 arrows with different `class_ids`
+        ///    // Log a batch of 2 rectangles with different class IDs
         ///    rec.log(
-        ///        "arrows",
-        ///        rr::Arrows3D({{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}}).with_class_ids({1, 2})
+        ///        "detections",
+        ///        rr::Boxes2D::from_mins_and_sizes(
+        ///            {{-2.0f, -2.0f}, {0.0f, 0.f}},
+        ///            {{3.0f, 3.0f}, {2.0f, 2.0f}}
+        ///        ).with_class_ids({1, 2})
         ///    );
+        ///
+        ///    // Log an extra rect to set the view bounds
+        ///    rec.log("bounds", rr::Boxes2D::from_mins_and_sizes({{0.0f, 0.0f}}, {{5.0f, 5.0f}}));
         /// }
         ///```
         struct AnnotationContext {
