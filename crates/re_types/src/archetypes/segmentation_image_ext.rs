@@ -14,7 +14,7 @@ impl SegmentationImage {
     /// This is useful for constructing an [`SegmentationImage`] from an ndarray.
     pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, ImageConstructionError<T>>
     where
-        <T as TryInto<TensorData>>::Error: std::fmt::Debug,
+        <T as TryInto<TensorData>>::Error: std::error::Error,
     {
         let mut data: TensorData = data
             .try_into()
