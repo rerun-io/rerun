@@ -14,30 +14,29 @@ namespace rerun.archetypes;
 /// \py
 /// \py Simple:
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/mesh3d_simple.py
+/// \py \include:../../../../../docs/code-examples/mesh3d_indexed.py
 /// \py ```
 /// \py
-/// \py Indexed:
+/// \py Partial updates:
 /// \py ```python
-/// \py \include:../../../../../docs/code-examples/mesh3d_indexed.py
+/// \py \include:../../../../../docs/code-examples/mesh3d_partial_updates.py
 /// \py ```
 ///
 /// \rs ## Example
 /// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/mesh3d_simple.rs
-/// \rs ```
-/// \rs
+/// \rs Simple:
 /// \rs ```ignore
 /// \rs \include:../../../../../docs/code-examples/mesh3d_indexed.rs
+/// \rs ```
+/// \rs
+/// \rs Partial updates:
+/// \rs ```ignore
+/// \rs \include:../../../../../docs/code-examples/mesh3d_partial_updates.rs
 /// \rs ```
 ///
 /// \cpp ## Example
 /// \cpp
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/mesh3d_simple.cpp
-/// \cpp ```
-/// \cpp
+/// \cpp Simple:
 /// \cpp ```
 /// \cpp \include:../../../../../docs/code-examples/mesh3d_indexed.cpp
 /// \cpp ```

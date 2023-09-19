@@ -27,23 +27,6 @@ class Mesh3D(Archetype):
     import rerun as rr
     import rerun.experimental as rr2
 
-    rr.init("rerun_example_mesh3d_simple", spawn=True)
-
-    rr2.log(
-       "triangle",
-       rr2.Mesh3D(
-           [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-           vertex_normals=[0.0, 0.0, 1.0],
-           vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
-       ),
-    )
-    ```
-
-    Indexed:
-    ```python
-    import rerun as rr
-    import rerun.experimental as rr2
-
     rr.init("rerun_example_mesh3d_indexed", spawn=True)
 
     rr2.log(
@@ -56,6 +39,34 @@ class Mesh3D(Archetype):
            mesh_material=rr2.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
        ),
     )
+    ```
+
+    Partial updates:
+    ```python
+    import rerun as rr
+    import rerun.experimental as rr2
+    import numpy as np
+
+    rr.init("rerun_example_mesh3d_partial_updates", spawn=True)
+
+    vertex_positions = np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=np.float32)
+
+    # Log the initial state of our triangle
+    rr.set_time_sequence("frame", 0)
+    rr2.log(
+       "triangle",
+       rr2.Mesh3D(
+           vertex_positions,
+           vertex_normals=[0.0, 0.0, 1.0],
+           vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+       ),
+    )
+
+    # Only update its vertices' positions each frame
+    factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
+    for i, factor in enumerate(factors):
+       rr.set_time_sequence("frame", i)
+       rr2.log_components("triangle", [rr2.cmp.Position3DArray.from_similar(vertex_positions * factor)])
     ```
     """
 

@@ -159,7 +159,7 @@ impl std::fmt::Display for MeshFormat {
 /// Cheaply clonable as it is all refcounted internally.
 ///
 /// ```
-/// # use re_components::{Mesh3D, EncodedMesh3D, RawMesh3D};
+/// # use re_components::{Mesh3D, EncodedMesh3D};
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(

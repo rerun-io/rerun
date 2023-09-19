@@ -92,6 +92,10 @@ name = "mesh3d_indexed"
 path = "mesh3d_indexed.rs"
 
 [[bin]]
+name = "mesh3d_partial_updates"
+path = "mesh3d_partial_updates.rs"
+
+[[bin]]
 name = "pinhole_simple"
 path = "pinhole_simple.rs"
 

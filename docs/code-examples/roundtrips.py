@@ -27,6 +27,7 @@ opt_out_entirely = {
     "depth_image_simple": ["cpp"],
     "image_advanced": ["cpp", "rust"],
     "image_simple": ["cpp"],
+    "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"],
     "segmentation_image_simple": ["cpp"],
     "scalar_simple": ["cpp"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
@@ -44,6 +45,7 @@ opt_out_entirely = {
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
     "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "mesh3d_partial_updates": ["py", "rust"], # float precision issues
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
