@@ -589,7 +589,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Int32 => quote!(i32),
             ElementType::Int64 => quote!(i64),
             ElementType::Bool => quote!(bool),
-            ElementType::Float16 => unimplemented!("{self:#?}"),
+            ElementType::Float16 => quote!(arrow2::types::f16),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
             ElementType::String => quote!(crate::ArrowString),

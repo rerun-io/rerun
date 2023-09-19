@@ -102,7 +102,7 @@ enumset = "1.0.12"
 epaint = "0.22.0"
 glam = "0.22"
 gltf = "1.1"
-half = "2.3.1"
+half = { version ="2.3.1", features = ["bytemuck"] }
 image = { version = "0.24", default-features = false }
 itertools = "0.11"
 lazy_static = "1.4"

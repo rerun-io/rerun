@@ -144,6 +144,7 @@ pub const ATTR_TRANSPARENT: &str = "transparent";
 
 pub const ATTR_ARROW_TRANSPARENT: &str = "attr.arrow.transparent";
 pub const ATTR_ARROW_SPARSE_UNION: &str = "attr.arrow.sparse_union";
+pub const ATTR_ARROW_FLOAT16_TYPE: &str = "attr.arrow.float16_type";
 
 pub const ATTR_RERUN_COMPONENT_OPTIONAL: &str = "attr.rerun.component_optional";
 pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recommended";

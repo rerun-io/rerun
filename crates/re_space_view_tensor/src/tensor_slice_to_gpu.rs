@@ -117,13 +117,10 @@ fn texture_desc_from_tensor(
                 |x: i64| x as f32,
             )
         }
-        //TODO(jleibs): F16 Support
-        /*
         TensorDataType::F16 => {
             let tensor = ndarray::ArrayViewD::<half::f16>::try_from(tensor)?;
             to_texture_desc(&tensor, slice_selection, TextureFormat::R16Float, |x| x)
         }
-        */
         TensorDataType::F32 => {
             let tensor = ndarray::ArrayViewD::<f32>::try_from(tensor)?;
             to_texture_desc(&tensor, slice_selection, TextureFormat::R32Float, |x| x)

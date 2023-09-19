@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType,
+    FbsType, ATTR_ARROW_FLOAT16_TYPE,
 };
 
 // ---
@@ -43,9 +43,13 @@ impl Objects {
 
         let include_dir_path = include_dir_path.as_ref();
 
+        // TODO(jleibs) Do we need real attributes here?
+        let attrs = Attributes::default();
+
         // resolve enums
         for enm in schema.enums() {
-            let resolved_enum = Object::from_raw_enum(include_dir_path, &enums, &objs, &enm);
+            let resolved_enum =
+                Object::from_raw_enum(include_dir_path, &enums, &objs, &enm, &attrs);
             resolved_enums.insert(resolved_enum.fqname.clone(), resolved_enum);
         }
 
@@ -494,6 +498,7 @@ impl Object {
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
+        attrs: &Attributes,
     ) -> Self {
         let include_dir_path = include_dir_path.as_ref();
 
@@ -524,6 +529,7 @@ impl Object {
                     objs,
                     enm.underlying_type(),
                     enm.underlying_type().base_type(),
+                    attrs,
                 ))
             }
         };
@@ -730,8 +736,8 @@ impl ObjectField {
 
         let docs = Docs::from_raw_docs(&filepath, field.documentation());
 
-        let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
+        let typ = Type::from_raw_type(enums, objs, field.type_(), &attrs);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -776,14 +782,16 @@ impl ObjectField {
 
         let docs = Docs::from_raw_docs(&filepath, val.documentation());
 
+        let attrs = Attributes::from_raw_attrs(val.attributes());
+
         let typ = Type::from_raw_type(
             enums,
             objs,
             // NOTE: Unwrapping is safe, we never resolve enums without union types.
             val.union_type().unwrap(),
+            &attrs,
         );
 
-        let attrs = Attributes::from_raw_attrs(val.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -889,8 +897,21 @@ impl Type {
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
+        attrs: &Attributes,
     ) -> Self {
+        // TODO(jleibs): Clean up fqname plumbing
+        let fqname = "???";
+        let is_float16 = attrs
+            .try_get::<String>(fqname, ATTR_ARROW_FLOAT16_TYPE)
+            .is_some();
         let typ = field_type.base_type();
+        if is_float16 {
+            match typ {
+                FbsBaseType::UShort => return Self::Float16,
+                FbsBaseType::Array | FbsBaseType::Vector => {}
+                _ => unreachable!("float16_type incompatible with {typ:#?}"),
+            }
+        }
         match typ {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -901,7 +922,6 @@ impl Type {
             FbsBaseType::UInt => Self::UInt32,
             FbsBaseType::Long => Self::Int64,
             FbsBaseType::ULong => Self::UInt64,
-            // TODO(cmc): half support
             FbsBaseType::Float => Self::Float32,
             FbsBaseType::Double => Self::Float64,
             FbsBaseType::String => Self::String,
@@ -919,6 +939,7 @@ impl Type {
                     objs,
                     field_type,
                     field_type.element(),
+                    attrs,
                 ),
                 length: field_type.fixed_length() as usize,
             },
@@ -928,6 +949,7 @@ impl Type {
                     objs,
                     field_type,
                     field_type.element(),
+                    attrs,
                 ),
             },
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
@@ -1039,7 +1061,21 @@ impl ElementType {
         objs: &[FbsObject<'_>],
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
+        attrs: &Attributes,
     ) -> Self {
+        // TODO(jleibs): Clean up fqname plumbing
+        let fqname = "???";
+        let is_float16 = attrs
+            .try_get::<String>(fqname, ATTR_ARROW_FLOAT16_TYPE)
+            .is_some();
+
+        if is_float16 {
+            match inner_type {
+                FbsBaseType::UShort => return Self::Float16,
+                _ => unreachable!("float16_type incompatible with {inner_type:#?}"),
+            }
+        }
+
         #[allow(clippy::match_same_arms)]
         match inner_type {
             FbsBaseType::Bool => Self::Bool,

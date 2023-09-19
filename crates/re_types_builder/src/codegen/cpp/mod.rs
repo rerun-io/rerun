@@ -1856,6 +1856,7 @@ fn quote_variable(
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
+    #[allow(clippy::match_same_arms)]
     match typ {
         ElementType::UInt8 => quote! { uint8_t },
         ElementType::UInt16 => quote! { uint16_t },
@@ -1866,7 +1867,7 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => unimplemented!("float16 not yet implemented for C++"),
+        ElementType::Float16 => quote! { uint16_t },
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {
