@@ -454,6 +454,7 @@ pub(crate) fn to_snake_case(s: &str) -> String {
 
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
+        *last = last.replace("UVec", "uvec");
         *last = rerun_snake.convert(&last);
     }
     parts.join(".")
@@ -477,6 +478,15 @@ fn test_to_snake_case() {
     assert_eq!(
         to_snake_case("rerun.datatypes.utf8"),
         "rerun.datatypes.utf8"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.datatypes.UVec2D"),
+        "rerun.datatypes.uvec2d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.uvec2d"),
+        "rerun.datatypes.uvec2d"
     );
 
     assert_eq!(
@@ -518,6 +528,7 @@ pub(crate) fn to_pascal_case(s: &str) -> String {
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
         *last = last
+            .replace("uvec", "UVec")
             .replace("2d", "2D")
             .replace("3d", "3D")
             .replace("4d", "4D");
@@ -535,6 +546,15 @@ fn test_to_pascal_case() {
     assert_eq!(
         to_pascal_case("rerun.components.Position2D"),
         "rerun.components.Position2D"
+    );
+
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.uvec2d"),
+        "rerun.datatypes.UVec2D"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.UVec2D"),
+        "rerun.datatypes.UVec2D"
     );
 
     assert_eq!(
