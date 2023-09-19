@@ -38,9 +38,9 @@ SCENARIO(
 
         Pinhole from_manual;
         from_manual.image_from_cam = rerun::datatypes::Mat3x3({
-            {1.0f, 0.0f, 1.5f},
-            {0.0f, 2.0f, 2.0f},
-            {0.0f, 0.0f, 1.0f},
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 2.0f, 0.0f},
+            {1.5f, 2.0f, 1.0f},
         });
         from_manual.resolution = rerun::datatypes::Vec2D(3.0f, 4.0f);
 

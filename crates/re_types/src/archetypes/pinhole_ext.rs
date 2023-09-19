@@ -20,9 +20,9 @@ impl Pinhole {
         let v_cen = resolution.y() / 2.0;
 
         Self::new([
-            [focal_length_px.x(), 0.0, u_cen],
-            [0.0, focal_length_px.y(), v_cen],
-            [0.0, 0.0, 1.0],
+            [focal_length_px.x(), 0.0, 0.0],
+            [0.0, focal_length_px.y(), 0.0],
+            [u_cen, v_cen, 1.0],
         ])
         .with_resolution(resolution)
     }

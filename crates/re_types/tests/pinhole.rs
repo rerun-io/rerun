@@ -49,7 +49,7 @@ fn roundtrip() {
 fn from_focal_length_and_resolution() {
     assert_eq!(
         Pinhole::from_focal_length_and_resolution([1.0, 2.0], [3.0, 4.0]),
-        Pinhole::new([[1.0, 0.0, 1.5], [0.0, 2.0, 2.0], [0.0, 0.0, 1.0]])
+        Pinhole::new([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0], [1.5, 2.0, 1.0]])
             .with_resolution([3.0, 4.0])
     );
 }

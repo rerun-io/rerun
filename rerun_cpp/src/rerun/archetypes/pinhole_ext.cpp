@@ -26,9 +26,9 @@ namespace rerun {
             const float v_cen = _resolution.y() / 2.0f;
 
             return Pinhole(datatypes::Mat3x3(
-                               {{focal_length_px.x(), 0.0f, u_cen},
-                                {0.0f, focal_length_px.y(), v_cen},
-                                {0.0f, 0.0f, 1.0f}}
+                               {{focal_length_px.x(), 0.0f, 0.0f},
+                                {0.0f, focal_length_px.y(), 0.0f},
+                                {u_cen, v_cen, 1.0f}}
                            )
             ).with_resolution(_resolution);
         }
