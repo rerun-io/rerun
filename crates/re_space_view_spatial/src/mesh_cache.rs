@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use re_components::Mesh3D;
 use re_data_store::VersionedInstancePathHash;
 use re_renderer::RenderContext;
 use re_viewer_context::Cache;
@@ -14,12 +13,19 @@ use crate::mesh_loader::LoadedMesh;
 #[derive(Default)]
 pub struct MeshCache(ahash::HashMap<VersionedInstancePathHash, Option<Arc<LoadedMesh>>>);
 
+/// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
+#[derive(Debug, Clone, Copy)]
+pub enum AnyMesh<'a> {
+    Asset(&'a re_components::Mesh3D),
+    Mesh(&'a re_types::archetypes::Mesh3D),
+}
+
 impl MeshCache {
     pub fn entry(
         &mut self,
         name: &str,
         key: VersionedInstancePathHash,
-        mesh: &Mesh3D,
+        mesh: AnyMesh<'_>,
         render_ctx: &RenderContext,
     ) -> Option<Arc<LoadedMesh>> {
         re_tracing::profile_function!();

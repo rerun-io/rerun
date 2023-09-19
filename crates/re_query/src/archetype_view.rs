@@ -377,6 +377,27 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
+    /// Iterate over optional values as native [`Component`]s.
+    ///
+    /// The contents of the cell are returned as-is, without joining with any other component.
+    #[inline]
+    pub fn iter_raw_optional_component<'a, C: Component + Clone + 'a>(
+        &'a self,
+    ) -> DeserializationResult<Option<impl Iterator<Item = C> + '_>> {
+        re_tracing::profile_function!(C::name());
+
+        let component = self.components.get(&C::name());
+
+        if let Some(component) = component {
+            re_tracing::profile_scope!("try_from_arrow_opt", C::name());
+            return Ok(Some(
+                C::try_from_arrow(component.values.as_arrow_ref())?.into_iter(),
+            ));
+        }
+
+        Ok(None)
+    }
+
     /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`]
     #[inline]
     pub fn from_components(
