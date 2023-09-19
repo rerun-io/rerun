@@ -320,16 +320,17 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
                 name: None,
             })
             .collect();
-        match value.is_standard_layout() {
-            true => Ok(TensorData {
+        if value.is_standard_layout() {
+            Ok(TensorData {
                 shape,
                 buffer: TensorBuffer::F16(
                     bytemuck::cast_slice(value.into_raw_vec().as_slice())
                         .to_vec()
                         .into(),
                 ),
-            }),
-            false => Ok(TensorData {
+            })
+        } else {
+            Ok(TensorData {
                 shape,
                 buffer: TensorBuffer::F16(
                     value
@@ -338,7 +339,7 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
                         .collect::<Vec<_>>()
                         .into(),
                 ),
-            }),
+            })
         }
     }
 }
