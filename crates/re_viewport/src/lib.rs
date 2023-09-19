@@ -25,7 +25,7 @@ pub mod external {
 
 /// Utility for querying a pinhole archetype instance.
 ///
-/// TODO(andreas): It should be possible to convert [`re_query::ArchetypeView`] to its corresponding Archetype for situations like this.
+/// TODO(andreas): It should be possible to convert `re_query::ArchetypeView` to its corresponding Archetype for situations like this.
 /// TODO(andreas): This is duplicated into `re_space_view_spatial`
 fn query_pinhole(
     store: &re_arrow_store::DataStore,

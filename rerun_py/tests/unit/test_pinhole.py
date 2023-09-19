@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+from typing import Optional, cast
 
 import numpy as np
 import rerun.experimental as rr2
@@ -22,13 +23,17 @@ def test_pinhole() -> None:
     )
 
     for image_from_cam, resolution in all_arrays:
-        print(f"rr2.Pinhole(\n" f"image_from_cam={image_from_cam}\n" f"resolution={resolution}\n" f")")
+        image_from_cam = image_from_cam if image_from_cam is not None else image_from_cameras[-1]
+
+        # make Pyright happy as it's apparently not able to track typing info trough zip_longest
+        image_from_cam = cast(rrc.ImageFromCameraArray, image_from_cam)
+        resolution = cast(Optional[rrc.ResolutionArray], resolution)
+
+        print(f"rr2.Pinhole(\n" f"    image_from_cam={image_from_cam}\n" f"    resolution={resolution}\n" f")")
         arch = rr2.Pinhole(image_from_cam=image_from_cam, resolution=resolution)
         print(f"{arch}\n")
 
-        assert arch.image_from_cam == rrc.ImageFromCameraArray.optional_from_similar(
-            [1, 2, 3, 4, 5, 6, 7, 8, 9] if image_from_cam is not None else None
-        )
+        assert arch.image_from_cam == rrc.ImageFromCameraArray.optional_from_similar([1, 2, 3, 4, 5, 6, 7, 8, 9])
         assert arch.resolution == rrc.ResolutionArray.optional_from_similar([1, 2] if resolution is not None else None)
 
 
