@@ -2,7 +2,7 @@ use egui::Vec2;
 
 use re_components::{LegacyMat3x3, LegacyVec2D, LegacyVec3D, ViewCoordinates};
 use re_format::format_f32;
-use re_types::components::{Color, LineStrip2D, LineStrip3D};
+use re_types::components::{Color, LineStrip2D, LineStrip3D, Material, MeshProperties};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -272,6 +272,71 @@ impl DataUi for LineStrip3D {
                             }
                         });
                     });
+            }
+        }
+    }
+}
+
+impl DataUi for Material {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        let mut show_optional_albedo_factor = |ui: &mut egui::Ui| {
+            if let Some(albedo_factor) = self.albedo_factor {
+                Color(albedo_factor).data_ui(ctx, ui, verbosity, query);
+            } else {
+                ui.weak("(empty)");
+            }
+        };
+
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced => {
+                show_optional_albedo_factor(ui);
+            }
+            UiVerbosity::All => {
+                egui::Grid::new("material").num_columns(2).show(ui, |ui| {
+                    ui.label("albedo_factor");
+                    show_optional_albedo_factor(ui);
+                    ui.end_row();
+                });
+            }
+        }
+    }
+}
+
+impl DataUi for MeshProperties {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        let show_optional_indices = |ui: &mut egui::Ui| {
+            if let Some(triangle_indices) = self.triangle_indices.as_ref() {
+                ui.label(format!(
+                    "{} triangles",
+                    re_format::format_large_number(triangle_indices.len() as _)
+                ));
+            } else {
+                ui.weak("(empty)");
+            }
+        };
+
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced => {
+                show_optional_indices(ui);
+            }
+            UiVerbosity::All => {
+                egui::Grid::new("material").num_columns(2).show(ui, |ui| {
+                    ui.label("triangles");
+                    show_optional_indices(ui);
+                    ui.end_row();
+                });
             }
         }
     }
