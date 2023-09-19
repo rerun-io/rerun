@@ -19,5 +19,6 @@ int main() {
             .with_labels({"one strip here", "and one strip there"})
     );
 
-    // TODO(#2786): Rect2D archetype
+    // Log an extra rect to set the view bounds
+    rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 1.5f}}, {{8.0f, 9.0f}}));
 }

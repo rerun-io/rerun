@@ -11,12 +11,13 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
+from .boxes2d_ext import Boxes2DExt
 
 __all__ = ["Boxes2D"]
 
 
-@define(str=False, repr=False)
-class Boxes2D(Archetype):
+@define(str=False, repr=False, init=False)
+class Boxes2D(Boxes2DExt, Archetype):
     """
     A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
@@ -29,15 +30,14 @@ class Boxes2D(Archetype):
 
     rr.init("rerun_example_box2d", spawn=True)
 
-    # TODO(#3268): Use an extension method of rr2.Boxes2D to log an XYWH rect
-    rr.log_rect("simple", [-1, -1, 2, 2], rect_format=rr.RectFormat.XYWH)
+    rr2.log("simple", rr2.Boxes2D(mins=[-1, -1], sizes=[2, 2]))
 
     # Log an extra rect to set the view bounds
-    rr2.log("bounds", rr2.Boxes2D(half_sizes=[2.0, 1.5]))
+    rr2.log("bounds", rr2.Boxes2D(sizes=[4.0, 3.0]))
     ```
     """
 
-    # You can define your own __init__ function as a member of Boxes2DExt in boxes2d_ext.py
+    # __init__ can be found in boxes2d_ext.py
 
     half_sizes: components.HalfSizes2DArray = field(
         metadata={"component": "required"},

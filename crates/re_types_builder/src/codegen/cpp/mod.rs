@@ -160,7 +160,7 @@ impl CppCodeGenerator {
                     &folder_path_sdk
                 };
                 let filepath = folder_path.join(format!("{filename_stem}.{extension}"));
-                write_file(&filepath, string);
+                write_file(&filepath, &string);
                 let inserted = filepaths.insert(filepath);
                 assert!(
                     inserted,
@@ -193,7 +193,7 @@ impl CppCodeGenerator {
                 .join(format!("{folder_name}.hpp"));
             let string = string_from_token_stream(&tokens, None);
             let string = format_code(&string);
-            write_file(&filepath, string);
+            write_file(&filepath, &string);
             filepaths.insert(filepath);
         }
 

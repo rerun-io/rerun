@@ -599,7 +599,7 @@ impl ReUi {
                     egui::Vec2::splat(icon_width),
                 );
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                Self::paint_collapsing_triangle(ui, openness, &icon_response);
+                Self::paint_collapsing_triangle(ui, openness, icon_rect, &icon_response);
 
                 let visuals = ui.style().interact(&header_response);
 
@@ -644,11 +644,15 @@ impl ReUi {
     /// Paint a collapsing triangle with rounded corners.
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`].
-    pub fn paint_collapsing_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Response) {
+    pub fn paint_collapsing_triangle(
+        ui: &mut egui::Ui,
+        openness: f32,
+        rect: Rect,
+        response: &egui::Response,
+    ) {
         let visuals = ui.style().interact(response);
 
-        let rect = response.rect;
-        let extent = response.rect.width().min(response.rect.height());
+        let extent = rect.size().min_elem();
 
         // Normalized in [0, 1]^2 space.
         // Note on how these coords have been computed: https://github.com/rerun-io/rerun/pull/2920

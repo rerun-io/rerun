@@ -17,7 +17,7 @@ __all__ = ["SegmentationImage"]
 
 
 @define(str=False, repr=False)
-class SegmentationImage(Archetype, SegmentationImageExt):
+class SegmentationImage(SegmentationImageExt, Archetype):
     """
     An image made up of integer class-ids.
 

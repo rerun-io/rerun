@@ -50,7 +50,9 @@ namespace rerun {
         ///            .with_labels({"one strip here", "and one strip there"})
         ///    );
         ///
-        ///    // TODO(#2786): Rect2D archetype
+        ///    // Log an extra rect to set the view bounds
+        ///    rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 1.5f}},
+        ///    {{8.0f, 9.0f}}));
         /// }
         ///```
         ///
@@ -77,7 +79,9 @@ namespace rerun {
         ///    std::vector<rr::datatypes::Vec2D> points2 = {{4.f, -1.f}, {6.f, 0.f}};
         ///    rec.log("segments", rr::LineStrips2D({points1, points2}));
         ///
-        ///    // TODO(#2786): Rect2D archetype
+        ///    // Log an extra rect to set the view bounds
+        ///    rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 0.0f}},
+        ///    {{8.0f, 6.0f}}));
         /// }
         ///```
         struct LineStrips2D {

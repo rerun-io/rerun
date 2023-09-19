@@ -4,7 +4,10 @@ use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
 
 struct ListItemResponse {
+    /// Response of the whole [`ListItem`]
     response: Response,
+
+    /// Response from the collapse-triangle button, if any.
     collapse_response: Option<Response>,
 }
 
@@ -236,6 +239,9 @@ impl<'a> ListItem<'a> {
                 state.toggle(ui);
             }
         }
+        if response.response.double_clicked() {
+            state.toggle(ui);
+        }
 
         let body_response =
             state.show_body_indented(&response.response, ui, |ui| add_body(re_ui, ui));
@@ -331,13 +337,13 @@ impl<'a> ListItem<'a> {
                 ));
                 let triangle_rect =
                     egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_size());
-                let resp = ui.interact(
-                    triangle_rect,
+                let triangle_response = ui.interact(
+                    triangle_rect.expand(3.0), // make it easier to click
                     id.unwrap_or(ui.id()).with("collapsing_triangle"),
                     egui::Sense::click(),
                 );
-                ReUi::paint_collapsing_triangle(ui, openness, &resp);
-                collapse_response = Some(resp);
+                ReUi::paint_collapsing_triangle(ui, openness, triangle_rect, &triangle_response);
+                collapse_response = Some(triangle_response);
             }
 
             // Draw icon

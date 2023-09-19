@@ -18,6 +18,7 @@ all-features = true
 
 
 [dependencies]
+re_error.workspace = true
 re_log.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
 
@@ -36,6 +37,7 @@ quote = "1.0"
 rayon.workspace = true
 rust-format = "0.3"
 syn = "2.0"
+tempfile = "3.0"
 unindent.workspace = true
 xshell = "0.2"
 

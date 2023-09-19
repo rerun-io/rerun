@@ -282,7 +282,7 @@ pub fn generate_gitattributes_for_generated_files(
         generated_files.join("")
     );
 
-    codegen::write_file(&path, content);
+    codegen::write_file(&path, &content);
 }
 
 /// Generates C++ code.

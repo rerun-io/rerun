@@ -1,41 +1,5 @@
 [
   {
-    "name": "structure_from_motion",
-    "title": "Structure from Motion",
-    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline.",
-    "tags": [
-      "2D",
-      "3D",
-      "colmap",
-      "pinhole-camera",
-      "time-series"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/033edff752f86bcdc9a81f7877e0b4411ff4e6c5_structure_from_motion_480w.png",
-      "width": 480,
-      "height": 275
-    }
-  },
-  {
-    "name": "plots",
-    "title": "Plots",
-    "description": "Demonstration of various plots and charts supported by Rerun.",
-    "tags": [
-      "2d",
-      "plots",
-      "api-example"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/plots/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/plots/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4_plots_480w.png",
-      "width": 480,
-      "height": 271
-    }
-  },
-  {
     "name": "arkit_scenes",
     "title": "ARKit Scenes",
     "description": "Visualize the ARKitScenes dataset, which contains color+depth images, the reconstructed mesh and labeled bounding boxes.",
@@ -56,21 +20,22 @@
     }
   },
   {
-    "name": "human_pose_tracking",
-    "title": "Human Pose Tracking",
-    "description": "Use the MediaPipe Pose solution to detect and track a human pose in video.",
+    "name": "detect_and_track_objects",
+    "title": "Detect and Track Objects",
+    "description": "Visualize object detection and segmentation using the Huggingface `transformers` library.",
     "tags": [
-      "mediapipe",
-      "keypoint-detection",
       "2D",
-      "3D"
+      "huggingface",
+      "object-detection",
+      "object-tracking",
+      "opencv"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
+      "url": "https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
       "width": 480,
-      "height": 272
+      "height": 279
     }
   },
   {
@@ -107,22 +72,57 @@
     }
   },
   {
-    "name": "detect_and_track_objects",
-    "title": "Detect and Track Objects",
-    "description": "Visualize object detection and segmentation using the Huggingface `transformers` library.",
+    "name": "human_pose_tracking",
+    "title": "Human Pose Tracking",
+    "description": "Use the MediaPipe Pose solution to detect and track a human pose in video.",
+    "tags": [
+      "mediapipe",
+      "keypoint-detection",
+      "2D",
+      "3D"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
+      "width": 480,
+      "height": 272
+    }
+  },
+  {
+    "name": "plots",
+    "title": "Plots",
+    "description": "Demonstration of various plots and charts supported by Rerun.",
+    "tags": [
+      "2d",
+      "plots",
+      "api-example"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/plots/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/plots/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4_plots_480w.png",
+      "width": 480,
+      "height": 271
+    }
+  },
+  {
+    "name": "structure_from_motion",
+    "title": "Structure from Motion",
+    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline.",
     "tags": [
       "2D",
-      "huggingface",
-      "object-detection",
-      "object-tracking",
-      "opencv"
+      "3D",
+      "colmap",
+      "pinhole-camera",
+      "time-series"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
+      "url": "https://static.rerun.io/033edff752f86bcdc9a81f7877e0b4411ff4e6c5_structure_from_motion_480w.png",
       "width": 480,
-      "height": 279
+      "height": 275
     }
   }
 ]
