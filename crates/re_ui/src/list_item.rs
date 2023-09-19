@@ -4,7 +4,10 @@ use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
 
 struct ListItemResponse {
+    /// Response of the whole [`ListItem`]
     response: Response,
+
+    /// Response from the collapse-triangle button, if any.
     collapse_response: Option<Response>,
 }
 
@@ -235,6 +238,9 @@ impl<'a> ListItem<'a> {
             if collapse_response.clicked() {
                 state.toggle(ui);
             }
+        }
+        if response.response.double_clicked() {
+            state.toggle(ui);
         }
 
         let body_response =
