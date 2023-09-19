@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 rerun = { path = "../../../crates/rerun", features = [
   "native_viewer",
-  "web_viewer",
+  # "web_viewer",
 ] }
 
 anyhow = "1.0"

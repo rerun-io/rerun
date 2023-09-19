@@ -16,6 +16,7 @@ from typing import cast
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
+import rerun.experimental as rr2
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 
@@ -40,9 +41,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
         if parent:
             # TODO(andreas): We should support 4x4 matrices directly
             world_from_mesh = node_data[0]
-            rr.log_transform3d(
+            rr2.log(
                 path,
-                rr.TranslationAndMat3(
+                rr2.dt.TranslationAndMat3x3(
                     trimesh.transformations.translation_from_matrix(world_from_mesh), world_from_mesh[0:3, 0:3]
                 ),
             )
@@ -56,11 +57,18 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             try:
                 colors = mesh.visual.to_color().vertex_colors
                 if len(colors) == 4:
-                    albedo_factor = np.array(colors) / 255.0
+                    albedo_factor = np.array(colors)
             except Exception:
                 pass
-            rr.log_mesh(
-                path, mesh.vertices, indices=mesh.faces, normals=mesh.vertex_normals, albedo_factor=albedo_factor
+
+            rr2.log(
+                path,
+                rr2.Mesh3D(
+                    mesh.vertices,
+                    vertex_normals=mesh.vertex_normals,
+                    mesh_properties=rr2.cmp.MeshProperties(triangle_indices=mesh.faces),
+                    mesh_material=rr2.cmp.Material(albedo_factor=albedo_factor),
+                ),
             )
 
     if children:

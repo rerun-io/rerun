@@ -2,9 +2,9 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
@@ -28,8 +28,8 @@ pub use rerun::{
     components::{
         AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
         InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D, Pinhole,
-        Position2D, Position3D, Quaternion, Radius, RawMesh3D, Scalar, ScalarPlotProps, Text,
-        Transform3D, Vector3D, ViewCoordinates,
+        Position2D, Position3D, Quaternion, Radius, Scalar, ScalarPlotProps, Text, Transform3D,
+        Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},
@@ -155,7 +155,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
-    m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
 
@@ -794,123 +793,6 @@ impl From<AnnotationInfoTuple> for AnnotationInfo {
 
 // --- Log assets ---
 
-#[allow(clippy::too_many_arguments)]
-#[pyfunction]
-fn log_meshes(
-    entity_path_str: &str,
-    position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
-    vertex_color_buffers: Vec<Option<numpy::PyReadonlyArray2<'_, u8>>>,
-    index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
-    normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
-    albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    let entity_path = parse_entity_path(entity_path_str)?;
-
-    // Make sure we have as many position buffers as index buffers, etc.
-    if position_buffers.len() != vertex_color_buffers.len()
-        || position_buffers.len() != index_buffers.len()
-        || position_buffers.len() != normal_buffers.len()
-        || position_buffers.len() != albedo_factors.len()
-    {
-        return Err(PyTypeError::new_err(format!(
-            "Top-level position/index/normal/albedo/id buffer arrays must be same the length, \
-                got positions={}, vertex_colors={}, indices={}, normals={}, albedo={} instead",
-            position_buffers.len(),
-            vertex_color_buffers.len(),
-            index_buffers.len(),
-            normal_buffers.len(),
-            albedo_factors.len(),
-        )));
-    }
-
-    let mut meshes = Vec::with_capacity(position_buffers.len());
-
-    for (vertex_positions, vertex_colors, indices, normals, albedo_factor) in izip!(
-        position_buffers,
-        vertex_color_buffers,
-        index_buffers,
-        normal_buffers,
-        albedo_factors,
-    ) {
-        let albedo_factor =
-            if let Some(v) = albedo_factor.map(|albedo_factor| albedo_factor.as_array().to_vec()) {
-                match v.len() {
-                    3 => re_components::LegacyVec4D([v[0], v[1], v[2], 1.0]),
-                    4 => re_components::LegacyVec4D([v[0], v[1], v[2], v[3]]),
-                    _ => {
-                        return Err(PyTypeError::new_err(format!(
-                            "Albedo factor must be vec3 or vec4, got {v:?} instead",
-                        )));
-                    }
-                }
-                .into()
-            } else {
-                None
-            };
-
-        let vertex_colors = if let Some(vertex_colors) = vertex_colors {
-            match vertex_colors.shape() {
-                [_, 3] => Some(
-                    slice_from_np_array(&vertex_colors)
-                        .chunks_exact(3)
-                        .map(|c| Color::from_rgb(c[0], c[1], c[2]).to_u32())
-                        .collect(),
-                ),
-                [_, 4] => Some(
-                    slice_from_np_array(&vertex_colors)
-                        .chunks_exact(4)
-                        .map(|c| Color::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).to_u32())
-                        .collect(),
-                ),
-                shape => {
-                    return Err(PyTypeError::new_err(format!(
-                        "Expected vertex colors to have a Nx3 or Nx4 shape, got {shape:?} instead",
-                    )));
-                }
-            }
-        } else {
-            None
-        };
-
-        let raw = RawMesh3D {
-            vertex_positions: vertex_positions.as_array().to_vec().into(),
-            vertex_colors,
-            indices: indices.map(|indices| indices.as_array().to_vec().into()),
-            vertex_normals: normals.map(|normals| normals.as_array().to_vec().into()),
-            albedo_factor,
-        };
-        raw.sanity_check()
-            .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-
-        meshes.push(Mesh3D::Raw(raw));
-    }
-
-    // We currently log `Mesh3D` from inside the bridge.
-    //
-    // Pyarrow handling of nested unions was causing more grief that it was
-    // worth fighting with in the short term.
-    //
-    // TODO(jleibs) replace with python-native implementation
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        meshes.len() as _,
-        meshes,
-    );
-
-    recording.record_row(row, !timeless);
-
-    Ok(())
-}
-
 #[pyfunction]
 fn log_mesh_file(
     entity_path_str: &str,
@@ -1345,23 +1227,6 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
             "Expected color to be of length 3 or 4, got {color:?}"
         ))),
     }
-}
-
-fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
-    array: &'a numpy::PyReadonlyArray<'_, T, D>,
-) -> Cow<'a, [T]> {
-    let array = array.as_array();
-
-    // Numpy has many different memory orderings.
-    // We could/should check that we have the right one here.
-    // But for now, we just check for and optimize the trivial case.
-    if array.shape().len() == 1 {
-        if let Some(slice) = array.to_slice() {
-            return Cow::Borrowed(slice); // common-case optimization
-        }
-    }
-
-    Cow::Owned(array.iter().cloned().collect())
 }
 
 fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
