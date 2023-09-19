@@ -189,7 +189,7 @@ def log_rects(
             _send_warning("Only integer identifiers supported", 1)
 
     arch = Boxes2D(
-        half_sizes,
+        half_sizes=half_sizes,
         centers=centers,
         colors=colors,
         draw_order=draw_order,

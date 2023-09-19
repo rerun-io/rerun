@@ -11,12 +11,13 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
+from .boxes3d_ext import Boxes3DExt
 
 __all__ = ["Boxes3D"]
 
 
-@define(str=False, repr=False)
-class Boxes3D(Archetype):
+@define(str=False, repr=False, init=False)
+class Boxes3D(Boxes3DExt, Archetype):
     """
     A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
@@ -57,7 +58,7 @@ class Boxes3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of Boxes3DExt in boxes3d_ext.py
+    # __init__ can be found in boxes3d_ext.py
 
     half_sizes: components.HalfSizes3DArray = field(
         metadata={"component": "required"},

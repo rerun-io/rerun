@@ -17,7 +17,7 @@ __all__ = ["Image"]
 
 
 @define(str=False, repr=False)
-class Image(Archetype, ImageExt):
+class Image(ImageExt, Archetype):
     """
     A monochrome or color image.
 
