@@ -150,8 +150,7 @@ impl TensorData {
             TensorBuffer::I16(buf) => Some(TensorElement::I16(buf[offset])),
             TensorBuffer::I32(buf) => Some(TensorElement::I32(buf[offset])),
             TensorBuffer::I64(buf) => Some(TensorElement::I64(buf[offset])),
-            // TODO(jleibs): F16 Support
-            //TensorBuffer::F16(buf) => Some(TensorElement::F16(buf[offset])),
+            TensorBuffer::F16(buf) => Some(TensorElement::F16(buf[offset])),
             TensorBuffer::F32(buf) => Some(TensorElement::F32(buf[offset])),
             TensorBuffer::F64(buf) => Some(TensorElement::F64(buf[offset])),
             TensorBuffer::Jpeg(_) => None, // Too expensive to unpack here.
@@ -253,13 +252,11 @@ tensor_type!(i16, I16);
 tensor_type!(i32, I32);
 tensor_type!(i64, I64);
 
-// TODO(jleibs): F16 support
-//tensor_type!(arrow2::types::f16, F16);
+tensor_type!(arrow2::types::f16, F16);
 
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
-// TODO(jleibs): F16 support
 // Manual expansion of tensor_type! macro for `half::f16` types. We need to do this
 // because arrow uses its own half type. The two use the same underlying representation
 // but are still distinct types. `half::f16`, however, is more full-featured and
@@ -267,7 +264,6 @@ tensor_type!(f64, F64);
 // ==========================================
 // TODO(jleibs): would be nice to support this with the macro definition as well
 // but the bytemuck casts add a bit of complexity here.
-/*
 impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, half::f16> {
     type Error = TensorCastError;
 
@@ -324,22 +320,28 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
                 name: None,
             })
             .collect();
-        value
-            .is_standard_layout()
-            .then(|| TensorData {
+        match value.is_standard_layout() {
+            true => Ok(TensorData {
                 shape,
-                data: TensorBuffer::F16(
+                buffer: TensorBuffer::F16(
                     bytemuck::cast_slice(value.into_raw_vec().as_slice())
                         .to_vec()
                         .into(),
                 ),
-                meaning: TensorDataMeaning::Unknown,
-                meter: None,
-            })
-            .ok_or(TensorCastError::NotContiguousStdOrder)
+            }),
+            false => Ok(TensorData {
+                shape,
+                buffer: TensorBuffer::F16(
+                    value
+                        .iter()
+                        .map(|f| arrow2::types::f16::from_bits(f.to_bits()))
+                        .collect::<Vec<_>>()
+                        .into(),
+                ),
+            }),
+        }
     }
 }
-*/
 
 // ----------------------------------------------------------------------------
 
@@ -477,8 +479,7 @@ impl TensorData {
                 self.dtype(),
                 TensorDataType::U8
                     | TensorDataType::U16
-                    // TODO(jleibs): F16 Support
-                    //| TensorDataType::F16
+                    | TensorDataType::F16
                     | TensorDataType::F32
                     | TensorDataType::F64
             )

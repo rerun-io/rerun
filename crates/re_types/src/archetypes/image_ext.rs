@@ -12,7 +12,10 @@ impl Image {
     /// for treating as an image.
     ///
     /// This is useful for constructing an [`Image`] from an ndarray.
-    pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, ImageConstructionError<T>> {
+    pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, ImageConstructionError<T>>
+    where
+        <T as TryInto<TensorData>>::Error: std::fmt::Debug,
+    {
         let mut data: TensorData = data
             .try_into()
             .map_err(ImageConstructionError::TensorDataConversion)?;
@@ -74,8 +77,7 @@ forward_array_views!(i16, Image);
 forward_array_views!(i32, Image);
 forward_array_views!(i64, Image);
 
-// TODO(jleibs): F16 Support
-//forward_array_views!(half::f16, Image);
+forward_array_views!(half::f16, Image);
 forward_array_views!(f32, Image);
 forward_array_views!(f64, Image);
 

@@ -14,8 +14,7 @@ impl TensorBuffer {
             Self::I16(_) => TensorDataType::I16,
             Self::I32(_) => TensorDataType::I32,
             Self::I64(_) => TensorDataType::I64,
-            // TODO(jleibs): F16 support
-            //Self::F16(_) => TensorDataType::F16,
+            Self::F16(_) => TensorDataType::F16,
             Self::F32(_) => TensorDataType::F32,
             Self::F64(_) => TensorDataType::F64,
             Self::Jpeg(_) => TensorDataType::U8,
@@ -33,8 +32,7 @@ impl TensorBuffer {
             Self::I16(buf) => buf.size_in_bytes(),
             Self::I32(buf) => buf.size_in_bytes(),
             Self::I64(buf) => buf.size_in_bytes(),
-            // TODO(jleibs): F16 support
-            //Self::F16(buf) => buf.size_in_bytes(),
+            Self::F16(buf) => buf.size_in_bytes(),
             Self::F32(buf) => buf.size_in_bytes(),
             Self::F64(buf) => buf.size_in_bytes(),
             Self::Jpeg(buf) => buf.size_in_bytes(),
@@ -55,8 +53,7 @@ impl TensorBuffer {
             | Self::I16(_)
             | Self::I32(_)
             | Self::I64(_)
-            // TODO(jleibs): F16 support
-            //| Self::F16(_)
+            | Self::F16(_)
             | Self::F32(_)
             | Self::F64(_) => false,
 
@@ -76,8 +73,7 @@ impl std::fmt::Debug for TensorBuffer {
             Self::I16(_) => write!(f, "I16({} bytes)", self.size_in_bytes()),
             Self::I32(_) => write!(f, "I32({} bytes)", self.size_in_bytes()),
             Self::I64(_) => write!(f, "I64({} bytes)", self.size_in_bytes()),
-            // TODO(jleibs): F16 support
-            //Self::F16(_) => write!(f, "F16({} bytes)", self.size_in_bytes()),
+            Self::F16(_) => write!(f, "F16({} bytes)", self.size_in_bytes()),
             Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
             Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
             Self::Jpeg(_) => write!(f, "JPEG({} bytes)", self.size_in_bytes()),
