@@ -111,7 +111,7 @@ pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeS
 }
 
 /// Write file if any changes were made and ensure folder hierarchy exists.
-pub fn write_file(filepath: &Utf8PathBuf, source: String) {
+pub fn write_file(filepath: &Utf8PathBuf, source: &str) {
     if let Ok(existing) = std::fs::read_to_string(filepath) {
         if existing == source {
             // Don't touch the timestamp unnecessarily

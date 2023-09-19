@@ -1,9 +1,6 @@
 //! Implements the Python codegen pass.
 
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    io::Write,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -103,7 +100,7 @@ impl CodeGenerator for PythonCodeGenerator {
             );
         }
 
-        write_files(&files_to_write);
+        write_files(&self.pkg_path, &files_to_write);
 
         let filepaths = files_to_write.keys().cloned().collect();
 
@@ -397,34 +394,26 @@ impl PythonCodeGenerator {
     }
 }
 
-fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+fn write_files(pkg_path: &Utf8Path, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
     re_tracing::profile_function!();
-    // TODO(emilk): running `black` and `ruff` once for each file is very slow.
-    // It would probably be faster to write all files to a temporary folder, run `black` and `ruff` on
-    // that folder, and then copy the results to the final destination (if the files has changed).
-    files_to_write.par_iter().for_each(|(path, source)| {
-        write_file(path, source.clone());
+
+    let tempdir = tempfile::tempdir().unwrap();
+    let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
+    files_to_write.par_iter().for_each(|(filepath, source)| {
+        let formatted_source_path = tempdir_path.join(filepath.strip_prefix(pkg_path).unwrap());
+        super::common::write_file(&formatted_source_path, source);
     });
-}
 
-fn write_file(filepath: &Utf8PathBuf, mut source: String) {
-    re_tracing::profile_function!();
+    format_python_dir(&tempdir_path).unwrap();
 
-    match format_python(&source) {
-        Ok(formatted) => source = formatted,
-        Err(err) => {
-            // NOTE: Formatting code requires both `black` and `ruff` to be in $PATH, but only for contributors,
-            // not end users.
-            // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
-            // .fbs files… and even then, this won't crash if they are missing, it will just fail to pass
-            // the CI!
-            re_log::warn_once!(
-                "Failed to format Python code: {err}. Make sure `black` and `ruff` are installed."
-            );
-        }
-    }
-
-    super::common::write_file(filepath, source);
+    // Read back and copy to the final destination:
+    files_to_write
+        .par_iter()
+        .for_each(|(filepath, _original_source)| {
+            let formatted_source_path = tempdir_path.join(filepath.strip_prefix(pkg_path).unwrap());
+            let formatted_source = std::fs::read_to_string(formatted_source_path).unwrap();
+            super::common::write_file(filepath, &formatted_source);
+        });
 }
 
 fn lib_source_code(archetype_names: &[String]) -> String {
@@ -1526,7 +1515,7 @@ fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
     format!("{{{kvs}}}")
 }
 
-fn format_python(source: &str) -> anyhow::Result<String> {
+fn format_python_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     // The order below is important and sadly we need to call black twice. Ruff does not yet
@@ -1536,10 +1525,10 @@ fn format_python(source: &str) -> anyhow::Result<String> {
     // 2) Call ruff, which requires line-lengths to be correct
     // 3) Call black again to cleanup some whitespace issues ruff might introduce
 
-    let mut source = run_black(source).context("black")?;
-    source = run_ruff(&source).context("ruff")?;
-    source = run_black(&source).context("black")?;
-    Ok(source)
+    run_black_on_dir(dir).context("black")?;
+    run_ruff_on_dir(dir).context("ruff")?;
+    run_black_on_dir(dir).context("black")?;
+    Ok(())
 }
 
 fn python_project_path() -> Utf8PathBuf {
@@ -1550,59 +1539,47 @@ fn python_project_path() -> Utf8PathBuf {
     path
 }
 
-fn run_black(source: &str) -> anyhow::Result<String> {
+fn run_black_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
-    let mut proc = Command::new("black")
-        .stdin(Stdio::piped())
+    let proc = Command::new("black")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .arg(format!("--config={}", python_project_path()))
-        .arg("-") // Read from stdin
+        .arg(dir)
         .spawn()?;
-
-    {
-        let mut stdin = proc.stdin.take().unwrap();
-        stdin.write_all(source.as_bytes())?;
-    }
 
     let output = proc.wait_with_output()?;
 
     if output.status.success() {
-        let stdout = String::from_utf8(output.stdout)?;
-        Ok(stdout)
+        Ok(())
     } else {
-        let stderr = String::from_utf8(output.stderr)?;
-        anyhow::bail!("{stderr}")
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+        anyhow::bail!("{stdout}\n{stderr}")
     }
 }
 
-fn run_ruff(source: &str) -> anyhow::Result<String> {
+fn run_ruff_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
-    let mut proc = Command::new("ruff")
-        .stdin(Stdio::piped())
+    let proc = Command::new("ruff")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .arg(format!("--config={}", python_project_path()))
         .arg("--fix")
-        .arg("-") // Read from stdin
+        .arg(dir)
         .spawn()?;
-
-    {
-        let mut stdin = proc.stdin.take().unwrap();
-        stdin.write_all(source.as_bytes())?;
-    }
 
     let output = proc.wait_with_output()?;
 
     if output.status.success() {
-        let stdout = String::from_utf8(output.stdout)?;
-        Ok(stdout)
+        Ok(())
     } else {
-        let stderr = String::from_utf8(output.stderr)?;
-        anyhow::bail!("{stderr}")
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+        anyhow::bail!("{stdout}\n{stderr}")
     }
 }

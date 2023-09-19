@@ -4700,10 +4700,12 @@ dependencies = [
  "quote",
  "rayon",
  "re_build_tools",
+ "re_error",
  "re_log",
  "re_tracing",
  "rust-format",
  "syn 2.0.28",
+ "tempfile",
  "unindent",
  "xshell",
 ]
