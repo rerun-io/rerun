@@ -17,7 +17,7 @@ __all__ = ["DepthImage"]
 
 
 @define(str=False, repr=False)
-class DepthImage(Archetype, DepthImageExt):
+class DepthImage(DepthImageExt, Archetype):
     """
     A depth image.
 
