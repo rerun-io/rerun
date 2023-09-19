@@ -252,7 +252,7 @@ fn write_file(filepath: &Utf8PathBuf, mut code: String) {
         }
     }
 
-    crate::codegen::common::write_file(filepath, code);
+    crate::codegen::common::write_file(filepath, &code);
 }
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,

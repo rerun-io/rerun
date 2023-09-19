@@ -67,7 +67,7 @@ impl StringExt for String {
 /// Remove all files in the given folder that are not in the given set.
 pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeSet<Utf8PathBuf>) {
     re_tracing::profile_function!();
-    re_log::info!("Checking for old files in {folder_path}");
+    re_log::debug!("Checking for old files in {folder_path}");
     for entry in std::fs::read_dir(folder_path).unwrap().flatten() {
         if entry.file_type().unwrap().is_dir() {
             continue;
@@ -111,7 +111,7 @@ pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeS
 }
 
 /// Write file if any changes were made and ensure folder hierarchy exists.
-pub fn write_file(filepath: &Utf8PathBuf, source: String) {
+pub fn write_file(filepath: &Utf8PathBuf, source: &str) {
     if let Ok(existing) = std::fs::read_to_string(filepath) {
         if existing == source {
             // Don't touch the timestamp unnecessarily
