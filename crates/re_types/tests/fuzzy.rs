@@ -316,7 +316,7 @@ fn roundtrip() {
         if field.name == "fuzz1021" {
             // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
             // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
-            eprintln!("{} = Can't be printed", field.name);
+            eprintln!("{} = Can't be printed (float16 not supported)", field.name);
         } else {
             eprintln!("{} = {array:#?}", field.name);
         }
