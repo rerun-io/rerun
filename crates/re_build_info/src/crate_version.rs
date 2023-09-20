@@ -228,7 +228,7 @@ impl CrateVersion {
             Ok(version) => version,
             Err(_err) => {
                 // We previously used const_panic to concatenate the actual version but it crashed
-                // the 1.72.1 linker on mac :/
+                // the 1.72.0 linker on mac :/
                 panic!("invalid version string")
             }
         }
