@@ -8,7 +8,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, StringExt as _},
+    codegen::{autogen_warning, Examples, StringExt as _},
     ArrowRegistry, CodeGenerator, Context, Docs, ElementType, Object, ObjectField, ObjectKind,
     Objects, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
@@ -902,8 +902,8 @@ fn code_for_union(
 
 // --- Code generators ---
 
-fn get_examples(docs: &Docs) -> anyhow::Result<Vec<String>> {
-    crate::codegen::get_examples(docs, "py", &["```python"], &["```"])
+fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
+    Examples::collect(docs, "py", &["```python"], &["```"])
 }
 
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
@@ -924,12 +924,17 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
         }
     }
 
-    let examples = get_examples(docs).unwrap();
+    let examples = collect_examples(docs).unwrap();
     if !examples.is_empty() {
         lines.push(String::new());
-        lines.push("Examples".into());
-        lines.push("--------".into());
-        lines.extend(examples);
+        let (section_title, divider) = if examples.count == 1 {
+            ("Example", "-------")
+        } else {
+            ("Examples", "--------")
+        };
+        lines.push(section_title.into());
+        lines.push(divider.into());
+        lines.extend(examples.lines);
     }
 
     if lines.is_empty() {
@@ -957,10 +962,10 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             }
         }
 
-        let examples = get_examples(&field.docs).unwrap();
+        let examples = collect_examples(&field.docs).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples
-            content.extend(examples);
+            content.extend(examples.lines);
         }
         lines.push(format!(
             "{} ({}):",

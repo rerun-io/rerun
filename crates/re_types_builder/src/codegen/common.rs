@@ -60,43 +60,57 @@ impl<'a> Example<'a> {
     }
 }
 
-pub fn get_examples(
-    docs: &Docs,
-    extension: &str,
-    prefix: &[&str],
-    suffix: &[&str],
-) -> anyhow::Result<Vec<String>> {
-    let mut lines = Vec::new();
+#[derive(Default)]
+pub struct Examples {
+    pub lines: Vec<String>,
+    pub count: usize,
+}
 
-    if let Some(examples) = docs.tagged_docs.get("example") {
-        let base_path = crate::rerun_workspace_path().join("docs/code-examples");
+impl Examples {
+    pub fn collect(
+        docs: &Docs,
+        extension: &str,
+        prefix: &[&str],
+        suffix: &[&str],
+    ) -> anyhow::Result<Self> {
+        let mut lines = Vec::new();
+        let mut count = 0;
 
-        let mut examples = examples.iter().map(String::as_str).peekable();
-        while let Some(Example { name, title }) = examples.next().map(Example::parse) {
-            let path = base_path.join(format!("{name}.{extension}"));
-            let contents = std::fs::read_to_string(&path)
-                .with_context(|| format!("couldn't open code example {path:?}"))?;
-            let mut contents = contents.split('\n').collect_vec();
-            // trim trailing blank lines
-            while contents.last().is_some_and(is_blank) {
-                contents.pop();
-            }
+        if let Some(examples) = docs.tagged_docs.get("example") {
+            count = examples.len();
+            let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
-            // prepend title if available
-            lines.extend(title.into_iter().map(|title| format!("{title}:")));
-            // surround content in prefix + suffix lines
-            lines.extend(prefix.iter().copied().map(String::from));
-            lines.extend(contents.into_iter().map(String::from));
-            lines.extend(suffix.iter().copied().map(String::from));
+            let mut examples = examples.iter().map(String::as_str).peekable();
+            while let Some(Example { name, title }) = examples.next().map(Example::parse) {
+                let path = base_path.join(format!("{name}.{extension}"));
+                let contents = std::fs::read_to_string(&path)
+                    .with_context(|| format!("couldn't open code example {path:?}"))?;
+                let mut contents = contents.split('\n').collect_vec();
+                // trim trailing blank lines
+                while contents.last().is_some_and(is_blank) {
+                    contents.pop();
+                }
 
-            if examples.peek().is_some() {
-                // blank line between examples
-                lines.push(String::new());
+                // prepend title if available
+                lines.extend(title.into_iter().map(|title| format!("{title}:")));
+                // surround content in prefix + suffix lines
+                lines.extend(prefix.iter().copied().map(String::from));
+                lines.extend(contents.into_iter().map(String::from));
+                lines.extend(suffix.iter().copied().map(String::from));
+
+                if examples.peek().is_some() {
+                    // blank line between examples
+                    lines.push(String::new());
+                }
             }
         }
+
+        Ok(Self { lines, count })
     }
 
-    Ok(lines)
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
 }
 
 pub trait StringExt {

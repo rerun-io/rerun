@@ -19,7 +19,7 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
         },
-        StringExt as _,
+        Examples, StringExt as _,
     },
     ArrowRegistry, CodeGenerator, Context, Docs, ElementType, Object, ObjectField, ObjectKind,
     Objects, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
@@ -532,8 +532,8 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     }
 }
 
-fn get_examples(docs: &Docs) -> anyhow::Result<Vec<String>> {
-    crate::codegen::get_examples(docs, "rs", &["```ignore"], &["```"])
+fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
+    Examples::collect(docs, "rs", &["```ignore"], &["```"])
 }
 
 fn quote_doc_from_docs(ctx: &Context, docs: &Docs) -> TokenStream {
@@ -547,18 +547,19 @@ fn quote_doc_from_docs(ctx: &Context, docs: &Docs) -> TokenStream {
 
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
-    let examples = match get_examples(docs) {
-        Ok(examples) => examples,
-        Err(err) => {
-            ctx.error(err);
-            Vec::new()
-        }
-    };
+    let examples = collect_examples(docs)
+        .map_err(|err| ctx.error(err))
+        .unwrap_or_default();
     if !examples.is_empty() {
         lines.push(" ".into());
-        lines.push(" ## Examples".into());
+        let section_title = if examples.count == 1 {
+            "Example"
+        } else {
+            "Examples"
+        };
+        lines.push(format!(" ## {section_title}"));
         lines.push(" ".into());
-        lines.extend(examples.into_iter().map(|line| format!(" {line}")));
+        lines.extend(examples.lines.into_iter().map(|line| format!(" {line}")));
     }
 
     let lines = DocCommentTokenizer(&lines);
