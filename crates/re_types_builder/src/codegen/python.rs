@@ -863,7 +863,7 @@ fn code_for_union(
 // --- Code generators ---
 
 fn get_examples(docs: &Docs) -> anyhow::Result<Vec<String>> {
-    crate::codegen::get_examples(docs, "py", &["Example", "-------", "```python"], &["```"])
+    crate::codegen::get_examples(docs, "py", &["```python"], &["```"])
 }
 
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
@@ -877,29 +877,31 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 }
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
-    let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
-    let examples = get_examples(docs).unwrap();
+    let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    for line in &mut lines {
+        if line.starts_with(char::is_whitespace) {
+            line.remove(0);
+        }
+    }
 
-    if lines.is_empty() && examples.is_empty() {
+    let examples = get_examples(docs).unwrap();
+    if !examples.is_empty() {
+        lines.push(String::new());
+        lines.push("Examples".into());
+        lines.push("--------".into());
+        lines.extend(examples);
+    }
+
+    if lines.is_empty() {
         return String::new();
     }
 
     // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
-    let doc = if !examples.is_empty() {
-        lines
-            .into_iter()
-            .chain([String::new()]) // blank line between docs and examples
-            .chain(examples)
-            .filter(|line| !line.starts_with(r#"""""#))
-            .collect_vec()
-            .join("\n")
-    } else {
-        lines
-            .into_iter()
-            .filter(|line| !line.starts_with(r#"""""#))
-            .collect_vec()
-            .join("\n")
-    };
+    let doc = lines
+        .into_iter()
+        .filter(|line| !line.starts_with(r#"""""#))
+        .collect_vec()
+        .join("\n");
 
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
@@ -909,6 +911,12 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
 
     for field in fields {
         let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        for line in &mut content {
+            if line.starts_with(char::is_whitespace) {
+                line.remove(0);
+            }
+        }
+
         let examples = get_examples(&field.docs).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples

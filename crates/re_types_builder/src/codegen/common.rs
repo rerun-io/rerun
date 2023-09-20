@@ -14,26 +14,16 @@ fn is_blank<T: AsRef<str>>(line: T) -> bool {
 
 /// Retrieves the global and tagged documentation from a [`Docs`] object.
 pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
-    fn trim_mono_start_whitespace_if_needed(line: &str) -> &str {
-        if line.chars().next().map_or(false, |c| c.is_whitespace()) {
-            // NOTE: don't trim! only that very specific space should go away
-            &line[1..]
-        } else {
-            line
-        }
-    }
+    let mut lines = docs.doc.clone();
 
-    let mut lines = Vec::new();
-
-    for line in &docs.doc {
-        lines.push(trim_mono_start_whitespace_if_needed(line).to_owned());
-    }
-
-    let empty = Vec::new();
     for tag in tags {
-        for line in docs.tagged_docs.get(*tag).unwrap_or(&empty) {
-            lines.push(trim_mono_start_whitespace_if_needed(line).to_owned());
-        }
+        lines.extend(
+            docs.tagged_docs
+                .get(*tag)
+                .unwrap_or(&Vec::new())
+                .iter()
+                .cloned(),
+        );
     }
 
     // NOTE: remove duplicated blank lines.
@@ -74,12 +64,14 @@ pub fn get_examples(
                 contents.pop();
             }
 
+            // surround content in prefix + suffix lines
             lines.extend(prefix.iter().copied().map(String::from));
             lines.extend(contents.into_iter().map(String::from));
             lines.extend(suffix.iter().copied().map(String::from));
 
             if examples.peek().is_some() {
-                lines.push(String::new()); // blank line
+                // blank line between examples
+                lines.push(String::new());
             }
         }
     }

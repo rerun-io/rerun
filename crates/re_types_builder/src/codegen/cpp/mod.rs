@@ -1893,17 +1893,22 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
-fn get_examples(docs: &Docs) -> anyhow::Result<Vec<String>> {
-    crate::codegen::get_examples(docs, "cpp", &["## Example", "", "```cpp"], &["```"])
+fn get_examples(docs: &Docs) -> Vec<String> {
+    // `cpp` examples are not required for now, so just default to empty vec
+    crate::codegen::get_examples(docs, "cpp", &["```cpp,ignore"], &["```"]).unwrap_or_default()
 }
 
 fn quote_docstrings(docs: &Docs) -> TokenStream {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
-    let examples = get_examples(docs).unwrap();
+
+    let examples = get_examples(docs);
     if !examples.is_empty() {
         lines.push(String::new());
-        lines.extend(examples);
+        lines.push("## Example".into());
+        lines.push(String::new());
+        lines.extend(examples.into_iter().map(|line| format!(" {line}")));
     }
+
     let quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN

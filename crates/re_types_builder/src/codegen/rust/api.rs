@@ -280,8 +280,12 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
             if let Some(off) = code[content_start..].find(end_pattern) {
                 let content_end = content_start + off;
                 new_code.push_str(&code[i..doc_start]);
-                new_code.push_str("/// ");
-                unescape_string_into(&code[content_start..content_end], &mut new_code);
+                new_code.push_str("///");
+                let content = &code[content_start..content_end];
+                if !content.starts_with(char::is_whitespace) {
+                    new_code.push(' ');
+                }
+                unescape_string_into(content, &mut new_code);
                 new_code.push('\n');
 
                 i = content_end + end_pattern.len();
@@ -522,8 +526,10 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
     let examples = get_examples(docs).unwrap();
     if !examples.is_empty() {
-        lines.push(String::new());
-        lines.extend(examples);
+        lines.push(" ".into());
+        lines.push(" ## Examples".into());
+        lines.push(" ".into());
+        lines.extend(examples.into_iter().map(|line| format!(" {line}")));
     }
     let lines = DocCommentTokenizer(&lines);
     quote!(#lines)
