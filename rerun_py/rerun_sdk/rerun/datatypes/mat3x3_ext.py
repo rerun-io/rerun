@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
 import numpy as np
 import pyarrow as pa
@@ -33,13 +33,13 @@ class Mat3x3Ext:
 
     @staticmethod
     def native_to_pa_array_override(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Mat3x3
+        from . import Mat3x3, Mat3x3Like
 
         # Normalize into list of Mat3x3
         if isinstance(data, Sequence):
             # single matrix made up of flat float array.
             if isinstance(data[0], float | int):
-                matrices = [Mat3x3(data)]
+                matrices = [Mat3x3(cast(Mat3x3Like, data))]
             # if there's a sequence nested, either it's several matrices in various formats
             # where the first happens to be either a flat or nested sequence of floats,
             # or it's a single matrix with a nested sequence of floats.
@@ -49,7 +49,7 @@ class Mat3x3Ext:
                 and len(data[0]) == 3
                 and all(isinstance(elem, float | int) for elem in data[0])
             ):
-                matrices = [Mat3x3(data)]
+                matrices = [Mat3x3(cast(Mat3x3Like, data))]
             # several matrices otherwise!
             else:
                 matrices = [Mat3x3(m) for m in data]

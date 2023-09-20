@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pytest
 from rerun.experimental import dt as rr_dt
@@ -70,7 +72,7 @@ def test_mat3x3(data: rr_dt.Mat3x3Like) -> None:
 
 
 def test_mat3x3array() -> None:
-    assert rr_dt.Mat3x3Array.from_similar(MAT_3X3_INPUT) == rr_dt.Mat3x3Array.from_similar(
+    assert rr_dt.Mat3x3Array.from_similar(cast(rr_dt.Mat3x3ArrayLike, MAT_3X3_INPUT)) == rr_dt.Mat3x3Array.from_similar(
         [[1, 2, 3, 4, 5, 6, 7, 8, 9]] * len(MAT_3X3_INPUT)
     )
 
@@ -104,7 +106,7 @@ def test_mat4x4(data: rr_dt.Mat4x4Like) -> None:
 
 
 def test_mat4x4array() -> None:
-    assert rr_dt.Mat4x4Array.from_similar(MAT_4X4_INPUT) == rr_dt.Mat4x4Array.from_similar(
+    assert rr_dt.Mat4x4Array.from_similar(cast(rr_dt.Mat4x4ArrayLike, MAT_4X4_INPUT)) == rr_dt.Mat4x4Array.from_similar(
         [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]] * len(MAT_4X4_INPUT)
     )
 

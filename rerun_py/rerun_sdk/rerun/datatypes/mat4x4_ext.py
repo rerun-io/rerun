@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
 import numpy as np
 import pyarrow as pa
@@ -33,13 +33,13 @@ class Mat4x4Ext:
 
     @staticmethod
     def native_to_pa_array_override(data: Mat4x4ArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Mat4x4
+        from . import Mat4x4, Mat4x4Like
 
         # Normalize into list of Mat4x4
         if isinstance(data, Sequence):
             # single matrix made up of flat float array.
             if isinstance(data[0], float | int):
-                matrices = [Mat4x4(data)]
+                matrices = [Mat4x4(cast(Mat4x4Like, data))]
             # if there's a sequence nested, either it's several matrices in various formats
             # where the first happens to be either a flat or nested sequence of floats,
             # or it's a single matrix with a nested sequence of floats.
@@ -49,7 +49,7 @@ class Mat4x4Ext:
                 and len(data[0]) == 4
                 and all(isinstance(elem, float | int) for elem in data[0])
             ):
-                matrices = [Mat4x4(data)]
+                matrices = [Mat4x4(cast(Mat4x4Like, data))]
             # several matrices otherwise!
             else:
                 matrices = [Mat4x4(m) for m in data]
