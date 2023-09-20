@@ -67,18 +67,18 @@ namespace rerun {
             static const rerun::archetypes::ViewCoordinates RBD;
             static const rerun::archetypes::ViewCoordinates BDR;
             static const rerun::archetypes::ViewCoordinates BRD;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_POS_X_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_NEG_X_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_POS_Y_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_NEG_Y_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_POS_Z_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_NEG_Z_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_X_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_X_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_Y_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_Y_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_Z_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_Z_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_X_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_X_DOWN;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Y_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Y_DOWN;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Z_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Z_DOWN;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_X_UP;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_X_DOWN;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Y_UP;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Y_DOWN;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Z_UP;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Z_DOWN;
             // <END_GENERATED:declarations>
 
             // [CODEGEN COPY TO HEADER END]
@@ -279,51 +279,51 @@ namespace rerun {
             rerun::components::ViewCoordinates::Back, rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Down
         );
-        const ViewCoordinates ViewCoordinates::RIGHT_HAND_POS_X_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::RIGHT_HAND_X_UP = ViewCoordinates(
             rerun::components::ViewCoordinates::Up, rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Forward
         );
-        const ViewCoordinates ViewCoordinates::RIGHT_HAND_NEG_X_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::RIGHT_HAND_X_DOWN = ViewCoordinates(
             rerun::components::ViewCoordinates::Down, rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Back
         );
-        const ViewCoordinates ViewCoordinates::RIGHT_HAND_POS_Y_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::RIGHT_HAND_Y_UP = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Up,
             rerun::components::ViewCoordinates::Back
         );
-        const ViewCoordinates ViewCoordinates::RIGHT_HAND_NEG_Y_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::RIGHT_HAND_Y_DOWN = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Down,
             rerun::components::ViewCoordinates::Forward
         );
-        const ViewCoordinates ViewCoordinates::RIGHT_HAND_POS_Z_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::RIGHT_HAND_Z_UP = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Forward,
             rerun::components::ViewCoordinates::Up
         );
-        const ViewCoordinates ViewCoordinates::RIGHT_HAND_NEG_Z_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::RIGHT_HAND_Z_DOWN = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Back,
             rerun::components::ViewCoordinates::Down
         );
-        const ViewCoordinates ViewCoordinates::LEFT_HAND_POS_X_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::LEFT_HAND_X_UP = ViewCoordinates(
             rerun::components::ViewCoordinates::Up, rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Back
         );
-        const ViewCoordinates ViewCoordinates::LEFT_HAND_NEG_X_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::LEFT_HAND_X_DOWN = ViewCoordinates(
             rerun::components::ViewCoordinates::Down, rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Forward
         );
-        const ViewCoordinates ViewCoordinates::LEFT_HAND_POS_Y_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::LEFT_HAND_Y_UP = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Up,
             rerun::components::ViewCoordinates::Forward
         );
-        const ViewCoordinates ViewCoordinates::LEFT_HAND_NEG_Y_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::LEFT_HAND_Y_DOWN = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Down,
             rerun::components::ViewCoordinates::Back
         );
-        const ViewCoordinates ViewCoordinates::LEFT_HAND_POS_Z_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::LEFT_HAND_Z_UP = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Back,
             rerun::components::ViewCoordinates::Up
         );
-        const ViewCoordinates ViewCoordinates::LEFT_HAND_NEG_Z_UP = ViewCoordinates(
+        const ViewCoordinates ViewCoordinates::LEFT_HAND_Z_DOWN = ViewCoordinates(
             rerun::components::ViewCoordinates::Right, rerun::components::ViewCoordinates::Forward,
             rerun::components::ViewCoordinates::Down
         );

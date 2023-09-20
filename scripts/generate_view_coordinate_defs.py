@@ -46,18 +46,18 @@ def generate_view_permutations() -> Iterable[ViewCoordinates]:
 
 def generate_up_handed_permutations() -> Iterable[ViewCoordinates]:
     return [
-        ViewCoordinates(name="RIGHT_HAND_POS_X_UP", axis0="Up", axis1="Right", axis2="Forward"),
-        ViewCoordinates(name="RIGHT_HAND_NEG_X_UP", axis0="Down", axis1="Right", axis2="Back"),
-        ViewCoordinates(name="RIGHT_HAND_POS_Y_UP", axis0="Right", axis1="Up", axis2="Back"),
-        ViewCoordinates(name="RIGHT_HAND_NEG_Y_UP", axis0="Right", axis1="Down", axis2="Forward"),
-        ViewCoordinates(name="RIGHT_HAND_POS_Z_UP", axis0="Right", axis1="Forward", axis2="Up"),
-        ViewCoordinates(name="RIGHT_HAND_NEG_Z_UP", axis0="Right", axis1="Back", axis2="Down"),
-        ViewCoordinates(name="LEFT_HAND_POS_X_UP", axis0="Up", axis1="Right", axis2="Back"),
-        ViewCoordinates(name="LEFT_HAND_NEG_X_UP", axis0="Down", axis1="Right", axis2="Forward"),
-        ViewCoordinates(name="LEFT_HAND_POS_Y_UP", axis0="Right", axis1="Up", axis2="Forward"),
-        ViewCoordinates(name="LEFT_HAND_NEG_Y_UP", axis0="Right", axis1="Down", axis2="Back"),
-        ViewCoordinates(name="LEFT_HAND_POS_Z_UP", axis0="Right", axis1="Back", axis2="Up"),
-        ViewCoordinates(name="LEFT_HAND_NEG_Z_UP", axis0="Right", axis1="Forward", axis2="Down"),
+        ViewCoordinates(name="RIGHT_HAND_X_UP", axis0="Up", axis1="Right", axis2="Forward"),
+        ViewCoordinates(name="RIGHT_HAND_X_DOWN", axis0="Down", axis1="Right", axis2="Back"),
+        ViewCoordinates(name="RIGHT_HAND_Y_UP", axis0="Right", axis1="Up", axis2="Back"),
+        ViewCoordinates(name="RIGHT_HAND_Y_DOWN", axis0="Right", axis1="Down", axis2="Forward"),
+        ViewCoordinates(name="RIGHT_HAND_Z_UP", axis0="Right", axis1="Forward", axis2="Up"),
+        ViewCoordinates(name="RIGHT_HAND_Z_DOWN", axis0="Right", axis1="Back", axis2="Down"),
+        ViewCoordinates(name="LEFT_HAND_X_UP", axis0="Up", axis1="Right", axis2="Back"),
+        ViewCoordinates(name="LEFT_HAND_X_DOWN", axis0="Down", axis1="Right", axis2="Forward"),
+        ViewCoordinates(name="LEFT_HAND_Y_UP", axis0="Right", axis1="Up", axis2="Forward"),
+        ViewCoordinates(name="LEFT_HAND_Y_DOWN", axis0="Right", axis1="Down", axis2="Back"),
+        ViewCoordinates(name="LEFT_HAND_Z_UP", axis0="Right", axis1="Back", axis2="Up"),
+        ViewCoordinates(name="LEFT_HAND_Z_DOWN", axis0="Right", axis1="Forward", axis2="Down"),
     ]
 
 

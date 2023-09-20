@@ -61,17 +61,17 @@ impl ViewCoordinates {
     define_coordinates!(RBD => (Right, Back, Down));
     define_coordinates!(BDR => (Back, Down, Right));
     define_coordinates!(BRD => (Back, Right, Down));
-    define_coordinates!(RIGHT_HAND_POS_X_UP => (Up, Right, Forward));
-    define_coordinates!(RIGHT_HAND_NEG_X_UP => (Down, Right, Back));
-    define_coordinates!(RIGHT_HAND_POS_Y_UP => (Right, Up, Back));
-    define_coordinates!(RIGHT_HAND_NEG_Y_UP => (Right, Down, Forward));
-    define_coordinates!(RIGHT_HAND_POS_Z_UP => (Right, Forward, Up));
-    define_coordinates!(RIGHT_HAND_NEG_Z_UP => (Right, Back, Down));
-    define_coordinates!(LEFT_HAND_POS_X_UP => (Up, Right, Back));
-    define_coordinates!(LEFT_HAND_NEG_X_UP => (Down, Right, Forward));
-    define_coordinates!(LEFT_HAND_POS_Y_UP => (Right, Up, Forward));
-    define_coordinates!(LEFT_HAND_NEG_Y_UP => (Right, Down, Back));
-    define_coordinates!(LEFT_HAND_POS_Z_UP => (Right, Back, Up));
-    define_coordinates!(LEFT_HAND_NEG_Z_UP => (Right, Forward, Down));
+    define_coordinates!(RIGHT_HAND_X_UP => (Up, Right, Forward));
+    define_coordinates!(RIGHT_HAND_X_DOWN => (Down, Right, Back));
+    define_coordinates!(RIGHT_HAND_Y_UP => (Right, Up, Back));
+    define_coordinates!(RIGHT_HAND_Y_DOWN => (Right, Down, Forward));
+    define_coordinates!(RIGHT_HAND_Z_UP => (Right, Forward, Up));
+    define_coordinates!(RIGHT_HAND_Z_DOWN => (Right, Back, Down));
+    define_coordinates!(LEFT_HAND_X_UP => (Up, Right, Back));
+    define_coordinates!(LEFT_HAND_X_DOWN => (Down, Right, Forward));
+    define_coordinates!(LEFT_HAND_Y_UP => (Right, Up, Forward));
+    define_coordinates!(LEFT_HAND_Y_DOWN => (Right, Down, Back));
+    define_coordinates!(LEFT_HAND_Z_UP => (Right, Back, Up));
+    define_coordinates!(LEFT_HAND_Z_DOWN => (Right, Forward, Down));
     // <END_GENERATED:definitions>
 }

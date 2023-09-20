@@ -80,18 +80,18 @@ namespace rerun {
             static const rerun::archetypes::ViewCoordinates RBD;
             static const rerun::archetypes::ViewCoordinates BDR;
             static const rerun::archetypes::ViewCoordinates BRD;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_POS_X_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_NEG_X_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_POS_Y_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_NEG_Y_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_POS_Z_UP;
-            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_NEG_Z_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_X_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_X_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_Y_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_Y_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_Z_UP;
-            static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_Z_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_X_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_X_DOWN;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Y_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Y_DOWN;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Z_UP;
+            static const rerun::archetypes::ViewCoordinates RIGHT_HAND_Z_DOWN;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_X_UP;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_X_DOWN;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Y_UP;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Y_DOWN;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Z_UP;
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_Z_DOWN;
             // <END_GENERATED:declarations>
 
           public:
