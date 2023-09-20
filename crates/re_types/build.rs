@@ -117,7 +117,7 @@ fn main() {
         },
     );
 
-    root.panic_if_errored();
+    root.panic_on_errors();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }

@@ -80,7 +80,9 @@ fn main() {
         },
     );
 
-    root.panic_if_errored();
+    ctx.error("This is a sample error");
+
+    root.panic_on_errors();
 
     re_log::info!("Done.");
 }

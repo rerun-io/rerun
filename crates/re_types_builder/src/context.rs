@@ -20,8 +20,8 @@ impl Context {
         Self { errors }
     }
 
-    pub fn error(&self, error: anyhow::Error) {
-        let _ = self.errors.send(error);
+    pub fn error(&self, error: impl IntoError) {
+        let _ = self.errors.send(error.into_error());
     }
 }
 
@@ -38,20 +38,19 @@ impl ContextRoot {
         }
     }
 
-    pub fn panic_if_errored(&self) {
-        let mut errors = vec![];
+    /// This outputs all errors to stderr and panics if there were any.
+    pub fn panic_on_errors(&self) {
+        let mut errored = false;
+
         while let Ok(err) = self.errors.try_recv() {
-            errors.push(err);
-        }
-
-        if errors.is_empty() {
-            return;
-        }
-
-        for err in errors {
+            errored = true;
             eprintln!("{err}");
         }
-        panic!("Some errors occurred.");
+
+        #[allow(clippy::manual_assert)] // we don't want the noise of an assert
+        if errored {
+            panic!("Some errors occurred.");
+        }
     }
 }
 
@@ -73,3 +72,50 @@ const _: () = {
     fn assert_send<T: Send>() {}
     let _ = assert_send::<Context>;
 };
+
+#[derive(Debug)]
+struct Error {
+    message: String,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for Error {}
+
+pub trait IntoError {
+    fn into_error(self) -> anyhow::Error;
+}
+
+impl IntoError for String {
+    fn into_error(self) -> anyhow::Error {
+        Error { message: self }.into()
+    }
+}
+
+impl<'a> IntoError for &'a str {
+    fn into_error(self) -> anyhow::Error {
+        Error {
+            message: self.into(),
+        }
+        .into()
+    }
+}
+
+impl<'a> IntoError for std::borrow::Cow<'a, str> {
+    fn into_error(self) -> anyhow::Error {
+        Error {
+            message: self.into(),
+        }
+        .into()
+    }
+}
+
+impl IntoError for anyhow::Error {
+    fn into_error(self) -> anyhow::Error {
+        self
+    }
+}
