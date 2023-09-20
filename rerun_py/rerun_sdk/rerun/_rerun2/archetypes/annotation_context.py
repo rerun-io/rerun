@@ -26,8 +26,8 @@ class AnnotationContext(Archetype):
     path-hierarchy when searching up through the ancestors of a given entity
     path.
 
-    Example
-    -------
+    Examples
+    --------
     ```python
     import rerun as rr
     import rerun.experimental as rr2

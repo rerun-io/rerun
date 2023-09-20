@@ -15,59 +15,57 @@
 
 /// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
-/// ## Example
+/// ## Examples
 ///
-/// Simple 3D boxes:
 /// ```ignore
 /// //! Log a single 3D box.
 /// use rerun::archetypes::Boxes3D;
 /// use rerun::RecordingStreamBuilder;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box3d").memory()?;
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box3d").memory()?;
 ///
-///    rec.log("simple", &Boxes3D::from_half_sizes([(2.0, 2.0, 1.0)]))?;
+///     rec.log("simple", &Boxes3D::from_half_sizes([(2.0, 2.0, 1.0)]))?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
 ///
-/// Batch of 3D boxes:
 /// ```ignore
 /// //! Log a batch of oriented bounding boxes.
 /// use rerun::{
-///    archetypes::Boxes3D,
-///    components::Color,
-///    datatypes::{Angle, Quaternion, Rotation3D, RotationAxisAngle},
-///    RecordingStreamBuilder,
+///     archetypes::Boxes3D,
+///     components::Color,
+///     datatypes::{Angle, Quaternion, Rotation3D, RotationAxisAngle},
+///     RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box3d_batch").memory()?;
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box3d_batch").memory()?;
 ///
-///    rec.log(
-///        "batch",
-///        &Boxes3D::from_centers_and_half_sizes(
-///            [(2.0, 0.0, 0.0), (-2.0, 0.0, 0.0), (0.0, 0.0, 2.0)],
-///            [(2.0, 2.0, 1.0), (1.0, 1.0, 0.5), (2.0, 0.5, 1.0)],
-///        )
-///        .with_rotations([
-///            Rotation3D::IDENTITY,
-///            Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]).into(), // 45 degrees around Z
-///            RotationAxisAngle::new((0.0, 1.0, 0.0), Angle::Degrees(30.0)).into(),
-///        ])
-///        .with_radii([0.025])
-///        .with_colors([
-///            Color::from_rgb(255, 0, 0),
-///            Color::from_rgb(0, 255, 0),
-///            Color::from_rgb(0, 0, 255),
-///        ])
-///        .with_labels(["red", "green", "blue"]),
-///    )?;
+///     rec.log(
+///         "batch",
+///         &Boxes3D::from_centers_and_half_sizes(
+///             [(2.0, 0.0, 0.0), (-2.0, 0.0, 0.0), (0.0, 0.0, 2.0)],
+///             [(2.0, 2.0, 1.0), (1.0, 1.0, 0.5), (2.0, 0.5, 1.0)],
+///         )
+///         .with_rotations([
+///             Rotation3D::IDENTITY,
+///             Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]).into(), // 45 degrees around Z
+///             RotationAxisAngle::new((0.0, 1.0, 0.0), Angle::Degrees(30.0)).into(),
+///         ])
+///         .with_radii([0.025])
+///         .with_colors([
+///             Color::from_rgb(255, 0, 0),
+///             Color::from_rgb(0, 255, 0),
+///             Color::from_rgb(0, 0, 255),
+///         ])
+///         .with_labels(["red", "green", "blue"]),
+///     )?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]

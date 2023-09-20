@@ -25,72 +25,70 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// Many strips:
-        ///```ignore
-        ///// Log a batch of 3d line strips.
+        /// ```cpp,ignore
+        /// // Log a batch of 3d line strips.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_line_strip3d");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_line_strip3d");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    std::vector<rr::datatypes::Vec3D> strip1 = {
-        ///        {0.f, 0.f, 2.f},
-        ///        {1.f, 0.f, 2.f},
-        ///        {1.f, 1.f, 2.f},
-        ///        {0.f, 1.f, 2.f},
-        ///    };
-        ///    std::vector<rr::datatypes::Vec3D> strip2 = {
-        ///        {0.f, 0.f, 0.f},
-        ///        {0.f, 0.f, 1.f},
-        ///        {1.f, 0.f, 0.f},
-        ///        {1.f, 0.f, 1.f},
-        ///        {1.f, 1.f, 0.f},
-        ///        {1.f, 1.f, 1.f},
-        ///        {0.f, 1.f, 0.f},
-        ///        {0.f, 1.f, 1.f},
-        ///    };
-        ///    rec.log(
-        ///        "strips",
-        ///        rr::LineStrips3D({strip1, strip2})
-        ///            .with_colors({0xFF0000FF, 0x00FF00FF})
-        ///            .with_radii({0.025f, 0.005f})
-        ///            .with_labels({"one strip here", "and one strip there"})
-        ///    );
+        ///     std::vector<rr::datatypes::Vec3D> strip1 = {
+        ///         {0.f, 0.f, 2.f},
+        ///         {1.f, 0.f, 2.f},
+        ///         {1.f, 1.f, 2.f},
+        ///         {0.f, 1.f, 2.f},
+        ///     };
+        ///     std::vector<rr::datatypes::Vec3D> strip2 = {
+        ///         {0.f, 0.f, 0.f},
+        ///         {0.f, 0.f, 1.f},
+        ///         {1.f, 0.f, 0.f},
+        ///         {1.f, 0.f, 1.f},
+        ///         {1.f, 1.f, 0.f},
+        ///         {1.f, 1.f, 1.f},
+        ///         {0.f, 1.f, 0.f},
+        ///         {0.f, 1.f, 1.f},
+        ///     };
+        ///     rec.log(
+        ///         "strips",
+        ///         rr::LineStrips3D({strip1, strip2})
+        ///             .with_colors({0xFF0000FF, 0x00FF00FF})
+        ///             .with_radii({0.025f, 0.005f})
+        ///             .with_labels({"one strip here", "and one strip there"})
+        ///     );
         /// }
-        ///```
+        /// ```
         ///
-        /// Many individual segments:
-        ///```ignore
-        ///// Log a simple set of line segments.
+        /// ```cpp,ignore
+        /// // Log a simple set of line segments.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_line_segments3d");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_line_segments3d");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    // TODO(#3202): I want to do this!
-        ///    // std::vector<std::vector<rr::datatypes::Vec3D>> points = {
-        ///    //     {{0.f, 0.f, 0.f}, {0.f, 0.f, 1.f}},
-        ///    //     {{1.f, 0.f, 0.f}, {1.f, 0.f, 1.f}},
-        ///    //     {{1.f, 1.f, 0.f}, {1.f, 1.f, 1.f}},
-        ///    //     {{0.f, 1.f, 0.f}, {0.f, 1.f, 1.f}},
-        ///    // };
-        ///    // rec.log("segments", rr::LineStrips3D(points));
+        ///     // TODO(#3202): I want to do this!
+        ///     // std::vector<std::vector<rr::datatypes::Vec3D>> points = {
+        ///     //     {{0.f, 0.f, 0.f}, {0.f, 0.f, 1.f}},
+        ///     //     {{1.f, 0.f, 0.f}, {1.f, 0.f, 1.f}},
+        ///     //     {{1.f, 1.f, 0.f}, {1.f, 1.f, 1.f}},
+        ///     //     {{0.f, 1.f, 0.f}, {0.f, 1.f, 1.f}},
+        ///     // };
+        ///     // rec.log("segments", rr::LineStrips3D(points));
         ///
-        ///    std::vector<rr::datatypes::Vec3D> points1 = {{0.f, 0.f, 0.f}, {0.f, 0.f, 1.f}};
-        ///    std::vector<rr::datatypes::Vec3D> points2 = {{1.f, 0.f, 0.f}, {1.f, 0.f, 1.f}};
-        ///    std::vector<rr::datatypes::Vec3D> points3 = {{1.f, 1.f, 0.f}, {1.f, 1.f, 1.f}};
-        ///    std::vector<rr::datatypes::Vec3D> points4 = {{0.f, 1.f, 0.f}, {0.f, 1.f, 1.f}};
-        ///    rec.log("segments", rr::LineStrips3D({points1, points2, points3, points4}));
+        ///     std::vector<rr::datatypes::Vec3D> points1 = {{0.f, 0.f, 0.f}, {0.f, 0.f, 1.f}};
+        ///     std::vector<rr::datatypes::Vec3D> points2 = {{1.f, 0.f, 0.f}, {1.f, 0.f, 1.f}};
+        ///     std::vector<rr::datatypes::Vec3D> points3 = {{1.f, 1.f, 0.f}, {1.f, 1.f, 1.f}};
+        ///     std::vector<rr::datatypes::Vec3D> points4 = {{0.f, 1.f, 0.f}, {0.f, 1.f, 1.f}};
+        ///     rec.log("segments", rr::LineStrips3D({points1, points2, points3, points4}));
         /// }
-        ///```
+        /// ```
         struct LineStrips3D {
             /// All the actual 3D line strips that make up the batch.
             std::vector<rerun::components::LineStrip3D> strips;

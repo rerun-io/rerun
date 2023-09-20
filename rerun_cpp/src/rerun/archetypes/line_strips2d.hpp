@@ -26,64 +26,62 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// Many strips:
-        ///```ignore
-        ///// Log a batch of 2d line strips.
+        /// ```cpp,ignore
+        /// // Log a batch of 2d line strips.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_line_strip2d");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_line_strip2d");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    std::vector<rr::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
-        ///    {6.f, 0.f}}; std::vector<rr::datatypes::Vec2D> strip2 =
-        ///        {{0.f, 3.f}, {1.f, 4.f}, {2.f, 2.f}, {3.f, 4.f}, {4.f, 2.f}, {5.f, 4.f},
-        ///        {6.f, 3.f}};
-        ///    rec.log(
-        ///        "strips",
-        ///        rr::LineStrips2D({strip1, strip2})
-        ///            .with_colors({0xFF0000FF, 0x00FF00FF})
-        ///            .with_radii({0.025f, 0.005f})
-        ///            .with_labels({"one strip here", "and one strip there"})
-        ///    );
+        ///     std::vector<rr::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
+        ///     {6.f, 0.f}}; std::vector<rr::datatypes::Vec2D> strip2 =
+        ///         {{0.f, 3.f}, {1.f, 4.f}, {2.f, 2.f}, {3.f, 4.f}, {4.f, 2.f}, {5.f, 4.f},
+        ///         {6.f, 3.f}};
+        ///     rec.log(
+        ///         "strips",
+        ///         rr::LineStrips2D({strip1, strip2})
+        ///             .with_colors({0xFF0000FF, 0x00FF00FF})
+        ///             .with_radii({0.025f, 0.005f})
+        ///             .with_labels({"one strip here", "and one strip there"})
+        ///     );
         ///
-        ///    // Log an extra rect to set the view bounds
-        ///    rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 1.5f}},
-        ///    {{8.0f, 9.0f}}));
+        ///     // Log an extra rect to set the view bounds
+        ///     rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 1.5f}},
+        ///     {{8.0f, 9.0f}}));
         /// }
-        ///```
+        /// ```
         ///
-        /// Many individual segments:
-        ///```ignore
-        ///// Log a couple 2D line segments using 2D line strips.
+        /// ```cpp,ignore
+        /// // Log a couple 2D line segments using 2D line strips.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_line_segments2d");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_line_segments2d");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    // TODO(#3202): I want to do this!
-        ///    // std::vector<std::vector<rr::datatypes::Vec2D>> points = {
-        ///    //     {{0.f, 0.f}, {2.f, 1.f}},
-        ///    //     {{4.f, -1.f}, {6.f, 0.f}},
-        ///    // };
-        ///    // rec.log("segments", rr::LineStrips2D(points));
+        ///     // TODO(#3202): I want to do this!
+        ///     // std::vector<std::vector<rr::datatypes::Vec2D>> points = {
+        ///     //     {{0.f, 0.f}, {2.f, 1.f}},
+        ///     //     {{4.f, -1.f}, {6.f, 0.f}},
+        ///     // };
+        ///     // rec.log("segments", rr::LineStrips2D(points));
         ///
-        ///    std::vector<rr::datatypes::Vec2D> points1 = {{0.f, 0.f}, {2.f, 1.f}};
-        ///    std::vector<rr::datatypes::Vec2D> points2 = {{4.f, -1.f}, {6.f, 0.f}};
-        ///    rec.log("segments", rr::LineStrips2D({points1, points2}));
+        ///     std::vector<rr::datatypes::Vec2D> points1 = {{0.f, 0.f}, {2.f, 1.f}};
+        ///     std::vector<rr::datatypes::Vec2D> points2 = {{4.f, -1.f}, {6.f, 0.f}};
+        ///     rec.log("segments", rr::LineStrips2D({points1, points2}));
         ///
-        ///    // Log an extra rect to set the view bounds
-        ///    rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 0.0f}},
-        ///    {{8.0f, 6.0f}}));
+        ///     // Log an extra rect to set the view bounds
+        ///     rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 0.0f}},
+        ///     {{8.0f, 6.0f}}));
         /// }
-        ///```
+        /// ```
         struct LineStrips2D {
             /// All the actual 2D line strips that make up the batch.
             std::vector<rerun::components::LineStrip2D> strips;

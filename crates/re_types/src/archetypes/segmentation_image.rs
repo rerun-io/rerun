@@ -21,40 +21,40 @@
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```ignore
 /// //! Create and log a segmentation image.
 ///
 /// use ndarray::{s, Array, ShapeBuilder};
 /// use rerun::{
-///    archetypes::{AnnotationContext, SegmentationImage},
-///    datatypes::Color,
-///    RecordingStreamBuilder,
+///     archetypes::{AnnotationContext, SegmentationImage},
+///     datatypes::Color,
+///     RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) =
-///        RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
+///     let (rec, storage) =
+///         RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
 ///
-///    // create a segmentation image
-///    let mut image = Array::<u8, _>::zeros((8, 12).f());
-///    image.slice_mut(s![0..4, 0..6]).fill(1);
-///    image.slice_mut(s![4..8, 6..12]).fill(2);
+///     // create a segmentation image
+///     let mut image = Array::<u8, _>::zeros((8, 12).f());
+///     image.slice_mut(s![0..4, 0..6]).fill(1);
+///     image.slice_mut(s![4..8, 6..12]).fill(2);
 ///
-///    // create an annotation context to describe the classes
-///    let annotation = AnnotationContext::new([
-///        (1, "red", Color::from(0xFF0000FF)),
-///        (2, "green", Color::from(0x00FF00FF)),
-///    ]);
+///     // create an annotation context to describe the classes
+///     let annotation = AnnotationContext::new([
+///         (1, "red", Color::from(0xFF0000FF)),
+///         (2, "green", Color::from(0x00FF00FF)),
+///     ]);
 ///
-///    // log the annotation and the image
-///    rec.log("/", &annotation)?;
+///     // log the annotation and the image
+///     rec.log("/", &annotation)?;
 ///
-///    rec.log("image", &SegmentationImage::try_from(image)?)?;
+///     rec.log("image", &SegmentationImage::try_from(image)?)?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]

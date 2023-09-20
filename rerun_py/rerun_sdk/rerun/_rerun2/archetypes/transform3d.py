@@ -20,8 +20,8 @@ class Transform3D(Archetype):
     """
     A 3D transform.
 
-    Example
-    -------
+    Examples
+    --------
     ```python
     from math import pi
 
@@ -41,11 +41,11 @@ class Transform3D(Archetype):
     rr.log_arrow("base/translated", origin=origin, vector=base_vector)
 
     rr2.log(
-       "base/rotated_scaled",
-       rrd.TranslationRotationScale3D(
-           rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], angle=rrd.Angle(rad=pi / 4)),
-           scale=2,
-       ),
+        "base/rotated_scaled",
+        rrd.TranslationRotationScale3D(
+            rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], angle=rrd.Angle(rad=pi / 4)),
+            scale=2,
+        ),
     )
 
     rr.log_arrow("base/rotated_scaled", origin=origin, vector=base_vector)

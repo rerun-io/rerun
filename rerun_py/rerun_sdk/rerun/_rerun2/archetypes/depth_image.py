@@ -24,8 +24,8 @@ class DepthImage(DepthImageExt, Archetype):
     The shape of the `TensorData` must be mappable to an `HxW` tensor.
     Each pixel corresponds to a depth value in units specified by `meter`.
 
-    Example
-    -------
+    Examples
+    --------
     ```python
 
     import numpy as np
@@ -36,6 +36,7 @@ class DepthImage(DepthImageExt, Archetype):
     image = 65535 * np.ones((8, 12), dtype=np.uint16)
     image[0:4, 0:6] = 20000
     image[4:8, 6:12] = 45000
+
 
     rr.init("rerun_example_depth_image", spawn=True)
 

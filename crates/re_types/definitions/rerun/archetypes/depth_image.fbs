@@ -11,18 +11,7 @@ namespace rerun.archetypes;
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/depth_image_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/depth_image_simple.rs
-/// \rs ```
+/// \example depth_image_simple
 table DepthImage (
   "attr.rust.derive": "PartialEq",
   order: 100

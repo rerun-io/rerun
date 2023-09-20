@@ -9,39 +9,8 @@ namespace rerun.archetypes;
 
 /// Empties all the components of an entity.
 ///
-/// \py Examples
-/// \py --------
-/// \py
-/// \py Flat:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/clear_simple.py
-/// \py ```
-/// \py Recursive:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/clear_recursive.py
-/// \py ```
-///
-/// \rs ## Examples
-/// \rs
-/// \rs Flat:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/clear_simple.rs
-/// \rs ```
-/// \rs Recursive:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/clear_recursive.rs
-/// \rs ```
-///
-/// \cpp ## Examples
-/// \cpp
-/// \cpp Flat:
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/clear_simple.cpp
-/// \cpp ```
-/// \cpp Recursive:
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/clear_recursive.cpp
-/// \cpp ```
+/// \example clear_simple
+/// \example clear_recursive
 table Clear (
   "attr.rust.derive": "PartialEq, Eq",
   order: 100

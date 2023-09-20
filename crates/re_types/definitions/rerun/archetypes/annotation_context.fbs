@@ -14,24 +14,7 @@ namespace rerun.archetypes;
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/annotation_context_rects.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/annotation_context_rects.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/annotation_context_rects.cpp
-/// \cpp ```
+/// \example annotation_context_rects
 table AnnotationContext (
   "attr.rust.derive": "Eq, PartialEq",
   order: 100

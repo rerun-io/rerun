@@ -25,8 +25,8 @@ class DisconnectedSpace(Archetype):
     If a transform or pinhole is logged on the same path, this archetype's components
     will be ignored.
 
-    Example
-    -------
+    Examples
+    --------
     ```python
     import rerun as rr
     import rerun.experimental as rr2

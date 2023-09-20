@@ -23,7 +23,7 @@
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```ignore
 /// //! Create and log an image
@@ -32,17 +32,17 @@
 /// use rerun::{archetypes::Image, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_image_simple").memory()?;
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_image_simple").memory()?;
 ///
-///    let mut image = Array::<u8, _>::zeros((8, 12, 3).f());
-///    image.slice_mut(s![.., .., 0]).fill(255);
-///    image.slice_mut(s![0..4, 0..6, 0]).fill(0);
-///    image.slice_mut(s![0..4, 0..6, 1]).fill(255);
+///     let mut image = Array::<u8, _>::zeros((8, 12, 3).f());
+///     image.slice_mut(s![.., .., 0]).fill(255);
+///     image.slice_mut(s![0..4, 0..6, 0]).fill(0);
+///     image.slice_mut(s![0..4, 0..6, 1]).fill(255);
 ///
-///    rec.log("image", &Image::try_from(image)?)?;
+///     rec.log("image", &Image::try_from(image)?)?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]

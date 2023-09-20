@@ -24,8 +24,8 @@ namespace rerun {
             /// The Media Type of the text.
             ///
             /// For instance:
-            ///* `text/plain`
-            ///* `text/markdown`
+            /// * `text/plain`
+            /// * `text/markdown`
             ///
             /// If omitted, `text/plain` is assumed.
             std::optional<rerun::components::MediaType> media_type;
@@ -42,8 +42,8 @@ namespace rerun {
             /// The Media Type of the text.
             ///
             /// For instance:
-            ///* `text/plain`
-            ///* `text/markdown`
+            /// * `text/plain`
+            /// * `text/markdown`
             ///
             /// If omitted, `text/plain` is assumed.
             TextDocument& with_media_type(rerun::components::MediaType _media_type) {
