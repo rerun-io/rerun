@@ -46,7 +46,7 @@ fn main() {
     let python_testing_output_dir_path = workspace_dir.join(PYTHON_TESTING_OUTPUT_DIR_PATH);
 
     re_log::info!("Running codegen…");
-    let (root, ctx) = re_types_builder::context();
+    let (report, reporter) = re_types_builder::report::init();
 
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(definitions_dir_path, entrypoint_path);
@@ -55,7 +55,7 @@ fn main() {
     join3(
         || {
             re_types_builder::generate_cpp_code(
-                &ctx,
+                &reporter,
                 cpp_output_dir_path,
                 &objects,
                 &arrow_registry,
@@ -63,7 +63,7 @@ fn main() {
         },
         || {
             re_types_builder::generate_rust_code(
-                &ctx,
+                &reporter,
                 rust_output_dir_path,
                 &objects,
                 &arrow_registry,
@@ -71,7 +71,7 @@ fn main() {
         },
         || {
             re_types_builder::generate_python_code(
-                &ctx,
+                &reporter,
                 python_output_dir_path,
                 python_testing_output_dir_path,
                 &objects,
@@ -80,7 +80,7 @@ fn main() {
         },
     );
 
-    root.panic_on_errors();
+    report.panic_on_errors();
 
     re_log::info!("Done.");
 }

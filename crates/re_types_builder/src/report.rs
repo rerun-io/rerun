@@ -2,21 +2,21 @@ use std::sync::mpsc;
 
 /// Creates a new context.
 ///
-/// The [`Context`] can be freely cloned and sent to other threads.
+/// The [`Reporter`] can be freely cloned and sent to other threads.
 ///
 /// The [`ContextRoot`] should not be sent to other threads.
-pub fn context() -> (ContextRoot, Context) {
+pub fn init() -> (Report, Reporter) {
     let (tx, rx) = mpsc::channel();
-    (ContextRoot::new(rx), Context::new(tx))
+    (Report::new(rx), Reporter::new(tx))
 }
 
-/// Context used to accumulate errors and warnings.
+/// Used to accumulate errors and warnings.
 #[derive(Clone)]
-pub struct Context {
+pub struct Reporter {
     errors: mpsc::Sender<anyhow::Error>,
 }
 
-impl Context {
+impl Reporter {
     fn new(errors: mpsc::Sender<anyhow::Error>) -> Self {
         Self { errors }
     }
@@ -26,16 +26,15 @@ impl Context {
     }
 }
 
-/// Root of the context. This should only exist on the main thread.
+/// Report which holds accumulated errors and warnings.
 ///
-/// After the last phase of codegen, this holds any accumulated
-/// errors and warnings, which can be handled using [`ContextRoot::panic_on_errors`].
-pub struct ContextRoot {
+/// This should only exist on the main thread.
+pub struct Report {
     errors: mpsc::Receiver<anyhow::Error>,
     _not_send: std::marker::PhantomData<*mut ()>,
 }
 
-impl ContextRoot {
+impl Report {
     fn new(errors: mpsc::Receiver<anyhow::Error>) -> Self {
         Self {
             errors,
@@ -94,10 +93,10 @@ const _: () = {
 
     // if this fails with a type inference error,
     // then `ContextRoot` is `Send`, which it should _not_ be.
-    let _ = <Check<ContextRoot> as IsNotSend<_>>::__;
+    let _ = <Check<Report> as IsNotSend<_>>::__;
 
     fn assert_send<T: Send>() {}
-    let _ = assert_send::<Context>;
+    let _ = assert_send::<Reporter>;
 };
 
 #[derive(Debug)]

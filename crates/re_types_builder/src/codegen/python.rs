@@ -9,8 +9,8 @@ use rayon::prelude::*;
 
 use crate::{
     codegen::{autogen_warning, Examples, StringExt as _},
-    ArrowRegistry, CodeGenerator, Context, Docs, ElementType, Object, ObjectField, ObjectKind,
-    Objects, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 /// The standard python init method.
@@ -81,7 +81,7 @@ impl PythonCodeGenerator {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
-        _ctx: &Context,
+        _reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {

@@ -16,7 +16,7 @@ use crate::{
     codegen::{autogen_warning, Examples},
     ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects, Type,
 };
-use crate::{Context, Object, ObjectSpecifics, ATTR_CPP_NO_FIELD_CTORS};
+use crate::{Object, ObjectSpecifics, Reporter, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -107,7 +107,7 @@ pub struct CppCodeGenerator {
 impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
-        _ctx: &Context,
+        _reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {

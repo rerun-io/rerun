@@ -21,8 +21,8 @@ use crate::{
         },
         Examples, StringExt as _,
     },
-    ArrowRegistry, CodeGenerator, Context, Docs, ElementType, Object, ObjectField, ObjectKind,
-    Objects, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -51,7 +51,7 @@ impl RustCodeGenerator {
 impl CodeGenerator for RustCodeGenerator {
     fn generate(
         &mut self,
-        ctx: &Context,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -59,7 +59,7 @@ impl CodeGenerator for RustCodeGenerator {
 
         for object_kind in ObjectKind::ALL {
             self.generate_folder(
-                ctx,
+                reporter,
                 objects,
                 arrow_registry,
                 object_kind,
@@ -88,7 +88,7 @@ impl CodeGenerator for RustCodeGenerator {
 impl RustCodeGenerator {
     fn generate_folder(
         &self,
-        ctx: &Context,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
@@ -109,7 +109,7 @@ impl RustCodeGenerator {
             } else {
                 kind_path.join(filename)
             };
-            let code = generate_object_file(ctx, objects, arrow_registry, obj);
+            let code = generate_object_file(reporter, objects, arrow_registry, obj);
 
             files_to_write.insert(filepath, code);
         }
@@ -138,7 +138,7 @@ impl RustCodeGenerator {
 }
 
 fn generate_object_file(
-    ctx: &Context,
+    reporter: &Reporter,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
@@ -168,9 +168,9 @@ fn generate_object_file(
     // random spacing into doc comments that look like code!
 
     let quoted_obj = if obj.is_struct() {
-        quote_struct(ctx, arrow_registry, objects, obj)
+        quote_struct(reporter, arrow_registry, objects, obj)
     } else {
-        quote_union(ctx, arrow_registry, objects, obj)
+        quote_union(reporter, arrow_registry, objects, obj)
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -340,7 +340,7 @@ fn unescape_string_into(input: &str, output: &mut String) {
 // --- Codegen core loop ---
 
 fn quote_struct(
-    ctx: &Context,
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
@@ -353,7 +353,7 @@ fn quote_struct(
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_doc_from_docs(ctx, docs);
+    let quoted_doc = quote_doc_from_docs(reporter, docs);
 
     let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
     let quoted_derive_clone_debug = if derive_only {
@@ -371,7 +371,7 @@ fn quote_struct(
 
     let quoted_fields = fields
         .iter()
-        .map(|obj_field| ObjectFieldTokenizer(ctx, obj, obj_field));
+        .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field));
 
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
     let quoted_struct = if is_tuple_struct {
@@ -405,7 +405,7 @@ fn quote_struct(
 }
 
 fn quote_union(
-    ctx: &Context,
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
@@ -418,7 +418,7 @@ fn quote_union(
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_doc_from_docs(ctx, docs);
+    let quoted_doc = quote_doc_from_docs(reporter, docs);
     let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
     let quoted_derive_clone_debug = if derive_only {
         quote!()
@@ -451,7 +451,7 @@ fn quote_union(
 
         let name = format_ident!("{}", crate::to_pascal_case(name));
 
-        let quoted_doc = quote_doc_from_docs(ctx, docs);
+        let quoted_doc = quote_doc_from_docs(reporter, docs);
         let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
         let quoted_type = if *is_nullable {
             quote!(Option<#quoted_type>)
@@ -485,11 +485,11 @@ fn quote_union(
 
 // --- Code generators ---
 
-struct ObjectFieldTokenizer<'a>(&'a Context, &'a Object, &'a ObjectField);
+struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
 
 impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self(ctx, obj, obj_field) = self;
+        let Self(reporter, obj, obj_field) = self;
 
         let ObjectField {
             virtpath: _,
@@ -507,7 +507,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
             datatype: _,
         } = obj_field;
 
-        let quoted_docs = quote_doc_from_docs(ctx, docs);
+        let quoted_docs = quote_doc_from_docs(reporter, docs);
         let name = format_ident!("{name}");
 
         let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
@@ -536,7 +536,7 @@ fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
     Examples::collect(docs, "rs", &["```ignore"], &["```"])
 }
 
-fn quote_doc_from_docs(ctx: &Context, docs: &Docs) -> TokenStream {
+fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
     struct DocCommentTokenizer<'a>(&'a [String]);
 
     impl quote::ToTokens for DocCommentTokenizer<'_> {
@@ -548,7 +548,7 @@ fn quote_doc_from_docs(ctx: &Context, docs: &Docs) -> TokenStream {
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
     let examples = collect_examples(docs)
-        .map_err(|err| ctx.error(err))
+        .map_err(|err| reporter.error(err))
         .unwrap_or_default();
     if !examples.is_empty() {
         lines.push(" ".into());
