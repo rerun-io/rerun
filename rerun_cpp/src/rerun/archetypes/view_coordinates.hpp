@@ -91,8 +91,8 @@ namespace rerun {
             static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_Y_UP;
             static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_Y_UP;
             static const rerun::archetypes::ViewCoordinates LEFT_HAND_POS_Z_UP;
-            static const rerun::archetypes::ViewCoordinates
-                LEFT_HAND_NEG_Z_UP; // <END_GENERATED:declarations>
+            static const rerun::archetypes::ViewCoordinates LEFT_HAND_NEG_Z_UP;
+            // <END_GENERATED:declarations>
 
           public:
             ViewCoordinates() = default;

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable
 
 import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
+    from ..log import ComponentBatchLike
     from . import ViewCoordinatesArrayLike
 
 
@@ -37,3 +38,13 @@ class ViewCoordinatesExt:
                 raise ValueError("ViewCoordinates must contain only values in the range [1,6].")
 
         return pa.FixedSizeListArray.from_arrays(data, type=data_type)
+
+    # Implement the ArchetypeLike protocol
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        from ..archetypes import ViewCoordinates
+
+        return ViewCoordinates(self).as_component_batches()
+
+    def num_instances(self) -> int:
+        # Always a mono-component
+        return 1
