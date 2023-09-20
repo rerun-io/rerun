@@ -31,6 +31,14 @@ from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, Keypo
 from .keypoint_pair import KeypointPair, KeypointPairArray, KeypointPairArrayLike, KeypointPairLike, KeypointPairType
 from .mat3x3 import Mat3x3, Mat3x3Array, Mat3x3ArrayLike, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4Array, Mat4x4ArrayLike, Mat4x4Like, Mat4x4Type
+from .material import Material, MaterialArray, MaterialArrayLike, MaterialLike, MaterialType
+from .mesh_properties import (
+    MeshProperties,
+    MeshPropertiesArray,
+    MeshPropertiesArrayLike,
+    MeshPropertiesLike,
+    MeshPropertiesType,
+)
 from .quaternion import Quaternion, QuaternionArray, QuaternionArrayLike, QuaternionLike, QuaternionType
 from .rotation3d import Rotation3D, Rotation3DArray, Rotation3DArrayLike, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
@@ -66,6 +74,9 @@ from .translation_rotation_scale3d import (
     TranslationRotationScale3DType,
 )
 from .utf8 import Utf8, Utf8Array, Utf8ArrayLike, Utf8Like, Utf8Type
+from .uvec2d import UVec2D, UVec2DArray, UVec2DArrayLike, UVec2DLike, UVec2DType
+from .uvec3d import UVec3D, UVec3DArray, UVec3DArrayLike, UVec3DLike, UVec3DType
+from .uvec4d import UVec4D, UVec4DArray, UVec4DArrayLike, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArray, Vec2DArrayLike, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArray, Vec3DArrayLike, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArray, Vec4DArrayLike, Vec4DLike, Vec4DType
@@ -126,6 +137,16 @@ __all__ = [
     "Mat4x4ArrayLike",
     "Mat4x4Like",
     "Mat4x4Type",
+    "Material",
+    "MaterialArray",
+    "MaterialArrayLike",
+    "MaterialLike",
+    "MaterialType",
+    "MeshProperties",
+    "MeshPropertiesArray",
+    "MeshPropertiesArrayLike",
+    "MeshPropertiesLike",
+    "MeshPropertiesType",
     "Quaternion",
     "QuaternionArray",
     "QuaternionArrayLike",
@@ -176,6 +197,21 @@ __all__ = [
     "TranslationRotationScale3DArrayLike",
     "TranslationRotationScale3DLike",
     "TranslationRotationScale3DType",
+    "UVec2D",
+    "UVec2DArray",
+    "UVec2DArrayLike",
+    "UVec2DLike",
+    "UVec2DType",
+    "UVec3D",
+    "UVec3DArray",
+    "UVec3DArrayLike",
+    "UVec3DLike",
+    "UVec3DType",
+    "UVec4D",
+    "UVec4DArray",
+    "UVec4DArrayLike",
+    "UVec4DLike",
+    "UVec4DType",
     "Utf8",
     "Utf8Array",
     "Utf8ArrayLike",

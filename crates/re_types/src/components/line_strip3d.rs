@@ -25,7 +25,7 @@
 /// 0----1          \ /
 ///                  4
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct LineStrip3D(pub Vec<crate::datatypes::Vec3D>);
 
 impl<I: Into<crate::datatypes::Vec3D>, T: IntoIterator<Item = I>> From<T> for LineStrip3D {

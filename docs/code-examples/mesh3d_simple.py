@@ -1,0 +1,14 @@
+"""Log a simple colored triangle."""
+import rerun as rr
+import rerun.experimental as rr2
+
+rr.init("rerun_example_mesh3d_simple", spawn=True)
+
+rr2.log(
+    "triangle",
+    rr2.Mesh3D(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        vertex_normals=[0.0, 0.0, 1.0],
+        vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+    ),
+)

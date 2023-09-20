@@ -1120,20 +1120,36 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
         let quoted_obj_name = format_ident!("{}", obj.name);
         let (quoted_type, _) = quote_field_type_from_field(&obj.fields[0], false);
 
+        let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
+
         if let Some(inner) = obj_field.typ.vector_inner() {
             if obj_field.is_nullable {
+                let quoted_binding = if obj_is_tuple_struct {
+                    quote!(Self(v.map(|v| v.into_iter().map(|v| v.into()).collect())))
+                } else {
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+                    quote!(Self { #quoted_obj_field_name: v.map(|v| v.into_iter().map(|v| v.into()).collect()) })
+                };
+
                 quote! {
                     impl<I: Into<#inner>, T: IntoIterator<Item = I>> From<Option<T>> for #quoted_obj_name {
                         fn from(v: Option<T>) -> Self {
-                            Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
+                            #quoted_binding
                         }
                     }
                 }
             } else {
+                let quoted_binding = if obj_is_tuple_struct {
+                    quote!(Self(v.into_iter().map(|v| v.into()).collect()))
+                } else {
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+                    quote!(Self { #quoted_obj_field_name: v.into_iter().map(|v| v.into()).collect() })
+                };
+
                 quote! {
                     impl<I: Into<#inner>, T: IntoIterator<Item = I>> From<T> for #quoted_obj_name {
                         fn from(v: T) -> Self {
-                            Self(v.into_iter().map(|v| v.into()).collect())
+                            #quoted_binding
                         }
                     }
                 }
@@ -1144,8 +1160,6 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
             } else {
                 quote!(#quoted_type)
             };
-
-            let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
 
             let quoted_binding = if obj_is_tuple_struct {
                 quote!(Self(v.into()))

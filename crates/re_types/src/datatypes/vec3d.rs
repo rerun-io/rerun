@@ -14,7 +14,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A vector in 3D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
 pub struct Vec3D(pub [f32; 3usize]);
 
 impl<'a> From<Vec3D> for ::std::borrow::Cow<'a, Vec3D> {

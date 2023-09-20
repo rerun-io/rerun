@@ -62,19 +62,19 @@ def vec2ds_expected(obj: Any, type_: Any | None) -> Any:
 vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
     [],
     np.array([]),
-    # Vec3DArrayLike: Sequence[Point3DLike]: Point3D
+    # Vec3DArrayLike: Sequence[Position3DLike]: Position3D
     [
         rrd.Vec3D([1, 2, 3]),
         rrd.Vec3D([4, 5, 6]),
     ],
-    # Vec3DArrayLike: Sequence[Point3DLike]: npt.NDArray[np.float32]
+    # Vec3DArrayLike: Sequence[Position3DLike]: npt.NDArray[np.float32]
     [
         np.array([1, 2, 3], dtype=np.float32),
         np.array([4, 5, 6], dtype=np.float32),
     ],
-    # Vec3DArrayLike: Sequence[Point3DLike]: Tuple[float, float]
+    # Vec3DArrayLike: Sequence[Position3DLike]: Tuple[float, float]
     [(1, 2, 3), (4, 5, 6)],
-    # Vec3DArrayLike: Sequence[Point3DLike]: Sequence[float]
+    # Vec3DArrayLike: Sequence[Position3DLike]: Sequence[float]
     [1, 2, 3, 4, 5, 6],
     # Vec3DArrayLike: npt.NDArray[np.float32]
     np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32),
