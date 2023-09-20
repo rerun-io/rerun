@@ -328,7 +328,12 @@ impl<A: Archetype> ArchetypeView<A> {
             // Therefore we can compare those cells, and early out if they match.
             //
             // NOTE(2): Comparing cells that point to the same backing storage is a simple pointer
-            // comparison, not data comparison involved.
+            // comparison; no data comparison involved.
+            // If the cells are not interned, this will fall back to a more costly data comparison:
+            // - If the data is the same, the cost of the comparison will be won back by having a
+            //   faster iterator.
+            // - If the data isn't the same, the cost of the comparison will be dwarfed by the cost
+            //   of the join anyway.
             if self.required_comp().instance_keys == component.instance_keys {
                 // NOTE: A component instance cannot be optional in itself, and if we're on this
                 // path then we know for a fact that both batches can be intersected 1-to-1.
