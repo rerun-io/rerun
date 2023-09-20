@@ -25,7 +25,7 @@
 ///  Forward = 5
 ///  Back = 6
 #[derive(Clone, Debug, Copy, Eq, PartialEq)]
-pub struct ViewCoordinates(pub [i8; 3usize]);
+pub struct ViewCoordinates(pub [u8; 3usize]);
 
 impl<'a> From<ViewCoordinates> for ::std::borrow::Cow<'a, ViewCoordinates> {
     #[inline]
@@ -56,7 +56,7 @@ impl crate::Loggable for ViewCoordinates {
         DataType::FixedSizeList(
             Box::new(Field {
                 name: "item".to_owned(),
-                data_type: DataType::Int8,
+                data_type: DataType::UInt8,
                 is_nullable: false,
                 metadata: [].into(),
             }),
@@ -110,7 +110,7 @@ impl crate::Loggable for ViewCoordinates {
                 FixedSizeListArray::new(
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
-                        DataType::Int8,
+                        DataType::UInt8,
                         data0_inner_data
                             .into_iter()
                             .map(|v| v.unwrap_or_default())
@@ -143,7 +143,7 @@ impl crate::Loggable for ViewCoordinates {
                         DataType::FixedSizeList(
                             Box::new(Field {
                                 name: "item".to_owned(),
-                                data_type: DataType::Int8,
+                                data_type: DataType::UInt8,
                                 is_nullable: false,
                                 metadata: [].into(),
                             }),
@@ -163,10 +163,10 @@ impl crate::Loggable for ViewCoordinates {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
                         .as_any()
-                        .downcast_ref::<Int8Array>()
+                        .downcast_ref::<UInt8Array>()
                         .ok_or_else(|| {
                             crate::DeserializationError::datatype_mismatch(
-                                DataType::Int8,
+                                DataType::UInt8,
                                 arrow_data_inner.data_type().clone(),
                             )
                         })
@@ -233,7 +233,7 @@ impl crate::Loggable for ViewCoordinates {
                         DataType::FixedSizeList(
                             Box::new(Field {
                                 name: "item".to_owned(),
-                                data_type: DataType::Int8,
+                                data_type: DataType::UInt8,
                                 is_nullable: false,
                                 metadata: [].into(),
                             }),
@@ -247,10 +247,10 @@ impl crate::Loggable for ViewCoordinates {
             bytemuck::cast_slice::<_, [_; 3usize]>(
                 arrow_data_inner
                     .as_any()
-                    .downcast_ref::<Int8Array>()
+                    .downcast_ref::<UInt8Array>()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            DataType::Int8,
+                            DataType::UInt8,
                             arrow_data_inner.data_type().clone(),
                         )
                     })

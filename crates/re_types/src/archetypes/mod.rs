@@ -25,6 +25,7 @@ mod text_document;
 mod text_log;
 mod transform3d;
 mod view_coordinates;
+mod view_coordinates_ext;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::arrows3d::Arrows3D;

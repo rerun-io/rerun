@@ -47,6 +47,7 @@ mod transform3d;
 mod transform3d_ext;
 mod vector3d;
 mod view_coordinates;
+mod view_coordinates_ext;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::class_id::ClassId;
