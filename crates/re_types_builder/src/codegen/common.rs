@@ -41,6 +41,25 @@ pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
     lines
 }
 
+struct Example<'a> {
+    name: &'a str,
+    title: Option<&'a str>,
+}
+
+impl<'a> Example<'a> {
+    fn parse(tag_content: &'a str) -> Self {
+        let tag_content = tag_content.trim();
+        let (name, title) = tag_content
+            .split_once(' ')
+            .map_or((tag_content, None), |(a, b)| (a, Some(b)));
+        let title = title
+            .and_then(|title| title.strip_prefix('"'))
+            .and_then(|title| title.strip_suffix('"'));
+
+        Example { name, title }
+    }
+}
+
 pub fn get_examples(
     docs: &Docs,
     extension: &str,
@@ -52,10 +71,9 @@ pub fn get_examples(
     if let Some(examples) = docs.tagged_docs.get("example") {
         let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
-        let mut examples = examples.iter().peekable();
-        while let Some(example) = examples.next() {
-            let example = example.trim();
-            let path = base_path.join(format!("{example}.{extension}"));
+        let mut examples = examples.iter().map(String::as_str).peekable();
+        while let Some(Example { name, title }) = examples.next().map(Example::parse) {
+            let path = base_path.join(format!("{name}.{extension}"));
             let contents = std::fs::read_to_string(&path)
                 .with_context(|| format!("couldn't open code example {path:?}"))?;
             let mut contents = contents.split('\n').collect_vec();
@@ -64,6 +82,8 @@ pub fn get_examples(
                 contents.pop();
             }
 
+            // prepend title if available
+            lines.extend(title.into_iter().map(|title| format!("{title}:")));
             // surround content in prefix + suffix lines
             lines.extend(prefix.iter().copied().map(String::from));
             lines.extend(contents.into_iter().map(String::from));
