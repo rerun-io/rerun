@@ -15,7 +15,7 @@
 
 /// A generic n-dimensional Tensor.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Create and log a tensor.

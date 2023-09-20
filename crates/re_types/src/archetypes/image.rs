@@ -23,7 +23,7 @@
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Create and log an image

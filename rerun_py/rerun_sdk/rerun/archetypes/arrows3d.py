@@ -20,8 +20,8 @@ class Arrows3D(Archetype):
     """
     A batch of 3D arrows with optional colors, radii, labels, etc.
 
-    Examples
-    --------
+    Example
+    -------
     ```python
     from math import tau
 

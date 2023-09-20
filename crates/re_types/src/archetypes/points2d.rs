@@ -15,7 +15,7 @@
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Log some very simple points.

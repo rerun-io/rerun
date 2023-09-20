@@ -21,8 +21,8 @@ class Boxes2D(Boxes2DExt, Archetype):
     """
     A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
-    Examples
-    --------
+    Example
+    -------
     Simple 2D boxes:
     ```python
     import rerun as rr

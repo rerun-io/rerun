@@ -15,7 +15,7 @@
 
 /// A 3D transform.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Log some transforms.

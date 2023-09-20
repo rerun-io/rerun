@@ -15,7 +15,7 @@
 
 /// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// Simple 2D boxes:
 /// ```ignore

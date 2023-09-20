@@ -15,7 +15,7 @@
 
 /// A batch of 3D arrows with optional colors, radii, labels, etc.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Log a batch of 3D arrows.

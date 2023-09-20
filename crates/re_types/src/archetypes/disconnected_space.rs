@@ -20,7 +20,7 @@
 /// If a transform or pinhole is logged on the same path, this archetype's components
 /// will be ignored.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Disconnect two spaces.

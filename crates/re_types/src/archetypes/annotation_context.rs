@@ -21,7 +21,7 @@
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Log rectangles with different colors and labels using annotation context

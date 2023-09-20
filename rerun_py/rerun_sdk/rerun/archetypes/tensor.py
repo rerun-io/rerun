@@ -20,8 +20,8 @@ class Tensor(Archetype):
     """
     A generic n-dimensional Tensor.
 
-    Examples
-    --------
+    Example
+    -------
     ```python
 
     import rerun as rr

@@ -27,8 +27,8 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     Leading and trailing unit-dimensions are ignored, so that
     `1x640x480x1` is treated as a `640x480` image.
 
-    Examples
-    --------
+    Example
+    -------
     ```python
 
     import numpy as np

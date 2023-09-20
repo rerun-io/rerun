@@ -20,8 +20,8 @@ class Points2D(Archetype):
     """
     A 2D point cloud with positions and optional colors, radii, labels, etc.
 
-    Examples
-    --------
+    Example
+    -------
     ```python
     import rerun as rr
     import rerun.experimental as rr2

@@ -26,7 +26,7 @@ namespace rerun {
         /// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors
         /// etc.
         ///
-        /// ## Example
+        /// ## Examples
         ///
         /// Simple 3D boxes:
         /// ```cpp,ignore

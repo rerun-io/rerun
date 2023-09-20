@@ -20,8 +20,8 @@ class Transform3D(Archetype):
     """
     A 3D transform.
 
-    Examples
-    --------
+    Example
+    -------
     ```python
     from math import pi
 

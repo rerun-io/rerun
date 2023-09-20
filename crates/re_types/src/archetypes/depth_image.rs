@@ -18,7 +18,7 @@
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```ignore
 /// //! Create and log a depth image.
