@@ -131,7 +131,7 @@ class Detector:
         rr.log_rects(
             "image_scaled/detections/things",
             thing_boxes,
-            rect_format=rr.log.rects.RectFormat.XYXY,
+            rect_format=rr.RectFormat.XYXY,
             class_ids=thing_class_ids,
         )
 
@@ -140,7 +140,7 @@ class Detector:
         rr.log_rects(
             "image_scaled/detections/background",
             background_boxes,
-            rect_format=rr.log.rects.RectFormat.XYXY,
+            rect_format=rr.RectFormat.XYXY,
             class_ids=background_class_ids,
         )
 
@@ -191,7 +191,7 @@ class Tracker:
             rr.log_rect(
                 f"image/tracked/{self.tracking_id}",
                 self.tracked.bbox_xywh,
-                rect_format=rr.log.rects.RectFormat.XYWH,
+                rect_format=rr.RectFormat.XYWH,
                 class_id=self.tracked.class_id,
             )
         else:
@@ -312,7 +312,7 @@ def track_objects(video_path: str) -> None:
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
-        rr.log.annotation.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
+        rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
     rr.log_annotation_context("/", class_descriptions, timeless=True)
 
@@ -368,9 +368,9 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
     return str(destination_path)
 
 
-def setup_looging() -> None:
+def setup_logging() -> None:
     logger = logging.getLogger()
-    rerun_handler = rr.log.text.LoggingHandler("logs")
+    rerun_handler = rr.LoggingHandler("logs")
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
 
@@ -395,7 +395,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_detect_and_track_objects")
 
-    setup_looging()
+    setup_logging()
 
     video_path: str = args.video_path
     if not video_path:
