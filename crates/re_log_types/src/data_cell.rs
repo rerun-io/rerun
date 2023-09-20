@@ -103,13 +103,27 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # assert_eq!(points, cell.to_native().as_slice());
 /// ```
 ///
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct DataCell {
     /// While the arrow data is already refcounted, the contents of the `DataCell` still have to
     /// be wrapped in an `Arc` to work around performance issues in `arrow2`.
     ///
     /// See [`DataCellInner`] for more information.
     pub inner: Arc<DataCellInner>,
+}
+
+impl PartialEq for DataCell {
+    fn eq(&self, rhs: &Self) -> bool {
+        let Self { inner: lhs_inner } = self;
+        let Self { inner: rhs_inner } = rhs;
+
+        // NOTE: Compare the inner pointers first, and only if they don't match actually do a full
+        // contents comparison.
+        // Arc normally handles this automatically if T implements `Eq`, but in our case
+        // `DataCellInner` cannot implement `Eq`.
+        // Still, the optimization is valid, and so here we are.
+        Arc::as_ptr(lhs_inner) == Arc::as_ptr(rhs_inner) || self.inner == rhs.inner
+    }
 }
 
 /// The actual contents of a [`DataCell`].
