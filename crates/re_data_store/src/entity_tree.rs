@@ -4,8 +4,7 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    ComponentPath, EntityPath, EntityPathHash, EntityPathPart, PathOp, RowId, TimeInt, TimePoint,
-    Timeline,
+    ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
 };
 use re_types::{ComponentName, Loggable};
 
@@ -18,6 +17,17 @@ use re_types::{ComponentName, Loggable};
 pub struct ActuallyDeleted {
     pub timeful: IntMap<Timeline, Vec<TimeInt>>,
     pub timeless: u64,
+}
+
+impl ActuallyDeleted {
+    fn append(&mut self, other: Self) {
+        let Self { timeful, timeless } = other;
+
+        for (timeline, mut times) in timeful {
+            self.timeful.entry(timeline).or_default().append(&mut times);
+        }
+        self.timeless += timeless;
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -52,28 +62,13 @@ impl TimeHistogramPerTimeline {
         self.0.iter_mut()
     }
 
-    pub fn purge(
-        &mut self,
-        ent_path_hash: EntityPathHash,
-        deleted: &re_arrow_store::Deleted,
-        deleted_by_us_and_children: &mut ActuallyDeleted,
-    ) {
+    pub fn purge(&mut self, deleted: &ActuallyDeleted) {
         re_tracing::profile_function!();
 
         for (timeline, histogram) in &mut self.0 {
-            if let Some(times) = deleted
-                .timeful
-                .get(&ent_path_hash)
-                .and_then(|map| map.get(timeline))
-            {
+            if let Some(times) = deleted.timeful.get(timeline) {
                 for &time in times {
                     histogram.decrement(time.as_i64(), 1);
-
-                    deleted_by_us_and_children
-                        .timeful
-                        .entry(*timeline)
-                        .or_default()
-                        .push(time);
                 }
             }
 
@@ -104,22 +99,6 @@ impl TimesPerTimeline {
 
     pub fn insert(&mut self, timeline: Timeline, time: TimeInt) {
         self.0.entry(timeline).or_default().insert(time);
-    }
-
-    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted) {
-        re_tracing::profile_function!();
-
-        for deleted_times in deleted.timeful.values() {
-            for (timeline, time_set) in &mut self.0 {
-                if let Some(times) = deleted_times.get(timeline) {
-                    for &time in times {
-                        time_set.remove(&time);
-                    }
-                }
-            }
-        }
-
-        // NOTE: we don't include timeless.
     }
 
     pub fn has_timeline(&self, timeline: &Timeline) -> bool {
@@ -373,15 +352,6 @@ impl EntityTree {
             components,
         } = self;
 
-        if let Some(decrement) = deleted.timeless.get(&path.hash()) {
-            *num_timeless_messages = num_timeless_messages.saturating_sub(*decrement as _);
-            deleted_by_us_and_children.timeless += decrement;
-        }
-
-        {
-            re_tracing::profile_scope!("prefix_times");
-            prefix_times.purge(path.hash(), deleted, deleted_by_us_and_children);
-        }
         {
             re_tracing::profile_scope!("nonrecursive_clears");
             nonrecursive_clears.retain(|row_id, _| !deleted.row_ids.contains(row_id));
@@ -391,22 +361,6 @@ impl EntityTree {
             recursive_clears.retain(|row_id, _| !deleted.row_ids.contains(row_id));
         }
 
-        {
-            re_tracing::profile_scope!("ComponentStats");
-            for stats in components.values_mut() {
-                let ComponentStats {
-                    times,
-                    num_timeless_messages,
-                } = stats;
-
-                times.purge(path.hash(), deleted, deleted_by_us_and_children);
-
-                if let Some(decrement) = deleted.timeless.get(&path.hash()) {
-                    *num_timeless_messages = num_timeless_messages.saturating_sub(*decrement as _);
-                }
-            }
-        }
-
         let mut deleted_by_children = ActuallyDeleted::default();
 
         for child in children.values_mut() {
@@ -414,29 +368,58 @@ impl EntityTree {
         }
 
         {
-            re_tracing::profile_scope!("apply_children");
-            let ActuallyDeleted { timeful, timeless } = deleted_by_children;
+            re_tracing::profile_scope!("ComponentStats");
 
-            // Apply things that where deleted in children.
-            // For instance - if `/foo/bar` has some things deleted,
-            // we need to note it in `/foo` and `/` too.
-            for (timeline, mut times) in timeful {
-                if let Some(time_histogram) = prefix_times.0.get_mut(&timeline) {
-                    for &time in &times {
-                        time_histogram.decrement(time.as_i64(), 1);
+            // The `deleted` stats are per component, so start here:
+
+            for (comp_name, stats) in components {
+                let ComponentStats {
+                    times,
+                    num_timeless_messages,
+                } = stats;
+
+                for (timeline, histogram) in &mut times.0 {
+                    if let Some(times) = deleted
+                        .timeful
+                        .get(&path.hash())
+                        .and_then(|map| map.get(timeline))
+                        .and_then(|map| map.get(comp_name))
+                    {
+                        for &time in times {
+                            histogram.decrement(time.as_i64(), 1);
+
+                            deleted_by_children
+                                .timeful
+                                .entry(*timeline)
+                                .or_default()
+                                .push(time);
+                        }
                     }
+
+                    // NOTE: we don't include timeless in the histogram.
                 }
 
-                deleted_by_us_and_children
-                    .timeful
-                    .entry(timeline)
-                    .or_default()
-                    .append(&mut times);
+                if let Some(num_deleted) = deleted
+                    .timeless
+                    .get(&path.hash())
+                    .and_then(|map| map.get(comp_name))
+                {
+                    *num_timeless_messages =
+                        num_timeless_messages.saturating_sub(*num_deleted as _);
+                    deleted_by_children.timeless += num_deleted;
+                }
             }
-
-            *num_timeless_messages = num_timeless_messages.saturating_sub(timeless as _);
-            deleted_by_us_and_children.timeless += timeless;
         }
+
+        {
+            // Apply what was deleted by children and by our components:
+            *num_timeless_messages =
+                num_timeless_messages.saturating_sub(deleted_by_us_and_children.timeless as _);
+
+            prefix_times.purge(&deleted_by_children);
+        }
+
+        deleted_by_us_and_children.append(deleted_by_children);
     }
 
     // Invokes visitor for `self` all children recursively.

@@ -64,11 +64,11 @@ pub struct Deleted {
     /// What rows where deleted?
     pub row_ids: HashSet<RowId>,
 
-    /// What time points where deleted for each entity?
-    pub timeful: IntMap<EntityPathHash, IntMap<Timeline, Vec<TimeInt>>>,
+    /// What time points where deleted for each entity+timeline+component?
+    pub timeful: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
 
-    /// For each entity, how many timeless entries were deleted?
-    pub timeless: IntMap<EntityPathHash, u64>,
+    /// For each entity+component, how many timeless entries were deleted?
+    pub timeless: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
 }
 
 impl DataStore {
@@ -237,14 +237,15 @@ impl DataStore {
 
             for ((timeline, ent_path_hash), table) in &mut self.tables {
                 if let Some(time) = timepoint.get(timeline) {
-                    num_bytes_to_drop -= table.try_drop_row(*row_id, time.as_i64()) as f64;
-                    deleted
+                    let deleted_comps = deleted
                         .timeful
                         .entry(*ent_path_hash)
                         .or_default()
                         .entry(*timeline)
-                        .or_default()
-                        .push(*time);
+                        .or_default();
+
+                    num_bytes_to_drop -=
+                        table.try_drop_row(*row_id, time.as_i64(), deleted_comps) as f64;
                 }
             }
 
@@ -252,8 +253,8 @@ impl DataStore {
             // first and then remove them in one pass.
             if timepoint.is_timeless() && include_timeless {
                 for (ent_path_hash, table) in &mut self.timeless_tables {
-                    num_bytes_to_drop -= table.try_drop_row(*row_id) as f64;
-                    *deleted.timeless.entry(*ent_path_hash).or_default() += 1;
+                    let deleted_comps = deleted.timeless.entry(*ent_path_hash).or_default();
+                    num_bytes_to_drop -= table.try_drop_row(*row_id, deleted_comps) as f64;
                 }
             }
         }
@@ -420,7 +421,13 @@ impl IndexedTable {
     /// specified `time`.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
+    fn try_drop_row(
+        &mut self,
+        row_id: RowId,
+        time: i64,
+        deleted_comps: &mut IntMap<ComponentName, Vec<TimeInt>>,
+    ) -> u64 {
+        re_tracing::profile_function!();
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
         let (bucket_key, bucket) = self.find_bucket_mut(time.into());
@@ -428,7 +435,7 @@ impl IndexedTable {
 
         let mut dropped_num_bytes = {
             let inner = &mut *bucket.inner.write();
-            inner.try_drop_row(row_id, time)
+            inner.try_drop_row(row_id, time, deleted_comps)
         };
 
         // NOTE: We always need to keep at least one bucket alive, otherwise we have
@@ -464,7 +471,12 @@ impl IndexedBucketInner {
     /// specified `time`.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
+    fn try_drop_row(
+        &mut self,
+        row_id: RowId,
+        time: i64,
+        deleted_comps: &mut IntMap<ComponentName, Vec<TimeInt>>,
+    ) -> u64 {
         self.sort();
 
         let IndexedBucketInner {
@@ -523,8 +535,12 @@ impl IndexedBucketInner {
             dropped_num_bytes += col_num_instances.swap_remove(row_index).total_size_bytes();
 
             // each data column
-            for column in columns.values_mut() {
+            for (comp_name, column) in columns {
                 dropped_num_bytes += column.0.swap_remove(row_index).total_size_bytes();
+                deleted_comps
+                    .entry(*comp_name)
+                    .or_default()
+                    .push(time.into());
             }
 
             // NOTE: A single `RowId` cannot possibly have more than one datapoint for
@@ -542,7 +558,13 @@ impl PersistentIndexedTable {
     /// Tries to drop the given `row_id` from the table.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(&mut self, row_id: RowId) -> u64 {
+    fn try_drop_row(
+        &mut self,
+        row_id: RowId,
+        deleted_comps: &mut IntMap<ComponentName, u64>,
+    ) -> u64 {
+        re_tracing::profile_function!();
+
         let mut dropped_num_bytes = 0u64;
 
         let PersistentIndexedTable {
@@ -579,8 +601,9 @@ impl PersistentIndexedTable {
             dropped_num_bytes += col_num_instances.remove(row_index).total_size_bytes();
 
             // each data column
-            for column in columns.values_mut() {
+            for (comp_name, column) in columns {
                 dropped_num_bytes += column.0.remove(row_index).total_size_bytes();
+                *deleted_comps.entry(*comp_name).or_default() += 1;
             }
         }
 

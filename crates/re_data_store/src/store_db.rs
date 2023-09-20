@@ -185,11 +185,6 @@ impl EntityDb {
             data_store: _, // purged before this function is called
         } = self;
 
-        {
-            re_tracing::profile_scope!("times_per_timeline");
-            times_per_timeline.purge(deleted);
-        }
-
         let mut actually_deleted = Default::default();
 
         {
