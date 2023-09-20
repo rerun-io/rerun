@@ -334,7 +334,7 @@ impl<A: Archetype> ArchetypeView<A> {
             // because comparing the vtable pointers, while defined, can lead to unstable results.
             //
             // We'd like to use `std::ptr::to_raw_parts` for that (or any of the myriad of tools
-            // for dealing with smart pointers available in the stdlib)... but everything that
+            // for dealing with smart pointers available in the stdlib)… but everything that
             // relates to fat pointers is nightly only.
             // So, for now, we do it the old way.
             if std::ptr::eq(
