@@ -17,7 +17,27 @@ __all__ = ["Tensor"]
 
 @define(str=False, repr=False)
 class Tensor(Archetype):
-    """A generic n-dimensional Tensor."""
+    """
+    A generic n-dimensional Tensor.
+
+    Examples
+    --------
+    ```python
+
+    import rerun as rr
+    from numpy.random import default_rng
+
+    rng = default_rng(12345)
+
+    # Create a 4-dimensional tensor
+    tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
+
+    rr.init("rerun_example_tensors", spawn=True)
+
+    # Log the tensor, assigning names to each dimension
+    rr.log_tensor("tensor", tensor, names=("width", "height", "channel", "batch"))
+    ```
+    """
 
     # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
 
