@@ -4,7 +4,7 @@ use std::sync::mpsc;
 ///
 /// The [`Reporter`] can be freely cloned and sent to other threads.
 ///
-/// The [`ContextRoot`] should not be sent to other threads.
+/// The [`Report`] should not be sent to other threads.
 pub fn init() -> (Report, Reporter) {
     let (tx, rx) = mpsc::channel();
     (Report::new(rx), Reporter::new(tx))
@@ -59,7 +59,7 @@ impl Report {
 }
 
 const _: () = {
-    // We want to ensure `ContextRoot` is `!Send`, so that it stays
+    // We want to ensure `Report` is `!Send`, so that it stays
     // on the main thread.
     //
     // This works by creating a type which has a different number of possible
@@ -92,7 +92,7 @@ const _: () = {
     impl<T: ?Sized + Send> IsNotSend<False> for Check<T> {}
 
     // if this fails with a type inference error,
-    // then `ContextRoot` is `Send`, which it should _not_ be.
+    // then `Report` is `Send`, which it should _not_ be.
     let _ = <Check<Report> as IsNotSend<_>>::__;
 
     fn assert_send<T: Send>() {}
