@@ -11,11 +11,11 @@ if TYPE_CHECKING:
 
 class Mat3x3Ext:
     @staticmethod
-    def coeffs__field_converter_override(data: Mat3x3Like) -> npt.NDArray[np.float32]:
+    def flat_columns__field_converter_override(data: Mat3x3Like) -> npt.NDArray[np.float32]:
         from . import Mat3x3
 
         if isinstance(data, Mat3x3):
-            return data.coeffs
+            return data.flat_columns
         else:
             arr = np.array(data, dtype=np.float32).reshape(3, 3)
             return arr.flatten("F")

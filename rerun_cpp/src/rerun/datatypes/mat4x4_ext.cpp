@@ -17,24 +17,24 @@ namespace rerun {
             static const Mat4x4 IDENTITY;
 
             /// Creates a new 4x4 matrix from 3 *columns* of 4 elements each.
-            Mat4x4(const Vec4D (&_columns)[4])
-                : coeffs{
-                      _columns[0].x(),
-                      _columns[0].y(),
-                      _columns[0].z(),
-                      _columns[0].w(),
-                      _columns[1].x(),
-                      _columns[1].y(),
-                      _columns[1].z(),
-                      _columns[1].w(),
-                      _columns[2].x(),
-                      _columns[2].y(),
-                      _columns[2].z(),
-                      _columns[2].w(),
-                      _columns[3].x(),
-                      _columns[3].y(),
-                      _columns[3].z(),
-                      _columns[3].w(),
+            Mat4x4(const Vec4D (&columns)[4])
+                : flat_columns{
+                      columns[0].x(),
+                      columns[0].y(),
+                      columns[0].z(),
+                      columns[0].w(),
+                      columns[1].x(),
+                      columns[1].y(),
+                      columns[1].z(),
+                      columns[1].w(),
+                      columns[2].x(),
+                      columns[2].y(),
+                      columns[2].z(),
+                      columns[2].w(),
+                      columns[3].x(),
+                      columns[3].y(),
+                      columns[3].z(),
+                      columns[3].w(),
                   } {}
 
             // [CODEGEN COPY TO HEADER END]
