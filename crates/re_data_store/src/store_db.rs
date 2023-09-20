@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions, TimeInt};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
 use re_log_types::{
     ApplicationId, ArrowMsg, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
     EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo,
@@ -175,11 +175,7 @@ impl EntityDb {
         }
     }
 
-    pub fn purge(
-        &mut self,
-        cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>,
-        drop_row_ids: &ahash::HashSet<RowId>,
-    ) {
+    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted) {
         re_tracing::profile_function!();
 
         let Self {
@@ -189,14 +185,22 @@ impl EntityDb {
             data_store: _, // purged before this function is called
         } = self;
 
-        {
-            re_tracing::profile_scope!("times_per_timeline");
-            times_per_timeline.purge(cutoff_times);
-        }
+        let mut actually_deleted = Default::default();
 
         {
             re_tracing::profile_scope!("tree");
-            tree.purge(cutoff_times, drop_row_ids);
+            tree.purge(deleted, &mut actually_deleted);
+        }
+
+        {
+            re_tracing::profile_scope!("times_per_timeline");
+            for (timeline, times) in actually_deleted.timeful {
+                if let Some(time_set) = times_per_timeline.get_mut(&timeline) {
+                    for time in times {
+                        time_set.remove(&time);
+                    }
+                }
+            }
         }
     }
 }
@@ -373,7 +377,7 @@ impl StoreDb {
         re_tracing::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
+        let (deleted, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
@@ -382,13 +386,10 @@ impl StoreDb {
             purge_empty_tables: false,
         });
         re_log::trace!(
-            num_row_ids_dropped = drop_row_ids.len(),
+            num_row_ids_dropped = deleted.row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
             "purged datastore"
         );
-
-        let drop_row_ids: ahash::HashSet<_> = drop_row_ids.into_iter().collect();
-        let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
             store_id: _,
@@ -400,10 +401,10 @@ impl StoreDb {
 
         {
             re_tracing::profile_scope!("entity_op_msgs");
-            entity_op_msgs.retain(|row_id, _| !drop_row_ids.contains(row_id));
+            entity_op_msgs.retain(|row_id, _| !deleted.row_ids.contains(row_id));
         }
 
-        entity_db.purge(&cutoff_times, &drop_row_ids);
+        entity_db.purge(&deleted);
     }
 
     /// Key used for sorting recordings in the UI.

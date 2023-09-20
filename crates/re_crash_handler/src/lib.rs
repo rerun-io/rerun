@@ -45,15 +45,11 @@ fn install_panic_hook(_build_info: BuildInfo) {
                 .name()
                 .map_or_else(|| format!("{:?}", thread.id()), |name| name.to_owned());
 
-            let file_line_suffix = if let Some(file_line) = &file_line {
-                format!(", {file_line}")
-            } else {
-                String::new()
-            };
-
-            eprintln!(
-                "\nthread '{thread_name}' panicked at '{msg}'{file_line_suffix}\n\n{callstack}"
-            );
+            eprintln!("\nthread '{thread_name}' panicked at '{msg}'");
+            if let Some(file_line) = &file_line {
+                eprintln!("{file_line}");
+            }
+            eprintln!("stack backtrace:\n{callstack}");
         } else {
             // This prints the panic message and callstack:
             (*previous_panic_hook)(panic_info);

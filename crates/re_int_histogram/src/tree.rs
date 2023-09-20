@@ -1,6 +1,10 @@
-//! The histogram is implemented as a tree.
+//! The histogram is implemented as a trie.
 //!
-//! The branches are based on the next few bits of the key (also known as the "address").
+//! Each node in the trie stores a count of a key/address sharing a prefix up to `depth * LEVEL_STEP` bits.
+//! The key/address is always 64 bits.
+//!
+//! There are branch nodes, and two types of leaf nodes: dense, and sparse.
+//! Dense leaves are only found at the very bottom of the trie.
 
 use smallvec::{smallvec, SmallVec};
 
@@ -128,8 +132,40 @@ impl Int64Histogram {
     ///
     /// Incrementing with one is similar to inserting the key in a multi-set.
     pub fn increment(&mut self, key: i64, inc: u32) {
-        self.root
-            .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
+        if inc != 0 {
+            self.root
+                .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
+        }
+    }
+
+    /// Decrement the count for the given key.
+    ///
+    /// The decrement is saturating.
+    ///
+    /// Returns how much was actually decremented (found).
+    /// If the returned value is less than the given value,
+    /// it means that the key was either no found, or had a lower count.
+    pub fn decrement(&mut self, key: i64, dec: u32) -> u32 {
+        if dec == 0 {
+            0
+        } else {
+            self.root
+                .decrement(ROOT_LEVEL, u64_key_from_i64_key(key), dec)
+        }
+    }
+
+    /// Remove all data in the given range.
+    ///
+    /// Returns how much count was removed.
+    ///
+    /// Currently the implementation is optimized for the case of removing
+    /// large continuous ranges.
+    /// Removing many small, scattered ranges (e.g. individual elements)
+    /// may cause performance problems!
+    /// This can be remedied with some more code.
+    pub fn remove(&mut self, range: impl std::ops::RangeBounds<i64>) -> u64 {
+        let range = range_u64_from_range_bounds(range);
+        self.root.remove(0, ROOT_LEVEL, range)
     }
 
     /// Is the total count zero?
@@ -196,20 +232,6 @@ impl Int64Histogram {
             },
         }
     }
-
-    /// Remove all data in the given range.
-    ///
-    /// Returns how much count was removed.
-    ///
-    /// Currently the implementation is optimized for the case of removing
-    /// large continuous ranges.
-    /// Removing many small, scattered ranges (e.g. individual elements)
-    /// may cause performance problems!
-    /// This can be remedied with some more code.
-    pub fn remove(&mut self, range: impl std::ops::RangeBounds<i64>) -> u64 {
-        let range = range_u64_from_range_bounds(range);
-        self.root.remove(0, ROOT_LEVEL, range)
-    }
 }
 
 /// An iterator over an [`Int64Histogram`].
@@ -275,6 +297,8 @@ struct SparseLeaf {
     /// making up (addr, count) pairs,
     /// sorted by `addr`.
     addrs: SmallVec<[u64; 3]>,
+
+    /// The count may never be zero.
     counts: SmallVec<[u32; 3]>,
 }
 
@@ -308,6 +332,43 @@ impl Node {
             Node::DenseLeaf(dense) => {
                 dense.increment(addr, inc);
             }
+        }
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn decrement(&mut self, level: Level, addr: u64, dec: u32) -> u32 {
+        match self {
+            Node::BranchNode(node) => {
+                let count_loss = node.decrement(level, addr, dec);
+                if node.is_empty() {
+                    *self = Node::SparseLeaf(SparseLeaf::default());
+                }
+                // TODO(emilk): if we only have leaf children (sparse or dense)
+                // and the number of keys in all of them is less then `MAX_SPARSE_LEAF_LEN`,
+                // then we should convert this BranchNode into a SparseLeaf.
+                count_loss
+            }
+            Node::SparseLeaf(sparse) => sparse.decrement(addr, dec),
+            Node::DenseLeaf(dense) => dense.decrement(addr, dec),
+        }
+    }
+
+    /// Returns how much the total count decreased by.
+    fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
+        match self {
+            Node::BranchNode(node) => {
+                let count_loss = node.remove(my_addr, my_level, range);
+                if node.is_empty() {
+                    *self = Node::SparseLeaf(SparseLeaf::default());
+                }
+                // TODO(emilk): if we only have leaf children (sparse or dense)
+                // and the number of keys in all of them is less then `MAX_SPARSE_LEAF_LEN`,
+                // then we should convert this BranchNode into a SparseLeaf.
+                count_loss
+            }
+            Node::SparseLeaf(sparse) => sparse.remove(range),
+            Node::DenseLeaf(dense) => dense.remove(my_addr, range),
         }
     }
 
@@ -350,24 +411,6 @@ impl Node {
             Node::DenseLeaf(dense) => dense.range_count(my_addr, range),
         }
     }
-
-    /// Returns how much the total count decreased by.
-    fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
-        match self {
-            Node::BranchNode(node) => {
-                let count_loss = node.remove(my_addr, my_level, range);
-                if node.is_empty() {
-                    *self = Node::SparseLeaf(SparseLeaf::default());
-                }
-                // TODO(emilk): if we only have leaf children (sparse or dense)
-                // and the number of keys in all of them is less then `MAX_SPARSE_LEAF_LEN`,
-                // then we should convert this BranchNode into a SparseLeaf.
-                count_loss
-            }
-            Node::SparseLeaf(sparse) => sparse.remove(range),
-            Node::DenseLeaf(dense) => dense.remove(my_addr, range),
-        }
-    }
 }
 
 impl BranchNode {
@@ -379,6 +422,56 @@ impl BranchNode {
             .get_or_insert_with(|| Box::new(Node::for_level(child_level)))
             .increment(child_level, addr, inc);
         self.total_count += inc as u64;
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn decrement(&mut self, level: Level, addr: u64, dec: u32) -> u32 {
+        debug_assert!(level != BOTTOM_LEVEL);
+        let child_level = level - LEVEL_STEP;
+        let top_addr = (addr >> level) & ADDR_MASK;
+        if let Some(child) = &mut self.children[top_addr as usize] {
+            let count_loss = child.decrement(child_level, addr, dec);
+            if child.is_empty() {
+                self.children[top_addr as usize] = None;
+            }
+            self.total_count -= count_loss as u64;
+            count_loss
+        } else {
+            0
+        }
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
+        debug_assert!(range.min <= range.max);
+        debug_assert!(my_level != BOTTOM_LEVEL);
+
+        let mut count_loss = 0;
+        let (child_level, child_size) = child_level_and_size(my_level);
+
+        for ci in 0..NUM_CHILDREN_IN_NODE {
+            let child_addr = my_addr + ci * child_size;
+            let child_range = RangeU64::new(child_addr, child_addr + (child_size - 1));
+            if range.intersects(child_range) {
+                if let Some(child) = &mut self.children[ci as usize] {
+                    if range.contains_all_of(child_range) {
+                        count_loss += child.total_count();
+                        self.children[ci as usize] = None;
+                    } else {
+                        count_loss += child.remove(child_addr, child_level, range);
+                        if child.is_empty() {
+                            self.children[ci as usize] = None;
+                        }
+                    }
+                }
+            }
+        }
+
+        self.total_count -= count_loss;
+
+        count_loss
     }
 
     fn is_empty(&self) -> bool {
@@ -445,52 +538,9 @@ impl BranchNode {
 
         total_count
     }
-
-    /// Returns how much the total count decreased by.
-    #[must_use]
-    fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
-        debug_assert!(range.min <= range.max);
-        debug_assert!(my_level != BOTTOM_LEVEL);
-
-        let mut count_loss = 0;
-        let (child_level, child_size) = child_level_and_size(my_level);
-
-        for ci in 0..NUM_CHILDREN_IN_NODE {
-            let child_addr = my_addr + ci * child_size;
-            let child_range = RangeU64::new(child_addr, child_addr + (child_size - 1));
-            if range.intersects(child_range) {
-                if let Some(child) = &mut self.children[ci as usize] {
-                    if range.contains_all_of(child_range) {
-                        count_loss += child.total_count();
-                        self.children[ci as usize] = None;
-                    } else {
-                        count_loss += child.remove(child_addr, child_level, range);
-                        if child.is_empty() {
-                            self.children[ci as usize] = None;
-                        }
-                    }
-                }
-            }
-        }
-
-        self.total_count -= count_loss;
-
-        count_loss
-    }
 }
 
 impl SparseLeaf {
-    #[must_use]
-    fn overflow(self, level: Level) -> BranchNode {
-        debug_assert!(level != BOTTOM_LEVEL);
-
-        let mut node = BranchNode::default();
-        for (key, count) in self.addrs.iter().zip(&self.counts) {
-            node.increment(level, *key, *count);
-        }
-        node
-    }
-
     #[must_use]
     fn increment(mut self, level: Level, abs_addr: u64, inc: u32) -> Node {
         let index = self.addrs.partition_point(|&addr| addr < abs_addr);
@@ -507,14 +557,74 @@ impl SparseLeaf {
             self.counts.insert(index, inc);
             Node::SparseLeaf(self)
         } else {
-            let mut node = self.overflow(level);
+            // Overflow:
+            let mut node = self.into_branch_node(level);
             node.increment(level, abs_addr, inc);
             Node::BranchNode(node)
         }
     }
 
+    /// Called on overflow
+    #[must_use]
+    fn into_branch_node(self, level: Level) -> BranchNode {
+        debug_assert!(level != BOTTOM_LEVEL);
+
+        let mut node = BranchNode::default();
+        for (key, count) in self.addrs.iter().zip(&self.counts) {
+            node.increment(level, *key, *count);
+        }
+        node
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn decrement(&mut self, abs_addr: u64, dec: u32) -> u32 {
+        debug_assert_eq!(self.addrs.len(), self.counts.len());
+
+        let index = self.addrs.partition_point(|&addr| addr < abs_addr);
+
+        if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
+            if *addr == abs_addr {
+                return if dec < *count {
+                    *count -= dec;
+                    dec
+                } else {
+                    let count_loss = *count;
+
+                    // The bucket is now empty - remove it:
+                    self.addrs.remove(index);
+                    self.counts.remove(index);
+                    debug_assert_eq!(self.addrs.len(), self.counts.len());
+
+                    count_loss
+                };
+            }
+        }
+
+        0 // not found
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn remove(&mut self, range: RangeU64) -> u64 {
+        debug_assert_eq!(self.addrs.len(), self.counts.len());
+
+        let mut count_loss = 0;
+        for (key, count) in self.addrs.iter().zip(&mut self.counts) {
+            if range.contains(*key) {
+                count_loss += *count as u64;
+                *count = 0;
+            }
+        }
+
+        self.addrs.retain(|addr| !range.contains(*addr));
+        self.counts.retain(|count| *count > 0);
+        debug_assert_eq!(self.addrs.len(), self.counts.len());
+        count_loss
+    }
+
     fn is_empty(&self) -> bool {
-        self.addrs.is_empty()
+        self.addrs.is_empty() // we don't allow zero-sized buckets
     }
 
     fn total_count(&self) -> u64 {
@@ -538,30 +648,40 @@ impl SparseLeaf {
         }
         total
     }
-
-    /// Returns how much the total count decreased by.
-    #[must_use]
-    fn remove(&mut self, range: RangeU64) -> u64 {
-        debug_assert_eq!(self.addrs.len(), self.counts.len());
-
-        let mut count_loss = 0;
-        for (key, count) in self.addrs.iter().zip(&mut self.counts) {
-            if range.contains(*key) {
-                count_loss += *count as u64;
-                *count = 0;
-            }
-        }
-
-        self.addrs.retain(|addr| !range.contains(*addr));
-        self.counts.retain(|count| *count > 0);
-        debug_assert_eq!(self.addrs.len(), self.counts.len());
-        count_loss
-    }
 }
 
 impl DenseLeaf {
     fn increment(&mut self, abs_addr: u64, inc: u32) {
         self.counts[(abs_addr & (NUM_CHILDREN_IN_DENSE - 1)) as usize] += inc;
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn decrement(&mut self, abs_addr: u64, dec: u32) -> u32 {
+        let bucket_index = (abs_addr & (NUM_CHILDREN_IN_DENSE - 1)) as usize;
+        let bucket = &mut self.counts[bucket_index];
+        if dec < *bucket {
+            *bucket -= dec;
+            dec
+        } else {
+            let count_loss = *bucket;
+            *bucket = 0;
+            count_loss
+        }
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn remove(&mut self, my_addr: u64, range: RangeU64) -> u64 {
+        debug_assert!(range.min <= range.max);
+        let mut count_loss = 0;
+        for (i, count) in self.counts.iter_mut().enumerate() {
+            if range.contains(my_addr + i as u64) {
+                count_loss += *count as u64;
+                *count = 0;
+            }
+        }
+        count_loss
     }
 
     fn is_empty(&self) -> bool {
@@ -599,20 +719,6 @@ impl DenseLeaf {
             }
         }
         total_count
-    }
-
-    /// Returns how much the total count decreased by.
-    #[must_use]
-    fn remove(&mut self, my_addr: u64, range: RangeU64) -> u64 {
-        debug_assert!(range.min <= range.max);
-        let mut count_loss = 0;
-        for (i, count) in self.counts.iter_mut().enumerate() {
-            if range.contains(my_addr + i as u64) {
-                count_loss += *count as u64;
-                *count = 0;
-            }
-        }
-        count_loss
     }
 }
 
@@ -658,7 +764,7 @@ impl<'a> Iterator for TreeIterator<'a> {
                                 if child_size <= self.cutoff_size
                                     && self.range.contains_all_of(child_range)
                                 {
-                                    // We can return the whole child, but first find a tight range of i:
+                                    // We can return the whole child, but first find a tight range of it:
                                     if let (Some(min_key), Some(max_key)) = (
                                         child.min_key(child_addr, child_level),
                                         child.max_key(child_addr, child_level),
@@ -668,7 +774,9 @@ impl<'a> Iterator for TreeIterator<'a> {
                                             child.total_count(),
                                         ));
                                     } else {
-                                        unreachable!("We only have non-empty children");
+                                        unreachable!(
+                                            "A `BranchNode` can only have non-empty children"
+                                        );
                                     }
                                 }
 
@@ -736,6 +844,11 @@ mod tests {
 
         assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
         assert_eq!(set.range(..10, 1).count(), 10);
+
+        assert_eq!(set.decrement(5, 1), 1);
+        assert_eq!(set.range(..10, 1).count(), 9);
+        assert_eq!(set.decrement(5, 1), 0);
+        assert_eq!(set.range(..10, 1).count(), 9);
     }
 
     #[test]
@@ -910,5 +1023,54 @@ mod tests {
             set.range(.., 1).collect::<Vec<_>>(),
             vec![(RangeI64::single(i64::MAX - 1), 2),]
         );
+    }
+
+    #[test]
+    fn test_decrement() {
+        let mut set = Int64Histogram::default();
+
+        for i in 0..100 {
+            set.increment(i, 2);
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(0), Some(99)));
+        assert_eq!(set.range(.., 1).count(), 100);
+
+        for i in 0..100 {
+            assert_eq!(set.decrement(i, 1), 1);
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(0), Some(99)));
+        assert_eq!(set.range(.., 1).count(), 100);
+
+        for i in 0..50 {
+            assert_eq!(set.decrement(i, 1), 1);
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(50), Some(99)));
+        assert_eq!(set.range(.., 1).count(), 50);
+
+        for i in 0..50 {
+            assert_eq!(
+                set.decrement(i, 1),
+                0,
+                "Should already have been decremented"
+            );
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(50), Some(99)));
+        assert_eq!(set.range(.., 1).count(), 50);
+
+        for i in 50..99 {
+            assert_eq!(set.decrement(i, 1), 1);
+        }
+
+        assert_eq!((set.min_key(), set.max_key()), (Some(99), Some(99)));
+        assert_eq!(set.range(.., 1).count(), 1);
+
+        assert_eq!(set.decrement(99, 1), 1);
+
+        assert_eq!((set.min_key(), set.max_key()), (None, None));
+        assert_eq!(set.range(.., 1).count(), 0);
     }
 }
