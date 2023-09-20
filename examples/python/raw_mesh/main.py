@@ -70,7 +70,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                     mesh.vertices,
                     vertex_colors=vertex_colors,
                     vertex_normals=mesh.vertex_normals,
-                    mesh_properties=rr2.cmp.MeshProperties(triangle_indices=mesh.faces),
+                    mesh_properties=rr2.cmp.MeshProperties(vertex_indices=mesh.faces),
                     mesh_material=mesh_material,
                 ),
             )
