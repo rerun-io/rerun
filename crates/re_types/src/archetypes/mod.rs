@@ -24,6 +24,7 @@ mod tensor_ext;
 mod text_document;
 mod text_log;
 mod transform3d;
+mod view_coordinates;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::arrows3d::Arrows3D;
@@ -42,3 +43,4 @@ pub use self::tensor::Tensor;
 pub use self::text_document::TextDocument;
 pub use self::text_log::TextLog;
 pub use self::transform3d::Transform3D;
+pub use self::view_coordinates::ViewCoordinates;

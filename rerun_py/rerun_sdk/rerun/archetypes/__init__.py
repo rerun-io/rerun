@@ -19,6 +19,7 @@ from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
 from .transform3d import Transform3D
+from .view_coordinates import ViewCoordinates
 
 __all__ = [
     "AnnotationContext",
@@ -38,4 +39,5 @@ __all__ = [
     "TextDocument",
     "TextLog",
     "Transform3D",
+    "ViewCoordinates",
 ]
