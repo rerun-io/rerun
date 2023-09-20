@@ -30,7 +30,7 @@ namespace rerun {
         ///  Forward = 5
         ///  Back = 6
         struct ViewCoordinates {
-            int8_t coordinates[3];
+            uint8_t coordinates[3];
 
             /// Name of the component, used for serialization.
             static const char NAME[];
@@ -38,7 +38,7 @@ namespace rerun {
           public:
             ViewCoordinates() = default;
 
-            ViewCoordinates(const int8_t (&_coordinates)[3])
+            ViewCoordinates(const uint8_t (&_coordinates)[3])
                 : coordinates{_coordinates[0], _coordinates[1], _coordinates[2]} {}
 
             /// Returns the arrow data type this type corresponds to.

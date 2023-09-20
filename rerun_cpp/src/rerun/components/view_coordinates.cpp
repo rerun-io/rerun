@@ -15,7 +15,7 @@ namespace rerun {
 
         const std::shared_ptr<arrow::DataType> &ViewCoordinates::arrow_datatype() {
             static const auto datatype =
-                arrow::fixed_size_list(arrow::field("item", arrow::int8(), false), 3);
+                arrow::fixed_size_list(arrow::field("item", arrow::uint8(), false), 3);
             return datatype;
         }
 
@@ -27,7 +27,7 @@ namespace rerun {
 
             return Result(std::make_shared<arrow::FixedSizeListBuilder>(
                 memory_pool,
-                std::make_shared<arrow::Int8Builder>(memory_pool),
+                std::make_shared<arrow::UInt8Builder>(memory_pool),
                 3
             ));
         }
@@ -46,7 +46,7 @@ namespace rerun {
                 );
             }
 
-            auto value_builder = static_cast<arrow::Int8Builder *>(builder->value_builder());
+            auto value_builder = static_cast<arrow::UInt8Builder *>(builder->value_builder());
 
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
             static_assert(sizeof(elements[0].coordinates) == sizeof(elements[0]));
