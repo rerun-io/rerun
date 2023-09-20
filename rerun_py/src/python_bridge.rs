@@ -1050,7 +1050,6 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 }
 
 fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
-    let components = re_log_types::parse_entity_path(entity_path)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    Ok(EntityPath::from(components))
+    use std::str::FromStr as _;
+    EntityPath::from_str(entity_path).map_err(|err| PyTypeError::new_err(err.to_string()))
 }

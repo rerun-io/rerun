@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use crate::{
-    hash::Hash64, parse_entity_path, path::entity_path_impl::EntityPathImpl, EntityPathPart,
-    SizeBytes,
-};
+use crate::{hash::Hash64, path::entity_path_impl::EntityPathImpl, EntityPathPart, SizeBytes};
+
+use super::parse_path::parse_entity_path_components;
 
 // ----------------------------------------------------------------------------
 
@@ -212,7 +211,7 @@ impl From<&[EntityPathPart]> for EntityPath {
 impl From<&str> for EntityPath {
     #[inline]
     fn from(path: &str) -> Self {
-        Self::from(parse_entity_path(path).unwrap())
+        Self::from(parse_entity_path_components(path).unwrap())
     }
 }
 
@@ -345,5 +344,13 @@ impl std::fmt::Debug for EntityPath {
 impl std::fmt::Display for EntityPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.path.fmt(f)
+    }
+}
+
+impl std::str::FromStr for EntityPath {
+    type Err = crate::PathParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_entity_path_components(s).map(Self::new)
     }
 }
