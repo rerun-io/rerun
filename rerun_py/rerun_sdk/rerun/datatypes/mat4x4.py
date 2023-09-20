@@ -16,28 +16,67 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
+from .._converters import (
+    to_np_float32,
+)
 from .mat4x4_ext import Mat4x4Ext
 
 __all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type"]
 
 
-@define
+@define(init=False)
 class Mat4x4(Mat4x4Ext):
-    """A 4x4 column-major Matrix."""
+    """
+    A 4x4 Matrix.
 
-    # You can define your own __init__ function as a member of Mat4x4Ext in mat4x4_ext.py
+    Matrices in Rerun are stored as flat list of coefficients in column-major order:
+    ```text
+               column 0         column 1         column 2         column 3
+           --------------------------------------------------------------------
+    row 0 | flat_columns[0]  flat_columns[4]  flat_columns[8]  flat_columns[12]
+    row 1 | flat_columns[1]  flat_columns[5]  flat_columns[9]  flat_columns[13]
+    row 2 | flat_columns[2]  flat_columns[6]  flat_columns[10] flat_columns[14]
+    row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
+    ```
 
-    coeffs: npt.NDArray[np.float32] = field(
-        converter=Mat4x4Ext.coeffs__field_converter_override,  # type: ignore[misc]
+    However, construction is done from a list of rows, which follows NumPy's convention:
+    ```python
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
+        np.array([1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16], dtype=np.float32),
     )
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
+        np.array([1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16], dtype=np.float32),
+    )
+    ```
+    If you want to construct a matrix from a list of columns instead, use the named `columns` parameter:
+    ```python
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4(columns=[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], dtype=np.float32),
+    )
+    ```
+    """
+
+    # __init__ can be found in mat4x4_ext.py
+
+    flat_columns: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    """
+    Flat list of matrix coefficients in column-major order.
+    """
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat4x4Ext in mat4x4_ext.py
-        return np.asarray(self.coeffs, dtype=dtype)
+        return np.asarray(self.flat_columns, dtype=dtype)
 
 
 if TYPE_CHECKING:
-    Mat4x4Like = Union[Mat4x4, Sequence[float], Sequence[Sequence[float]]]
+    Mat4x4Like = Union[Mat4x4, Sequence[float], Sequence[Sequence[float]], npt.ArrayLike]
 else:
     Mat4x4Like = Any
 
@@ -63,7 +102,7 @@ class Mat4x4Array(BaseExtensionArray[Mat4x4ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Mat4x4ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in mat4x4_ext.py
+        return Mat4x4Ext.native_to_pa_array_override(data, data_type)
 
 
 Mat4x4Type._ARRAY_TYPE = Mat4x4Array
