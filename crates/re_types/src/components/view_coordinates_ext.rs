@@ -6,7 +6,7 @@ use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3, ViewDir};
 use super::ViewCoordinates;
 
 impl ViewCoordinates {
-    /// Construct a new `ViewCoordinates` from a [`ViewDir`]
+    /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
     pub const fn new(coordinates: [ViewDir; 3]) -> Self {
         Self([
             coordinates[0] as u8,
