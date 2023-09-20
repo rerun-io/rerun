@@ -23,8 +23,7 @@ SCENARIO(
         from_manual.coordinates = {
             rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Down,
-            rerun::components::ViewCoordinates::Forward
-        };
+            rerun::components::ViewCoordinates::Forward};
 
         test_serialization_for_manual_and_builder(from_manual, from_builder);
     }
