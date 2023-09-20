@@ -37,7 +37,12 @@ class ViewCoordinates(ViewCoordinatesExt):
 
     For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 
-    The follow constants are used to represent the different directions.
+    The three coordinates are always ordered as [x, y, z].
+
+    For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+    down, and the Z axis points forward.
+
+    The following constants are used to represent the different directions.
      Up = 1
      Down = 2
      Right = 3
@@ -49,6 +54,9 @@ class ViewCoordinates(ViewCoordinatesExt):
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
     coordinates: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    """
+    The directions of the [x, y, z] axes.
+    """
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py

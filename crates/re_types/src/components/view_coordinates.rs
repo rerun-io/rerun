@@ -17,7 +17,12 @@
 ///
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 ///
-/// The follow constants are used to represent the different directions.
+/// The three coordinates are always ordered as [x, y, z].
+///
+/// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+/// down, and the Z axis points forward.
+///
+/// The following constants are used to represent the different directions.
 ///  Up = 1
 ///  Down = 2
 ///  Right = 3
@@ -25,7 +30,10 @@
 ///  Forward = 5
 ///  Back = 6
 #[derive(Clone, Debug, Copy, Eq, PartialEq)]
-pub struct ViewCoordinates(pub [u8; 3usize]);
+pub struct ViewCoordinates(
+    /// The directions of the [x, y, z] axes.
+    pub [u8; 3usize],
+);
 
 impl<'a> From<ViewCoordinates> for ::std::borrow::Cow<'a, ViewCoordinates> {
     #[inline]
