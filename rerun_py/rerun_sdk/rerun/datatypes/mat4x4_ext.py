@@ -25,6 +25,8 @@ class Mat4x4Ext:
                 arr = np.array(rows, dtype=np.float32).reshape(4, 4)
                 self.flat_columns = arr.flatten("F")
         elif columns is not None:
+            # Equalize the format of the columns to a 3x3 matrix.
+            # Numpy expects rows _and_ stores row-major. Therefore the flattened list will have flat columns.
             arr = np.array(columns, dtype=np.float32).reshape(4, 4)
             self.flat_columns = arr.flatten()
         else:

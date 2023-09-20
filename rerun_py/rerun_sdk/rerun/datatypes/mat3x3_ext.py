@@ -25,8 +25,10 @@ class Mat3x3Ext:
                 arr = np.array(rows, dtype=np.float32).reshape(3, 3)
                 self.flat_columns = arr.flatten("F")
         elif columns is not None:
+            # Equalize the format of the columns to a 3x3 matrix.
+            # Numpy expects rows _and_ stores row-major. Therefore the flattened list will have flat columns.
             arr = np.array(columns, dtype=np.float32).reshape(3, 3)
-            self.flat_columns = arr.flatten()
+            self.flat_columns = arr.flatten("C")
         else:
             _send_warning("Need to specify either columns or columns of matrix.", 1, recording=None)
             self.flat_columns = np.identity(3, dtype=np.float32).flatten()
