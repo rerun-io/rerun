@@ -8,12 +8,7 @@ namespace rerun.archetypes;
 
 /// A generic n-dimensional Tensor.
 ///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/tensor_simple.rs
-/// \rs ```
-///
+/// \example tensor_simple
 table Tensor (
   "attr.rust.derive": "PartialEq",
   order: 100
