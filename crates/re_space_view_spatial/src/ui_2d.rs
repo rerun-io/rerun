@@ -421,7 +421,7 @@ fn setup_target_config(
         let focal_length_in_pixels = canvas_size.x;
 
         Pinhole {
-            image_from_cam: glam::Mat3::from_cols(
+            image_from_camera: glam::Mat3::from_cols(
                 glam::vec3(focal_length_in_pixels, 0.0, 0.0),
                 glam::vec3(0.0, focal_length_in_pixels, 0.0),
                 default_principal_point.extend(1.0),

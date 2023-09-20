@@ -1,9 +1,9 @@
-use re_types::components::{ImageFromCamera, Resolution};
+use re_types::components::{PinholeProjection, Resolution};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use crate::DataUi;
 
-impl DataUi for ImageFromCamera {
+impl DataUi for PinholeProjection {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,

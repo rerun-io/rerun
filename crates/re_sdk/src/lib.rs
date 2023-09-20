@@ -74,7 +74,7 @@ pub mod components {
     };
     pub use re_types::components::{
         AnnotationContext, ClassId, ClearSettings, Color, DepthMeter, DisconnectedSpace, DrawOrder,
-        HalfSizes2D, HalfSizes3D, ImageFromCamera, InstanceKey, KeypointId, LineStrip2D,
+        HalfSizes2D, HalfSizes3D, PinholeProjection, InstanceKey, KeypointId, LineStrip2D,
         LineStrip3D, Material, MediaType, MeshProperties, Origin2D, Origin3D, Position2D,
         Position3D, Radius, Resolution, Rotation3D, TensorData, Text, TextLogLevel, Transform3D,
         Vector3D,

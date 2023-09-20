@@ -37,7 +37,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_types::components::AnnotationContext>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
-    add::<re_types::components::ImageFromCamera>(&mut registry);
+    add::<re_types::components::PinholeProjection>(&mut registry);
     add::<re_types::components::KeypointId>(&mut registry);
     add::<re_types::components::LineStrip2D>(&mut registry);
     add::<re_types::components::LineStrip3D>(&mut registry);

@@ -7,7 +7,7 @@ mod util;
 #[test]
 fn roundtrip() {
     let expected = Pinhole {
-        image_from_cam: components::ImageFromCamera(
+        image_from_cam: components::PinholeProjection(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
         ),
         resolution: Some(components::Resolution([1.0, 2.0].into())),

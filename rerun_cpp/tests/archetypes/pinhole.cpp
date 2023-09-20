@@ -23,7 +23,7 @@ SCENARIO(
                                 .with_resolution(rerun::datatypes::Vec2D({1.0f, 2.0f}));
 
         Pinhole from_manual;
-        from_manual.image_from_cam = rerun::datatypes::Mat3x3({
+        from_manual.image_from_camera = rerun::datatypes::Mat3x3({
             {1.0f, 2.0f, 3.0f},
             {4.0f, 5.0f, 6.0f},
             {7.0f, 8.0f, 9.0f},
@@ -37,7 +37,7 @@ SCENARIO(
         auto from_builder = Pinhole::focal_length_and_resolution({{1.f, 2.f}}, {{3.f, 4.f}});
 
         Pinhole from_manual;
-        from_manual.image_from_cam = rerun::datatypes::Mat3x3({
+        from_manual.image_from_camera = rerun::datatypes::Mat3x3({
             {1.0f, 0.0f, 0.0f},
             {0.0f, 2.0f, 0.0f},
             {1.5f, 2.0f, 1.0f},

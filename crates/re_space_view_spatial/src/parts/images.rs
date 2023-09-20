@@ -575,7 +575,7 @@ impl ImagesPart {
 
         Ok(DepthCloud {
             world_from_rdf,
-            depth_camera_intrinsics: intrinsics.image_from_cam.0.into(),
+            depth_camera_intrinsics: intrinsics.image_from_camera.0.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
             max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],

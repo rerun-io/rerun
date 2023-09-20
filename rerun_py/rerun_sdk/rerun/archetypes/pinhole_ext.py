@@ -16,7 +16,7 @@ class PinholeExt:
 
     Parameters
     ----------
-    image_from_cam:
+    image_from_camera:
         Column-major projection matrix.
 
         Child from parent.
@@ -30,7 +30,7 @@ class PinholeExt:
         ```
     resolution:
         Pixel resolution (usually integers) of child image space. Width and height.
-        `image_from_cam` projects onto the space spanned by `(0,0)` and `resolution - 1`.
+        `image_from_camera` projects onto the space spanned by `(0,0)` and `resolution - 1`.
     focal_length_px:
         The focal length of the camera in pixels.
         This is the diagonal of the projection matrix.
@@ -53,7 +53,7 @@ class PinholeExt:
 
     def __init__(
         self: Any,
-        image_from_cam: Mat3x3Like | None = None,
+        image_from_camera: Mat3x3Like | None = None,
         resolution: Vec2DLike | None = None,
         width: int | float | None = None,
         height: int | float | None = None,
@@ -66,7 +66,7 @@ class PinholeExt:
             _send_warning("Can't set both resolution and width/height", 1)
 
         # TODO(andreas): Use a union type for the Pinhole component instead ~Zof converting to a matrix here
-        if image_from_cam is None:
+        if image_from_camera is None:
             # Resolution is needed for various fallbacks/error cases below.
             if resolution is None:
                 resolution = [1.0, 1.0]
@@ -100,11 +100,11 @@ class PinholeExt:
                 u_cen = width / 2
                 v_cen = height / 2
 
-            image_from_cam = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
+            image_from_camera = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
         else:
             if focal_length_px is not None:
                 _send_warning("Both child_from_parent and focal_length_px set", 1)
             if principal_point_px is not None:
                 _send_warning("Both child_from_parent and principal_point_px set", 1)
 
-        self.__attrs_init__(image_from_cam=image_from_cam, resolution=resolution)
+        self.__attrs_init__(image_from_camera=image_from_camera, resolution=resolution)

@@ -5,7 +5,7 @@ use re_components::ViewCoordinates;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
-    components::{DisconnectedSpace, ImageFromCamera, Transform3D},
+    components::{DisconnectedSpace, PinholeProjection, Transform3D},
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextSystem};
@@ -67,7 +67,7 @@ impl ViewContextSystem for TransformContext {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
             std::iter::once(Transform3D::name()).collect(),
-            std::iter::once(ImageFromCamera::name()).collect(),
+            std::iter::once(PinholeProjection::name()).collect(),
             std::iter::once(DisconnectedSpace::name()).collect(),
         ]
     }

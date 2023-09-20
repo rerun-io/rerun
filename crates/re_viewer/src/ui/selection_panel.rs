@@ -4,7 +4,7 @@ use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, Entity
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
 use re_types::{
-    components::{ImageFromCamera, Transform3D},
+    components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
@@ -451,7 +451,7 @@ fn pinhole_props_ui(
     let query = ctx.current_query();
     let store = &ctx.store_db.entity_db.data_store;
     if store
-        .query_latest_component::<ImageFromCamera>(entity_path, &query)
+        .query_latest_component::<PinholeProjection>(entity_path, &query)
         .is_some()
     {
         ui.label("Image plane distance");
@@ -489,7 +489,7 @@ fn depth_props_ui(
         return Some(());
     }
     let image_projection_ent_path = store
-        .query_latest_component_at_closest_ancestor::<ImageFromCamera>(entity_path, &query)?
+        .query_latest_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
         .0;
 
     let mut backproject_depth = *entity_props.backproject_depth;

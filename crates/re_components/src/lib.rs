@@ -19,7 +19,7 @@ use arrow2_convert::{
 use lazy_static::lazy_static;
 
 use re_types::{
-    components::{ImageFromCamera, Resolution},
+    components::{PinholeProjection, Resolution},
     Loggable,
 };
 
@@ -84,6 +84,7 @@ lazy_static! {
         HalfSizes2D::arrow_field(),
         HalfSizes3D::arrow_field(),
         Rotation3D::arrow_field(),
+        PinholeProjection::arrow_field(),
         InstanceKey::arrow_field(),
         KeypointId::arrow_field(),
         LineStrip2D::arrow_field(),

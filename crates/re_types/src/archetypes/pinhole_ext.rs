@@ -31,7 +31,7 @@ impl Pinhole {
     #[inline]
     pub fn fov_y(&self) -> Option<f32> {
         self.resolution
-            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_cam.col(1)[1]).atan())
+            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_camera.col(1)[1]).atan())
     }
 
     /// X & Y focal length in pixels.
@@ -39,7 +39,7 @@ impl Pinhole {
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[inline]
     pub fn focal_length_in_pixels(&self) -> Vec2D {
-        [self.image_from_cam.col(0)[0], self.image_from_cam.col(1)[1]].into()
+        [self.image_from_camera.col(0)[0], self.image_from_camera.col(1)[1]].into()
     }
 
     /// Focal length.
@@ -47,7 +47,7 @@ impl Pinhole {
     pub fn focal_length(&self) -> Option<f32> {
         // Use only the first element of the focal length vector, as we don't support non-square pixels.
         self.resolution
-            .map(|r| self.image_from_cam.col(0)[0] / r[0])
+            .map(|r| self.image_from_camera.col(0)[0] / r[0])
     }
 
     /// Principal point of the pinhole camera,
@@ -57,7 +57,7 @@ impl Pinhole {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn principal_point(&self) -> glam::Vec2 {
-        glam::vec2(self.image_from_cam.col(2)[0], self.image_from_cam.col(2)[1])
+        glam::vec2(self.image_from_camera.col(2)[0], self.image_from_camera.col(2)[1])
     }
 
     #[inline]
