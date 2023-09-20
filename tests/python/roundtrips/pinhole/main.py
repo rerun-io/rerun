@@ -19,7 +19,7 @@ def main() -> None:
 
     rr2.log(
         "pinhole",
-        rr2.Pinhole(image_from_camera=[[3.0, 0.0, 1.5], [0.0, 3.0, 1.5], [0.0, 0.0, 1.0]], resolution=[3840, 2160]),
+        rr2.Pinhole(image_from_camera=[[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [1.5, 1.5, 1.0]], resolution=[3840, 2160]),
     )
 
     rr.script_teardown(args)
