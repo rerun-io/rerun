@@ -30,8 +30,8 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'mesh_properties_ext.cpp'
 
-            static MeshProperties from_triangle_indices(std::vector<uint32_t> triangle_indices) {
-                return MeshProperties(triangle_indices);
+            static MeshProperties from_triangle_indices(std::vector<uint32_t> vertex_indices) {
+                return MeshProperties(vertex_indices);
             }
 
           public:

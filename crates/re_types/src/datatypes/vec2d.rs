@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A vector in 2D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Vec2D(pub [f32; 2usize]);
 

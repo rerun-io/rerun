@@ -41,7 +41,7 @@ impl From<GltfPrimitive> for Mesh3D {
 
         if let Some(indices) = indices {
             assert!(indices.len() % 3 == 0);
-            let triangle_indices = indices.chunks_exact(3).map(|xyz| (xyz[0], xyz[1], xyz[2]));
+            let triangle_indices = indices.chunks_exact(3).map(|tri| (tri[0], tri[1], tri[2]));
             mesh =
                 mesh.with_mesh_properties(MeshProperties::from_triangle_indices(triangle_indices));
         }

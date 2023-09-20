@@ -107,17 +107,18 @@ impl LoadedMesh {
         let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
         let num_positions = vertex_positions.len();
 
-        let triangle_indices = if let Some(triangle_indices) = mesh_properties
+        let triangle_indices = if let Some(vertex_indices) = mesh_properties
             .as_ref()
-            .and_then(|props| props.triangle_indices.as_ref())
+            .and_then(|props| props.vertex_indices.as_ref())
         {
-            let indices: &[glam::UVec3] = bytemuck::cast_slice(triangle_indices);
+            anyhow::ensure!(vertex_indices.len() % 3 == 0);
+            let indices: &[glam::UVec3] = bytemuck::cast_slice(vertex_indices);
             indices.to_vec()
         } else {
             anyhow::ensure!(num_positions % 3 == 0);
             (0..num_positions as u32)
                 .tuples::<(_, _, _)>()
-                .map(|(x, y, z)| glam::UVec3::new(x, y, z))
+                .map(glam::UVec3::from)
                 .collect::<Vec<_>>()
         };
         let num_indices = triangle_indices.len() * 3;

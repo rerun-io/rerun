@@ -7,8 +7,8 @@ use re_types::{
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
-    DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 use super::SpatialViewPartData;
@@ -37,8 +37,6 @@ impl Asset3DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let _default_color = DefaultColor::EntityPath(ent_path);
-
         let primary_row_id = ent_view.primary_row_id();
         let visitor = |instance_key: InstanceKey,
                        mesh: re_components::Mesh3D,

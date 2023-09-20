@@ -23,47 +23,6 @@
 namespace rerun {
     namespace archetypes {
         /// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
-        ///
-        /// ## Example
-        ///
-        /// Simple:
-        /// ```
-        ///// Log a simple colored triangle.
-        ///
-        /// #include <rerun.hpp>
-        ///
-        /// #include <cmath>
-        /// #include <numeric>
-        ///
-        /// namespace rr = rerun;
-        /// namespace rrc = rr::components;
-        ///
-        /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_mesh3d_indexed");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
-        ///
-        ///    std::vector<rr::components::Position3D> vertex_positions = {
-        ///        {0.0, 1.0, 0.0},
-        ///        {1.0, 0.0, 0.0},
-        ///        {0.0, 0.0, 0.0},
-        ///    };
-        ///    std::vector<rr::components::Color> vertex_colors = {
-        ///        {0, 0, 255},
-        ///        {0, 255, 0},
-        ///        {255, 0, 0},
-        ///    };
-        ///    std::vector<uint32_t> triangle_indices = {2, 1, 0};
-        ///
-        ///    rec.log(
-        ///        "triangle",
-        ///        rr::Mesh3D(vertex_positions)
-        ///            .with_vertex_normals({0.0, 0.0, 1.0})
-        ///            .with_vertex_colors(vertex_colors)
-        ///            .with_mesh_properties(rrc::MeshProperties::from_triangle_indices(triangle_indices))
-        ///            .with_mesh_material(rrc::Material::from_albedo_factor(0xCC00CCFF))
-        ///    );
-        ///}
-        /// ```
         struct Mesh3D {
             /// The positions of each vertex.
             ///
@@ -90,7 +49,7 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             std::optional<std::vector<rerun::components::ClassId>> class_ids;
 
-            /// Unique identifiers for each individual vertex in the batch.
+            /// Unique identifiers for each individual vertex in the mesh.
             std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
@@ -162,13 +121,13 @@ namespace rerun {
                 return *this;
             }
 
-            /// Unique identifiers for each individual vertex in the batch.
+            /// Unique identifiers for each individual vertex in the mesh.
             Mesh3D& with_instance_keys(std::vector<rerun::components::InstanceKey> _instance_keys) {
                 instance_keys = std::move(_instance_keys);
                 return *this;
             }
 
-            /// Unique identifiers for each individual vertex in the batch.
+            /// Unique identifiers for each individual vertex in the mesh.
             Mesh3D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
                 instance_keys = std::vector(1, std::move(_instance_keys));
                 return *this;

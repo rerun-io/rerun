@@ -317,10 +317,10 @@ impl DataUi for MeshProperties {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         let show_optional_indices = |ui: &mut egui::Ui| {
-            if let Some(triangle_indices) = self.triangle_indices.as_ref() {
+            if let Some(vertex_indices) = self.vertex_indices.as_ref() {
                 ui.label(format!(
                     "{} triangles",
-                    re_format::format_large_number(triangle_indices.len() as _)
+                    re_format::format_large_number((vertex_indices.len() / 3) as _)
                 ));
             } else {
                 ui.weak("(empty)");

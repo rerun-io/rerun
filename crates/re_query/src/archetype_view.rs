@@ -389,7 +389,7 @@ impl<A: Archetype> ArchetypeView<A> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            re_tracing::profile_scope!("try_from_arrow_opt", C::name());
+            re_tracing::profile_scope!("try_from_arrow", C::name());
             return Ok(Some(
                 C::try_from_arrow(component.values.as_arrow_ref())?.into_iter(),
             ));

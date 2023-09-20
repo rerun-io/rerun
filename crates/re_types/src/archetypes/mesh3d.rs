@@ -15,71 +15,71 @@
 
 /// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///
-/// ## Example
+/// ## Examples
 ///
-/// Simple:
+/// Simple indexed 3D mesh:
 /// ```ignore
 /// //! Log a simple colored triangle with indexed drawing.
 ///
 /// use rerun::{
-///    archetypes::Mesh3D,
-///    components::{Material, MeshProperties},
-///    RecordingStreamBuilder,
+///     archetypes::Mesh3D,
+///     components::{Material, MeshProperties},
+///     RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").memory()?;
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").memory()?;
 ///
-///    rec.log(
-///        "triangle",
-///        &Mesh3D::new([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
-///            .with_vertex_normals([[0.0, 0.0, 1.0]])
-///            .with_vertex_colors([0x0000FFFF, 0x00FF00FF, 0xFF0000FF])
-///            .with_mesh_properties(MeshProperties::from_triangle_indices([[2, 1, 0]]))
-///            .with_mesh_material(Material::from_albedo_factor(0xCC00CCFF)),
-///    )?;
+///     rec.log(
+///         "triangle",
+///         &Mesh3D::new([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
+///             .with_vertex_normals([[0.0, 0.0, 1.0]])
+///             .with_vertex_colors([0x0000FFFF, 0x00FF00FF, 0xFF0000FF])
+///             .with_mesh_properties(MeshProperties::from_triangle_indices([[2, 1, 0]]))
+///             .with_mesh_material(Material::from_albedo_factor(0xCC00CCFF)),
+///     )?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
 ///
-/// Partial updates:
+/// 3D mesh with partial updates:
 /// ```ignore
 /// //! Log a simple colored triangle, then update its vertices' positions each frame.
 ///
 /// use rerun::{archetypes::Mesh3D, components::Position3D, external::glam, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) =
-///        RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").memory()?;
+///     let (rec, storage) =
+///         RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").memory()?;
 ///
-///    let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+///     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 ///
-///    // Log the initial state of our triangle
-///    rec.set_time_sequence("frame", 0);
-///    rec.log(
-///        "triangle",
-///        &Mesh3D::new(vertex_positions)
-///            .with_vertex_normals([[0.0, 0.0, 1.0]])
-///            .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF]),
-///    )?;
+///     // Log the initial state of our triangle
+///     rec.set_time_sequence("frame", 0);
+///     rec.log(
+///         "triangle",
+///         &Mesh3D::new(vertex_positions)
+///             .with_vertex_normals([[0.0, 0.0, 1.0]])
+///             .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF]),
+///     )?;
 ///
-///    // Only update its vertices' positions each frame
-///    for i in 1..300 {
-///        rec.set_time_sequence("frame", i);
+///     // Only update its vertices' positions each frame
+///     for i in 1..300 {
+///         rec.set_time_sequence("frame", i);
 ///
-///        let factor = (i as f32 * 0.04).sin().abs();
-///        let vertex_positions: [Position3D; 3] = [
-///            (glam::Vec3::from(vertex_positions[0]) * factor).into(),
-///            (glam::Vec3::from(vertex_positions[1]) * factor).into(),
-///            (glam::Vec3::from(vertex_positions[2]) * factor).into(),
-///        ];
-///        rec.log_component_batches("triangle", false, 3, [&vertex_positions as _])?;
-///    }
+///         let factor = (i as f32 * 0.04).sin().abs();
+///         let vertex_positions: [Position3D; 3] = [
+///             (glam::Vec3::from(vertex_positions[0]) * factor).into(),
+///             (glam::Vec3::from(vertex_positions[1]) * factor).into(),
+///             (glam::Vec3::from(vertex_positions[2]) * factor).into(),
+///         ];
+///         rec.log_component_batches("triangle", false, 3, [&vertex_positions as _])?;
+///     }
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq)]
@@ -108,29 +108,29 @@ pub struct Mesh3D {
     /// The class ID provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 
-    /// Unique identifiers for each individual vertex in the batch.
+    /// Unique identifiers for each individual vertex in the mesh.
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Position3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Mesh3DIndicator".into(),
             "rerun.components.MeshProperties".into(),
+            "rerun.components.Vector3D".into(),
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
-            "rerun.components.Vector3D".into(),
         ]
     });
 
@@ -140,11 +140,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
             "rerun.components.Position3D".into(),
             "rerun.components.Mesh3DIndicator".into(),
             "rerun.components.MeshProperties".into(),
+            "rerun.components.Vector3D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
-            "rerun.components.Vector3D".into(),
         ]
     });
 

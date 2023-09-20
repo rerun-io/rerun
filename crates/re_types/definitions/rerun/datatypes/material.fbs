@@ -10,7 +10,7 @@ namespace rerun.datatypes;
 
 // Material properties of a mesh.
 struct Material (
-  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.derive": "Copy, PartialEq, Eq, Hash",
   order: 100
 ) {
   /// Optional color multiplier.

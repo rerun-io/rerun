@@ -14,9 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A uint vector in 4D space.
-#[derive(
-    Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable,
-)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct UVec4D(pub [u32; 4usize]);
 

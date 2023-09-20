@@ -22,16 +22,16 @@ namespace rerun {
         struct MeshProperties {
             /// If specified, is a flattened array of indices that describe the mesh's triangles,
             /// i.e. its length must be divisible by 3.
-            std::optional<std::vector<uint32_t>> triangle_indices;
+            std::optional<std::vector<uint32_t>> vertex_indices;
 
           public:
             MeshProperties() = default;
 
-            MeshProperties(std::optional<std::vector<uint32_t>> _triangle_indices)
-                : triangle_indices(std::move(_triangle_indices)) {}
+            MeshProperties(std::optional<std::vector<uint32_t>> _vertex_indices)
+                : vertex_indices(std::move(_vertex_indices)) {}
 
-            MeshProperties& operator=(std::optional<std::vector<uint32_t>> _triangle_indices) {
-                triangle_indices = std::move(_triangle_indices);
+            MeshProperties& operator=(std::optional<std::vector<uint32_t>> _vertex_indices) {
+                vertex_indices = std::move(_vertex_indices);
                 return *this;
             }
 

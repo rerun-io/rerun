@@ -13,7 +13,7 @@ namespace rerun.components;
 struct Position2D (
   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
   order: 100
 ) {

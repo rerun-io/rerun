@@ -20,9 +20,9 @@ class Mesh3D(Archetype):
     """
     A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
-    Example
-    -------
-    Simple:
+    Examples
+    --------
+    Simple indexed 3D mesh:
     ```python
     import rerun as rr
     import rerun.experimental as rr2
@@ -30,18 +30,18 @@ class Mesh3D(Archetype):
     rr.init("rerun_example_mesh3d_indexed", spawn=True)
 
     rr2.log(
-       "triangle",
-       rr2.Mesh3D(
-           [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
-           vertex_normals=[0.0, 0.0, 1.0],
-           vertex_colors=[[0, 0, 255], [0, 255, 0], [255, 0, 0]],
-           mesh_properties=rr2.cmp.MeshProperties(triangle_indices=[2, 1, 0]),
-           mesh_material=rr2.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
-       ),
+        "triangle",
+        rr2.Mesh3D(
+            [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            vertex_normals=[0.0, 0.0, 1.0],
+            vertex_colors=[[0, 0, 255], [0, 255, 0], [255, 0, 0]],
+            mesh_properties=rr2.cmp.MeshProperties(vertex_indices=[2, 1, 0]),
+            mesh_material=rr2.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+        ),
     )
     ```
 
-    Partial updates:
+    3D mesh with partial updates:
     ```python
     import numpy as np
     import rerun as rr
@@ -54,19 +54,19 @@ class Mesh3D(Archetype):
     # Log the initial state of our triangle
     rr.set_time_sequence("frame", 0)
     rr2.log(
-       "triangle",
-       rr2.Mesh3D(
-           vertex_positions,
-           vertex_normals=[0.0, 0.0, 1.0],
-           vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
-       ),
+        "triangle",
+        rr2.Mesh3D(
+            vertex_positions,
+            vertex_normals=[0.0, 0.0, 1.0],
+            vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+        ),
     )
 
     # Only update its vertices' positions each frame
     factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
     for i, factor in enumerate(factors):
-       rr.set_time_sequence("frame", i)
-       rr2.log_components("triangle", [rr2.cmp.Position3DArray.from_similar(vertex_positions * factor)])
+        rr.set_time_sequence("frame", i)
+        rr2.log_components("triangle", [rr2.cmp.Position3DArray.from_similar(vertex_positions * factor)])
     ```
     """
 
@@ -137,7 +137,7 @@ class Mesh3D(Archetype):
         converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
     )
     """
-    Unique identifiers for each individual vertex in the batch.
+    Unique identifiers for each individual vertex in the mesh.
     """
 
     __str__ = Archetype.__str__

@@ -36,40 +36,50 @@ impl Mesh3DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        // NOTE:
-        // - Per-vertex properties are joined using the cluster key as usual.
-        // - Per-mesh properties are just treated as a "global var", essentially.
-        let mesh = Mesh3D {
-            vertex_positions: arch_view.iter_required_component::<Position3D>()?.collect(),
-            vertex_normals: if arch_view.has_component::<Vector3D>() {
-                Some(
-                    arch_view
-                        .iter_optional_component::<Vector3D>()?
-                        .map(|comp| comp.unwrap_or(Vector3D::ZERO))
-                        .collect(),
-                )
-            } else {
-                None
-            },
-            vertex_colors: if arch_view.has_component::<Color>() {
-                let fallback = Color::new(0xFFFFFFFF);
-                Some(
-                    arch_view
-                        .iter_optional_component::<Color>()?
-                        .map(|comp| comp.unwrap_or(fallback))
-                        .collect(),
-                )
-            } else {
-                None
-            },
-            mesh_properties: arch_view
-                .iter_raw_optional_component::<MeshProperties>()?
-                .and_then(|mut comp_batch| comp_batch.next()),
-            mesh_material: arch_view
-                .iter_raw_optional_component::<Material>()?
-                .and_then(|mut comp_batch| comp_batch.next()),
-            class_ids: None,
-            instance_keys: None,
+        re_tracing::profile_function!();
+
+        let mesh = {
+            re_tracing::profile_scope!("collect");
+            // NOTE:
+            // - Per-vertex properties are joined using the cluster key as usual.
+            // - Per-mesh properties are just treated as a "global var", essentially.
+            Mesh3D {
+                vertex_positions: {
+                    re_tracing::profile_scope!("vertex_positions");
+                    arch_view.iter_required_component::<Position3D>()?.collect()
+                },
+                vertex_normals: if arch_view.has_component::<Vector3D>() {
+                    re_tracing::profile_scope!("vertex_normals");
+                    Some(
+                        arch_view
+                            .iter_optional_component::<Vector3D>()?
+                            .map(|comp| comp.unwrap_or(Vector3D::ZERO))
+                            .collect(),
+                    )
+                } else {
+                    None
+                },
+                vertex_colors: if arch_view.has_component::<Color>() {
+                    re_tracing::profile_scope!("vertex_colors");
+                    let fallback = Color::new(0xFFFFFFFF);
+                    Some(
+                        arch_view
+                            .iter_optional_component::<Color>()?
+                            .map(|comp| comp.unwrap_or(fallback))
+                            .collect(),
+                    )
+                } else {
+                    None
+                },
+                mesh_properties: arch_view
+                    .iter_raw_optional_component::<MeshProperties>()?
+                    .and_then(|mut comp_batch| comp_batch.next()),
+                mesh_material: arch_view
+                    .iter_raw_optional_component::<Material>()?
+                    .and_then(|mut comp_batch| comp_batch.next()),
+                class_ids: None,
+                instance_keys: None,
+            }
         };
 
         let primary_row_id = arch_view.primary_row_id();
@@ -86,6 +96,8 @@ impl Mesh3DPart {
         });
 
         if let Some(mesh) = mesh {
+            re_tracing::profile_scope!("mesh instances");
+
             instances.extend(
                 mesh.mesh_instances
                     .iter()

@@ -6,11 +6,11 @@ impl MeshProperties {
     #[inline]
     pub fn from_triangle_indices(indices: impl IntoIterator<Item = impl Into<UVec3D>>) -> Self {
         Self {
-            triangle_indices: Some(
+            vertex_indices: Some(
                 indices
                     .into_iter()
                     .map(Into::into)
-                    .flat_map(|xyz| [xyz.x(), xyz.y(), xyz.z()])
+                    .flat_map(|tri| [tri.x(), tri.y(), tri.z()])
                     .collect(),
             ),
         }

@@ -21,13 +21,13 @@ from .common_arrays import (
 
 mesh_properties_arrays: list[rrd.MeshPropertiesArrayLike] = [
     [],
-    rrd.MeshProperties(triangle_indices=[1, 2, 3, 4, 5, 6]),
-    [rrd.MeshProperties(triangle_indices=[1, 2, 3, 4, 5, 6])],
+    rrd.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
+    [rrd.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6])],
 ]
 
 
 def mesh_properties_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, rrc.MeshProperties(triangle_indices=[1, 2, 3, 4, 5, 6]))
+    expected = none_empty_or_value(obj, rrc.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]))
 
     return rrc.MeshPropertiesArray.optional_from_similar(expected)
 
@@ -129,13 +129,13 @@ def test_nullable_albedo_factor() -> None:
     )
 
 
-def test_nullable_triangle_indices() -> None:
+def test_nullable_vertex_indices() -> None:
     # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
     assert (
         len(
             rr2.cmp.MeshPropertiesArray.from_similar(
                 [
-                    rr2.cmp.MeshProperties(triangle_indices=[1, 2, 3, 4, 5, 6]),
+                    rr2.cmp.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
                     rr2.cmp.MeshProperties(),
                 ]
             )

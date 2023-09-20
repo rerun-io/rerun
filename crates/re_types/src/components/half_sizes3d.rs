@@ -17,7 +17,7 @@
 ///
 /// The box extends both in negative and positive direction along each axis.
 /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, Copy, PartialEq)]
 pub struct HalfSizes3D(pub crate::datatypes::Vec3D);
 
 impl<T: Into<crate::datatypes::Vec3D>> From<T> for HalfSizes3D {

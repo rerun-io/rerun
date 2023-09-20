@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A position in 3D space.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Position3D(pub crate::datatypes::Vec3D);
 

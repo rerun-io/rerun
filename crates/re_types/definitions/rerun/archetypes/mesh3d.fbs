@@ -9,37 +9,8 @@ namespace rerun.archetypes;
 
 /// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py Simple:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/mesh3d_indexed.py
-/// \py ```
-/// \py
-/// \py Partial updates:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/mesh3d_partial_updates.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs Simple:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/mesh3d_indexed.rs
-/// \rs ```
-/// \rs
-/// \rs Partial updates:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/mesh3d_partial_updates.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp Simple:
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/mesh3d_indexed.cpp
-/// \cpp ```
+/// \example mesh3d_indexed "Simple indexed 3D mesh"
+/// \example mesh3d_partial_updates "3D mesh with partial updates"
 table Mesh3D (
   "attr.rust.derive": "PartialEq",
   order: 100
@@ -61,7 +32,7 @@ table Mesh3D (
   /// An optional normal for each vertex.
   ///
   /// If specified, this must have as many elements as `vertex_positions`.
-  vertex_normals: [rerun.components.Vector3D] ("attr.rerun.component_optional", nullable, order: 3000);
+  vertex_normals: [rerun.components.Vector3D] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---
 
@@ -76,6 +47,6 @@ table Mesh3D (
   /// The class ID provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
 
-  /// Unique identifiers for each individual vertex in the batch.
+  /// Unique identifiers for each individual vertex in the mesh.
   instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
 }

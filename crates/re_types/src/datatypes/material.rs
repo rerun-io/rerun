@@ -13,7 +13,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct Material {
     /// Optional color multiplier.
     pub albedo_factor: Option<crate::datatypes::Color>,

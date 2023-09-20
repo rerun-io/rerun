@@ -18,5 +18,5 @@ table MeshProperties (
 
   /// If specified, is a flattened array of indices that describe the mesh's triangles,
   /// i.e. its length must be divisible by 3.
-  triangle_indices: [uint] (nullable, order: 100);
+  vertex_indices: [uint] (nullable, order: 100);
 }

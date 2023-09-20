@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A vector in 4D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Vec4D(pub [f32; 4usize]);
 
