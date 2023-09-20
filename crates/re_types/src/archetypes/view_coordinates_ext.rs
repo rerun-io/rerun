@@ -1,4 +1,4 @@
-use crate::{components, view_dir::ViewDir};
+use crate::{components, view_coordinates::ViewDir};
 
 use super::ViewCoordinates;
 

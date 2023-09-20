@@ -151,7 +151,7 @@ pub mod external {
 // additional helpers yet.
 pub mod image;
 pub mod tensor_data;
-pub mod view_dir;
+pub mod view_coordinates;
 
 #[cfg(feature = "testing")]
 pub mod testing;
