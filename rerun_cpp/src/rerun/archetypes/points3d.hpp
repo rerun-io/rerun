@@ -26,20 +26,20 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        ///```
-        ///// Log some very simple points.
+        /// ```cpp,ignore
+        /// // Log some very simple points.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_points3d_simple");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_points3d_simple");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    rec.log("points", rr::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
+        ///     rec.log("points", rr::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
         /// }
-        ///```
+        /// ```
         struct Points3D {
             /// All the 3D positions at which the point cloud shows points.
             std::vector<rerun::components::Position3D> positions;

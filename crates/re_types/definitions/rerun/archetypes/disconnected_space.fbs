@@ -12,24 +12,7 @@ namespace rerun.archetypes;
 /// If a transform or pinhole is logged on the same path, this archetype's components
 /// will be ignored.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/disconnected_space.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/disconnected_space.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/disconnected_space.cpp
-/// \cpp ```
+/// \example disconnected_space
 table DisconnectedSpace (
   "attr.rust.derive": "Copy, PartialEq, Eq",
   order: 100

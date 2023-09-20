@@ -23,12 +23,12 @@ namespace rerun {
         /// The severity level of a text log message.
         ///
         /// Recommended to be one of:
-        ///* `"CRITICAL"`
-        ///* `"ERROR"`
-        ///* `"WARN"`
-        ///* `"INFO"`
-        ///* `"DEBUG"`
-        ///* `"TRACE"`
+        /// * `"CRITICAL"`
+        /// * `"ERROR"`
+        /// * `"WARN"`
+        /// * `"INFO"`
+        /// * `"DEBUG"`
+        /// * `"TRACE"`
         struct TextLogLevel {
             rerun::datatypes::Utf8 value;
 

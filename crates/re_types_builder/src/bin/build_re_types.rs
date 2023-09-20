@@ -46,15 +46,32 @@ fn main() {
     let python_testing_output_dir_path = workspace_dir.join(PYTHON_TESTING_OUTPUT_DIR_PATH);
 
     re_log::info!("Running codegen…");
+    let (report, reporter) = re_types_builder::report::init();
+
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(definitions_dir_path, entrypoint_path);
 
     re_tracing::profile_scope!("Language-specific code-gen");
     join3(
-        || re_types_builder::generate_cpp_code(cpp_output_dir_path, &objects, &arrow_registry),
-        || re_types_builder::generate_rust_code(rust_output_dir_path, &objects, &arrow_registry),
+        || {
+            re_types_builder::generate_cpp_code(
+                &reporter,
+                cpp_output_dir_path,
+                &objects,
+                &arrow_registry,
+            );
+        },
+        || {
+            re_types_builder::generate_rust_code(
+                &reporter,
+                rust_output_dir_path,
+                &objects,
+                &arrow_registry,
+            );
+        },
         || {
             re_types_builder::generate_python_code(
+                &reporter,
                 python_output_dir_path,
                 python_testing_output_dir_path,
                 &objects,
@@ -62,6 +79,8 @@ fn main() {
             );
         },
     );
+
+    report.panic_on_errors();
 
     re_log::info!("Done.");
 }

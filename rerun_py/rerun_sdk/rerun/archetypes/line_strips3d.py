@@ -20,8 +20,8 @@ class LineStrips3D(Archetype):
     """
     A batch of line strips with positions and optional colors, radii, labels, etc.
 
-    Example
-    -------
+    Examples
+    --------
     Many strips:
     ```python
     import rerun as rr
@@ -30,30 +30,30 @@ class LineStrips3D(Archetype):
     rr.init("rerun_example_line_strip3d", spawn=True)
 
     rr2.log(
-       "strips",
-       rr2.LineStrips3D(
-           [
-               [
-                   [0, 0, 2],
-                   [1, 0, 2],
-                   [1, 1, 2],
-                   [0, 1, 2],
-               ],
-               [
-                   [0, 0, 0],
-                   [0, 0, 1],
-                   [1, 0, 0],
-                   [1, 0, 1],
-                   [1, 1, 0],
-                   [1, 1, 1],
-                   [0, 1, 0],
-                   [0, 1, 1],
-               ],
-           ],
-           colors=[[255, 0, 0], [0, 255, 0]],
-           radii=[0.025, 0.005],
-           labels=["one strip here", "and one strip there"],
-       ),
+        "strips",
+        rr2.LineStrips3D(
+            [
+                [
+                    [0, 0, 2],
+                    [1, 0, 2],
+                    [1, 1, 2],
+                    [0, 1, 2],
+                ],
+                [
+                    [0, 0, 0],
+                    [0, 0, 1],
+                    [1, 0, 0],
+                    [1, 0, 1],
+                    [1, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0],
+                    [0, 1, 1],
+                ],
+            ],
+            colors=[[255, 0, 0], [0, 255, 0]],
+            radii=[0.025, 0.005],
+            labels=["one strip here", "and one strip there"],
+        ),
     )
     ```
 
@@ -67,17 +67,17 @@ class LineStrips3D(Archetype):
     rr.init("rerun_example_line_segments3d", spawn=True)
 
     rr2.log(
-       "segments",
-       rr2.LineStrips3D(
-           np.array(
-               [
-                   [[0, 0, 0], [0, 0, 1]],
-                   [[1, 0, 0], [1, 0, 1]],
-                   [[1, 1, 0], [1, 1, 1]],
-                   [[0, 1, 0], [0, 1, 1]],
-               ],
-           )
-       ),
+        "segments",
+        rr2.LineStrips3D(
+            np.array(
+                [
+                    [[0, 0, 0], [0, 0, 1]],
+                    [[1, 0, 0], [1, 0, 1]],
+                    [[1, 1, 0], [1, 1, 1]],
+                    [[0, 1, 0], [0, 1, 1]],
+                ],
+            )
+        ),
     )
     ```
     """

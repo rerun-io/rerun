@@ -113,7 +113,7 @@
 )]
 mod reflection;
 
-use anyhow::Context;
+use anyhow::Context as _;
 
 pub use self::reflection::reflection::{
     root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
@@ -129,12 +129,14 @@ mod arrow_registry;
 mod codegen;
 #[allow(clippy::unimplemented)]
 mod objects;
+pub mod report;
 
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{CodeGenerator, CppCodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
 };
+pub use self::report::{Report, Reporter};
 
 // --- Attributes ---
 
@@ -297,20 +299,23 @@ pub fn generate_gitattributes_for_generated_files(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let reporter = re_types_builder::report::init().1;
 /// re_types_builder::generate_cpp_code(
+///     &reporter,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_cpp_code(
+    reporter: &Reporter,
     output_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
     let mut gen = CppCodeGenerator::new(output_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(reporter, objects, arrow_registry);
     generate_gitattributes_for_generated_files(&output_path, filepaths.into_iter());
 }
 
@@ -326,20 +331,23 @@ pub fn generate_cpp_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let reporter = re_types_builder::report::init().1;
 /// re_types_builder::generate_rust_code(
+///     &reporter,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_rust_code(
+    reporter: &Reporter,
     output_crate_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(reporter, objects, arrow_registry);
     generate_gitattributes_for_generated_files(&output_crate_path, filepaths.into_iter());
 }
 
@@ -355,7 +363,9 @@ pub fn generate_rust_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let reporter = re_types_builder::report::init().1;
 /// re_types_builder::generate_python_code(
+///     &reporter,
 ///     "./rerun_py/rerun_sdk",
 ///     "./rerun_py/tests",
 ///     &objects,
@@ -363,6 +373,7 @@ pub fn generate_rust_code(
 /// );
 /// ```
 pub fn generate_python_code(
+    reporter: &Reporter,
     output_pkg_path: impl AsRef<Utf8Path>,
     testing_output_pkg_path: impl AsRef<Utf8Path>,
     objects: &Objects,
@@ -371,7 +382,7 @@ pub fn generate_python_code(
     re_tracing::profile_function!();
     let mut gen =
         PythonCodeGenerator::new(output_pkg_path.as_ref(), testing_output_pkg_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(reporter, objects, arrow_registry);
     generate_gitattributes_for_generated_files(
         &output_pkg_path,
         filepaths

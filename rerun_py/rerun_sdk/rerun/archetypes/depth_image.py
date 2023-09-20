@@ -37,6 +37,7 @@ class DepthImage(DepthImageExt, Archetype):
     image[0:4, 0:6] = 20000
     image[4:8, 6:12] = 45000
 
+
     rr.init("rerun_example_depth_image", spawn=True)
 
     # Log the tensor, assigning names to each dimension
