@@ -5,159 +5,7 @@ use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use super::{FieldError, LegacyVec4D};
-
-// ----------------------------------------------------------------------------
-
-// TODO(cmc): Let's make both mesh Component types use friendlier types for their inner elements
-// (e.g. positions should be a vec of Vec3D, transform should be a Mat4, etc).
-// This will also make error checking for invalid user data much nicer.
-//
-// But first let's do the python example and see how everything starts to take shape...
-
-// TODO(cmc): Let's move all the RefCounting stuff to the top-level.
-
-#[derive(thiserror::Error, Debug)]
-pub enum RawMeshError {
-    #[error("Positions array length must be divisible by 3 (xyz, xyz, …), got {0}")]
-    PositionsNotDivisibleBy3(usize),
-
-    #[error("Indices array length must be divisible by 3 (triangle list), got {0}")]
-    IndicesNotDivisibleBy3(usize),
-
-    #[error("No indices were specified, so the number of positions must be divisible by 9 [(xyz xyz xyz), …], got {0}")]
-    PositionsAreNotTriangles(usize),
-
-    #[error("Index out of bounds: got index={index} with {num_vertices} vertices")]
-    IndexOutOfBounds { index: u32, num_vertices: usize },
-
-    #[error(
-        "Positions & normals array must have the same length, \
-        got positions={0} vs. normals={1}"
-    )]
-    MismatchedPositionsNormals(usize, usize),
-}
-
-/// A raw "triangle soup" mesh.
-///
-/// ```
-/// # use re_components::RawMesh3D;
-/// # use arrow2_convert::field::ArrowField;
-/// # use arrow2::datatypes::{DataType, Field, UnionMode};
-/// assert_eq!(
-///     RawMesh3D::data_type(),
-///     DataType::Struct(vec![
-///         Field::new("vertex_positions", DataType::List(Box::new(
-///             Field::new("item", DataType::Float32, false)),
-///         ), false),
-///         Field::new("vertex_colors", DataType::List(Box::new(
-///             Field::new("item", DataType::UInt32, false)),
-///         ), true),
-///         Field::new("vertex_normals", DataType::List(Box::new(
-///             Field::new("item", DataType::Float32, false)),
-///         ), true),
-///         Field::new("indices", DataType::List(Box::new(
-///             Field::new("item", DataType::UInt32, false)),
-///         ), true),
-///         Field::new("albedo_factor", DataType::FixedSizeList(
-///             Box::new(Field::new("item", DataType::Float32, false)),
-///             4
-///         ), true),
-///     ]),
-/// );
-/// ```
-#[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, PartialEq)]
-pub struct RawMesh3D {
-    /// The flattened vertex positions array of this mesh.
-    ///
-    /// The length of this vector should always be divisible by three (since this is a 3D mesh).
-    ///
-    /// If no indices are specified, then each triplet of vertex positions are interpreted as a triangle
-    /// and the length of this must be divisible by 9.
-    pub vertex_positions: Buffer<f32>,
-
-    /// Per-vertex albedo colors.
-    /// This is actually an encoded [`super::Color`]
-    pub vertex_colors: Option<Buffer<u32>>,
-
-    /// Optionally, the flattened normals array for this mesh.
-    ///
-    /// If specified, this must match the length of `Self::positions`.
-    pub vertex_normals: Option<Buffer<f32>>,
-
-    /// Optionally, the flattened indices array for this mesh.
-    ///
-    /// Meshes are always triangle lists, i.e. the length of this vector should always be
-    /// divisible by three.
-    pub indices: Option<Buffer<u32>>,
-
-    /// Albedo factor applied to the final color of the mesh.
-    ///
-    /// `[1.0, 1.0, 1.0, 1.0]` if unspecified.
-    pub albedo_factor: Option<LegacyVec4D>,
-    //
-    // TODO(cmc): We need to support vertex colors and/or texturing, otherwise it's pretty
-    // hard to see anything with complex enough meshes (and hovering doesn't really help
-    // when everything's white).
-    // pub colors: Option<Vec<u8>>,
-    // pub texcoords: Option<Vec<f32>>,
-}
-
-impl RawMesh3D {
-    pub fn sanity_check(&self) -> Result<(), RawMeshError> {
-        if self.vertex_positions.len() % 3 != 0 {
-            return Err(RawMeshError::PositionsNotDivisibleBy3(
-                self.vertex_positions.len(),
-            ));
-        }
-
-        let num_vertices = self.vertex_positions.len() / 3;
-
-        if let Some(indices) = &self.indices {
-            if indices.len() % 3 != 0 {
-                return Err(RawMeshError::IndicesNotDivisibleBy3(indices.len()));
-            }
-
-            for &index in indices.iter() {
-                if num_vertices <= index as usize {
-                    return Err(RawMeshError::IndexOutOfBounds {
-                        index,
-                        num_vertices,
-                    });
-                }
-            }
-        } else if self.vertex_positions.len() % 9 != 0 {
-            return Err(RawMeshError::PositionsAreNotTriangles(
-                self.vertex_positions.len(),
-            ));
-        }
-
-        if let Some(normals) = &self.vertex_normals {
-            if normals.len() != self.vertex_positions.len() {
-                return Err(RawMeshError::MismatchedPositionsNormals(
-                    self.vertex_positions.len(),
-                    normals.len(),
-                ));
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    pub fn num_vertices(&self) -> usize {
-        self.vertex_positions.len() / 3
-    }
-
-    #[inline]
-    pub fn num_triangles(&self) -> usize {
-        if let Some(indices) = &self.indices {
-            indices.len() / 3
-        } else {
-            self.num_vertices() / 3
-        }
-    }
-}
+use super::FieldError;
 
 // ----------------------------------------------------------------------------
 
@@ -311,14 +159,13 @@ impl std::fmt::Display for MeshFormat {
 /// Cheaply clonable as it is all refcounted internally.
 ///
 /// ```
-/// # use re_components::{Mesh3D, EncodedMesh3D, RawMesh3D};
+/// # use re_components::{Mesh3D, EncodedMesh3D};
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(
 ///     Mesh3D::data_type(),
 ///     DataType::Union(vec![
 ///         Field::new("Encoded", EncodedMesh3D::data_type(), false),
-///         Field::new("Raw", RawMesh3D::data_type(), false),
 ///     ], None, UnionMode::Dense),
 /// );
 /// ```
@@ -326,63 +173,12 @@ impl std::fmt::Display for MeshFormat {
 #[arrow_field(type = "dense")]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
-    Raw(RawMesh3D),
 }
 
 impl re_log_types::LegacyComponent for Mesh3D {
     #[inline]
     fn legacy_name() -> re_log_types::ComponentName {
         "rerun.mesh3d".into()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn example_raw_mesh() -> RawMesh3D {
-        let mesh = RawMesh3D {
-            vertex_positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0].into(),
-            vertex_colors: Some(vec![0xff0000ff, 0x00ff00ff, 0x0000ffff].into()),
-            indices: Some(vec![0, 1, 2].into()),
-            vertex_normals: Some(
-                vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
-            ),
-            albedo_factor: LegacyVec4D([0.5, 0.5, 0.5, 1.0]).into(),
-        };
-        mesh.sanity_check().unwrap();
-        mesh
-    }
-
-    #[test]
-    fn test_mesh_roundtrip() {
-        use arrow2::array::Array;
-        use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
-
-        // Encoded
-        {
-            let mesh_in = vec![Mesh3D::Encoded(EncodedMesh3D {
-                format: MeshFormat::Glb,
-                bytes: vec![5, 9, 13, 95, 38, 42, 98, 17].into(),
-                transform: [
-                    [1.0, 2.0, 3.0],
-                    [4.0, 5.0, 6.0],
-                    [7.0, 8.0, 9.0],
-                    [10.0, 11.0, 12.],
-                ],
-            })];
-            let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
-            let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
-            assert_eq!(mesh_in, mesh_out);
-        }
-
-        // Raw
-        {
-            let mesh_in = vec![Mesh3D::Raw(example_raw_mesh())];
-            let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
-            let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
-            assert_eq!(mesh_in, mesh_out);
-        }
     }
 }
 

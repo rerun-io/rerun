@@ -113,7 +113,7 @@
 )]
 mod reflection;
 
-use anyhow::Context;
+use anyhow::Context as _;
 
 pub use self::reflection::reflection::{
     root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
@@ -129,12 +129,14 @@ mod arrow_registry;
 mod codegen;
 #[allow(clippy::unimplemented)]
 mod objects;
+pub mod report;
 
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{CodeGenerator, CppCodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
 };
+pub use self::report::{Report, Reporter};
 
 // --- Attributes ---
 
@@ -297,20 +299,23 @@ pub fn generate_gitattributes_for_generated_files(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let reporter = re_types_builder::report::init().1;
 /// re_types_builder::generate_cpp_code(
+///     &reporter,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_cpp_code(
+    reporter: &Reporter,
     output_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
     let mut gen = CppCodeGenerator::new(output_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(reporter, objects, arrow_registry);
     generate_gitattributes_for_generated_files(&output_path, filepaths.into_iter());
 }
 
@@ -326,20 +331,23 @@ pub fn generate_cpp_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let reporter = re_types_builder::report::init().1;
 /// re_types_builder::generate_rust_code(
+///     &reporter,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_rust_code(
+    reporter: &Reporter,
     output_crate_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(reporter, objects, arrow_registry);
     generate_gitattributes_for_generated_files(&output_crate_path, filepaths.into_iter());
 }
 
@@ -355,7 +363,9 @@ pub fn generate_rust_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let reporter = re_types_builder::report::init().1;
 /// re_types_builder::generate_python_code(
+///     &reporter,
 ///     "./rerun_py/rerun_sdk",
 ///     "./rerun_py/tests",
 ///     &objects,
@@ -363,6 +373,7 @@ pub fn generate_rust_code(
 /// );
 /// ```
 pub fn generate_python_code(
+    reporter: &Reporter,
     output_pkg_path: impl AsRef<Utf8Path>,
     testing_output_pkg_path: impl AsRef<Utf8Path>,
     objects: &Objects,
@@ -371,7 +382,7 @@ pub fn generate_python_code(
     re_tracing::profile_function!();
     let mut gen =
         PythonCodeGenerator::new(output_pkg_path.as_ref(), testing_output_pkg_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(reporter, objects, arrow_registry);
     generate_gitattributes_for_generated_files(
         &output_pkg_path,
         filepaths
@@ -443,6 +454,7 @@ pub(crate) fn to_snake_case(s: &str) -> String {
 
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
+        *last = last.replace("UVec", "uvec");
         *last = rerun_snake.convert(&last);
     }
     parts.join(".")
@@ -466,6 +478,15 @@ fn test_to_snake_case() {
     assert_eq!(
         to_snake_case("rerun.datatypes.utf8"),
         "rerun.datatypes.utf8"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.datatypes.UVec2D"),
+        "rerun.datatypes.uvec2d"
+    );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.uvec2d"),
+        "rerun.datatypes.uvec2d"
     );
 
     assert_eq!(
@@ -507,6 +528,7 @@ pub(crate) fn to_pascal_case(s: &str) -> String {
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
         *last = last
+            .replace("uvec", "UVec")
             .replace("2d", "2D")
             .replace("3d", "3D")
             .replace("4d", "4D");
@@ -524,6 +546,15 @@ fn test_to_pascal_case() {
     assert_eq!(
         to_pascal_case("rerun.components.Position2D"),
         "rerun.components.Position2D"
+    );
+
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.uvec2d"),
+        "rerun.datatypes.UVec2D"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.UVec2D"),
+        "rerun.datatypes.UVec2D"
     );
 
     assert_eq!(

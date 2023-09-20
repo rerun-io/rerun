@@ -5,7 +5,6 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
 from rerun.log_deprecated import Colors, _normalize_colors
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -81,6 +80,8 @@ def log_mesh(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun.experimental import Mesh3D, cmp, log
+
     recording = RecordingStream.to_native(recording)
 
     positions = np.asarray(positions, dtype=np.float32).flatten()
@@ -94,17 +95,14 @@ def log_mesh(
     if vertex_colors is not None:
         vertex_colors = _normalize_colors(vertex_colors)
 
-    # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(
-        entity_path,
-        position_buffers=[positions.flatten()],
-        vertex_color_buffers=[vertex_colors],
-        index_buffers=[indices],
-        normal_buffers=[normals],
-        albedo_factors=[albedo_factor],
-        timeless=timeless,
-        recording=recording,
+    mesh3d = Mesh3D(
+        vertex_positions=positions,
+        vertex_normals=normals,
+        vertex_colors=vertex_colors,
+        mesh_properties=cmp.MeshProperties(vertex_indices=indices),
+        mesh_material=cmp.Material(albedo_factor=albedo_factor),
     )
+    return log(entity_path, mesh3d, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -147,27 +145,4 @@ def log_meshes(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-
-    recording = RecordingStream.to_native(recording)
-
-    position_buffers = [np.asarray(p, dtype=np.float32).flatten() for p in position_buffers]
-    if vertex_color_buffers is not None:
-        vertex_color_buffers = [_normalize_colors(c) for c in vertex_color_buffers]
-    if index_buffers is not None:
-        index_buffers = [np.asarray(i, dtype=np.uint32).flatten() if i else None for i in index_buffers]
-    if normal_buffers is not None:
-        normal_buffers = [np.asarray(n, dtype=np.float32).flatten() if n else None for n in normal_buffers]
-    if albedo_factors is not None:
-        albedo_factors = [np.asarray(af, dtype=np.float32).flatten() if af else None for af in albedo_factors]
-
-    # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(
-        entity_path,
-        position_buffers=position_buffers,
-        vertex_color_buffers=vertex_color_buffers,
-        index_buffers=index_buffers,
-        normal_buffers=normal_buffers,
-        albedo_factors=albedo_factors,
-        timeless=timeless,
-        recording=recording,
-    )
+    raise ValueError("Logging multiple meshes at the same entity path is not supported")

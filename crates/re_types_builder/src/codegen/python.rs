@@ -8,9 +8,9 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, StringExt as _},
+    codegen::{autogen_warning, Examples, StringExt as _},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 /// The standard python init method.
@@ -81,6 +81,7 @@ impl PythonCodeGenerator {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
+        _reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -901,6 +902,10 @@ fn code_for_union(
 
 // --- Code generators ---
 
+fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
+    Examples::collect(docs, "py", &["```python"], &["```"])
+}
+
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     let mut quoted_names: Vec<_> = names
         .into_iter()
@@ -912,7 +917,25 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 }
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
-    let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    for line in &mut lines {
+        if line.starts_with(char::is_whitespace) {
+            line.remove(0);
+        }
+    }
+
+    let examples = collect_examples(docs).unwrap();
+    if !examples.is_empty() {
+        lines.push(String::new());
+        let (section_title, divider) = if examples.count == 1 {
+            ("Example", "-------")
+        } else {
+            ("Examples", "--------")
+        };
+        lines.push(section_title.into());
+        lines.push(divider.into());
+        lines.extend(examples.lines);
+    }
 
     if lines.is_empty() {
         return String::new();
@@ -932,13 +955,24 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     let mut lines = vec![];
 
     for field in fields {
-        let field_lines = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        for line in &mut content {
+            if line.starts_with(char::is_whitespace) {
+                line.remove(0);
+            }
+        }
+
+        let examples = collect_examples(&field.docs).unwrap();
+        if !examples.is_empty() {
+            content.push(String::new()); // blank line between docs and examples
+            content.extend(examples.lines);
+        }
         lines.push(format!(
             "{} ({}):",
             field.name,
             quote_field_type_from_field(objects, field, false).0
         ));
-        lines.extend(field_lines.into_iter().map(|line| format!("    {line}")));
+        lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }
 

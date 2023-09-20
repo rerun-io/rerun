@@ -9,42 +9,8 @@ namespace rerun.archetypes;
 
 /// A batch of line strips with positions and optional colors, radii, labels, etc.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py Many strips:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/line_strip2d_batch.py
-/// \py ```
-/// \py
-/// \py Many individual segments:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/line_segments2d_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs Many strips:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/line_strip2d_batch.rs
-/// \rs ```
-/// \rs
-/// \rs Many individual segments:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/line_segments2d_simple.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp Many strips:
-/// \cpp ```ignore
-/// \cpp \include:../../../../../docs/code-examples/line_strip2d_batch.cpp
-/// \cpp ```
-/// \cpp
-/// \cpp Many individual segments:
-/// \cpp ```ignore
-/// \cpp \include:../../../../../docs/code-examples/line_segments2d_simple.cpp
-/// \cpp ```
+/// \example line_strip2d_batch "Many strips"
+/// \example line_segments2d_simple "Many individual segments"
 table LineStrips2D (
   "attr.rust.derive": "PartialEq",
   order: 100

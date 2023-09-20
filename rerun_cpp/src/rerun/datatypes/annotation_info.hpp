@@ -25,7 +25,7 @@ namespace rerun {
         /// Color and label will be used to annotate entities/keypoints which reference the id.
         /// The id refers either to a class or key-point id
         struct AnnotationInfo {
-            ///`ClassId` or `KeypointId` to which this annotation info belongs.
+            /// `ClassId` or `KeypointId` to which this annotation info belongs.
             uint16_t id;
 
             /// The label that will be shown in the UI.

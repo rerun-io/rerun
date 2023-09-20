@@ -1,6 +1,7 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
 mod arrows3d;
+mod assets;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
@@ -46,13 +47,14 @@ pub fn register_parts(
     system_registry: &mut SpaceViewSystemRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
     system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
+    system_registry.register_part_system::<assets::Asset3DPart>()?;
     system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
     system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
     system_registry.register_part_system::<cameras::CamerasPart>()?;
     system_registry.register_part_system::<images::ImagesPart>()?;
     system_registry.register_part_system::<lines2d::Lines2DPart>()?;
     system_registry.register_part_system::<lines3d::Lines3DPart>()?;
-    system_registry.register_part_system::<meshes::MeshPart>()?;
+    system_registry.register_part_system::<meshes::Mesh3DPart>()?;
     system_registry.register_part_system::<points2d::Points2DPart>()?;
     system_registry.register_part_system::<points3d::Points3DPart>()?;
     system_registry.register_part_system::<transform3d_arrows::Transform3DArrowsPart>()?;

@@ -14,18 +14,7 @@ namespace rerun.archetypes;
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/segmentation_image_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/segmentation_image_simple.rs
-/// \rs ```
+/// \example segmentation_image_simple
 table SegmentationImage (
   "attr.rust.derive": "PartialEq",
   order: 100

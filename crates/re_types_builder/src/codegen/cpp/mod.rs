@@ -13,10 +13,10 @@ use rayon::prelude::*;
 
 use crate::codegen::common::write_file;
 use crate::{
-    codegen::autogen_warning, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
-    Type,
+    codegen::{autogen_warning, Examples},
+    ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects, Type,
 };
-use crate::{Object, ObjectSpecifics, ATTR_CPP_NO_FIELD_CTORS};
+use crate::{Object, ObjectSpecifics, Reporter, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -107,6 +107,7 @@ pub struct CppCodeGenerator {
 impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
+        _reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -1892,8 +1893,27 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
+fn collect_examples(docs: &Docs) -> Examples {
+    // TODO(#2919): `cpp` examples are not required for now, so just default to empty
+    Examples::collect(docs, "cpp", &["```cpp,ignore"], &["```"]).unwrap_or_default()
+}
+
 fn quote_docstrings(docs: &Docs) -> TokenStream {
-    let lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+
+    let examples = collect_examples(docs);
+    if !examples.is_empty() {
+        lines.push(String::new());
+        let section_title = if examples.count == 1 {
+            "Example"
+        } else {
+            "Examples"
+        };
+        lines.push(format!("## {section_title}"));
+        lines.push(String::new());
+        lines.extend(examples.lines.into_iter().map(|line| format!(" {line}")));
+    }
+
     let quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN

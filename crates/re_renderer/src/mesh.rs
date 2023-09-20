@@ -50,8 +50,7 @@ pub mod mesh_vertices {
 pub struct Mesh {
     pub label: DebugLabel,
 
-    /// Length must be a multipel of three.
-    pub indices: Vec<u32>, // TODO(andreas): different index formats?
+    pub triangle_indices: Vec<glam::UVec3>,
 
     pub vertex_positions: Vec<glam::Vec3>,
 
@@ -94,15 +93,13 @@ impl Mesh {
             });
         }
 
-        if self.indices.len() % 3 != 0 {
-            return Err(MeshError::WrongNumberOfIndices {
-                num_indices: self.indices.len(),
-            });
-        }
-
-        for &index in &self.indices {
-            if num_pos <= index as usize {
-                return Err(MeshError::IndexOutOfBounds { num_pos, index });
+        for indices in &self.triangle_indices {
+            let max_index = indices.max_element();
+            if num_pos <= max_index as usize {
+                return Err(MeshError::IndexOutOfBounds {
+                    num_pos,
+                    index: max_index,
+                });
             }
         }
 
@@ -123,9 +120,6 @@ pub enum MeshError {
         num_pos: usize,
         num_texcoords: usize,
     },
-
-    #[error("Number of indices {num_indices} was not a multiple of 3")]
-    WrongNumberOfIndices { num_indices: usize },
 
     #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
     IndexOutOfBounds { num_pos: usize, index: u32 },
@@ -199,7 +193,7 @@ impl GpuMesh {
             "uploading new mesh named {:?} with {} vertices and {} triangles",
             data.label.get(),
             data.vertex_positions.len(),
-            data.indices.len() / 3
+            data.triangle_indices.len(),
         );
 
         // TODO(andreas): Have a variant that gets this from a stack allocator.
@@ -242,7 +236,7 @@ impl GpuMesh {
             vertex_buffer_combined
         };
 
-        let index_buffer_size = (size_of::<u32>() * data.indices.len()) as u64;
+        let index_buffer_size = (size_of::<glam::UVec3>() * data.triangle_indices.len()) as u64;
         let index_buffer = {
             let index_buffer = pools.buffers.alloc(
                 device,
@@ -254,12 +248,12 @@ impl GpuMesh {
                 },
             );
 
-            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<u32>(
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<glam::UVec3>(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                data.indices.len(),
+                data.triangle_indices.len(),
             );
-            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.indices))?;
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.triangle_indices))?;
             staging_buffer.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &index_buffer,

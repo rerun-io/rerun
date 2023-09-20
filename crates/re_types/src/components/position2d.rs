@@ -14,7 +14,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A position in 2D space.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct Position2D(pub crate::datatypes::Vec2D);
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for Position2D {
