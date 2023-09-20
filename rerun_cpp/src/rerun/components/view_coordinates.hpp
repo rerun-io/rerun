@@ -36,6 +36,26 @@ namespace rerun {
             static const char NAME[];
 
           public:
+            // Extensions to generated type defined in 'view_coordinates_ext.cpp'
+
+            enum ViewDir {
+                Up = 1,
+                Down = 2,
+                Right = 3,
+                Left = 4,
+                Forward = 5,
+                Back = 6,
+            };
+
+            /// Construct Vec3D from x/y/z values.
+            constexpr ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
+                : coordinates{axis0, axis1, axis2} {}
+
+            /// Construct Vec3D from x/y/z values.
+            constexpr ViewCoordinates(ViewDir axis0, ViewDir axis1, ViewDir axis2)
+                : coordinates{axis0, axis1, axis2} {}
+
+          public:
             ViewCoordinates() = default;
 
             ViewCoordinates(const uint8_t (&_coordinates)[3])

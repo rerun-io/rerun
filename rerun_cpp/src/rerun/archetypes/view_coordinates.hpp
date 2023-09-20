@@ -24,6 +24,15 @@ namespace rerun {
             static const char INDICATOR_COMPONENT_NAME[];
 
           public:
+            // Extensions to generated type defined in 'view_coordinates_ext.cpp'
+
+            /// Construct Vec3D from x/y/z values.
+            constexpr ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
+                : coordinates(rerun::components::ViewCoordinates(axis0, axis1, axis2)) {}
+
+            static const rerun::archetypes::ViewCoordinates RDF;
+
+          public:
             ViewCoordinates() = default;
 
             ViewCoordinates(rerun::components::ViewCoordinates _coordinates)
