@@ -127,7 +127,7 @@ pub use self::reflection::reflection::{
 mod arrow_registry;
 #[allow(clippy::unimplemented)]
 mod codegen;
-mod context;
+pub mod context;
 #[allow(clippy::unimplemented)]
 mod objects;
 
@@ -299,7 +299,7 @@ pub fn generate_gitattributes_for_generated_files(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
-/// # let ctx = re_types_builder::context::dummy_ctx();
+/// # let ctx = re_types_builder::context::context().1;
 /// re_types_builder::generate_cpp_code(
 ///     &ctx,
 ///     ".",
@@ -331,7 +331,7 @@ pub fn generate_cpp_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
-/// # let ctx = re_types_builder::context::dummy_ctx();
+/// # let ctx = re_types_builder::context::context().1;
 /// re_types_builder::generate_rust_code(
 ///     &ctx,
 ///     ".",
@@ -363,7 +363,7 @@ pub fn generate_rust_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
-/// # let ctx = re_types_builder::context::dummy_ctx();
+/// # let ctx = re_types_builder::context::context().1;
 /// re_types_builder::generate_python_code(
 ///     &ctx,
 ///     "./rerun_py/rerun_sdk",

@@ -146,8 +146,3 @@ impl IntoError for anyhow::Error {
         self
     }
 }
-
-#[cfg(test)]
-pub fn __dummy_context() -> Context {
-    context().1
-}
