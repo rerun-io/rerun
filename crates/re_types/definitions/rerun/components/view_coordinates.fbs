@@ -34,5 +34,5 @@ struct ViewCoordinates (
   "attr.rust.derive": "Copy, Eq, PartialEq",
   order: 100
 ) {
-  coordinates: [byte: 3] (order: 100);
+  coordinates: [ubyte: 3] (order: 100);
 }
