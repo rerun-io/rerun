@@ -12,19 +12,12 @@ if TYPE_CHECKING:
 
 class ViewCoordinatesExt:
     class ViewDir(IntEnum):
-        UP = 1
-        DOWN = 2
-        RIGHT = 3
-        LEFT = 4
-        FORWARD = 5
-        BACK = 6
-
-    UP = ViewDir.UP
-    DOWN = ViewDir.DOWN
-    RIGHT = ViewDir.RIGHT
-    LEFT = ViewDir.LEFT
-    FORWARD = ViewDir.FORWARD
-    BACK = ViewDir.BACK
+        Up = 1
+        Down = 2
+        Right = 3
+        Left = 4
+        Forward = 5
+        Back = 6
 
     @staticmethod
     def native_to_pa_array_override(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:

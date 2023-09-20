@@ -11,12 +11,13 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
+from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates"]
 
 
 @define(str=False, repr=False)
-class ViewCoordinates(Archetype):
+class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """How we interpret the coordinate system of an entity/space."""
 
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
