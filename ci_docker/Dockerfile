@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.9"
+LABEL version="0.9.1"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -46,7 +46,7 @@ RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.72.0 \
+    RUST_VERSION=1.72.1 \
     RUSTUP_VERSION=1.26.0
 
 # Install Rust
@@ -84,7 +84,7 @@ RUN ./setup_web.sh || true
 RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.9
+ENV CACHE_KEY=rerun_docker_v0.9.1
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'
