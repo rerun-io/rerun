@@ -18,7 +18,7 @@ rr2.log(
     rr2.Pinhole(
         width=image.shape[1],
         height=image.shape[0],
-        focal_length_px=20,
+        focal_length=20,
     ),
 )
 

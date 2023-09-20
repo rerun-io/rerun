@@ -10,18 +10,18 @@ impl Pinhole {
     ///
     /// Assumes the principal point to be in the middle of the sensor.
     pub fn from_focal_length_and_resolution(
-        focal_length_px: impl Into<Vec2D>,
+        focal_length: impl Into<Vec2D>,
         resolution: impl Into<Vec2D>,
     ) -> Self {
         let resolution = resolution.into();
-        let focal_length_px = focal_length_px.into();
+        let focal_length = focal_length.into();
 
         let u_cen = resolution.x() / 2.0;
         let v_cen = resolution.y() / 2.0;
 
         Self::new([
-            [focal_length_px.x(), 0.0, 0.0],
-            [0.0, focal_length_px.y(), 0.0],
+            [focal_length.x(), 0.0, 0.0],
+            [0.0, focal_length.y(), 0.0],
             [u_cen, v_cen, 1.0],
         ])
         .with_resolution(resolution)
@@ -39,7 +39,11 @@ impl Pinhole {
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[inline]
     pub fn focal_length_in_pixels(&self) -> Vec2D {
-        [self.image_from_camera.col(0)[0], self.image_from_camera.col(1)[1]].into()
+        [
+            self.image_from_camera.col(0)[0],
+            self.image_from_camera.col(1)[1],
+        ]
+        .into()
     }
 
     /// Focal length.
@@ -57,7 +61,10 @@ impl Pinhole {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn principal_point(&self) -> glam::Vec2 {
-        glam::vec2(self.image_from_camera.col(2)[0], self.image_from_camera.col(2)[1])
+        glam::vec2(
+            self.image_from_camera.col(2)[0],
+            self.image_from_camera.col(2)[1],
+        )
     }
 
     #[inline]

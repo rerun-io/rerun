@@ -13,21 +13,21 @@ namespace rerun {
         ///
         /// Assumes the principal point to be in the middle of the sensor.
         static Pinhole focal_length_and_resolution(
-            const datatypes::Vec2D& focal_length_px, const datatypes::Vec2D& resolution
+            const datatypes::Vec2D& focal_length, const datatypes::Vec2D& resolution
         );
 
         // [CODEGEN COPY TO HEADER END]
 #endif
 
         Pinhole Pinhole::focal_length_and_resolution(
-            const datatypes::Vec2D& focal_length_px, const datatypes::Vec2D& _resolution
+            const datatypes::Vec2D& focal_length, const datatypes::Vec2D& _resolution
         ) {
             const float u_cen = _resolution.x() / 2.0f;
             const float v_cen = _resolution.y() / 2.0f;
 
             return Pinhole(datatypes::Mat3x3(
-                               {{focal_length_px.x(), 0.0f, 0.0f},
-                                {0.0f, focal_length_px.y(), 0.0f},
+                               {{focal_length.x(), 0.0f, 0.0f},
+                                {0.0f, focal_length.y(), 0.0f},
                                 {u_cen, v_cen, 1.0f}}
                            )
             ).with_resolution(_resolution);

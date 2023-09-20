@@ -31,7 +31,7 @@ class PinholeExt:
     resolution:
         Pixel resolution (usually integers) of child image space. Width and height.
         `image_from_camera` projects onto the space spanned by `(0,0)` and `resolution - 1`.
-    focal_length_px:
+    focal_length:
         The focal length of the camera in pixels.
         This is the diagonal of the projection matrix.
         Set one value for symmetric cameras, or two values (X=Right, Y=Down) for anamorphic cameras.
@@ -44,7 +44,7 @@ class PinholeExt:
         Row-major intrinsics matrix for projecting from camera space to image space.
         The first two axes are X=Right and Y=Down, respectively.
         Projection is done along the positive third (Z=Forward) axis.
-        This can be specified _instead_ of `focal_length_px` and `principal_point_px`.
+        This can be specified _instead_ of `focal_length` and `principal_point_px`.
     width:
         Width of the image in pixels.
     height:
@@ -57,7 +57,7 @@ class PinholeExt:
         resolution: Vec2DLike | None = None,
         width: int | float | None = None,
         height: int | float | None = None,
-        focal_length_px: float | npt.ArrayLike | None = None,
+        focal_length: float | npt.ArrayLike | None = None,
         principal_point_px: npt.ArrayLike | None = None,
     ) -> None:
         if resolution is None and width is not None and height is not None:
@@ -74,21 +74,21 @@ class PinholeExt:
             width = cast(float, resolution.xy[0])
             height = cast(float, resolution.xy[1])
 
-            if focal_length_px is None:
-                _send_warning("either child_from_parent or focal_length_px must be set", 1)
-                focal_length_px = (width * height) ** 0.5  # a reasonable default
+            if focal_length is None:
+                _send_warning("either child_from_parent or focal_length must be set", 1)
+                focal_length = (width * height) ** 0.5  # a reasonable default
             if principal_point_px is None:
                 principal_point_px = [width / 2, height / 2]
-            if type(focal_length_px) in (int, float):
-                fl_x = focal_length_px
-                fl_y = focal_length_px
+            if type(focal_length) in (int, float):
+                fl_x = focal_length
+                fl_y = focal_length
             else:
                 try:
                     # TODO(emilk): check that it is 2 elements long
-                    fl_x = focal_length_px[0]  # type: ignore[index]
-                    fl_y = focal_length_px[1]  # type: ignore[index]
+                    fl_x = focal_length[0]  # type: ignore[index]
+                    fl_y = focal_length[1]  # type: ignore[index]
                 except Exception:
-                    _send_warning("Expected focal_length_px to be one or two floats", 1)
+                    _send_warning("Expected focal_length to be one or two floats", 1)
                     fl_x = width / 2
                     fl_y = fl_x
 
@@ -102,8 +102,8 @@ class PinholeExt:
 
             image_from_camera = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
         else:
-            if focal_length_px is not None:
-                _send_warning("Both child_from_parent and focal_length_px set", 1)
+            if focal_length is not None:
+                _send_warning("Both child_from_parent and focal_length set", 1)
             if principal_point_px is not None:
                 _send_warning("Both child_from_parent and principal_point_px set", 1)
 
