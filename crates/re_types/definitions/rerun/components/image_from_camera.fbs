@@ -7,6 +7,16 @@ namespace rerun.components;
 // ---
 
 /// Camera projection, from image coordinates to view coordinates.
+///
+/// Child from parent.
+/// Image coordinates from camera view coordinates.
+///
+/// Example:
+/// ```text
+/// 1496.1     0.0  980.5
+///    0.0  1496.1  744.5
+///    0.0     0.0    1.0
+/// ```
 struct ImageFromCamera (
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   order: 100

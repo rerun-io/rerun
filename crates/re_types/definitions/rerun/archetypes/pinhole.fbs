@@ -32,17 +32,7 @@ table Pinhole (
 ) {
   // --- Required ---
 
-  /// Column-major projection matrix.
-  ///
-  /// Child from parent.
-  /// Image coordinates from camera view coordinates.
-  ///
-  /// Example:
-  /// ```text
-  /// [[1496.1, 0.0,    0.0], // col 0
-  ///  [0.0,    1496.1, 0.0], // col 1
-  ///  [980.5,  744.5,  1.0]] // col 2
-  /// ```
+  /// Camera projection, from image coordinates to view coordinates.
   image_from_cam: rerun.components.ImageFromCamera ("attr.rerun.component_required", required, order: 1000);
 
   // --- Recommended ---
