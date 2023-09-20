@@ -29,6 +29,7 @@ __all__ = [
     "TextDocument",
     "TextLog",
     "Transform3D",
+    "ViewCoordinates",
     "add_space_view",
     "arch",
     "cmp",
@@ -62,5 +63,6 @@ from .archetypes import (
     TextDocument,
     TextLog,
     Transform3D,
+    ViewCoordinates,
 )
 from .log import ArchetypeLike, ComponentBatchLike, IndicatorComponentBatch, log, log_components

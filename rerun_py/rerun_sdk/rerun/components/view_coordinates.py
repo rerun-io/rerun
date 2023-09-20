@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_uint8,
 )
+from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = [
     "ViewCoordinates",
@@ -30,7 +31,7 @@ __all__ = [
 
 
 @define
-class ViewCoordinates:
+class ViewCoordinates(ViewCoordinatesExt):
     """
     How we interpret the coordinate system of an entity/space.
 
@@ -54,11 +55,12 @@ class ViewCoordinates:
         return np.asarray(self.coordinates, dtype=dtype)
 
 
-ViewCoordinatesLike = ViewCoordinates
-ViewCoordinatesArrayLike = Union[
-    ViewCoordinates,
-    Sequence[ViewCoordinatesLike],
-]
+if TYPE_CHECKING:
+    ViewCoordinatesLike = Union[ViewCoordinates, npt.ArrayLike]
+else:
+    ViewCoordinatesLike = Any
+
+ViewCoordinatesArrayLike = Union[ViewCoordinates, Sequence[ViewCoordinatesLike], npt.ArrayLike]
 
 
 # --- Arrow support ---
@@ -79,7 +81,7 @@ class ViewCoordinatesArray(BaseExtensionArray[ViewCoordinatesArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in view_coordinates_ext.py
+        return ViewCoordinatesExt.native_to_pa_array_override(data, data_type)
 
 
 ViewCoordinatesType._ARRAY_TYPE = ViewCoordinatesArray
