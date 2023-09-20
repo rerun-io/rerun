@@ -131,7 +131,7 @@ class Detector:
         rr.log_rects(
             "image_scaled/detections/things",
             thing_boxes,
-            rect_format=rr.log.rects.RectFormat.XYXY,
+            rect_format=rr.RectFormat.XYXY,
             class_ids=thing_class_ids,
         )
 
@@ -140,7 +140,7 @@ class Detector:
         rr.log_rects(
             "image_scaled/detections/background",
             background_boxes,
-            rect_format=rr.log.rects.RectFormat.XYXY,
+            rect_format=rr.RectFormat.XYXY,
             class_ids=background_class_ids,
         )
 
@@ -191,7 +191,7 @@ class Tracker:
             rr.log_rect(
                 f"image/tracked/{self.tracking_id}",
                 self.tracked.bbox_xywh,
-                rect_format=rr.log.rects.RectFormat.XYWH,
+                rect_format=rr.RectFormat.XYWH,
                 class_id=self.tracked.class_id,
             )
         else:
