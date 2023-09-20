@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import numpy.typing as npt
 
-from rerun.log.error_utils import _send_warning
+from rerun.error_utils import _send_warning
 
 from ..datatypes.mat3x3 import Mat3x3Like
 from ..datatypes.vec2d import Vec2D, Vec2DLike

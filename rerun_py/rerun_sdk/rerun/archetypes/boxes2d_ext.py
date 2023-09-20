@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy as np
 
-from rerun.log.error_utils import _send_warning
+from rerun.error_utils import _send_warning
 
 from ..datatypes import Vec2DArrayLike
 
