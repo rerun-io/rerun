@@ -6,7 +6,7 @@ import rerun.components as rrc
 import rerun.experimental as rr2
 from rerun.archetypes.view_coordinates import ViewCoordinates
 
-from tests.unit.common_arrays import none_empty_or_value
+from .common_arrays import none_empty_or_value
 
 
 def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesArray:
