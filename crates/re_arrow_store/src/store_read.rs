@@ -986,12 +986,8 @@ impl IndexedBucketInner {
             re_tracing::profile_scope!("data");
             // shuffle component columns back into a sorted state
             for column in columns.values_mut() {
-                let mut source = {
-                    re_tracing::profile_scope!("clone");
-                    column.clone()
-                };
+                let mut source = column.clone();
                 {
-                    re_tracing::profile_scope!("rotate");
                     for (from, to) in swaps.iter().copied() {
                         column[to] = source[from].take();
                     }
