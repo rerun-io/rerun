@@ -9,7 +9,10 @@
 mod error;
 mod ptr;
 
-use std::ffi::{c_char, CString};
+use std::{
+    ffi::{c_char, CString},
+    str::FromStr,
+};
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -324,15 +327,12 @@ fn rr_log_impl(
     } = *data_row;
 
     let entity_path = ptr::try_char_ptr_as_str(entity_path, "entity_path")?;
-    let entity_path = match re_log_types::parse_entity_path(entity_path) {
-        Ok(entity_path) => EntityPath::from(entity_path),
-        Err(err) => {
-            return Err(CError::new(
-                CErrorCode::InvalidEntityPath,
-                &format!("Failed to parse entity path {entity_path:?}: {err}"),
-            ))
-        }
-    };
+    let entity_path = EntityPath::from_str(entity_path).map_err(|err| {
+        CError::new(
+            CErrorCode::InvalidEntityPath,
+            &format!("Failed to parse entity path {entity_path:?}: {err}"),
+        )
+    })?;
 
     re_log::debug!(
         "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",

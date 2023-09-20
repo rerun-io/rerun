@@ -25,7 +25,7 @@ pub enum PathParseError {
 }
 
 /// Parses an entity path, e.g. `foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
-pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathPart>, PathParseError> {
+pub fn parse_entity_path_components(path: &str) -> Result<Vec<EntityPathPart>, PathParseError> {
     if path.is_empty() {
         return Err(PathParseError::EmptyString);
     }
@@ -146,20 +146,31 @@ fn test_unescape_string() {
 fn test_parse_path() {
     use crate::entity_path_vec;
 
-    assert_eq!(parse_entity_path(""), Err(PathParseError::EmptyString));
-    assert_eq!(parse_entity_path("/"), Ok(entity_path_vec!()));
-    assert_eq!(parse_entity_path("foo"), Ok(entity_path_vec!("foo")));
-    assert_eq!(parse_entity_path("/foo"), Err(PathParseError::LeadingSlash));
     assert_eq!(
-        parse_entity_path("foo/bar"),
+        parse_entity_path_components(""),
+        Err(PathParseError::EmptyString)
+    );
+    assert_eq!(parse_entity_path_components("/"), Ok(entity_path_vec!()));
+    assert_eq!(
+        parse_entity_path_components("foo"),
+        Ok(entity_path_vec!("foo"))
+    );
+    assert_eq!(
+        parse_entity_path_components("/foo"),
+        Err(PathParseError::LeadingSlash)
+    );
+    assert_eq!(
+        parse_entity_path_components("foo/bar"),
         Ok(entity_path_vec!("foo", "bar"))
     );
     assert_eq!(
-        parse_entity_path("foo//bar"),
+        parse_entity_path_components("foo//bar"),
         Err(PathParseError::DoubleSlash)
     );
     assert_eq!(
-        parse_entity_path(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
+        parse_entity_path_components(
+            r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#
+        ),
         Ok(entity_path_vec!(
             "foo",
             Index::String("bar".into()),
@@ -169,7 +180,7 @@ fn test_parse_path() {
         ))
     );
     assert_eq!(
-        parse_entity_path(r#"foo/"bar""baz""#),
+        parse_entity_path_components(r#"foo/"bar""baz""#),
         Err(PathParseError::MissingSlash)
     );
 }

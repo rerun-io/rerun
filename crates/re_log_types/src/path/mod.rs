@@ -14,7 +14,7 @@ mod parse_path;
 pub use component_path::ComponentPath;
 pub use entity_path::{EntityPath, EntityPathHash};
 pub use entity_path_impl::EntityPathImpl;
-pub use parse_path::{parse_entity_path, PathParseError};
+pub use parse_path::PathParseError;
 
 use re_string_interner::InternedString;
 

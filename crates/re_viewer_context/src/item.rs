@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use re_data_store::InstancePath;
-use re_log_types::ComponentPath;
+use re_log_types::{ComponentPath, EntityPath};
 
 use super::{DataBlueprintGroupHandle, SpaceViewId};
 
@@ -15,6 +15,44 @@ pub enum Item {
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, DataBlueprintGroupHandle),
+}
+
+impl From<SpaceViewId> for Item {
+    #[inline]
+    fn from(space_view_id: SpaceViewId) -> Self {
+        Self::SpaceView(space_view_id)
+    }
+}
+
+impl From<ComponentPath> for Item {
+    #[inline]
+    fn from(component_path: ComponentPath) -> Self {
+        Self::ComponentPath(component_path)
+    }
+}
+
+impl From<InstancePath> for Item {
+    #[inline]
+    fn from(instance_path: InstancePath) -> Self {
+        Self::InstancePath(None, instance_path)
+    }
+}
+
+impl From<EntityPath> for Item {
+    #[inline]
+    fn from(entity_path: EntityPath) -> Self {
+        Self::InstancePath(None, InstancePath::from(entity_path))
+    }
+}
+
+impl std::str::FromStr for Item {
+    type Err = re_log_types::PathParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // TODO(emilk): support component paths and instance paths
+        let entity_path = EntityPath::from_str(s)?;
+        Ok(Self::from(entity_path))
+    }
 }
 
 impl std::fmt::Debug for Item {
