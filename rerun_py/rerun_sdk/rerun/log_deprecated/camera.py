@@ -131,7 +131,7 @@ def log_pinhole(
         width=width,
         height=height,
         focal_length=focal_length_px,
-        principal_point_px=principal_point_px,
+        principal_point=principal_point_px,
     )
     log(entity_path, arch, timeless=timeless, recording=recording)
 
