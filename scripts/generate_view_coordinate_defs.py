@@ -27,37 +27,37 @@ SCRIPT_PATH = os.path.relpath(__file__, os.getcwd())
 @dataclass
 class ViewCoordinates:
     name: str
-    axis0: str
-    axis1: str
-    axis2: str
+    x: str
+    y: str
+    z: str
 
 
 def generate_view_permutations() -> Iterable[ViewCoordinates]:
     D1 = ["Up", "Down"]
     D2 = ["Left", "Right"]
     D3 = ["Forward", "Back"]
-    for x in D1:
-        for y in D2:
-            for z in D3:
-                for p0, p1, p2 in itertools.permutations([x, y, z]):
-                    name = f"{p0[0]}{p1[0]}{p2[0]}"
-                    yield ViewCoordinates(name, p0, p1, p2)
+    for i in D1:
+        for j in D2:
+            for k in D3:
+                for x, y, z in itertools.permutations([i, j, k]):
+                    name = f"{x[0]}{y[0]}{z[0]}"
+                    yield ViewCoordinates(name, x, y, z)
 
 
 def generate_up_handed_permutations() -> Iterable[ViewCoordinates]:
     return [
-        ViewCoordinates(name="RIGHT_HAND_X_UP", axis0="Up", axis1="Right", axis2="Forward"),
-        ViewCoordinates(name="RIGHT_HAND_X_DOWN", axis0="Down", axis1="Right", axis2="Back"),
-        ViewCoordinates(name="RIGHT_HAND_Y_UP", axis0="Right", axis1="Up", axis2="Back"),
-        ViewCoordinates(name="RIGHT_HAND_Y_DOWN", axis0="Right", axis1="Down", axis2="Forward"),
-        ViewCoordinates(name="RIGHT_HAND_Z_UP", axis0="Right", axis1="Forward", axis2="Up"),
-        ViewCoordinates(name="RIGHT_HAND_Z_DOWN", axis0="Right", axis1="Back", axis2="Down"),
-        ViewCoordinates(name="LEFT_HAND_X_UP", axis0="Up", axis1="Right", axis2="Back"),
-        ViewCoordinates(name="LEFT_HAND_X_DOWN", axis0="Down", axis1="Right", axis2="Forward"),
-        ViewCoordinates(name="LEFT_HAND_Y_UP", axis0="Right", axis1="Up", axis2="Forward"),
-        ViewCoordinates(name="LEFT_HAND_Y_DOWN", axis0="Right", axis1="Down", axis2="Back"),
-        ViewCoordinates(name="LEFT_HAND_Z_UP", axis0="Right", axis1="Back", axis2="Up"),
-        ViewCoordinates(name="LEFT_HAND_Z_DOWN", axis0="Right", axis1="Forward", axis2="Down"),
+        ViewCoordinates(name="RIGHT_HAND_X_UP", x="Up", y="Right", z="Forward"),
+        ViewCoordinates(name="RIGHT_HAND_X_DOWN", x="Down", y="Right", z="Back"),
+        ViewCoordinates(name="RIGHT_HAND_Y_UP", x="Right", y="Up", z="Back"),
+        ViewCoordinates(name="RIGHT_HAND_Y_DOWN", x="Right", y="Down", z="Forward"),
+        ViewCoordinates(name="RIGHT_HAND_Z_UP", x="Right", y="Forward", z="Up"),
+        ViewCoordinates(name="RIGHT_HAND_Z_DOWN", x="Right", y="Back", z="Down"),
+        ViewCoordinates(name="LEFT_HAND_X_UP", x="Up", y="Right", z="Back"),
+        ViewCoordinates(name="LEFT_HAND_X_DOWN", x="Down", y="Right", z="Forward"),
+        ViewCoordinates(name="LEFT_HAND_Y_UP", x="Right", y="Up", z="Forward"),
+        ViewCoordinates(name="LEFT_HAND_Y_DOWN", x="Right", y="Down", z="Back"),
+        ViewCoordinates(name="LEFT_HAND_Z_UP", x="Right", y="Back", z="Up"),
+        ViewCoordinates(name="LEFT_HAND_Z_DOWN", x="Right", y="Forward", z="Down"),
     ]
 
 
@@ -65,7 +65,7 @@ def generate_up_handed_permutations() -> Iterable[ViewCoordinates]:
 
 
 def rust_definition(coords: ViewCoordinates) -> str:
-    return f"define_coordinates!({coords.name} => ({coords.axis0}, {coords.axis1}, {coords.axis2}));\n"
+    return f"define_coordinates!({coords.name} => ({coords.x}, {coords.y}, {coords.z}));\n"
 
 
 def gen_rust_definitions() -> list[str]:
@@ -83,7 +83,7 @@ def gen_rust_definitions() -> list[str]:
 
 
 def py_definition(coords: ViewCoordinates) -> str:
-    return f"{coords.name} = Component([Component.ViewDir.{coords.axis0}, Component.ViewDir.{coords.axis1}, Component.ViewDir.{coords.axis2}])\n"
+    return f"{coords.name} = Component([Component.ViewDir.{coords.x}, Component.ViewDir.{coords.y}, Component.ViewDir.{coords.z}])\n"
 
 
 def gen_py_definitions() -> list[str]:
@@ -120,7 +120,7 @@ def gen_cpp_declarations() -> list[str]:
 def cpp_definition(coords: ViewCoordinates) -> str:
     return (
         f"const ViewCoordinates ViewCoordinates::{coords.name} = ViewCoordinates(\n"
-        + f"rerun::components::ViewCoordinates::{coords.axis0}, rerun::components::ViewCoordinates::{coords.axis1}, rerun::components::ViewCoordinates::{coords.axis2}\n"
+        + f"rerun::components::ViewCoordinates::{coords.x}, rerun::components::ViewCoordinates::{coords.y}, rerun::components::ViewCoordinates::{coords.z}\n"
         + ");\n"
     )
 
