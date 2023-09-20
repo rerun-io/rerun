@@ -1894,7 +1894,7 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
 }
 
 fn get_examples(docs: &Docs) -> Vec<String> {
-    // `cpp` examples are not required for now, so just default to empty vec
+    // TODO(#2919): `cpp` examples are not required for now, so just default to empty vec
     crate::codegen::get_examples(docs, "cpp", &["```cpp,ignore"], &["```"]).unwrap_or_default()
 }
 
