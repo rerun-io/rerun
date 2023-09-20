@@ -57,7 +57,7 @@ from transformers import DPTFeatureExtractor
 from transformers import DPTForDepthEstimation
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-logger.addHandler(rr.log.text.LoggingHandler("logs"))
+logger.addHandler(rr.LoggingHandler("logs"))
 
 
 # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.preprocess

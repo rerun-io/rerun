@@ -260,7 +260,7 @@ pub fn generate_lang_agnostic(
 
 /// Generates a .gitattributes file that marks up all generated files as generated
 pub fn generate_gitattributes_for_generated_files(
-    output_path: impl AsRef<Utf8Path>,
+    output_path: &impl AsRef<Utf8Path>,
     files: impl Iterator<Item = Utf8PathBuf>,
 ) {
     let filename = ".gitattributes";
@@ -311,7 +311,7 @@ pub fn generate_cpp_code(
     re_tracing::profile_function!();
     let mut gen = CppCodeGenerator::new(output_path.as_ref());
     let filepaths = gen.generate(objects, arrow_registry);
-    generate_gitattributes_for_generated_files(output_path, filepaths.into_iter());
+    generate_gitattributes_for_generated_files(&output_path, filepaths.into_iter());
 }
 
 /// Generates Rust code.
@@ -340,7 +340,7 @@ pub fn generate_rust_code(
     re_tracing::profile_function!();
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
     let filepaths = gen.generate(objects, arrow_registry);
-    generate_gitattributes_for_generated_files(output_crate_path, filepaths.into_iter());
+    generate_gitattributes_for_generated_files(&output_crate_path, filepaths.into_iter());
 }
 
 /// Generates Python code.
@@ -356,20 +356,35 @@ pub fn generate_rust_code(
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
 /// re_types_builder::generate_python_code(
-///     "./rerun_py",
+///     "./rerun_py/rerun_sdk",
+///     "./rerun_py/tests",
 ///     &objects,
 ///     &arrow_registry,
 /// );
 /// ```
 pub fn generate_python_code(
     output_pkg_path: impl AsRef<Utf8Path>,
+    testing_output_pkg_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
-    let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
+    let mut gen =
+        PythonCodeGenerator::new(output_pkg_path.as_ref(), testing_output_pkg_path.as_ref());
     let filepaths = gen.generate(objects, arrow_registry);
-    generate_gitattributes_for_generated_files(output_pkg_path, filepaths.into_iter());
+    generate_gitattributes_for_generated_files(
+        &output_pkg_path,
+        filepaths
+            .iter()
+            .filter(|f| f.starts_with(output_pkg_path.as_ref()))
+            .cloned(),
+    );
+    generate_gitattributes_for_generated_files(
+        &testing_output_pkg_path,
+        filepaths
+            .into_iter()
+            .filter(|f| f.starts_with(testing_output_pkg_path.as_ref())),
+    );
 }
 
 pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {

@@ -6,7 +6,8 @@ const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
 const ENTRYPOINT_PATH: &str = "crates/re_types/definitions/rerun/archetypes.fbs";
 const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = "crates/re_types/.";
-const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun/_rerun2";
+const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";
+const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "rerun_py/tests/test_types";
 
 fn main() {
     re_log::setup_native_logging();
@@ -42,6 +43,7 @@ fn main() {
     let cpp_output_dir_path = workspace_dir.join(CPP_OUTPUT_DIR_PATH);
     let rust_output_dir_path = workspace_dir.join(RUST_OUTPUT_DIR_PATH);
     let python_output_dir_path = workspace_dir.join(PYTHON_OUTPUT_DIR_PATH);
+    let python_testing_output_dir_path = workspace_dir.join(PYTHON_TESTING_OUTPUT_DIR_PATH);
 
     re_log::info!("Running codegen…");
     let (objects, arrow_registry) =
@@ -54,6 +56,7 @@ fn main() {
         || {
             re_types_builder::generate_python_code(
                 python_output_dir_path,
+                python_testing_output_dir_path,
                 &objects,
                 &arrow_registry,
             );

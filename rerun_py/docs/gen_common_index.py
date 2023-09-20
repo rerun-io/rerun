@@ -115,7 +115,7 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Transforms",
-        module_summary="log.transform",
+        module_summary="log_deprecated.transform",
         func_list=[
             "log_transform3d",
             "log_pinhole",

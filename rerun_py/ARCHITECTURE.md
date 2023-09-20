@@ -1,7 +1,5 @@
 # Rerun Python SDK Architecture
 
-**NOTE**: this document applies to the next generation, WIP API, currently residing in `rerun_sdk/rerun/_rerun2`.
-
 ## Background
 
 Rerun primarily logs components, which are pieces of data with well-defined memory layout and semantics. For example, the `Color` component is stored as a `uint32` and represent a sRGB, RGBA color information. Components are typically logged in array form.
@@ -160,7 +158,7 @@ Implementing a Pythonic API for a component or datatype sometime require a subtl
 The `converter` attribute of [`attrs.field()`] can be any callable. Often, `lambda` would make for a concise and efficient converter implementation, but, unfortunately, mypy doesn't support anything else than regular functions and emits error otherwise. For this reason, the code generator always uses regular functions when generating default converter. This is done by either of the following means:
 
 - using built-in function (e.g. `int()`, for non-nullable `int` fields);
-- using one of the functions provided in `_rerun2/_converters.py` (e.g. `int_or_none()` for nullable `int` fields);
+- using one of the functions provided in `_converters.py` (e.g. `int_or_none()` for nullable `int` fields);
 - locally generating a bespoke converter function (e.g. for field using datatypes, nullable or otherwise).
 
 
