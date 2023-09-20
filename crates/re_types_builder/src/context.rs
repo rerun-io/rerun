@@ -10,6 +10,7 @@ pub fn context() -> (ContextRoot, Context) {
     (ContextRoot::new(rx), Context::new(tx))
 }
 
+/// Context used to accumulate errors and warnings.
 #[derive(Clone)]
 pub struct Context {
     errors: mpsc::Sender<anyhow::Error>,
@@ -25,6 +26,10 @@ impl Context {
     }
 }
 
+/// Root of the context. This should only exist on the main thread.
+///
+/// After the last phase of codegen, this holds any accumulated
+/// errors and warnings, which can be handled using [`ContextRoot::panic_on_errors`].
 pub struct ContextRoot {
     errors: mpsc::Receiver<anyhow::Error>,
     _not_send: std::marker::PhantomData<*mut ()>,
@@ -55,6 +60,24 @@ impl ContextRoot {
 }
 
 const _: () = {
+    // We want to ensure `ContextRoot` is `!Send`, so that it stays
+    // on the main thread.
+    //
+    // This works by creating a type which has a different number of possible
+    // implementations of a trait depending on its `Send`-ness:
+    // - One impl for all `T: !Send`
+    // - Two impls for all `T: Send`
+    //
+    // In an invocation like `Check<T> as IsNotSend<_>`, we're asking
+    // the compiler to infer the type given to `IsNotSend` for us.
+    // But if `Check<T>: Send`, then it has two possible implementations:
+    // `IsNotSend<True>`, and `IsNotSend<False>`. This is a local ambiguity
+    // and rustc has no way to disambiguate between the two implementations,
+    // so it will instead output a type inference error.
+    //
+    // We could use `static_assertions` here, but we'd rather not pay the
+    // compilation cost for a single invocation. Some of the macros from
+    // that crate are pretty gnarly!
     trait IsNotSend<T> {
         fn __() {}
     }
