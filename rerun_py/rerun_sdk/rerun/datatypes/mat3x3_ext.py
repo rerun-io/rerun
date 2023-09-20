@@ -40,7 +40,7 @@ class Mat3x3Ext:
         # Normalize into list of Mat3x3
         if isinstance(data, Sequence):
             # single matrix made up of flat float array.
-            if len(data) > 0 and isinstance(data[0], float | int):
+            if len(data) > 0 and (isinstance(data[0], float) or isinstance(data[0], int)):
                 matrices = [Mat3x3(cast(Mat3x3Like, data))]
             # if there's a sequence nested, either it's several matrices in various formats
             # where the first happens to be either a flat or nested sequence of floats,
@@ -49,7 +49,7 @@ class Mat3x3Ext:
             elif (
                 isinstance(data[0], Sequence)
                 and len(data[0]) == 3
-                and all(isinstance(elem, float | int) for elem in data[0])
+                and all((isinstance(elem, float) or isinstance(elem, int)) for elem in data[0])
             ):
                 matrices = [Mat3x3(cast(Mat3x3Like, data))]
             # several matrices otherwise!

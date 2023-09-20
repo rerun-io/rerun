@@ -40,7 +40,7 @@ class Mat4x4Ext:
         # Normalize into list of Mat4x4
         if isinstance(data, Sequence):
             # single matrix made up of flat float array.
-            if len(data) > 0 and isinstance(data[0], float | int):
+            if len(data) > 0 and (isinstance(data[0], float) or isinstance(data[0], int)):
                 matrices = [Mat4x4(cast(Mat4x4Like, data))]
             # if there's a sequence nested, either it's several matrices in various formats
             # where the first happens to be either a flat or nested sequence of floats,
@@ -49,7 +49,7 @@ class Mat4x4Ext:
             elif (
                 isinstance(data[0], Sequence)
                 and len(data[0]) == 4
-                and all(isinstance(elem, float | int) for elem in data[0])
+                and all((isinstance(elem, float) or isinstance(elem, int)) for elem in data[0])
             ):
                 matrices = [Mat4x4(cast(Mat4x4Like, data))]
             # several matrices otherwise!
