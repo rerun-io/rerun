@@ -46,7 +46,7 @@ def log_image(
     entity_path:
         Path to the image in the space hierarchy.
     image:
-        A [Tensor][rerun.log.tensor.Tensor] representing the image to log.
+        A [Tensor][rerun.log_deprecated.tensor.Tensor] representing the image to log.
     draw_order:
         An optional floating point value that specifies the 2D drawing order.
         Objects with higher values are drawn on top of those with lower values.
@@ -102,7 +102,7 @@ def log_depth_image(
     entity_path:
         Path to the image in the space hierarchy.
     image:
-        A [Tensor][rerun.log.tensor.Tensor] representing the depth image to log.
+        A [Tensor][rerun.log_deprecated.tensor.Tensor] representing the depth image to log.
     draw_order:
         An optional floating point value that specifies the 2D drawing order.
         Objects with higher values are drawn on top of those with lower values.
@@ -162,7 +162,7 @@ def log_segmentation_image(
     entity_path:
         Path to the image in the space hierarchy.
     image:
-        A [Tensor][rerun.log.tensor.Tensor] representing the segmentation image to log.
+        A [Tensor][rerun.log_deprecated.tensor.Tensor] representing the segmentation image to log.
     draw_order:
         An optional floating point value that specifies the 2D drawing order.
         Objects with higher values are drawn on top of those with lower values.

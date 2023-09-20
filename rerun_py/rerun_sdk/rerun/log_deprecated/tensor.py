@@ -57,7 +57,7 @@ def log_tensor(
     entity_path:
         Path to the tensor in the space hierarchy.
     tensor:
-        A [Tensor][rerun.log.tensor.Tensor] object.
+        A [Tensor][rerun.log_deprecated.tensor.Tensor] object.
     names:
         Optional names for each dimension of the tensor.
     meter:

@@ -18,7 +18,7 @@ def log_annotation_context(
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Log an annotation context made up of a collection of [ClassDescription][rerun.log.annotation.ClassDescription]s.
+    Log an annotation context made up of a collection of [ClassDescription][rerun.log_deprecated.annotation.ClassDescription]s.
 
     Any entity needing to access the annotation context will find it by searching the
     path upward. If all entities share the same you can simply log it to the

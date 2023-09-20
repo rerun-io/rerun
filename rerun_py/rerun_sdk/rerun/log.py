@@ -94,7 +94,7 @@ class ArchetypeLike(Protocol):
         return None
 
 
-# adapted from rerun.log._add_extension_components
+# adapted from rerun.log_deprecated._add_extension_components
 def _add_extension_components(
     instanced: dict[str, pa.ExtensionArray],
     splats: dict[str, pa.ExtensionArray],
