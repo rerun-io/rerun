@@ -22,6 +22,7 @@ class LineStrips3D(Archetype):
 
     Examples
     --------
+    Many strips:
     ```python
     import rerun as rr
     import rerun.experimental as rr2
@@ -56,6 +57,7 @@ class LineStrips3D(Archetype):
     )
     ```
 
+    Many individual segments:
     ```python
     #!/usr/bin/env python3
     import numpy as np

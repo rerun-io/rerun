@@ -25,6 +25,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// Many strips:
         /// ```cpp,ignore
         /// // Log a batch of 3d line strips.
         ///
@@ -62,6 +63,7 @@ namespace rerun {
         /// }
         /// ```
         ///
+        /// Many individual segments:
         /// ```cpp,ignore
         /// // Log a simple set of line segments.
         ///

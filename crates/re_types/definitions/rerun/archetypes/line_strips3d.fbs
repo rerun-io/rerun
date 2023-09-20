@@ -9,8 +9,8 @@ namespace rerun.archetypes;
 
 /// A batch of line strips with positions and optional colors, radii, labels, etc.
 ///
-/// \example line_strip3d_batch
-/// \example line_segments3d_simple
+/// \example line_strip3d_batch "Many strips"
+/// \example line_segments3d_simple "Many individual segments"
 table LineStrips3D (
   "attr.rust.derive": "PartialEq",
   order: 100

@@ -19,6 +19,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// Flat:
         /// ```cpp,ignore
         /// // Log a batch of 3D arrows.
         ///
@@ -68,6 +69,7 @@ namespace rerun {
         /// }
         /// ```
         ///
+        /// Recursive:
         /// ```cpp,ignore
         /// // Log a batch of 3D arrows.
         ///

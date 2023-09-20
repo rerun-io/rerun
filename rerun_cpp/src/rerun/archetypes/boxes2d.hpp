@@ -28,6 +28,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// Simple 2D boxes:
         /// ```cpp,ignore
         /// // Log some simple 2D boxes.
         ///

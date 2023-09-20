@@ -9,8 +9,8 @@ namespace rerun.archetypes;
 
 /// Empties all the components of an entity.
 ///
-/// \example clear_simple
-/// \example clear_recursive
+/// \example clear_simple "Flat"
+/// \example clear_recursive "Recursive"
 table Clear (
   "attr.rust.derive": "PartialEq, Eq",
   order: 100

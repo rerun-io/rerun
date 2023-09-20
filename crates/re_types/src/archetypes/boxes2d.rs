@@ -17,6 +17,7 @@
 ///
 /// ## Examples
 ///
+/// Simple 2D boxes:
 /// ```ignore
 /// //! Log some very simple 2D boxes.
 ///

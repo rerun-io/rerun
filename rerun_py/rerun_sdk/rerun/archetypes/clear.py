@@ -22,6 +22,7 @@ class Clear(Archetype):
 
     Examples
     --------
+    Flat:
     ```python
 
     import rerun as rr
@@ -43,6 +44,7 @@ class Clear(Archetype):
         rr2.log(f"arrows/{i}", rr2.Clear(False))
     ```
 
+    Recursive:
     ```python
 
     import rerun as rr

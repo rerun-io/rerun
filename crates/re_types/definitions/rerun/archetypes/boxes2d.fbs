@@ -11,7 +11,7 @@ namespace rerun.archetypes;
 
 /// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
-/// \example box2d_simple
+/// \example box2d_simple "Simple 2D boxes"
 table Boxes2D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",

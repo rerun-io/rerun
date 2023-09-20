@@ -23,6 +23,7 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     Examples
     --------
+    Simple 3D boxes:
     ```python
     import rerun as rr
     import rerun.experimental as rr2
@@ -32,6 +33,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     rr2.log("simple", rr2.Boxes3D(half_sizes=[2.0, 2.0, 1.0]))
     ```
 
+    Batch of 3D boxes:
     ```python
     import rerun as rr
     import rerun.experimental as rr2

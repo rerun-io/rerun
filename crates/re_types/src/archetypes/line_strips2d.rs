@@ -17,6 +17,7 @@
 ///
 /// ## Examples
 ///
+/// Many strips:
 /// ```ignore
 /// //! Log a batch of 2d line strips.
 ///
@@ -50,6 +51,7 @@
 /// }
 /// ```
 ///
+/// Many individual segments:
 /// ```ignore
 /// //! Log a couple 2D line segments using 2D line strips.
 ///

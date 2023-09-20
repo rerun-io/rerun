@@ -22,6 +22,7 @@ class LineStrips2D(Archetype):
 
     Examples
     --------
+    Many strips:
     ```python
     import rerun as rr
     import rerun.experimental as rr2
@@ -45,6 +46,7 @@ class LineStrips2D(Archetype):
     rr2.log("bounds", rr2.Boxes2D(centers=[3, 1.5], half_sizes=[4.0, 4.5]))
     ```
 
+    Many individual segments:
     ```python
     import numpy as np
     import rerun as rr

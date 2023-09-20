@@ -28,6 +28,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// Simple 3D boxes:
         /// ```cpp,ignore
         /// // Log a single 3D box.
         ///
@@ -43,6 +44,7 @@ namespace rerun {
         /// }
         /// ```
         ///
+        /// Batch of 3D boxes:
         /// ```cpp,ignore
         /// // Log a batch of oriented bounding boxes.
         ///

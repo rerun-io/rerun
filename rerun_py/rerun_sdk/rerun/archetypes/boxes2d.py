@@ -23,6 +23,7 @@ class Boxes2D(Boxes2DExt, Archetype):
 
     Examples
     --------
+    Simple 2D boxes:
     ```python
     import rerun as rr
     import rerun.experimental as rr2

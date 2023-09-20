@@ -17,6 +17,7 @@
 ///
 /// ## Examples
 ///
+/// Flat:
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
@@ -57,6 +58,7 @@
 /// }
 /// ```
 ///
+/// Recursive:
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
