@@ -297,6 +297,8 @@ struct SparseLeaf {
     /// making up (addr, count) pairs,
     /// sorted by `addr`.
     addrs: SmallVec<[u64; 3]>,
+
+    /// The count may never be zero.
     counts: SmallVec<[u32; 3]>,
 }
 
@@ -540,17 +542,6 @@ impl BranchNode {
 
 impl SparseLeaf {
     #[must_use]
-    fn overflow(self, level: Level) -> BranchNode {
-        debug_assert!(level != BOTTOM_LEVEL);
-
-        let mut node = BranchNode::default();
-        for (key, count) in self.addrs.iter().zip(&self.counts) {
-            node.increment(level, *key, *count);
-        }
-        node
-    }
-
-    #[must_use]
     fn increment(mut self, level: Level, abs_addr: u64, inc: u32) -> Node {
         let index = self.addrs.partition_point(|&addr| addr < abs_addr);
 
@@ -566,10 +557,23 @@ impl SparseLeaf {
             self.counts.insert(index, inc);
             Node::SparseLeaf(self)
         } else {
-            let mut node = self.overflow(level);
+            // Overflow:
+            let mut node = self.into_branch_node(level);
             node.increment(level, abs_addr, inc);
             Node::BranchNode(node)
         }
+    }
+
+    /// Called on overflow
+    #[must_use]
+    fn into_branch_node(self, level: Level) -> BranchNode {
+        debug_assert!(level != BOTTOM_LEVEL);
+
+        let mut node = BranchNode::default();
+        for (key, count) in self.addrs.iter().zip(&self.counts) {
+            node.increment(level, *key, *count);
+        }
+        node
     }
 
     /// Returns how much the total count decreased by.
@@ -620,7 +624,7 @@ impl SparseLeaf {
     }
 
     fn is_empty(&self) -> bool {
-        self.addrs.is_empty()
+        self.addrs.is_empty() // we don't allow zero-sized buckets
     }
 
     fn total_count(&self) -> u64 {
@@ -770,7 +774,9 @@ impl<'a> Iterator for TreeIterator<'a> {
                                             child.total_count(),
                                         ));
                                     } else {
-                                        unreachable!("We only have non-empty children");
+                                        unreachable!(
+                                            "A `BranchNode` can only have non-empty children"
+                                        );
                                     }
                                 }
 
