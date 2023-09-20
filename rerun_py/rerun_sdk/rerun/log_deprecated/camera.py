@@ -127,7 +127,7 @@ def log_pinhole(
     from rerun.experimental import Pinhole, log
 
     arch = Pinhole(
-        image_from_cam=child_from_parent,
+        image_from_camera=child_from_parent,
         width=width,
         height=height,
         focal_length=focal_length_px,
