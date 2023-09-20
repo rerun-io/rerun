@@ -8,24 +8,7 @@ namespace rerun.archetypes;
 
 /// Camera perspective projection (a.k.a. intrinsics).
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/pinhole_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/pinhole_simple.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp ```ignore
-/// \cpp \include:../../../../../docs/code-examples/pinhole_simple.cpp
-/// \cpp ```
+/// \example pinhole_simple
 table Pinhole (
   "attr.rust.derive": "PartialEq",
   order: 100
