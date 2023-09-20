@@ -21,8 +21,8 @@ use crate::{
         },
         StringExt as _,
     },
-    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ArrowRegistry, CodeGenerator, Context, Docs, ElementType, Object, ObjectField, ObjectKind,
+    Objects, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -51,6 +51,7 @@ impl RustCodeGenerator {
 impl CodeGenerator for RustCodeGenerator {
     fn generate(
         &mut self,
+        _ctx: &Context,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -505,6 +506,10 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     }
 }
 
+fn get_examples(docs: &Docs) -> anyhow::Result<Vec<String>> {
+    crate::codegen::get_examples(docs, "rs", &["```ignore"], &["```"])
+}
+
 fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
     struct DocCommentTokenizer<'a>(&'a [String]);
 
@@ -514,7 +519,12 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
         }
     }
 
-    let lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
+    let examples = get_examples(docs).unwrap();
+    if !examples.is_empty() {
+        lines.push(String::new());
+        lines.extend(examples);
+    }
     let lines = DocCommentTokenizer(&lines);
     quote!(#lines)
 }

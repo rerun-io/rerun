@@ -5,6 +5,7 @@ pub trait CodeGenerator {
     /// Returns the paths of all generated files.
     fn generate(
         &mut self,
+        ctx: &crate::Context,
         objects: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,
     ) -> std::collections::BTreeSet<camino::Utf8PathBuf>;
@@ -26,7 +27,7 @@ pub(crate) use macros::autogen_warning; // Hack for declaring macros as `pub(cra
 // ---
 
 mod common;
-use self::common::{get_documentation, StringExt};
+use self::common::{get_documentation, get_examples, StringExt};
 
 mod cpp;
 mod python;

@@ -9,8 +9,8 @@ use rayon::prelude::*;
 
 use crate::{
     codegen::{autogen_warning, StringExt as _},
-    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    ArrowRegistry, CodeGenerator, Context, Docs, ElementType, Object, ObjectField, ObjectKind,
+    Objects, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 /// The standard python init method.
@@ -79,6 +79,7 @@ impl PythonCodeGenerator {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
+        _ctx: &Context,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -861,6 +862,10 @@ fn code_for_union(
 
 // --- Code generators ---
 
+fn get_examples(docs: &Docs) -> anyhow::Result<Vec<String>> {
+    crate::codegen::get_examples(docs, "py", &["Example", "-------", "```python"], &["```"])
+}
+
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     let mut quoted_names: Vec<_> = names
         .into_iter()
@@ -873,17 +878,28 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
     let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    let examples = get_examples(docs).unwrap();
 
-    if lines.is_empty() {
+    if lines.is_empty() && examples.is_empty() {
         return String::new();
     }
 
     // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
-    let doc = lines
-        .into_iter()
-        .filter(|line| !line.starts_with(r#"""""#))
-        .collect_vec()
-        .join("\n");
+    let doc = if !examples.is_empty() {
+        lines
+            .into_iter()
+            .chain([String::new()]) // blank line between docs and examples
+            .chain(examples)
+            .filter(|line| !line.starts_with(r#"""""#))
+            .collect_vec()
+            .join("\n")
+    } else {
+        lines
+            .into_iter()
+            .filter(|line| !line.starts_with(r#"""""#))
+            .collect_vec()
+            .join("\n")
+    };
 
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
@@ -892,13 +908,18 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     let mut lines = vec![];
 
     for field in fields {
-        let field_lines = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let examples = get_examples(&field.docs).unwrap();
+        if !examples.is_empty() {
+            content.push(String::new()); // blank line between docs and examples
+            content.extend(examples);
+        }
         lines.push(format!(
             "{} ({}):",
             field.name,
             quote_field_type_from_field(objects, field, false).0
         ));
-        lines.extend(field_lines.into_iter().map(|line| format!("    {line}")));
+        lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }
 

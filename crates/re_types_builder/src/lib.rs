@@ -113,7 +113,7 @@
 )]
 mod reflection;
 
-use anyhow::Context;
+use anyhow::Context as _;
 
 pub use self::reflection::reflection::{
     root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
@@ -127,11 +127,13 @@ pub use self::reflection::reflection::{
 mod arrow_registry;
 #[allow(clippy::unimplemented)]
 mod codegen;
+mod context;
 #[allow(clippy::unimplemented)]
 mod objects;
 
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{CodeGenerator, CppCodeGenerator, PythonCodeGenerator, RustCodeGenerator};
+pub use self::context::{context, Context, ContextRoot};
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
 };
@@ -304,13 +306,14 @@ pub fn generate_gitattributes_for_generated_files(
 /// );
 /// ```
 pub fn generate_cpp_code(
+    ctx: &Context,
     output_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
     let mut gen = CppCodeGenerator::new(output_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(ctx, objects, arrow_registry);
     generate_gitattributes_for_generated_files(output_path, filepaths.into_iter());
 }
 
@@ -333,13 +336,14 @@ pub fn generate_cpp_code(
 /// );
 /// ```
 pub fn generate_rust_code(
+    ctx: &Context,
     output_crate_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(ctx, objects, arrow_registry);
     generate_gitattributes_for_generated_files(output_crate_path, filepaths.into_iter());
 }
 
@@ -362,13 +366,14 @@ pub fn generate_rust_code(
 /// );
 /// ```
 pub fn generate_python_code(
+    ctx: &Context,
     output_pkg_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
-    let filepaths = gen.generate(objects, arrow_registry);
+    let filepaths = gen.generate(ctx, objects, arrow_registry);
     generate_gitattributes_for_generated_files(output_pkg_path, filepaths.into_iter());
 }
 

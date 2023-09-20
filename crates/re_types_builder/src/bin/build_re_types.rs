@@ -44,21 +44,40 @@ fn main() {
     let python_output_dir_path = workspace_dir.join(PYTHON_OUTPUT_DIR_PATH);
 
     re_log::info!("Running codegen…");
+    let (root, ctx) = re_types_builder::context();
+
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(definitions_dir_path, entrypoint_path);
 
     re_tracing::profile_scope!("Language-specific code-gen");
     join3(
-        || re_types_builder::generate_cpp_code(cpp_output_dir_path, &objects, &arrow_registry),
-        || re_types_builder::generate_rust_code(rust_output_dir_path, &objects, &arrow_registry),
+        || {
+            re_types_builder::generate_cpp_code(
+                &ctx,
+                cpp_output_dir_path,
+                &objects,
+                &arrow_registry,
+            );
+        },
+        || {
+            re_types_builder::generate_rust_code(
+                &ctx,
+                rust_output_dir_path,
+                &objects,
+                &arrow_registry,
+            );
+        },
         || {
             re_types_builder::generate_python_code(
+                &ctx,
                 python_output_dir_path,
                 &objects,
                 &arrow_registry,
             );
         },
     );
+
+    root.panic_if_errored();
 
     re_log::info!("Done.");
 }

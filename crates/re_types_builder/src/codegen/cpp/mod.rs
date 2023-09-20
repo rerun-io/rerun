@@ -16,7 +16,7 @@ use crate::{
     codegen::autogen_warning, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
     Type,
 };
-use crate::{Object, ObjectSpecifics, ATTR_CPP_NO_FIELD_CTORS};
+use crate::{Context, Object, ObjectSpecifics, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -107,6 +107,7 @@ pub struct CppCodeGenerator {
 impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
+        _ctx: &Context,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -1892,8 +1893,17 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
+fn get_examples(docs: &Docs) -> anyhow::Result<Vec<String>> {
+    crate::codegen::get_examples(docs, "cpp", &["## Example", "", "```cpp"], &["```"])
+}
+
 fn quote_docstrings(docs: &Docs) -> TokenStream {
-    let lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+    let examples = get_examples(docs).unwrap();
+    if !examples.is_empty() {
+        lines.push(String::new());
+        lines.extend(examples);
+    }
     let quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN

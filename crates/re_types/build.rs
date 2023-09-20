@@ -82,21 +82,40 @@ fn main() {
         panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
+    let (root, ctx) = re_types_builder::context();
+
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
 
     join3(
-        || re_types_builder::generate_cpp_code(CPP_OUTPUT_DIR_PATH, &objects, &arrow_registry),
-        || re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || {
+            re_types_builder::generate_cpp_code(
+                &ctx,
+                CPP_OUTPUT_DIR_PATH,
+                &objects,
+                &arrow_registry,
+            );
+        },
+        || {
+            re_types_builder::generate_rust_code(
+                &ctx,
+                RUST_OUTPUT_DIR_PATH,
+                &objects,
+                &arrow_registry,
+            );
+        },
         || {
             re_types_builder::generate_python_code(
+                &ctx,
                 PYTHON_OUTPUT_DIR_PATH,
                 &objects,
                 &arrow_registry,
             );
         },
     );
+
+    root.panic_if_errored();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }

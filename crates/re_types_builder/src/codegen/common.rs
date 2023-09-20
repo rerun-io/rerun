@@ -2,9 +2,15 @@
 
 use std::collections::BTreeSet;
 
+use anyhow::Context as _;
 use camino::Utf8PathBuf;
+use itertools::Itertools as _;
 
 use crate::Docs;
+
+fn is_blank<T: AsRef<str>>(line: T) -> bool {
+    line.as_ref().chars().all(char::is_whitespace)
+}
 
 /// Retrieves the global and tagged documentation from a [`Docs`] object.
 pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
@@ -43,6 +49,42 @@ pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
     }
 
     lines
+}
+
+pub fn get_examples(
+    docs: &Docs,
+    extension: &str,
+    prefix: &[&str],
+    suffix: &[&str],
+) -> anyhow::Result<Vec<String>> {
+    let mut lines = Vec::new();
+
+    if let Some(examples) = docs.tagged_docs.get("example") {
+        let base_path = crate::rerun_workspace_path().join("docs/code-examples");
+
+        let mut examples = examples.iter().peekable();
+        while let Some(example) = examples.next() {
+            let example = example.trim();
+            let path = base_path.join(format!("{example}.{extension}"));
+            let contents = std::fs::read_to_string(&path)
+                .with_context(|| format!("couldn't open code example {path:?}"))?;
+            let mut contents = contents.split('\n').collect_vec();
+            // trim trailing blank lines
+            while contents.last().is_some_and(is_blank) {
+                contents.pop();
+            }
+
+            lines.extend(prefix.iter().copied().map(String::from));
+            lines.extend(contents.into_iter().map(String::from));
+            lines.extend(suffix.iter().copied().map(String::from));
+
+            if examples.peek().is_some() {
+                lines.push(String::new()); // blank line
+            }
+        }
+    }
+
+    Ok(lines)
 }
 
 pub trait StringExt {
