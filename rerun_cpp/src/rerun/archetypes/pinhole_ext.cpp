@@ -5,7 +5,7 @@ namespace rerun {
 #ifdef CODEGEN
         // [CODEGEN COPY TO HEADER START]
 
-        /// Creates a pinhole from the focal length of the camera in pixels & a resolution in pixel.
+        /// Creates a pinhole from the camera focal length and resolution, both specified in pixels.
         ///
         /// The focal length is the diagonal of the projection matrix.
         /// Set the same value for x & y value for symmetric cameras, or two values for anamorphic
