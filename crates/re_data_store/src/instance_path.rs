@@ -19,6 +19,13 @@ pub struct InstancePath {
     pub instance_key: InstanceKey,
 }
 
+impl From<EntityPath> for InstancePath {
+    #[inline]
+    fn from(entity_path: EntityPath) -> Self {
+        Self::entity_splat(entity_path)
+    }
+}
+
 impl InstancePath {
     /// Indicate the whole entity (all instances of it) - i.e. a splat.
     ///
