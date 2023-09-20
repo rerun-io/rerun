@@ -58,11 +58,15 @@ const _: () = {
     trait IsNotSend<T> {
         fn __() {}
     }
+
     type False = ();
+
     struct True;
 
     struct Check<T: ?Sized>(T);
+
     impl<T: ?Sized> IsNotSend<True> for Check<T> {}
+
     impl<T: ?Sized + Send> IsNotSend<False> for Check<T> {}
 
     // if this fails with a type inference error,
