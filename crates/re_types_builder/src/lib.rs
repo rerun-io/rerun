@@ -299,7 +299,9 @@ pub fn generate_gitattributes_for_generated_files(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let ctx = re_types_builder::context::dummy_ctx();
 /// re_types_builder::generate_cpp_code(
+///     &ctx,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
@@ -329,7 +331,9 @@ pub fn generate_cpp_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let ctx = re_types_builder::context::dummy_ctx();
 /// re_types_builder::generate_rust_code(
+///     &ctx,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
@@ -359,7 +363,9 @@ pub fn generate_rust_code(
 ///     "./definitions",
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
+/// # let ctx = re_types_builder::context::dummy_ctx();
 /// re_types_builder::generate_python_code(
+///     &ctx,
 ///     "./rerun_py/rerun_sdk",
 ///     "./rerun_py/tests",
 ///     &objects,
