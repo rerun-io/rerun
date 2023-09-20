@@ -2,7 +2,7 @@ use web_time::Instant;
 
 use re_data_source::{DataSource, FileContents};
 use re_data_store::store_db::StoreDb;
-use re_log_types::{LogMsg, StoreKind};
+use re_log_types::{FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
@@ -390,6 +390,7 @@ impl App {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                            FileSource::FileDialog,
                             file_path,
                         )));
                 }
@@ -861,6 +862,7 @@ impl App {
                 // This is what we get on Web.
                 self.command_sender
                     .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                        FileSource::DragAndDrop,
                         FileContents {
                             name: file.name.clone(),
                             bytes: bytes.clone(),
@@ -872,7 +874,10 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
                 self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(path)));
+                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                        FileSource::DragAndDrop,
+                        path,
+                    )));
             }
         }
     }
@@ -983,6 +988,7 @@ impl eframe::App for App {
                 for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                            FileSource::FileDialog,
                             file.clone(),
                         )));
                 }

@@ -13,12 +13,12 @@ pub enum DataSource {
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
-    FilePath(std::path::PathBuf),
+    FilePath(re_log_types::FileSource, std::path::PathBuf),
 
     /// The contents of a file.
     ///
     /// This is what you get when loading a file on Web.
-    FileContents(FileContents),
+    FileContents(re_log_types::FileSource, FileContents),
 
     /// A remote Rerun server.
     WebSocketAddr(String),
@@ -30,7 +30,7 @@ impl DataSource {
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_uri(mut uri: String) -> DataSource {
+    pub fn from_uri(file_source: re_log_types::FileSource, mut uri: String) -> DataSource {
         use itertools::Itertools as _;
 
         fn looks_like_windows_abs_path(path: &str) -> bool {
@@ -68,7 +68,7 @@ impl DataSource {
         let path = std::path::Path::new(&uri).to_path_buf();
 
         if uri.starts_with("file://") || path.exists() {
-            DataSource::FilePath(path)
+            DataSource::FilePath(file_source, path)
         } else if uri.starts_with("http://")
             || uri.starts_with("https://")
             || (uri.starts_with("www.") && uri.ends_with(".rrd"))
@@ -79,7 +79,7 @@ impl DataSource {
 
         // Now we are into heuristics territory:
         } else if looks_like_a_file_path(&uri) {
-            DataSource::FilePath(path)
+            DataSource::FilePath(file_source, path)
         } else if uri.ends_with(".rrd") {
             DataSource::RrdHttpUrl(uri)
         } else {
@@ -110,13 +110,13 @@ impl DataSource {
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::FilePath(path) => {
+            DataSource::FilePath(file_source, path) => {
                 let (tx, rx) = re_smart_channel::smart_channel(
                     SmartMessageSource::File(path.clone()),
                     SmartChannelSource::File(path.clone()),
                 );
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_file_path::load_file_path(store_id, path.clone(), tx)
+                crate::load_file_path::load_file_path(store_id, file_source, path.clone(), tx)
                     .with_context(|| format!("{path:?}"))?;
                 if let Some(on_msg) = on_msg {
                     on_msg();
@@ -124,15 +124,20 @@ impl DataSource {
                 Ok(rx)
             }
 
-            DataSource::FileContents(file_contents) => {
+            DataSource::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
                 let (tx, rx) = re_smart_channel::smart_channel(
                     SmartMessageSource::File(name.clone().into()),
                     SmartChannelSource::File(name.clone().into()),
                 );
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_file_contents::load_file_contents(store_id, file_contents, tx)
-                    .with_context(|| format!("{name:?}"))?;
+                crate::load_file_contents::load_file_contents(
+                    store_id,
+                    file_source,
+                    file_contents,
+                    tx,
+                )
+                .with_context(|| format!("{name:?}"))?;
                 if let Some(on_msg) = on_msg {
                     on_msg();
                 }
@@ -156,6 +161,8 @@ fn is_known_file_extension(extension: &str) -> bool {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn test_data_source_from_uri() {
+    use re_log_types::FileSource;
+
     let file = [
         "file://foo",
         "foo.rrd",
@@ -171,11 +178,13 @@ fn test_data_source_from_uri() {
     ];
     let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
 
+    let file_source = FileSource::DragAndDrop;
+
     for uri in file {
         assert!(
             matches!(
-                DataSource::from_uri(uri.to_owned()),
-                DataSource::FilePath(_)
+                DataSource::from_uri(file_source, uri.to_owned()),
+                DataSource::FilePath { .. }
             ),
             "Expected {uri:?} to be categorized as FilePath"
         );
@@ -184,7 +193,7 @@ fn test_data_source_from_uri() {
     for uri in http {
         assert!(
             matches!(
-                DataSource::from_uri(uri.to_owned()),
+                DataSource::from_uri(file_source, uri.to_owned()),
                 DataSource::RrdHttpUrl(_)
             ),
             "Expected {uri:?} to be categorized as RrdHttpUrl"
@@ -194,7 +203,7 @@ fn test_data_source_from_uri() {
     for uri in ws {
         assert!(
             matches!(
-                DataSource::from_uri(uri.to_owned()),
+                DataSource::from_uri(file_source, uri.to_owned()),
                 DataSource::WebSocketAddr(_)
             ),
             "Expected {uri:?} to be categorized as WebSocketAddr"

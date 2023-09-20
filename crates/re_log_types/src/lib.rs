@@ -307,6 +307,14 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum FileSource {
+    Cli,
+    DragAndDrop,
+    FileDialog,
+}
+
 /// The source of a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -321,14 +329,16 @@ pub enum StoreSource {
 
     /// The official Rerun Rust Logging SDK
     RustSdk {
+        /// Rust version of the the code compiling the Rust SDK
         rustc_version: String,
+
+        /// LLVM version of the the code compiling the Rust SDK
         llvm_version: String,
     },
 
-    /// Loading a file directly from disk via the CLI.
-    FileFromCli {
-        rustc_version: String,
-        llvm_version: String,
+    /// Loading a file via CLI, drag-and-drop, a file-dialog, etc.
+    File {
+        file_source: FileSource,
     },
 
     /// Perhaps from some manual data ingestion?
@@ -341,14 +351,12 @@ impl std::fmt::Display for StoreSource {
             Self::Unknown => "Unknown".fmt(f),
             Self::CSdk => "C SDK".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
-            Self::RustSdk {
-                rustc_version,
-                llvm_version: _,
-            } => write!(f, "Rust {rustc_version} SDK"),
-            Self::FileFromCli {
-                rustc_version,
-                llvm_version: _,
-            } => write!(f, "File via CLI {rustc_version} "),
+            Self::RustSdk { rustc_version, .. } => write!(f, "Rust SDK (rustc {rustc_version})"),
+            Self::File { file_source, .. } => match file_source {
+                FileSource::Cli => write!(f, "File via CLI"),
+                FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
+                FileSource::FileDialog => write!(f, "File via file dialog"),
+            },
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
