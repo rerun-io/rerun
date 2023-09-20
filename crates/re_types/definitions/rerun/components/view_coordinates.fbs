@@ -1,0 +1,38 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+include "rerun/datatypes.fbs";
+
+namespace rerun.components;
+
+// TODO(https://github.com/rerun-io/rerun/issues/3384)
+/*
+enum ViewDir: byte {
+    Up = 1,
+    Down = 2,
+    Right = 3,
+    Left = 4,
+    Forward = 5,
+    Back = 6,
+}
+*/
+
+/// How we interpret the coordinate system of an entity/space.
+///
+/// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+///
+/// The follow constants are used to represent the different directions.
+///  Up = 1
+///  Down = 2
+///  Right = 3
+///  Left = 4
+///  Forward = 5
+///  Back = 6
+struct ViewCoordinates (
+  "attr.rust.derive": "Copy, Eq, PartialEq",
+  order: 100
+) {
+  coordinates: [byte: 3] (order: 100);
+}

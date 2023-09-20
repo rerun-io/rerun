@@ -23,3 +23,4 @@ include "./components/text_log_level.fbs";
 include "./components/text.fbs";
 include "./components/transform3d.fbs";
 include "./components/vector3d.fbs";
+include "./components/view_coordinates.fbs";
