@@ -21,10 +21,22 @@ namespace rerun.datatypes;
 /// \py However, construction is done from a list of rows, which follows NumPy's convention:
 /// \py ```python
 /// \py np.testing.assert_array_equal(
-/// \py     rrd.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
+/// \py     rr.dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
 /// \py )
-/// \py     np.testing.assert_array_equal(
-/// \py     rrd.Mat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
+/// \py np.testing.assert_array_equal(
+/// \py     rr.dt.Mat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+/// \py     np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32),
+/// \py )
+/// \py ```
+/// \py If you want to construct a matrix from a list of columns instead, use the named `columns` parameter:
+/// \py ```python
+/// \py np.testing.assert_array_equal(
+/// \py     rr.dt.Mat3x3(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
+/// \py     np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
+/// \py )
+/// \py np.testing.assert_array_equal(
+/// \py     rr.dt.Mat3x3(columns=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+/// \py     np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
 /// \py )
 /// \py ```
 struct Mat3x3 (

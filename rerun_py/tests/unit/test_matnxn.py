@@ -11,7 +11,18 @@ MAT_3X3_INPUT = [
     [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
     np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
     np.array([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], order="F"),
     rr_dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    rr_dt.Mat3x3(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    rr_dt.Mat3x3(rows=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+    rr_dt.Mat3x3(columns=[1, 4, 7, 2, 5, 8, 3, 6, 9]),
+    rr_dt.Mat3x3(columns=[[1, 4, 7], [2, 5, 8], [3, 6, 9]]),
+    rr_dt.Mat3x3(rr_dt.Mat3x3(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    rr_dt.Mat3x3(rr_dt.Mat3x3(columns=[1, 4, 7, 2, 5, 8, 3, 6, 9])),
+    rr_dt.Mat3x3(rows=rr_dt.Mat3x3(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    rr_dt.Mat3x3(rows=rr_dt.Mat3x3(columns=[1, 4, 7, 2, 5, 8, 3, 6, 9])),
+    rr_dt.Mat3x3(columns=rr_dt.Mat3x3(columns=[1, 4, 7, 2, 5, 8, 3, 6, 9])),
+    rr_dt.Mat3x3(columns=rr_dt.Mat3x3(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9])),
 ]
 
 
@@ -28,7 +39,18 @@ MAT_4X4_INPUT = [
     [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0],
     np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]),
     np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+    np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], order="F"),
     rr_dt.Mat4x4([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+    rr_dt.Mat4x4(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+    rr_dt.Mat4x4(rows=[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]),
+    rr_dt.Mat4x4(columns=[1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16]),
+    rr_dt.Mat4x4(columns=[[1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15], [4, 8, 12, 16]]),
+    rr_dt.Mat4x4(rr_dt.Mat4x4(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])),
+    rr_dt.Mat4x4(rr_dt.Mat4x4(columns=[1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16])),
+    rr_dt.Mat4x4(rows=rr_dt.Mat4x4(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])),
+    rr_dt.Mat4x4(rows=rr_dt.Mat4x4(columns=[1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16])),
+    rr_dt.Mat4x4(columns=rr_dt.Mat4x4(columns=[1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16])),
+    rr_dt.Mat4x4(columns=rr_dt.Mat4x4(rows=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])),
 ]
 
 
@@ -53,6 +75,28 @@ def test_mat3x3array() -> None:
     )
 
 
+# Tests the snippet that are embedded in the docs.
+def test_mat3x3_doc_text() -> None:
+    import rerun.experimental as rr
+
+    np.testing.assert_array_equal(
+        rr.dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
+    )
+    np.testing.assert_array_equal(
+        rr.dt.Mat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32),
+    )
+
+    np.testing.assert_array_equal(
+        rr.dt.Mat3x3(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        rr.dt.Mat3x3(columns=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
+    )
+
+
 @pytest.mark.parametrize("data", MAT_4X4_INPUT)
 def test_mat4x4(data: rr_dt.Mat4x4Like) -> None:
     m = rr_dt.Mat4x4(data)
@@ -62,4 +106,27 @@ def test_mat4x4(data: rr_dt.Mat4x4Like) -> None:
 def test_mat4x4array() -> None:
     assert rr_dt.Mat4x4Array.from_similar(MAT_4X4_INPUT) == rr_dt.Mat4x4Array.from_similar(
         [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]] * len(MAT_4X4_INPUT)
+    )
+
+
+# Tests the snippet that are embedded in the docs.
+def test_mat4x4_doc_text() -> None:
+    import rerun.experimental as rr
+
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
+        np.array([1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
+        np.array([1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16], dtype=np.float32),
+    )
+
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        rr.dt.Mat4x4(columns=[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], dtype=np.float32),
     )
