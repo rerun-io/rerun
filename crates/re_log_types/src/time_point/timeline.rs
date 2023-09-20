@@ -126,6 +126,6 @@ impl SizeBytes for Timeline {
 impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.name.hash() | self.typ.hash());
+        state.write_u64(self.name.hash() ^ self.typ.hash());
     }
 }

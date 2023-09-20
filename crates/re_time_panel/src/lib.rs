@@ -378,14 +378,30 @@ impl TimePanel {
                 if time_area_response.dragged_by(PointerButton::Primary) {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
-                self.show_children(
-                    ctx,
-                    time_area_response,
-                    time_area_painter,
-                    tree_max_y,
-                    &ctx.store_db.entity_db.tree,
-                    ui,
-                );
+
+                // Show "/" on top?
+                let show_root = false;
+
+                if show_root {
+                    self.show_tree(
+                        ctx,
+                        time_area_response,
+                        time_area_painter,
+                        tree_max_y,
+                        None,
+                        &ctx.store_db.entity_db.tree,
+                        ui,
+                    );
+                } else {
+                    self.show_children(
+                        ctx,
+                        time_area_response,
+                        time_area_painter,
+                        tree_max_y,
+                        &ctx.store_db.entity_db.tree,
+                        ui,
+                    );
+                }
             });
     }
 
@@ -396,7 +412,7 @@ impl TimePanel {
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree_max_y: f32,
-        last_path_part: &EntityPathPart,
+        last_path_part: Option<&EntityPathPart>,
         tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
@@ -409,10 +425,14 @@ impl TimePanel {
         }
 
         // The last part of the the path component
-        let text = if tree.is_leaf() {
-            last_path_part.to_string()
+        let text = if let Some(last_path_part) = last_path_part {
+            if tree.is_leaf() {
+                last_path_part.to_string()
+            } else {
+                format!("{last_path_part}/") // show we have children with a /
+            }
         } else {
-            format!("{last_path_part}/") // show we have children with a /
+            "/".to_owned()
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
@@ -513,7 +533,7 @@ impl TimePanel {
                 time_area_response,
                 time_area_painter,
                 tree_max_y,
-                last_component,
+                Some(last_component),
                 child,
                 ui,
             );

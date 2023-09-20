@@ -113,7 +113,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.9
+      image: rerunio/ci_docker:0.9.1
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -198,7 +198,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.9
+      image: rerunio/ci_docker:0.9.1
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -304,7 +304,7 @@ jobs:
     name: Cargo Deny
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.9
+      image: rerunio/ci_docker:0.9.1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -336,7 +336,7 @@ jobs:
     name: C++ tests
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.9
+      image: rerunio/ci_docker:0.9.1
     env:
       RUSTC_WRAPPER: "sccache"
     steps:

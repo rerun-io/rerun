@@ -25,7 +25,10 @@ def run_canny(num_frames: int | None) -> None:
         # Read the frame
         ret, img = cap.read()
         if not ret:
-            print("Can't receive frame (stream end?). Exiting ...")
+            if frame_nr == 0:
+                print("Failed to capture any frame. No camera connected?")
+            else:
+                print("Can't receive frame (stream end?). Exiting…")
             break
 
         # Get the current frame time. On some platforms it always returns zero.

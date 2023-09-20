@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: rerunio/ci_docker:0.9
+      image: rerunio/ci_docker:0.9.1
 
     permissions:
       contents: "read"
