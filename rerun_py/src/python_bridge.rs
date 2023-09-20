@@ -1365,7 +1365,6 @@ fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
 }
 
 fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
-    let components = re_log_types::parse_entity_path(entity_path)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    Ok(EntityPath::from(components))
+    use std::str::FromStr as _;
+    EntityPath::from_str(entity_path).map_err(|err| PyTypeError::new_err(err.to_string()))
 }
