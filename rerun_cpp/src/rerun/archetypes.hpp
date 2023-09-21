@@ -21,3 +21,4 @@
 #include "archetypes/text_document.hpp"
 #include "archetypes/text_log.hpp"
 #include "archetypes/transform3d.hpp"
+#include "archetypes/view_coordinates.hpp"

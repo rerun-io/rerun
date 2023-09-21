@@ -49,6 +49,13 @@ from .text import Text, TextArray, TextType
 from .text_log_level import TextLogLevel, TextLogLevelArray, TextLogLevelType
 from .transform3d import Transform3D, Transform3DArray, Transform3DType
 from .vector3d import Vector3D, Vector3DArray, Vector3DType
+from .view_coordinates import (
+    ViewCoordinates,
+    ViewCoordinatesArray,
+    ViewCoordinatesArrayLike,
+    ViewCoordinatesLike,
+    ViewCoordinatesType,
+)
 
 __all__ = [
     "AnnotationContext",
@@ -156,4 +163,9 @@ __all__ = [
     "Vector3D",
     "Vector3DArray",
     "Vector3DType",
+    "ViewCoordinates",
+    "ViewCoordinatesArray",
+    "ViewCoordinatesArrayLike",
+    "ViewCoordinatesLike",
+    "ViewCoordinatesType",
 ]

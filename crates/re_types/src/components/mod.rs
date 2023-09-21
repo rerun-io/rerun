@@ -53,6 +53,8 @@ mod transform3d;
 mod transform3d_ext;
 mod vector3d;
 mod vector3d_ext;
+mod view_coordinates;
+mod view_coordinates_ext;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::class_id::ClassId;
@@ -83,3 +85,4 @@ pub use self::text::Text;
 pub use self::text_log_level::TextLogLevel;
 pub use self::transform3d::Transform3D;
 pub use self::vector3d::Vector3D;
+pub use self::view_coordinates::ViewCoordinates;

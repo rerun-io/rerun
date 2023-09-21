@@ -5282,6 +5282,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_view_coordinates"
+version = "0.9.0-alpha.4"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "run_wasm"
 version = "0.9.0-alpha.4"
 dependencies = [

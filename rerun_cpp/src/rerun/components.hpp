@@ -31,3 +31,4 @@
 #include "components/text_log_level.hpp"
 #include "components/transform3d.hpp"
 #include "components/vector3d.hpp"
+#include "components/view_coordinates.hpp"
