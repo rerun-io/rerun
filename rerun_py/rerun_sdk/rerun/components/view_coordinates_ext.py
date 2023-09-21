@@ -8,7 +8,7 @@ import pyarrow as pa
 
 if TYPE_CHECKING:
     from ..log import ComponentBatchLike
-    from . import ViewCoordinatesArrayLike
+    from . import ViewCoordinatesArrayLike, ViewCoordinatesLike
 
 
 class ViewCoordinatesExt:
@@ -21,16 +21,36 @@ class ViewCoordinatesExt:
         Back = 6
 
     @staticmethod
+    def coordinates__field_converter_override(data: ViewCoordinatesLike) -> pa.Array:
+        coordinates = np.asarray(data, dtype=np.uint8)
+        if coordinates.shape != (3,):
+            raise ValueError(f"ViewCoordinates must be a 3-element array. Got: {coordinates.shape}")
+        return coordinates
+
+    @staticmethod
     def native_to_pa_array_override(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import ViewCoordinates
 
         if isinstance(data, ViewCoordinates):
-            data = data.coordinates
+            # ViewCoordinates
+            data = [data.coordinates]
+        elif hasattr(data, "__len__") and len(data) > 0 and isinstance(data[0], ViewCoordinates):  # type: ignore[arg-type, index]
+            # [ViewCoordinates]
+            data = [d.coordinates for d in data]  # type: ignore[union-attr]
+        else:
+            try:
+                # [x, y, z]
+                data = [ViewCoordinates(data).coordinates]  # type: ignore[arg-type]
+            except ValueError:
+                # [[x, y, z], ...]
+                data = [ViewCoordinates(d).coordinates for d in data]  # type: ignore[union-attr]
 
         data = np.asarray(data, dtype=np.uint8)
 
-        if data.shape != (3,):
+        if len(data.shape) != 2 or data.shape[1] != 3:
             raise ValueError(f"ViewCoordinates must be a 3-element array. Got: {data.shape}")
+
+        data = data.flatten()
 
         for value in data:
             # TODO(jleibs): Enforce this validation based on ViewDir
