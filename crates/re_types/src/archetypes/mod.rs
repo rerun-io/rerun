@@ -18,6 +18,7 @@ mod line_strips3d;
 mod mesh3d;
 mod mesh3d_ext;
 mod pinhole;
+mod pinhole_ext;
 mod points2d;
 mod points3d;
 mod segmentation_image;
