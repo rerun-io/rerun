@@ -1,7 +1,7 @@
 use super::Blob;
 
-impl<B: Into<crate::ArrowBuffer<u8>>> From<B> for Blob {
-    fn from(bytes: B) -> Self {
+impl From<Vec<u8>> for Blob {
+    fn from(bytes: Vec<u8>) -> Self {
         Self(bytes.into())
     }
 }
