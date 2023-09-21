@@ -5,7 +5,6 @@ use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Asset3D,
     components::{Blob, InstanceKey, MediaType, OutOfTreeTransform3D},
-    datatypes::Transform3D,
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -89,7 +88,7 @@ impl Asset3DPart {
             // Apply the out-of-tree transform.
             if let Some(transform) = transform.as_ref() {
                 let (scale, rotation, translation) =
-                    glam::Affine3A::from(transform).to_scale_rotation_translation();
+                    glam::Affine3A::from(transform.0).to_scale_rotation_translation();
                 let transform =
                     glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
                 for instance in &mut mesh_instances {
