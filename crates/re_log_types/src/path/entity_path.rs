@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use crate::{hash::Hash64, path::entity_path_impl::EntityPathImpl, EntityPathPart, SizeBytes};
 
-use super::parse_path::parse_entity_path_components;
-
 // ----------------------------------------------------------------------------
 
 /// A 64 bit hash of [`EntityPath`] with very small risk of collision.
@@ -207,18 +205,19 @@ impl From<&[EntityPathPart]> for EntityPath {
     }
 }
 
-#[allow(clippy::fallible_impl_from)]
+#[allow(clippy::fallible_impl_from)] // TODO(emilk): we should force users to handle errors instead, and have a nice macro for constructing entity path
 impl From<&str> for EntityPath {
     #[inline]
     fn from(path: &str) -> Self {
-        Self::from(parse_entity_path_components(path).unwrap())
+        path.parse().unwrap()
     }
 }
 
+#[allow(clippy::fallible_impl_from)] // TODO(emilk): we should force users to handle errors instead, and have a nice macro for constructing entity path
 impl From<String> for EntityPath {
     #[inline]
     fn from(path: String) -> Self {
-        Self::from(path.as_str())
+        path.parse().unwrap()
     }
 }
 
@@ -344,13 +343,5 @@ impl std::fmt::Debug for EntityPath {
 impl std::fmt::Display for EntityPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.path.fmt(f)
-    }
-}
-
-impl std::str::FromStr for EntityPath {
-    type Err = crate::PathParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        parse_entity_path_components(s).map(Self::new)
     }
 }

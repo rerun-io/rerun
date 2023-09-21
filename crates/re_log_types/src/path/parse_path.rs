@@ -1,4 +1,4 @@
-use crate::{EntityPathPart, Index};
+use crate::{EntityPath, EntityPathPart, Index};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
@@ -24,8 +24,16 @@ pub enum PathParseError {
     MissingSlash,
 }
 
+impl std::str::FromStr for EntityPath {
+    type Err = crate::PathParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_entity_path_components(s).map(Self::new)
+    }
+}
+
 /// Parses an entity path, e.g. `foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
-pub fn parse_entity_path_components(path: &str) -> Result<Vec<EntityPathPart>, PathParseError> {
+fn parse_entity_path_components(path: &str) -> Result<Vec<EntityPathPart>, PathParseError> {
     if path.is_empty() {
         return Err(PathParseError::EmptyString);
     }
