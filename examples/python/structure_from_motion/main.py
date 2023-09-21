@@ -39,8 +39,7 @@ COLMAP pipeline, and we use Rerun to visualize the individual
 camera frames, estimated camera poses, and resulting point clouds over time.
 
 ## How it was made
-The full source code for this example is available on Github
-[here](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
 
 ### Colored 3D Points
 The colored 3D points were added to the scene by logging the
