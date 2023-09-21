@@ -332,7 +332,7 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
         &Points2D::new([(40.0, 50.0), (120.0, 70.0), (80.0, 30.0)]).with_class_ids([13, 42, 99]),
     )?;
     rec.log(
-        "seg_test/many points",
+        "seg_test/many_points",
         &Points2D::new(
             (0..25).map(|i| (100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0)),
         )

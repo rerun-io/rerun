@@ -46,7 +46,7 @@ def run_segmentation(experimental_api: bool) -> None:
             rr2.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
         )
         rr2.log(
-            "seg_test/many points",
+            "seg_test/many_points",
             rr2.Points2D(
                 [[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)],
                 class_ids=np.array([42], dtype=np.uint8),
@@ -62,7 +62,7 @@ def run_segmentation(experimental_api: bool) -> None:
             class_ids=np.array([13, 42, 99], dtype=np.uint8),
         )
         rr.log_points(
-            "seg_test/many points",
+            "seg_test/many_points",
             np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
             class_ids=np.array([42], dtype=np.uint8),
         )
