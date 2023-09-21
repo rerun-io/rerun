@@ -16,6 +16,8 @@
 /// A Barchart.
 ///
 /// The x values will be the indices of the array, and the bar heights will be the provided values.
+///
+/// /// \example bar_chart
 #[derive(Clone, Debug, PartialEq)]
 pub struct BarChart {
     /// The values. Should always be a rank-1 tensor.

@@ -22,6 +22,7 @@ from os.path import isfile, join
 opt_out_entirely = {
     "annotation_context_connections": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
+    "bar_chart": ["cpp"],
     "custom_data": ["cpp"],
     "depth_image_3d": ["cpp"],
     "depth_image_simple": ["cpp"],
