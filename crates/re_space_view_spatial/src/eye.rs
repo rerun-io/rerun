@@ -28,7 +28,8 @@ impl Eye {
     pub fn from_camera(space_cameras: &SpaceCamera3D) -> Option<Eye> {
         let fov_y = space_cameras
             .pinhole
-            .and_then(|i| i.fov_y())
+            .as_ref()
+            .and_then(|pinhole| pinhole.fov_y())
             .unwrap_or(Self::DEFAULT_FOV_Y);
 
         Some(Self {
