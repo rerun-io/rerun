@@ -1,10 +1,12 @@
 use egui::NumExt as _;
 
-use re_components::Pinhole;
 use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
-use re_types::{components::Transform3D, tensor_data::TensorDataMeaning};
+use re_types::{
+    components::{PinholeProjection, Transform3D},
+    tensor_data::TensorDataMeaning,
+};
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use re_viewport::{Viewport, ViewportBlueprint};
 
@@ -449,7 +451,7 @@ fn pinhole_props_ui(
     let query = ctx.current_query();
     let store = &ctx.store_db.entity_db.data_store;
     if store
-        .query_latest_component::<Pinhole>(entity_path, &query)
+        .query_latest_component::<PinholeProjection>(entity_path, &query)
         .is_some()
     {
         ui.label("Image plane distance");
@@ -486,8 +488,8 @@ fn depth_props_ui(
     if meaning != TensorDataMeaning::Depth {
         return Some(());
     }
-    let pinhole_ent_path = store
-        .query_latest_component_at_closest_ancestor::<Pinhole>(entity_path, &query)?
+    let image_projection_ent_path = store
+        .query_latest_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
         .0;
 
     let mut backproject_depth = *entity_props.backproject_depth;
@@ -507,7 +509,7 @@ fn depth_props_ui(
 
     if backproject_depth {
         ui.label("Pinhole");
-        item_ui::entity_path_button(ctx, ui, None, &pinhole_ent_path).on_hover_text(
+        item_ui::entity_path_button(ctx, ui, None, &image_projection_ent_path).on_hover_text(
             "The entity path of the pinhole transform being used to do the backprojection.",
         );
         ui.end_row();

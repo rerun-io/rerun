@@ -15,7 +15,9 @@ const COLORMAP_VIRIDIS:   u32 = 6u;
 fn colormap_srgb(which: u32, t_unsaturated: f32) -> Vec3 {
     let t = saturate(t_unsaturated);
     if which == COLORMAP_GRAYSCALE {
-        return srgb_from_linear(Vec3(t));
+        // A linear gray gradient in sRGB gamma space is supposed to be perceptually even as-is!
+        // Easy to get confused: A linear gradient in sRGB linear space is *not* perceptually even.
+        return Vec3(t);
     } else if which == COLORMAP_INFERNO {
         return colormap_inferno_srgb(t);
     } else if which == COLORMAP_MAGMA {

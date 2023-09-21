@@ -13,9 +13,9 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use bytes::Bytes;
 use rerun::{
-    components::{Color, Mesh3D, RawMesh3D, Transform3D, ViewCoordinates},
-    datatypes::Vec4D,
-    external::{re_log, re_memory::AccountingAllocator},
+    archetypes::Mesh3D,
+    components::{Color, MeshProperties, Transform3D, ViewCoordinates},
+    external::{ecolor, re_log, re_memory::AccountingAllocator},
     transform::TranslationRotationScale3D,
     EntityPath, RecordingStream,
 };
@@ -34,21 +34,33 @@ impl From<GltfPrimitive> for Mesh3D {
             vertex_positions,
             vertex_colors,
             vertex_normals,
-            vertex_texcoords: _, // TODO(cmc) support mesh texturing
+            vertex_texcoords: _, // TODO(cmc): support mesh texturing
         } = primitive;
 
-        let raw = RawMesh3D {
-            albedo_factor: albedo_factor.map(Vec4D).map(Into::into),
-            indices: indices.map(|i| i.into()),
-            vertex_positions: vertex_positions.into_iter().flatten().collect(),
-            vertex_normals: vertex_normals.map(|normals| normals.into_iter().flatten().collect()),
-            vertex_colors: vertex_colors
-                .map(|colors| colors.into_iter().map(|c| c.to_u32()).collect()),
-        };
+        let mut mesh = Mesh3D::new(vertex_positions);
 
-        raw.sanity_check().unwrap();
+        if let Some(indices) = indices {
+            assert!(indices.len() % 3 == 0);
+            let triangle_indices = indices.chunks_exact(3).map(|tri| (tri[0], tri[1], tri[2]));
+            mesh =
+                mesh.with_mesh_properties(MeshProperties::from_triangle_indices(triangle_indices));
+        }
+        if let Some(vertex_normals) = vertex_normals {
+            mesh = mesh.with_vertex_normals(vertex_normals);
+        }
+        if let Some(vertex_colors) = vertex_colors {
+            mesh = mesh.with_vertex_colors(vertex_colors);
+        }
+        if albedo_factor.is_some() {
+            mesh = mesh.with_mesh_material(rerun::datatypes::Material {
+                albedo_factor: albedo_factor
+                    .map(|[r, g, b, a]| ecolor::Rgba::from_rgba_unmultiplied(r, g, b, a).into()),
+            });
+        }
 
-        Mesh3D::Raw(raw)
+        mesh.sanity_check().unwrap();
+
+        mesh
     }
 }
 
@@ -75,18 +87,10 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
     }
 
     // Convert glTF objects into Rerun components.
-    // TODO(#2788): Mesh archetype
-    let primitives = node
-        .primitives
-        .into_iter()
-        .map(Mesh3D::from)
-        .collect::<Vec<_>>();
-    rec.log_component_batches(
-        node.name.as_str(),
-        false,
-        primitives.len() as _,
-        [&primitives as _],
-    )?;
+    for (i, primitive) in node.primitives.into_iter().enumerate() {
+        let mesh: Mesh3D = primitive.into();
+        rec.log(format!("{}/#{}", node.name, i), &mesh)?;
+    }
 
     // Recurse through all of the node's children!
     for mut child in node.children {

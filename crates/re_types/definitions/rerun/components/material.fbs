@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+// Material properties of a mesh.
+table Material (
+  "attr.rust.derive": "PartialEq, Eq",
+  order: 100
+) {
+  material: rerun.datatypes.Material (order: 100);
+}
+

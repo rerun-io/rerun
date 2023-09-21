@@ -1,10 +1,11 @@
 use glam::vec3;
-use re_components::{Pinhole, ViewCoordinates};
+use re_components::ViewCoordinates;
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
+    archetypes::Pinhole,
     components::{InstanceKey, Transform3D},
-    ComponentNameSet, Loggable as _,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -15,6 +16,7 @@ use super::SpatialViewPartData;
 use crate::{
     contexts::{pinhole_camera_view_coordinates, SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
+    query_pinhole,
     space_camera_3d::SpaceCamera3D,
 };
 
@@ -50,7 +52,7 @@ impl CamerasPart {
         shared_render_builders: &SharedRenderBuilders,
         ent_path: &EntityPath,
         props: &EntityProperties,
-        pinhole: Pinhole,
+        pinhole: &Pinhole,
         transform_at_entity: Option<Transform3D>,
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
@@ -75,7 +77,7 @@ impl CamerasPart {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
-                pinhole: Some(pinhole),
+                pinhole: Some(pinhole.clone()),
                 picture_plane_distance: frustum_length,
             });
             return;
@@ -102,11 +104,11 @@ impl CamerasPart {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates,
             world_from_camera: world_from_camera_iso,
-            pinhole: Some(pinhole),
+            pinhole: Some(pinhole.clone()),
             picture_plane_distance: frustum_length,
         });
 
-        let Some(resolution) = pinhole.resolution else {
+        let Some(resolution) = pinhole.resolution.as_ref() else {
             return;
         };
 
@@ -175,23 +177,15 @@ impl CamerasPart {
 
 impl ViewPartSystem for CamerasPart {
     fn required_components(&self) -> ComponentNameSet {
-        std::iter::once(Pinhole::name()).collect()
+        re_types::archetypes::Pinhole::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
-    // TODO(#2816): use this instead
-    // fn required_components(&self) -> ComponentNameSet {
-    //     Pinhole::required_components().to_vec()
-    // }
-
-    // TODO(#2816): use this instead
-    // fn heuristic_filter(
-    //     &self,
-    //     _store: &re_arrow_store::DataStore,
-    //     _ent_path: &EntityPath,
-    //     components: &[re_types::ComponentName],
-    // ) -> bool {
-    //     components.contains(&Pinhole::indicator_component())
-    // }
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(re_types::archetypes::Pinhole::indicator_component()).collect()
+    }
 
     fn execute(
         &mut self,
@@ -203,10 +197,11 @@ impl ViewPartSystem for CamerasPart {
         let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
 
         let store = ctx.store_db.store();
+
         for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &time_query) {
+            if let Some(pinhole) = query_pinhole(store, &time_query, ent_path) {
                 let pinhole_view_coordinates = pinhole_camera_view_coordinates(
                     &ctx.store_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl.current_query(),
@@ -219,7 +214,7 @@ impl ViewPartSystem for CamerasPart {
                     shared_render_builders,
                     ent_path,
                     &props,
-                    pinhole.value,
+                    &pinhole,
                     store
                         .query_latest_component::<Transform3D>(ent_path, &time_query)
                         .map(|c| c.value),

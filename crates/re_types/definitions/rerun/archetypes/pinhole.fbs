@@ -1,0 +1,32 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+
+/// Camera perspective projection (a.k.a. intrinsics).
+///
+/// \example pinhole_simple
+table Pinhole (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  // --- Required ---
+
+  /// Camera projection, from image coordinates to view coordinates.
+  image_from_camera: rerun.components.PinholeProjection ("attr.rerun.component_required", required, order: 1000);
+
+  // --- Recommended ---
+
+  /// Pixel resolution (usually integers) of child image space. Width and height.
+  ///
+  /// Example:
+  /// ```text
+  /// [1920.0, 1440.0]
+  /// ```
+  ///
+  /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+  resolution: rerun.components.Resolution ("attr.rerun.component_recommended", nullable, order: 2000);
+}

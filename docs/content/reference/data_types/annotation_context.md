@@ -7,7 +7,7 @@ Annotation Contexts are metadata providing information to the Rerun viewer on ho
 
 - Labels and/or colors for [Rect2D](rect2d.md) and [Box3D](box3d.md) entities. These are mapped to the rectangle and box entities via their `class_id` components. Commonly used for object detection.
 - Labels and/or colors for [segmentation images](segmentation_image.md). These are mapped to the images' pixel values, which are interpreted as `class_id`s.
-- Labels, colors, and/or connections for [Point2D](point2d.md) and [Point3D](point3d.md) entities. These are mapped to the point entities via their `class_id` and `keypoint_id` components. Commonly used for keypoint or pose detection.
+- Labels, colors, and/or connections for [Point2D](point2d.md) and [Position3D](point3d.md) entities. These are mapped to the point entities via their `class_id` and `keypoint_id` components. Commonly used for keypoint or pose detection.
 
 See the [Annotation Context](../../concepts/annotation-context.md) concept page for more information.
 

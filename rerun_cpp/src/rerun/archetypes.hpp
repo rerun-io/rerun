@@ -12,6 +12,8 @@
 #include "archetypes/image.hpp"
 #include "archetypes/line_strips2d.hpp"
 #include "archetypes/line_strips3d.hpp"
+#include "archetypes/mesh3d.hpp"
+#include "archetypes/pinhole.hpp"
 #include "archetypes/points2d.hpp"
 #include "archetypes/points3d.hpp"
 #include "archetypes/segmentation_image.hpp"

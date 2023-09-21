@@ -17,6 +17,7 @@ use crate::contexts::{
 ///
 /// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
+// TODO(#3354): goes away with asset3d
 pub fn process_entity_views<'a, System: NamedViewSystem, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,

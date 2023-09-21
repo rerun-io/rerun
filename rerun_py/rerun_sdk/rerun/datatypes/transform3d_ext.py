@@ -89,12 +89,12 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
 
 
 def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
-    from . import Mat3x3Type
+    from . import Mat3x3Array, Mat3x3Type
 
     if mat is None:
         return pa.nulls(1, Mat3x3Type().storage_type)
     else:
-        return pa.FixedSizeListArray.from_arrays(mat.coeffs, type=Mat3x3Type().storage_type)
+        return Mat3x3Array._native_to_pa_array(mat, Mat3x3Type().storage_type)
 
 
 def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:

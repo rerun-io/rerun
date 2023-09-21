@@ -33,12 +33,16 @@ from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, I
 from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArray, LineStrip3DArrayLike, LineStrip3DLike, LineStrip3DType
+from .material import Material, MaterialArray, MaterialType
 from .media_type import MediaType, MediaTypeArray, MediaTypeType
+from .mesh_properties import MeshProperties, MeshPropertiesArray, MeshPropertiesType
 from .origin2d import Origin2D, Origin2DArray, Origin2DType
 from .origin3d import Origin3D, Origin3DArray, Origin3DType
+from .pinhole_projection import PinholeProjection, PinholeProjectionArray, PinholeProjectionType
 from .position2d import Position2D, Position2DArray, Position2DType
 from .position3d import Position3D, Position3DArray, Position3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
+from .resolution import Resolution, ResolutionArray, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DArray, Rotation3DType
 from .tensor_data import TensorData, TensorDataArray, TensorDataType
 from .text import Text, TextArray, TextType
@@ -102,15 +106,24 @@ __all__ = [
     "LineStrip3DArrayLike",
     "LineStrip3DLike",
     "LineStrip3DType",
+    "Material",
+    "MaterialArray",
+    "MaterialType",
     "MediaType",
     "MediaTypeArray",
     "MediaTypeType",
+    "MeshProperties",
+    "MeshPropertiesArray",
+    "MeshPropertiesType",
     "Origin2D",
     "Origin2DArray",
     "Origin2DType",
     "Origin3D",
     "Origin3DArray",
     "Origin3DType",
+    "PinholeProjection",
+    "PinholeProjectionArray",
+    "PinholeProjectionType",
     "Position2D",
     "Position2DArray",
     "Position2DType",
@@ -122,6 +135,9 @@ __all__ = [
     "RadiusArrayLike",
     "RadiusLike",
     "RadiusType",
+    "Resolution",
+    "ResolutionArray",
+    "ResolutionType",
     "Rotation3D",
     "Rotation3DArray",
     "Rotation3DType",

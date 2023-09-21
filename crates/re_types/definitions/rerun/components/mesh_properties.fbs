@@ -1,0 +1,18 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+// Global properties of a mesh.
+table MeshProperties (
+  "attr.rust.derive": "PartialEq, Eq",
+  order: 100
+) {
+  props: rerun.datatypes.MeshProperties (order: 100);
+}

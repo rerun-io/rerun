@@ -3,8 +3,6 @@ from __future__ import annotations
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components_deprecated.pinhole import Pinhole, PinholeArray
-from rerun.error_utils import _send_warning
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -126,47 +124,16 @@ def log_pinhole(
         The pinhole matrix (the `child_from_parent` argument) always project along the third (Z) axis,
         but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
     """
+    from rerun.experimental import Pinhole, log
 
-    matrix: npt.ArrayLike
-    if child_from_parent is None:
-        # TODO(emilk): Use a union type for the Pinhole component instead of converting to a matrix here
-        if focal_length_px is None:
-            _send_warning("log_pinhole: either child_from_parent or focal_length_px must be set", 1)
-            focal_length_px = (height * width) ** 0.5  # a reasonable default
-        if principal_point_px is None:
-            principal_point_px = [width / 2, height / 2]
-        if type(focal_length_px) in (int, float):
-            fl_x = focal_length_px
-            fl_y = focal_length_px
-        else:
-            try:
-                # TODO(emilk): check that it is 2 elements long
-                fl_x = focal_length_px[0]  # type: ignore[index]
-                fl_y = focal_length_px[1]  # type: ignore[index]
-            except Exception:
-                _send_warning("log_pinhole: expected focal_length_px to be one or two floats", 1)
-                fl_x = width / 2
-                fl_y = fl_x
-
-        try:
-            # TODO(emilk): check that it is 2 elements long
-            u_cen = principal_point_px[0]  # type: ignore[index]
-            v_cen = principal_point_px[1]  # type: ignore[index]
-        except Exception:
-            _send_warning("log_pinhole: expected principal_point_px to be one or two floats", 1)
-            u_cen = width / 2
-            v_cen = height / 2
-
-        matrix = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
-    else:
-        matrix = child_from_parent
-        if focal_length_px is not None:
-            _send_warning("log_pinhole: both child_from_parent and focal_length_px set", 1)
-        if principal_point_px is not None:
-            _send_warning("log_pinhole: both child_from_parent and principal_point_px set", 1)
-
-    instanced = {"rerun.pinhole": PinholeArray.from_pinhole(Pinhole(matrix, [width, height]))}
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+    arch = Pinhole(
+        image_from_camera=child_from_parent,
+        width=width,
+        height=height,
+        focal_length=focal_length_px,
+        principal_point=principal_point_px,
+    )
+    log(entity_path, arch, timeless=timeless, recording=recording)
 
     if camera_xyz:
         bindings.log_view_coordinates_xyz(

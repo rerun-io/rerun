@@ -13,12 +13,17 @@ pub fn build_some_colors(len: usize) -> Vec<re_types::components::Color> {
 }
 
 /// Create `len` dummy `Position2D`
-pub fn build_some_positions2d(len: usize) -> Vec<crate::Position2D> {
+pub fn build_some_positions2d(len: usize) -> Vec<re_types::components::Position2D> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
     (0..len)
-        .map(|_| crate::Position2D::new(rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)))
+        .map(|_| {
+            re_types::components::Position2D::new(
+                rng.gen_range(0.0..10.0),
+                rng.gen_range(0.0..10.0),
+            )
+        })
         .collect()
 }
 
