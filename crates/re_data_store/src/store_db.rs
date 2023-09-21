@@ -55,6 +55,11 @@ impl EntityDb {
         self.entity_path_from_hash.get(entity_path_hash)
     }
 
+    #[inline]
+    pub fn knows_of_entity(&self, entity_path: &EntityPath) -> bool {
+        self.entity_path_from_hash.contains_key(&entity_path.hash())
+    }
+
     fn register_entity_path(&mut self, entity_path: &EntityPath) {
         self.entity_path_from_hash
             .entry(entity_path.hash())
