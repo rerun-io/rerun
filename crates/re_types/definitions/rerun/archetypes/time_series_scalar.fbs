@@ -12,7 +12,7 @@ namespace rerun.archetypes;
 /// The current simulation time will be used for the time/X-axis, hence scalars
 /// cannot be timeless!
 ///
-/// TODO: example
+/// \example scalar_simple
 ///
 /// Understanding the plot and attributes hierarchy
 /// -----------------------------------------------
@@ -33,8 +33,8 @@ namespace rerun.archetypes;
 /// - Each entity path within a space that contains scalar data is a line within that plot.
 /// - Each logged scalar is a point.
 ///
-/// E.g. the following:
-/// TODO: update and fuse into examples
+/// TODO: update and add something like this in a more complex example
+///
 /// ```python
 /// t=1.0
 /// rerun.log_scalar("trig/sin", math.sin(t), label="sin(t)", color=[255, 0, 0])
