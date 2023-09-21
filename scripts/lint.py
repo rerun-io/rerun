@@ -39,7 +39,7 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if "NOLINT" in line:
         return None  # NOLINT ignores the linter
 
-    if file_extension == "md":
+    if file_extension not in ("py", "txt", "yml"):
         if "Github" in line:
             return "It's 'GitHub', not 'Github'"
 
@@ -181,7 +181,7 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         line = line.strip()
         prev_line = prev_line.strip()
 
-        if is_empty(prev_line):
+        if is_empty(prev_line) or prev_line.strip().startswith("```"):
             return False
 
         if line.startswith("fn ") and line.endswith(";"):
