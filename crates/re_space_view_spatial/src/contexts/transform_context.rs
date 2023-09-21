@@ -1,16 +1,16 @@
 use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::{Pinhole, ViewCoordinates};
+use re_components::ViewCoordinates;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
-    components::{DisconnectedSpace, Transform3D},
+    components::{DisconnectedSpace, PinholeProjection, Transform3D},
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
-use crate::parts::image_view_coordinates;
+use crate::{parts::image_view_coordinates, query_pinhole};
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -67,7 +67,7 @@ impl ViewContextSystem for TransformContext {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
             std::iter::once(Transform3D::name()).collect(),
-            std::iter::once(Pinhole::name()).collect(),
+            std::iter::once(PinholeProjection::name()).collect(),
             std::iter::once(DisconnectedSpace::name()).collect(),
         ]
     }
@@ -288,7 +288,7 @@ fn transform_at(
 ) -> Result<Option<glam::Affine3A>, UnreachableTransformReason> {
     re_tracing::profile_function!();
 
-    let pinhole = store.query_latest_component::<Pinhole>(entity_path, query);
+    let pinhole = query_pinhole(store, query, entity_path);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
             return Err(UnreachableTransformReason::NestedPinholeCameras);

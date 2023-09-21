@@ -19,7 +19,7 @@ use std::{
 use anyhow::{anyhow, Context as _};
 
 use rerun::{
-    archetypes::{Image, LineStrips2D, Points2D, Points3D, Transform3D},
+    archetypes::{Image, LineStrips2D, Pinhole, Points2D, Points3D, Transform3D},
     components::HalfSizes3D,
     datatypes::TranslationRotationScale3D,
     external::re_log,
@@ -194,15 +194,9 @@ fn log_ar_camera(
         &Transform3D::new(TranslationRotationScale3D::rigid(translation, rot)),
     )?;
 
-    // TODO(#2816): Pinhole archetype
-    rec.log_component_batches(
+    rec.log(
         "world/camera",
-        false,
-        1,
-        [&rerun::components::Pinhole {
-            image_from_cam: intrinsics.into(),
-            resolution: Some(resolution.into()),
-        } as _],
+        &Pinhole::new(intrinsics).with_resolution(resolution),
     )?;
 
     Ok(())
