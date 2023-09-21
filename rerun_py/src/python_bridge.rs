@@ -26,9 +26,10 @@ use rerun::{
 
 pub use rerun::{
     components::{
-        AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
-        InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D,
-        Position2D, Position3D, Quaternion, Radius, Text, Transform3D, Vector3D, ViewCoordinates,
+        AnnotationContext, Blob, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey,
+        KeypointId, LineStrip2D, LineStrip3D, Origin3D, OutOfTreeTransform3D, PinholeProjection,
+        Position2D, Position3D, Quaternion, Radius, Scalar, ScalarPlotProps, Text, Transform3D,
+        Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},
@@ -153,7 +154,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // legacy log functions not yet ported to pure python
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
-    m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
 
@@ -791,96 +791,6 @@ impl From<AnnotationInfoTuple> for AnnotationInfo {
 }
 
 // --- Log assets ---
-
-#[pyfunction]
-fn log_mesh_file(
-    entity_path_str: &str,
-    mesh_format: &str,
-    transform: numpy::PyReadonlyArray2<'_, f32>,
-    timeless: bool,
-    mesh_bytes: Option<Vec<u8>>,
-    mesh_path: Option<PathBuf>,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    let entity_path = parse_entity_path(entity_path_str)?;
-
-    let format = match mesh_format {
-        "GLB" => MeshFormat::Glb,
-        "GLTF" => MeshFormat::Gltf,
-        "OBJ" => MeshFormat::Obj,
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Unknown mesh format {mesh_format:?}. \
-                Expected one of: GLB, GLTF, OBJ"
-            )));
-        }
-    };
-
-    let mesh_bytes = match (mesh_bytes, mesh_path) {
-        (Some(mesh_bytes), None) => mesh_bytes,
-        (None, Some(mesh_path)) => std::fs::read(mesh_path)?,
-        (None, None) => Err(PyTypeError::new_err(
-            "log_mesh_file: You must pass either mesh_bytes or mesh_path",
-        ))?,
-        (Some(_), Some(_)) => Err(PyTypeError::new_err(
-            "log_mesh_file: You must pass either mesh_bytes or mesh_path, but not both!",
-        ))?,
-    };
-
-    let transform = if transform.is_empty() {
-        [
-            [1.0, 0.0, 0.0], // col 0
-            [0.0, 1.0, 0.0], // col 1
-            [0.0, 0.0, 1.0], // col 2
-            [0.0, 0.0, 0.0], // col 3 = translation
-        ]
-    } else {
-        if transform.shape() != [3, 4] {
-            return Err(PyTypeError::new_err(format!(
-                "Expected a 3x4 affine transformation matrix, got shape={:?}",
-                transform.shape()
-            )));
-        }
-
-        let get = |row, col| *transform.get([row, col]).unwrap();
-
-        [
-            [get(0, 0), get(1, 0), get(2, 0)], // col 0
-            [get(0, 1), get(1, 1), get(2, 1)], // col 1
-            [get(0, 2), get(1, 2), get(2, 2)], // col 2
-            [get(0, 3), get(1, 3), get(2, 3)], // col 3 = translation
-        ]
-    };
-
-    let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
-        format,
-        bytes: mesh_bytes.into(),
-        transform,
-    });
-
-    // We currently log `Mesh3D` from inside the bridge.
-    //
-    // Pyarrow handling of nested unions was causing more grief that it was
-    // worth fighting with in the short term.
-    //
-    // TODO(jleibs) replace with python-native implementation
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [mesh3d].as_slice(),
-    );
-
-    recording.record_row(row, !timeless);
-
-    Ok(())
-}
 
 /// Log an image file given its contents or path on disk.
 ///
