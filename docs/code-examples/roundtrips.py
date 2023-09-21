@@ -31,6 +31,7 @@ opt_out_entirely = {
     "pinhole_simple": ["cpp"],
     "segmentation_image_simple": ["cpp"],
     "scalar_simple": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
+    "scalar_multiple_plots": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
     "tensor_one_dim": ["cpp"],
     "tensor_simple": ["cpp"],
     "text_log_integration": ["cpp", "rust"],

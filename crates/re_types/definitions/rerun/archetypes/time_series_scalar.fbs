@@ -13,35 +13,7 @@ namespace rerun.archetypes;
 /// cannot be timeless!
 ///
 /// \example scalar_simple
-///
-/// Understanding the plot and attributes hierarchy
-/// -----------------------------------------------
-///
-/// Timeseries come in three parts: points, lines and finally the plots
-/// themselves. As a user of the Rerun SDK, your one and only entrypoint into
-/// that hierarchy is through the lowest-level layer: the points.
-///
-/// When logging scalars and their attributes (label, color, radius, scattered)
-/// through this function, Rerun will turn them into points with similar
-/// attributes. From these points, lines with appropriate attributes can then be
-/// inferred; and from these inferred lines, plots with appropriate attributes
-/// will be inferred in turn!
-///
-/// In terms of actual hierarchy:
-///
-/// - Each space represents a single plot.
-/// - Each entity path within a space that contains scalar data is a line within that plot.
-/// - Each logged scalar is a point.
-///
-/// TODO: update and add something like this in a more complex example
-///
-/// ```python
-/// t=1.0
-/// rerun.log_scalar("trig/sin", math.sin(t), label="sin(t)", color=[255, 0, 0])
-/// rerun.log_scalar("trig/cos", math.cos(t), label="cos(t)", color=[0, 0, 255])
-/// ```
-/// will yield a single plot (space = `trig`), comprised of two lines
-/// (entity paths `trig/sin` and `trig/cos`).
+/// \example scalar_multiple_plots
 table TimeSeriesScalar (
   "attr.rust.derive": "PartialEq",
   order: 100
