@@ -7,6 +7,12 @@ use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3, ViewDir};
 use super::ViewCoordinates;
 
 impl ViewCoordinates {
+    /// Default right-handed pinhole, camera, and image coordinates: X=Right, Y=Down, Z=Forward.
+    pub const RDF: Self = Self::new(ViewDir::Right, ViewDir::Down, ViewDir::Forward);
+
+    /// Default right-handed view coordinates of `re_renderer`: X=Right, Y=Up, Z=Back.
+    pub const RUB: Self = Self::new(ViewDir::Right, ViewDir::Up, ViewDir::Back);
+
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
     pub const fn new(x: ViewDir, y: ViewDir, z: ViewDir) -> Self {
         Self([x as u8, y as u8, z as u8])

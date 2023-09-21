@@ -1,11 +1,10 @@
 use glam::vec3;
-use re_components::ViewCoordinates;
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{InstanceKey, Transform3D},
-    Archetype, ComponentNameSet,
+    components::{InstanceKey, Transform3D, ViewCoordinates},
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError, ViewContextCollection,

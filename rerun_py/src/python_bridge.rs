@@ -739,7 +739,7 @@ fn log_view_coordinates(
         return Ok(());
     };
 
-    if coordinates.handedness() == Some(Handedness::Left) {
+    if coordinates.handedness() == Ok(Handedness::Left) {
         re_log::warn_once!(
             "Left-handed coordinate systems are not yet fully supported by Rerun (got {})",
             coordinates.describe_short()

@@ -1,9 +1,9 @@
 use glam::Vec3;
 use macaw::IsoTransform;
 
-use re_components::ViewCoordinates;
 use re_log_types::EntityPath;
 use re_types::archetypes::Pinhole;
+use re_types::components::ViewCoordinates;
 
 use crate::parts::image_view_coordinates;
 

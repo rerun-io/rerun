@@ -18,7 +18,6 @@ use arrow2_convert::{
 };
 use lazy_static::lazy_static;
 
-pub mod coordinates;
 mod mat;
 mod mesh3d;
 mod quaternion;
@@ -36,7 +35,6 @@ pub mod datagen;
 pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
 
 pub use self::{
-    coordinates::ViewCoordinates,
     mat::LegacyMat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat},
     quaternion::Quaternion,
@@ -63,13 +61,12 @@ pub mod external {
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 6] = [
+    static ref FIELDS: [Field; 5] = [
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
         <Scalar as LegacyComponent>::field(),
         <ScalarPlotProps as LegacyComponent>::field(),
-        <ViewCoordinates as LegacyComponent>::field(),
     ];
 }
 
