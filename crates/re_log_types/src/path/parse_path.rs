@@ -1,9 +1,16 @@
-use crate::{EntityPath, EntityPathPart, Index};
+use std::str::FromStr;
+
+use re_types::{components::InstanceKey, ComponentName};
+
+use crate::{DataPath, EntityPath, EntityPathPart, Index};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
     #[error("Expected path, found empty string")]
     EmptyString,
+
+    #[error("No entity path found")]
+    MissingPath,
 
     #[error("Path had leading slash")]
     LeadingSlash,
@@ -23,35 +30,172 @@ pub enum PathParseError {
     #[error("Missing slash (/)")]
     MissingSlash,
 
+    #[error("Extra trailing slash (/)")]
+    TrailingSlash,
+
     #[error("Invalid character: {character:?} in entity path identifier {part:?}. Only ASCII characters, numbers, underscore, and dash are allowed. To put wild text in an entity path, surround it with double-quotes.")]
     InvalidCharacterInPart { part: String, character: char },
+
+    #[error("Invalid instance key: {0:?} (expected '[#1234]')")]
+    BadInstanceKey(String),
+
+    #[error("Found an unexpected instance key: [#{}]", 0.0)]
+    UnexpectedInstanceKey(InstanceKey),
+
+    #[error("Found an unexpected trailing component name: {0:?}")]
+    UnexpectedComponentName(ComponentName),
 }
 
-impl std::str::FromStr for EntityPath {
+type Result<T, E = PathParseError> = std::result::Result<T, E>;
+
+impl FromStr for EntityPath {
     type Err = crate::PathParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        parse_entity_path_components(s).map(Self::new)
+        let DataPath {
+            entity_path,
+            instance_key,
+            component_name,
+        } = DataPath::from_str(s)?;
+
+        if let Some(instance_key) = instance_key {
+            return Err(PathParseError::UnexpectedInstanceKey(instance_key));
+        }
+        if let Some(component_name) = component_name {
+            return Err(PathParseError::UnexpectedComponentName(component_name));
+        }
+
+        Ok(entity_path)
     }
 }
 
-/// Parses an entity path, e.g. `foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
-fn parse_entity_path_components(path: &str) -> Result<Vec<EntityPathPart>, PathParseError> {
-    if path.is_empty() {
-        return Err(PathParseError::EmptyString);
+impl std::str::FromStr for DataPath {
+    type Err = crate::PathParseError;
+
+    /// For instance:
+    ///
+    /// * `world/points`
+    /// * `world/points.color`
+    /// * `world/points[#42]`
+    /// * `world/points[#42].rerun.components.color`
+    fn from_str(path: &str) -> Result<Self, Self::Err> {
+        if path.is_empty() {
+            return Err(PathParseError::EmptyString);
+        }
+
+        // Start by looking for a component
+
+        let mut tokens = tokenize(path)?;
+
+        let mut component_name = None;
+        let mut instance_key = None;
+
+        // Parse `.rerun.components.color` suffix:
+        if let Some(dot) = tokens.iter().position(|&token| token == ".") {
+            let component_tokens = &tokens[dot + 1..];
+            component_name = Some(ComponentName::from(join(component_tokens)));
+            tokens.truncate(dot);
+        }
+
+        // Parse `[#1234]` suffix:
+        if let Some(bracket) = tokens.iter().position(|&token| token == "[") {
+            let instance_key_tokens = &tokens[bracket..];
+            if instance_key_tokens.len() != 3 || instance_key_tokens.last() != Some(&"]") {
+                return Err(PathParseError::BadInstanceKey(join(instance_key_tokens)));
+            }
+            let instance_key_token = instance_key_tokens[1];
+            if let Some(nr) = instance_key_token.strip_prefix('#') {
+                if let Ok(nr) = u64::from_str(nr) {
+                    instance_key = Some(InstanceKey(nr));
+                } else {
+                    return Err(PathParseError::BadInstanceKey(
+                        instance_key_token.to_owned(),
+                    ));
+                }
+            } else {
+                return Err(PathParseError::BadInstanceKey(
+                    instance_key_token.to_owned(),
+                ));
+            }
+            tokens.truncate(bracket);
+        }
+
+        // The remaining tokens should all be separated with `/`:
+
+        let entity_path_parts = entity_path_parts_from_tokens(&tokens)?;
+        let entity_path = EntityPath::from(entity_path_parts);
+
+        Ok(Self {
+            entity_path,
+            instance_key,
+            component_name,
+        })
+    }
+}
+
+fn entity_path_parts_from_tokens(mut tokens: &[&str]) -> Result<Vec<EntityPathPart>> {
+    if tokens.is_empty() {
+        return Err(PathParseError::MissingPath);
     }
 
-    if path == "/" {
+    if tokens == ["/"] {
         return Ok(vec![]); // special-case root entity
     }
 
-    if path.starts_with('/') {
+    if tokens[0] == "/" {
         return Err(PathParseError::LeadingSlash);
     }
 
+    let mut parts = vec![];
+
+    loop {
+        let token = tokens[0];
+        tokens = &tokens[1..];
+
+        if token == "/" {
+            return Err(PathParseError::DoubleSlash);
+        } else if token.starts_with('"') {
+            assert!(token.ends_with('"'));
+            let unescaped = unescape_string(&token[1..token.len() - 1])
+                .map_err(|details| PathParseError::BadEscape { details })?;
+            parts.push(EntityPathPart::Index(Index::String(unescaped)));
+        } else {
+            parts.push(parse_part(token)?);
+        }
+
+        if let Some(next_token) = tokens.first() {
+            if *next_token == "/" {
+                tokens = &tokens[1..];
+                if tokens.is_empty() {
+                    return Err(PathParseError::TrailingSlash);
+                }
+            } else {
+                return Err(PathParseError::MissingSlash);
+            }
+        } else {
+            break;
+        }
+    }
+
+    Ok(parts)
+}
+
+fn join(tokens: &[&str]) -> String {
+    let mut s = String::default();
+    for token in tokens {
+        s.push_str(token);
+    }
+    s
+}
+
+fn tokenize(path: &str) -> Result<Vec<&str>> {
     let mut bytes = path.as_bytes();
 
-    let mut parts = vec![];
+    fn is_special_character(c: u8) -> bool {
+        matches!(c, b'[' | b']' | b'.' | b'/')
+    }
+
+    let mut tokens = vec![];
 
     while let Some(c) = bytes.first() {
         if *c == b'"' {
@@ -69,40 +213,34 @@ fn parse_entity_path_components(path: &str) -> Result<Vec<EntityPathPart>, PathP
                 }
             }
 
-            let unescaped = unescape_string(std::str::from_utf8(&bytes[1..i]).unwrap())
-                .map_err(|details| PathParseError::BadEscape { details })?;
-
-            parts.push(EntityPathPart::Index(Index::String(unescaped)));
-
+            let token = &bytes[..i + 1]; // Include the closing quote
+            tokens.push(token);
             bytes = &bytes[i + 1..]; // skip the closing quote
-
-            match bytes.first() {
-                None => {
+        } else if is_special_character(*c) {
+            tokens.push(&bytes[..1]);
+            bytes = &bytes[1..];
+        } else {
+            let mut i = 0;
+            while i < bytes.len() {
+                if bytes[i] == b'"' || is_special_character(bytes[i]) {
                     break;
                 }
-                Some(b'/') => {
-                    bytes = &bytes[1..];
-                }
-                _ => {
-                    return Err(PathParseError::MissingSlash);
-                }
+                i += 1;
             }
-        } else {
-            let end = bytes.iter().position(|&b| b == b'/').unwrap_or(bytes.len());
-            let part_str = std::str::from_utf8(&bytes[0..end]).unwrap();
-            parts.push(parse_part(part_str)?);
-            if end == bytes.len() {
-                break;
-            } else {
-                bytes = &bytes[end + 1..]; // skip the /
-            }
+            assert!(0 < i);
+            tokens.push(&bytes[..i]);
+            bytes = &bytes[i..];
         }
     }
 
-    Ok(parts)
+    // Safety: we split at proper character boundaries
+    Ok(tokens
+        .iter()
+        .map(|token| std::str::from_utf8(token).unwrap())
+        .collect())
 }
 
-fn parse_part(s: &str) -> Result<EntityPathPart, PathParseError> {
+fn parse_part(s: &str) -> Result<EntityPathPart> {
     use std::str::FromStr as _;
 
     if s.is_empty() {
@@ -166,31 +304,18 @@ fn test_unescape_string() {
 fn test_parse_path() {
     use crate::entity_path_vec;
 
+    fn parse(s: &str) -> Result<Vec<EntityPathPart>> {
+        EntityPath::from_str(s).map(|path| path.to_vec())
+    }
+
+    assert_eq!(parse(""), Err(PathParseError::EmptyString));
+    assert_eq!(parse("/"), Ok(entity_path_vec!()));
+    assert_eq!(parse("foo"), Ok(entity_path_vec!("foo")));
+    assert_eq!(parse("/foo"), Err(PathParseError::LeadingSlash));
+    assert_eq!(parse("foo/bar"), Ok(entity_path_vec!("foo", "bar")));
+    assert_eq!(parse("foo//bar"), Err(PathParseError::DoubleSlash));
     assert_eq!(
-        parse_entity_path_components(""),
-        Err(PathParseError::EmptyString)
-    );
-    assert_eq!(parse_entity_path_components("/"), Ok(entity_path_vec!()));
-    assert_eq!(
-        parse_entity_path_components("foo"),
-        Ok(entity_path_vec!("foo"))
-    );
-    assert_eq!(
-        parse_entity_path_components("/foo"),
-        Err(PathParseError::LeadingSlash)
-    );
-    assert_eq!(
-        parse_entity_path_components("foo/bar"),
-        Ok(entity_path_vec!("foo", "bar"))
-    );
-    assert_eq!(
-        parse_entity_path_components("foo//bar"),
-        Err(PathParseError::DoubleSlash)
-    );
-    assert_eq!(
-        parse_entity_path_components(
-            r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#
-        ),
+        parse(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
         Ok(entity_path_vec!(
             "foo",
             Index::String("bar".into()),
@@ -200,19 +325,28 @@ fn test_parse_path() {
         ))
     );
     assert_eq!(
-        parse_entity_path_components(r#"foo/"bar""baz""#),
+        parse(r#"foo/"bar""baz""#),
         Err(PathParseError::MissingSlash)
     );
 
     // Check that we catch invalid characters in identifiers/names:
     assert!(matches!(
-        parse_entity_path_components(r#"hello there"#),
+        parse(r#"hello there"#),
         Err(PathParseError::InvalidCharacterInPart { .. })
     ));
     assert!(matches!(
-        parse_entity_path_components(r#"hello.there"#),
+        parse(r#"hallådär"#),
         Err(PathParseError::InvalidCharacterInPart { .. })
     ));
-    assert!(parse_entity_path_components(r#"hello_there"#).is_ok());
-    assert!(parse_entity_path_components(r#"hello-there"#).is_ok());
+    assert!(parse(r#"hello_there"#).is_ok());
+    assert!(parse(r#"hello-there"#).is_ok());
+
+    assert!(matches!(
+        parse(r#"entity.component"#),
+        Err(PathParseError::UnexpectedComponentName { .. })
+    ));
+    assert!(matches!(
+        parse(r#"entity[#123]"#),
+        Err(PathParseError::UnexpectedInstanceKey(InstanceKey(123)))
+    ));
 }
