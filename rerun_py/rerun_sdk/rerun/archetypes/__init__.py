@@ -13,6 +13,7 @@ from .image import Image
 from .line_strips2d import LineStrips2D
 from .line_strips3d import LineStrips3D
 from .mesh3d import Mesh3D
+from .pinhole import Pinhole
 from .points2d import Points2D
 from .points3d import Points3D
 from .segmentation_image import SegmentationImage
@@ -34,6 +35,7 @@ __all__ = [
     "LineStrips2D",
     "LineStrips3D",
     "Mesh3D",
+    "Pinhole",
     "Points2D",
     "Points3D",
     "SegmentationImage",

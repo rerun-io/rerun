@@ -5207,6 +5207,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_pinhole"
+version = "0.9.0-alpha.4"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_points2d"
 version = "0.9.0-alpha.4"
 dependencies = [

@@ -1,10 +1,10 @@
 use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
-use re_components::Pinhole;
 use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
+use re_types::archetypes::Pinhole;
 use re_viewer_context::{
     gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartCollection, ViewQuery, ViewerContext,
@@ -17,6 +17,7 @@ use super::{
 use crate::{
     contexts::SharedRenderBuilders,
     parts::collect_ui_labels,
+    query_pinhole,
     ui::{outline_config, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
 };
@@ -250,13 +251,9 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole = store
-        .query_latest_component::<Pinhole>(
-            query.space_origin,
-            &ctx.rec_cfg.time_ctrl.current_query(),
-        )
-        .map(|c| c.value);
+    let pinhole = query_pinhole(store, &ctx.current_query(), query.space_origin);
     let canvas_rect = pinhole
+        .as_ref()
         .and_then(|p| p.resolution())
         .map_or(scene_rect_accum, |res| {
             Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(res.x, res.y))
@@ -424,7 +421,7 @@ fn setup_target_config(
         let focal_length_in_pixels = canvas_size.x;
 
         Pinhole {
-            image_from_cam: glam::Mat3::from_cols(
+            image_from_camera: glam::Mat3::from_cols(
                 glam::vec3(focal_length_in_pixels, 0.0, 0.0),
                 glam::vec3(0.0, focal_length_in_pixels, 0.0),
                 default_principal_point.extend(1.0),

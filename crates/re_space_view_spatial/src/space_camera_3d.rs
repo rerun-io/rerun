@@ -1,8 +1,9 @@
 use glam::Vec3;
 use macaw::IsoTransform;
 
-use re_components::{Pinhole, ViewCoordinates};
+use re_components::ViewCoordinates;
 use re_log_types::EntityPath;
+use re_types::archetypes::Pinhole;
 
 use crate::parts::image_view_coordinates;
 
@@ -56,7 +57,7 @@ impl SpaceCamera3D {
 
     /// Returns x, y, and depth in image/pixel coordinates.
     pub fn project_onto_2d(&self, point_in_world: Vec3) -> Option<Vec3> {
-        let pinhole = self.pinhole?;
+        let pinhole = self.pinhole.as_ref()?;
         let point_in_cam = self.cam_from_world().transform_point3(point_in_world);
 
         // The pinhole view-coordinates are important here because they define how the image plane is aligned

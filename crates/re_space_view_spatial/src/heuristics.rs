@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 
 use egui::NumExt as _;
 
-use re_components::Pinhole;
 use re_data_store::EditableAutoValue;
 use re_data_ui::image_meaning_for_entity;
 use re_log_types::EntityPath;
@@ -16,6 +15,7 @@ use re_viewer_context::{
 
 use crate::{
     parts::{CamerasPart, ImagesPart, SpatialViewPartData, Transform3DArrowsPart},
+    query_pinhole,
     view_kind::SpatialSpaceViewKind,
 };
 
@@ -205,19 +205,13 @@ fn update_transform3d_lines_heuristics(
             ent_path: &'a EntityPath,
             ctx: &'a ViewerContext<'_>,
         ) -> Option<&'a EntityPath> {
-            if store
-                .query_latest_component::<Pinhole>(ent_path, &ctx.current_query())
-                .is_some()
-            {
+            if query_pinhole(store, &ctx.current_query(), ent_path).is_some() {
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
                 if let Some(child_tree) = ctx.store_db.entity_db.tree.subtree(ent_path) {
                     for child in child_tree.children.values() {
-                        if store
-                            .query_latest_component::<Pinhole>(&child.path, &ctx.current_query())
-                            .is_some()
-                        {
+                        if query_pinhole(store, &ctx.current_query(), &child.path).is_some() {
                             return Some(&child.path);
                         }
                     }

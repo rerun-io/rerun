@@ -9,6 +9,7 @@ include "./archetypes/image.fbs";
 include "./archetypes/line_strips2d.fbs";
 include "./archetypes/line_strips3d.fbs";
 include "./archetypes/mesh3d.fbs";
+include "./archetypes/pinhole.fbs";
 include "./archetypes/points2d.fbs";
 include "./archetypes/points3d.fbs";
 include "./archetypes/segmentation_image.fbs";
