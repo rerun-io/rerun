@@ -147,6 +147,9 @@ path = "text_log.rs"
 name = "transform3d_simple"
 path = "transform3d_simple.rs"
 
+[[bin]]
+name = "view_coordinates_simple"
+path = "view_coordinates_simple.rs"
 
 [dependencies]
 ndarray.workspace = true
