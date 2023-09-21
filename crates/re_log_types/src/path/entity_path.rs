@@ -210,7 +210,7 @@ impl From<&[EntityPathPart]> for EntityPath {
     }
 }
 
-#[allow(clippy::fallible_impl_from)] // TODO(emilk): we should force users to handle errors instead, and have a nice macro for constructing entity path
+#[allow(clippy::fallible_impl_from)] // TODO(#3393): we should force users to handle errors instead, and have a nice macro for constructing entity path
 impl From<&str> for EntityPath {
     #[inline]
     fn from(path: &str) -> Self {
@@ -218,7 +218,7 @@ impl From<&str> for EntityPath {
     }
 }
 
-#[allow(clippy::fallible_impl_from)] // TODO(emilk): we should force users to handle errors instead, and have a nice macro for constructing entity path
+#[allow(clippy::fallible_impl_from)] // TODO(#3393): we should force users to handle errors instead, and have a nice macro for constructing entity path
 impl From<String> for EntityPath {
     #[inline]
     fn from(path: String) -> Self {
