@@ -116,7 +116,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             return;
         };
 
-        let screen_position = (info.clip_rect.min.to_vec2() * info.pixels_per_point).round();
+        let screen_position = (info.viewport.min.to_vec2() * info.pixels_per_point).round();
         let screen_position = glam::vec2(screen_position.x, screen_position.y);
 
         view_builder.composite(ctx, render_pass, screen_position);

@@ -1,12 +1,19 @@
 use crate::gpu_bridge::{get_or_create_texture, render_image};
 
-fn paint_colormap_gradient(
+/// Show the given colormap as a horizontal bar.
+fn colormap_preview_ui(
     render_ctx: &mut re_renderer::RenderContext,
+    ui: &mut egui::Ui,
     colormap: re_renderer::Colormap,
-    painter: &egui::Painter,
-    rect: egui::Rect,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<egui::Response> {
     re_tracing::profile_function!();
+
+    let desired_size = egui::vec2(128.0, 16.0);
+    let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::hover());
+
+    if !ui.is_rect_visible(rect) {
+        return Ok(response);
+    }
 
     let horizontal_gradient_id = egui::util::hash("horizontal_gradient");
     let horizontal_gradient = get_or_create_texture(render_ctx, horizontal_gradient_id, || {
@@ -41,33 +48,14 @@ fn paint_colormap_gradient(
     let debug_name = format!("colormap_{colormap}");
     render_image(
         render_ctx,
-        painter,
+        ui.painter(),
         rect,
         colormapped_texture,
         egui::TextureOptions::LINEAR,
         &debug_name,
-    )
-}
+    )?;
 
-/// Show the given colormap as a horizontal bar.
-fn colormap_preview_ui(
-    render_ctx: &mut re_renderer::RenderContext,
-    ui: &mut egui::Ui,
-    colormap: re_renderer::Colormap,
-) -> egui::Response {
-    re_tracing::profile_function!();
-
-    let desired_size = egui::vec2(128.0, 16.0);
-    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-    let rect = response.rect;
-
-    if ui.is_rect_visible(rect) {
-        if let Err(err) = paint_colormap_gradient(render_ctx, colormap, &painter, rect) {
-            re_log::error_once!("Failed to paint colormap preview: {err}");
-        }
-    }
-
-    response
+    Ok(response)
 }
 
 pub fn colormap_dropdown_button_ui(
@@ -85,7 +73,9 @@ pub fn colormap_dropdown_button_ui(
                 .show(ui, |ui| {
                     for option in re_renderer::Colormap::ALL {
                         ui.selectable_value(map, option, option.to_string());
-                        colormap_preview_ui(render_ctx, ui, option);
+                        if let Err(err) = colormap_preview_ui(render_ctx, ui, option) {
+                            re_log::error_once!("Failed to paint colormap preview: {err}");
+                        }
                         ui.end_row();
                     }
                 });
