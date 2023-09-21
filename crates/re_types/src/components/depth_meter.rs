@@ -17,6 +17,20 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct DepthMeter(pub f32);
 
+impl From<f32> for DepthMeter {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DepthMeter> for f32 {
+    #[inline]
+    fn from(value: DepthMeter) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<DepthMeter> for ::std::borrow::Cow<'a, DepthMeter> {
     #[inline]
     fn from(value: DepthMeter) -> Self {

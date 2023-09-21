@@ -21,6 +21,20 @@
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct DisconnectedSpace(pub bool);
 
+impl From<bool> for DisconnectedSpace {
+    #[inline]
+    fn from(is_disconnected: bool) -> Self {
+        Self(is_disconnected)
+    }
+}
+
+impl From<DisconnectedSpace> for bool {
+    #[inline]
+    fn from(value: DisconnectedSpace) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpace> {
     #[inline]
     fn from(value: DisconnectedSpace) -> Self {

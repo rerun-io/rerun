@@ -16,6 +16,20 @@
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer11(pub Option<crate::ArrowBuffer<f32>>);
 
+impl From<Option<crate::ArrowBuffer<f32>>> for AffixFuzzer11 {
+    #[inline]
+    fn from(many_floats_optional: Option<crate::ArrowBuffer<f32>>) -> Self {
+        Self(many_floats_optional)
+    }
+}
+
+impl From<AffixFuzzer11> for Option<crate::ArrowBuffer<f32>> {
+    #[inline]
+    fn from(value: AffixFuzzer11) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
     #[inline]
     fn from(value: AffixFuzzer11) -> Self {

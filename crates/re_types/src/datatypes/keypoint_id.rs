@@ -23,6 +23,20 @@
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct KeypointId(pub u16);
 
+impl From<u16> for KeypointId {
+    #[inline]
+    fn from(id: u16) -> Self {
+        Self(id)
+    }
+}
+
+impl From<KeypointId> for u16 {
+    #[inline]
+    fn from(value: KeypointId) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
     #[inline]
     fn from(value: KeypointId) -> Self {

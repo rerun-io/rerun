@@ -18,6 +18,20 @@
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct InstanceKey(pub u64);
 
+impl From<u64> for InstanceKey {
+    #[inline]
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<InstanceKey> for u64 {
+    #[inline]
+    fn from(value: InstanceKey) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
     #[inline]
     fn from(value: InstanceKey) -> Self {
