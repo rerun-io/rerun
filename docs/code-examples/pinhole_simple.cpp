@@ -2,6 +2,10 @@
 
 #include <rerun.hpp>
 
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
+
 namespace rr = rerun;
 
 int main() {
