@@ -7,12 +7,8 @@ use super::ViewCoordinates;
 
 impl ViewCoordinates {
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
-    pub const fn new(coordinates: [ViewDir; 3]) -> Self {
-        Self([
-            coordinates[0] as u8,
-            coordinates[1] as u8,
-            coordinates[2] as u8,
-        ])
+    pub const fn new(x: ViewDir, y: ViewDir, z: ViewDir) -> Self {
+        Self([x as u8, y as u8, z as u8])
     }
 
     /// Choses a coordinate system based on just an up-axis.
@@ -20,20 +16,20 @@ impl ViewCoordinates {
         use ViewDir::{Back, Down, Forward, Right, Up};
         match handedness {
             Handedness::Right => match up {
-                SignedAxis3::POSITIVE_X => Self::new([Up, Right, Forward]),
-                SignedAxis3::NEGATIVE_X => Self::new([Down, Right, Back]),
-                SignedAxis3::POSITIVE_Y => Self::new([Right, Up, Back]),
-                SignedAxis3::NEGATIVE_Y => Self::new([Right, Down, Forward]),
-                SignedAxis3::POSITIVE_Z => Self::new([Right, Forward, Up]),
-                SignedAxis3::NEGATIVE_Z => Self::new([Right, Back, Down]),
+                SignedAxis3::POSITIVE_X => Self::new(Up, Right, Forward),
+                SignedAxis3::NEGATIVE_X => Self::new(Down, Right, Back),
+                SignedAxis3::POSITIVE_Y => Self::new(Right, Up, Back),
+                SignedAxis3::NEGATIVE_Y => Self::new(Right, Down, Forward),
+                SignedAxis3::POSITIVE_Z => Self::new(Right, Forward, Up),
+                SignedAxis3::NEGATIVE_Z => Self::new(Right, Back, Down),
             },
             Handedness::Left => match up {
-                SignedAxis3::POSITIVE_X => Self::new([Up, Right, Back]),
-                SignedAxis3::NEGATIVE_X => Self::new([Down, Right, Forward]),
-                SignedAxis3::POSITIVE_Y => Self::new([Right, Up, Forward]),
-                SignedAxis3::NEGATIVE_Y => Self::new([Right, Down, Back]),
-                SignedAxis3::POSITIVE_Z => Self::new([Right, Back, Up]),
-                SignedAxis3::NEGATIVE_Z => Self::new([Right, Forward, Down]),
+                SignedAxis3::POSITIVE_X => Self::new(Up, Right, Back),
+                SignedAxis3::NEGATIVE_X => Self::new(Down, Right, Forward),
+                SignedAxis3::POSITIVE_Y => Self::new(Right, Up, Forward),
+                SignedAxis3::NEGATIVE_Y => Self::new(Right, Down, Back),
+                SignedAxis3::POSITIVE_Z => Self::new(Right, Back, Up),
+                SignedAxis3::NEGATIVE_Z => Self::new(Right, Forward, Down),
             },
         }
     }
@@ -235,11 +231,11 @@ impl std::str::FromStr for ViewCoordinates {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.as_bytes() {
             [x, y, z] => {
-                let slf = Self::new([
+                let slf = Self::new(
                     ViewDir::from_ascii_char(*x)?,
                     ViewDir::from_ascii_char(*y)?,
                     ViewDir::from_ascii_char(*z)?,
-                ]);
+                );
                 slf.sanity_check()?;
                 Ok(slf)
             }

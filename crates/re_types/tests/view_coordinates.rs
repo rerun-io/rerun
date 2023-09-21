@@ -7,11 +7,11 @@ use re_types::{
 #[test]
 fn roundtrip() {
     let expected = ViewCoordinates {
-        coordinates: components::ViewCoordinates::new([
+        coordinates: components::ViewCoordinates::new(
             ViewDir::Right,
             ViewDir::Down,
             ViewDir::Forward,
-        ]),
+        ),
     };
 
     let arch = ViewCoordinates::RDF;
