@@ -10,13 +10,32 @@ use crate::EntityPath;
 /// For instance:
 ///
 /// * `points`
-/// * `points.color`
+/// * `points.Color`
 /// * `points[#42]`
-/// * `points[#42].color`
+/// * `points[#42].Color`
 pub struct DataPath {
     pub entity_path: EntityPath,
 
     pub instance_key: Option<InstanceKey>,
 
     pub component_name: Option<ComponentName>,
+}
+
+impl std::fmt::Display for DataPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.entity_path.fmt(f)?;
+        if let Some(instance_key) = &self.instance_key {
+            write!(f, "[#{}]", instance_key.0)?;
+        }
+        if let Some(component_name) = &self.component_name {
+            write!(f, ".{component_name:?}")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for DataPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.to_string().fmt(f)
+    }
 }
