@@ -8,7 +8,6 @@ from __future__ import annotations
 import numpy.typing as npt
 from deprecated import deprecated
 
-from rerun import bindings
 from rerun.components_deprecated.quaternion import Quaternion
 from rerun.components_deprecated.transform3d import (
     Rigid3D,
