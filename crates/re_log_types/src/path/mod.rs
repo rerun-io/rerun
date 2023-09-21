@@ -72,13 +72,13 @@ impl From<Index> for EntityPathPart {
 /// ```
 #[macro_export]
 macro_rules! entity_path_vec {
-        () => {
-            vec![]
-        };
-        ($($part: expr),* $(,)?) => {
-            vec![ $($crate::EntityPathPart::from($part),)+ ]
-        };
-    }
+    () => {
+        vec![]
+    };
+    ($($part: expr),* $(,)?) => {
+        vec![ $($crate::EntityPathPart::from($part),)+ ]
+    };
+}
 
 /// Build a `EntityPath`:
 /// ```
@@ -87,10 +87,10 @@ macro_rules! entity_path_vec {
 /// ```
 #[macro_export]
 macro_rules! entity_path {
-        () => {
-            vec![]
-        };
-        ($($part: expr),* $(,)?) => {
-            $crate::EntityPath::from(vec![ $($crate::EntityPathPart::from($part),)+ ])
-        };
-    }
+    () => {
+        vec![]
+    };
+    ($($part: expr),* $(,)?) => {
+        $crate::EntityPath::from(vec![ $($crate::EntityPathPart::from($part),)+ ])
+    };
+}
