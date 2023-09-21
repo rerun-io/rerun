@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// How we interpret the coordinate system of an entity/space.
-#[derive(Clone, Debug, Copy, Eq, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct ViewCoordinates {
     pub coordinates: crate::components::ViewCoordinates,
 }

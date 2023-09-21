@@ -8,7 +8,7 @@ namespace rerun.archetypes;
 
 /// How we interpret the coordinate system of an entity/space.
 table ViewCoordinates (
-  "attr.rust.derive": "Copy, Eq, PartialEq",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
   order: 100
 ) {
   coordinates: rerun.components.ViewCoordinates ("attr.rerun.component_required", required, order: 1000);

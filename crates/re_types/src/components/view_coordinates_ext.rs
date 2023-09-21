@@ -1,5 +1,6 @@
 #![allow(clippy::wrong_self_convention)] // TODO(emilk): re-enable
-                                         // ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
 
 use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3, ViewDir};
 
