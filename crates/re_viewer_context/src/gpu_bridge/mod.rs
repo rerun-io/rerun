@@ -1,8 +1,10 @@
 //! Bridge to `re_renderer`
 
+mod colormap;
 mod re_renderer_callback;
 mod tensor_to_gpu;
 
+pub use colormap::colormap_dropdown_button_ui;
 pub use re_renderer_callback::new_renderer_callback;
 pub use tensor_to_gpu::{
     class_id_tensor_to_gpu, color_tensor_to_gpu, depth_tensor_to_gpu, tensor_to_gpu,
