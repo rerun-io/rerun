@@ -47,9 +47,86 @@ pub enum PathParseError {
 
     #[error("Found no component name")]
     MissingComponentName,
+
+    #[error("Found trailing dot (.)")]
+    TrailingDot,
 }
 
 type Result<T, E = PathParseError> = std::result::Result<T, E>;
+
+impl std::str::FromStr for DataPath {
+    type Err = PathParseError;
+
+    /// For instance:
+    ///
+    /// * `world/points`
+    /// * `world/points.Color`
+    /// * `world/points[#42]`
+    /// * `world/points[#42].rerun.components.Color`
+    fn from_str(path: &str) -> Result<Self, Self::Err> {
+        if path.is_empty() {
+            return Err(PathParseError::EmptyString);
+        }
+
+        // Start by looking for a component
+
+        let mut tokens = tokenize(path)?;
+
+        let mut component_name = None;
+        let mut instance_key = None;
+
+        // Parse `.rerun.components.Color` suffix:
+        if let Some(dot) = tokens.iter().position(|&token| token == ".") {
+            let component_tokens = &tokens[dot + 1..];
+
+            if component_tokens.is_empty() {
+                return Err(PathParseError::TrailingDot);
+            } else if component_tokens.len() == 1 {
+                component_name = Some(ComponentName::from(format!(
+                    "rerun.components.{}",
+                    join(component_tokens)
+                )));
+            } else {
+                component_name = Some(ComponentName::from(join(component_tokens)));
+            }
+            tokens.truncate(dot);
+        }
+
+        // Parse `[#1234]` suffix:
+        if let Some(bracket) = tokens.iter().position(|&token| token == "[") {
+            let instance_key_tokens = &tokens[bracket..];
+            if instance_key_tokens.len() != 3 || instance_key_tokens.last() != Some(&"]") {
+                return Err(PathParseError::BadInstanceKey(join(instance_key_tokens)));
+            }
+            let instance_key_token = instance_key_tokens[1];
+            if let Some(nr) = instance_key_token.strip_prefix('#') {
+                if let Ok(nr) = u64::from_str(nr) {
+                    instance_key = Some(InstanceKey(nr));
+                } else {
+                    return Err(PathParseError::BadInstanceKey(
+                        instance_key_token.to_owned(),
+                    ));
+                }
+            } else {
+                return Err(PathParseError::BadInstanceKey(
+                    instance_key_token.to_owned(),
+                ));
+            }
+            tokens.truncate(bracket);
+        }
+
+        // The remaining tokens should all be separated with `/`:
+
+        let entity_path_parts = entity_path_parts_from_tokens(&tokens)?;
+        let entity_path = EntityPath::from(entity_path_parts);
+
+        Ok(Self {
+            entity_path,
+            instance_key,
+            component_name,
+        })
+    }
+}
 
 impl FromStr for EntityPath {
     type Err = PathParseError;
@@ -100,76 +177,30 @@ impl FromStr for ComponentPath {
 #[test]
 fn test_parse_component_path() {
     assert_eq!(
-        ComponentPath::from_str("world/points.rerun.components.color"),
+        ComponentPath::from_str("world/points.rerun.components.Color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from_str("world/points").unwrap(),
-            component_name: "rerun.components.color".into(),
+            component_name: "rerun.components.Color".into(),
         })
     );
-}
-
-impl std::str::FromStr for DataPath {
-    type Err = PathParseError;
-
-    /// For instance:
-    ///
-    /// * `world/points`
-    /// * `world/points.color`
-    /// * `world/points[#42]`
-    /// * `world/points[#42].rerun.components.color`
-    fn from_str(path: &str) -> Result<Self, Self::Err> {
-        if path.is_empty() {
-            return Err(PathParseError::EmptyString);
-        }
-
-        // Start by looking for a component
-
-        let mut tokens = tokenize(path)?;
-
-        let mut component_name = None;
-        let mut instance_key = None;
-
-        // Parse `.rerun.components.color` suffix:
-        if let Some(dot) = tokens.iter().position(|&token| token == ".") {
-            let component_tokens = &tokens[dot + 1..];
-            component_name = Some(ComponentName::from(join(component_tokens)));
-            tokens.truncate(dot);
-        }
-
-        // Parse `[#1234]` suffix:
-        if let Some(bracket) = tokens.iter().position(|&token| token == "[") {
-            let instance_key_tokens = &tokens[bracket..];
-            if instance_key_tokens.len() != 3 || instance_key_tokens.last() != Some(&"]") {
-                return Err(PathParseError::BadInstanceKey(join(instance_key_tokens)));
-            }
-            let instance_key_token = instance_key_tokens[1];
-            if let Some(nr) = instance_key_token.strip_prefix('#') {
-                if let Ok(nr) = u64::from_str(nr) {
-                    instance_key = Some(InstanceKey(nr));
-                } else {
-                    return Err(PathParseError::BadInstanceKey(
-                        instance_key_token.to_owned(),
-                    ));
-                }
-            } else {
-                return Err(PathParseError::BadInstanceKey(
-                    instance_key_token.to_owned(),
-                ));
-            }
-            tokens.truncate(bracket);
-        }
-
-        // The remaining tokens should all be separated with `/`:
-
-        let entity_path_parts = entity_path_parts_from_tokens(&tokens)?;
-        let entity_path = EntityPath::from(entity_path_parts);
-
-        Ok(Self {
-            entity_path,
-            instance_key,
-            component_name,
+    assert_eq!(
+        ComponentPath::from_str("world/points.color"),
+        Ok(ComponentPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            component_name: "rerun.components.Color".into(),
         })
-    }
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points.my.custom.color"),
+        Ok(ComponentPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            component_name: "my.custom.color".into(),
+        })
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points."),
+        Err(PathParseError::TrailingDot)
+    );
 }
 
 fn entity_path_parts_from_tokens(mut tokens: &[&str]) -> Result<Vec<EntityPathPart>> {

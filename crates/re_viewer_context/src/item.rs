@@ -1,6 +1,7 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
+
 use re_data_store::InstancePath;
-use re_log_types::{ComponentPath, EntityPath};
+use re_log_types::{ComponentPath, DataPath, EntityPath};
 
 use super::{DataBlueprintGroupHandle, SpaceViewId};
 
@@ -49,9 +50,32 @@ impl std::str::FromStr for Item {
     type Err = re_log_types::PathParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // TODO(emilk): support component paths and instance paths
-        let entity_path = EntityPath::from_str(s)?;
-        Ok(Self::from(entity_path))
+        let DataPath {
+            entity_path,
+            instance_key,
+            component_name,
+        } = DataPath::from_str(s)?;
+
+        match (instance_key, component_name) {
+            (Some(instance_key), Some(_component_name)) => {
+                // TODO(emilk): support selecting a specific component of a specific instance.
+                Err(re_log_types::PathParseError::UnexpectedInstanceKey(
+                    instance_key,
+                ))
+            }
+            (Some(instance_key), None) => Ok(Item::InstancePath(
+                None,
+                InstancePath::instance(entity_path, instance_key),
+            )),
+            (None, Some(component_name)) => Ok(Item::ComponentPath(ComponentPath {
+                entity_path,
+                component_name,
+            })),
+            (None, None) => Ok(Item::InstancePath(
+                None,
+                InstancePath::entity_splat(entity_path),
+            )),
+        }
     }
 }
 

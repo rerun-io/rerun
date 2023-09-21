@@ -32,7 +32,10 @@ impl DataUi for InstancePath {
                     query.timeline.name()
                 ));
             } else {
-                ui.label(format!("Unknown entity: {entity_path:?}"));
+                ui.label(
+                    ctx.re_ui
+                        .error_text(format!("Unknown entity: {entity_path:?}")),
+                );
             }
             return;
         };
