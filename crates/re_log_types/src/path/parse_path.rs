@@ -184,7 +184,7 @@ fn test_parse_component_path() {
         })
     );
     assert_eq!(
-        ComponentPath::from_str("world/points.color"),
+        ComponentPath::from_str("world/points.Color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from_str("world/points").unwrap(),
             component_name: "rerun.components.Color".into(),
