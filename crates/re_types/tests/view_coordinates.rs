@@ -51,14 +51,8 @@ fn view_coordinates() {
     use glam::{vec3, Mat3};
     use re_types::view_coordinates::{Handedness, SignedAxis3};
 
-    assert_eq!(
-        ViewCoordinates::RUB.coordinates.to_rub().unwrap(),
-        Mat3::IDENTITY
-    );
-    assert_eq!(
-        ViewCoordinates::RUB.coordinates.from_rub().unwrap(),
-        Mat3::IDENTITY
-    );
+    assert_eq!(ViewCoordinates::RUB.coordinates.to_rub(), Mat3::IDENTITY);
+    assert_eq!(ViewCoordinates::RUB.coordinates.from_rub(), Mat3::IDENTITY);
 
     {
         assert!("UUDDLRLRBAStart"
@@ -71,15 +65,12 @@ fn view_coordinates() {
 
         assert_eq!(rub, ViewCoordinates::RUB.coordinates);
 
-        assert_eq!(rub.to_rub().unwrap(), Mat3::IDENTITY);
+        assert_eq!(rub.to_rub(), Mat3::IDENTITY);
         assert_eq!(
-            bru.to_rub().unwrap(),
+            bru.to_rub(),
             Mat3::from_cols_array_2d(&[[0., 0., 1.], [1., 0., 0.], [0., 1., 0.]])
         );
-        assert_eq!(
-            bru.to_rub().unwrap() * vec3(1.0, 0.0, 0.0),
-            vec3(0.0, 0.0, 1.0)
-        );
+        assert_eq!(bru.to_rub() * vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0));
     }
 
     {
@@ -97,7 +88,7 @@ fn view_coordinates() {
                 let system = components::ViewCoordinates::from_up_and_handedness(axis, handedness);
                 assert_eq!(system.handedness(), Ok(handedness));
 
-                let det = system.to_rub().unwrap().determinant();
+                let det = system.to_rub().determinant();
                 assert!(det == -1.0 || det == 0.0 || det == 1.0);
 
                 let short = system.describe_short();

@@ -113,8 +113,8 @@ impl ViewCoordinates {
     /// Returns a matrix that transforms from another coordinate system to this (self) one.
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn try_from_other(&self, other: &Self) -> Result<glam::Mat3, String> {
-        Ok(self.from_rdf()? * other.to_rdf()?)
+    pub fn from_other(&self, other: &Self) -> glam::Mat3 {
+        self.from_rdf() * other.to_rdf()
     }
 
     /// Returns a matrix that transforms this coordinate system to RDF.
@@ -122,23 +122,26 @@ impl ViewCoordinates {
     /// (RDF: X=Right, Y=Down, Z=Forward)
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn to_rdf(&self) -> Result<glam::Mat3, String> {
-        fn rdf(dir: ViewDir) -> [f32; 3] {
+    pub fn to_rdf(&self) -> glam::Mat3 {
+        fn rdf(dir: Option<ViewDir>) -> [f32; 3] {
             match dir {
-                ViewDir::Right => [1.0, 0.0, 0.0],
-                ViewDir::Left => [-1.0, 0.0, 0.0],
-                ViewDir::Up => [0.0, -1.0, 0.0],
-                ViewDir::Down => [0.0, 1.0, 0.0],
-                ViewDir::Back => [0.0, 0.0, -1.0],
-                ViewDir::Forward => [0.0, 0.0, 1.0],
+                Some(ViewDir::Right) => [1.0, 0.0, 0.0],
+                Some(ViewDir::Left) => [-1.0, 0.0, 0.0],
+                Some(ViewDir::Up) => [0.0, -1.0, 0.0],
+                Some(ViewDir::Down) => [0.0, 1.0, 0.0],
+                Some(ViewDir::Back) => [0.0, 0.0, -1.0],
+                Some(ViewDir::Forward) => [0.0, 0.0, 1.0],
+                // TODO(jleibs): Is there a better value to return here?
+                // this means the ViewCoordinates aren't valid.
+                None => [0.0, 0.0, 0.0],
             }
         }
 
-        Ok(glam::Mat3::from_cols_array_2d(&[
-            rdf(ViewDir::try_from(self.0[0])?),
-            rdf(ViewDir::try_from(self.0[1])?),
-            rdf(ViewDir::try_from(self.0[2])?),
-        ]))
+        glam::Mat3::from_cols_array_2d(&[
+            rdf(ViewDir::try_from(self.0[0]).ok()),
+            rdf(ViewDir::try_from(self.0[1]).ok()),
+            rdf(ViewDir::try_from(self.0[2]).ok()),
+        ])
     }
 
     /// Returns a matrix that transforms from RDF to this coordinate system.
@@ -146,8 +149,8 @@ impl ViewCoordinates {
     /// (RDF: X=Right, Y=Down, Z=Forward)
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn from_rdf(&self) -> Result<glam::Mat3, String> {
-        Ok(self.to_rdf()?.transpose())
+    pub fn from_rdf(&self) -> glam::Mat3 {
+        self.to_rdf().transpose()
     }
 
     /// Returns a matrix that transforms this coordinate system to RUB.
@@ -155,23 +158,26 @@ impl ViewCoordinates {
     /// (RUB: X=Right, Y=Up, Z=Back)
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn to_rub(&self) -> Result<glam::Mat3, String> {
-        fn rub(dir: ViewDir) -> [f32; 3] {
+    pub fn to_rub(&self) -> glam::Mat3 {
+        fn rub(dir: Option<ViewDir>) -> [f32; 3] {
             match dir {
-                ViewDir::Right => [1.0, 0.0, 0.0],
-                ViewDir::Left => [-1.0, 0.0, 0.0],
-                ViewDir::Up => [0.0, 1.0, 0.0],
-                ViewDir::Down => [0.0, -1.0, 0.0],
-                ViewDir::Back => [0.0, 0.0, 1.0],
-                ViewDir::Forward => [0.0, 0.0, -1.0],
+                Some(ViewDir::Right) => [1.0, 0.0, 0.0],
+                Some(ViewDir::Left) => [-1.0, 0.0, 0.0],
+                Some(ViewDir::Up) => [0.0, 1.0, 0.0],
+                Some(ViewDir::Down) => [0.0, -1.0, 0.0],
+                Some(ViewDir::Back) => [0.0, 0.0, 1.0],
+                Some(ViewDir::Forward) => [0.0, 0.0, -1.0],
+                // TODO(jleibs): Is there a better value to return here?
+                // this means the ViewCoordinates aren't valid.
+                None => [0.0, 0.0, 0.0],
             }
         }
 
-        Ok(glam::Mat3::from_cols_array_2d(&[
-            rub(ViewDir::try_from(self.0[0])?),
-            rub(ViewDir::try_from(self.0[1])?),
-            rub(ViewDir::try_from(self.0[2])?),
-        ]))
+        glam::Mat3::from_cols_array_2d(&[
+            rub(ViewDir::try_from(self.0[0]).ok()),
+            rub(ViewDir::try_from(self.0[1]).ok()),
+            rub(ViewDir::try_from(self.0[2]).ok()),
+        ])
     }
 
     /// Returns a matrix that transforms from RUB to this coordinate system.
@@ -179,8 +185,8 @@ impl ViewCoordinates {
     /// (RUB: X=Right, Y=Up, Z=Back)
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn from_rub(&self) -> Result<glam::Mat3, String> {
-        Ok(self.to_rub()?.transpose())
+    pub fn from_rub(&self) -> glam::Mat3 {
+        self.to_rub().transpose()
     }
 
     /// Returns a quaternion that rotates from RUB to this coordinate system.
@@ -191,7 +197,7 @@ impl ViewCoordinates {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn from_rub_quat(&self) -> Result<glam::Quat, String> {
-        let mat3 = self.from_rub()?;
+        let mat3 = self.from_rub();
 
         let det = mat3.determinant();
         if det == 1.0 {
@@ -212,7 +218,7 @@ impl ViewCoordinates {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn handedness(&self) -> Result<Handedness, String> {
-        let to_rdf = self.to_rdf()?;
+        let to_rdf = self.to_rdf();
         let det = to_rdf.determinant();
         if det == -1.0 {
             Ok(Handedness::Left)
