@@ -4,6 +4,7 @@
 
 #include "archetypes/annotation_context.hpp"
 #include "archetypes/arrows3d.hpp"
+#include "archetypes/bar_chart.hpp"
 #include "archetypes/boxes2d.hpp"
 #include "archetypes/boxes3d.hpp"
 #include "archetypes/clear.hpp"

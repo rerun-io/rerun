@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 src/archetypes/annotation_context.rs linguist-generated=true
 src/archetypes/arrows3d.rs linguist-generated=true
+src/archetypes/bar_chart.rs linguist-generated=true
 src/archetypes/boxes2d.rs linguist-generated=true
 src/archetypes/boxes3d.rs linguist-generated=true
 src/archetypes/clear.rs linguist-generated=true
