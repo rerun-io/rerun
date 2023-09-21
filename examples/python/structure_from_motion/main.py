@@ -50,9 +50,7 @@ rr.log_points("points", points, colors=point_colors, ext={"error": point_errors}
 ```
 **Note:** we added some [custom per-point errors](recording://points.ext.error) that you can see when you
 hover over the points in the 3D view.
-
-TODO: Finish description and use the new instead of the old api.
-"""
+""".strip()
 
 
 def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.NDArray[np.float_]]:
