@@ -6,6 +6,8 @@ from rerun import bindings
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
+from .transform import log_view_coordinates
+
 __all__ = [
     "log_pinhole",
 ]
@@ -136,7 +138,7 @@ def log_pinhole(
     log(entity_path, arch, timeless=timeless, recording=recording)
 
     if camera_xyz:
-        bindings.log_view_coordinates_xyz(
+        log_view_coordinates(
             entity_path,
             xyz=camera_xyz,
             timeless=timeless,

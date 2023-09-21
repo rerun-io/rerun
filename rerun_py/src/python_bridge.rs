@@ -155,8 +155,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
-    m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
-    m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -683,93 +681,6 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
         return;
     };
     recording.reset_time();
-}
-
-// --- Log view coordinates ---
-
-#[pyfunction]
-#[pyo3(signature = (entity_path, xyz, right_handed = None, timeless = false, recording=None))]
-fn log_view_coordinates_xyz(
-    entity_path: &str,
-    xyz: &str,
-    right_handed: Option<bool>,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let coordinates: ViewCoordinates = xyz.parse().map_err(PyTypeError::new_err)?;
-
-    if let Some(right_handed) = right_handed {
-        let expected_handedness = Handedness::from_right_handed(right_handed);
-        let actual_handedness = coordinates.handedness().unwrap(); // can't fail if we managed to parse
-
-        if actual_handedness != expected_handedness {
-            return Err(PyTypeError::new_err(format!(
-                "Mismatched handedness. {} is {}",
-                coordinates.describe(),
-                actual_handedness.describe(),
-            )));
-        }
-    }
-
-    log_view_coordinates(entity_path, coordinates, timeless, recording)
-}
-
-#[pyfunction]
-fn log_view_coordinates_up_handedness(
-    entity_path: &str,
-    up: &str,
-    right_handed: bool,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
-    let handedness = Handedness::from_right_handed(right_handed);
-    let coordinates = ViewCoordinates::from_up_and_handedness(up, handedness);
-
-    log_view_coordinates(entity_path, coordinates, timeless, recording)
-}
-
-fn log_view_coordinates(
-    entity_path_str: &str,
-    coordinates: ViewCoordinates,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    if coordinates.handedness() == Ok(Handedness::Left) {
-        re_log::warn_once!(
-            "Left-handed coordinate systems are not yet fully supported by Rerun (got {})",
-            coordinates.describe_short()
-        );
-    }
-
-    // We normally disallow logging to root, but we make an exception for view_coordinates
-    let entity_path = if entity_path_str == "/" {
-        EntityPath::root()
-    } else {
-        parse_entity_path(entity_path_str)?
-    };
-
-    // We currently log view coordinates from inside the bridge because the code
-    // that does matching and validation on different string representations is
-    // non-trivial. Implementing this functionality on the python side will take
-    // a bit of additional work and testing to ensure we aren't introducing new
-    // conversion errors.
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [coordinates].as_slice(),
-    );
-
-    recording.record_row(row, !timeless);
-
-    Ok(())
 }
 
 // --- Log segmentation ---

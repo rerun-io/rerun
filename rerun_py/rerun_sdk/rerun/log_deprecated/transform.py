@@ -29,6 +29,21 @@ __all__ = [
     "log_transform3d",
 ]
 
+_up_attrs = {
+    ("+X", True): "RIGHT_HAND_X_UP",
+    ("+X", False): "LEFT_HAND_X_UP",
+    ("-X", True): "RIGHT_HAND_X_DOWN",
+    ("-X", False): "LEFT_HAND_X_DOWN",
+    ("+Y", True): "RIGHT_HAND_Y_UP",
+    ("+Y", False): "LEFT_HAND_Y_UP",
+    ("-Y", True): "RIGHT_HAND_Y_DOWN",
+    ("-Y", False): "LEFT_HAND_Y_DOWN",
+    ("+Z", True): "RIGHT_HAND_Z_UP",
+    ("+Z", False): "LEFT_HAND_Z_UP",
+    ("-Z", True): "RIGHT_HAND_Z_DOWN",
+    ("-Z", False): "LEFT_HAND_Z_DOWN",
+}
+
 
 @log_decorator
 def log_view_coordinates(
@@ -103,6 +118,9 @@ def log_view_coordinates(
 
     """
     recording = RecordingStream.to_native(recording)
+    from rerun.archetypes import ViewCoordinates
+    from rerun.experimental import log
+
     if xyz == "" and up == "":
         _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
         return
@@ -110,23 +128,24 @@ def log_view_coordinates(
         _send_warning("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
         up = ""
     if xyz != "":
-        bindings.log_view_coordinates_xyz(
-            entity_path,
-            xyz,
-            right_handed,
-            timeless,
-            recording=recording,
-        )
+        xyz = xyz.upper()
+        if hasattr(ViewCoordinates, xyz):
+            log(entity_path, getattr(ViewCoordinates, xyz), timeless=timeless, recording=recording)
+        else:
+            raise ValueError("Invalid xyz value.")
     else:
         if right_handed is None:
             right_handed = True
-        bindings.log_view_coordinates_up_handedness(
-            entity_path,
-            up,
-            right_handed,
-            timeless,
-            recording=recording,
-        )
+
+        if (up, right_handed) not in _up_attrs:
+            raise ValueError("Invalid up value.")
+
+        up = _up_attrs[(up, right_handed)]
+
+        if hasattr(ViewCoordinates, up):
+            log(entity_path, getattr(ViewCoordinates, up), timeless=timeless, recording=recording)
+        else:
+            raise ValueError("Invalid up value.")
 
 
 @log_decorator
