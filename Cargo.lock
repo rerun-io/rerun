@@ -1456,7 +1456,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.7.4"
-source = "git+https://github.com/lampsitter/egui_commonmark.git?rev=a133564f26a95672e756079ac5583817e0cdaa1f#a133564f26a95672e756079ac5583817e0cdaa1f"
+source = "git+https://github.com/lampsitter/egui_commonmark.git?rev=a4470c253b06a4a350e17418a7c6cbc413ade644#a4470c253b06a4a350e17418a7c6cbc413ade644"
 dependencies = [
  "egui",
  "egui_extras",

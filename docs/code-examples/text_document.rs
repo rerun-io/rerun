@@ -38,7 +38,11 @@ fn main() {
 ## Support
 - [x] [Commonmark](https://commonmark.org/help/) support
 - [x] GitHub-style strikethrough, tables, and checkboxes
-- [ ] Syntax highlighting
+- Basic syntax highlighting for:
+  - [x] C and C++
+  - [x] Python
+  - [x] Rust
+  - [ ] Other languages
 
 ## Links
 You can link to [an entity](recording://markdown),
