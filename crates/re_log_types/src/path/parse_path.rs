@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use re_types::{components::InstanceKey, ComponentName};
 
-use crate::{DataPath, EntityPath, EntityPathPart, Index};
+use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Index};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
@@ -44,12 +44,15 @@ pub enum PathParseError {
 
     #[error("Found an unexpected trailing component name: {0:?}")]
     UnexpectedComponentName(ComponentName),
+
+    #[error("Found no component name")]
+    MissingComponentName,
 }
 
 type Result<T, E = PathParseError> = std::result::Result<T, E>;
 
 impl FromStr for EntityPath {
-    type Err = crate::PathParseError;
+    type Err = PathParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let DataPath {
@@ -69,8 +72,44 @@ impl FromStr for EntityPath {
     }
 }
 
+impl FromStr for ComponentPath {
+    type Err = PathParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let DataPath {
+            entity_path,
+            instance_key,
+            component_name,
+        } = DataPath::from_str(s)?;
+
+        if let Some(instance_key) = instance_key {
+            return Err(PathParseError::UnexpectedInstanceKey(instance_key));
+        }
+
+        let Some(component_name) = component_name else {
+            return Err(PathParseError::MissingComponentName);
+        };
+
+        Ok(ComponentPath {
+            entity_path,
+            component_name,
+        })
+    }
+}
+
+#[test]
+fn test_parse_component_path() {
+    assert_eq!(
+        ComponentPath::from_str("world/points.rerun.components.color"),
+        Ok(ComponentPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            component_name: "rerun.components.color".into(),
+        })
+    );
+}
+
 impl std::str::FromStr for DataPath {
-    type Err = crate::PathParseError;
+    type Err = PathParseError;
 
     /// For instance:
     ///
@@ -314,6 +353,7 @@ fn test_parse_path() {
     assert_eq!(parse("/foo"), Err(PathParseError::LeadingSlash));
     assert_eq!(parse("foo/bar"), Ok(entity_path_vec!("foo", "bar")));
     assert_eq!(parse("foo//bar"), Err(PathParseError::DoubleSlash));
+    assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
     assert_eq!(
         parse(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
         Ok(entity_path_vec!(
