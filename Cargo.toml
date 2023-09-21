@@ -176,7 +176,7 @@ emath = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
 epaint = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
 
 # Temporary patch until next egui_commonmark release
-egui_commonmark = { git = "https://github.com/lampsitter/egui_commonmark.git", rev = "a133564f26a95672e756079ac5583817e0cdaa1f" }
+egui_commonmark = { git = "https://github.com/lampsitter/egui_commonmark.git", rev = "a4470c253b06a4a350e17418a7c6cbc413ade644" }
 
 # Temporary patch until next egui_tiles release
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "c66d6cba7ddb5b236be614d1816be4561260274e" }
