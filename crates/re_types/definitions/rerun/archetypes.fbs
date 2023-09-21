@@ -12,11 +12,11 @@ include "./archetypes/mesh3d.fbs";
 include "./archetypes/pinhole.fbs";
 include "./archetypes/points2d.fbs";
 include "./archetypes/points3d.fbs";
-include "./archetypes/scalar.fbs";
 include "./archetypes/segmentation_image.fbs";
 include "./archetypes/tensor.fbs";
 include "./archetypes/text_document.fbs";
 include "./archetypes/text_log.fbs";
+include "./archetypes/time_series_scalar.fbs";
 include "./archetypes/transform3d.fbs";
 include "./archetypes/view_coordinates.fbs";
 
