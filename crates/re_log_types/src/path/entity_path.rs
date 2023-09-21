@@ -123,6 +123,11 @@ impl EntityPath {
     }
 
     #[inline]
+    pub fn to_vec(&self) -> Vec<EntityPathPart> {
+        self.path.to_vec()
+    }
+
+    #[inline]
     pub fn is_root(&self) -> bool {
         self.path.is_root()
     }
