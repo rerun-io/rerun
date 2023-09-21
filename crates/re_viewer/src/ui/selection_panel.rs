@@ -6,7 +6,7 @@ use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
 use re_types::{components::Transform3D, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
-    gpu_bridge::colormap_preview_ui, Item, SpaceViewId, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewId, UiVerbosity, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportBlueprint};
 
@@ -416,7 +416,7 @@ fn colormap_props_ui(
     ui: &mut egui::Ui,
     entity_props: &mut EntityProperties,
 ) {
-    let current = match *entity_props.color_mapper.get() {
+    let mut re_renderer_colormap = match *entity_props.color_mapper.get() {
         ColorMapper::Colormap(Colormap::Grayscale) => re_renderer::Colormap::Grayscale,
         ColorMapper::Colormap(Colormap::Turbo) => re_renderer::Colormap::Turbo,
         ColorMapper::Colormap(Colormap::Viridis) => re_renderer::Colormap::Viridis,
@@ -426,36 +426,17 @@ fn colormap_props_ui(
     };
 
     ui.label("Color map");
-    egui::ComboBox::from_id_source("color map select")
-        .selected_text(current.to_string())
-        .show_ui(ui, |ui| {
-            ui.style_mut().wrap = Some(false);
+    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
 
-            egui::Grid::new("colormap_selector")
-                .num_columns(2)
-                .show(ui, |ui| {
-                    for option in re_renderer::Colormap::ALL {
-                        let mut value = current;
-                        if ui
-                            .selectable_value(&mut value, option, option.to_string())
-                            .changed()
-                        {
-                            let value = match value {
-                                re_renderer::Colormap::Grayscale => Colormap::Grayscale,
-                                re_renderer::Colormap::Turbo => Colormap::Turbo,
-                                re_renderer::Colormap::Viridis => Colormap::Viridis,
-                                re_renderer::Colormap::Plasma => Colormap::Plasma,
-                                re_renderer::Colormap::Magma => Colormap::Magma,
-                                re_renderer::Colormap::Inferno => Colormap::Inferno,
-                            };
-                            entity_props.color_mapper =
-                                EditableAutoValue::UserEdited(ColorMapper::Colormap(value));
-                        }
-                        colormap_preview_ui(ctx.render_ctx, ui, option);
-                        ui.end_row();
-                    }
-                });
-        });
+    let new_colormap = match re_renderer_colormap {
+        re_renderer::Colormap::Grayscale => Colormap::Grayscale,
+        re_renderer::Colormap::Turbo => Colormap::Turbo,
+        re_renderer::Colormap::Viridis => Colormap::Viridis,
+        re_renderer::Colormap::Plasma => Colormap::Plasma,
+        re_renderer::Colormap::Magma => Colormap::Magma,
+        re_renderer::Colormap::Inferno => Colormap::Inferno,
+    };
+    entity_props.color_mapper = EditableAutoValue::UserEdited(ColorMapper::Colormap(new_colormap));
 
     ui.end_row();
 }

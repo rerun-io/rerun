@@ -14,7 +14,7 @@ use re_types::{
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
 };
-use re_viewer_context::gpu_bridge::colormap_preview_ui;
+use re_viewer_context::gpu_bridge::colormap_dropdown_button_ui;
 use re_viewer_context::{
     gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, ViewContextCollection,
@@ -397,21 +397,7 @@ impl ColorMapping {
         let ColorMapping { map, gamma } = self;
 
         re_ui.grid_left_hand_label(ui, "Color map");
-        egui::ComboBox::from_id_source("color map select")
-            .selected_text(map.to_string())
-            .show_ui(ui, |ui| {
-                ui.style_mut().wrap = Some(false);
-
-                egui::Grid::new("colormap_selector")
-                    .num_columns(2)
-                    .show(ui, |ui| {
-                        for option in Colormap::ALL {
-                            ui.selectable_value(map, option, option.to_string());
-                            colormap_preview_ui(render_ctx, ui, option);
-                            ui.end_row();
-                        }
-                    });
-            });
+        colormap_dropdown_button_ui(render_ctx, ui, map);
         ui.end_row();
 
         re_ui.grid_left_hand_label(ui, "Brightness");
