@@ -60,7 +60,7 @@ backtrace = "0.3"
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"
 itertools.workspace = true
-half.workspace = true
+half = { workspace = true, features = ["bytemuck"] }
 ndarray.workspace = true
 once_cell.workspace = true
 smallvec.workspace = true

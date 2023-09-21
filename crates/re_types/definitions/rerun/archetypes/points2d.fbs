@@ -15,18 +15,7 @@ namespace rerun.archetypes;
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/point2d_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/point2d_simple.rs
-/// \rs ```
+/// \example point2d_simple
 table Points2D (
   "attr.rust.derive": "PartialEq",
   order: 100

@@ -18,7 +18,7 @@ namespace rerun {
 
             /// Creates a new 3x3 matrix from 3 *columns* of 3 elements each.
             Mat3x3(const Vec3D (&columns)[3])
-                : coeffs{
+                : flat_columns{
                       columns[0].x(),
                       columns[0].y(),
                       columns[0].z(),

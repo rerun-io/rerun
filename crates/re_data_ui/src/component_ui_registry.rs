@@ -32,18 +32,20 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
-    add::<re_components::Mesh3D>(&mut registry);
+    add::<re_components::Mesh3D>(&mut registry); // TODO(#3354): this goes away
     add::<re_components::Pinhole>(&mut registry);
     add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::AnnotationContext>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
     add::<re_types::components::KeypointId>(&mut registry);
-    add::<re_types::components::Transform3D>(&mut registry);
-    add::<re_types::components::Rotation3D>(&mut registry);
     add::<re_types::components::LineStrip2D>(&mut registry);
     add::<re_types::components::LineStrip3D>(&mut registry);
+    add::<re_types::components::Material>(&mut registry);
+    add::<re_types::components::MeshProperties>(&mut registry);
+    add::<re_types::components::Rotation3D>(&mut registry);
     add::<re_types::components::TensorData>(&mut registry);
+    add::<re_types::components::Transform3D>(&mut registry);
 
     registry
 }
@@ -94,7 +96,6 @@ impl DataUi for re_components::Mesh3D {
     ) {
         match self {
             re_components::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
-            re_components::Mesh3D::Raw(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
@@ -108,20 +109,5 @@ impl DataUi for re_components::EncodedMesh3D {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.label(format!("{} mesh", self.format));
-    }
-}
-
-impl DataUi for re_components::RawMesh3D {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ui.label(format!(
-            "mesh ({} triangles)",
-            re_format::format_number(self.num_triangles())
-        ));
     }
 }

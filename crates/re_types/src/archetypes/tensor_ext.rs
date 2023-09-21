@@ -80,7 +80,6 @@ forward_array_views!(i16, Tensor);
 forward_array_views!(i32, Tensor);
 forward_array_views!(i64, Tensor);
 
-// TODO(jleibs): F16 Support
-//forward_array_views!(half::f16, Image);
+forward_array_views!(half::f16, Tensor);
 forward_array_views!(f32, Tensor);
 forward_array_views!(f64, Tensor);

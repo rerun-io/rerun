@@ -25,6 +25,7 @@ opt_out = {
     "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "depth_image": ["cpp"],  # TODO(#2792)
     "image": ["cpp"],  # TODO(#2792)
+    "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "segmentation_image": ["cpp"],  # TODO(#2792)
     "tensor": ["cpp"],  # TODO(#2792)
     "transform3d": [

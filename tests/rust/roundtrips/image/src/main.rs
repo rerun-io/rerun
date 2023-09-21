@@ -1,6 +1,8 @@
 //! Logs an `Image` archetype for roundtrip checks.
 
+use half::f16;
 use image::{Rgb, RgbImage};
+use ndarray::{Array, ShapeBuilder};
 use rerun::{archetypes::Image, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
@@ -21,6 +23,17 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     }
 
     rec.log("image", &Image::try_from(img)?)?;
+
+    let mut array_image = Array::<f16, _>::default((4, 5).f());
+
+    // 4x5 mono image. Pixel = x * y * 123.4
+    for y in 0..4 {
+        for x in 0..5 {
+            *array_image.get_mut((y, x)).unwrap() = f16::from_f32(x as f32 * y as f32 * 123.4);
+        }
+    }
+
+    rec.log("image_f16", &Image::try_from(array_image)?)?;
 
     Ok(())
 }

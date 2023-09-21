@@ -12,7 +12,7 @@ namespace rerun {
 
         std::vector<AnonymousComponentBatch> AffixFuzzer1::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(74);
+            comp_batches.reserve(75);
 
             comp_batches.emplace_back(fuzz1001);
             comp_batches.emplace_back(fuzz1002);
@@ -34,6 +34,7 @@ namespace rerun {
             comp_batches.emplace_back(fuzz1018);
             comp_batches.emplace_back(fuzz1019);
             comp_batches.emplace_back(fuzz1020);
+            comp_batches.emplace_back(fuzz1021);
             comp_batches.emplace_back(fuzz1101);
             comp_batches.emplace_back(fuzz1102);
             comp_batches.emplace_back(fuzz1103);

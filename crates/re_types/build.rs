@@ -14,7 +14,8 @@ const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
-const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
+const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun";
+const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "../../rerun_py/tests/test_types";
 
 fn main() {
     if cfg!(target_os = "windows") {
@@ -82,21 +83,41 @@ fn main() {
         panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
+    let (report, reporter) = re_types_builder::report::init();
+
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
 
     join3(
-        || re_types_builder::generate_cpp_code(CPP_OUTPUT_DIR_PATH, &objects, &arrow_registry),
-        || re_types_builder::generate_rust_code(RUST_OUTPUT_DIR_PATH, &objects, &arrow_registry),
+        || {
+            re_types_builder::generate_cpp_code(
+                &reporter,
+                CPP_OUTPUT_DIR_PATH,
+                &objects,
+                &arrow_registry,
+            );
+        },
+        || {
+            re_types_builder::generate_rust_code(
+                &reporter,
+                RUST_OUTPUT_DIR_PATH,
+                &objects,
+                &arrow_registry,
+            );
+        },
         || {
             re_types_builder::generate_python_code(
+                &reporter,
                 PYTHON_OUTPUT_DIR_PATH,
+                PYTHON_TESTING_OUTPUT_DIR_PATH,
                 &objects,
                 &arrow_registry,
             );
         },
     );
+
+    report.panic_on_errors();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }

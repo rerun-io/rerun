@@ -455,7 +455,7 @@ async fn run_impl(
             .url_or_paths
             .iter()
             .cloned()
-            .map(DataSource::from_uri)
+            .map(|uri| DataSource::from_uri(re_log_types::FileSource::Cli, uri))
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]

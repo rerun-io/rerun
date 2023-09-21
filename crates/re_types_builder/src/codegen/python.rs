@@ -8,9 +8,9 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, StringExt as _},
+    codegen::{autogen_warning, Examples, StringExt as _},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 /// The standard python init method.
@@ -66,12 +66,14 @@ impl PythonObjectExt for Object {
 
 pub struct PythonCodeGenerator {
     pkg_path: Utf8PathBuf,
+    testing_pkg_path: Utf8PathBuf,
 }
 
 impl PythonCodeGenerator {
-    pub fn new(pkg_path: impl Into<Utf8PathBuf>) -> Self {
+    pub fn new(pkg_path: impl Into<Utf8PathBuf>, testing_pkg_path: impl Into<Utf8PathBuf>) -> Self {
         Self {
             pkg_path: pkg_path.into(),
+            testing_pkg_path: testing_pkg_path.into(),
         }
     }
 }
@@ -79,6 +81,7 @@ impl PythonCodeGenerator {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
+        _reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -89,6 +92,8 @@ impl CodeGenerator for PythonCodeGenerator {
         }
 
         {
+            // TODO(jleibs): Should we still be generating an equivalent to this?
+            /*
             let archetype_names = objects
                 .ordered_objects(ObjectKind::Archetype.into())
                 .iter()
@@ -98,9 +103,10 @@ impl CodeGenerator for PythonCodeGenerator {
                 self.pkg_path.join("__init__.py"),
                 lib_source_code(&archetype_names),
             );
+            */
         }
 
-        write_files(&self.pkg_path, &files_to_write);
+        self.write_files(&files_to_write);
 
         let filepaths = files_to_write.keys().cloned().collect();
 
@@ -235,14 +241,20 @@ impl PythonCodeGenerator {
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
+        let test_kind_path = self.testing_pkg_path.join(object_kind.plural_snake_case());
 
         // (module_name, [object_name])
         let mut mods = HashMap::<String, Vec<String>>::new();
+        let mut test_mods = HashMap::<String, Vec<String>>::new();
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
-            let filepath = kind_path.join(format!("{}.py", obj.snake_case_name()));
+            let filepath = if obj.is_testing() {
+                test_kind_path.join(format!("{}.py", obj.snake_case_name()))
+            } else {
+                kind_path.join(format!("{}.py", obj.snake_case_name()))
+            };
 
             let ext_class = ExtensionClass::new(&kind_path, obj);
 
@@ -267,9 +279,14 @@ impl PythonCodeGenerator {
 
             // NOTE: Isolating the file stem only works because we're handling datatypes, components
             // and archetypes separately (and even then it's a bit shady, eh).
-            mods.entry(filepath.file_stem().unwrap().to_owned())
-                .or_default()
-                .extend(names.iter().cloned());
+            if obj.is_testing() {
+                &mut test_mods
+            } else {
+                &mut mods
+            }
+            .entry(filepath.file_stem().unwrap().to_owned())
+            .or_default()
+            .extend(names.iter().cloned());
 
             let mut code = String::new();
             code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
@@ -287,8 +304,11 @@ impl PythonCodeGenerator {
 
             let manifest = quote_manifest(names);
 
+            let rerun_path = if obj.is_testing() { "rerun." } else { ".." };
+
             code.push_unindented_text(
-                "
+                format!(
+                    "
             from __future__ import annotations
 
             from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
@@ -300,14 +320,14 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
-            from .._baseclasses import (
+            from {rerun_path}_baseclasses import (
                 Archetype,
                 BaseExtensionType,
                 BaseExtensionArray,
                 BaseDelegatingExtensionType,
                 BaseDelegatingExtensionArray
             )
-            from .._converters import (
+            from {rerun_path}_converters import (
                 int_or_none,
                 float_or_none,
                 bool_or_none,
@@ -325,7 +345,8 @@ impl PythonCodeGenerator {
                 to_np_float32,
                 to_np_float64
             )
-            ",
+            "
+                ),
                 0,
             );
 
@@ -366,60 +387,80 @@ impl PythonCodeGenerator {
         }
 
         // rerun/{datatypes|components|archetypes}/__init__.py
-        {
-            let path = kind_path.join("__init__.py");
+        write_init(&kind_path, &mods, files_to_write);
+        write_init(&test_kind_path, &test_mods, files_to_write);
+    }
 
-            let mut code = String::new();
+    fn write_files(&self, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+        re_tracing::profile_function!();
 
-            let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+        // Running `black` once for each file is very slow, so we write all
+        // files to a temporary folder, format it, and copy back the results.
 
-            code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
-            code.push_unindented_text(
-                "
-            from __future__ import annotations
+        let tempdir = tempfile::tempdir().unwrap();
+        let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
 
-            ",
-                0,
-            );
+        files_to_write.par_iter().for_each(|(filepath, source)| {
+            let formatted_source_path = self.format_path_for_tmp_dir(filepath, &tempdir_path);
+            super::common::write_file(&formatted_source_path, source);
+        });
 
-            for (module, names) in &mods {
-                let names = names.join(", ");
-                code.push_text(&format!("from .{module} import {names}"), 1, 0);
-            }
+        format_python_dir(&tempdir_path).unwrap();
 
-            code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+        // Read back and copy to the final destination:
+        files_to_write
+            .par_iter()
+            .for_each(|(filepath, _original_source)| {
+                let formatted_source_path = self.format_path_for_tmp_dir(filepath, &tempdir_path);
+                let formatted_source = std::fs::read_to_string(formatted_source_path).unwrap();
+                super::common::write_file(filepath, &formatted_source);
+            });
+    }
 
-            files_to_write.insert(path, code);
-        }
+    fn format_path_for_tmp_dir(
+        &self,
+        filepath: &Utf8Path,
+        tempdir_path: &Utf8PathBuf,
+    ) -> Utf8PathBuf {
+        // If the prefix is pkg_path, strip it, and then append to tempdir
+        // However, if the prefix is testing_pkg_path, strip it and insert an extra
+        // "testing" to avoid name collisions.
+        filepath.strip_prefix(&self.pkg_path).map_or_else(
+            |_| {
+                tempdir_path
+                    .join("testing")
+                    .join(filepath.strip_prefix(&self.testing_pkg_path).unwrap())
+            },
+            |f| tempdir_path.join(f),
+        )
     }
 }
 
-fn write_files(pkg_path: &Utf8Path, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
-    re_tracing::profile_function!();
+fn write_init(
+    kind_path: &Utf8PathBuf,
+    mods: &HashMap<String, Vec<String>>,
+    files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+) {
+    let path = kind_path.join("__init__.py");
+    let mut code = String::new();
+    let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+    code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
+    code.push_unindented_text(
+        "
+            from __future__ import annotations
 
-    // Running `black` once for each file is very slow, so we write all
-    // files to a temporary folder, format it, and copy back the results.
-
-    let tempdir = tempfile::tempdir().unwrap();
-    let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
-
-    files_to_write.par_iter().for_each(|(filepath, source)| {
-        let formatted_source_path = tempdir_path.join(filepath.strip_prefix(pkg_path).unwrap());
-        super::common::write_file(&formatted_source_path, source);
-    });
-
-    format_python_dir(&tempdir_path).unwrap();
-
-    // Read back and copy to the final destination:
-    files_to_write
-        .par_iter()
-        .for_each(|(filepath, _original_source)| {
-            let formatted_source_path = tempdir_path.join(filepath.strip_prefix(pkg_path).unwrap());
-            let formatted_source = std::fs::read_to_string(formatted_source_path).unwrap();
-            super::common::write_file(filepath, &formatted_source);
-        });
+            ",
+        0,
+    );
+    for (module, names) in mods {
+        let names = names.join(", ");
+        code.push_text(&format!("from .{module} import {names}"), 1, 0);
+    }
+    code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+    files_to_write.insert(path, code);
 }
 
+#[allow(dead_code)]
 fn lib_source_code(archetype_names: &[String]) -> String {
     let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
@@ -861,6 +902,10 @@ fn code_for_union(
 
 // --- Code generators ---
 
+fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
+    Examples::collect(docs, "py", &["```python"], &["```"])
+}
+
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     let mut quoted_names: Vec<_> = names
         .into_iter()
@@ -872,7 +917,25 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 }
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
-    let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    for line in &mut lines {
+        if line.starts_with(char::is_whitespace) {
+            line.remove(0);
+        }
+    }
+
+    let examples = collect_examples(docs).unwrap();
+    if !examples.is_empty() {
+        lines.push(String::new());
+        let (section_title, divider) = if examples.count == 1 {
+            ("Example", "-------")
+        } else {
+            ("Examples", "--------")
+        };
+        lines.push(section_title.into());
+        lines.push(divider.into());
+        lines.extend(examples.lines);
+    }
 
     if lines.is_empty() {
         return String::new();
@@ -892,13 +955,24 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     let mut lines = vec![];
 
     for field in fields {
-        let field_lines = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        for line in &mut content {
+            if line.starts_with(char::is_whitespace) {
+                line.remove(0);
+            }
+        }
+
+        let examples = collect_examples(&field.docs).unwrap();
+        if !examples.is_empty() {
+            content.push(String::new()); // blank line between docs and examples
+            content.extend(examples.lines);
+        }
         lines.push(format!(
             "{} ({}):",
             field.name,
             quote_field_type_from_field(objects, field, false).0
         ));
-        lines.extend(field_lines.into_iter().map(|line| format!("    {line}")));
+        lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }
 

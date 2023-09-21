@@ -20,11 +20,11 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        ///[MIME-type](https://en.wikipedia.org/wiki/Media_type) of an entity.
+        /// [MIME-type](https://en.wikipedia.org/wiki/Media_type) of an entity.
         ///
         /// For instance:
-        ///* `text/plain`
-        ///* `text/markdown`
+        /// * `text/plain`
+        /// * `text/markdown`
         struct MediaType {
             rerun::datatypes::Utf8 value;
 

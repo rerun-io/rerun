@@ -322,8 +322,7 @@ pub fn tensor_summary_ui_grid_contents(
         | TensorBuffer::I16(_)
         | TensorBuffer::I32(_)
         | TensorBuffer::I64(_)
-        // TODO(jleibs): F16 support
-        //| TensorBuffer::F16(_)
+        | TensorBuffer::F16(_)
         | TensorBuffer::F32(_)
         | TensorBuffer::F64(_) => {}
         TensorBuffer::Jpeg(jpeg_bytes) => {

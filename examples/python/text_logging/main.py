@@ -25,7 +25,7 @@ def setup_logging() -> None:
     # default).
     #
     # For more info: https://docs.python.org/3/howto/logging.html#handlers
-    logging.getLogger().addHandler(rr.log.text.LoggingHandler())
+    logging.getLogger().addHandler(rr.LoggingHandler())
     logging.getLogger().setLevel(-1)
 
 
@@ -63,7 +63,7 @@ def log_stuff(frame_offset: int) -> None:
     # Use spaces to create distinct logging streams
     other_logger = logging.getLogger("totally.unrelated")
     other_logger.propagate = False  # don't want root logger to catch those
-    other_logger.addHandler(rr.log.text.LoggingHandler("3rd_party_logs"))
+    other_logger.addHandler(rr.LoggingHandler("3rd_party_logs"))
     for _ in range(10):
         other_logger.debug("look ma, got my very own view!")
 

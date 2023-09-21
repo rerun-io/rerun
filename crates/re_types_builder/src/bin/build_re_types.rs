@@ -6,7 +6,8 @@ const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
 const ENTRYPOINT_PATH: &str = "crates/re_types/definitions/rerun/archetypes.fbs";
 const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = "crates/re_types/.";
-const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun/_rerun2";
+const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";
+const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "rerun_py/tests/test_types";
 
 fn main() {
     re_log::setup_native_logging();
@@ -42,23 +43,44 @@ fn main() {
     let cpp_output_dir_path = workspace_dir.join(CPP_OUTPUT_DIR_PATH);
     let rust_output_dir_path = workspace_dir.join(RUST_OUTPUT_DIR_PATH);
     let python_output_dir_path = workspace_dir.join(PYTHON_OUTPUT_DIR_PATH);
+    let python_testing_output_dir_path = workspace_dir.join(PYTHON_TESTING_OUTPUT_DIR_PATH);
 
     re_log::info!("Running codegen…");
+    let (report, reporter) = re_types_builder::report::init();
+
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(definitions_dir_path, entrypoint_path);
 
     re_tracing::profile_scope!("Language-specific code-gen");
     join3(
-        || re_types_builder::generate_cpp_code(cpp_output_dir_path, &objects, &arrow_registry),
-        || re_types_builder::generate_rust_code(rust_output_dir_path, &objects, &arrow_registry),
+        || {
+            re_types_builder::generate_cpp_code(
+                &reporter,
+                cpp_output_dir_path,
+                &objects,
+                &arrow_registry,
+            );
+        },
+        || {
+            re_types_builder::generate_rust_code(
+                &reporter,
+                rust_output_dir_path,
+                &objects,
+                &arrow_registry,
+            );
+        },
         || {
             re_types_builder::generate_python_code(
+                &reporter,
                 python_output_dir_path,
+                python_testing_output_dir_path,
                 &objects,
                 &arrow_registry,
             );
         },
     );
+
+    report.panic_on_errors();
 
     re_log::info!("Done.");
 }

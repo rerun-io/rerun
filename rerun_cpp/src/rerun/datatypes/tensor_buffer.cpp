@@ -44,6 +44,11 @@ namespace rerun {
                     false
                 ),
                 arrow::field(
+                    "F16",
+                    arrow::list(arrow::field("item", arrow::float16(), false)),
+                    false
+                ),
+                arrow::field(
                     "F32",
                     arrow::list(arrow::field("item", arrow::float32(), false)),
                     false
@@ -104,6 +109,10 @@ namespace rerun {
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
                         std::make_shared<arrow::Int64Builder>(memory_pool)
+                    ),
+                    std::make_shared<arrow::ListBuilder>(
+                        memory_pool,
+                        std::make_shared<arrow::HalfFloatBuilder>(memory_pool)
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
@@ -219,6 +228,16 @@ namespace rerun {
                         break;
                     }
                     case detail::TensorBufferTag::I64: {
+                        auto variant_builder =
+                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
+                        (void)variant_builder;
+                        return Error(
+                            ErrorCode::NotImplemented,
+                            "TODO(andreas): list types in unions are not yet supported"
+                        );
+                        break;
+                    }
+                    case detail::TensorBufferTag::F16: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;

@@ -92,7 +92,9 @@ impl AppEnvironment {
         use re_log_types::StoreSource;
         match source {
             StoreSource::CSdk => Self::CSdk,
+
             StoreSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
+
             StoreSource::RustSdk {
                 rustc_version,
                 llvm_version,
@@ -100,17 +102,18 @@ impl AppEnvironment {
                 rustc_version: rustc_version.clone(),
                 llvm_version: llvm_version.clone(),
             },
-            StoreSource::FileFromCli {
-                rustc_version,
-                llvm_version,
-            } => Self::RerunCli {
-                rustc_version: rustc_version.clone(),
-                llvm_version: llvm_version.clone(),
-            },
-            StoreSource::Unknown | StoreSource::Other(_) => Self::RustSdk {
-                rustc_version: "unknown".into(),
-                llvm_version: "unknown".into(),
-            },
+
+            StoreSource::File { .. } | StoreSource::Unknown | StoreSource::Other(_) => {
+                // We should not really get here
+
+                #[cfg(debug_assertions)]
+                re_log::warn_once!("Asked to create an AppEnvironment from {source:?}");
+
+                Self::RustSdk {
+                    rustc_version: "unknown".into(),
+                    llvm_version: "unknown".into(),
+                }
+            }
         }
     }
 }

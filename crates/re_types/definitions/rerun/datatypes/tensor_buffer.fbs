@@ -37,10 +37,9 @@ table I64Buffer(order: 100, transparent) {
   data: [long] (order: 100);
 }
 
-// TODO(jleibs): F16Buffer
-// table F16Buffer(order: 100, transparent) {
-//   data: [float] (order: 100);
-// }
+table F16Buffer(order: 100, transparent) {
+  data: [ushort] (order: 100, "attr.rerun.override_type": "float16");
+}
 
 table F32Buffer(order: 100, transparent) {
   data: [float] (order: 100);
@@ -70,8 +69,7 @@ union TensorBuffer (
   I16: I16Buffer (transparent, order:600),
   I32: I32Buffer (transparent, order:700),
   I64: I64Buffer (transparent, order:800),
-  // TODO(jleibs): F16Buffer
-  // F16: F16Buffer (transparent, order:900),
+  F16: F16Buffer (transparent, order:900),
   F32: F32Buffer (transparent, order:1000),
   F64: F64Buffer (transparent, order:1200),
   JPEG: JPEGBuffer (transparent, order:1300),

@@ -2,32 +2,28 @@
 
 use std::collections::BTreeSet;
 
+use anyhow::Context as _;
 use camino::Utf8PathBuf;
+use itertools::Itertools as _;
 
 use crate::Docs;
 
+fn is_blank<T: AsRef<str>>(line: T) -> bool {
+    line.as_ref().chars().all(char::is_whitespace)
+}
+
 /// Retrieves the global and tagged documentation from a [`Docs`] object.
 pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
-    fn trim_mono_start_whitespace_if_needed(line: &str) -> &str {
-        if line.chars().next().map_or(false, |c| c.is_whitespace()) {
-            // NOTE: don't trim! only that very specific space should go away
-            &line[1..]
-        } else {
-            line
-        }
-    }
+    let mut lines = docs.doc.clone();
 
-    let mut lines = Vec::new();
-
-    for line in &docs.doc {
-        lines.push(trim_mono_start_whitespace_if_needed(line).to_owned());
-    }
-
-    let empty = Vec::new();
     for tag in tags {
-        for line in docs.tagged_docs.get(*tag).unwrap_or(&empty) {
-            lines.push(trim_mono_start_whitespace_if_needed(line).to_owned());
-        }
+        lines.extend(
+            docs.tagged_docs
+                .get(*tag)
+                .unwrap_or(&Vec::new())
+                .iter()
+                .cloned(),
+        );
     }
 
     // NOTE: remove duplicated blank lines.
@@ -43,6 +39,78 @@ pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
     }
 
     lines
+}
+
+struct Example<'a> {
+    name: &'a str,
+    title: Option<&'a str>,
+}
+
+impl<'a> Example<'a> {
+    fn parse(tag_content: &'a str) -> Self {
+        let tag_content = tag_content.trim();
+        let (name, title) = tag_content
+            .split_once(' ')
+            .map_or((tag_content, None), |(a, b)| (a, Some(b)));
+        let title = title
+            .and_then(|title| title.strip_prefix('"'))
+            .and_then(|title| title.strip_suffix('"'));
+
+        Example { name, title }
+    }
+}
+
+#[derive(Default)]
+pub struct Examples {
+    pub lines: Vec<String>,
+    pub count: usize,
+}
+
+impl Examples {
+    pub fn collect(
+        docs: &Docs,
+        extension: &str,
+        prefix: &[&str],
+        suffix: &[&str],
+    ) -> anyhow::Result<Self> {
+        let mut lines = Vec::new();
+        let mut count = 0;
+
+        if let Some(examples) = docs.tagged_docs.get("example") {
+            count = examples.len();
+            let base_path = crate::rerun_workspace_path().join("docs/code-examples");
+
+            let mut examples = examples.iter().map(String::as_str).peekable();
+            while let Some(Example { name, title }) = examples.next().map(Example::parse) {
+                let path = base_path.join(format!("{name}.{extension}"));
+                let contents = std::fs::read_to_string(&path)
+                    .with_context(|| format!("couldn't open code example {path:?}"))?;
+                let mut contents = contents.split('\n').collect_vec();
+                // trim trailing blank lines
+                while contents.last().is_some_and(is_blank) {
+                    contents.pop();
+                }
+
+                // prepend title if available
+                lines.extend(title.into_iter().map(|title| format!("{title}:")));
+                // surround content in prefix + suffix lines
+                lines.extend(prefix.iter().copied().map(String::from));
+                lines.extend(contents.into_iter().map(String::from));
+                lines.extend(suffix.iter().copied().map(String::from));
+
+                if examples.peek().is_some() {
+                    // blank line between examples
+                    lines.push(String::new());
+                }
+            }
+        }
+
+        Ok(Self { lines, count })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
 }
 
 pub trait StringExt {

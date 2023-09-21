@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, f32::consts::PI};
 
+use arrow2::types::f16;
 use re_types::{
     testing::{archetypes::AffixFuzzer1, components, datatypes},
     Archetype as _,
@@ -204,6 +205,11 @@ fn roundtrip() {
         s: datatypes::StringComponent("fuzz".to_owned().into()),
     });
 
+    let fuzzy21 = components::AffixFuzzer21(datatypes::AffixFuzzer21 {
+        single_half: f16::from_f32(123.4),
+        many_halves: vec![f16::from_f32(123.4), f16::from_f32(567.8)].into(),
+    });
+
     let arch = AffixFuzzer1::new(
         fuzzy1.clone(), //
         fuzzy2.clone(),
@@ -225,6 +231,7 @@ fn roundtrip() {
         fuzzy18_2.clone(),
         fuzzy19_1.clone(),
         fuzzy20.clone(),
+        fuzzy21.clone(),
         [fuzzy1.clone(), fuzzy1.clone(), fuzzy1.clone()],
         [fuzzy2.clone(), fuzzy2.clone(), fuzzy2.clone()],
         [fuzzy3.clone(), fuzzy3.clone(), fuzzy3.clone()],
@@ -306,7 +313,13 @@ fn roundtrip() {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
-        eprintln!("{} = {array:#?}", field.name);
+        if field.name == "fuzz1021" {
+            // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+            // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+            eprintln!("{} = Can't be printed (float16 not supported)", field.name);
+        } else {
+            eprintln!("{} = {array:#?}", field.name);
+        }
 
         // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
         // has been fully replaced.

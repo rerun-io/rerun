@@ -2,6 +2,7 @@ use super::Vec3D;
 
 impl Vec3D {
     pub const ZERO: Vec3D = Vec3D([0.0; 3]);
+    pub const ONE: Vec3D = Vec3D([1.0; 3]);
 
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
