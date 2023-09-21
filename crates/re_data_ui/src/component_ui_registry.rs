@@ -109,7 +109,7 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
 }
 
 fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
-    let font_id = egui::TextStyle::Body.resolve(ui.style());
+    let font_id = egui::TextStyle::Monospace.resolve(ui.style());
     let color = ui.visuals().text_color();
     let wrap_width = ui.available_width();
     let mut layout_job =
