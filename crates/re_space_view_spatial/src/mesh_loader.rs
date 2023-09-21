@@ -1,7 +1,9 @@
 use itertools::Itertools;
-use re_components::{EncodedMesh3D, MeshFormat};
 use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
-use re_types::archetypes::Mesh3D;
+use re_types::{
+    archetypes::{Asset3D, Mesh3D},
+    components::MediaType,
+};
 
 use crate::mesh_cache::AnyMesh;
 
@@ -23,32 +25,32 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
-            AnyMesh::Asset(asset3d) => Self::load_encoded_mesh(name, asset3d, render_ctx),
+            AnyMesh::Asset(asset3d) => Self::load_asset3d(name, asset3d, render_ctx),
             AnyMesh::Mesh(mesh3d) => Ok(Self::load_mesh3d(name, mesh3d, render_ctx)?),
         }
     }
 
-    // TODO(#3354): more like load_asset3d_parts (or just merge the two..?)
-    pub fn load_raw(
+    pub fn load_asset3d_parts(
         name: String,
-        format: MeshFormat,
+        media_type: &MediaType,
         bytes: &[u8],
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let mesh_instances = match format {
-            MeshFormat::Glb | MeshFormat::Gltf => {
-                re_renderer::importer::gltf::load_gltf_from_buffer(
-                    &name,
-                    bytes,
-                    ResourceLifeTime::LongLived,
-                    render_ctx,
-                )
-            }
-            // TODO(cmc): support obj
-            MeshFormat::Obj => anyhow::bail!(".obj files are not supported yet"),
+        let media_type: MediaType = media_type.as_str().parse()?;
+
+        let mesh_instances = if media_type == MediaType::gltf() || media_type == MediaType::glb() {
+            re_renderer::importer::gltf::load_gltf_from_buffer(
+                &name,
+                bytes,
+                ResourceLifeTime::LongLived,
+                render_ctx,
+            )
+        } else {
+            anyhow::bail!("{media_type} files are not supported")
         }?;
+
         let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
 
         Ok(Self {
@@ -58,31 +60,22 @@ impl LoadedMesh {
         })
     }
 
-    // TODO(#3354): more like load_asset3d
-    fn load_encoded_mesh(
+    fn load_asset3d(
         name: String,
-        mesh: &re_components::Mesh3D,
+        asset3d: &Asset3D,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
-        let re_components::Mesh3D::Encoded(encoded_mesh) = mesh;
-        let EncodedMesh3D {
-            format,
-            bytes,
-            transform,
-        } = encoded_mesh;
 
-        let mut slf = Self::load_raw(name, *format, bytes.as_slice(), render_ctx)?;
+        let Asset3D {
+            data,
+            media_type,
+            transform: _,
+        } = asset3d;
 
-        // TODO(cmc): Why are we creating the matrix twice here?
-        let (scale, rotation, translation) =
-            glam::Affine3A::from_cols_array_2d(transform).to_scale_rotation_translation();
-        let transform =
-            glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
-        for instance in &mut slf.mesh_instances {
-            instance.world_from_mesh = transform * instance.world_from_mesh;
-        }
-        slf.bbox = re_renderer::importer::calculate_bounding_box(&slf.mesh_instances);
+        let media_type = MediaType::or_guess_from_data(media_type.clone(), data.0.as_slice())
+            .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
+        let slf = Self::load_asset3d_parts(name, &media_type, data.0.as_slice(), render_ctx)?;
 
         Ok(slf)
     }

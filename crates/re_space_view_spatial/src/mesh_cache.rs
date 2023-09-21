@@ -13,10 +13,10 @@ use crate::mesh_loader::LoadedMesh;
 #[derive(Default)]
 pub struct MeshCache(ahash::HashMap<VersionedInstancePathHash, Option<Arc<LoadedMesh>>>);
 
-/// Either a `re_types::archetypes::Asset3D` or [`re_types::archetypes::Mesh3D`] to be cached.
+/// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone, Copy)]
 pub enum AnyMesh<'a> {
-    Asset(&'a re_components::Mesh3D),
+    Asset(&'a re_types::archetypes::Asset3D),
     Mesh(&'a re_types::archetypes::Mesh3D),
 }
 
