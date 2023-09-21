@@ -26,10 +26,12 @@ use crate::Index;
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum EntityPathPart {
-    /// Struct member. Each member can have a different type.
+    /// Corresponds to the name of a struct field.
+    ///
+    /// Only a limited set of characters are allowed in a name.
     Name(InternedString),
 
-    /// Array/table/map member. Each member must be of the same type (homogeneous).
+    /// Array/table/map member.
     Index(Index),
 }
 

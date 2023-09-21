@@ -22,6 +22,9 @@ pub enum PathParseError {
 
     #[error("Missing slash (/)")]
     MissingSlash,
+
+    #[error("Invalid character: {character:?} in entity path identifier {part:?}. Only ASCII characters, numbers, underscore, and dash are allowed. To put wild text in an entity path, surround it with double-quotes.")]
+    InvalidCharacterInPart { part: String, character: char },
 }
 
 impl std::str::FromStr for EntityPath {
@@ -86,7 +89,8 @@ fn parse_entity_path_components(path: &str) -> Result<Vec<EntityPathPart>, PathP
             }
         } else {
             let end = bytes.iter().position(|&b| b == b'/').unwrap_or(bytes.len());
-            parts.push(parse_part(std::str::from_utf8(&bytes[0..end]).unwrap())?);
+            let part_str = std::str::from_utf8(&bytes[0..end]).unwrap();
+            parts.push(parse_part(part_str)?);
             if end == bytes.len() {
                 break;
             } else {
@@ -114,6 +118,14 @@ fn parse_part(s: &str) -> Result<EntityPathPart, PathParseError> {
     } else if let Ok(uuid) = uuid::Uuid::parse_str(s) {
         Ok(EntityPathPart::Index(Index::Uuid(uuid)))
     } else {
+        for c in s.chars() {
+            if !c.is_ascii_alphanumeric() && c != '_' && c != '-' {
+                return Err(PathParseError::InvalidCharacterInPart {
+                    part: s.into(),
+                    character: c,
+                });
+            }
+        }
         Ok(EntityPathPart::Name(s.into()))
     }
 }
@@ -191,4 +203,16 @@ fn test_parse_path() {
         parse_entity_path_components(r#"foo/"bar""baz""#),
         Err(PathParseError::MissingSlash)
     );
+
+    // Check that we catch invalid characters in identifiers/names:
+    assert!(matches!(
+        parse_entity_path_components(r#"hello there"#),
+        Err(PathParseError::InvalidCharacterInPart { .. })
+    ));
+    assert!(matches!(
+        parse_entity_path_components(r#"hello.there"#),
+        Err(PathParseError::InvalidCharacterInPart { .. })
+    ));
+    assert!(parse_entity_path_components(r#"hello_there"#).is_ok());
+    assert!(parse_entity_path_components(r#"hello-there"#).is_ok());
 }
