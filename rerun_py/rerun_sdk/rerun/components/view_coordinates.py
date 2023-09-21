@@ -16,9 +16,6 @@ from .._baseclasses import (
     BaseExtensionArray,
     BaseExtensionType,
 )
-from .._converters import (
-    to_np_uint8,
-)
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = [
@@ -53,7 +50,9 @@ class ViewCoordinates(ViewCoordinatesExt):
 
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
-    coordinates: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    coordinates: npt.NDArray[np.uint8] = field(
+        converter=ViewCoordinatesExt.coordinates__field_converter_override,  # type: ignore[misc]
+    )
     """
     The directions of the [x, y, z] axes.
     """
