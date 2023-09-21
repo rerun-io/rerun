@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// If true, a scalar will be shown as individual point in a scatter plot.
+struct ScalarScattering (
+  "attr.python.aliases": "bool",
+  "attr.python.array_aliases": "bool, npt.NDArray[np.bool]",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  scattered: bool (order: 100);
+}
