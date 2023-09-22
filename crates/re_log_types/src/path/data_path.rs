@@ -13,6 +13,7 @@ use crate::EntityPath;
 /// * `points.Color`
 /// * `points[#42]`
 /// * `points[#42].Color`
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct DataPath {
     pub entity_path: EntityPath,
 
