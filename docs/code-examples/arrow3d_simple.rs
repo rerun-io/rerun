@@ -4,13 +4,14 @@ use std::f32::consts::TAU;
 
 use rerun::{
     archetypes::Arrows3D,
-    components::{Color, Vector3D},
+    components::{Color, Origin3D, Vector3D},
     RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 
+    let origins = vec![Origin3D::ZERO; 100];
     let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
         .map(|i| {
             let angle = TAU * i as f32 * 0.01;
@@ -25,7 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log(
         "arrows",
-        &Arrows3D::from_vectors(vectors).with_colors(colors),
+        &Arrows3D::from_vectors(vectors)
+            .with_origins(origins)
+            .with_colors(colors),
     )?;
 
     rerun::native_viewer::show(storage.take())?;

@@ -8,7 +8,8 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
-        /// Creates new 3D arrows pointing in the given directions.
+        /// Creates new 3D arrows pointing in the given directions, with a base at the origin (0, 0,
+        /// 0).
         static Arrows3D from_vectors(std::vector<components::Vector3D> _vectors) {
             Arrows3D arrows;
             arrows.vectors = std::move(_vectors);

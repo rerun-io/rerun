@@ -26,6 +26,8 @@ table Arrows3D (
   // --- Recommended ---
 
   /// All the origin points for each arrow in the batch.
+  ///
+  /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
   origins: [rerun.components.Origin3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   // --- Optional ---
