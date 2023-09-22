@@ -276,9 +276,6 @@ impl DataCell {
     // ---
 
     /// Builds an empty `DataCell` from a native component type.
-    //
-    // TODO(#1595): do keep in mind there's a future not too far away where components become a
-    // `(component, type)` tuple kinda thing.
     #[inline]
     pub fn from_native_empty<C: Component>() -> Self {
         Self::from_arrow_empty(C::name(), C::arrow_field().data_type)

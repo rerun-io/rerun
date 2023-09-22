@@ -26,6 +26,8 @@
 #include "components/radius.hpp"
 #include "components/resolution.hpp"
 #include "components/rotation3d.hpp"
+#include "components/scalar.hpp"
+#include "components/scalar_scattering.hpp"
 #include "components/tensor_data.hpp"
 #include "components/text.hpp"
 #include "components/text_log_level.hpp"

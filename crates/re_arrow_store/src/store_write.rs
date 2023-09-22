@@ -545,8 +545,6 @@ impl IndexedBucket {
     /// ```text
     /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
     /// ```
-    //
-    // TODO(#1524): inline visualization once it's back to a manageable state
     fn split(&self) -> Option<(TimeInt, Self)> {
         let Self {
             timeline,

@@ -143,7 +143,7 @@ pub fn data_cells_from_mesh_file_contents(
     bytes: Vec<u8>,
     format: crate::MeshFormat,
 ) -> Result<Vec<DataCell>, FromFileError> {
-    // TODO(#2788): mesh indicator
+    // TODO(#3354): mesh indicator
     let mesh = crate::EncodedMesh3D {
         format,
         bytes: bytes.into(),

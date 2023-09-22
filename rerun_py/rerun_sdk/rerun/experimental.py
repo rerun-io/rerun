@@ -30,6 +30,7 @@ __all__ = [
     "Tensor",
     "TextDocument",
     "TextLog",
+    "TimeSeriesScalar",
     "Transform3D",
     "ViewCoordinates",
     "add_space_view",
@@ -66,6 +67,7 @@ from .archetypes import (
     Tensor,
     TextDocument,
     TextLog,
+    TimeSeriesScalar,
     Transform3D,
     ViewCoordinates,
 )

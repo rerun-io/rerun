@@ -716,7 +716,7 @@ impl RecordingStream {
             )?)
         };
 
-        // TODO(#1629): unsplit splats once new data cells are in
+        // TODO(#1893): unsplit splats once new data cells are in
         let splatted = if splatted.is_empty() {
             None
         } else {

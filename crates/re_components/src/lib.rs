@@ -22,7 +22,6 @@ pub mod coordinates;
 mod mat;
 mod mesh3d;
 mod quaternion;
-mod scalar;
 mod vec;
 
 mod load_file;
@@ -40,7 +39,6 @@ pub use self::{
     mat::LegacyMat3x3,
     mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat},
     quaternion::Quaternion,
-    scalar::{Scalar, ScalarPlotProps},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -63,12 +61,10 @@ pub mod external {
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 6] = [
+    static ref FIELDS: [Field; 4] = [
         <LegacyVec3D as LegacyComponent>::field(),
         <Mesh3D as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
-        <Scalar as LegacyComponent>::field(),
-        <ScalarPlotProps as LegacyComponent>::field(),
         <ViewCoordinates as LegacyComponent>::field(),
     ];
 }
