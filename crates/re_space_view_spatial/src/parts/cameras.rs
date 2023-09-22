@@ -212,7 +212,7 @@ impl ViewPartSystem for CamerasPart {
                     store
                         .query_latest_component::<Transform3D>(ent_path, &time_query)
                         .map(|c| c.value),
-                    pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF),
+                    pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,
                 );
             }

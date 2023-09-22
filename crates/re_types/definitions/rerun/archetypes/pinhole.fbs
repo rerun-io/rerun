@@ -58,5 +58,6 @@ table Pinhole (
   ///
   /// The pinhole matrix (the `child_from_parent` argument) always project along the third (Z) axis,
   /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+  // TODO(#2641): This should specify a default-value of RDF
   camera_xyz: rerun.components.ViewCoordinates ("attr.rerun.component_optional", nullable, order: 3000);
 }

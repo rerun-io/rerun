@@ -528,7 +528,7 @@ impl ImagesPart {
             * glam::Affine3A::from_mat3(
                 intrinsics
                     .camera_xyz
-                    .unwrap_or(ViewCoordinates::RDF)
+                    .unwrap_or(ViewCoordinates::RDF) // TODO(#2641): This should come from archetype
                     .from_rdf(),
             );
 
