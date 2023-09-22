@@ -17,7 +17,6 @@ mod ui;
 mod ui_2d;
 mod ui_3d;
 
-use re_types::components::ViewCoordinates;
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
 

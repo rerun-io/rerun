@@ -155,8 +155,6 @@ impl<'a> PointCloudBatchBuilder<'a> {
     /// Will add all positions.
     /// Missing radii will default to `Size::AUTO`.
     /// Missing colors will default to white.
-    ///
-    /// TODO(#957): Clamps number of points to the allowed per-builder maximum.
     #[inline]
     pub fn add_points(
         mut self,

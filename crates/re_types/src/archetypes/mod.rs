@@ -2,6 +2,7 @@
 
 mod annotation_context;
 mod arrows3d;
+mod bar_chart;
 mod boxes2d;
 mod boxes2d_ext;
 mod boxes3d;
@@ -27,12 +28,14 @@ mod tensor;
 mod tensor_ext;
 mod text_document;
 mod text_log;
+mod time_series_scalar;
 mod transform3d;
 mod view_coordinates;
 mod view_coordinates_ext;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::arrows3d::Arrows3D;
+pub use self::bar_chart::BarChart;
 pub use self::boxes2d::Boxes2D;
 pub use self::boxes3d::Boxes3D;
 pub use self::clear::Clear;
@@ -49,5 +52,6 @@ pub use self::segmentation_image::SegmentationImage;
 pub use self::tensor::Tensor;
 pub use self::text_document::TextDocument;
 pub use self::text_log::TextLog;
+pub use self::time_series_scalar::TimeSeriesScalar;
 pub use self::transform3d::Transform3D;
 pub use self::view_coordinates::ViewCoordinates;

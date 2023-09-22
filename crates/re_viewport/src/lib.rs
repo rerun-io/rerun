@@ -39,5 +39,8 @@ fn query_pinhole(
             resolution: store
                 .query_latest_component(entity_path, query)
                 .map(|c| c.value),
+            camera_xyz: store
+                .query_latest_component(entity_path, query)
+                .map(|c| c.value),
         })
 }

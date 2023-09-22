@@ -1,0 +1,22 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+
+/// A Barchart.
+///
+/// The x values will be the indices of the array, and the bar heights will be the provided values.
+///
+/// \example bar_chart
+table BarChart (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  // --- Required ---
+
+  /// The values. Should always be a rank-1 tensor.
+  values: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+}

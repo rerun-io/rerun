@@ -4,6 +4,7 @@
 
 #include "archetypes/annotation_context.hpp"
 #include "archetypes/arrows3d.hpp"
+#include "archetypes/bar_chart.hpp"
 #include "archetypes/boxes2d.hpp"
 #include "archetypes/boxes3d.hpp"
 #include "archetypes/clear.hpp"
@@ -20,5 +21,6 @@
 #include "archetypes/tensor.hpp"
 #include "archetypes/text_document.hpp"
 #include "archetypes/text_log.hpp"
+#include "archetypes/time_series_scalar.hpp"
 #include "archetypes/transform3d.hpp"
 #include "archetypes/view_coordinates.hpp"

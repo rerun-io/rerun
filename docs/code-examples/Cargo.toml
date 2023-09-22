@@ -24,6 +24,10 @@ name = "arrow3d_simple"
 path = "arrow3d_simple.rs"
 
 [[bin]]
+name = "bar_chart"
+path = "bar_chart.rs"
+
+[[bin]]
 name = "box3d_simple"
 path = "box3d_simple.rs"
 
@@ -122,6 +126,10 @@ path = "box2d_simple.rs"
 [[bin]]
 name = "scalar_simple"
 path = "scalar_simple.rs"
+
+[[bin]]
+name = "scalar_multiple_plots"
+path = "scalar_multiple_plots.rs"
 
 [[bin]]
 name = "segmentation_image_simple"

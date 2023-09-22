@@ -94,8 +94,12 @@ def _log_tensor(
     recording: RecordingStream | None = None,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
-    from rerun.experimental import Tensor, dt, log
+    from rerun.experimental import BarChart, Tensor, dt, log
 
     tensor_data = dt.TensorData(array=tensor, names=names)
 
-    log(entity_path, Tensor(tensor_data), ext=ext, timeless=timeless, recording=recording)
+    # Our legacy documentation is that 1D tensors were interpreted as barcharts
+    if len(tensor_data.shape) == 1:
+        log(entity_path, BarChart(tensor_data), ext=ext, timeless=timeless, recording=recording)
+    else:
+        log(entity_path, Tensor(tensor_data), ext=ext, timeless=timeless, recording=recording)

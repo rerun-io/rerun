@@ -38,7 +38,6 @@ const DOC_COMMENT_SUFFIX_TOKEN: &str = "DOC_COMMENT_SUFFIX_TOKEN";
 const ANGLE_BRACKET_LEFT_TOKEN: &str = "SYS_INCLUDE_PATH_PREFIX_TOKEN";
 const ANGLE_BRACKET_RIGHT_TOKEN: &str = "SYS_INCLUDE_PATH_SUFFIX_TOKEN";
 const HEADER_EXTENSION_TOKEN: &str = "HEADER_EXTENSION_TOKEN";
-const TODO_TOKEN: &str = "TODO_TOKEN";
 
 fn quote_comment(text: &str) -> TokenStream {
     quote! { #NORMAL_COMMENT_PREFIX_TOKEN #text #NORMAL_COMMENT_SUFFIX_TOKEN }
@@ -67,10 +66,6 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
         .replace(&format!("{ANGLE_BRACKET_LEFT_TOKEN:?} \""), "<")
         .replace(&format!("\" {ANGLE_BRACKET_RIGHT_TOKEN:?}"), ">")
-        .replace(
-            &format!("{TODO_TOKEN:?}"),
-            "\n// TODO(#2647): code-gen for C++\n",
-        )
         .replace("< ", "<")
         .replace(" >", ">")
         .replace(" ::", "::");

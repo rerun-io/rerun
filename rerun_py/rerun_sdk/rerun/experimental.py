@@ -14,6 +14,7 @@ __all__ = [
     "Arrows3D",
     "Boxes2D",
     "Boxes3D",
+    "BarChart",
     "Clear",
     "ComponentBatchLike",
     "DepthImage",
@@ -30,6 +31,7 @@ __all__ = [
     "Tensor",
     "TextDocument",
     "TextLog",
+    "TimeSeriesScalar",
     "Transform3D",
     "ViewCoordinates",
     "add_space_view",
@@ -50,6 +52,7 @@ from . import datatypes as dt
 from .archetypes import (
     AnnotationContext,
     Arrows3D,
+    BarChart,
     Boxes2D,
     Boxes3D,
     Clear,
@@ -66,6 +69,7 @@ from .archetypes import (
     Tensor,
     TextDocument,
     TextLog,
+    TimeSeriesScalar,
     Transform3D,
     ViewCoordinates,
 )
