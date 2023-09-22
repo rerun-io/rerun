@@ -39,7 +39,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
         ent_path: &EntityPath,
         _entity_components: &ComponentNameSet,
     ) -> bool {
-        // TODO(jleibs): Fix once old logging APIs are deprecated and we have fallback views
+        // TODO(#3342): Fix once old logging APIs are deprecated and we have fallback views
         /*
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
