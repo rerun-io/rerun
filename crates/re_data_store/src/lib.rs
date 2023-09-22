@@ -31,6 +31,9 @@ pub use re_log_types::{ComponentName, EntityPath, EntityPathPart, Index, TimeInt
 /// or how the logging SDK is being used (PEBKAC).
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("The incoming data was inconsistent: {0}")]
+    DataRead(#[from] re_log_types::DataReadError),
+
     #[error("Error with one the underlying data table")]
     DataTable(#[from] DataTableError),
 

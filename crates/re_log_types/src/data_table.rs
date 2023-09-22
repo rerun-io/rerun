@@ -495,6 +495,7 @@ impl DataTable {
     /// panics if any row has:
     /// - cells that aren't 0, 1 or `num_instances` long
     /// - two or more cells share the same component type
+    /// TODO(emilk): remove this horrible function
     #[inline]
     pub fn to_rows_or_panic(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
         self.try_to_rows().map(|row| row.unwrap())
