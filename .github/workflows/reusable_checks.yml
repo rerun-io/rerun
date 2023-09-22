@@ -287,6 +287,10 @@ jobs:
         run: |
           ./scripts/lint.py
 
+      - name: Check for zombie TODOs
+        run: |
+          ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check for too large files
         run: |
           ./scripts/ci/check_large_files.sh

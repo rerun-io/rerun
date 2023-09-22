@@ -12,4 +12,3 @@ tqdm
 requests
 gitignore_parser  # handle .gitignore
 python-frontmatter==1.0.0
-aiohttp

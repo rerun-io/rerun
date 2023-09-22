@@ -621,6 +621,7 @@ def main() -> None:
         extensions = ["c", "cpp", "fbs", "h", "hpp" "html", "js", "md", "py", "rs", "sh", "toml", "txt", "wgsl", "yml"]
 
         exclude_paths = {
+            "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
             "./CODE_STYLE.md",
             "./crates/re_types_builder/src/reflection.rs",  # auto-generated
             "./examples/rust/objectron/src/objectron.rs",  # auto-generated
