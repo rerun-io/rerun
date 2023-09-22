@@ -104,7 +104,7 @@ glam = "0.22"
 gltf = "1.1"
 half = "2.3.1"
 image = { version = "0.24", default-features = false }
-infer = "0.15"
+infer = "0.15" # infer MIME type by checking the magic number signature
 itertools = "0.11"
 lazy_static = "1.4"
 macaw = "0.18"

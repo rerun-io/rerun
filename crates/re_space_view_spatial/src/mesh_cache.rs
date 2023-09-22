@@ -2,16 +2,23 @@ use std::sync::Arc;
 
 use re_data_store::VersionedInstancePathHash;
 use re_renderer::RenderContext;
+use re_types::components::MediaType;
 use re_viewer_context::Cache;
 
 use crate::mesh_loader::LoadedMesh;
 
 // ----------------------------------------------------------------------------
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct MeshCacheKey {
+    pub versioned_instance_path_hash: VersionedInstancePathHash,
+    pub media_type: Option<MediaType>,
+}
+
 /// Caches meshes based on their [`VersionedInstancePathHash`], i.e. a specific instance of a specific
 /// entity path for a specific row in the store.
 #[derive(Default)]
-pub struct MeshCache(ahash::HashMap<VersionedInstancePathHash, Option<Arc<LoadedMesh>>>);
+pub struct MeshCache(ahash::HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>);
 
 /// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone, Copy)]
@@ -24,7 +31,7 @@ impl MeshCache {
     pub fn entry(
         &mut self,
         name: &str,
-        key: VersionedInstancePathHash,
+        key: MeshCacheKey,
         mesh: AnyMesh<'_>,
         render_ctx: &RenderContext,
     ) -> Option<Arc<LoadedMesh>> {

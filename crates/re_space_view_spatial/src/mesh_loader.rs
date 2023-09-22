@@ -38,9 +38,8 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let media_type: MediaType = media_type.as_str().parse()?;
-
-        let mesh_instances = if media_type == MediaType::gltf() || media_type == MediaType::glb() {
+        let mesh_instances = if media_type == &MediaType::gltf() || media_type == &MediaType::glb()
+        {
             re_renderer::importer::gltf::load_gltf_from_buffer(
                 &name,
                 bytes,

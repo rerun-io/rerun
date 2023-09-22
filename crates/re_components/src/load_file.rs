@@ -48,6 +48,7 @@ pub fn data_cells_from_file_path(
         "glb" | "gltf" | "obj" => {
             use re_types::{archetypes::Asset3D, Archetype};
             let cells: Result<Vec<_>, _> = Asset3D::from_file(file_path)?
+                // TODO(#3414): this should be a method of `Archetype`
                 .as_component_batches()
                 .into_iter()
                 .map(|comp_batch| {

@@ -115,16 +115,6 @@ impl MediaType {
     }
 }
 
-impl std::str::FromStr for MediaType {
-    type Err = <mime_guess::Mime as std::str::FromStr>::Err;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mime: mime::Mime = s.parse()?;
-        Ok(Self(mime.to_string().into()))
-    }
-}
-
 impl std::fmt::Display for MediaType {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

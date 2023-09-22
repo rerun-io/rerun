@@ -28,8 +28,7 @@ pub use rerun::{
     components::{
         AnnotationContext, Blob, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey,
         KeypointId, LineStrip2D, LineStrip3D, Origin3D, OutOfTreeTransform3D, PinholeProjection,
-        Position2D, Position3D, Quaternion, Radius, Scalar, ScalarPlotProps, Text, Transform3D,
-        Vector3D, ViewCoordinates,
+        Position2D, Position3D, Quaternion, Radius, Text, Transform3D, Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},

@@ -17,7 +17,7 @@
 ///
 /// The complete reference of officially registered media types is maintained by the IANA and can be
 /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct MediaType(pub crate::datatypes::Utf8);
 

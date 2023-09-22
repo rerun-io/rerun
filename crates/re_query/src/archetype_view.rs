@@ -380,6 +380,8 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Iterate over optional values as native [`Component`]s.
     ///
     /// The contents of the cell are returned as-is, without joining with any other component.
+    //
+    // TODO(#3415): improve mono queries
     #[inline]
     pub fn iter_raw_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,

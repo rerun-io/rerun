@@ -16,7 +16,7 @@ use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    mesh_cache::{AnyMesh, MeshCache},
+    mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialSpaceViewKind,
 };
 
@@ -41,6 +41,10 @@ impl Asset3DPart {
             .iter_raw_optional_component::<OutOfTreeTransform3D>()?
             .and_then(|mut batch| batch.next());
 
+        let media_type = arch_view
+            .iter_raw_optional_component::<MediaType>()?
+            .and_then(|mut batch| batch.next());
+
         let mesh = Asset3D {
             data: arch_view
                 .iter_required_component::<Blob>()?
@@ -48,9 +52,7 @@ impl Asset3DPart {
                 .ok_or_else(|| re_types::DeserializationError::MissingData {
                     backtrace: re_types::_Backtrace::new_unresolved(),
                 })?,
-            media_type: arch_view
-                .iter_raw_optional_component::<MediaType>()?
-                .and_then(|mut batch| batch.next()),
+            media_type: media_type.clone(),
             // NOTE: Don't even try to cache the transform!
             transform: None,
         };
@@ -64,7 +66,10 @@ impl Asset3DPart {
         let mesh = ctx.cache.entry(|c: &mut MeshCache| {
             c.entry(
                 &ent_path.to_string(),
-                picking_instance_hash.versioned(primary_row_id),
+                MeshCacheKey {
+                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                    media_type,
+                },
                 AnyMesh::Asset(&mesh),
                 ctx.render_ctx,
             )
