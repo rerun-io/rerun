@@ -3,7 +3,7 @@
 import rerun as rr
 import rerun.experimental as rr2
 
-rr.init("rerun_example_view_coordinate", spawn=True)
+rr.init("rerun_example_view_coordinates", spawn=True)
 
 rr2.log("/", rr2.ViewCoordinates.ULB)
 rr2.log(

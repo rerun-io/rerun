@@ -1,4 +1,4 @@
-// Log a batch of 3D arrows.
+// Change the view coordinates for the scene.
 
 #include <rerun.hpp>
 
@@ -8,7 +8,7 @@
 namespace rr = rerun;
 
 int main() {
-    auto rec = rr::RecordingStream("rerun_example_view_coordinate");
+    auto rec = rr::RecordingStream("rerun_example_view_coordinates");
     rec.connect("127.0.0.1:9876").throw_on_failure();
 
     rec.log("/", rr::archetypes::ViewCoordinates::ULB);

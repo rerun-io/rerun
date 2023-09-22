@@ -1,12 +1,11 @@
-//! Log a batch of 3D arrows.
-
+//! Change the view coordinates for the scene.
 use rerun::{
     archetypes::{Arrows3D, ViewCoordinates},
     RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_view_coordinate").memory()?;
+    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_view_coordinates").memory()?;
 
     rec.log("/", &ViewCoordinates::ULB)?;
     rec.log(
