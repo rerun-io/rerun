@@ -17,10 +17,23 @@ namespace rerun {
     namespace archetypes {
         /// How we interpret the coordinate system of an entity/space.
         ///
+        /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or
+        /// left-handed?
+        ///
+        /// The three coordinates are always ordered as [x, y, z].
+        ///
+        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis
+        /// points down, and the Z axis points forward.
+        ///
+        /// If no `ViewCoordinates` are provided:
+        ///  - The default for 3D spaces is a right-handed coordinate system with the Z axis
+        ///  pointing up.
+        ///  - The default for 2D spaces is an RDF coordinate system.
+        ///
         /// ## Example
         ///
         /// ```cpp,ignore
-        /// // Log a batch of 3D arrows.
+        /// // Change the view coordinates for the scene.
         ///
         /// #include <rerun.hpp>
         ///
@@ -30,7 +43,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_view_coordinate");
+        ///     auto rec = rr::RecordingStream("rerun_example_view_coordinates");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///     rec.log("/", rr::archetypes::ViewCoordinates::ULB);

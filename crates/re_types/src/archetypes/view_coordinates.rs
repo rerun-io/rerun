@@ -15,18 +15,28 @@
 
 /// How we interpret the coordinate system of an entity/space.
 ///
+/// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+///
+/// The three coordinates are always ordered as [x, y, z].
+///
+/// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+/// down, and the Z axis points forward.
+///
+/// If no `ViewCoordinates` are provided:
+///  - The default for 3D spaces is a right-handed coordinate system with the Z axis pointing up.
+///  - The default for 2D spaces is an RDF coordinate system.
+///
 /// ## Example
 ///
 /// ```ignore
-/// //! Log a batch of 3D arrows.
-///
+/// //! Change the view coordinates for the scene.
 /// use rerun::{
 ///     archetypes::{Arrows3D, ViewCoordinates},
 ///     RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_view_coordinate").memory()?;
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_view_coordinates").memory()?;
 ///
 ///     rec.log("/", &ViewCoordinates::ULB)?;
 ///     rec.log(
