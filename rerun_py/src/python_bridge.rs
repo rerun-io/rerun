@@ -153,12 +153,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // legacy log functions not yet ported to pure python
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
-<<<<<<< HEAD
-    m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
-=======
-    m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
-    m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
->>>>>>> main
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;

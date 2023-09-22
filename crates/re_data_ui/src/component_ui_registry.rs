@@ -32,7 +32,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
-    add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::AnnotationContext>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
