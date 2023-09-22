@@ -18,6 +18,20 @@
 #[repr(C)]
 pub struct Vec4D(pub [f32; 4usize]);
 
+impl From<[f32; 4usize]> for Vec4D {
+    #[inline]
+    fn from(xyzw: [f32; 4usize]) -> Self {
+        Self(xyzw)
+    }
+}
+
+impl From<Vec4D> for [f32; 4usize] {
+    #[inline]
+    fn from(value: Vec4D) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
     #[inline]
     fn from(value: Vec4D) -> Self {

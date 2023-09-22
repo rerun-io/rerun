@@ -25,13 +25,6 @@ impl UVec3D {
     }
 }
 
-impl From<[u32; 3]> for UVec3D {
-    #[inline]
-    fn from(v: [u32; 3]) -> Self {
-        Self(v)
-    }
-}
-
 impl From<(u32, u32, u32)> for UVec3D {
     #[inline]
     fn from((x, y, z): (u32, u32, u32)) -> Self {

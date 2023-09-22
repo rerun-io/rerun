@@ -17,6 +17,20 @@
 #[repr(transparent)]
 pub struct StringComponent(pub crate::ArrowString);
 
+impl From<crate::ArrowString> for StringComponent {
+    #[inline]
+    fn from(value: crate::ArrowString) -> Self {
+        Self(value)
+    }
+}
+
+impl From<StringComponent> for crate::ArrowString {
+    #[inline]
+    fn from(value: StringComponent) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<StringComponent> for ::std::borrow::Cow<'a, StringComponent> {
     #[inline]
     fn from(value: StringComponent) -> Self {

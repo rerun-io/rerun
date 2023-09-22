@@ -21,6 +21,20 @@
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ClassId(pub u16);
 
+impl From<u16> for ClassId {
+    #[inline]
+    fn from(id: u16) -> Self {
+        Self(id)
+    }
+}
+
+impl From<ClassId> for u16 {
+    #[inline]
+    fn from(value: ClassId) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
     #[inline]
     fn from(value: ClassId) -> Self {

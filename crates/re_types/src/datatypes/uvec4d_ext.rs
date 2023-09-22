@@ -30,13 +30,6 @@ impl UVec4D {
     }
 }
 
-impl From<[u32; 4]> for UVec4D {
-    #[inline]
-    fn from(v: [u32; 4]) -> Self {
-        Self(v)
-    }
-}
-
 impl From<(u32, u32, u32, u32)> for UVec4D {
     #[inline]
     fn from((x, y, z, w): (u32, u32, u32, u32)) -> Self {

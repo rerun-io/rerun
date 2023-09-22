@@ -16,6 +16,20 @@
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer12(pub Vec<crate::ArrowString>);
 
+impl From<Vec<crate::ArrowString>> for AffixFuzzer12 {
+    #[inline]
+    fn from(many_strings_required: Vec<crate::ArrowString>) -> Self {
+        Self(many_strings_required)
+    }
+}
+
+impl From<AffixFuzzer12> for Vec<crate::ArrowString> {
+    #[inline]
+    fn from(value: AffixFuzzer12) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
     #[inline]
     fn from(value: AffixFuzzer12) -> Self {

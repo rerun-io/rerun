@@ -43,7 +43,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
     Logs annotated oriented bounding boxes to Rerun.
 
     We currently calculate and return the 3D bounding boxes keypoints, labels, and colors for each object to log them in
-    each camera frame TODO(pablovela5620): Once #1581 is resolved this can be removed.
+    each camera frame TODO(#1581): once resolved this can be removed.
 
     annotation json file
     |  |-- label: object name of bounding box
@@ -55,7 +55,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
     bbox_labels = []
     num_objects = len(annotation["data"])
     # Generate a color per object that can be reused across both 3D obb and their 2D projections
-    # TODO(pablovela5620): Once #1581 or #1728 is resolved this can be removed
+    # TODO(#1581, #1728): once resolved this can be removed
     color_positions = np.linspace(0, 1, num_objects)
     colormap = plt.colormaps["viridis"]
     colors = [colormap(pos) for pos in color_positions]
@@ -93,7 +93,7 @@ def compute_box_3d(
     """
     Given obb compute 3d keypoints of the box.
 
-    TODO(pablovela5620): Once #1581 is resolved this can be removed
+    TODO(#1581): once resolved this can be removed
     """
     length, height, width = half_size.tolist()
     center = np.reshape(transform, (-1, 3))
@@ -123,7 +123,7 @@ def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float
     |/         |/
     1 -------- 0
 
-    TODO(pablovela5620): Once #1581 is resolved this can be removed
+    TODO(#1581): once resolved this can be removed
 
     :param bboxes_2d_filtered:
         A numpy array of shape (8, 2), representing the filtered 2D keypoints of the 3D bounding boxes.
@@ -175,7 +175,7 @@ def project_3d_bboxes_to_2d_keypoints(
     """
     Returns 2D keypoints of the 3D bounding box in the camera view.
 
-    TODO(pablovela5620): Once #1581 is resolved this can be removed
+    TODO(#1581): once resolved this can be removed
     Args:
         bboxes_3d: (nObjects, 8, 3) containing the 3D bounding box keypoints in world frame.
         camera_from_world: Tuple containing the camera translation and rotation_quaternion in world frame.
@@ -242,7 +242,7 @@ def log_camera(
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     camera_from_world = poses_from_traj[frame_id]
 
-    # TODO(pablovela5620): Once #1581 is resolved this can be removed
+    # TODO(#1581): once resolved this can be removed
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
     # clear previous centroid labels

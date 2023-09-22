@@ -16,6 +16,20 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Float32(pub f32);
 
+impl From<f32> for Float32 {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Float32> for f32 {
+    #[inline]
+    fn from(value: Float32) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Float32> for ::std::borrow::Cow<'a, Float32> {
     #[inline]
     fn from(value: Float32) -> Self {

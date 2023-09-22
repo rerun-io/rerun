@@ -18,6 +18,20 @@ pub struct FlattenedScalar {
     pub value: f32,
 }
 
+impl From<f32> for FlattenedScalar {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self { value }
+    }
+}
+
+impl From<FlattenedScalar> for f32 {
+    #[inline]
+    fn from(value: FlattenedScalar) -> Self {
+        value.value
+    }
+}
+
 impl<'a> From<FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
     #[inline]
     fn from(value: FlattenedScalar) -> Self {

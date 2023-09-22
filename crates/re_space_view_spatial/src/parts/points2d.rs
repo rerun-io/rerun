@@ -153,7 +153,7 @@ impl Points2DPart {
             {
                 re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
-                    // TODO(andreas/jeremy): We can do this much more efficiently
+                    // TODO(andreas, jeremy): We can do this much more efficiently
                     let highlighted_point_index = arch_view
                         .iter_instance_keys()
                         .position(|key| *highlighted_key == key);

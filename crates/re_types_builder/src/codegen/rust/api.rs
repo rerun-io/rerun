@@ -434,30 +434,10 @@ fn quote_union(
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let quoted_fields = fields.iter().map(|obj_field| {
-        let ObjectField {
-            virtpath: _,
-            filepath: _,
-            fqname: _,
-            pkg_name: _,
-            name,
-            docs,
-            typ: _,
-            attrs: _,
-            order: _,
-            is_nullable,
-            is_deprecated: _,
-            datatype: _,
-        } = obj_field;
+        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
 
-        let name = format_ident!("{}", crate::to_pascal_case(name));
-
-        let quoted_doc = quote_doc_from_docs(reporter, docs);
-        let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
-        let quoted_type = if *is_nullable {
-            quote!(Option<#quoted_type>)
-        } else {
-            quoted_type
-        };
+        let quoted_doc = quote_doc_from_docs(reporter, &obj_field.docs);
+        let quoted_type = quote_field_type_from_object_field(obj_field);
 
         quote! {
             #quoted_doc
@@ -490,32 +470,9 @@ struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
 impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self(reporter, obj, obj_field) = self;
-
-        let ObjectField {
-            virtpath: _,
-            filepath: _,
-            pkg_name: _,
-            fqname: _,
-            name,
-            docs,
-            typ: _,
-            attrs: _,
-            order: _,
-            is_nullable,
-            // TODO(#2366): support for deprecation notices
-            is_deprecated: _,
-            datatype: _,
-        } = obj_field;
-
-        let quoted_docs = quote_doc_from_docs(reporter, docs);
-        let name = format_ident!("{name}");
-
-        let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
-        let quoted_type = if *is_nullable {
-            quote!(Option<#quoted_type>)
-        } else {
-            quoted_type
-        };
+        let quoted_docs = quote_doc_from_docs(reporter, &obj_field.docs);
+        let name = format_ident!("{}", &obj_field.name);
+        let quoted_type = quote_field_type_from_object_field(obj_field);
 
         if is_tuple_struct_from_obj(obj) {
             quote! {
@@ -571,13 +528,19 @@ fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
 /// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
 /// becomes just `String`.
 /// The returned boolean indicates whether there was anything to unwrap at all.
-fn quote_field_type_from_field(obj_field: &ObjectField, unwrap: bool) -> (TokenStream, bool) {
-    let obj_field_type = TypeTokenizer {
-        typ: &obj_field.typ,
-        unwrap,
-    };
-    let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
+fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
+    let obj_field_type = TypeTokenizer { typ, unwrap };
+    let unwrapped = unwrap && matches!(typ, Type::Array { .. } | Type::Vector { .. });
     (quote!(#obj_field_type), unwrapped)
+}
+
+fn quote_field_type_from_object_field(obj_field: &ObjectField) -> TokenStream {
+    let (quoted_type, _) = quote_field_type_from_typ(&obj_field.typ, false);
+    if obj_field.is_nullable {
+        quote!(Option<#quoted_type>)
+    } else {
+        quoted_type
+    }
 }
 
 struct TypeTokenizer<'a> {
@@ -1115,19 +1078,17 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
         return TokenStream::new();
     }
 
+    let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
     let obj_field = &obj.fields[0];
+    let quoted_obj_name = format_ident!("{}", obj.name);
+    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+
     if obj_field.typ.fqname().is_some() {
-        let quoted_obj_name = format_ident!("{}", obj.name);
-        let (quoted_type, _) = quote_field_type_from_field(&obj.fields[0], false);
-
-        let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
-
         if let Some(inner) = obj_field.typ.vector_inner() {
             if obj_field.is_nullable {
                 let quoted_binding = if obj_is_tuple_struct {
                     quote!(Self(v.map(|v| v.into_iter().map(|v| v.into()).collect())))
                 } else {
-                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
                     quote!(Self { #quoted_obj_field_name: v.map(|v| v.into_iter().map(|v| v.into()).collect()) })
                 };
 
@@ -1142,7 +1103,6 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 let quoted_binding = if obj_is_tuple_struct {
                     quote!(Self(v.into_iter().map(|v| v.into()).collect()))
                 } else {
-                    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
                     quote!(Self { #quoted_obj_field_name: v.into_iter().map(|v| v.into()).collect() })
                 };
 
@@ -1155,23 +1115,17 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 }
             }
         } else {
-            let quoted_type = if obj_field.is_nullable {
-                quote!(Option<#quoted_type>)
-            } else {
-                quote!(#quoted_type)
-            };
+            let quoted_type = quote_field_type_from_object_field(obj_field);
 
             let quoted_binding = if obj_is_tuple_struct {
                 quote!(Self(v.into()))
             } else {
-                let quoted_obj_field_name = format_ident!("{}", obj_field.name);
                 quote!(Self { #quoted_obj_field_name: v.into() })
             };
 
             let quoted_borrow_deref_impl = if obj_is_tuple_struct {
                 quote!(&self.0)
             } else {
-                let quoted_obj_field_name = format_ident!("{}", obj_field.name);
                 quote!( &self.#quoted_obj_field_name )
             };
 
@@ -1200,7 +1154,33 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
             }
         }
     } else {
-        quote!()
+        let quoted_type = quote_field_type_from_object_field(obj_field);
+        let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+
+        let (quoted_binding, quoted_read) = if obj_is_tuple_struct {
+            (quote!(Self(#quoted_obj_field_name)), quote!(value.0))
+        } else {
+            (
+                quote!(Self { #quoted_obj_field_name }),
+                quote!(value.#quoted_obj_field_name),
+            )
+        };
+
+        quote! {
+            impl From<#quoted_type> for #quoted_obj_name {
+                #[inline]
+                fn from(#quoted_obj_field_name: #quoted_type) -> Self {
+                    #quoted_binding
+                }
+            }
+
+            impl From<#quoted_obj_name> for #quoted_type {
+                #[inline]
+                fn from(value: #quoted_obj_name) -> Self {
+                    #quoted_read
+                }
+            }
+        }
     }
 }
 
@@ -1241,7 +1221,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
 
     let quoted_params = required.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
-        let (typ, unwrapped) = quote_field_type_from_field(field, true);
+        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
         if unwrapped {
             // This was originally a vec/array!
             quote!(#field_name: impl IntoIterator<Item = impl Into<#typ>>)
@@ -1252,7 +1232,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
 
     let quoted_required = required.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
-        let (_, unwrapped) = quote_field_type_from_field(field, true);
+        let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
         if unwrapped {
             // This was originally a vec/array!
             quote!(#field_name: #field_name.into_iter().map(Into::into).collect())
@@ -1285,7 +1265,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
     let with_methods = optional.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
-        let (typ, unwrapped) = quote_field_type_from_field(field, true);
+        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
 
         if unwrapped {
             // This was originally a vec/array!
