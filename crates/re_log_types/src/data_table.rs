@@ -454,6 +454,9 @@ impl DataTable {
         self.col_row_id.len() as _
     }
 
+    /// Fails if any row has:
+    /// - cells that aren't 0, 1 or `num_instances` long
+    /// - two or more cells share the same component type
     #[inline]
     pub fn try_to_rows(&self) -> impl ExactSizeIterator<Item = DataRowResult<DataRow>> + '_ {
         let num_rows = self.num_rows() as usize;
@@ -489,6 +492,9 @@ impl DataTable {
         })
     }
 
+    /// panics if any row has:
+    /// - cells that aren't 0, 1 or `num_instances` long
+    /// - two or more cells share the same component type
     #[inline]
     pub fn to_rows_or_panic(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
         self.try_to_rows().map(|row| row.unwrap())

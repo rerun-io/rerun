@@ -1360,8 +1360,8 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows_or_panic() {
-            rec.record_row(row, false);
+        for row in table.try_to_rows() {
+            rec.record_row(row.unwrap(), false);
         }
 
         let storage = rec.memory();
@@ -1415,6 +1415,8 @@ mod tests {
 
     #[test]
     fn always_flush() {
+        use itertools::Itertools as _;
+
         let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::ALWAYS)
@@ -1425,8 +1427,8 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows_or_panic() {
-            rec.record_row(row, false);
+        for row in table.try_to_rows() {
+            rec.record_row(row.unwrap(), false);
         }
 
         let storage = rec.memory();
@@ -1458,7 +1460,7 @@ mod tests {
         }
 
         let mut rows = {
-            let mut rows: Vec<_> = table.to_rows_or_panic().collect();
+            let mut rows: Vec<_> = table.try_to_rows().try_collect().unwrap();
             rows.reverse();
             rows
         };
@@ -1505,8 +1507,8 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows_or_panic() {
-            rec.record_row(row, false);
+        for row in table.try_to_rows() {
+            rec.record_row(row.unwrap(), false);
         }
 
         {
@@ -1559,8 +1561,8 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows_or_panic() {
-            rec.record_row(row, false);
+        for row in table.try_to_rows() {
+            rec.record_row(row.unwrap(), false);
         }
 
         let mut msgs = {

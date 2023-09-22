@@ -4382,6 +4382,7 @@ dependencies = [
  "arrow2_convert",
  "crossbeam",
  "document-features",
+ "itertools 0.11.0",
  "ndarray",
  "ndarray-rand",
  "once_cell",

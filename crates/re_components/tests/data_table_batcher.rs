@@ -86,7 +86,7 @@ fn shutdown_trigger() {
 #[test]
 fn num_bytes_trigger() {
     let table = create_table();
-    let rows = table.to_rows_or_panic().collect_vec();
+    let rows: Vec<_> = table.try_to_rows().try_collect().unwrap();
     let flush_duration = std::time::Duration::from_millis(50);
     let flush_num_bytes = rows
         .iter()
@@ -104,8 +104,8 @@ fn num_bytes_trigger() {
 
     assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
 
-    for row in table.to_rows_or_panic() {
-        batcher.push_row(row);
+    for row in table.try_to_rows() {
+        batcher.push_row(row.unwrap());
     }
 
     // Expect all rows except for the last one (num_bytes trigger).
