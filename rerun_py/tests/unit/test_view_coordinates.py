@@ -31,8 +31,8 @@ VIEW_COORDINATES_INPUTS: list[rrc.ViewCoordinatesLike | None] = [
         rrc.ViewCoordinates.ViewDir.Down,
         rrc.ViewCoordinates.ViewDir.Forward,
     ],
-    ViewCoordinates.RDF,
-    [ViewCoordinates.RDF],
+    rrc.ViewCoordinates.RDF,
+    [rrc.ViewCoordinates.RDF],
 ]
 
 
