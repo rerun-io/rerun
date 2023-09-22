@@ -44,7 +44,7 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'view_coordinates_ext.cpp'
 
-            enum ViewDir {
+            enum ViewDir : uint8_t {
                 Up = 1,
                 Down = 2,
                 Right = 3,

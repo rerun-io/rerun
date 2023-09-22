@@ -31,4 +31,5 @@ re_format.workspace = true
 
 egui_plot.workspace = true
 egui.workspace = true
+itertools.workspace = true
 vec1.workspace = true

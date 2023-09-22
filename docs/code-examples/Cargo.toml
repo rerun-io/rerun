@@ -128,6 +128,10 @@ name = "scalar_simple"
 path = "scalar_simple.rs"
 
 [[bin]]
+name = "scalar_multiple_plots"
+path = "scalar_multiple_plots.rs"
+
+[[bin]]
 name = "segmentation_image_simple"
 path = "segmentation_image_simple.rs"
 
