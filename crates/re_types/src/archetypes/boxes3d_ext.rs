@@ -6,7 +6,7 @@ use crate::{
 use super::Boxes3D;
 
 impl Boxes3D {
-    /// Creates new [`Boöxes3D`] with [`Self::half_sizes`] centered around the local origin.
+    /// Creates new [`Boxes3D`] with [`Self::half_sizes`] centered around the local origin.
     #[inline]
     pub fn from_half_sizes(half_sizes: impl IntoIterator<Item = impl Into<HalfSizes3D>>) -> Self {
         Self::new(half_sizes)
