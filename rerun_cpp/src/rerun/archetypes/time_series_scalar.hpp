@@ -53,10 +53,9 @@ namespace rerun {
 
             /// An optional label for the point.
             ///
-            /// This won't show up on points at the moment, as our plots don't yet
-            /// support displaying labels for individual points
-            /// TODO(https://github.com/rerun-io/rerun/issues/1289). If all points
-            /// within a single entity path (i.e. a line) share the same label, then
+            /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
+            /// support displaying labels for individual points.
+            /// If all points within a single entity path (i.e. a line) share the same label, then
             /// this label will be used as the label for the line itself. Otherwise, the
             /// line will be named after the entity path. The plot itself is named after
             /// the space it's in.
@@ -111,10 +110,9 @@ namespace rerun {
 
             /// An optional label for the point.
             ///
-            /// This won't show up on points at the moment, as our plots don't yet
-            /// support displaying labels for individual points
-            /// TODO(https://github.com/rerun-io/rerun/issues/1289). If all points
-            /// within a single entity path (i.e. a line) share the same label, then
+            /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
+            /// support displaying labels for individual points.
+            /// If all points within a single entity path (i.e. a line) share the same label, then
             /// this label will be used as the label for the line itself. Otherwise, the
             /// line will be named after the entity path. The plot itself is named after
             /// the space it's in.
