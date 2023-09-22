@@ -11,8 +11,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log("/", &ViewCoordinates::ULB)?;
     rec.log(
         "xyz",
-        &Arrows3D::new(vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]) // vectors
-            .with_colors(vec![[255, 0, 0], [0, 255, 0], [0, 0, 255]]), // colors
+        &Arrows3D::new(
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], //
+        )
+        .with_colors([[255, 0, 0], [0, 255, 0], [0, 0, 255]]),
     )?;
 
     rerun::native_viewer::show(storage.take())?;
