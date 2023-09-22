@@ -12,6 +12,7 @@ __all__ = [
     "AnnotationContext",
     "ArchetypeLike",
     "Arrows3D",
+    "Asset3D",
     "Boxes2D",
     "Boxes3D",
     "BarChart",
@@ -52,6 +53,7 @@ from . import datatypes as dt
 from .archetypes import (
     AnnotationContext,
     Arrows3D,
+    Asset3D,
     BarChart,
     Boxes2D,
     Boxes3D,

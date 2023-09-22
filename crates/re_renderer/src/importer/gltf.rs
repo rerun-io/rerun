@@ -158,7 +158,7 @@ fn import_mesh(
 
         let reader = primitive.reader(|buffer| Some(&*buffers[buffer.index()]));
 
-        let index_offset = triangle_indices.len() as u32;
+        let index_offset = triangle_indices.len() as u32 * 3;
         if let Some(primitive_indices) = reader.read_indices() {
             // GLTF restarts the index for every primitive, whereas we use the same range across all materials of the same mesh.
             // (`mesh_renderer` could do this for us by setting a base vertex index)
@@ -168,7 +168,7 @@ fn import_mesh(
                     .into_u32()
                     .map(|i| i + base_index)
                     .tuples::<(_, _, _)>()
-                    .map(|(x, y, z)| glam::UVec3::new(x, y, z)),
+                    .map(glam::UVec3::from),
             );
         } else {
             anyhow::bail!("Gltf primitives must have indices");

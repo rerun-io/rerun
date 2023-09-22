@@ -10,17 +10,17 @@ from .._baseclasses import (
     BaseDelegatingExtensionArray,
     BaseDelegatingExtensionType,
 )
+from .media_type_ext import MediaTypeExt
 
 __all__ = ["MediaType", "MediaTypeArray", "MediaTypeType"]
 
 
-class MediaType(datatypes.Utf8):
+class MediaType(MediaTypeExt, datatypes.Utf8):
     """
-    [MIME-type](https://en.wikipedia.org/wiki/Media_type) of an entity.
+    A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
 
-    For instance:
-    * `text/plain`
-    * `text/markdown`
+    The complete reference of officially registered media types is maintained by the IANA and can be
+    consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
     """
 
     # You can define your own __init__ function as a member of MediaTypeExt in media_type_ext.py

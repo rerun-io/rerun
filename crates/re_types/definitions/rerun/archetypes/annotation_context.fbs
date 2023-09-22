@@ -19,5 +19,5 @@ table AnnotationContext (
   "attr.rust.derive": "Eq, PartialEq",
   order: 100
 ) {
-  context: rerun.components.AnnotationContext ("attr.rerun.component_required", required, order: 1000);
+  context: rerun.components.AnnotationContext ("attr.rerun.component_required", order: 1000);
 }

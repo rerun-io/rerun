@@ -12,7 +12,10 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            MediaType(const char* media_type) : value(media_type) {}
+            MediaType(const char *media_type) : value(media_type) {}
+
+            // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can
+            // declare these constants directly in there.
 
             /// `text/plain`
             static MediaType plain_text() {
@@ -20,8 +23,31 @@ namespace rerun {
             }
 
             /// `text/markdown`
+            ///
+            /// <https://www.iana.org/assignments/media-types/text/markdown>
             static MediaType markdown() {
                 return "text/markdown";
+            }
+
+            /// [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/model/gltf+json>
+            static MediaType gltf() {
+                return "model/gltf+json";
+            }
+
+            /// Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/model/gltf-binary>
+            static MediaType glb() {
+                return "model/gltf-binary";
+            }
+
+            /// [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/model/obj>
+            static MediaType obj() {
+                return "model/obj";
             }
 
             // [CODEGEN COPY TO HEADER END]

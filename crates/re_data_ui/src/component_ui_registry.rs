@@ -3,7 +3,7 @@ use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
-use super::{DataUi, EntityDataUi};
+use super::EntityDataUi;
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
     re_tracing::profile_function!();
@@ -32,7 +32,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
-    add::<re_components::Mesh3D>(&mut registry); // TODO(#3354): this goes away
+    add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::AnnotationContext>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
@@ -46,6 +46,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_types::components::MeshProperties>(&mut registry);
     add::<re_types::components::TensorData>(&mut registry);
     add::<re_types::components::Transform3D>(&mut registry);
+    add::<re_types::components::OutOfTreeTransform3D>(&mut registry);
     add::<re_types::components::ViewCoordinates>(&mut registry);
 
     registry
@@ -83,32 +84,4 @@ fn format_arrow(value: &dyn arrow2::array::Array) -> String {
 
     // Fallback:
     format!("{bytes} bytes")
-}
-
-// ----------------------------------------------------------------------------
-
-impl DataUi for re_components::Mesh3D {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            re_components::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
-        }
-    }
-}
-
-impl DataUi for re_components::EncodedMesh3D {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ui.label(format!("{} mesh", self.format));
-    }
 }

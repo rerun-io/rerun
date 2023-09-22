@@ -43,6 +43,19 @@ impl DataUi for re_types::components::Transform3D {
     }
 }
 
+impl DataUi for re_types::components::OutOfTreeTransform3D {
+    #[inline]
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        re_types::components::Transform3D(self.0).data_ui(ctx, ui, verbosity, query);
+    }
+}
+
 impl DataUi for Transform3D {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(

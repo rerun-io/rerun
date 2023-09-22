@@ -28,6 +28,14 @@ name = "bar_chart"
 path = "bar_chart.rs"
 
 [[bin]]
+name = "asset3d_simple"
+path = "asset3d_simple.rs"
+
+[[bin]]
+name = "asset3d_out_of_tree"
+path = "asset3d_out_of_tree.rs"
+
+[[bin]]
 name = "box3d_simple"
 path = "box3d_simple.rs"
 
