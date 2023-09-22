@@ -74,7 +74,9 @@ async def fetch_issues():
 internal_issue_number_pattern = re.compile(r"TODO\((?:#(\d+))(?:,\s*(?:#(\d+)))*\)")
 
 
-def check_file(path: str) -> None:
+# Returns true if the file is OK.
+def check_file(path: str) -> bool:
+    ok = True
     closed_issues = set(issues)
     with open(path) as f:
         for i, line in enumerate(f.readlines()):
@@ -83,6 +85,8 @@ def check_file(path: str) -> None:
                 for match in matches.groups():
                     if match is not None and int(match) in closed_issues:
                         print(f"{path}+{i}: {line.strip()}")
+                        ok &= False
+    return ok
 
 
 # ---
@@ -105,6 +109,7 @@ def main() -> None:
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(emilk): parse all .gitignore files, not just top-level
 
+    ok = True
     for root, dirs, files in os.walk(".", topdown=True):
         dirs[:] = [d for d in dirs if not should_ignore(d)]
 
@@ -115,7 +120,10 @@ def main() -> None:
                 if should_ignore(filepath):
                     continue
                 if filepath not in exclude_paths:
-                    check_file(filepath)
+                    ok &= check_file(filepath)
+
+    if not ok:
+        raise ValueError("Clean your zombies!")
 
 
 if __name__ == "__main__":
