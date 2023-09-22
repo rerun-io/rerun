@@ -105,20 +105,21 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
         let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
         let labels: &[Text] = &[];
 
-        DataRow::from_cells3_or_panic(
+        DataRow::from_cells3(
             RowId::random(),
             "a",
             timepoint(1),
             num_instances,
             (positions, colors, labels),
         )
+        .unwrap()
     };
 
     let row1 = {
         let num_instances = 0;
         let colors: &[Color] = &[];
 
-        DataRow::from_cells1_or_panic(RowId::random(), "b", timepoint(1), num_instances, colors)
+        DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors).unwrap()
     };
 
     let row2 = {
@@ -126,13 +127,14 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
         let colors: &[_] = &[Color::from_rgb(255, 255, 255)];
         let labels: &[_] = &[Text("hey".into())];
 
-        DataRow::from_cells2_or_panic(
+        DataRow::from_cells2(
             RowId::random(),
             "c",
             timepoint(2),
             num_instances,
             (colors, labels),
         )
+        .unwrap()
     };
 
     let mut table = DataTable::from_rows(table_id, [row0, row1, row2]);

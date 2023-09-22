@@ -8,13 +8,14 @@ fn data_table_sizes_basics() {
     fn expect(mut cell: DataCell, num_rows: usize, num_bytes: u64) {
         cell.compute_size_bytes();
 
-        let row = DataRow::from_cells1_or_panic(
+        let row = DataRow::from_cells1(
             RowId::random(),
             "a/b/c",
             TimePoint::default(),
             cell.num_instances(),
             cell,
-        );
+        )
+        .unwrap();
 
         let table = DataTable::from_rows(
             TableId::random(),

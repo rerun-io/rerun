@@ -1220,13 +1220,14 @@ impl DataTable {
                         ));
 
                         fn cell_to_bytes(cell: DataCell) -> Vec<u8> {
-                            let row = DataRow::from_cells1_or_panic(
+                            let row = DataRow::from_cells1(
                                 RowId::ZERO,
                                 "cell",
                                 TimePoint::default(),
                                 cell.num_instances(),
                                 cell,
-                            );
+                            )
+                            .unwrap();
                             let table = DataTable::from_rows(TableId::ZERO, [row]);
 
                             let msg = table.to_arrow_msg().unwrap();

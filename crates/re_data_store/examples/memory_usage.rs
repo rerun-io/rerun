@@ -108,13 +108,14 @@ fn log_messages() {
     {
         let used_bytes_start = live_bytes();
         let table = Box::new(
-            DataRow::from_cells1_or_panic(
+            DataRow::from_cells1(
                 RowId::random(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 1,
                 build_some_positions2d(1),
             )
+            .unwrap()
             .into_table(),
         );
         let table_bytes = live_bytes() - used_bytes_start;
@@ -134,13 +135,14 @@ fn log_messages() {
     {
         let used_bytes_start = live_bytes();
         let table = Box::new(
-            DataRow::from_cells1_or_panic(
+            DataRow::from_cells1(
                 RowId::random(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 NUM_POINTS as _,
                 build_some_positions2d(NUM_POINTS),
             )
+            .unwrap()
             .into_table(),
         );
         let table_bytes = live_bytes() - used_bytes_start;

@@ -71,13 +71,14 @@ fn mono_points_arrow(c: &mut Criterion) {
             .map(|i| {
                 DataTable::from_rows(
                     TableId::ZERO,
-                    [DataRow::from_cells2_or_panic(
+                    [DataRow::from_cells2(
                         RowId::ZERO,
                         entity_path!("points", Index::Sequence(i as _)),
                         [build_frame_nr(0.into())],
                         1,
                         (build_some_positions2d(1), build_some_colors(1)),
-                    )],
+                    )
+                    .unwrap()],
                 )
             })
             .collect()
@@ -128,13 +129,14 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
         DataTable::from_rows(
             TableId::ZERO,
             (0..NUM_POINTS).map(|i| {
-                DataRow::from_cells2_or_panic(
+                DataRow::from_cells2(
                     RowId::ZERO,
                     entity_path!("points", Index::Sequence(i as _)),
                     [build_frame_nr(0.into())],
                     1,
                     (build_some_positions2d(1), build_some_colors(1)),
                 )
+                .unwrap()
             }),
         )
     }
@@ -183,7 +185,7 @@ fn batch_points_arrow(c: &mut Criterion) {
     fn generate_tables() -> Vec<DataTable> {
         vec![DataTable::from_rows(
             TableId::ZERO,
-            [DataRow::from_cells2_or_panic(
+            [DataRow::from_cells2(
                 RowId::ZERO,
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
@@ -192,7 +194,8 @@ fn batch_points_arrow(c: &mut Criterion) {
                     build_some_positions2d(NUM_POINTS),
                     build_some_colors(NUM_POINTS),
                 ),
-            )],
+            )
+            .unwrap()],
         )]
     }
 

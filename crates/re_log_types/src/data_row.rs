@@ -410,27 +410,6 @@ impl DataRow {
 // ---
 
 impl DataRow {
-    // TODO(emilk): remove all `_or_panic` functions
-    pub fn from_cells1_or_panic<C0>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: C0,
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-    {
-        Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [into_cells.into()],
-        )
-        .unwrap()
-    }
-
     /// A helper that combines [`Self::try_from_cells1`] followed by [`Self::compute_all_size_bytes`].
     ///
     /// See respective documentations for more information.
@@ -457,25 +436,6 @@ impl DataRow {
         Ok(this)
     }
 
-    /// A helper that combines [`Self::try_from_cells1`] followed by [`Self::compute_all_size_bytes`].
-    ///
-    /// See respective documentations for more information.
-    ///
-    /// Beware: this is costly!
-    // TODO(emilk): remove all `_or_panic` functions
-    pub fn from_cells1_sized_or_panic<C0>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: C0,
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-    {
-        Self::from_cells1_sized(row_id, entity_path, timepoint, num_instances, into_cells).unwrap()
-    }
-
     pub fn from_cells1<C0>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -494,31 +454,6 @@ impl DataRow {
             num_instances,
             [into_cells.try_into()?],
         )?)
-    }
-
-    // TODO(emilk): remove all `_or_panic` functions
-    pub fn from_cells2_or_panic<C0, C1>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: (C0, C1),
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-        C1: Into<DataCell>,
-    {
-        Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [
-                into_cells.0.into(), //
-                into_cells.1.into(), //
-            ],
-        )
-        .unwrap()
     }
 
     /// A helper that combines [`Self::try_from_cells2`] followed by [`Self::compute_all_size_bytes`].
@@ -551,26 +486,6 @@ impl DataRow {
         Ok(this)
     }
 
-    /// A helper that combines [`Self::try_from_cells2`] followed by [`Self::compute_all_size_bytes`].
-    ///
-    /// See respective documentations for more information.
-    ///
-    /// Beware: this is costly!
-    // TODO(emilk): remove all `_or_panic` functions
-    pub fn from_cells2_sized_or_panic<C0, C1>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: (C0, C1),
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-        C1: Into<DataCell>,
-    {
-        Self::from_cells2_sized(row_id, entity_path, timepoint, num_instances, into_cells).unwrap()
-    }
-
     pub fn from_cells2<C0, C1>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -595,68 +510,6 @@ impl DataRow {
             ],
         )?)
     }
-
-    // TODO(emilk): remove all `_or_panic` functions
-    pub fn from_cells3_or_panic<C0, C1, C2>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: (C0, C1, C2),
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-        C1: Into<DataCell>,
-        C2: Into<DataCell>,
-    {
-        Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [
-                into_cells.0.into(), //
-                into_cells.1.into(), //
-                into_cells.2.into(), //
-            ],
-        )
-        .unwrap()
-    }
-
-    /// A helper that combines [`Self::try_from_cells3`] followed by [`Self::compute_all_size_bytes`].
-    ///
-    /// See respective documentations for more information.
-    ///
-    /// Beware: this is costly!
-    // TODO(emilk): remove all `_or_panic` functions
-    pub fn from_cells3_sized_or_panic<C0, C1, C2>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: (C0, C1, C2),
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-        C1: Into<DataCell>,
-        C2: Into<DataCell>,
-    {
-        let mut this = Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [
-                into_cells.0.into(), //
-                into_cells.1.into(), //
-                into_cells.2.into(), //
-            ],
-        )
-        .unwrap();
-        this.compute_all_size_bytes();
-        this
-    }
-
     pub fn from_cells3<C0, C1, C2>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,

@@ -3,13 +3,14 @@ use re_log_types::{ArrowMsg, DataRow, DataTable, RowId};
 
 #[test]
 fn arrow_msg_roundtrip() {
-    let row = DataRow::from_cells2_or_panic(
+    let row = DataRow::from_cells2(
         RowId::random(),
         "world/rects",
         [build_frame_nr(0.into())],
         1,
         (build_some_positions2d(1), build_some_colors(1)),
-    );
+    )
+    .unwrap();
 
     let table_in = {
         let mut table = row.into_table();

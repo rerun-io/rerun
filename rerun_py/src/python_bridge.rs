@@ -758,13 +758,14 @@ fn log_view_coordinates(
     // a bit of additional work and testing to ensure we aren't introducing new
     // conversion errors.
 
-    let row = DataRow::from_cells1_or_panic(
+    let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         TimePoint::default(),
         1,
         [coordinates].as_slice(),
-    );
+    )
+    .unwrap();
 
     recording.record_row(row, !timeless);
 
@@ -869,13 +870,14 @@ fn log_mesh_file(
     //
     // TODO(jleibs) replace with python-native implementation
 
-    let row = DataRow::from_cells1_or_panic(
+    let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         TimePoint::default(),
         1,
         [mesh3d].as_slice(),
-    );
+    )
+    .unwrap();
 
     recording.record_row(row, !timeless);
 
@@ -976,13 +978,14 @@ fn set_panel(
 
     let panel_state = PanelState { expanded };
 
-    let row = DataRow::from_cells1_or_panic(
+    let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         TimePoint::default(),
         1,
         [panel_state].as_slice(),
-    );
+    )
+    .unwrap();
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
@@ -1020,13 +1023,14 @@ fn add_space_view(
 
     let space_view = SpaceViewComponent { space_view };
 
-    let row = DataRow::from_cells1_or_panic(
+    let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         TimePoint::default(),
         1,
         [space_view].as_slice(),
-    );
+    )
+    .unwrap();
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
@@ -1041,13 +1045,14 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
 
     let enable_auto_space = AutoSpaceViews(enabled);
 
-    let row = DataRow::from_cells1_or_panic(
+    let row = DataRow::from_cells1(
         RowId::random(),
         VIEWPORT_PATH,
         TimePoint::default(),
         1,
         [enable_auto_space].as_slice(),
-    );
+    )
+    .unwrap();
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;

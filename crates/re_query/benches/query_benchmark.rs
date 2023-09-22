@@ -127,13 +127,14 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_POINTS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
-                let mut row = DataRow::from_cells2_or_panic(
+                let mut row = DataRow::from_cells2(
                     RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
                     (build_some_positions2d(pts), build_some_colors(pts)),
-                );
+                )
+                .unwrap();
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
                 // in debug mode, by the standard test harness.
                 if cfg!(debug_assertions) {
@@ -149,13 +150,14 @@ fn build_vecs_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_VECS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
-                let mut row = DataRow::from_cells1_or_panic(
+                let mut row = DataRow::from_cells1(
                     RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
                     build_some_vec3d(pts),
-                );
+                )
+                .unwrap();
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
                 // in debug mode, by the standard test harness.
                 if cfg!(debug_assertions) {

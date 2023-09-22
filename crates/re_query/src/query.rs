@@ -257,25 +257,27 @@ pub fn __populate_example_store() -> DataStore {
     let instances = vec![InstanceKey(42), InstanceKey(96)];
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
 
-    let row = DataRow::from_cells2_sized_or_panic(
+    let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
         timepoint,
         instances.len() as _,
         (&instances, &positions),
-    );
+    )
+    .unwrap();
     store.insert_row(&row).unwrap();
 
     let instances = vec![InstanceKey(96)];
     let colors = vec![Color::from(0xff000000)];
 
-    let row = DataRow::from_cells2_sized_or_panic(
+    let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
         timepoint,
         instances.len() as _,
         (instances, colors),
-    );
+    )
+    .unwrap();
     store.insert_row(&row).unwrap();
 
     store
