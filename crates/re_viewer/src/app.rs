@@ -507,7 +507,14 @@ impl App {
                 if let Some(ctx) = store_context {
                     if let Some(recording) = ctx.recording {
                         let table = recording.entity_db.data_store.to_data_table();
-                        println!("{table}");
+                        match table {
+                            Ok(table) => {
+                                println!("{table}");
+                            }
+                            Err(err) => {
+                                println!("{err}");
+                            }
+                        }
                     }
                 }
             }
