@@ -18,7 +18,7 @@ fn manual_trigger() {
     for _ in 0..3 {
         assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
 
-        for row in expected.to_rows() {
+        for row in expected.to_rows_or_panic() {
             batcher.push_row(row);
         }
 
@@ -48,7 +48,7 @@ fn shutdown_trigger() {
     let tables = batcher.tables();
 
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows = table.to_rows_or_panic().collect_vec();
 
     for _ in 0..3 {
         assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
@@ -86,7 +86,7 @@ fn shutdown_trigger() {
 #[test]
 fn num_bytes_trigger() {
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows = table.to_rows_or_panic().collect_vec();
     let flush_duration = std::time::Duration::from_millis(50);
     let flush_num_bytes = rows
         .iter()
@@ -104,7 +104,7 @@ fn num_bytes_trigger() {
 
     assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
 
-    for row in table.to_rows() {
+    for row in table.to_rows_or_panic() {
         batcher.push_row(row);
     }
 
@@ -148,7 +148,7 @@ fn num_bytes_trigger() {
 #[test]
 fn num_rows_trigger() {
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows = table.to_rows_or_panic().collect_vec();
     let flush_duration = std::time::Duration::from_millis(50);
     let flush_num_rows = rows.len() as u64 - 1;
 
@@ -162,7 +162,7 @@ fn num_rows_trigger() {
 
     assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
 
-    for row in table.to_rows() {
+    for row in table.to_rows_or_panic() {
         batcher.push_row(row);
     }
 
@@ -206,7 +206,7 @@ fn num_rows_trigger() {
 #[test]
 fn duration_trigger() {
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows = table.to_rows_or_panic().collect_vec();
 
     let flush_duration = std::time::Duration::from_millis(50);
 
@@ -285,7 +285,7 @@ fn create_table() -> DataTable {
         let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
         let labels: &[Text] = &[];
 
-        DataRow::from_cells3(
+        DataRow::from_cells3_or_panic(
             RowId::random(),
             "a",
             timepoint(1),
@@ -298,7 +298,7 @@ fn create_table() -> DataTable {
         let num_instances = 0;
         let colors: &[Color] = &[];
 
-        DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors)
+        DataRow::from_cells1_or_panic(RowId::random(), "b", timepoint(1), num_instances, colors)
     };
 
     let row2 = {
@@ -306,7 +306,7 @@ fn create_table() -> DataTable {
         let colors: &[_] = &[Color::from_rgb(255, 255, 255)];
         let labels: &[_] = &[Text("hey".into())];
 
-        DataRow::from_cells2(
+        DataRow::from_cells2_or_panic(
             RowId::random(),
             "c",
             timepoint(2),

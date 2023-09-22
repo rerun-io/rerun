@@ -37,7 +37,10 @@ pub enum Error {
     DataTable(#[from] DataTableError),
 
     #[error(transparent)]
-    WriteError(#[from] re_arrow_store::WriteError),
+    Write(#[from] re_arrow_store::WriteError),
+
+    #[error(transparent)]
+    DataRow(#[from] re_log_types::DataRowError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

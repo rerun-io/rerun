@@ -324,7 +324,7 @@ fn build_table(n: usize, packed: bool) -> DataTable {
     let mut table = DataTable::from_rows(
         TableId::ZERO,
         (0..NUM_ROWS).map(move |frame_idx| {
-            DataRow::from_cells2(
+            DataRow::from_cells2_or_panic(
                 RowId::random(),
                 "large_structs",
                 [build_frame_nr(frame_idx.into())],

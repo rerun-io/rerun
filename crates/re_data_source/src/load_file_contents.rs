@@ -88,13 +88,13 @@ fn log_msg_from_file_contents(
 
     let timepoint = re_log_types::TimePoint::default();
 
-    let data_row = re_log_types::DataRow::from_cells(
+    let data_row = re_log_types::DataRow::try_from_cells(
         re_log_types::RowId::random(),
         timepoint,
         entity_path,
         num_instances,
         cells,
-    );
+    )?;
 
     let data_table =
         re_log_types::DataTable::from_rows(re_log_types::TableId::random(), [data_row]);

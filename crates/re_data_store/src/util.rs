@@ -19,13 +19,14 @@ pub fn store_one_component<'a, C>(
     C: Component + Clone + 'a,
     C: Into<::std::borrow::Cow<'a, C>>,
 {
-    let mut row = DataRow::from_cells1(
+    let mut row = DataRow::try_from_cells1(
         RowId::random(),
         entity_path.clone(),
         timepoint.clone(),
         1,
         [component],
-    );
+    )
+    .unwrap();
     row.compute_all_size_bytes();
 
     match store_db.entity_db.try_add_data_row(&row) {

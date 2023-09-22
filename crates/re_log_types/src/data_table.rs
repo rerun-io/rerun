@@ -8,8 +8,8 @@ use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use crate::{
-    ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId, SizeBytes,
-    TimePoint, Timeline,
+    ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, DataRowResult, EntityPath, RowId,
+    SizeBytes, TimePoint, Timeline,
 };
 
 // ---
@@ -221,18 +221,18 @@ impl std::ops::DerefMut for TableId {
 ///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
-///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))
+///     DataRow::try_from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))
 /// };
 /// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
+///     DataRow::try_from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
 /// };
 /// let row2 = {
 ///     let num_instances = 1;
 ///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
-///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))
+///     DataRow::try_from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))
 /// };
 /// let table = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// ```
@@ -276,20 +276,20 @@ impl std::ops::DerefMut for TableId {
 ///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
 ///     let labels: &[MyLabel] = &[];
 ///
-///     DataRow::from_cells3(
+///     DataRow::try_from_cells3(
 ///         RowId::random(),
 ///         "a",
 ///         timepoint(1, 1),
 ///         num_instances,
 ///         (points, colors, labels),
-///     )
+///     ).unwrap()
 /// };
 ///
 /// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
 ///
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
+///     DataRow::try_from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors).unwrap()
 /// };
 ///
 /// let row2 = {
@@ -297,13 +297,13 @@ impl std::ops::DerefMut for TableId {
 ///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
 ///     let labels: &[_] = &[MyLabel("hey".into())];
 ///
-///     DataRow::from_cells2(
+///     DataRow::try_from_cells2(
 ///         RowId::random(),
 ///         "c",
 ///         timepoint(2, 1),
 ///         num_instances,
 ///         (colors, labels),
-///     )
+///     ).unwrap()
 /// };
 ///
 /// let table_in = DataTable::from_rows(table_id, [row0, row1, row2]);
@@ -455,7 +455,7 @@ impl DataTable {
     }
 
     #[inline]
-    pub fn to_rows(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
+    pub fn try_to_rows(&self) -> impl ExactSizeIterator<Item = DataRowResult<DataRow>> + '_ {
         let num_rows = self.num_rows() as usize;
 
         let Self {
@@ -472,7 +472,7 @@ impl DataTable {
                 .values()
                 .filter_map(|rows| rows[i].clone() /* shallow */);
 
-            DataRow::from_cells(
+            DataRow::try_from_cells(
                 col_row_id[i],
                 TimePoint::from(
                     col_timelines
@@ -487,6 +487,11 @@ impl DataTable {
                 cells,
             )
         })
+    }
+
+    #[inline]
+    pub fn to_rows_or_panic(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
+        self.try_to_rows().map(|row| row.unwrap())
     }
 
     /// Computes the maximum value for each and every timeline present across this entire table,
@@ -1070,7 +1075,7 @@ impl DataTable {
         fn compute_rows(table: &DataTable) -> HashMap<Timeline, Vec<DataRow>> {
             let mut rows_by_timeline: HashMap<Timeline, Vec<DataRow>> = Default::default();
 
-            let rows = table.to_rows().flat_map(|row| {
+            let rows = table.to_rows_or_panic().flat_map(|row| {
                 row.timepoint
                     .iter()
                     .map(|(timeline, time)| {
@@ -1208,7 +1213,7 @@ impl DataTable {
                         ));
 
                         fn cell_to_bytes(cell: DataCell) -> Vec<u8> {
-                            let row = DataRow::from_cells1(
+                            let row = DataRow::from_cells1_or_panic(
                                 RowId::ZERO,
                                 "cell",
                                 TimePoint::default(),

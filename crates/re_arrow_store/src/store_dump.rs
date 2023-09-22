@@ -25,7 +25,7 @@ impl DataStore {
             let mut rows = ahash::HashMap::<RowId, DataRow>::default();
             for row in self
                 .to_data_tables(None)
-                .flat_map(|t| t.to_rows().collect::<Vec<_>>())
+                .flat_map(|t| t.to_rows_or_panic().collect::<Vec<_>>())
             {
                 match rows.entry(row.row_id()) {
                     std::collections::hash_map::Entry::Occupied(mut entry) => {

@@ -65,6 +65,9 @@ pub enum RecordingStreamError {
     #[cfg(feature = "web_viewer")]
     #[error(transparent)]
     WebSink(anyhow::Error),
+
+    #[error(transparent)]
+    DataRowError(#[from] re_log_types::DataRowError),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -701,21 +704,31 @@ impl RecordingStream {
         // internal clock.
         let timepoint = TimePoint::timeless();
 
-        let instanced = (!instanced.is_empty()).then(|| {
-            DataRow::from_cells(
+        let instanced = if instanced.is_empty() {
+            None
+        } else {
+            Some(DataRow::try_from_cells(
                 RowId::random(),
                 timepoint.clone(),
                 ent_path.clone(),
                 num_instances,
                 instanced,
-            )
-        });
+            )?)
+        };
 
         // TODO(#1629): unsplit splats once new data cells are in
-        let splatted = (!splatted.is_empty()).then(|| {
+        let splatted = if splatted.is_empty() {
+            None
+        } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
-            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
-        });
+            Some(DataRow::try_from_cells(
+                RowId::random(),
+                timepoint,
+                ent_path,
+                1,
+                splatted,
+            )?)
+        };
 
         if let Some(splatted) = splatted {
             self.record_row(splatted, !timeless);
@@ -1347,7 +1360,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows() {
+        for row in table.to_rows_or_panic() {
             rec.record_row(row, false);
         }
 
@@ -1412,7 +1425,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows() {
+        for row in table.to_rows_or_panic() {
             rec.record_row(row, false);
         }
 
@@ -1445,7 +1458,7 @@ mod tests {
         }
 
         let mut rows = {
-            let mut rows: Vec<_> = table.to_rows().collect();
+            let mut rows: Vec<_> = table.to_rows_or_panic().collect();
             rows.reverse();
             rows
         };
@@ -1492,7 +1505,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows() {
+        for row in table.to_rows_or_panic() {
             rec.record_row(row, false);
         }
 
@@ -1546,7 +1559,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.to_rows() {
+        for row in table.to_rows_or_panic() {
             rec.record_row(row, false);
         }
 

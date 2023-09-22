@@ -92,7 +92,8 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut StoreDb) {
         let component = PanelState { expanded };
 
         let row =
-            DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component]);
+            DataRow::try_from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component])
+                .unwrap();
 
         welcome_screen_blueprint
             .entity_db
@@ -117,8 +118,14 @@ impl<'a> AppBlueprint<'a> {
 
             let component = PanelState { expanded };
 
-            let row =
-                DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component]);
+            let row = DataRow::try_from_cells1_sized(
+                RowId::random(),
+                entity_path,
+                timepoint,
+                1,
+                [component],
+            )
+            .unwrap();
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 blueprint_db.store_id().clone(),

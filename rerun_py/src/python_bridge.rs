@@ -759,7 +759,7 @@ fn log_view_coordinates(
     // a bit of additional work and testing to ensure we aren't introducing new
     // conversion errors.
 
-    let row = DataRow::from_cells1(
+    let row = DataRow::from_cells1_or_panic(
         RowId::random(),
         entity_path,
         TimePoint::default(),
@@ -870,7 +870,7 @@ fn log_mesh_file(
     //
     // TODO(jleibs) replace with python-native implementation
 
-    let row = DataRow::from_cells1(
+    let row = DataRow::from_cells1_or_panic(
         RowId::random(),
         entity_path,
         TimePoint::default(),
@@ -977,7 +977,7 @@ fn set_panel(
 
     let panel_state = PanelState { expanded };
 
-    let row = DataRow::from_cells1(
+    let row = DataRow::from_cells1_or_panic(
         RowId::random(),
         entity_path,
         TimePoint::default(),
@@ -1021,7 +1021,7 @@ fn add_space_view(
 
     let space_view = SpaceViewComponent { space_view };
 
-    let row = DataRow::from_cells1(
+    let row = DataRow::from_cells1_or_panic(
         RowId::random(),
         entity_path,
         TimePoint::default(),
@@ -1042,7 +1042,7 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
 
     let enable_auto_space = AutoSpaceViews(enabled);
 
-    let row = DataRow::from_cells1(
+    let row = DataRow::from_cells1_or_panic(
         RowId::random(),
         VIEWPORT_PATH,
         TimePoint::default(),

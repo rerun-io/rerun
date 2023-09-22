@@ -113,7 +113,7 @@ impl DataUi for ArrowMsg {
         };
 
         // TODO(cmc): Come up with something a bit nicer once data tables become a common sight.
-        for row in table.to_rows() {
+        for row in table.to_rows_or_panic() {
             egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
                 ui.monospace("entity_path:");
                 item_ui::entity_path_button(ctx, ui, None, row.entity_path());
