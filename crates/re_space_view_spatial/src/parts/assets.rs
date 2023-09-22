@@ -89,12 +89,12 @@ impl ViewPartSystem for Asset3DPart {
         std::iter::once(Mesh3D::name()).collect()
     }
 
-    // TODO(#2788): use this instead
+    // TODO(#3354): use this instead
     // fn archetype(&self) -> Vec<ComponentName> {
     //     Mesh3D::required_components().to_vec()
     // }
 
-    // TODO(#2788): use this instead
+    // TODO(#3354): use this instead
     // fn heuristic_filter(
     //     &self,
     //     _store: &re_arrow_store::DataStore,

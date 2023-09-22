@@ -7,11 +7,8 @@ namespace rerun.archetypes;
 
 // ---
 
-// TODO(#2371): archetype IDL definitions must always be tables
-// TODO(#2372): archetype IDL definitions must refer to objects of kind component
 // TODO(#2373): `attr.rerun.component_required` implies `required`
 // TODO(#2427): distinguish optional vs. recommended in language backends
-// TODO(#2521): always derive debug & clone for rust backend
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
