@@ -61,7 +61,7 @@ impl DataStore {
     ///
     /// See [`Self::insert_row`].
     pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
-        for row in table.try_to_rows() {
+        for row in table.to_rows() {
             self.insert_row(&row?)?;
         }
         Ok(())

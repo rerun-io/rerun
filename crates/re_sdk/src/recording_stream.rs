@@ -1360,7 +1360,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.try_to_rows() {
+        for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
         }
 
@@ -1427,7 +1427,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.try_to_rows() {
+        for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
         }
 
@@ -1460,7 +1460,7 @@ mod tests {
         }
 
         let mut rows = {
-            let mut rows: Vec<_> = table.try_to_rows().try_collect().unwrap();
+            let mut rows: Vec<_> = table.to_rows().try_collect().unwrap();
             rows.reverse();
             rows
         };
@@ -1507,7 +1507,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.try_to_rows() {
+        for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
         }
 
@@ -1561,7 +1561,7 @@ mod tests {
 
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
-        for row in table.try_to_rows() {
+        for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
         }
 

@@ -72,7 +72,7 @@ impl EntityDb {
         table.compute_all_size_bytes();
 
         // TODO(cmc): batch all of this
-        for row in table.try_to_rows() {
+        for row in table.to_rows() {
             let row = row?;
 
             self.register_entity_path(&row.entity_path);

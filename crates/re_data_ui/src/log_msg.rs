@@ -113,7 +113,7 @@ impl DataUi for ArrowMsg {
         };
 
         // TODO(cmc): Come up with something a bit nicer once data tables become a common sight.
-        for row in table.try_to_rows() {
+        for row in table.to_rows() {
             match row {
                 Ok(row) => {
                     egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
