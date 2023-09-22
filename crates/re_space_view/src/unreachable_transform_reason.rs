@@ -15,7 +15,7 @@ pub enum UnreachableTransformReason {
     DisconnectedSpace,
 
     /// View coordinates contained an invalid value
-    InvaliViewCoordinates,
+    InvalidViewCoordinates,
 }
 
 impl std::fmt::Display for UnreachableTransformReason {
@@ -29,7 +29,7 @@ impl std::fmt::Display for UnreachableTransformReason {
                 "Can't display entities that are in an explicitly disconnected space.",
             Self::InversePinholeCameraWithoutResolution =>
                 "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
-            Self::InvaliViewCoordinates =>
+            Self::InvalidViewCoordinates =>
                 "Can't display entities that have invalid view coordinates."
         })
     }
