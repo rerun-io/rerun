@@ -174,43 +174,6 @@ impl FromStr for ComponentPath {
     }
 }
 
-#[test]
-fn test_parse_component_path() {
-    assert_eq!(
-        ComponentPath::from_str("world/points.rerun.components.Color"),
-        Ok(ComponentPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
-            component_name: "rerun.components.Color".into(),
-        })
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points.Color"),
-        Ok(ComponentPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
-            component_name: "rerun.components.Color".into(),
-        })
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points.my.custom.color"),
-        Ok(ComponentPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
-            component_name: "my.custom.color".into(),
-        })
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points."),
-        Err(PathParseError::TrailingDot)
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points"),
-        Err(PathParseError::MissingComponentName)
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points[#42].rerun.components.Color"),
-        Err(PathParseError::UnexpectedInstanceKey(InstanceKey(42)))
-    );
-}
-
 fn entity_path_parts_from_tokens(mut tokens: &[&str]) -> Result<Vec<EntityPathPart>> {
     if tokens.is_empty() {
         return Err(PathParseError::MissingPath);
@@ -379,7 +342,7 @@ fn test_unescape_string() {
 }
 
 #[test]
-fn test_parse_path() {
+fn test_parse_entity_path() {
     use crate::entity_path_vec;
 
     fn parse(s: &str) -> Result<Vec<EntityPathPart>> {
@@ -428,4 +391,77 @@ fn test_parse_path() {
         parse(r#"entity[#123]"#),
         Err(PathParseError::UnexpectedInstanceKey(InstanceKey(123)))
     ));
+}
+
+#[test]
+fn test_parse_component_path() {
+    assert_eq!(
+        ComponentPath::from_str("world/points.rerun.components.Color"),
+        Ok(ComponentPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            component_name: "rerun.components.Color".into(),
+        })
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points.Color"),
+        Ok(ComponentPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            component_name: "rerun.components.Color".into(),
+        })
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points.my.custom.color"),
+        Ok(ComponentPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            component_name: "my.custom.color".into(),
+        })
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points."),
+        Err(PathParseError::TrailingDot)
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points"),
+        Err(PathParseError::MissingComponentName)
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points[#42].rerun.components.Color"),
+        Err(PathParseError::UnexpectedInstanceKey(InstanceKey(42)))
+    );
+}
+
+#[test]
+fn test_parse_data_path() {
+    assert_eq!(
+        DataPath::from_str("world/points[#42].rerun.components.Color"),
+        Ok(DataPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            instance_key: Some(InstanceKey(42)),
+            component_name: Some("rerun.components.Color".into()),
+        })
+    );
+    assert_eq!(
+        DataPath::from_str("world/points.rerun.components.Color"),
+        Ok(DataPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            instance_key: None,
+            component_name: Some("rerun.components.Color".into()),
+        })
+    );
+    assert_eq!(
+        DataPath::from_str("world/points[#42]"),
+        Ok(DataPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            instance_key: Some(InstanceKey(42)),
+            component_name: None,
+        })
+    );
+    assert_eq!(
+        DataPath::from_str("world/points"),
+        Ok(DataPath {
+            entity_path: EntityPath::from_str("world/points").unwrap(),
+            instance_key: None,
+            component_name: None,
+        })
+    );
 }
