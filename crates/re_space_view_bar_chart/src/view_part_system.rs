@@ -5,8 +5,8 @@ use re_data_store::EntityPath;
 use re_log_types::{TimeInt, Timeline};
 use re_types::{archetypes::BarChart, datatypes::TensorData, Archetype, ComponentNameSet};
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -37,14 +37,11 @@ impl ViewPartSystem for BarChartViewPartSystem {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        _entity_components: &ComponentNameSet,
+        entity_components: &ComponentNameSet,
     ) -> bool {
-        // TODO(#3342): Fix once old logging APIs are deprecated and we have fallback views
-        /*
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
-        */
 
         if let Some(tensor) = store.query_latest_component::<re_types::components::TensorData>(
             ent_path,
