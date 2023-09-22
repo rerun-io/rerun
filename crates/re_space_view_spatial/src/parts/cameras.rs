@@ -13,7 +13,7 @@ use re_viewer_context::{
 
 use super::SpatialViewPartData;
 use crate::{
-    contexts::{pinhole_camera_view_coordinates, SharedRenderBuilders, TransformContext},
+    contexts::{SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     query_pinhole,
     space_camera_3d::SpaceCamera3D,
@@ -201,11 +201,6 @@ impl ViewPartSystem for CamerasPart {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = query_pinhole(store, &time_query, ent_path) {
-                let pinhole_view_coordinates = pinhole_camera_view_coordinates(
-                    &ctx.store_db.entity_db.data_store,
-                    &ctx.rec_cfg.time_ctrl.current_query(),
-                    ent_path,
-                );
                 let entity_highlight = query.highlights.entity_outline_mask(ent_path.hash());
 
                 self.visit_instance(
@@ -217,7 +212,7 @@ impl ViewPartSystem for CamerasPart {
                     store
                         .query_latest_component::<Transform3D>(ent_path, &time_query)
                         .map(|c| c.value),
-                    pinhole_view_coordinates,
+                    pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF),
                     entity_highlight,
                 );
             }

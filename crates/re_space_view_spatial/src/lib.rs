@@ -17,6 +17,7 @@ mod ui;
 mod ui_2d;
 mod ui_3d;
 
+use re_types::components::ViewCoordinates;
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
 
@@ -44,6 +45,9 @@ fn query_pinhole(
         .map(|image_from_camera| re_types::archetypes::Pinhole {
             image_from_camera: image_from_camera.value,
             resolution: store
+                .query_latest_component(entity_path, query)
+                .map(|c| c.value),
+            camera_xyz: store
                 .query_latest_component(entity_path, query)
                 .map(|c| c.value),
         })
