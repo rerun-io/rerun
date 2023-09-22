@@ -371,8 +371,6 @@ fn datastore_internal_repr() {
 /// ```text
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
-//
-// TODO(#1524): inline visualization once it's back to a manageable state
 #[derive(Debug, Clone)]
 pub struct IndexedTable {
     /// The timeline this table operates in, for debugging purposes.
@@ -539,7 +537,6 @@ impl Default for IndexedBucketInner {
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
 //
-// TODO(#1524): inline visualization once it's back to a manageable state
 // TODO(#1807): timeless should be row-id ordered too then
 #[derive(Debug, Clone)]
 pub struct PersistentIndexedTable {

@@ -111,9 +111,6 @@ impl DataStore {
     // datastructures should be able to purge themselves based solely off of
     // [`DataStore::oldest_time_per_timeline`].
     //
-    // TODO(#1803): The GC should be aware of latest-at semantics and make sure they are upheld
-    // when purging data.
-    //
     // TODO(#1823): Workload specific optimizations.
     pub fn gc(&mut self, options: GarbageCollectionOptions) -> (Deleted, DataStoreStats) {
         re_tracing::profile_function!();

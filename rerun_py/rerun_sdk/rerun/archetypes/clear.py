@@ -40,7 +40,7 @@ class Clear(Archetype):
 
     # Now clear them, one by one on each tick.
     for i in range(len(vectors)):
-        # TODO(#3268): `rr2.Clear.flat()`
+        # TODO(cmc): `rr2.Clear.flat()`
         rr2.log(f"arrows/{i}", rr2.Clear(False))
     ```
 
@@ -61,7 +61,7 @@ class Clear(Archetype):
         rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector, origins=origin, colors=color))
 
     # Now clear all of them at once.
-    # TODO(#3268): `rr2.Clear.recursive()`
+    # TODO(cmc): `rr2.Clear.recursive()`
     rr2.log("arrows", rr2.Clear(True))
     ```
     """

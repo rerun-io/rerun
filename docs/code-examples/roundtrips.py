@@ -52,10 +52,6 @@ opt_out_compare = {
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_one_dim": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    # TODO(#3207): two issues:
-    #   - cpp sends an identity transform for no reason
-    #   - python has a crazy indicator component out of nowhere
-    "transform3d_simple": ["cpp", "py", "rust"],
 }
 
 # fmt: on

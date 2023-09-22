@@ -287,6 +287,12 @@ jobs:
         run: |
           ./scripts/lint.py
 
+      # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
+      # at least for the time being.
+      # - name: Check for zombie TODOs
+      #   run: |
+      #     ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check for too large files
         run: |
           ./scripts/ci/check_large_files.sh

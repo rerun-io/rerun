@@ -130,7 +130,7 @@ impl ViewContextSystem for TransformContext {
                 &current_tree.path,
                 &entity_db.data_store,
                 &time_query,
-                // TODO(#1988): See comment in transform_at. This is a workaround for precision issues
+                // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
                 &mut encountered_pinhole,
@@ -330,7 +330,7 @@ fn transform_at(
         // Above calculation is nice for a certain kind of visualizing a projected image plane,
         // but the image plane distance is arbitrary and there might be other, better visualizations!
 
-        // TODO(#1988):
+        // TODO(#1025):
         // As such we don't ever want to invert this matrix!
         // However, currently our 2D views require do to exactly that since we're forced to
         // build a relationship between the 2D plane and the 3D world, when actually the 2D plane

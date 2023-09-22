@@ -15,5 +15,5 @@ for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
 
 # Now clear them, one by one on each tick.
 for i in range(len(vectors)):
-    # TODO(#3268): `rr2.Clear.flat()`
+    # TODO(cmc): `rr2.Clear.flat()`
     rr2.log(f"arrows/{i}", rr2.Clear(False))
