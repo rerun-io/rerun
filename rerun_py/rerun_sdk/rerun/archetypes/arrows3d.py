@@ -34,10 +34,11 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     lengths = np.log2(np.arange(0, 100) + 1)
     angles = np.arange(start=0, stop=tau, step=tau * 0.01)
+    origins = np.zeros((3, 100))
     vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angles) * lengths])
     colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
-    rr2.log("arrows", rr2.Arrows3D(vectors=vectors, colors=colors))
+    rr2.log("arrows", rr2.Arrows3D(origins=origins, vectors=vectors, colors=colors))
     ```
     """
 
@@ -58,6 +59,8 @@ class Arrows3D(Arrows3DExt, Archetype):
     )
     """
     All the origin points for each arrow in the batch.
+
+    If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     """
 
     radii: components.RadiusArray | None = field(

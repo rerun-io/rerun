@@ -34,11 +34,11 @@ class Transform3D(Archetype):
     origin = [0, 0, 0]
     base_vector = [0, 1, 0]
 
-    rr.log_arrow("base", origin=origin, vector=base_vector)
+    rr2.log("base", rr2.Arrows3D(origins=origin, vectors=base_vector))
 
     rr2.log("base/translated", rrd.TranslationRotationScale3D(translation=[1, 0, 0]))
 
-    rr.log_arrow("base/translated", origin=origin, vector=base_vector)
+    rr2.log("base/translated", rr2.Arrows3D(origins=origin, vectors=base_vector))
 
     rr2.log(
         "base/rotated_scaled",
@@ -48,7 +48,7 @@ class Transform3D(Archetype):
         ),
     )
 
-    rr.log_arrow("base/rotated_scaled", origin=origin, vector=base_vector)
+    rr2.log("base/rotated_scaled", rr2.Arrows3D(origins=origin, vectors=base_vector))
     ```
     """
 

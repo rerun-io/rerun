@@ -24,13 +24,14 @@
 ///
 /// use rerun::{
 ///     archetypes::Arrows3D,
-///     components::{Color, Vector3D},
+///     components::{Color, Origin3D, Vector3D},
 ///     RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 ///
+///     let origins = vec![Origin3D::ZERO; 100];
 ///     let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
 ///         .map(|i| {
 ///             let angle = TAU * i as f32 * 0.01;
@@ -45,7 +46,9 @@
 ///
 ///     rec.log(
 ///         "arrows",
-///         &Arrows3D::from_vectors(vectors).with_colors(colors),
+///         &Arrows3D::from_vectors(vectors)
+///             .with_origins(origins)
+///             .with_colors(colors),
 ///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
@@ -58,6 +61,8 @@ pub struct Arrows3D {
     pub vectors: Vec<crate::components::Vector3D>,
 
     /// All the origin points for each arrow in the batch.
+    ///
+    /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     pub origins: Option<Vec<crate::components::Origin3D>>,
 
     /// Optional radii for the arrows.
