@@ -97,3 +97,7 @@ class Pinhole(PinholeExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(PinholeExt, "deferred_patch_class"):
+    PinholeExt.deferred_patch_class(Pinhole)

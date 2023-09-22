@@ -56,3 +56,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(ViewCoordinatesExt, "deferred_patch_class"):
+    ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

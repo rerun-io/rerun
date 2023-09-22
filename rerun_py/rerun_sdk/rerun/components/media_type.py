@@ -44,3 +44,7 @@ MediaTypeType._ARRAY_TYPE = MediaTypeArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MediaTypeType())
+
+
+if hasattr(MediaTypeExt, "deferred_patch_class"):
+    MediaTypeExt.deferred_patch_class(MediaType)

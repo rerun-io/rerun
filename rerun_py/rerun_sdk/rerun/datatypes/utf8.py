@@ -60,3 +60,7 @@ Utf8Type._ARRAY_TYPE = Utf8Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Utf8Type())
+
+
+if hasattr(Utf8Ext, "deferred_patch_class"):
+    Utf8Ext.deferred_patch_class(Utf8)

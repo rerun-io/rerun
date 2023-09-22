@@ -183,3 +183,7 @@ TensorDataType._ARRAY_TYPE = TensorDataArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TensorDataType())
+
+
+if hasattr(TensorDataExt, "deferred_patch_class"):
+    TensorDataExt.deferred_patch_class(TensorData)

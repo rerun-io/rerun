@@ -112,3 +112,7 @@ class Asset3D(Asset3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(Asset3DExt, "deferred_patch_class"):
+    Asset3DExt.deferred_patch_class(Asset3D)

@@ -65,3 +65,7 @@ ScalarScatteringType._ARRAY_TYPE = ScalarScatteringArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ScalarScatteringType())
+
+
+if hasattr(ScalarScatteringExt, "deferred_patch_class"):
+    ScalarScatteringExt.deferred_patch_class(ScalarScattering)

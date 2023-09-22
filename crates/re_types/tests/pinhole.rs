@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use re_types::{
-    archetypes::{Pinhole, ViewCoordinates},
-    components, Archetype as _,
-};
+use re_types::{archetypes::Pinhole, components, Archetype as _};
 
 mod util;
 
@@ -14,11 +11,12 @@ fn roundtrip() {
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
         ),
         resolution: Some(components::Resolution([1.0, 2.0].into())),
-        camera_xyz: Some(ViewCoordinates::RDF.xyz),
+        camera_xyz: Some(components::ViewCoordinates::RDF),
     };
 
     let arch = Pinhole::new([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
-        .with_resolution([1.0, 2.0]);
+        .with_resolution([1.0, 2.0])
+        .with_camera_xyz(components::ViewCoordinates::RDF);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
