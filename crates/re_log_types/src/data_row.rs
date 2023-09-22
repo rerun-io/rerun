@@ -510,6 +510,7 @@ impl DataRow {
             ],
         )?)
     }
+
     pub fn from_cells3<C0, C1, C2>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
