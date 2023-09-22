@@ -2,13 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
-from rerun import bindings
-from rerun.components_deprecated import instance_key_splat
-from rerun.components_deprecated.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log_deprecated import Color, _normalize_colors
-from rerun.log_deprecated.extension_components import _add_extension_components
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -77,7 +71,7 @@ def log_scalar(
 
         This won't show up on points at the moment, as our plots don't yet
         support displaying labels for individual points
-        TODO(https://github.com/rerun-io/rerun/issues/1289). If all points
+        TODO(#1289). If all points
         within a single entity path (i.e. a line) share the same label, then
         this label will be used as the label for the line itself. Otherwise, the
         line will be named after the entity path. The plot itself is named after
@@ -117,38 +111,16 @@ def log_scalar(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
+    from rerun.experimental import TimeSeriesScalar, log
 
     recording = RecordingStream.to_native(recording)
 
-    instanced: dict[str, Any] = {}
-    splats: dict[str, Any] = {}
-
-    instanced["rerun.scalar"] = ScalarArray.from_numpy(np.array([scalar]))
-
-    if label:
-        instanced["rerun.components.Text"] = rrc.TextArray.from_similar([label]).storage
-
     if color is not None:
-        from rerun.experimental import cmp as rrc
+        color = _normalize_colors(color)
 
-        colors = _normalize_colors(color)
-        instanced["rerun.components.Color"] = rrc.ColorArray.from_similar(colors).storage
-
-    if radius:
-        instanced["rerun.components.Radius"] = rrc.RadiusArray.from_similar(np.array([radius])).storage
-
-    if scattered:
-        props = [{"scattered": scattered}]
-        instanced["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
-
-    if ext:
-        _add_extension_components(instanced, splats, ext, None)
-
-    if splats:
-        splats["rerun.components.InstanceKey"] = instance_key_splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=False, recording=recording)
-
-    # Always the primary component last so range-based queries will include the other data. See(#1215)
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=False, recording=recording)
+    return log(
+        entity_path,
+        TimeSeriesScalar(scalar=scalar, label=label, color=color, radius=radius, scattered=scattered),
+        ext=ext,
+        recording=recording,
+    )

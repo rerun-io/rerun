@@ -7,7 +7,9 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewId, UiVerbosity, ViewerContext,
+};
 use re_viewport::{Viewport, ViewportBlueprint};
 
 use super::selection_history_ui::SelectionHistoryUi;
@@ -411,33 +413,32 @@ fn entity_props_ui(
         });
 }
 
-fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
-    let current = *entity_props.color_mapper.get();
+fn colormap_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_props: &mut EntityProperties,
+) {
+    let mut re_renderer_colormap = match *entity_props.color_mapper.get() {
+        ColorMapper::Colormap(Colormap::Grayscale) => re_renderer::Colormap::Grayscale,
+        ColorMapper::Colormap(Colormap::Turbo) => re_renderer::Colormap::Turbo,
+        ColorMapper::Colormap(Colormap::Viridis) => re_renderer::Colormap::Viridis,
+        ColorMapper::Colormap(Colormap::Plasma) => re_renderer::Colormap::Plasma,
+        ColorMapper::Colormap(Colormap::Magma) => re_renderer::Colormap::Magma,
+        ColorMapper::Colormap(Colormap::Inferno) => re_renderer::Colormap::Inferno,
+    };
 
     ui.label("Color map");
-    egui::ComboBox::from_id_source("color_mapper")
-        .selected_text(current.to_string())
-        .show_ui(ui, |ui| {
-            ui.style_mut().wrap = Some(false);
-            ui.set_min_width(64.0);
+    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
 
-            // TODO(cmc): that is not ideal but I don't want to import yet another proc-macro...
-            let mut add_label = |proposed| {
-                if ui
-                    .selectable_label(current == proposed, proposed.to_string())
-                    .clicked()
-                {
-                    entity_props.color_mapper = EditableAutoValue::UserEdited(proposed);
-                }
-            };
-
-            add_label(ColorMapper::Colormap(Colormap::Grayscale));
-            add_label(ColorMapper::Colormap(Colormap::Turbo));
-            add_label(ColorMapper::Colormap(Colormap::Viridis));
-            add_label(ColorMapper::Colormap(Colormap::Plasma));
-            add_label(ColorMapper::Colormap(Colormap::Magma));
-            add_label(ColorMapper::Colormap(Colormap::Inferno));
-        });
+    let new_colormap = match re_renderer_colormap {
+        re_renderer::Colormap::Grayscale => Colormap::Grayscale,
+        re_renderer::Colormap::Turbo => Colormap::Turbo,
+        re_renderer::Colormap::Viridis => Colormap::Viridis,
+        re_renderer::Colormap::Plasma => Colormap::Plasma,
+        re_renderer::Colormap::Magma => Colormap::Magma,
+        re_renderer::Colormap::Inferno => Colormap::Inferno,
+    };
+    entity_props.color_mapper = EditableAutoValue::UserEdited(ColorMapper::Colormap(new_colormap));
 
     ui.end_row();
 }
@@ -520,7 +521,7 @@ fn depth_props_ui(
 
         // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
         // need to get the current hardcoded colormapping out of the image cache first.
-        colormap_props_ui(ui, entity_props);
+        colormap_props_ui(ctx, ui, entity_props);
     }
 
     Some(())

@@ -24,6 +24,20 @@
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 
+impl From<f32> for DrawOrder {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DrawOrder> for f32 {
+    #[inline]
+    fn from(value: DrawOrder) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
     #[inline]
     fn from(value: DrawOrder) -> Self {

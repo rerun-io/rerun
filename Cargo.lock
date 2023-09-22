@@ -4572,6 +4572,7 @@ version = "0.9.0-alpha.4"
 dependencies = [
  "egui",
  "egui_plot",
+ "itertools 0.11.0",
  "re_arrow_store",
  "re_components",
  "re_format",
@@ -5274,6 +5275,15 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_transform3d"
+version = "0.9.0-alpha.4"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
+name = "roundtrip_view_coordinates"
 version = "0.9.0-alpha.4"
 dependencies = [
  "anyhow",

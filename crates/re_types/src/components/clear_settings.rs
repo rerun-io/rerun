@@ -20,6 +20,20 @@ pub struct ClearSettings(
     pub bool,
 );
 
+impl From<bool> for ClearSettings {
+    #[inline]
+    fn from(recursive: bool) -> Self {
+        Self(recursive)
+    }
+}
+
+impl From<ClearSettings> for bool {
+    #[inline]
+    fn from(value: ClearSettings) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<ClearSettings> for ::std::borrow::Cow<'a, ClearSettings> {
     #[inline]
     fn from(value: ClearSettings) -> Self {

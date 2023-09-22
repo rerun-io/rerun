@@ -20,7 +20,9 @@ from .segmentation_image import SegmentationImage
 from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
+from .time_series_scalar import TimeSeriesScalar
 from .transform3d import Transform3D
+from .view_coordinates import ViewCoordinates
 
 __all__ = [
     "AnnotationContext",
@@ -41,5 +43,7 @@ __all__ = [
     "Tensor",
     "TextDocument",
     "TextLog",
+    "TimeSeriesScalar",
     "Transform3D",
+    "ViewCoordinates",
 ]

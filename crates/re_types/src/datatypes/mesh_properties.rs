@@ -20,6 +20,20 @@ pub struct MeshProperties {
     pub vertex_indices: Option<crate::ArrowBuffer<u32>>,
 }
 
+impl From<Option<crate::ArrowBuffer<u32>>> for MeshProperties {
+    #[inline]
+    fn from(vertex_indices: Option<crate::ArrowBuffer<u32>>) -> Self {
+        Self { vertex_indices }
+    }
+}
+
+impl From<MeshProperties> for Option<crate::ArrowBuffer<u32>> {
+    #[inline]
+    fn from(value: MeshProperties) -> Self {
+        value.vertex_indices
+    }
+}
+
 impl<'a> From<MeshProperties> for ::std::borrow::Cow<'a, MeshProperties> {
     #[inline]
     fn from(value: MeshProperties) -> Self {

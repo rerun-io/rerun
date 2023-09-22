@@ -570,7 +570,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         )
         rr.log_tensor("diffusion/latents", latents, names=["b", "c", "h", "w"])
 
-        # 8. Prepare extra step kwargs. TODO(original author): Logic should ideally just be moved out of the pipeline
+        # 8. Prepare extra step kwargs. TODO(someone): Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
         # 9. Denoising loop

@@ -17,6 +17,20 @@
 #[repr(transparent)]
 pub struct PrimitiveComponent(pub u32);
 
+impl From<u32> for PrimitiveComponent {
+    #[inline]
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<PrimitiveComponent> for u32 {
+    #[inline]
+    fn from(value: PrimitiveComponent) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<PrimitiveComponent> for ::std::borrow::Cow<'a, PrimitiveComponent> {
     #[inline]
     fn from(value: PrimitiveComponent) -> Self {

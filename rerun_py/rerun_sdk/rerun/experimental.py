@@ -30,7 +30,9 @@ __all__ = [
     "Tensor",
     "TextDocument",
     "TextLog",
+    "TimeSeriesScalar",
     "Transform3D",
+    "ViewCoordinates",
     "add_space_view",
     "arch",
     "cmp",
@@ -65,6 +67,8 @@ from .archetypes import (
     Tensor,
     TextDocument,
     TextLog,
+    TimeSeriesScalar,
     Transform3D,
+    ViewCoordinates,
 )
 from .log import ArchetypeLike, ComponentBatchLike, IndicatorComponentBatch, log, log_components

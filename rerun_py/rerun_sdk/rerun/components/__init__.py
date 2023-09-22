@@ -44,11 +44,26 @@ from .position3d import Position3D, Position3DArray, Position3DType
 from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
 from .resolution import Resolution, ResolutionArray, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DArray, Rotation3DType
+from .scalar import Scalar, ScalarArray, ScalarArrayLike, ScalarLike, ScalarType
+from .scalar_scattering import (
+    ScalarScattering,
+    ScalarScatteringArray,
+    ScalarScatteringArrayLike,
+    ScalarScatteringLike,
+    ScalarScatteringType,
+)
 from .tensor_data import TensorData, TensorDataArray, TensorDataType
 from .text import Text, TextArray, TextType
 from .text_log_level import TextLogLevel, TextLogLevelArray, TextLogLevelType
 from .transform3d import Transform3D, Transform3DArray, Transform3DType
 from .vector3d import Vector3D, Vector3DArray, Vector3DType
+from .view_coordinates import (
+    ViewCoordinates,
+    ViewCoordinatesArray,
+    ViewCoordinatesArrayLike,
+    ViewCoordinatesLike,
+    ViewCoordinatesType,
+)
 
 __all__ = [
     "AnnotationContext",
@@ -141,6 +156,16 @@ __all__ = [
     "Rotation3D",
     "Rotation3DArray",
     "Rotation3DType",
+    "Scalar",
+    "ScalarArray",
+    "ScalarArrayLike",
+    "ScalarLike",
+    "ScalarScattering",
+    "ScalarScatteringArray",
+    "ScalarScatteringArrayLike",
+    "ScalarScatteringLike",
+    "ScalarScatteringType",
+    "ScalarType",
     "TensorData",
     "TensorDataArray",
     "TensorDataType",
@@ -156,4 +181,9 @@ __all__ = [
     "Vector3D",
     "Vector3DArray",
     "Vector3DType",
+    "ViewCoordinates",
+    "ViewCoordinatesArray",
+    "ViewCoordinatesArrayLike",
+    "ViewCoordinatesLike",
+    "ViewCoordinatesType",
 ]

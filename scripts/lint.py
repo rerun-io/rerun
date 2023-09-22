@@ -28,6 +28,11 @@ else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 ellipsis = re.compile(r"[^.]\.\.\.[^\-.0-9a-zA-Z]")
 
+any_todo_pattern = re.compile(r"TODO\(.*\)")
+legal_todo_inner_pattern = re.compile(
+    r"TODO\(((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+)(?:,\s*((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+))*\)"
+)
+
 
 def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if line == "":
@@ -94,6 +99,9 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if explicit_quotes.search(line):
         return "Prefer using {:?} - it will also escape newlines etc"
 
+    if any_todo_pattern.search(line) and not legal_todo_inner_pattern.search(line):
+        return "TODOs should be formatted as either TODO(name), TODO(#42) or TODO(org/repo#42)"
+
     return None
 
 
@@ -104,8 +112,16 @@ def test_lint_line() -> None:
         "hello world",
         "todo lowercase is fine",
         'todo!("macro is ok with text")',
-        "TODO(emilk):",
         "TODO_TOKEN",
+        "TODO(bob):",
+        "TODO(bob,alice):",
+        "TODO(bob, alice):",
+        "TODO(#42):",
+        "TODO(#42,#43):",
+        "TODO(#42, #43):",
+        "TODO(rust-lang/rust#42):",
+        "TODO(rust-lang/rust#42,rust-lang/rust#43):",
+        "TODO(rust-lang/rust#42, rust-lang/rust#43):",
         'eprintln!("{:?}, {err}", foo)',
         'eprintln!("{:#?}, {err}", foo)',
         'eprintln!("{err}")',
@@ -129,6 +145,10 @@ def test_lint_line() -> None:
         "HACK",
         "TODO",
         "TODO:",
+        "TODO(42)",
+        "TODO(https://github.com/rerun-io/rerun/issues/42)",
+        "TODO(bob/alice)",
+        "TODO(bob|alice)",
         "todo!()",
         'eprintln!("{err:?}")',
         'eprintln!("{err:#?}")',
