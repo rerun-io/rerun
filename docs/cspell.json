@@ -97,6 +97,7 @@
     "linspace",
     "loggable",
     "meshgrid",
+    "multimodal",
     "numpy",
     "nyud",
     "pointcloud",
