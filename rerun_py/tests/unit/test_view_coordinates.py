@@ -17,7 +17,7 @@ def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesArray:
     return rrc.ViewCoordinatesArray.from_similar(expected)
 
 
-VIEW_COORDINATES_INPUTS: list[rrc.ViewCoordinatesLike | None] = [
+VIEW_COORDINATES_INPUTS: list[rrc.ViewCoordinatesArrayLike | None] = [
     None,
     rrc.ViewCoordinates(
         [
