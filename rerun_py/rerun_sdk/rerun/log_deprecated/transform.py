@@ -131,19 +131,20 @@ def log_view_coordinates(
         if hasattr(ViewCoordinates, xyz):
             log(entity_path, getattr(ViewCoordinates, xyz), timeless=timeless, recording=recording)
         else:
-            raise ValueError("Invalid xyz value.")
+            raise ValueError(f"Could not interpret xyz={xyz} as a valid ViewDirection.")
     else:
         if right_handed is None:
             right_handed = True
 
-        if (up, right_handed) not in _up_attrs:
-            raise ValueError("Invalid up value.")
+        if (up.upper(), right_handed) not in _up_attrs:
+            raise ValueError(f"Could not interpret up={up} as a valid ViewDirection.")
 
         up = _up_attrs[(up, right_handed)]
 
         if hasattr(ViewCoordinates, up):
             log(entity_path, getattr(ViewCoordinates, up), timeless=timeless, recording=recording)
         else:
+            # This should never get hit
             raise ValueError("Invalid up value.")
 
 
