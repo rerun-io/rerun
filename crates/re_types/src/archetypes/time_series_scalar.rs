@@ -54,13 +54,13 @@
 ///         // Log two time series under a shared root so that they show in the same plot by default.
 ///         rec.log(
 ///             "trig/sin",
-///             &TimeSeriesScalar::new(t as f64 / 100.0)
+///             &TimeSeriesScalar::new((t as f64 / 100.0).sin())
 ///                 .with_label("sin(0.01t)")
 ///                 .with_color([255, 0, 0]),
 ///         )?;
 ///         rec.log(
 ///             "trig/cos",
-///             &TimeSeriesScalar::new(t as f64 / 100.0)
+///             &TimeSeriesScalar::new((t as f64 / 100.0).cos())
 ///                 .with_label("cos(0.01t)")
 ///                 .with_color([0, 255, 0]),
 ///         )?;
