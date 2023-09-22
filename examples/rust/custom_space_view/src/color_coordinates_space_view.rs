@@ -46,7 +46,7 @@ impl std::fmt::Display for ColorCoordinatesMode {
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
 pub struct ColorCoordinatesSpaceViewState {
-    // TODO(wumpf/jleibs): This should be part of the Blueprint so that it is serialized out.
+    // TODO(wumpf, jleibs): This should be part of the Blueprint so that it is serialized out.
     //                      but right now there is no way of doing that.
     mode: ColorCoordinatesMode,
 }

@@ -272,7 +272,7 @@ impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> {
         re_tracing::profile_function!();
-        // TODO(https://github.com/rerun-io/rerun/issues/2750): Maybe make this an intersection instead
+        // TODO(#2750): Maybe make this an intersection instead
         self.required_comp().instance_keys().into_iter()
     }
 
