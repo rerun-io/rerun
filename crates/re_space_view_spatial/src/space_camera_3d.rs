@@ -68,7 +68,7 @@ impl SpaceCamera3D {
         // we need to pre-transform the data from the user-defined `pinhole_view_coordinates` to the required
         // `image_view_coordinates`.
         //
-        // TODO(…): When Pinhole is an archetype instead of a component, `pinhole.project` should do this
+        // TODO(emilk): When Pinhole is an archetype instead of a component, `pinhole.project` should do this
         // internally.
         let point_in_image_unprojected =
             image_view_coordinates().from_other(&self.pinhole_view_coordinates) * point_in_cam;

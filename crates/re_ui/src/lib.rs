@@ -805,7 +805,7 @@ impl ReUi {
                 image_size,
             );
 
-            // TODO(emilk/andreas): change color and size on hover
+            // TODO(emilk, andreas): change color and size on hover
             let tint = ui.visuals().widgets.inactive.fg_stroke.color;
             icon.as_image().tint(tint).paint_at(ui, image_rect);
 

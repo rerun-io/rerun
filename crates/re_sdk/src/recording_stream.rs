@@ -1386,7 +1386,7 @@ mod tests {
                 assert_eq!(store_info.store_id, rid);
 
                 let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                // TODO(1760): we shouldn't have to (re)do this!
+                // TODO(#1760): we shouldn't have to (re)do this!
                 got.compute_all_size_bytes();
                 // NOTE: Override the resulting table's ID so they can be compared.
                 got.table_id = table.table_id;
@@ -1456,7 +1456,7 @@ mod tests {
                     assert_eq!(store_info.store_id, rid);
 
                     let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                    // TODO(1760): we shouldn't have to (re)do this!
+                    // TODO(#1760): we shouldn't have to (re)do this!
                     got.compute_all_size_bytes();
                     // NOTE: Override the resulting table's ID so they can be compared.
                     got.table_id = table.table_id;
@@ -1521,7 +1521,7 @@ mod tests {
                     assert_eq!(store_info.store_id, rid);
 
                     let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                    // TODO(1760): we shouldn't have to (re)do this!
+                    // TODO(#1760): we shouldn't have to (re)do this!
                     got.compute_all_size_bytes();
                     // NOTE: Override the resulting table's ID so they can be compared.
                     got.table_id = table.table_id;

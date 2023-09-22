@@ -4,7 +4,7 @@ Generates the permutations of view coordinate name definitions.
 
 This will modify the different archetype extensions to include the appropriate constants.
 """
-# TODO(2388): This script can potentially go away or be significantly reduced.
+# TODO(#2388): This script can potentially go away or be significantly reduced.
 
 from __future__ import annotations
 
