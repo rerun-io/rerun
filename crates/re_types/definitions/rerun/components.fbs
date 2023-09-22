@@ -1,4 +1,5 @@
 include "./components/annotation_context.fbs";
+include "./components/blob.fbs";
 include "./components/class_id.fbs";
 include "./components/clear_settings.fbs";
 include "./components/color.fbs";
@@ -16,6 +17,7 @@ include "./components/media_type.fbs";
 include "./components/mesh_properties.fbs";
 include "./components/origin2d.fbs";
 include "./components/origin3d.fbs";
+include "./components/out_of_tree_transform3d.fbs";
 include "./components/pinhole_projection.fbs";
 include "./components/position2d.fbs";
 include "./components/position3d.fbs";

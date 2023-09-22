@@ -1,0 +1,41 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// A prepacked 3D asset (.gltf, .glb, .obj, etc).
+///
+/// \example asset3d_simple "Simple 3D asset"
+/// \example asset3d_out_of_tree "3D asset with out-of-tree transform"
+table Asset3D (
+  "attr.rust.derive": "PartialEq",
+  order: 100
+) {
+  // --- Required ---
+
+  /// The asset's bytes.
+  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// The Media Type of the asset.
+  ///
+  /// For instance:
+  /// * `model/gltf-binary`
+  /// * `model/obj`
+  ///
+  /// If omitted, the viewer will try to guess from the data.
+  /// If it cannot guess, it won't be able to render the asset.
+  media_type: rerun.components.MediaType  ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// An out-of-tree transform.
+  ///
+  /// Applies a transformation to the asset itself without impacting its children.
+  transform: rerun.components.OutOfTreeTransform3D ("attr.rerun.component_optional", nullable, order: 3000);
+}

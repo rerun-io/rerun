@@ -104,6 +104,8 @@ pub use re_sdk::*;
 
 /// Re-exports of other crates.
 pub mod external {
+    pub use anyhow;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
 
