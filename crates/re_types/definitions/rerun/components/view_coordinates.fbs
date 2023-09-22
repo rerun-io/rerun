@@ -7,7 +7,7 @@ include "rerun/datatypes.fbs";
 
 namespace rerun.components;
 
-// TODO(https://github.com/rerun-io/rerun/issues/3384)
+// TODO(#3384)
 /*
 enum ViewDir: byte {
     Up = 1,

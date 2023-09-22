@@ -23,7 +23,7 @@ pub struct ViewQuery<'s> {
     pub latest_at: TimeInt,
 
     /// The entity properties for all queried entities.
-    /// TODO(jleibs/wumpf): This will be replaced by blueprint queries.
+    /// TODO(jleibs, wumpf): This will be replaced by blueprint queries.
     pub entity_props_map: &'s EntityPropertyMap,
 
     /// Hover/select highlighting information for this space view.

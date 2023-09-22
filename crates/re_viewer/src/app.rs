@@ -164,7 +164,7 @@ impl App {
             storage
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
-                    // TODO(https://github.com/rerun-io/rerun/issues/2849): More thorough error-handling.
+                    // TODO(#2849): More thorough error-handling.
                     storage.get_string(eframe::APP_KEY).and_then(|value| {
                         match ron::from_str(&value) {
                             Ok(value) => Some(value),
@@ -948,7 +948,7 @@ impl eframe::App for App {
             eframe::set_value(storage, eframe::APP_KEY, &self.state);
 
             // Save the blueprints
-            // TODO(2579): implement web-storage for blueprints as well
+            // TODO(#2579): implement web-storage for blueprints as well
             if let Some(hub) = &mut self.store_hub {
                 match hub.gc_and_persist_app_blueprints() {
                     Ok(f) => f,
