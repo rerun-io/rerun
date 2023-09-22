@@ -26,6 +26,20 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Mat3x3(pub [f32; 9usize]);
 
+impl From<[f32; 9usize]> for Mat3x3 {
+    #[inline]
+    fn from(flat_columns: [f32; 9usize]) -> Self {
+        Self(flat_columns)
+    }
+}
+
+impl From<Mat3x3> for [f32; 9usize] {
+    #[inline]
+    fn from(value: Mat3x3) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
     #[inline]
     fn from(value: Mat3x3) -> Self {

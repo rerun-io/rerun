@@ -17,6 +17,20 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Radius(pub f32);
 
+impl From<f32> for Radius {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Radius> for f32 {
+    #[inline]
+    fn from(value: Radius) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Radius> for ::std::borrow::Cow<'a, Radius> {
     #[inline]
     fn from(value: Radius) -> Self {

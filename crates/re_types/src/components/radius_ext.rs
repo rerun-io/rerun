@@ -1,20 +1,8 @@
 use super::Radius;
 
 impl Radius {
-    pub const ZERO: Self = Self::new(0.0);
-    pub const ONE: Self = Self::new(1.0);
-
-    #[inline]
-    pub const fn new(r: f32) -> Self {
-        Self(r)
-    }
-}
-
-impl From<f32> for Radius {
-    #[inline]
-    fn from(r: f32) -> Self {
-        Self::new(r)
-    }
+    pub const ZERO: Self = Self(0.0);
+    pub const ONE: Self = Self(1.0);
 }
 
 impl std::fmt::Display for Radius {

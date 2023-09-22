@@ -17,7 +17,25 @@
 ///
 /// The x values will be the indices of the array, and the bar heights will be the provided values.
 ///
-/// /// \example bar_chart
+/// ## Example
+///
+/// ```ignore
+/// //! Create and log a bar chart
+///
+/// use rerun::{archetypes::BarChart, RecordingStreamBuilder};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_bar_chart").memory()?;
+///
+///     rec.log(
+///         "bar_chart",
+///         &BarChart::new(vec![8, 4, 0, 9, 1, 4, 1, 6, 9, 0]),
+///     )?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct BarChart {
     /// The values. Should always be a rank-1 tensor.

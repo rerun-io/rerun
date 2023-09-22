@@ -27,6 +27,20 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Mat4x4(pub [f32; 16usize]);
 
+impl From<[f32; 16usize]> for Mat4x4 {
+    #[inline]
+    fn from(flat_columns: [f32; 16usize]) -> Self {
+        Self(flat_columns)
+    }
+}
+
+impl From<Mat4x4> for [f32; 16usize] {
+    #[inline]
+    fn from(value: Mat4x4) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Mat4x4> for ::std::borrow::Cow<'a, Mat4x4> {
     #[inline]
     fn from(value: Mat4x4) -> Self {

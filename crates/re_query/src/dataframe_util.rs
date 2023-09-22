@@ -216,10 +216,10 @@ fn test_df_builder() {
     use re_types::components::{Color, Radius};
 
     let radii = vec![
-        Some(Radius::new(1.0)),
-        Some(Radius::new(3.0)),
-        Some(Radius::new(5.0)),
-        Some(Radius::new(7.0)),
+        Some(Radius(1.0)),
+        Some(Radius(3.0)),
+        Some(Radius(5.0)),
+        Some(Radius(7.0)),
     ];
 
     let colors = vec![

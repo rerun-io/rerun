@@ -44,17 +44,3 @@ impl std::cmp::Ord for DrawOrder {
         self.partial_cmp(other).unwrap()
     }
 }
-
-impl From<f32> for DrawOrder {
-    #[inline]
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<DrawOrder> for f32 {
-    #[inline]
-    fn from(value: DrawOrder) -> Self {
-        value.0
-    }
-}

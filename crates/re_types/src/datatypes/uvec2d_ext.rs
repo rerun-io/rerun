@@ -27,13 +27,6 @@ impl From<(u32, u32)> for UVec2D {
     }
 }
 
-impl From<[u32; 2]> for UVec2D {
-    #[inline]
-    fn from(v: [u32; 2]) -> Self {
-        Self(v)
-    }
-}
-
 // NOTE: All these by-ref impls make the lives of end-users much easier when juggling around with
 // slices, because Rust cannot keep track of the inherent `Copy` capability of it all across all the
 // layers of `Into`/`IntoIterator`.

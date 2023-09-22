@@ -16,6 +16,20 @@
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer8(pub Option<f32>);
 
+impl From<Option<f32>> for AffixFuzzer8 {
+    #[inline]
+    fn from(single_float_optional: Option<f32>) -> Self {
+        Self(single_float_optional)
+    }
+}
+
+impl From<AffixFuzzer8> for Option<f32> {
+    #[inline]
+    fn from(value: AffixFuzzer8) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
     #[inline]
     fn from(value: AffixFuzzer8) -> Self {

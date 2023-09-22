@@ -23,6 +23,20 @@
 #[repr(transparent)]
 pub struct Color(pub u32);
 
+impl From<u32> for Color {
+    #[inline]
+    fn from(rgba: u32) -> Self {
+        Self(rgba)
+    }
+}
+
+impl From<Color> for u32 {
+    #[inline]
+    fn from(value: Color) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Color> for ::std::borrow::Cow<'a, Color> {
     #[inline]
     fn from(value: Color) -> Self {

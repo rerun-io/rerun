@@ -20,6 +20,20 @@
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
+impl From<[f32; 4usize]> for Quaternion {
+    #[inline]
+    fn from(xyzw: [f32; 4usize]) -> Self {
+        Self(xyzw)
+    }
+}
+
+impl From<Quaternion> for [f32; 4usize] {
+    #[inline]
+    fn from(value: Quaternion) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
     #[inline]
     fn from(value: Quaternion) -> Self {
