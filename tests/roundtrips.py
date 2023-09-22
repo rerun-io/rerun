@@ -23,6 +23,7 @@ ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 # TODO(#3207): implement missing cpp roundtrips
 opt_out = {
     "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
+    "time_series_scalar": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "depth_image": ["cpp"],  # TODO(#2792)
     "image": ["cpp"],  # TODO(#2792)
     "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
