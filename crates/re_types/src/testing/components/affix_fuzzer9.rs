@@ -16,6 +16,20 @@
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer9(pub crate::ArrowString);
 
+impl From<crate::ArrowString> for AffixFuzzer9 {
+    #[inline]
+    fn from(single_string_required: crate::ArrowString) -> Self {
+        Self(single_string_required)
+    }
+}
+
+impl From<AffixFuzzer9> for crate::ArrowString {
+    #[inline]
+    fn from(value: AffixFuzzer9) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
     #[inline]
     fn from(value: AffixFuzzer9) -> Self {

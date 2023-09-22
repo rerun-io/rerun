@@ -7,20 +7,6 @@ impl InstanceKey {
     pub const SPLAT: Self = Self(u64::MAX);
 }
 
-impl From<u64> for InstanceKey {
-    #[inline]
-    fn from(value: u64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<InstanceKey> for u64 {
-    #[inline]
-    fn from(value: InstanceKey) -> Self {
-        value.0
-    }
-}
-
 impl InstanceKey {
     #[allow(clippy::should_implement_trait)]
     #[inline]

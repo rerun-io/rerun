@@ -16,6 +16,20 @@
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer10(pub Option<crate::ArrowString>);
 
+impl From<Option<crate::ArrowString>> for AffixFuzzer10 {
+    #[inline]
+    fn from(single_string_optional: Option<crate::ArrowString>) -> Self {
+        Self(single_string_optional)
+    }
+}
+
+impl From<AffixFuzzer10> for Option<crate::ArrowString> {
+    #[inline]
+    fn from(value: AffixFuzzer10) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
     #[inline]
     fn from(value: AffixFuzzer10) -> Self {

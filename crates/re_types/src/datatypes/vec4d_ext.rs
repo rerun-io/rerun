@@ -29,13 +29,6 @@ impl Vec4D {
     }
 }
 
-impl From<[f32; 4]> for Vec4D {
-    #[inline]
-    fn from(v: [f32; 4]) -> Self {
-        Self(v)
-    }
-}
-
 impl From<(f32, f32, f32, f32)> for Vec4D {
     #[inline]
     fn from((x, y, z, w): (f32, f32, f32, f32)) -> Self {

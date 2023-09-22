@@ -18,6 +18,20 @@
 #[repr(transparent)]
 pub struct Utf8(pub crate::ArrowString);
 
+impl From<crate::ArrowString> for Utf8 {
+    #[inline]
+    fn from(value: crate::ArrowString) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Utf8> for crate::ArrowString {
+    #[inline]
+    fn from(value: Utf8) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<Utf8> for ::std::borrow::Cow<'a, Utf8> {
     #[inline]
     fn from(value: Utf8) -> Self {

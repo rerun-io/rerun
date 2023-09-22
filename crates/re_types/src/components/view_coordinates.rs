@@ -35,6 +35,20 @@ pub struct ViewCoordinates(
     pub [u8; 3usize],
 );
 
+impl From<[u8; 3usize]> for ViewCoordinates {
+    #[inline]
+    fn from(coordinates: [u8; 3usize]) -> Self {
+        Self(coordinates)
+    }
+}
+
+impl From<ViewCoordinates> for [u8; 3usize] {
+    #[inline]
+    fn from(value: ViewCoordinates) -> Self {
+        value.0
+    }
+}
+
 impl<'a> From<ViewCoordinates> for ::std::borrow::Cow<'a, ViewCoordinates> {
     #[inline]
     fn from(value: ViewCoordinates) -> Self {
