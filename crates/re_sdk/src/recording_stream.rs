@@ -711,7 +711,7 @@ impl RecordingStream {
             )
         });
 
-        // TODO(#1629): unsplit splats once new data cells are in
+        // TODO(#1893): unsplit splats once new data cells are in
         let splatted = (!splatted.is_empty()).then(|| {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
             DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)

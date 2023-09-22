@@ -356,13 +356,13 @@ const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5MiB, 65
 impl LineDrawData {
     /// Total maximum number of line vertices per [`LineDrawData`].
     ///
-    /// TODO(#957): Get rid of this limit!.
+    /// TODO(#3076): Get rid of this limit!.
     pub const MAX_NUM_VERTICES: usize =
         (POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 2) as usize; // Subtract sentinels
 
     /// Total maximum number of line strips per [`LineDrawData`].
     ///
-    /// TODO(#957): Get rid of this limit!.
+    /// TODO(#3076): Get rid of this limit!.
     pub const MAX_NUM_STRIPS: usize = (LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE) as usize;
 
     /// Transforms and uploads line strip data to be consumed by gpu.

@@ -398,7 +398,7 @@ fn setup_target_config(
         gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
-    // TODO(#1988):
+    // TODO(#1025):
     // The camera setup is done in a way that works well with the way we inverse pinhole camera transformations right now.
     // This has a lot of issues though, mainly because we pretend that the 2D plane has a defined depth.
     // * very bad depth precision as we limit the depth range from 0 to focal_length_in_pixels
