@@ -39,6 +39,4 @@ Rerun distinguishes various categories of Space Views:
 
 Which category is used is determined upon creation of a Space View.
 
-[TODO(#1164)](https://github.com/rerun-io/rerun/issues/1164): Allow configuring the category of a space view after its creation.
-
 The kind of Space View determines which Entities it can display, how it displays them and the way they can be interacted with.

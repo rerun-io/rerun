@@ -182,8 +182,6 @@ def make_slug(s: str) -> str:
 
 
 with mkdocs_gen_files.open(index_path, "w") as index_file:
-    # TODO(#1161): add links to our high-level docs!
-
     # Hide the TOC for the index since it's identical to the left nav-bar
     index_file.write(
         """---

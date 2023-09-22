@@ -57,7 +57,7 @@ class Archetype:
         for fld in fields(type(self)):
             if "component" in fld.metadata:
                 comp = getattr(self, fld.name)
-                # TODO(#3341): Depending on what we decide
+                # TODO(#3381): Depending on what we decide
                 # to do with optional components, we may need to make this instead call `_empty_pa_array`
                 if comp is not None:
                     yield comp

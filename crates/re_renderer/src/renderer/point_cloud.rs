@@ -169,7 +169,7 @@ const DATA_TEXTURE_SIZE: u32 = 2048; // 2ki x 2ki = 4 Mi = 80 MiB
 impl PointCloudDrawData {
     /// Maximum number of vertices per [`PointCloudDrawData`].
     ///
-    /// TODO(#957): Get rid of this limit!.
+    /// TODO(#3076): Get rid of this limit!.
     pub const MAX_NUM_POINTS: usize = (DATA_TEXTURE_SIZE * DATA_TEXTURE_SIZE) as usize;
 
     /// Transforms and uploads point cloud data to be consumed by gpu.
