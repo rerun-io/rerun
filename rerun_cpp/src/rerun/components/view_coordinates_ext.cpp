@@ -13,7 +13,7 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            enum ViewDir {
+            enum ViewDir : uint8_t {
                 Up = 1,
                 Down = 2,
                 Right = 3,
