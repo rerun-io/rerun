@@ -43,7 +43,10 @@
 ///         })
 ///         .unzip();
 ///
-///     rec.log("arrows", &Arrows3D::new(vectors).with_colors(colors))?;
+///     rec.log(
+///         "arrows",
+///         &Arrows3D::from_vectors(vectors).with_colors(colors),
+///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
@@ -442,7 +445,9 @@ impl crate::Archetype for Arrows3D {
 }
 
 impl Arrows3D {
-    pub fn new(vectors: impl IntoIterator<Item = impl Into<crate::components::Vector3D>>) -> Self {
+    pub(crate) fn new(
+        vectors: impl IntoIterator<Item = impl Into<crate::components::Vector3D>>,
+    ) -> Self {
         Self {
             vectors: vectors.into_iter().map(Into::into).collect(),
             origins: None,

@@ -2,6 +2,7 @@
 
 mod annotation_context;
 mod arrows3d;
+mod arrows3d_ext;
 mod boxes2d;
 mod boxes2d_ext;
 mod boxes3d;

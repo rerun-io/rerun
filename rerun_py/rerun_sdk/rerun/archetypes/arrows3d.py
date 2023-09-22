@@ -11,12 +11,13 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
+from .arrows3d_ext import Arrows3DExt
 
 __all__ = ["Arrows3D"]
 
 
-@define(str=False, repr=False)
-class Arrows3D(Archetype):
+@define(str=False, repr=False, init=False)
+class Arrows3D(Arrows3DExt, Archetype):
     """
     A batch of 3D arrows with optional colors, radii, labels, etc.
 
@@ -36,11 +37,11 @@ class Arrows3D(Archetype):
     vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angles) * lengths])
     colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
-    rr2.log("arrows", rr2.Arrows3D(vectors, colors=colors))
+    rr2.log("arrows", rr2.Arrows3D(vectors=vectors, colors=colors))
     ```
     """
 
-    # You can define your own __init__ function as a member of Arrows3DExt in arrows3d_ext.py
+    # __init__ can be found in arrows3d_ext.py
 
     vectors: components.Vector3DArray = field(
         metadata={"component": "required"},

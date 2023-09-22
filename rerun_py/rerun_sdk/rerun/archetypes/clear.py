@@ -36,7 +36,7 @@ class Clear(Archetype):
 
     # Log a handful of arrows.
     for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-        rr2.log(f"arrows/{i}", rr2.Arrows3D(vector, origins=origin, colors=color))
+        rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector,origins=origin, colors=color))
 
     # Now clear them, one by one on each tick.
     for i in range(len(vectors)):
@@ -58,7 +58,7 @@ class Clear(Archetype):
 
     # Log a handful of arrows.
     for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-        rr2.log(f"arrows/{i}", rr2.Arrows3D(vector, origins=origin, colors=color))
+        rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector,origins=origin, colors=color))
 
     # Now clear all of them at once.
     # TODO(#3268): `rr2.Clear.recursive()`

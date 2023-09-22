@@ -42,7 +42,7 @@
 ///     for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
 ///         rec.log(
 ///             format!("arrows/{i}"),
-///             &Arrows3D::new([vector])
+///             &Arrows3D::from_vectors([vector])
 ///                 .with_origins([origin])
 ///                 .with_colors([Color::from_rgb(color.0, color.1, color.2)]),
 ///         )?;
@@ -83,7 +83,7 @@
 ///     for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
 ///         rec.log(
 ///             format!("arrows/{i}"),
-///             &Arrows3D::new([vector])
+///             &Arrows3D::from_vectors([vector])
 ///                 .with_origins([origin])
 ///                 .with_colors([Color::from_rgb(color.0, color.1, color.2)]),
 ///         )?;

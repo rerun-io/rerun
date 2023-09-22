@@ -32,14 +32,17 @@
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
 ///
-///     rec.log("base", &Arrows3D::new([(0.0, 1.0, 0.0)]))?;
+///     rec.log("base", &Arrows3D::from_vectors([(0.0, 1.0, 0.0)]))?;
 ///
 ///     rec.log(
 ///         "base/translated",
 ///         &Transform3D::new(TranslationAndMat3x3::new([1.0, 0.0, 0.0], Mat3x3::IDENTITY)),
 ///     )?;
 ///
-///     rec.log("base/translated", &Arrows3D::new([(0.0, 1.0, 0.0)]))?;
+///     rec.log(
+///         "base/translated",
+///         &Arrows3D::from_vectors([(0.0, 1.0, 0.0)]),
+///     )?;
 ///
 ///     rec.log(
 ///         "base/rotated_scaled",
@@ -50,7 +53,10 @@
 ///         }),
 ///     )?;
 ///
-///     rec.log("base/rotated_scaled", &Arrows3D::new([(0.0, 1.0, 0.0)]))?;
+///     rec.log(
+///         "base/rotated_scaled",
+///         &Arrows3D::from_vectors([(0.0, 1.0, 0.0)]),
+///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())

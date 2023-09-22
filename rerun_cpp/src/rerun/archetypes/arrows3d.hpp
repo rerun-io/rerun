@@ -87,12 +87,17 @@ namespace rerun {
             static const char INDICATOR_COMPONENT_NAME[];
 
           public:
+            // Extensions to generated type defined in 'arrows3d_ext.cpp'
+
+            /// Creates new 3D arrows pointing in the given directions.
+            static Arrows3D from_vectors(std::vector<components::Vector3D> _vectors) {
+                Arrows3D arrows;
+                arrows.vectors = std::move(_vectors);
+                return arrows;
+            }
+
+          public:
             Arrows3D() = default;
-
-            Arrows3D(std::vector<rerun::components::Vector3D> _vectors)
-                : vectors(std::move(_vectors)) {}
-
-            Arrows3D(rerun::components::Vector3D _vectors) : vectors(1, std::move(_vectors)) {}
 
             /// All the origin points for each arrow in the batch.
             Arrows3D& with_origins(std::vector<rerun::components::Origin3D> _origins) {
