@@ -201,6 +201,14 @@ fn test_parse_component_path() {
         ComponentPath::from_str("world/points."),
         Err(PathParseError::TrailingDot)
     );
+    assert_eq!(
+        ComponentPath::from_str("world/points"),
+        Err(PathParseError::MissingComponentName)
+    );
+    assert_eq!(
+        ComponentPath::from_str("world/points[#42].rerun.components.Color"),
+        Err(PathParseError::UnexpectedInstanceKey(InstanceKey(42)))
+    );
 }
 
 fn entity_path_parts_from_tokens(mut tokens: &[&str]) -> Result<Vec<EntityPathPart>> {
