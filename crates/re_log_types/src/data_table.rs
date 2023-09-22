@@ -492,15 +492,6 @@ impl DataTable {
         })
     }
 
-    /// panics if any row has:
-    /// - cells that aren't 0, 1 or `num_instances` long
-    /// - two or more cells share the same component type
-    /// TODO(emilk): remove this horrible function
-    #[inline]
-    pub fn to_rows_or_panic(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
-        self.to_rows().map(|row| row.unwrap())
-    }
-
     /// Computes the maximum value for each and every timeline present across this entire table,
     /// and returns the corresponding [`TimePoint`].
     #[inline]
@@ -1082,7 +1073,8 @@ impl DataTable {
         fn compute_rows(table: &DataTable) -> HashMap<Timeline, Vec<DataRow>> {
             let mut rows_by_timeline: HashMap<Timeline, Vec<DataRow>> = Default::default();
 
-            let rows = table.to_rows_or_panic().flat_map(|row| {
+            let rows = table.to_rows().flat_map(|row| {
+                let row = row.unwrap(); // TODO(emilk): return errors!
                 row.timepoint
                     .iter()
                     .map(|(timeline, time)| {

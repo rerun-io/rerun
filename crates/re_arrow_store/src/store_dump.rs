@@ -23,18 +23,18 @@ impl DataStore {
             use re_log_types::{DataRow, RowId};
 
             let mut rows = ahash::HashMap::<RowId, DataRow>::default();
-            for row in self
-                .to_data_tables(None)
-                .flat_map(|t| t.to_rows_or_panic().collect::<Vec<_>>())
-            {
-                match rows.entry(row.row_id()) {
-                    std::collections::hash_map::Entry::Occupied(mut entry) => {
-                        for (timeline, time) in row.timepoint() {
-                            entry.get_mut().timepoint.insert(*timeline, *time);
+            for table in self.to_data_tables(None) {
+                for row in table.to_rows().collect::<Vec<_>>() {
+                    let row = row.unwrap(); // TODO(emilk): return errors!
+                    match rows.entry(row.row_id()) {
+                        std::collections::hash_map::Entry::Occupied(mut entry) => {
+                            for (timeline, time) in row.timepoint() {
+                                entry.get_mut().timepoint.insert(*timeline, *time);
+                            }
                         }
-                    }
-                    std::collections::hash_map::Entry::Vacant(entry) => {
-                        entry.insert(row);
+                        std::collections::hash_map::Entry::Vacant(entry) => {
+                            entry.insert(row);
+                        }
                     }
                 }
             }
