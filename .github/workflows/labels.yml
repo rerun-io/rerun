@@ -24,6 +24,14 @@ jobs:
           count: 0
           labels: "do-not-merge"
 
+      - name: Require label "include in changelog" or "exclude from changelog"
+        uses: mheap/github-action-required-labels@v3
+        with:
+          mode: minimum
+          count: 1
+          labels: "exclude from changelog, include in changelog"
+
+
       - name: Require at least one label
         uses: mheap/github-action-required-labels@v3
         with:

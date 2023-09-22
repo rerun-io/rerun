@@ -5,7 +5,7 @@ use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
 /// List of all non-interactive entities for lookup during picking evaluation.
 ///
-/// TODO(wumpf/jleibs): This is a temporary solution until the picking code can query propagated blueprint properties directly.
+/// TODO(wumpf, jleibs): This is a temporary solution until the picking code can query propagated blueprint properties directly.
 #[derive(Default)]
 pub struct NonInteractiveEntities(pub IntSet<EntityPathHash>);
 
