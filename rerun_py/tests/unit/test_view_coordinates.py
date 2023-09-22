@@ -46,4 +46,4 @@ def test_view_coordinates() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.coordinates == view_coordinates_expected(coordinates)
+        assert arch.xyz == view_coordinates_expected(coordinates)
