@@ -3,7 +3,7 @@
 use rerun::{
     archetypes::{Arrows3D, Transform3D},
     datatypes::{
-        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+        Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
     },
     RecordingStreamBuilder,
 };
@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log(
         "base/translated",
-        &Transform3D::new(TranslationAndMat3x3::new([1.0, 0.0, 0.0], Mat3x3::IDENTITY)),
+        &Transform3D::new(TranslationAndMat3x3::translation([1.0, 0.0, 0.0])),
     )?;
 
     rec.log("base/translated", &Arrows3D::new([(0.0, 1.0, 0.0)]))?;
