@@ -12,7 +12,7 @@ pub enum DataRowError {
     #[error(
         "Each cell must contain either 0, 1 or `num_instances` instances, \
         but cell '{component}' in '{entity_path}' holds {num_instances} instances \
-        (expected {expected_num_instances}"
+        (expected {expected_num_instances})"
     )]
     WrongNumberOfInstances {
         entity_path: EntityPath,
