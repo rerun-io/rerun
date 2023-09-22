@@ -88,8 +88,6 @@ class Pinhole(PinholeExt, Archetype):
 
     Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left, Z=Up).
 
-    Equivalent to calling [`rerun.log_view_coordinates(entity, xyz=…)`][rerun.log_view_coordinates].
-
     NOTE: setting this to something else than "RDF" (the default) will change the orientation of the camera frustum,
     and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
 
