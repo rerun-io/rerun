@@ -15,14 +15,10 @@ namespace rerun.archetypes;
 /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
 /// down, and the Z axis points forward.
 ///
-/// If no `ViewCoordinates` are provided:
-///  - The default for 3D spaces is a right-handed coordinate system with the Z axis pointing up.
-///  - The default for 2D spaces is an RDF coordinate system.
-///
 /// \example view_coordinates_simple
 table ViewCoordinates (
   "attr.rust.derive": "Copy, PartialEq, Eq",
   order: 100
 ) {
-  coordinates: rerun.components.ViewCoordinates ("attr.rerun.component_required", required, order: 1000);
+  xyz: rerun.components.ViewCoordinates ("attr.rerun.component_required", required, order: 1000);
 }

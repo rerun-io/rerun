@@ -5,7 +5,7 @@ use super::ViewCoordinates;
 macro_rules! define_coordinates {
     ($name:ident => ($x:ident, $y:ident, $z:ident) ) => {
         pub const $name: Self = Self {
-            coordinates: components::ViewCoordinates::new(ViewDir::$x, ViewDir::$y, ViewDir::$z),
+            xyz: components::ViewCoordinates::new(ViewDir::$x, ViewDir::$y, ViewDir::$z),
         };
     };
 }

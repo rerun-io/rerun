@@ -28,10 +28,6 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
     down, and the Z axis points forward.
 
-    If no `ViewCoordinates` are provided:
-     - The default for 3D spaces is a right-handed coordinate system with the Z axis pointing up.
-     - The default for 2D spaces is an RDF coordinate system.
-
     Example
     -------
     ```python
@@ -54,7 +50,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
-    coordinates: components.ViewCoordinatesArray = field(
+    xyz: components.ViewCoordinatesArray = field(
         metadata={"component": "required"},
         converter=components.ViewCoordinatesArray.from_similar,  # type: ignore[misc]
     )

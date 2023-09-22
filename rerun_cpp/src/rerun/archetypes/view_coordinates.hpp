@@ -25,11 +25,6 @@ namespace rerun {
         /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis
         /// points down, and the Z axis points forward.
         ///
-        /// If no `ViewCoordinates` are provided:
-        ///  - The default for 3D spaces is a right-handed coordinate system with the Z axis
-        ///  pointing up.
-        ///  - The default for 2D spaces is an RDF coordinate system.
-        ///
         /// ## Example
         ///
         /// ```cpp,ignore
@@ -55,7 +50,7 @@ namespace rerun {
         /// }
         /// ```
         struct ViewCoordinates {
-            rerun::components::ViewCoordinates coordinates;
+            rerun::components::ViewCoordinates xyz;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -135,8 +130,7 @@ namespace rerun {
           public:
             ViewCoordinates() = default;
 
-            ViewCoordinates(rerun::components::ViewCoordinates _coordinates)
-                : coordinates(std::move(_coordinates)) {}
+            ViewCoordinates(rerun::components::ViewCoordinates _xyz) : xyz(std::move(_xyz)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
