@@ -98,7 +98,7 @@ def _log_tensor(
 
     tensor_data = dt.TensorData(array=tensor, names=names)
 
-    # Our legacy documentaton is that 1D tensors were interpreted as barcharts
+    # Our legacy documentation is that 1D tensors were interpreted as barcharts
     if len(tensor_data.shape) == 1:
         log(entity_path, BarChart(tensor_data), ext=ext, timeless=timeless, recording=recording)
     else:
