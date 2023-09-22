@@ -222,13 +222,13 @@ impl std::ops::DerefMut for RowId {
 /// let colors: &[_] = &[MyColor(0xff7f7f7f)];
 /// let labels: &[MyLabel] = &[];
 ///
-/// let row = DataRow::from_cells3(
+/// let row = DataRow::try_from_cells3(
 ///     row_id,
 ///     "a/b/c",
 ///     timepoint,
 ///     num_instances,
 ///     (points, colors, labels),
-/// );
+/// ).unwrap();
 /// eprintln!("{row}");
 /// ```
 #[derive(Debug, Clone)]
