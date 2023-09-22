@@ -1,4 +1,6 @@
 include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+include "cpp/attributes.fbs";
 
 include "rerun/datatypes.fbs";
 include "rerun/components.fbs";
@@ -12,6 +14,8 @@ namespace rerun.archetypes;
 /// \example arrow3d_simple
 table Arrows3D (
   "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate",
+  "attr.cpp.no_field_ctors",
   order: 100
 ) {
   // --- Required ---

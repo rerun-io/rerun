@@ -76,7 +76,7 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         )?;
         rec.log(
             format!("world/{name}_hand"),
-            &Arrows3D::new([pos])
+            &Arrows3D::from_vectors([pos])
                 .with_colors([color])
                 .with_radii([width * 0.5]),
         )?;

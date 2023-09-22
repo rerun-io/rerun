@@ -23,7 +23,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .unzip();
 
-    rec.log("arrows", &Arrows3D::new(vectors).with_colors(colors))?;
+    rec.log(
+        "arrows",
+        &Arrows3D::from_vectors(vectors).with_colors(colors),
+    )?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

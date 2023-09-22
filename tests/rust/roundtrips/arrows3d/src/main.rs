@@ -12,7 +12,7 @@ struct Args {
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
         "arrows3d",
-        &Arrows3D::new([[4.0, 5.0, 6.0], [40.0, 50.0, 60.0]])
+        &Arrows3D::from_vectors([[4.0, 5.0, 6.0], [40.0, 50.0, 60.0]])
             .with_origins([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])
             .with_radii([0.1, 1.0])
             .with_colors([0xAA0000CC, 0x00BB00DD])
