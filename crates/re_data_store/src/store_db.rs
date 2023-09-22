@@ -120,7 +120,7 @@ impl EntityDb {
 
                 // NOTE(cmc): The fact that this inserts data to multiple entity paths using a
                 // single `RowId` is… interesting. Keep it in mind.
-                let row = DataRow::try_from_cells1(
+                let row = DataRow::from_cells1(
                     row_id,
                     row.entity_path.clone(),
                     time_point.clone(),
@@ -169,7 +169,7 @@ impl EntityDb {
             // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
             //    these rows! This flaky ordering will in turn leak through the public
             //    API (e.g. range queries)!!
-            match DataRow::try_from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
+            match DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
                 Ok(row) => {
                     self.data_store.insert_row(&row).ok();
                 }

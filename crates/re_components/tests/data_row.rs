@@ -15,13 +15,13 @@ fn data_row_error_num_instances() {
     let labels: &[Text] = &[];
 
     // 0 = clear: legal
-    DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, labels).unwrap();
+    DataRow::from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, labels).unwrap();
 
     // 1 = splat: legal
-    DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, colors).unwrap();
+    DataRow::from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, colors).unwrap();
 
     // num_instances = standard: legal
-    DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, positions).unwrap();
+    DataRow::from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, positions).unwrap();
 
     // anything else is illegal
     let positions: &[Position2D] = &[
@@ -30,7 +30,7 @@ fn data_row_error_num_instances() {
         [30.0, 30.0].into(),
     ];
     let err =
-        DataRow::try_from_cells1(row_id, "a/b/c", timepoint, num_instances, positions).unwrap_err();
+        DataRow::from_cells1(row_id, "a/b/c", timepoint, num_instances, positions).unwrap_err();
 
     match err {
         DataRowError::DataRead(DataReadError::WrongNumberOfInstances {
@@ -55,8 +55,8 @@ fn data_row_error_duped_components() {
 
     let positions: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 
-    let err = DataRow::try_from_cells2(row_id, "a/b/c", timepoint, 2, (positions, positions))
-        .unwrap_err();
+    let err =
+        DataRow::from_cells2(row_id, "a/b/c", timepoint, 2, (positions, positions)).unwrap_err();
 
     match err {
         DataRowError::DataRead(DataReadError::DupedComponent {

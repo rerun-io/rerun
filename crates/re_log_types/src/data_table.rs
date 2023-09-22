@@ -221,18 +221,18 @@ impl std::ops::DerefMut for TableId {
 ///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
-///     DataRow::try_from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
+///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
 /// };
 /// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
-///     DataRow::try_from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)?
+///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)?
 /// };
 /// let row2 = {
 ///     let num_instances = 1;
 ///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
-///     DataRow::try_from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))?
+///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))?
 /// };
 /// let table = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// ```
@@ -276,7 +276,7 @@ impl std::ops::DerefMut for TableId {
 ///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
 ///     let labels: &[MyLabel] = &[];
 ///
-///     DataRow::try_from_cells3(
+///     DataRow::from_cells3(
 ///         RowId::random(),
 ///         "a",
 ///         timepoint(1, 1),
@@ -289,7 +289,7 @@ impl std::ops::DerefMut for TableId {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
 ///
-///     DataRow::try_from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors).unwrap()
+///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors).unwrap()
 /// };
 ///
 /// let row2 = {
@@ -297,7 +297,7 @@ impl std::ops::DerefMut for TableId {
 ///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
 ///     let labels: &[_] = &[MyLabel("hey".into())];
 ///
-///     DataRow::try_from_cells2(
+///     DataRow::from_cells2(
 ///         RowId::random(),
 ///         "c",
 ///         timepoint(2, 1),
@@ -475,7 +475,7 @@ impl DataTable {
                 .values()
                 .filter_map(|rows| rows[i].clone() /* shallow */);
 
-            DataRow::try_from_cells(
+            DataRow::from_cells(
                 col_row_id[i],
                 TimePoint::from(
                     col_timelines

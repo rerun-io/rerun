@@ -90,7 +90,7 @@ pub fn build_data_row_from_components(
         .collect_vec();
 
     let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
-    let row = DataRow::try_from_cells(
+    let row = DataRow::from_cells(
         RowId::random(),
         time_point.clone(),
         entity_path.clone(),

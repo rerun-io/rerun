@@ -707,7 +707,7 @@ impl RecordingStream {
         let instanced = if instanced.is_empty() {
             None
         } else {
-            Some(DataRow::try_from_cells(
+            Some(DataRow::from_cells(
                 RowId::random(),
                 timepoint.clone(),
                 ent_path.clone(),
@@ -721,7 +721,7 @@ impl RecordingStream {
             None
         } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
-            Some(DataRow::try_from_cells(
+            Some(DataRow::from_cells(
                 RowId::random(),
                 timepoint,
                 ent_path,

@@ -284,7 +284,7 @@ pub fn add_delta_from_single_component<'a, C>(
     C: re_types::Component + Clone + 'a,
     std::borrow::Cow<'a, C>: std::convert::From<C>,
 {
-    let row = DataRow::try_from_cells1_sized(
+    let row = DataRow::from_cells1_sized(
         RowId::random(),
         entity_path.clone(),
         timepoint.clone(),
@@ -439,8 +439,7 @@ pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) 
     let cell =
         DataCell::from_arrow_empty(SpaceViewComponent::name(), SpaceViewComponent::data_type());
 
-    let row =
-        DataRow::try_from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell).unwrap();
+    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell).unwrap();
 
     deltas.push(row);
 }

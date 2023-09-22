@@ -6,7 +6,7 @@ use crate::{DataStore, DataStoreConfig};
 #[macro_export]
 macro_rules! test_row {
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr $(,)*]) => {{
-        ::re_log_types::DataRow::try_from_cells1_sized(
+        ::re_log_types::DataRow::from_cells1_sized(
             ::re_log_types::RowId::random(),
             $entity.clone(),
             $frames,
@@ -16,7 +16,7 @@ macro_rules! test_row {
         .unwrap()
     }};
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr, $c1:expr $(,)*]) => {{
-        ::re_log_types::DataRow::try_from_cells2_sized(
+        ::re_log_types::DataRow::from_cells2_sized(
             ::re_log_types::RowId::random(),
             $entity.clone(),
             $frames,

@@ -232,7 +232,7 @@ impl std::ops::DerefMut for RowId {
 /// let colors: &[_] = &[MyColor(0xff7f7f7f)];
 /// let labels: &[MyLabel] = &[];
 ///
-/// let row = DataRow::try_from_cells3(
+/// let row = DataRow::from_cells3(
 ///     row_id,
 ///     "a/b/c",
 ///     timepoint,
@@ -271,7 +271,7 @@ impl DataRow {
     /// Fails if:
     /// - one or more cell isn't 0, 1 or `num_instances` long,
     /// - two or more cells share the same component type.
-    pub fn try_from_cells(
+    pub fn from_cells(
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
         entity_path: impl Into<EntityPath>,
@@ -410,6 +410,7 @@ impl DataRow {
 // ---
 
 impl DataRow {
+    // TODO(emilk): remove all `_or_panic` functions
     pub fn from_cells1_or_panic<C0>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -420,7 +421,7 @@ impl DataRow {
     where
         C0: Into<DataCell>,
     {
-        Self::try_from_cells(
+        Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -435,7 +436,7 @@ impl DataRow {
     /// See respective documentations for more information.
     ///
     /// Beware: this is costly!
-    pub fn try_from_cells1_sized<C0>(
+    pub fn from_cells1_sized<C0>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -445,7 +446,7 @@ impl DataRow {
     where
         C0: Into<DataCell>,
     {
-        let mut this = Self::try_from_cells(
+        let mut this = Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -461,6 +462,7 @@ impl DataRow {
     /// See respective documentations for more information.
     ///
     /// Beware: this is costly!
+    // TODO(emilk): remove all `_or_panic` functions
     pub fn from_cells1_sized_or_panic<C0>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -471,11 +473,10 @@ impl DataRow {
     where
         C0: Into<DataCell>,
     {
-        Self::try_from_cells1_sized(row_id, entity_path, timepoint, num_instances, into_cells)
-            .unwrap()
+        Self::from_cells1_sized(row_id, entity_path, timepoint, num_instances, into_cells).unwrap()
     }
 
-    pub fn try_from_cells1<C0>(
+    pub fn from_cells1<C0>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -486,7 +487,7 @@ impl DataRow {
         C0: TryInto<DataCell>,
         DataRowError: From<<C0 as TryInto<DataCell>>::Error>,
     {
-        Ok(Self::try_from_cells(
+        Ok(Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -495,6 +496,7 @@ impl DataRow {
         )?)
     }
 
+    // TODO(emilk): remove all `_or_panic` functions
     pub fn from_cells2_or_panic<C0, C1>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -506,7 +508,7 @@ impl DataRow {
         C0: Into<DataCell>,
         C1: Into<DataCell>,
     {
-        Self::try_from_cells(
+        Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -524,7 +526,7 @@ impl DataRow {
     /// See respective documentations for more information.
     ///
     /// Beware: this is costly!
-    pub fn try_from_cells2_sized<C0, C1>(
+    pub fn from_cells2_sized<C0, C1>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -535,7 +537,7 @@ impl DataRow {
         C0: Into<DataCell>,
         C1: Into<DataCell>,
     {
-        let mut this = Self::try_from_cells(
+        let mut this = Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -554,6 +556,7 @@ impl DataRow {
     /// See respective documentations for more information.
     ///
     /// Beware: this is costly!
+    // TODO(emilk): remove all `_or_panic` functions
     pub fn from_cells2_sized_or_panic<C0, C1>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -565,11 +568,10 @@ impl DataRow {
         C0: Into<DataCell>,
         C1: Into<DataCell>,
     {
-        Self::try_from_cells2_sized(row_id, entity_path, timepoint, num_instances, into_cells)
-            .unwrap()
+        Self::from_cells2_sized(row_id, entity_path, timepoint, num_instances, into_cells).unwrap()
     }
 
-    pub fn try_from_cells2<C0, C1>(
+    pub fn from_cells2<C0, C1>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -582,7 +584,7 @@ impl DataRow {
         DataRowError: From<<C0 as TryInto<DataCell>>::Error>,
         DataRowError: From<<C1 as TryInto<DataCell>>::Error>,
     {
-        Ok(Self::try_from_cells(
+        Ok(Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -594,6 +596,7 @@ impl DataRow {
         )?)
     }
 
+    // TODO(emilk): remove all `_or_panic` functions
     pub fn from_cells3_or_panic<C0, C1, C2>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -606,7 +609,7 @@ impl DataRow {
         C1: Into<DataCell>,
         C2: Into<DataCell>,
     {
-        Self::try_from_cells(
+        Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -625,6 +628,7 @@ impl DataRow {
     /// See respective documentations for more information.
     ///
     /// Beware: this is costly!
+    // TODO(emilk): remove all `_or_panic` functions
     pub fn from_cells3_sized_or_panic<C0, C1, C2>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
@@ -637,7 +641,7 @@ impl DataRow {
         C1: Into<DataCell>,
         C2: Into<DataCell>,
     {
-        let mut this = Self::try_from_cells(
+        let mut this = Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -653,7 +657,7 @@ impl DataRow {
         this
     }
 
-    pub fn try_from_cells3<C0, C1, C2>(
+    pub fn from_cells3<C0, C1, C2>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -668,7 +672,7 @@ impl DataRow {
         DataRowError: From<<C1 as TryInto<DataCell>>::Error>,
         DataRowError: From<<C2 as TryInto<DataCell>>::Error>,
     {
-        Ok(Self::try_from_cells(
+        Ok(Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
