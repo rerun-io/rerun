@@ -7,8 +7,9 @@ use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, 
 
 // ---
 
+/// An error that can occur because a row in the store has inconsistent columns.
 #[derive(thiserror::Error, Debug)]
-pub enum DataRowError {
+pub enum DataReadError {
     #[error(
         "Each cell must contain either 0, 1 or `num_instances` instances, \
         but cell '{component}' in '{entity_path}' holds {num_instances} instances \
@@ -29,6 +30,15 @@ pub enum DataRowError {
         entity_path: EntityPath,
         component: ComponentName,
     },
+}
+
+pub type DataReadResult<T> = ::std::result::Result<T, DataReadError>;
+
+/// A problem with a row of data in the store.
+#[derive(thiserror::Error, Debug)]
+pub enum DataRowError {
+    #[error(transparent)]
+    DataRead(#[from] DataReadError),
 
     #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] DataCellError),
@@ -267,7 +277,7 @@ impl DataRow {
         entity_path: impl Into<EntityPath>,
         num_instances: u32,
         cells: impl IntoIterator<Item = DataCell>,
-    ) -> DataRowResult<Self> {
+    ) -> DataReadResult<Self> {
         let cells = DataCellRow(cells.into_iter().collect());
 
         let entity_path = entity_path.into();
@@ -278,7 +288,7 @@ impl DataRow {
             let component = cell.component_name();
 
             if !components.insert(component) {
-                return Err(DataRowError::DupedComponent {
+                return Err(DataReadError::DupedComponent {
                     entity_path,
                     component,
                 });
@@ -288,7 +298,7 @@ impl DataRow {
                 0 | 1 => {}
                 n if n == num_instances => {}
                 n => {
-                    return Err(DataRowError::WrongNumberOfInstances {
+                    return Err(DataReadError::WrongNumberOfInstances {
                         entity_path,
                         component,
                         expected_num_instances: num_instances,
@@ -431,7 +441,7 @@ impl DataRow {
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
         into_cells: C0,
-    ) -> DataRowResult<DataRow>
+    ) -> DataReadResult<DataRow>
     where
         C0: Into<DataCell>,
     {
@@ -476,13 +486,13 @@ impl DataRow {
         C0: TryInto<DataCell>,
         DataRowError: From<<C0 as TryInto<DataCell>>::Error>,
     {
-        Self::try_from_cells(
+        Ok(Self::try_from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
             num_instances,
             [into_cells.try_into()?],
-        )
+        )?)
     }
 
     pub fn from_cells2_or_panic<C0, C1>(
@@ -572,7 +582,7 @@ impl DataRow {
         DataRowError: From<<C0 as TryInto<DataCell>>::Error>,
         DataRowError: From<<C1 as TryInto<DataCell>>::Error>,
     {
-        Self::try_from_cells(
+        Ok(Self::try_from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -581,7 +591,7 @@ impl DataRow {
                 into_cells.0.try_into()?, //
                 into_cells.1.try_into()?, //
             ],
-        )
+        )?)
     }
 
     pub fn from_cells3_or_panic<C0, C1, C2>(
@@ -658,7 +668,7 @@ impl DataRow {
         DataRowError: From<<C1 as TryInto<DataCell>>::Error>,
         DataRowError: From<<C2 as TryInto<DataCell>>::Error>,
     {
-        Self::try_from_cells(
+        Ok(Self::try_from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -668,7 +678,7 @@ impl DataRow {
                 into_cells.1.try_into()?, //
                 into_cells.2.try_into()?, //
             ],
-        )
+        )?)
     }
 }
 

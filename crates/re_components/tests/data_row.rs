@@ -1,4 +1,4 @@
-use re_log_types::{DataRow, DataRowError, EntityPath, RowId, TimePoint};
+use re_log_types::{DataReadError, DataRow, DataRowError, EntityPath, RowId, TimePoint};
 use re_types::{
     components::{Color, Position2D, Text},
     Loggable as _,
@@ -33,12 +33,12 @@ fn data_row_error_num_instances() {
         DataRow::try_from_cells1(row_id, "a/b/c", timepoint, num_instances, positions).unwrap_err();
 
     match err {
-        DataRowError::WrongNumberOfInstances {
+        DataRowError::DataRead(DataReadError::WrongNumberOfInstances {
             entity_path,
             component,
             expected_num_instances,
             num_instances,
-        } => {
+        }) => {
             assert_eq!(EntityPath::from("a/b/c"), entity_path);
             assert_eq!(Position2D::name(), component);
             assert_eq!(2, expected_num_instances);
@@ -59,10 +59,10 @@ fn data_row_error_duped_components() {
         .unwrap_err();
 
     match err {
-        DataRowError::DupedComponent {
+        DataRowError::DataRead(DataReadError::DupedComponent {
             entity_path,
             component,
-        } => {
+        }) => {
             assert_eq!(EntityPath::from("a/b/c"), entity_path);
             assert_eq!(Position2D::name(), component);
         }

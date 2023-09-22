@@ -67,7 +67,7 @@ pub enum RecordingStreamError {
     WebSink(anyhow::Error),
 
     #[error(transparent)]
-    DataRowError(#[from] re_log_types::DataRowError),
+    DataReadError(#[from] re_log_types::DataReadError),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].

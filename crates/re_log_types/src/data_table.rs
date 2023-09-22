@@ -8,8 +8,8 @@ use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use crate::{
-    ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, DataRowResult, EntityPath, RowId,
-    SizeBytes, TimePoint, Timeline,
+    data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
+    RowId, SizeBytes, TimePoint, Timeline,
 };
 
 // ---
@@ -458,7 +458,7 @@ impl DataTable {
     /// - cells that aren't 0, 1 or `num_instances` long
     /// - two or more cells share the same component type
     #[inline]
-    pub fn try_to_rows(&self) -> impl ExactSizeIterator<Item = DataRowResult<DataRow>> + '_ {
+    pub fn try_to_rows(&self) -> impl ExactSizeIterator<Item = DataReadResult<DataRow>> + '_ {
         let num_rows = self.num_rows() as usize;
 
         let Self {
