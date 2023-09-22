@@ -12,7 +12,7 @@ import argparse
 import itertools
 import os
 from dataclasses import dataclass
-from typing import Any, Iterable, List
+from typing import Iterable
 
 BEGIN_MARKER = "<BEGIN_GENERATED:{}>"
 END_MARKER = "<END_GENERATED:{}>"
