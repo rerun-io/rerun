@@ -410,7 +410,7 @@ impl DataRow {
 // ---
 
 impl DataRow {
-    /// A helper that combines [`Self::try_from_cells1`] followed by [`Self::compute_all_size_bytes`].
+    /// A helper that combines [`Self::from_cells1`] followed by [`Self::compute_all_size_bytes`].
     ///
     /// See respective documentations for more information.
     ///
@@ -456,7 +456,7 @@ impl DataRow {
         )?)
     }
 
-    /// A helper that combines [`Self::try_from_cells2`] followed by [`Self::compute_all_size_bytes`].
+    /// A helper that combines [`Self::from_cells2`] followed by [`Self::compute_all_size_bytes`].
     ///
     /// See respective documentations for more information.
     ///
