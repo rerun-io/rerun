@@ -20,7 +20,7 @@ SCENARIO(
         );
 
         ViewCoordinates from_manual;
-        from_manual.coordinates = {
+        from_manual.xyz = {
             rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Down,
             rerun::components::ViewCoordinates::Forward};

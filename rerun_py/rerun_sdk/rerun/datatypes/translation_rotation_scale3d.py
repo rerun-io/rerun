@@ -189,3 +189,7 @@ TranslationRotationScale3DType._ARRAY_TYPE = TranslationRotationScale3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TranslationRotationScale3DType())
+
+
+if hasattr(TranslationRotationScale3DExt, "deferred_patch_class"):
+    TranslationRotationScale3DExt.deferred_patch_class(TranslationRotationScale3D)

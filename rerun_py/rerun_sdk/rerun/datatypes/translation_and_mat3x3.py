@@ -127,3 +127,7 @@ TranslationAndMat3x3Type._ARRAY_TYPE = TranslationAndMat3x3Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TranslationAndMat3x3Type())
+
+
+if hasattr(TranslationAndMat3x3Ext, "deferred_patch_class"):
+    TranslationAndMat3x3Ext.deferred_patch_class(TranslationAndMat3x3)

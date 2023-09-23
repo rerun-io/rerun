@@ -74,3 +74,7 @@ DrawOrderType._ARRAY_TYPE = DrawOrderArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(DrawOrderType())
+
+
+if hasattr(DrawOrderExt, "deferred_patch_class"):
+    DrawOrderExt.deferred_patch_class(DrawOrder)

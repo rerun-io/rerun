@@ -14,7 +14,7 @@ namespace rerun {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(1);
 
-            comp_batches.emplace_back(coordinates);
+            comp_batches.emplace_back(xyz);
             comp_batches.emplace_back(
                 ComponentBatch<
                     components::IndicatorComponent<ViewCoordinates::INDICATOR_COMPONENT_NAME>>(

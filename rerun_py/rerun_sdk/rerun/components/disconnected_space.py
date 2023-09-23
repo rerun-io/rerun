@@ -71,3 +71,7 @@ DisconnectedSpaceType._ARRAY_TYPE = DisconnectedSpaceArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(DisconnectedSpaceType())
+
+
+if hasattr(DisconnectedSpaceExt, "deferred_patch_class"):
+    DisconnectedSpaceExt.deferred_patch_class(DisconnectedSpace)

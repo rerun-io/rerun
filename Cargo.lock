@@ -738,6 +738,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d43a04d8753f35258c91f8ec639f792891f748a1edbd759cf1dcea3382ad83c"
 
 [[package]]
+name = "cfb"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d38f2da7a0a2c4ccf0065be06397cc26a81f4e528be095826eee9d4adbb8c60f"
+dependencies = [
+ "byteorder",
+ "fnv",
+ "uuid",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2395,6 +2406,15 @@ name = "indoc"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa799dd5ed20a7e349f3b4639aa80d74549c81716d9ec4f994c9b5815598306"
+
+[[package]]
+name = "infer"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb33622da908807a06f9513c19b3c1ad50fab3e4137d82a78107d502075aa199"
+dependencies = [
+ "cfb",
+]
 
 [[package]]
 name = "inflections"
@@ -4477,6 +4497,7 @@ dependencies = [
  "glam",
  "itertools 0.11.0",
  "macaw",
+ "mime",
  "nohash-hasher",
  "parking_lot 0.12.1",
  "rayon",
@@ -4656,6 +4677,7 @@ dependencies = [
 name = "re_types"
 version = "0.9.0-alpha.4"
 dependencies = [
+ "anyhow",
  "array-init",
  "arrow2",
  "arrow2_convert",
@@ -4666,7 +4688,10 @@ dependencies = [
  "glam",
  "half 2.3.1",
  "image",
+ "infer",
  "itertools 0.11.0",
+ "mime",
+ "mime_guess",
  "ndarray",
  "once_cell",
  "rayon",

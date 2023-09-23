@@ -383,6 +383,18 @@ impl PythonCodeGenerator {
             };
             code.push_text(&obj_code, 1, 0);
 
+            if ext_class.found {
+                code.push_unindented_text(
+                    format!("if hasattr({}, 'deferred_patch_class'):", ext_class.name),
+                    1,
+                );
+                code.push_text(
+                    format!("{}.deferred_patch_class({})", ext_class.name, obj.name),
+                    1,
+                    1,
+                );
+            }
+
             files_to_write.insert(filepath.clone(), code);
         }
 

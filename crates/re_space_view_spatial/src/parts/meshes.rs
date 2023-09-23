@@ -15,7 +15,7 @@ use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    mesh_cache::{AnyMesh, MeshCache},
+    mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialSpaceViewKind,
 };
 
@@ -89,7 +89,10 @@ impl Mesh3DPart {
         let mesh = ctx.cache.entry(|c: &mut MeshCache| {
             c.entry(
                 &ent_path.to_string(),
-                picking_instance_hash.versioned(primary_row_id),
+                MeshCacheKey {
+                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                    media_type: None,
+                },
                 AnyMesh::Mesh(&mesh),
                 ctx.render_ctx,
             )

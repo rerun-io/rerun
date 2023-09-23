@@ -22,7 +22,7 @@ table SegmentationImage (
   // --- Required ---
 
   /// The image data. Should always be a rank-2 tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
 
   // --- Optional ---
 

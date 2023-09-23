@@ -70,3 +70,7 @@ ScalarType._ARRAY_TYPE = ScalarArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ScalarType())
+
+
+if hasattr(ScalarExt, "deferred_patch_class"):
+    ScalarExt.deferred_patch_class(Scalar)

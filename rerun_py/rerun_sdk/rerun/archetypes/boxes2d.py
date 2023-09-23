@@ -117,3 +117,7 @@ class Boxes2D(Boxes2DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(Boxes2DExt, "deferred_patch_class"):
+    Boxes2DExt.deferred_patch_class(Boxes2D)

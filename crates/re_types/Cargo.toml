@@ -49,6 +49,7 @@ re_string_interner.workspace = true
 re_tracing.workspace = true
 
 # External
+anyhow.workspace = true
 array-init = "2.1"
 arrow2 = { workspace = true, features = [
   "io_ipc",
@@ -59,8 +60,11 @@ arrow2_convert.workspace = true
 backtrace = "0.3"
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"
+infer.workspace = true
 itertools.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
+mime.workspace = true
+mime_guess.workspace = true
 ndarray.workspace = true
 once_cell.workspace = true
 smallvec.workspace = true

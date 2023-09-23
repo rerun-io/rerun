@@ -22,6 +22,8 @@ from os.path import isfile, join
 opt_out_entirely = {
     "annotation_context_connections": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
+    "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
+    "bar_chart": ["cpp"],
     "custom_data": ["cpp"],
     "depth_image_3d": ["cpp"],
     "depth_image_simple": ["cpp"],
@@ -29,9 +31,9 @@ opt_out_entirely = {
     "image_simple": ["cpp"],
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"],
-    "segmentation_image_simple": ["cpp"],
-    "scalar_simple": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
     "scalar_multiple_plots": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
+    "scalar_simple": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
+    "segmentation_image_simple": ["cpp"],
     "tensor_one_dim": ["cpp"],
     "tensor_simple": ["cpp"],
     "text_log_integration": ["cpp", "rust"],
@@ -46,12 +48,18 @@ opt_out_entirely = {
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
     "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "asset3d_out_of_tree": ["py", "rust"], # # float precision issues
     "mesh3d_partial_updates": ["py", "rust"], # float precision issues
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_one_dim": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+}
+
+extra_args = {
+    "asset3d_simple": [f"{os.path.dirname(__file__)}/../assets/cube.glb"],
+    "asset3d_out_of_tree": [f"{os.path.dirname(__file__)}/../assets/cube.glb"],
 }
 
 # fmt: on
@@ -218,7 +226,7 @@ def run_roundtrip_python(example: str) -> str:
     if python_executable is None:
         python_executable = "python3"
 
-    cmd = [python_executable, main_path]
+    cmd = [python_executable, main_path] + (extra_args.get(example) or [])
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
@@ -240,6 +248,9 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
     if release:
         cmd += ["--release"]
 
+    if extra_args.get(example):
+        cmd += ["--"] + extra_args[example]
+
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 
@@ -252,7 +263,7 @@ def run_roundtrip_cpp(example: str, release: bool) -> str:
 
     cmake_build(target_name, release)
 
-    cmd = [f"./build/docs/code-examples/{example}"]
+    cmd = [f"./build/docs/code-examples/{example}"] + (extra_args.get(example) or [])
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 

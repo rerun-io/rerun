@@ -149,3 +149,7 @@ ClassDescriptionMapElemType._ARRAY_TYPE = ClassDescriptionMapElemArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassDescriptionMapElemType())
+
+
+if hasattr(ClassDescriptionMapElemExt, "deferred_patch_class"):
+    ClassDescriptionMapElemExt.deferred_patch_class(ClassDescriptionMapElem)
