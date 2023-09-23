@@ -330,7 +330,8 @@ fn build_table(n: usize, packed: bool) -> DataTable {
                 [build_frame_nr(frame_idx.into())],
                 n as _,
                 (build_some_instances(n), build_some_large_structs(n)),
-            ).unwrap()
+            )
+            .unwrap()
         }),
     );
 
