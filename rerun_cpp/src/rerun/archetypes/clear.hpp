@@ -46,8 +46,11 @@ namespace rerun {
         ///         {0.5, -0.5, 0.0},
         ///         {-0.5, -0.5, 0.0},
         ///     };
-        ///     std::vector<rr::components::Color> colors =
-        ///         {{200, 0, 0}, {0, 200, 0}, {0, 0, 200}, {200, 0, 200}};
+        ///     std::vector<rr::components::Color> colors = {
+        ///         {200, 0, 0},
+        ///         {0, 200, 0},
+        ///         {0, 0, 200},
+        ///         {200, 0, 200}};
         ///
         ///     // Log a handful of arrows.
         ///     for (int i = 0; i <vectors.size(); ++i) {
@@ -93,8 +96,11 @@ namespace rerun {
         ///         {0.5, -0.5, 0.0},
         ///         {-0.5, -0.5, 0.0},
         ///     };
-        ///     std::vector<rr::components::Color> colors =
-        ///         {{200, 0, 0}, {0, 200, 0}, {0, 0, 200}, {200, 0, 200}};
+        ///     std::vector<rr::components::Color> colors = {
+        ///         {200, 0, 0},
+        ///         {0, 200, 0},
+        ///         {0, 0, 200},
+        ///         {200, 0, 200}};
         ///
         ///     // Log a handful of arrows.
         ///     for (int i = 0; i <vectors.size(); ++i) {
