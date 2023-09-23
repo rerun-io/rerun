@@ -46,18 +46,15 @@ namespace rerun {
         ///         {0.5, -0.5, 0.0},
         ///         {-0.5, -0.5, 0.0},
         ///     };
-        ///     std::vector<rr::components::Color> colors = {
-        ///         {200, 0, 0},
-        ///         {0, 200, 0},
-        ///         {0, 0, 200},
-        ///         {200, 0, 200}};
+        ///     std::vector<rr::components::Color> colors =
+        ///         {{200, 0, 0}, {0, 200, 0}, {0, 0, 200}, {200, 0, 200}};
         ///
         ///     // Log a handful of arrows.
         ///     for (int i = 0; i <vectors.size(); ++i) {
         ///         auto entity_path = "arrows/" + std::to_string(i);
         ///         rec.log(
         ///             entity_path.c_str(),
-        ///             rr::Arrows3D(vectors[i]).with_origins(origins[i]).with_colors(colors[i])
+        ///             rr::Arrows3D::from_vectors(vectors[i]).with_origins(origins[i]).with_colors(colors[i])
         ///         );
         ///     }
         ///
@@ -96,18 +93,15 @@ namespace rerun {
         ///         {0.5, -0.5, 0.0},
         ///         {-0.5, -0.5, 0.0},
         ///     };
-        ///     std::vector<rr::components::Color> colors = {
-        ///         {200, 0, 0},
-        ///         {0, 200, 0},
-        ///         {0, 0, 200},
-        ///         {200, 0, 200}};
+        ///     std::vector<rr::components::Color> colors =
+        ///         {{200, 0, 0}, {0, 200, 0}, {0, 0, 200}, {200, 0, 200}};
         ///
         ///     // Log a handful of arrows.
         ///     for (int i = 0; i <vectors.size(); ++i) {
         ///         auto entity_path = "arrows/" + std::to_string(i);
         ///         rec.log(
         ///             entity_path.c_str(),
-        ///             rr::Arrows3D(vectors[i]).with_origins(origins[i]).with_colors(colors[i])
+        ///             rr::Arrows3D::from_vectors(vectors[i]).with_origins(origins[i]).with_colors(colors[i])
         ///         );
         ///     }
         ///

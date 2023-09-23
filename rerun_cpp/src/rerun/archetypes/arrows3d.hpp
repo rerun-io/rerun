@@ -105,6 +105,14 @@ namespace rerun {
                 return arrows;
             }
 
+            /// Creates new 3D arrows pointing in the given directions, with a base at the origin
+            /// (0, 0, 0).
+            static Arrows3D from_vectors(components::Vector3D > _vector) {
+                Arrows3D arrows;
+                arrows.vectors = std::vector(1, std::move(_vector));
+                return arrows;
+            }
+
           public:
             Arrows3D() = default;
 
