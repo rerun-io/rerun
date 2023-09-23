@@ -1069,31 +1069,23 @@ impl DataTable {
     ///
     /// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
     pub fn similar(table1: &DataTable, table2: &DataTable) -> anyhow::Result<()> {
-        /// Given a [`DataTable`], returns all of its rows sorted by timeline.
-        fn compute_rows(table: &DataTable) -> HashMap<Timeline, Vec<DataRow>> {
+        /// Given a [`DataTable`], returns all of its rows grouped by timeline.
+        fn compute_rows(table: &DataTable) -> anyhow::Result<HashMap<Timeline, Vec<DataRow>>> {
             let mut rows_by_timeline: HashMap<Timeline, Vec<DataRow>> = Default::default();
 
-            let rows = table.to_rows().flat_map(|row| {
-                let row = row.unwrap(); // TODO(emilk): return errors!
-                row.timepoint
-                    .iter()
-                    .map(|(timeline, time)| {
-                        let mut row = row.clone();
-                        row.timepoint = TimePoint::from([(*timeline, *time)]);
-                        (*timeline, row)
-                    })
-                    .collect_vec()
-            });
-
-            for (timeline, row) in rows {
-                rows_by_timeline.entry(timeline).or_default().push(row);
+            for row in table.to_rows() {
+                let row = row?;
+                for (&timeline, &time) in row.timepoint.iter() {
+                    let mut row = row.clone();
+                    row.timepoint = TimePoint::from([(timeline, time)]);
+                    rows_by_timeline.entry(timeline).or_default().push(row);
+                }
             }
-
-            rows_by_timeline
+            Ok(rows_by_timeline)
         }
 
-        let mut rows_by_timeline1 = compute_rows(table1);
-        let mut rows_by_timeline2 = compute_rows(table2);
+        let mut rows_by_timeline1 = compute_rows(table1)?;
+        let mut rows_by_timeline2 = compute_rows(table2)?;
 
         for timeline1 in rows_by_timeline1.keys() {
             anyhow::ensure!(
