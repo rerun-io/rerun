@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
 
     rec.log(
         "arrows3d",
-        rr::archetypes::Arrows3D({{4.0f, 5.0f, 6.0f}, {40.0f, 50.0f, 60.0f}})
+        rr::archetypes::Arrows3D::from_vectors({{4.0f, 5.0f, 6.0f}, {40.0f, 50.0f, 60.0f}})
             .with_origins({{1.0f, 2.0f, 3.0f}, {10.0f, 20.0f, 30.0f}})
             .with_radii({0.1f, 1.0f})
             .with_colors({0xAA0000CC, 0x00BB00DD})
