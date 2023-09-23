@@ -196,7 +196,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time_seconds("sim_time", 3f64);
     rec.log(
         "rects_test/rects",
-        // TODO(#3279): Should be &Boxes2D::empty()
+        // TODO(#3381): Should be &Boxes2D::empty()
         &Boxes2D::from_half_sizes(std::iter::empty::<HalfSizes2D>()),
     )?;
 

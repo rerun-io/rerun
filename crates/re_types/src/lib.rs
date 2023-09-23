@@ -143,6 +143,7 @@ pub use self::arrow_buffer::ArrowBuffer;
 pub use self::arrow_string::ArrowString;
 
 pub mod external {
+    pub use anyhow;
     pub use arrow2;
     pub use uuid;
 

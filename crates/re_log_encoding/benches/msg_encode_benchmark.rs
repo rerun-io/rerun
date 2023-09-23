@@ -77,7 +77,8 @@ fn mono_points_arrow(c: &mut Criterion) {
                         [build_frame_nr(0.into())],
                         1,
                         (build_some_positions2d(1), build_some_colors(1)),
-                    )],
+                    )
+                    .unwrap()],
                 )
             })
             .collect()
@@ -135,6 +136,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
                     1,
                     (build_some_positions2d(1), build_some_colors(1)),
                 )
+                .unwrap()
             }),
         )
     }
@@ -192,7 +194,8 @@ fn batch_points_arrow(c: &mut Criterion) {
                     build_some_positions2d(NUM_POINTS),
                     build_some_colors(NUM_POINTS),
                 ),
-            )],
+            )
+            .unwrap()],
         )]
     }
 

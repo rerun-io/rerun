@@ -117,3 +117,7 @@ AnnotationInfoType._ARRAY_TYPE = AnnotationInfoArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AnnotationInfoType())
+
+
+if hasattr(AnnotationInfoExt, "deferred_patch_class"):
+    AnnotationInfoExt.deferred_patch_class(AnnotationInfo)

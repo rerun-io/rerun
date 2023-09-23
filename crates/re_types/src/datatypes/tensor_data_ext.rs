@@ -239,6 +239,15 @@ macro_rules! tensor_type {
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }
         }
+
+        impl From<Vec<$type>> for TensorData {
+            fn from(value: Vec<$type>) -> Self {
+                TensorData {
+                    shape: vec![TensorDimension::unnamed(value.len() as u64)],
+                    buffer: TensorBuffer::$variant(value.into()),
+                }
+            }
+        }
     };
 }
 

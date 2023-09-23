@@ -14,5 +14,5 @@ table Transform3D (
   order: 100
 ) {
   /// The transform
-  transform: rerun.components.Transform3D ("attr.rerun.component_required", required, order: 1000);
+  transform: rerun.components.Transform3D ("attr.rerun.component_required", order: 1000);
 }

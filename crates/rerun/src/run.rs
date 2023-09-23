@@ -367,7 +367,7 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
 
         let store = stores.pop().unwrap(); // safe, ensured above
 
-        Ok::<_, anyhow::Error>(store.store().to_data_table())
+        Ok(store.store().to_data_table()?)
     }
 
     let table1 = compute_uber_table(path_to_rrd1)?;

@@ -107,3 +107,7 @@ Mat3x3Type._ARRAY_TYPE = Mat3x3Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Mat3x3Type())
+
+
+if hasattr(Mat3x3Ext, "deferred_patch_class"):
+    Mat3x3Ext.deferred_patch_class(Mat3x3)

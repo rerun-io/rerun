@@ -1,6 +1,7 @@
 use re_log_types::DataCell;
+use re_types::external::anyhow;
 
-/// Errors from [`data_cells_from_file_path`] and [`data_cells_from_mesh_file_path`].
+/// Errors from [`data_cells_from_file_path`].
 #[derive(thiserror::Error, Debug)]
 pub enum FromFileError {
     #[cfg(not(target_arch = "wasm32"))]
@@ -19,6 +20,9 @@ pub enum FromFileError {
         extension: String,
         path: std::path::PathBuf,
     },
+
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
 
 /// Read the file at the given path.
@@ -41,9 +45,24 @@ pub fn data_cells_from_file_path(
         .to_string();
 
     match extension.as_str() {
-        "glb" => data_cells_from_mesh_file_path(file_path, crate::MeshFormat::Glb),
-        "glft" => data_cells_from_mesh_file_path(file_path, crate::MeshFormat::Gltf),
-        "obj" => data_cells_from_mesh_file_path(file_path, crate::MeshFormat::Obj),
+        "glb" | "gltf" | "obj" => {
+            use re_types::{archetypes::Asset3D, Archetype};
+            let cells: Result<Vec<_>, _> = Asset3D::from_file(file_path)?
+                // TODO(#3414): this should be a method of `Archetype`
+                .as_component_batches()
+                .into_iter()
+                .map(|comp_batch| {
+                    let comp_batch = comp_batch.as_ref();
+                    Ok(DataCell::from_arrow(
+                        comp_batch.name(),
+                        comp_batch
+                            .try_to_arrow()
+                            .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
+                    ))
+                })
+                .collect();
+            cells
+        }
 
         #[cfg(feature = "image")]
         _ => {
@@ -86,9 +105,24 @@ pub fn data_cells_from_file_contents(
         .to_string();
 
     match extension.as_str() {
-        "glb" => data_cells_from_mesh_file_contents(bytes, crate::MeshFormat::Glb),
-        "glft" => data_cells_from_mesh_file_contents(bytes, crate::MeshFormat::Gltf),
-        "obj" => data_cells_from_mesh_file_contents(bytes, crate::MeshFormat::Obj),
+        "glb" | "gltf" | "obj" => {
+            use re_types::{archetypes::Asset3D, components::MediaType, Archetype};
+            let cells: Result<Vec<_>, _> =
+                Asset3D::from_bytes(bytes, MediaType::guess_from_path(file_name))
+                    .as_component_batches()
+                    .into_iter()
+                    .map(|comp_batch| {
+                        let comp_batch = comp_batch.as_ref();
+                        Ok(DataCell::from_arrow(
+                            comp_batch.name(),
+                            comp_batch
+                                .try_to_arrow()
+                                .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
+                        ))
+                    })
+                    .collect();
+            cells
+        }
 
         #[cfg(feature = "image")]
         _ => {
@@ -122,38 +156,4 @@ pub fn data_cells_from_file_contents(
             path: file_name.to_owned().into(),
         }),
     }
-}
-
-/// Read the mesh file at the given path.
-///
-/// Supported file extensions are:
-///  * `glb`, `gltf`, `obj`: encoded meshes, leaving it to the viewer to decode
-///
-/// All other extensions will return an error.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn data_cells_from_mesh_file_path(
-    file_path: &std::path::Path,
-    format: crate::MeshFormat,
-) -> Result<Vec<DataCell>, FromFileError> {
-    let bytes = std::fs::read(file_path)?;
-    data_cells_from_mesh_file_contents(bytes, format)
-}
-
-pub fn data_cells_from_mesh_file_contents(
-    bytes: Vec<u8>,
-    format: crate::MeshFormat,
-) -> Result<Vec<DataCell>, FromFileError> {
-    // TODO(#2788): mesh indicator
-    let mesh = crate::EncodedMesh3D {
-        format,
-        bytes: bytes.into(),
-        transform: [
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [0.0, 0.0, 0.0],
-        ],
-    };
-    let mesh = crate::Mesh3D::Encoded(mesh);
-    Ok(vec![DataCell::try_from_native(std::iter::once(&mesh))?])
 }

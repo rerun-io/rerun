@@ -4,7 +4,7 @@ use macaw::IsoTransform;
 use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
-use re_types::archetypes::Pinhole;
+use re_types::{archetypes::Pinhole, components::ViewCoordinates};
 use re_viewer_context::{
     gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartCollection, ViewQuery, ViewerContext,
@@ -398,7 +398,7 @@ fn setup_target_config(
         gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
-    // TODO(#1988):
+    // TODO(#1025):
     // The camera setup is done in a way that works well with the way we inverse pinhole camera transformations right now.
     // This has a lot of issues though, mainly because we pretend that the 2D plane has a defined depth.
     // * very bad depth precision as we limit the depth range from 0 to focal_length_in_pixels
@@ -428,6 +428,7 @@ fn setup_target_config(
             )
             .into(),
             resolution: Some(canvas_size.into()),
+            camera_xyz: Some(ViewCoordinates::RDF),
         }
     });
 

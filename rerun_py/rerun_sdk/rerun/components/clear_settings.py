@@ -62,3 +62,7 @@ ClearSettingsType._ARRAY_TYPE = ClearSettingsArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClearSettingsType())
+
+
+if hasattr(ClearSettingsExt, "deferred_patch_class"):
+    ClearSettingsExt.deferred_patch_class(ClearSettings)

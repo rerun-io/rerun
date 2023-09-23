@@ -152,3 +152,7 @@ AnnotationContextType._ARRAY_TYPE = AnnotationContextArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AnnotationContextType())
+
+
+if hasattr(AnnotationContextExt, "deferred_patch_class"):
+    AnnotationContextExt.deferred_patch_class(AnnotationContext)

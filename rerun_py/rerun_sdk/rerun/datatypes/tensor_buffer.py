@@ -198,3 +198,7 @@ TensorBufferType._ARRAY_TYPE = TensorBufferArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TensorBufferType())
+
+
+if hasattr(TensorBufferExt, "deferred_patch_class"):
+    TensorBufferExt.deferred_patch_class(TensorBuffer)

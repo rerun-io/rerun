@@ -1,8 +1,10 @@
 use egui::Vec2;
 
-use re_components::{LegacyMat3x3, LegacyVec2D, LegacyVec3D, ViewCoordinates};
+use re_components::{LegacyMat3x3, LegacyVec2D, LegacyVec3D};
 use re_format::format_f32;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, Material, MeshProperties};
+use re_types::components::{
+    Color, LineStrip2D, LineStrip3D, Material, MeshProperties, ViewCoordinates,
+};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;

@@ -263,7 +263,8 @@ pub fn __populate_example_store() -> DataStore {
         timepoint,
         instances.len() as _,
         (&instances, &positions),
-    );
+    )
+    .unwrap();
     store.insert_row(&row).unwrap();
 
     let instances = vec![InstanceKey(96)];
@@ -275,7 +276,8 @@ pub fn __populate_example_store() -> DataStore {
         timepoint,
         instances.len() as _,
         (instances, colors),
-    );
+    )
+    .unwrap();
     store.insert_row(&row).unwrap();
 
     store

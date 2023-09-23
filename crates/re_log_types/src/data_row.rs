@@ -7,12 +7,13 @@ use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, 
 
 // ---
 
+/// An error that can occur because a row in the store has inconsistent columns.
 #[derive(thiserror::Error, Debug)]
-pub enum DataRowError {
+pub enum DataReadError {
     #[error(
         "Each cell must contain either 0, 1 or `num_instances` instances, \
         but cell '{component}' in '{entity_path}' holds {num_instances} instances \
-        (expected {expected_num_instances}"
+        (expected {expected_num_instances})"
     )]
     WrongNumberOfInstances {
         entity_path: EntityPath,
@@ -29,6 +30,15 @@ pub enum DataRowError {
         entity_path: EntityPath,
         component: ComponentName,
     },
+}
+
+pub type DataReadResult<T> = ::std::result::Result<T, DataReadError>;
+
+/// A problem with a row of data in the store.
+#[derive(thiserror::Error, Debug)]
+pub enum DataRowError {
+    #[error(transparent)]
+    DataRead(#[from] DataReadError),
 
     #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] DataCellError),
@@ -228,7 +238,7 @@ impl std::ops::DerefMut for RowId {
 ///     timepoint,
 ///     num_instances,
 ///     (points, colors, labels),
-/// );
+/// ).unwrap();
 /// eprintln!("{row}");
 /// ```
 #[derive(Debug, Clone)]
@@ -261,13 +271,13 @@ impl DataRow {
     /// Fails if:
     /// - one or more cell isn't 0, 1 or `num_instances` long,
     /// - two or more cells share the same component type.
-    pub fn try_from_cells(
+    pub fn from_cells(
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
         entity_path: impl Into<EntityPath>,
         num_instances: u32,
         cells: impl IntoIterator<Item = DataCell>,
-    ) -> DataRowResult<Self> {
+    ) -> DataReadResult<Self> {
         let cells = DataCellRow(cells.into_iter().collect());
 
         let entity_path = entity_path.into();
@@ -278,7 +288,7 @@ impl DataRow {
             let component = cell.component_name();
 
             if !components.insert(component) {
-                return Err(DataRowError::DupedComponent {
+                return Err(DataReadError::DupedComponent {
                     entity_path,
                     component,
                 });
@@ -288,7 +298,7 @@ impl DataRow {
                 0 | 1 => {}
                 n if n == num_instances => {}
                 n => {
-                    return Err(DataRowError::WrongNumberOfInstances {
+                    return Err(DataReadError::WrongNumberOfInstances {
                         entity_path,
                         component,
                         expected_num_instances: num_instances,
@@ -305,41 +315,6 @@ impl DataRow {
             num_instances,
             cells,
         })
-    }
-
-    /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
-    ///
-    /// Panics if:
-    /// - one or more cell isn't 0, 1 or `num_instances` long,
-    /// - two or more cells share the same component type.
-    ///
-    /// See [`Self::try_from_cells`] for the fallible alternative.
-    pub fn from_cells(
-        row_id: RowId,
-        timepoint: impl Into<TimePoint>,
-        entity_path: impl Into<EntityPath>,
-        num_instances: u32,
-        cells: impl IntoIterator<Item = DataCell>,
-    ) -> Self {
-        Self::try_from_cells(row_id, timepoint, entity_path, num_instances, cells).unwrap()
-    }
-
-    /// A helper that combines [`Self::from_cells`] followed by [`Self::compute_all_size_bytes`].
-    ///
-    /// See respective documentations for more information.
-    ///
-    /// Beware: this is costly!
-    pub fn from_cells_sized(
-        row_id: RowId,
-        timepoint: impl Into<TimePoint>,
-        entity_path: impl Into<EntityPath>,
-        num_instances: u32,
-        cells: impl IntoIterator<Item = DataCell>,
-    ) -> Self {
-        let mut this =
-            Self::try_from_cells(row_id, timepoint, entity_path, num_instances, cells).unwrap();
-        this.compute_all_size_bytes();
-        this
     }
 
     /// Turns the `DataRow` into a single-row [`DataTable`].
@@ -435,25 +410,6 @@ impl DataRow {
 // ---
 
 impl DataRow {
-    pub fn from_cells1<C0>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: C0,
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-    {
-        Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [into_cells.into()],
-        )
-    }
-
     /// A helper that combines [`Self::from_cells1`] followed by [`Self::compute_all_size_bytes`].
     ///
     /// See respective documentations for more information.
@@ -465,7 +421,7 @@ impl DataRow {
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
         into_cells: C0,
-    ) -> DataRow
+    ) -> DataReadResult<DataRow>
     where
         C0: Into<DataCell>,
     {
@@ -475,12 +431,12 @@ impl DataRow {
             entity_path.into(),
             num_instances,
             [into_cells.into()],
-        );
+        )?;
         this.compute_all_size_bytes();
-        this
+        Ok(this)
     }
 
-    pub fn try_from_cells1<C0>(
+    pub fn from_cells1<C0>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -491,36 +447,13 @@ impl DataRow {
         C0: TryInto<DataCell>,
         DataRowError: From<<C0 as TryInto<DataCell>>::Error>,
     {
-        Self::try_from_cells(
+        Ok(Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
             num_instances,
             [into_cells.try_into()?],
-        )
-    }
-
-    pub fn from_cells2<C0, C1>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: (C0, C1),
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-        C1: Into<DataCell>,
-    {
-        Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [
-                into_cells.0.into(), //
-                into_cells.1.into(), //
-            ],
-        )
+        )?)
     }
 
     /// A helper that combines [`Self::from_cells2`] followed by [`Self::compute_all_size_bytes`].
@@ -534,7 +467,7 @@ impl DataRow {
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
         into_cells: (C0, C1),
-    ) -> DataRow
+    ) -> DataRowResult<DataRow>
     where
         C0: Into<DataCell>,
         C1: Into<DataCell>,
@@ -548,12 +481,12 @@ impl DataRow {
                 into_cells.0.into(), //
                 into_cells.1.into(), //
             ],
-        );
+        )?;
         this.compute_all_size_bytes();
-        this
+        Ok(this)
     }
 
-    pub fn try_from_cells2<C0, C1>(
+    pub fn from_cells2<C0, C1>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -566,7 +499,7 @@ impl DataRow {
         DataRowError: From<<C0 as TryInto<DataCell>>::Error>,
         DataRowError: From<<C1 as TryInto<DataCell>>::Error>,
     {
-        Self::try_from_cells(
+        Ok(Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -575,67 +508,10 @@ impl DataRow {
                 into_cells.0.try_into()?, //
                 into_cells.1.try_into()?, //
             ],
-        )
+        )?)
     }
 
     pub fn from_cells3<C0, C1, C2>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: (C0, C1, C2),
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-        C1: Into<DataCell>,
-        C2: Into<DataCell>,
-    {
-        Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [
-                into_cells.0.into(), //
-                into_cells.1.into(), //
-                into_cells.2.into(), //
-            ],
-        )
-    }
-
-    /// A helper that combines [`Self::from_cells3`] followed by [`Self::compute_all_size_bytes`].
-    ///
-    /// See respective documentations for more information.
-    ///
-    /// Beware: this is costly!
-    pub fn from_cells3_sized<C0, C1, C2>(
-        row_id: RowId,
-        entity_path: impl Into<EntityPath>,
-        timepoint: impl Into<TimePoint>,
-        num_instances: u32,
-        into_cells: (C0, C1, C2),
-    ) -> DataRow
-    where
-        C0: Into<DataCell>,
-        C1: Into<DataCell>,
-        C2: Into<DataCell>,
-    {
-        let mut this = Self::from_cells(
-            row_id,
-            timepoint.into(),
-            entity_path.into(),
-            num_instances,
-            [
-                into_cells.0.into(), //
-                into_cells.1.into(), //
-                into_cells.2.into(), //
-            ],
-        );
-        this.compute_all_size_bytes();
-        this
-    }
-
-    pub fn try_from_cells3<C0, C1, C2>(
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
@@ -650,7 +526,7 @@ impl DataRow {
         DataRowError: From<<C1 as TryInto<DataCell>>::Error>,
         DataRowError: From<<C2 as TryInto<DataCell>>::Error>,
     {
-        Self::try_from_cells(
+        Ok(Self::from_cells(
             row_id,
             timepoint.into(),
             entity_path.into(),
@@ -660,7 +536,7 @@ impl DataRow {
                 into_cells.1.try_into()?, //
                 into_cells.2.try_into()?, //
             ],
-        )
+        )?)
     }
 }
 

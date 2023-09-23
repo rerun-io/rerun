@@ -200,7 +200,8 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
                     (build_some_point2d(pts), build_some_colors(pts)),
-                );
+                )
+                .unwrap();
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
                 // in debug mode, by the standard test harness.
                 if cfg!(debug_assertions) {
@@ -230,7 +231,8 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
                         build_some_point2d(num_strings),
                         build_some_strings(num_strings),
                     ),
-                );
+                )
+                .unwrap();
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
                 // in debug mode, by the standard test harness.
                 if cfg!(debug_assertions) {

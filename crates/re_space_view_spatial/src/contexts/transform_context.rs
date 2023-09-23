@@ -1,11 +1,10 @@
 use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::ViewCoordinates;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection, Transform3D},
+    components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextSystem};
@@ -130,7 +129,7 @@ impl ViewContextSystem for TransformContext {
                 &current_tree.path,
                 &entity_db.data_store,
                 &time_query,
-                // TODO(#1988): See comment in transform_at. This is a workaround for precision issues
+                // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
                 &mut encountered_pinhole,
@@ -322,15 +321,17 @@ fn transform_at(
         // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
         // determine how the image plane is oriented.
         // (see also `CamerasPart` where the frustum lines are set up)
-        let view_coordinates = pinhole_camera_view_coordinates(store, query, entity_path);
-        let world_from_image_plane3d = view_coordinates.from_other(&image_view_coordinates());
+        let world_from_image_plane3d = pinhole
+            .camera_xyz
+            .unwrap_or(ViewCoordinates::RDF)
+            .from_other(&image_view_coordinates());
 
         glam::Affine3A::from_mat3(world_from_image_plane3d) * image_plane3d_from_2d_content
 
         // Above calculation is nice for a certain kind of visualizing a projected image plane,
         // but the image plane distance is arbitrary and there might be other, better visualizations!
 
-        // TODO(#1988):
+        // TODO(#1025):
         // As such we don't ever want to invert this matrix!
         // However, currently our 2D views require do to exactly that since we're forced to
         // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
@@ -353,19 +354,4 @@ fn transform_at(
     } else {
         Ok(None)
     }
-}
-
-/// Determine the view coordinates, i.e. the axis semantics, of a pinhole entity.
-///
-/// This is used to orient the camera frustum.
-///
-/// The recommended way to log this is using `rr.log_pinhole(…, camera_xyz=…)`
-pub fn pinhole_camera_view_coordinates(
-    store: &re_arrow_store::DataStore,
-    query: &LatestAtQuery,
-    entity_path: &EntityPath,
-) -> ViewCoordinates {
-    store
-        .query_latest_component(entity_path, query)
-        .map_or(ViewCoordinates::RDF, |c| c.value)
 }

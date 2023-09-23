@@ -18,9 +18,7 @@ use arrow2_convert::{
 };
 use lazy_static::lazy_static;
 
-pub mod coordinates;
 mod mat;
-mod mesh3d;
 mod quaternion;
 mod vec;
 
@@ -34,15 +32,10 @@ pub mod datagen;
 // TODO(cmc): get rid of this once every single archetypes depending on those have been migrated.
 pub use vec::{LegacyVec2D, LegacyVec3D, LegacyVec4D};
 
-pub use self::{
-    coordinates::ViewCoordinates,
-    mat::LegacyMat3x3,
-    mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat},
-    quaternion::Quaternion,
-};
+pub use self::{mat::LegacyMat3x3, quaternion::Quaternion};
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::load_file::{data_cells_from_file_path, data_cells_from_mesh_file_path};
+pub use self::load_file::data_cells_from_file_path;
 
 pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 
@@ -61,11 +54,9 @@ pub mod external {
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 4] = [
+    static ref FIELDS: [Field; 2] = [
         <LegacyVec3D as LegacyComponent>::field(),
-        <Mesh3D as LegacyComponent>::field(),
         <Quaternion as LegacyComponent>::field(),
-        <ViewCoordinates as LegacyComponent>::field(),
     ];
 }
 

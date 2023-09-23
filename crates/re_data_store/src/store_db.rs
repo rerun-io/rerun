@@ -78,6 +78,8 @@ impl EntityDb {
 
         // TODO(cmc): batch all of this
         for row in table.to_rows() {
+            let row = row?;
+
             self.register_entity_path(&row.entity_path);
 
             self.try_add_data_row(&row)?;
@@ -129,7 +131,7 @@ impl EntityDb {
                     time_point.clone(),
                     cell.num_instances(),
                     cell,
-                );
+                )?;
                 self.data_store.insert_row(&row).ok();
 
                 // Also update the tree with the clear-event
@@ -172,8 +174,14 @@ impl EntityDb {
             // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
             //    these rows! This flaky ordering will in turn leak through the public
             //    API (e.g. range queries)!!
-            let row = DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells);
-            self.data_store.insert_row(&row).ok();
+            match DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
+                Ok(row) => {
+                    self.data_store.insert_row(&row).ok();
+                }
+                Err(err) => {
+                    re_log::error_once!("Failed to insert PathOp {path_op:?}: {err}");
+                }
+            }
 
             // Don't reuse the same row ID for the next entity!
             row_id = row_id.next();

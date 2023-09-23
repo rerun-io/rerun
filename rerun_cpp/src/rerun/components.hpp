@@ -3,6 +3,7 @@
 #pragma once
 
 #include "components/annotation_context.hpp"
+#include "components/blob.hpp"
 #include "components/class_id.hpp"
 #include "components/clear_settings.hpp"
 #include "components/color.hpp"
@@ -20,6 +21,7 @@
 #include "components/mesh_properties.hpp"
 #include "components/origin2d.hpp"
 #include "components/origin3d.hpp"
+#include "components/out_of_tree_transform3d.hpp"
 #include "components/pinhole_projection.hpp"
 #include "components/position2d.hpp"
 #include "components/position3d.hpp"
