@@ -7,11 +7,7 @@ use re_types::{
 #[test]
 fn roundtrip() {
     let expected = ViewCoordinates {
-        coordinates: components::ViewCoordinates::new(
-            ViewDir::Right,
-            ViewDir::Down,
-            ViewDir::Forward,
-        ),
+        xyz: components::ViewCoordinates::new(ViewDir::Right, ViewDir::Down, ViewDir::Forward),
     };
 
     let arch = ViewCoordinates::RDF;
@@ -51,8 +47,8 @@ fn view_coordinates() {
     use glam::{vec3, Mat3};
     use re_types::view_coordinates::{Handedness, SignedAxis3};
 
-    assert_eq!(ViewCoordinates::RUB.coordinates.to_rub(), Mat3::IDENTITY);
-    assert_eq!(ViewCoordinates::RUB.coordinates.from_rub(), Mat3::IDENTITY);
+    assert_eq!(ViewCoordinates::RUB.xyz.to_rub(), Mat3::IDENTITY);
+    assert_eq!(ViewCoordinates::RUB.xyz.from_rub(), Mat3::IDENTITY);
 
     {
         assert!("UUDDLRLRBAStart"
@@ -63,7 +59,7 @@ fn view_coordinates() {
         let rub = "RUB".parse::<components::ViewCoordinates>().unwrap();
         let bru = "BRU".parse::<components::ViewCoordinates>().unwrap();
 
-        assert_eq!(rub, ViewCoordinates::RUB.coordinates);
+        assert_eq!(rub, ViewCoordinates::RUB.xyz);
 
         assert_eq!(rub.to_rub(), Mat3::IDENTITY);
         assert_eq!(

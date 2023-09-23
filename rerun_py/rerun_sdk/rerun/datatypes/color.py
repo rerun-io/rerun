@@ -83,3 +83,7 @@ ColorType._ARRAY_TYPE = ColorArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ColorType())
+
+
+if hasattr(ColorExt, "deferred_patch_class"):
+    ColorExt.deferred_patch_class(Color)

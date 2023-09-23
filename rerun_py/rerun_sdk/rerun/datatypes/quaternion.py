@@ -72,3 +72,7 @@ QuaternionType._ARRAY_TYPE = QuaternionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(QuaternionType())
+
+
+if hasattr(QuaternionExt, "deferred_patch_class"):
+    QuaternionExt.deferred_patch_class(Quaternion)

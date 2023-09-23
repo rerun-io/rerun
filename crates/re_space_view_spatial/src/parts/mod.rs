@@ -315,10 +315,10 @@ pub fn load_keypoint_connections(
 /// Returns the view coordinates used for 2D (image) views.
 ///
 /// TODO(#1387): Image coordinate space should be configurable.
-pub fn image_view_coordinates() -> re_components::ViewCoordinates {
+pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
     // Typical image spaces have
     // - x pointing right
     // - y pointing down
     // - z pointing into the image plane (this is convenient for reading out a depth image which has typically positive z values)
-    re_components::ViewCoordinates::RDF
+    re_types::components::ViewCoordinates::RDF
 }

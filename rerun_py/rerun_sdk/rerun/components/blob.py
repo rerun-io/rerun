@@ -66,3 +66,7 @@ BlobType._ARRAY_TYPE = BlobArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(BlobType())
+
+
+if hasattr(BlobExt, "deferred_patch_class"):
+    BlobExt.deferred_patch_class(Blob)

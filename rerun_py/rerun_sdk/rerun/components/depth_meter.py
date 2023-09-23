@@ -66,3 +66,7 @@ DepthMeterType._ARRAY_TYPE = DepthMeterArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(DepthMeterType())
+
+
+if hasattr(DepthMeterExt, "deferred_patch_class"):
+    DepthMeterExt.deferred_patch_class(DepthMeter)

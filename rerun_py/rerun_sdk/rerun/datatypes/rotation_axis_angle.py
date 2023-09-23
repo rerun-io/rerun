@@ -109,3 +109,7 @@ RotationAxisAngleType._ARRAY_TYPE = RotationAxisAngleArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(RotationAxisAngleType())
+
+
+if hasattr(RotationAxisAngleExt, "deferred_patch_class"):
+    RotationAxisAngleExt.deferred_patch_class(RotationAxisAngle)

@@ -86,3 +86,7 @@ MeshPropertiesType._ARRAY_TYPE = MeshPropertiesArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MeshPropertiesType())
+
+
+if hasattr(MeshPropertiesExt, "deferred_patch_class"):
+    MeshPropertiesExt.deferred_patch_class(MeshProperties)

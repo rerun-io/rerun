@@ -84,3 +84,7 @@ LineStrip3DType._ARRAY_TYPE = LineStrip3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(LineStrip3DType())
+
+
+if hasattr(LineStrip3DExt, "deferred_patch_class"):
+    LineStrip3DExt.deferred_patch_class(LineStrip3D)

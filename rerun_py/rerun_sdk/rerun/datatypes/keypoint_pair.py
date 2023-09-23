@@ -85,3 +85,7 @@ KeypointPairType._ARRAY_TYPE = KeypointPairArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(KeypointPairType())
+
+
+if hasattr(KeypointPairExt, "deferred_patch_class"):
+    KeypointPairExt.deferred_patch_class(KeypointPair)

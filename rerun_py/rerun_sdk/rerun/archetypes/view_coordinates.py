@@ -18,13 +18,45 @@ __all__ = ["ViewCoordinates"]
 
 @define(str=False, repr=False)
 class ViewCoordinates(ViewCoordinatesExt, Archetype):
-    """How we interpret the coordinate system of an entity/space."""
+    """
+    How we interpret the coordinate system of an entity/space.
+
+    For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+
+    The three coordinates are always ordered as [x, y, z].
+
+    For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+    down, and the Z axis points forward.
+
+    Example
+    -------
+    ```python
+
+    import rerun as rr
+    import rerun.experimental as rr2
+
+    rr.init("rerun_example_view_coordinates", spawn=True)
+
+    rr2.log("/", rr2.ViewCoordinates.ULB)
+    rr2.log(
+        "xyz",
+        rr2.Arrows3D(
+            vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+        ),
+    )
+    ```
+    """
 
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
-    coordinates: components.ViewCoordinatesArray = field(
+    xyz: components.ViewCoordinatesArray = field(
         metadata={"component": "required"},
         converter=components.ViewCoordinatesArray.from_similar,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(ViewCoordinatesExt, "deferred_patch_class"):
+    ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

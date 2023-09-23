@@ -110,3 +110,7 @@ Rotation3DType._ARRAY_TYPE = Rotation3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Rotation3DType())
+
+
+if hasattr(Rotation3DExt, "deferred_patch_class"):
+    Rotation3DExt.deferred_patch_class(Rotation3D)

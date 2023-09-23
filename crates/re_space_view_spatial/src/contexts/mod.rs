@@ -10,7 +10,7 @@ pub use annotation_context::AnnotationSceneContext;
 pub use depth_offsets::EntityDepthOffsets;
 pub use non_interactive_entities::NonInteractiveEntities;
 pub use shared_render_builders::SharedRenderBuilders;
-pub use transform_context::{pinhole_camera_view_coordinates, TransformContext};
+pub use transform_context::TransformContext;
 
 // -----------------------------------------------------------------------------
 
