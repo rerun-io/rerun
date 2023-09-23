@@ -18,15 +18,13 @@ impl DataStore {
     /// Individual [`re_log_types::DataRow`]s that were split apart due to bucketing are merged back together.
     ///
     /// Beware: this is extremely costly, don't use this in hot paths.
-    pub fn to_data_table(&self) -> DataTable {
-        re_log_types::DataTable::from_rows(re_log_types::TableId::random(), {
-            use re_log_types::{DataRow, RowId};
+    pub fn to_data_table(&self) -> re_log_types::DataReadResult<DataTable> {
+        use re_log_types::{DataRow, RowId};
 
-            let mut rows = ahash::HashMap::<RowId, DataRow>::default();
-            for row in self
-                .to_data_tables(None)
-                .flat_map(|t| t.to_rows().collect::<Vec<_>>())
-            {
+        let mut rows = ahash::HashMap::<RowId, DataRow>::default();
+        for table in self.to_data_tables(None) {
+            for row in table.to_rows().collect::<Vec<_>>() {
+                let row = row?;
                 match rows.entry(row.row_id()) {
                     std::collections::hash_map::Entry::Occupied(mut entry) => {
                         for (timeline, time) in row.timepoint() {
@@ -38,11 +36,15 @@ impl DataStore {
                     }
                 }
             }
+        }
 
-            let mut rows = rows.into_values().collect::<Vec<_>>();
-            rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
-            rows
-        })
+        let mut rows = rows.into_values().collect::<Vec<_>>();
+        rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+
+        Ok(re_log_types::DataTable::from_rows(
+            re_log_types::TableId::random(),
+            rows,
+        ))
     }
 
     /// Serializes the entire datastore into an iterator of [`DataTable`]s, where each table

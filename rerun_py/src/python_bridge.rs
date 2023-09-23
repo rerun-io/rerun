@@ -681,8 +681,6 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
     recording.reset_time();
 }
 
-// --- Log segmentation ---
-
 #[derive(FromPyObject)]
 struct AnnotationInfoTuple(u16, Option<String>, Option<Vec<u8>>);
 
@@ -802,7 +800,8 @@ fn set_panel(
         TimePoint::default(),
         1,
         [panel_state].as_slice(),
-    );
+    )
+    .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
@@ -846,7 +845,8 @@ fn add_space_view(
         TimePoint::default(),
         1,
         [space_view].as_slice(),
-    );
+    )
+    .unwrap();
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
@@ -867,7 +867,8 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
         TimePoint::default(),
         1,
         [enable_auto_space].as_slice(),
-    );
+    )
+    .unwrap();
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;

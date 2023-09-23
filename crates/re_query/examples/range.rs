@@ -13,7 +13,7 @@ use re_types::{
     Loggable as _,
 };
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
@@ -24,28 +24,28 @@ fn main() {
     let frame4 = [build_frame_nr(4.into())];
 
     let colors = build_some_colors(2);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame1, 2, &colors);
-    store.insert_row(&row).unwrap();
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame1, 2, &colors)?;
+    store.insert_row(&row)?;
 
     let positions = build_some_positions2d(2);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame2, 2, &positions);
-    store.insert_row(&row).unwrap();
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame2, 2, &positions)?;
+    store.insert_row(&row)?;
 
     let positions = build_some_positions2d(4);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &positions);
-    store.insert_row(&row).unwrap();
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &positions)?;
+    store.insert_row(&row)?;
 
     let colors = build_some_colors(3);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors);
-    store.insert_row(&row).unwrap();
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors)?;
+    store.insert_row(&row)?;
 
     let positions = build_some_positions2d(3);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &positions);
-    store.insert_row(&row).unwrap();
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &positions)?;
+    store.insert_row(&row)?;
 
     let colors = build_some_colors(3);
-    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors);
-    store.insert_row(&row).unwrap();
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &colors)?;
+    store.insert_row(&row)?;
 
     let query = RangeQuery::new(frame2[0].0, TimeRange::new(frame2[0].1, frame4[0].1));
 
@@ -63,7 +63,7 @@ fn main() {
     //             |time| TimeType::Sequence.format(time)
     //         ),
     //         Color::name(),
-    //         &ent_view.as_df2::<Point2D>().unwrap()
+    //         &ent_view.as_df2::<Point2D>()?
     //     );
     // }
 
@@ -80,7 +80,9 @@ fn main() {
                 |time| TimeType::Sequence.format(time)
             ),
             Position2D::name(),
-            &ent_view.as_df2::<Color>().unwrap()
+            &ent_view.as_df2::<Color>()?
         );
     }
+
+    Ok(())
 }

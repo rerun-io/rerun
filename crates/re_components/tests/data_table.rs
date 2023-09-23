@@ -14,7 +14,8 @@ fn data_table_sizes_basics() {
             TimePoint::default(),
             cell.num_instances(),
             cell,
-        );
+        )
+        .unwrap();
 
         let table = DataTable::from_rows(
             TableId::random(),

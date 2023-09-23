@@ -96,7 +96,8 @@ pub fn build_data_row_from_components(
         entity_path.clone(),
         num_instances,
         cells,
-    );
+    )
+    .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
     Ok(row)
 }

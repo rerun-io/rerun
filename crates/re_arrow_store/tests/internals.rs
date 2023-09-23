@@ -56,7 +56,8 @@ fn pathological_bucket_topology() {
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
-            );
+            )
+            .unwrap();
             store_forward.insert_row(&row).unwrap();
 
             let row = DataRow::from_cells1_sized(
@@ -65,7 +66,8 @@ fn pathological_bucket_topology() {
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
-            );
+            )
+            .unwrap();
             store_backward.insert_row(&row).unwrap();
         }
     }
@@ -88,6 +90,7 @@ fn pathological_bucket_topology() {
                     num_instances,
                     build_some_instances(num_instances as _),
                 )
+                .unwrap()
             })
             .collect::<Vec<_>>();
 

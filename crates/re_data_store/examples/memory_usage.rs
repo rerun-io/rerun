@@ -115,6 +115,7 @@ fn log_messages() {
                 1,
                 build_some_positions2d(1),
             )
+            .unwrap()
             .into_table(),
         );
         let table_bytes = live_bytes() - used_bytes_start;
@@ -141,6 +142,7 @@ fn log_messages() {
                 NUM_POINTS as _,
                 build_some_positions2d(NUM_POINTS),
             )
+            .unwrap()
             .into_table(),
         );
         let table_bytes = live_bytes() - used_bytes_start;

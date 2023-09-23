@@ -275,7 +275,7 @@ impl<'a> ViewportBlueprint<'a> {
 // ----------------------------------------------------------------------------
 
 // TODO(jleibs): Move this helper to a better location
-pub fn add_delta_from_single_component<'a, C>(
+fn add_delta_from_single_component<'a, C>(
     deltas: &mut Vec<DataRow>,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
@@ -290,7 +290,8 @@ pub fn add_delta_from_single_component<'a, C>(
         timepoint.clone(),
         1,
         [component],
-    );
+    )
+    .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
 
     deltas.push(row);
 }
@@ -438,7 +439,7 @@ pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) 
     let cell =
         DataCell::from_arrow_empty(SpaceViewComponent::name(), SpaceViewComponent::data_type());
 
-    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell);
+    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell).unwrap();
 
     deltas.push(row);
 }

@@ -20,7 +20,8 @@ fn simple_range() {
         // Create some positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, positions);
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, positions)
+                .unwrap();
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
@@ -32,7 +33,8 @@ fn simple_range() {
             timepoint1,
             1,
             (color_instances, colors),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -47,7 +49,8 @@ fn simple_range() {
             timepoint2,
             1,
             (color_instances, colors),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -56,7 +59,8 @@ fn simple_range() {
         // Create some positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, positions);
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, positions)
+                .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -242,12 +246,14 @@ fn timeless_range() {
         // Create some positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
         let mut row =
-            DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint1, 2, &positions);
+            DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint1, 2, &positions)
+                .unwrap();
         row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let row = DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), [], 2, &positions);
+        let row = DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), [], 2, &positions)
+            .unwrap();
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
@@ -259,7 +265,8 @@ fn timeless_range() {
             timepoint1,
             1,
             (color_instances.clone(), colors.clone()),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
@@ -269,7 +276,8 @@ fn timeless_range() {
             [],
             1,
             (color_instances, colors),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -284,7 +292,8 @@ fn timeless_range() {
             timepoint2,
             1,
             (color_instances.clone(), colors.clone()),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
@@ -294,7 +303,8 @@ fn timeless_range() {
             timepoint2,
             1,
             (color_instances, colors),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -308,11 +318,13 @@ fn timeless_range() {
             timepoint3,
             2,
             &positions,
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let row = DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), [], 2, &positions);
+        let row = DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), [], 2, &positions)
+            .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -686,7 +698,8 @@ fn simple_splatted_range() {
         // Create some positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, positions);
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, positions)
+                .unwrap();
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
@@ -698,7 +711,8 @@ fn simple_splatted_range() {
             timepoint1,
             1,
             (color_instances, colors),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -713,7 +727,8 @@ fn simple_splatted_range() {
             timepoint2,
             1,
             (color_instances, colors),
-        );
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -722,7 +737,8 @@ fn simple_splatted_range() {
         // Create some positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, positions);
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, positions)
+                .unwrap();
         store.insert_row(&row).unwrap();
     }
 
