@@ -4,7 +4,7 @@ use macaw::IsoTransform;
 use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
-use re_types::archetypes::Pinhole;
+use re_types::{archetypes::Pinhole, components::ViewCoordinates};
 use re_viewer_context::{
     gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartCollection, ViewQuery, ViewerContext,
@@ -428,6 +428,7 @@ fn setup_target_config(
             )
             .into(),
             resolution: Some(canvas_size.into()),
+            camera_xyz: Some(ViewCoordinates::RDF),
         }
     });
 

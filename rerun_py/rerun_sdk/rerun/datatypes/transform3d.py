@@ -201,3 +201,7 @@ Transform3DType._ARRAY_TYPE = Transform3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Transform3DType())
+
+
+if hasattr(Transform3DExt, "deferred_patch_class"):
+    Transform3DExt.deferred_patch_class(Transform3D)

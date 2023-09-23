@@ -97,3 +97,7 @@ Scale3DType._ARRAY_TYPE = Scale3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Scale3DType())
+
+
+if hasattr(Scale3DExt, "deferred_patch_class"):
+    Scale3DExt.deferred_patch_class(Scale3D)

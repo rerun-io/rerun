@@ -11,11 +11,14 @@ namespace rerun {
 
         std::vector<AnonymousComponentBatch> Pinhole::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(2);
+            comp_batches.reserve(3);
 
             comp_batches.emplace_back(image_from_camera);
             if (resolution.has_value()) {
                 comp_batches.emplace_back(resolution.value());
+            }
+            if (camera_xyz.has_value()) {
+                comp_batches.emplace_back(camera_xyz.value());
             }
             comp_batches.emplace_back(
                 ComponentBatch<components::IndicatorComponent<Pinhole::INDICATOR_COMPONENT_NAME>>(

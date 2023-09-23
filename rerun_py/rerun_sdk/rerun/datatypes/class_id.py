@@ -74,3 +74,7 @@ ClassIdType._ARRAY_TYPE = ClassIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassIdType())
+
+
+if hasattr(ClassIdExt, "deferred_patch_class"):
+    ClassIdExt.deferred_patch_class(ClassId)

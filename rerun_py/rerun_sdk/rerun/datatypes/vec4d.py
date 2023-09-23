@@ -70,3 +70,7 @@ Vec4DType._ARRAY_TYPE = Vec4DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Vec4DType())
+
+
+if hasattr(Vec4DExt, "deferred_patch_class"):
+    Vec4DExt.deferred_patch_class(Vec4D)

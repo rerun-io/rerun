@@ -88,7 +88,7 @@ fn log_msg_from_file_path(
         entity_path,
         num_instances,
         cells,
-    );
+    )?;
 
     let data_table =
         re_log_types::DataTable::from_rows(re_log_types::TableId::random(), [data_row]);

@@ -14,9 +14,42 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// How we interpret the coordinate system of an entity/space.
+///
+/// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+///
+/// The three coordinates are always ordered as [x, y, z].
+///
+/// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+/// down, and the Z axis points forward.
+///
+/// ## Example
+///
+/// ```ignore
+/// //! Change the view coordinates for the scene.
+/// use rerun::{
+///     archetypes::{Arrows3D, ViewCoordinates},
+///     RecordingStreamBuilder,
+/// };
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_view_coordinates").memory()?;
+///
+///     rec.log("/", &ViewCoordinates::ULB)?;
+///     rec.log(
+///         "xyz",
+///         &Arrows3D::new(
+///             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], //
+///         )
+///         .with_colors([[255, 0, 0], [0, 255, 0], [0, 0, 255]]),
+///     )?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct ViewCoordinates {
-    pub coordinates: crate::components::ViewCoordinates,
+    pub xyz: crate::components::ViewCoordinates,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
@@ -80,7 +113,7 @@ impl crate::Archetype for ViewCoordinates {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
             Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.coordinates as &dyn crate::ComponentBatch).into()),
+            Some((&self.xyz as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -96,7 +129,7 @@ impl crate::Archetype for ViewCoordinates {
         use crate::{Loggable as _, ResultExt as _};
         Ok([{
             Some({
-                let array = <crate::components::ViewCoordinates>::try_to_arrow([&self.coordinates]);
+                let array = <crate::components::ViewCoordinates>::try_to_arrow([&self.xyz]);
                 array.map(|array| {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.ViewCoordinates".into(),
@@ -104,13 +137,13 @@ impl crate::Archetype for ViewCoordinates {
                         None,
                     );
                     (
-                        ::arrow2::datatypes::Field::new("coordinates", datatype, false),
+                        ::arrow2::datatypes::Field::new("xyz", datatype, false),
                         array,
                     )
                 })
             })
             .transpose()
-            .with_context("rerun.archetypes.ViewCoordinates#coordinates")?
+            .with_context("rerun.archetypes.ViewCoordinates#xyz")?
         }]
         .into_iter()
         .flatten()
@@ -128,27 +161,25 @@ impl crate::Archetype for ViewCoordinates {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let coordinates = {
+        let xyz = {
             let array = arrays_by_name
-                .get("coordinates")
+                .get("xyz")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ViewCoordinates#coordinates")?;
+                .with_context("rerun.archetypes.ViewCoordinates#xyz")?;
             <crate::components::ViewCoordinates>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.ViewCoordinates#coordinates")?
+                .with_context("rerun.archetypes.ViewCoordinates#xyz")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ViewCoordinates#coordinates")?
+                .with_context("rerun.archetypes.ViewCoordinates#xyz")?
         };
-        Ok(Self { coordinates })
+        Ok(Self { xyz })
     }
 }
 
 impl ViewCoordinates {
-    pub fn new(coordinates: impl Into<crate::components::ViewCoordinates>) -> Self {
-        Self {
-            coordinates: coordinates.into(),
-        }
+    pub fn new(xyz: impl Into<crate::components::ViewCoordinates>) -> Self {
+        Self { xyz: xyz.into() }
     }
 }

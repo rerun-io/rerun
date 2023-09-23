@@ -17,5 +17,5 @@ table DisconnectedSpace (
   "attr.rust.derive": "Copy, PartialEq, Eq",
   order: 100
 ) {
-  disconnected_space: rerun.components.DisconnectedSpace ("attr.rerun.component_required", required, order: 1000);
+  disconnected_space: rerun.components.DisconnectedSpace ("attr.rerun.component_required", order: 1000);
 }

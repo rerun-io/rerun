@@ -14,7 +14,7 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
-    components::{Color, DrawOrder, TensorData},
+    components::{Color, DrawOrder, TensorData, ViewCoordinates},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype as _, ComponentNameSet,
 };
@@ -517,12 +517,6 @@ impl ImagesPart {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 
-        let view_coordinates = crate::contexts::pinhole_camera_view_coordinates(
-            ctx.store_db.store(),
-            &ctx.current_query(),
-            parent_pinhole_path,
-        );
-
         // TODO(cmc): getting to those extrinsics is no easy task :|
         let world_from_view = parent_pinhole_path
             .parent()
@@ -530,8 +524,13 @@ impl ImagesPart {
         let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };
-        let world_from_rdf =
-            world_from_view * glam::Affine3A::from_mat3(view_coordinates.from_rdf());
+        let world_from_rdf = world_from_view
+            * glam::Affine3A::from_mat3(
+                intrinsics
+                    .camera_xyz
+                    .unwrap_or(ViewCoordinates::RDF) // TODO(#2641): This should come from archetype
+                    .from_rdf(),
+            );
 
         let Some([height, width, _]) = tensor.image_height_width_channels() else {
             anyhow::bail!("Tensor at {ent_path:?} is not an image");

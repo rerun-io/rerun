@@ -331,6 +331,7 @@ fn build_table(n: usize, packed: bool) -> DataTable {
                 n as _,
                 (build_some_instances(n), build_some_large_structs(n)),
             )
+            .unwrap()
         }),
     );
 

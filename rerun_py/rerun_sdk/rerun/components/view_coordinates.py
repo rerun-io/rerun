@@ -95,3 +95,7 @@ ViewCoordinatesType._ARRAY_TYPE = ViewCoordinatesArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ViewCoordinatesType())
+
+
+if hasattr(ViewCoordinatesExt, "deferred_patch_class"):
+    ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

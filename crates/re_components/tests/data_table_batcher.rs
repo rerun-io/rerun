@@ -19,7 +19,7 @@ fn manual_trigger() {
         assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
 
         for row in expected.to_rows() {
-            batcher.push_row(row);
+            batcher.push_row(row.unwrap());
         }
 
         assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
@@ -48,7 +48,7 @@ fn shutdown_trigger() {
     let tables = batcher.tables();
 
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows: Vec<_> = table.to_rows().try_collect().unwrap();
 
     for _ in 0..3 {
         assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
@@ -86,7 +86,7 @@ fn shutdown_trigger() {
 #[test]
 fn num_bytes_trigger() {
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows: Vec<_> = table.to_rows().try_collect().unwrap();
     let flush_duration = std::time::Duration::from_millis(50);
     let flush_num_bytes = rows
         .iter()
@@ -105,7 +105,7 @@ fn num_bytes_trigger() {
     assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
 
     for row in table.to_rows() {
-        batcher.push_row(row);
+        batcher.push_row(row.unwrap());
     }
 
     // Expect all rows except for the last one (num_bytes trigger).
@@ -148,7 +148,7 @@ fn num_bytes_trigger() {
 #[test]
 fn num_rows_trigger() {
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows: Vec<_> = table.to_rows().try_collect().unwrap();
     let flush_duration = std::time::Duration::from_millis(50);
     let flush_num_rows = rows.len() as u64 - 1;
 
@@ -163,7 +163,7 @@ fn num_rows_trigger() {
     assert_eq!(Err(TryRecvError::Empty), tables.try_recv());
 
     for row in table.to_rows() {
-        batcher.push_row(row);
+        batcher.push_row(row.unwrap());
     }
 
     // Expect all rows except for the last one.
@@ -206,7 +206,7 @@ fn num_rows_trigger() {
 #[test]
 fn duration_trigger() {
     let table = create_table();
-    let rows = table.to_rows().collect_vec();
+    let rows: Vec<_> = table.to_rows().try_collect().unwrap();
 
     let flush_duration = std::time::Duration::from_millis(50);
 
@@ -292,13 +292,14 @@ fn create_table() -> DataTable {
             num_instances,
             (positions, colors, labels),
         )
+        .unwrap()
     };
 
     let row1 = {
         let num_instances = 0;
         let colors: &[Color] = &[];
 
-        DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors)
+        DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors).unwrap()
     };
 
     let row2 = {
@@ -313,6 +314,7 @@ fn create_table() -> DataTable {
             num_instances,
             (colors, labels),
         )
+        .unwrap()
     };
 
     let mut table = DataTable::from_rows(TableId::ZERO, [row0, row1, row2]);

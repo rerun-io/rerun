@@ -66,3 +66,7 @@ RadiusType._ARRAY_TYPE = RadiusArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(RadiusType())
+
+
+if hasattr(RadiusExt, "deferred_patch_class"):
+    RadiusExt.deferred_patch_class(Radius)

@@ -218,12 +218,12 @@ fn get_global_color(json: &serde_json::Value, global_path: &str) -> egui::Color3
 }
 
 fn get_alias_str<'json>(json: &'json serde_json::Value, alias_path: &str) -> &'json str {
-    let global_path = follow_path_or_die(json, alias_path).as_str().unwrap();
+    let global_path = follow_path_or_panic(json, alias_path).as_str().unwrap();
     global_path_value(json, global_path).as_str().unwrap()
 }
 
 fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_path: &str) -> T {
-    let global_path = follow_path_or_die(json, alias_path).as_str().unwrap();
+    let global_path = follow_path_or_panic(json, alias_path).as_str().unwrap();
     let global_value = global_path_value(json, global_path);
     serde_json::from_value(global_value.clone()).unwrap_or_else(|err| {
         panic!(
@@ -237,10 +237,12 @@ fn global_path_value<'json>(
     value: &'json serde_json::Value,
     global_path: &str,
 ) -> &'json serde_json::Value {
-    follow_path_or_die(value, global_path).get("value").unwrap()
+    follow_path_or_panic(value, global_path)
+        .get("value")
+        .unwrap()
 }
 
-fn follow_path_or_die<'json>(
+fn follow_path_or_panic<'json>(
     json: &'json serde_json::Value,
     json_path: &str,
 ) -> &'json serde_json::Value {

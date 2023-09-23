@@ -23,7 +23,11 @@ if TYPE_CHECKING:
 class Transform3DExt:
     @staticmethod
     def native_to_pa_array_override(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
+        from ..datatypes import Transform3DArray
         from . import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
+
+        if isinstance(data, Transform3DArray):
+            return data.storage
 
         if isinstance(data, Transform3D):
             data = data.inner

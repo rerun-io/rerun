@@ -112,13 +112,14 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
             num_instances,
             (positions, colors, labels),
         )
+        .unwrap()
     };
 
     let row1 = {
         let num_instances = 0;
         let colors: &[Color] = &[];
 
-        DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors)
+        DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors).unwrap()
     };
 
     let row2 = {
@@ -133,6 +134,7 @@ pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
             num_instances,
             (colors, labels),
         )
+        .unwrap()
     };
 
     let mut table = DataTable::from_rows(table_id, [row0, row1, row2]);

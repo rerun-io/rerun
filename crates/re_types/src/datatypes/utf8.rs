@@ -14,7 +14,7 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A string of text, encoded as UTF-8.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct Utf8(pub crate::ArrowString);
 

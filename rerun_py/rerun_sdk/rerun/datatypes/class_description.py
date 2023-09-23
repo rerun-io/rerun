@@ -157,3 +157,7 @@ ClassDescriptionType._ARRAY_TYPE = ClassDescriptionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassDescriptionType())
+
+
+if hasattr(ClassDescriptionExt, "deferred_patch_class"):
+    ClassDescriptionExt.deferred_patch_class(ClassDescription)

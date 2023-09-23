@@ -9,6 +9,7 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
+from .blob import Blob, BlobArray, BlobArrayLike, BlobLike, BlobType
 from .class_id import ClassId, ClassIdArray, ClassIdType
 from .clear_settings import (
     ClearSettings,
@@ -38,6 +39,7 @@ from .media_type import MediaType, MediaTypeArray, MediaTypeType
 from .mesh_properties import MeshProperties, MeshPropertiesArray, MeshPropertiesType
 from .origin2d import Origin2D, Origin2DArray, Origin2DType
 from .origin3d import Origin3D, Origin3DArray, Origin3DType
+from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DArray, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionArray, PinholeProjectionType
 from .position2d import Position2D, Position2DArray, Position2DType
 from .position3d import Position3D, Position3DArray, Position3DType
@@ -71,6 +73,11 @@ __all__ = [
     "AnnotationContextArrayLike",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "Blob",
+    "BlobArray",
+    "BlobArrayLike",
+    "BlobLike",
+    "BlobType",
     "ClassId",
     "ClassIdArray",
     "ClassIdType",
@@ -136,6 +143,9 @@ __all__ = [
     "Origin3D",
     "Origin3DArray",
     "Origin3DType",
+    "OutOfTreeTransform3D",
+    "OutOfTreeTransform3DArray",
+    "OutOfTreeTransform3DType",
     "PinholeProjection",
     "PinholeProjectionArray",
     "PinholeProjectionType",

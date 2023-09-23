@@ -17,7 +17,7 @@ def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesArray:
     return rrc.ViewCoordinatesArray.from_similar(expected)
 
 
-VIEW_COORDINATES_INPUTS: list[rrc.ViewCoordinatesLike | None] = [
+VIEW_COORDINATES_INPUTS: list[rrc.ViewCoordinatesArrayLike | None] = [
     None,
     rrc.ViewCoordinates(
         [
@@ -31,8 +31,8 @@ VIEW_COORDINATES_INPUTS: list[rrc.ViewCoordinatesLike | None] = [
         rrc.ViewCoordinates.ViewDir.Down,
         rrc.ViewCoordinates.ViewDir.Forward,
     ],
-    ViewCoordinates.RDF,
-    [ViewCoordinates.RDF],
+    rrc.ViewCoordinates.RDF,
+    [rrc.ViewCoordinates.RDF],
 ]
 
 
@@ -46,4 +46,4 @@ def test_view_coordinates() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.coordinates == view_coordinates_expected(coordinates)
+        assert arch.xyz == view_coordinates_expected(coordinates)

@@ -73,3 +73,7 @@ MaterialType._ARRAY_TYPE = MaterialArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MaterialType())
+
+
+if hasattr(MaterialExt, "deferred_patch_class"):
+    MaterialExt.deferred_patch_class(Material)

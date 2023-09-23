@@ -3,6 +3,9 @@
 mod annotation_context;
 mod arrows3d;
 mod arrows3d_ext;
+mod asset3d;
+mod asset3d_ext;
+mod bar_chart;
 mod boxes2d;
 mod boxes2d_ext;
 mod boxes3d;
@@ -35,6 +38,8 @@ mod view_coordinates_ext;
 
 pub use self::annotation_context::AnnotationContext;
 pub use self::arrows3d::Arrows3D;
+pub use self::asset3d::Asset3D;
+pub use self::bar_chart::BarChart;
 pub use self::boxes2d::Boxes2D;
 pub use self::boxes3d::Boxes3D;
 pub use self::clear::Clear;

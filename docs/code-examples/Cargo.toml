@@ -24,6 +24,18 @@ name = "arrow3d_simple"
 path = "arrow3d_simple.rs"
 
 [[bin]]
+name = "bar_chart"
+path = "bar_chart.rs"
+
+[[bin]]
+name = "asset3d_simple"
+path = "asset3d_simple.rs"
+
+[[bin]]
+name = "asset3d_out_of_tree"
+path = "asset3d_out_of_tree.rs"
+
+[[bin]]
 name = "box3d_simple"
 path = "box3d_simple.rs"
 
@@ -151,6 +163,9 @@ path = "text_log.rs"
 name = "transform3d_simple"
 path = "transform3d_simple.rs"
 
+[[bin]]
+name = "view_coordinates_simple"
+path = "view_coordinates_simple.rs"
 
 [dependencies]
 ndarray.workspace = true

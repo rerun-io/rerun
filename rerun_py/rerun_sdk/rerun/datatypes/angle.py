@@ -82,3 +82,7 @@ AngleType._ARRAY_TYPE = AngleArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AngleType())
+
+
+if hasattr(AngleExt, "deferred_patch_class"):
+    AngleExt.deferred_patch_class(Angle)

@@ -66,3 +66,7 @@ InstanceKeyType._ARRAY_TYPE = InstanceKeyArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(InstanceKeyType())
+
+
+if hasattr(InstanceKeyExt, "deferred_patch_class"):
+    InstanceKeyExt.deferred_patch_class(InstanceKey)
