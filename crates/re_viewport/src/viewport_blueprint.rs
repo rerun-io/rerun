@@ -275,7 +275,7 @@ impl<'a> ViewportBlueprint<'a> {
 // ----------------------------------------------------------------------------
 
 // TODO(jleibs): Move this helper to a better location
-pub fn add_delta_from_single_component<'a, C>(
+fn add_delta_from_single_component<'a, C>(
     deltas: &mut Vec<DataRow>,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
@@ -291,7 +291,7 @@ pub fn add_delta_from_single_component<'a, C>(
         1,
         [component],
     )
-    .unwrap();
+    .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
 
     deltas.push(row);
 }

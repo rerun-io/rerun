@@ -801,7 +801,7 @@ fn set_panel(
         1,
         [panel_state].as_slice(),
     )
-    .unwrap();
+    .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;

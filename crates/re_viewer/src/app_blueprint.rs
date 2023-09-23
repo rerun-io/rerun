@@ -93,12 +93,12 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut StoreDb) {
 
         let row =
             DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component])
-                .unwrap();
+                .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
         welcome_screen_blueprint
             .entity_db
             .try_add_data_row(&row)
-            .unwrap();
+            .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
     }
 }
 
@@ -120,7 +120,7 @@ impl<'a> AppBlueprint<'a> {
 
             let row =
                 DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component])
-                    .unwrap();
+                    .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 blueprint_db.store_id().clone(),
