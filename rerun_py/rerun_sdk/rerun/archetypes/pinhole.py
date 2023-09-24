@@ -91,7 +91,7 @@ class Pinhole(PinholeExt, Archetype):
     NOTE: setting this to something else than "RDF" (the default) will change the orientation of the camera frustum,
     and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
 
-    The pinhole matrix (the `child_from_parent` argument) always project along the third (Z) axis,
+    The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
     but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
     """
 

@@ -92,7 +92,7 @@ namespace rerun {
             /// orientation of the camera frustum, and make the pinhole matrix not match up with the
             /// coordinate system of the pinhole entity.
             ///
-            /// The pinhole matrix (the `child_from_parent` argument) always project along the third
+            /// The pinhole matrix (the `image_from_camera` argument) always project along the third
             /// (Z) axis, but will be re-oriented to project along the forward axis of the
             /// `camera_xyz` argument.
             std::optional<rerun::components::ViewCoordinates> camera_xyz;
@@ -160,7 +160,7 @@ namespace rerun {
             /// orientation of the camera frustum, and make the pinhole matrix not match up with the
             /// coordinate system of the pinhole entity.
             ///
-            /// The pinhole matrix (the `child_from_parent` argument) always project along the third
+            /// The pinhole matrix (the `image_from_camera` argument) always project along the third
             /// (Z) axis, but will be re-oriented to project along the forward axis of the
             /// `camera_xyz` argument.
             Pinhole& with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) {

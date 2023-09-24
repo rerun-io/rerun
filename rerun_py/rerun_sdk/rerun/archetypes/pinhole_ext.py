@@ -6,6 +6,7 @@ import numpy.typing as npt
 
 from rerun.error_utils import _send_warning
 
+from ..components import ViewCoordinatesLike
 from ..datatypes.mat3x3 import Mat3x3Like
 from ..datatypes.vec2d import Vec2D, Vec2DLike
 
@@ -24,6 +25,31 @@ class PinholeExt:
     resolution:
         Pixel resolution (usually integers) of child image space. Width and height.
         `image_from_camera` projects onto the space spanned by `(0,0)` and `resolution - 1`.
+    camera_xyz:
+        Sets the view coordinates for the camera.
+        The default is "RDF", i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
+        This means that the camera frustum will point along the positive Z axis of the parent space,
+        and the cameras "up" direction will be along the negative Y axis of the parent space.
+
+        The camera frustum will point whichever axis is set to `F` (or the oppositve of `B`).
+        When logging a depth image under this entity, this is the direction the point cloud will be projected.
+        With XYZ=RDF, the default forward is +Z.
+
+        The frustum's "up" direction will be whichever axis is set to `U` (or the oppositve of `D`).
+        This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
+        With RDF, the default is up is -Y.
+
+        The frustum's "right" direction will be whichever axis is set to `R` (or the oppositve of `L`).
+        This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
+        With RDF, the default right is +x.
+
+        Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left, Z=Up).
+
+        NOTE: setting this to something else than "RDF" (the default) will change the orientation of the camera frustum,
+        and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
+
+        The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
+        but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
     focal_length:
         The focal length of the camera in pixels.
         This is the diagonal of the projection matrix.
@@ -43,6 +69,7 @@ class PinholeExt:
         self: Any,
         image_from_camera: Mat3x3Like | None = None,
         resolution: Vec2DLike | None = None,
+        camera_xyz: ViewCoordinatesLike | None = None,
         width: int | float | None = None,
         height: int | float | None = None,
         focal_length: float | npt.ArrayLike | None = None,
@@ -95,4 +122,4 @@ class PinholeExt:
             if principal_point is not None:
                 _send_warning("Both image_from_camera and principal_point set", 1)
 
-        self.__attrs_init__(image_from_camera=image_from_camera, resolution=resolution)
+        self.__attrs_init__(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)
