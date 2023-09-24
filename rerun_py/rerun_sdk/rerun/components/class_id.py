@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["ClassId", "ClassIdArray", "ClassIdType"]
+__all__ = ["ClassId", "ClassIdBatch", "ClassIdType"]
 
 
 class ClassId(datatypes.ClassId):
@@ -23,18 +20,13 @@ class ClassId(datatypes.ClassId):
     pass
 
 
-class ClassIdType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.ClassId"
-    _DELEGATED_EXTENSION_TYPE = datatypes.ClassIdType
+class ClassIdType(datatypes.ClassIdType):
+    _TYPE_NAME: str = "rerun.components.ClassId"
 
 
-class ClassIdArray(BaseDelegatingExtensionArray[datatypes.ClassIdArrayLike]):
-    _EXTENSION_NAME = "rerun.components.ClassId"
-    _EXTENSION_TYPE = ClassIdType
-    _DELEGATED_ARRAY_TYPE = datatypes.ClassIdArray
+class ClassIdBatch(datatypes.ClassIdBatch, ComponentBatchMixin):
+    _ARROW_TYPE = ClassIdType()
 
-
-ClassIdType._ARRAY_TYPE = ClassIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassIdType())

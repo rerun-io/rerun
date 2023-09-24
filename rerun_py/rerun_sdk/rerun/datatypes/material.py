@@ -11,13 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .material_ext import MaterialExt
 
-__all__ = ["Material", "MaterialArray", "MaterialArrayLike", "MaterialLike", "MaterialType"]
+__all__ = ["Material", "MaterialArrayLike", "MaterialBatch", "MaterialLike", "MaterialType"]
 
 
 def _material__albedo_factor__special_field_converter_override(x: datatypes.ColorLike | None) -> datatypes.Color | None:
@@ -48,28 +45,22 @@ MaterialArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class MaterialType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Material"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.struct([pa.field("albedo_factor", pa.uint32(), nullable=True, metadata={})]),
-            "rerun.datatypes.Material",
+            self, pa.struct([pa.field("albedo_factor", pa.uint32(), nullable=True, metadata={})]), self._TYPE_NAME
         )
 
 
-class MaterialArray(BaseExtensionArray[MaterialArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Material"
-    _EXTENSION_TYPE = MaterialType
+class MaterialBatch(BaseBatch[MaterialArrayLike]):
+    _ARROW_TYPE = MaterialType()
 
     @staticmethod
     def _native_to_pa_array(data: MaterialArrayLike, data_type: pa.DataType) -> pa.Array:
         return MaterialExt.native_to_pa_array_override(data, data_type)
 
-
-MaterialType._ARRAY_TYPE = MaterialArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MaterialType())

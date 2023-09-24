@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .clear_settings_ext import ClearSettingsExt
 
-__all__ = ["ClearSettings", "ClearSettingsArray", "ClearSettingsArrayLike", "ClearSettingsLike", "ClearSettingsType"]
+__all__ = ["ClearSettings", "ClearSettingsArrayLike", "ClearSettingsBatch", "ClearSettingsLike", "ClearSettingsType"]
 
 
 @define
@@ -41,24 +38,20 @@ else:
 ClearSettingsArrayLike = Union[ClearSettings, Sequence[ClearSettingsLike], bool, npt.NDArray[np.bool_]]
 
 
-# --- Arrow support ---
-
-
 class ClearSettingsType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.ClearSettings"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.bool_(), "rerun.components.ClearSettings")
+        pa.ExtensionType.__init__(self, pa.bool_(), self._TYPE_NAME)
 
 
-class ClearSettingsArray(BaseExtensionArray[ClearSettingsArrayLike]):
-    _EXTENSION_NAME = "rerun.components.ClearSettings"
-    _EXTENSION_TYPE = ClearSettingsType
+class ClearSettingsBatch(BaseBatch[ClearSettingsArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = ClearSettingsType()
 
     @staticmethod
     def _native_to_pa_array(data: ClearSettingsArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClearSettingsExt.native_to_pa_array_override(data, data_type)
 
-
-ClearSettingsType._ARRAY_TYPE = ClearSettingsArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClearSettingsType())

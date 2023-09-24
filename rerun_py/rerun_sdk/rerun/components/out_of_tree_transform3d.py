@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["OutOfTreeTransform3D", "OutOfTreeTransform3DArray", "OutOfTreeTransform3DType"]
+__all__ = ["OutOfTreeTransform3D", "OutOfTreeTransform3DBatch", "OutOfTreeTransform3DType"]
 
 
 class OutOfTreeTransform3D(datatypes.Transform3D):
@@ -27,18 +24,13 @@ class OutOfTreeTransform3D(datatypes.Transform3D):
     pass
 
 
-class OutOfTreeTransform3DType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.OutOfTreeTransform3D"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Transform3DType
+class OutOfTreeTransform3DType(datatypes.Transform3DType):
+    _TYPE_NAME: str = "rerun.components.OutOfTreeTransform3D"
 
 
-class OutOfTreeTransform3DArray(BaseDelegatingExtensionArray[datatypes.Transform3DArrayLike]):
-    _EXTENSION_NAME = "rerun.components.OutOfTreeTransform3D"
-    _EXTENSION_TYPE = OutOfTreeTransform3DType
-    _DELEGATED_ARRAY_TYPE = datatypes.Transform3DArray
+class OutOfTreeTransform3DBatch(datatypes.Transform3DBatch, ComponentBatchMixin):
+    _ARROW_TYPE = OutOfTreeTransform3DType()
 
-
-OutOfTreeTransform3DType._ARRAY_TYPE = OutOfTreeTransform3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(OutOfTreeTransform3DType())

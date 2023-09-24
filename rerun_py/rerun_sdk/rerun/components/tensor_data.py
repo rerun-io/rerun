@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["TensorData", "TensorDataArray", "TensorDataType"]
+__all__ = ["TensorData", "TensorDataBatch", "TensorDataType"]
 
 
 class TensorData(datatypes.TensorData):
@@ -21,18 +18,13 @@ class TensorData(datatypes.TensorData):
     pass
 
 
-class TensorDataType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.TensorData"
-    _DELEGATED_EXTENSION_TYPE = datatypes.TensorDataType
+class TensorDataType(datatypes.TensorDataType):
+    _TYPE_NAME: str = "rerun.components.TensorData"
 
 
-class TensorDataArray(BaseDelegatingExtensionArray[datatypes.TensorDataArrayLike]):
-    _EXTENSION_NAME = "rerun.components.TensorData"
-    _EXTENSION_TYPE = TensorDataType
-    _DELEGATED_ARRAY_TYPE = datatypes.TensorDataArray
+class TensorDataBatch(datatypes.TensorDataBatch, ComponentBatchMixin):
+    _ARROW_TYPE = TensorDataType()
 
-
-TensorDataType._ARRAY_TYPE = TensorDataArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TensorDataType())

@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["Mesh3D"]
 
@@ -72,9 +70,9 @@ class Mesh3D(Archetype):
 
     # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
 
-    vertex_positions: components.Position3DArray = field(
+    vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position3DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position3DBatch,  # type: ignore[misc]
     )
     """
     The positions of each vertex.
@@ -82,19 +80,19 @@ class Mesh3D(Archetype):
     If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
     """
 
-    mesh_properties: components.MeshPropertiesArray | None = field(
+    mesh_properties: components.MeshPropertiesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MeshPropertiesArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.MeshPropertiesBatch._optional,  # type: ignore[misc]
     )
     """
     Optional properties for the mesh as a whole (including indexed drawing).
     """
 
-    vertex_normals: components.Vector3DArray | None = field(
+    vertex_normals: components.Vector3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Vector3DArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.Vector3DBatch._optional,  # type: ignore[misc]
     )
     """
     An optional normal for each vertex.
@@ -102,28 +100,28 @@ class Mesh3D(Archetype):
     If specified, this must have as many elements as `vertex_positions`.
     """
 
-    vertex_colors: components.ColorArray | None = field(
+    vertex_colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     An optional color for each vertex.
     """
 
-    mesh_material: components.MaterialArray | None = field(
+    mesh_material: components.MaterialBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MaterialArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.MaterialBatch._optional,  # type: ignore[misc]
     )
     """
     Optional material properties for the mesh as a whole.
     """
 
-    class_ids: components.ClassIdArray | None = field(
+    class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional class Ids for the vertices.
@@ -131,10 +129,10 @@ class Mesh3D(Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
+    instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual vertex in the mesh.

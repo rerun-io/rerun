@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .keypoint_id_ext import KeypointIdExt
 
-__all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
+__all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLike", "KeypointIdType"]
 
 
 @define
@@ -60,24 +57,20 @@ KeypointIdArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class KeypointIdType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.KeypointId"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.datatypes.KeypointId")
+        pa.ExtensionType.__init__(self, pa.uint16(), self._TYPE_NAME)
 
 
-class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.KeypointId"
-    _EXTENSION_TYPE = KeypointIdType
+class KeypointIdBatch(BaseBatch[KeypointIdArrayLike]):
+    _ARROW_TYPE = KeypointIdType()
 
     @staticmethod
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
         return KeypointIdExt.native_to_pa_array_override(data, data_type)
 
-
-KeypointIdType._ARRAY_TYPE = KeypointIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(KeypointIdType())

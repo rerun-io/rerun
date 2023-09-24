@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["Points2D"]
 
@@ -37,27 +35,27 @@ class Points2D(Archetype):
 
     # You can define your own __init__ function as a member of Points2DExt in points2d_ext.py
 
-    positions: components.Position2DArray = field(
+    positions: components.Position2DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position2DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position2DBatch,  # type: ignore[misc]
     )
     """
     All the 2D positions at which the point cloud shows points.
     """
 
-    radii: components.RadiusArray | None = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     Optional radii for the points, effectively turning them into circles.
     """
 
-    colors: components.ColorArray | None = field(
+    colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional colors for the points.
@@ -66,29 +64,29 @@ class Points2D(Archetype):
     As either 0-1 floats or 0-255 integers, with separate alpha.
     """
 
-    labels: components.TextArray | None = field(
+    labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     Optional text labels for the points.
     """
 
-    draw_order: components.DrawOrderArray | None = field(
+    draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.
     """
 
-    class_ids: components.ClassIdArray | None = field(
+    class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional class Ids for the points.
@@ -96,10 +94,10 @@ class Points2D(Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    keypoint_ids: components.KeypointIdArray | None = field(
+    keypoint_ids: components.KeypointIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.KeypointIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.KeypointIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional keypoint IDs for the points, identifying them within a class.
@@ -112,10 +110,10 @@ class Points2D(Archetype):
     detected skeleton.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
+    instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual point in the batch.

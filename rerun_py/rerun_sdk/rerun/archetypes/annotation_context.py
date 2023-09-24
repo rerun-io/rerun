@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["AnnotationContext"]
 
@@ -47,9 +45,9 @@ class AnnotationContext(Archetype):
 
     # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
 
-    context: components.AnnotationContextArray = field(
+    context: components.AnnotationContextBatch = field(
         metadata={"component": "required"},
-        converter=components.AnnotationContextArray.from_similar,  # type: ignore[misc]
+        converter=components.AnnotationContextBatch,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["Position2D", "Position2DArray", "Position2DType"]
+__all__ = ["Position2D", "Position2DBatch", "Position2DType"]
 
 
 class Position2D(datatypes.Vec2D):
@@ -23,18 +20,13 @@ class Position2D(datatypes.Vec2D):
     pass
 
 
-class Position2DType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.Position2D"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Vec2DType
+class Position2DType(datatypes.Vec2DType):
+    _TYPE_NAME: str = "rerun.components.Position2D"
 
 
-class Position2DArray(BaseDelegatingExtensionArray[datatypes.Vec2DArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Position2D"
-    _EXTENSION_TYPE = Position2DType
-    _DELEGATED_ARRAY_TYPE = datatypes.Vec2DArray
+class Position2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
+    _ARROW_TYPE = Position2DType()
 
-
-Position2DType._ARRAY_TYPE = Position2DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Position2DType())

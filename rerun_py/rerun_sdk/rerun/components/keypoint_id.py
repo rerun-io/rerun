@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["KeypointId", "KeypointIdArray", "KeypointIdType"]
+__all__ = ["KeypointId", "KeypointIdBatch", "KeypointIdType"]
 
 
 class KeypointId(datatypes.KeypointId):
@@ -30,18 +27,13 @@ class KeypointId(datatypes.KeypointId):
     pass
 
 
-class KeypointIdType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.KeypointId"
-    _DELEGATED_EXTENSION_TYPE = datatypes.KeypointIdType
+class KeypointIdType(datatypes.KeypointIdType):
+    _TYPE_NAME: str = "rerun.components.KeypointId"
 
 
-class KeypointIdArray(BaseDelegatingExtensionArray[datatypes.KeypointIdArrayLike]):
-    _EXTENSION_NAME = "rerun.components.KeypointId"
-    _EXTENSION_TYPE = KeypointIdType
-    _DELEGATED_ARRAY_TYPE = datatypes.KeypointIdArray
+class KeypointIdBatch(datatypes.KeypointIdBatch, ComponentBatchMixin):
+    _ARROW_TYPE = KeypointIdType()
 
-
-KeypointIdType._ARRAY_TYPE = KeypointIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(KeypointIdType())

@@ -13,13 +13,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .line_strip2d_ext import LineStrip2DExt
 
-__all__ = ["LineStrip2D", "LineStrip2DArray", "LineStrip2DArrayLike", "LineStrip2DLike", "LineStrip2DType"]
+__all__ = ["LineStrip2D", "LineStrip2DArrayLike", "LineStrip2DBatch", "LineStrip2DLike", "LineStrip2DType"]
 
 
 @define
@@ -52,10 +49,9 @@ else:
 LineStrip2DArrayLike = Union[LineStrip2D, Sequence[LineStrip2DLike], npt.NDArray[np.float32]]
 
 
-# --- Arrow support ---
-
-
 class LineStrip2DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.LineStrip2D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -67,20 +63,17 @@ class LineStrip2DType(BaseExtensionType):
                     metadata={},
                 )
             ),
-            "rerun.components.LineStrip2D",
+            self._TYPE_NAME,
         )
 
 
-class LineStrip2DArray(BaseExtensionArray[LineStrip2DArrayLike]):
-    _EXTENSION_NAME = "rerun.components.LineStrip2D"
-    _EXTENSION_TYPE = LineStrip2DType
+class LineStrip2DBatch(BaseBatch[LineStrip2DArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = LineStrip2DType()
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
         return LineStrip2DExt.native_to_pa_array_override(data, data_type)
 
-
-LineStrip2DType._ARRAY_TYPE = LineStrip2DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(LineStrip2DType())

@@ -11,16 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .translation_rotation_scale3d_ext import TranslationRotationScale3DExt
 
 __all__ = [
     "TranslationRotationScale3D",
-    "TranslationRotationScale3DArray",
     "TranslationRotationScale3DArrayLike",
+    "TranslationRotationScale3DBatch",
     "TranslationRotationScale3DLike",
     "TranslationRotationScale3DType",
 ]
@@ -90,10 +87,9 @@ TranslationRotationScale3DArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class TranslationRotationScale3DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.TranslationRotationScale3D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -172,20 +168,17 @@ class TranslationRotationScale3DType(BaseExtensionType):
                     pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
                 ]
             ),
-            "rerun.datatypes.TranslationRotationScale3D",
+            self._TYPE_NAME,
         )
 
 
-class TranslationRotationScale3DArray(BaseExtensionArray[TranslationRotationScale3DArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.TranslationRotationScale3D"
-    _EXTENSION_TYPE = TranslationRotationScale3DType
+class TranslationRotationScale3DBatch(BaseBatch[TranslationRotationScale3DArrayLike]):
+    _ARROW_TYPE = TranslationRotationScale3DType()
 
     @staticmethod
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_rotation_scale3d_ext.py
 
-
-TranslationRotationScale3DType._ARRAY_TYPE = TranslationRotationScale3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TranslationRotationScale3DType())

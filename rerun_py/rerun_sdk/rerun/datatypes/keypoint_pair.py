@@ -11,13 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .keypoint_pair_ext import KeypointPairExt
 
-__all__ = ["KeypointPair", "KeypointPairArray", "KeypointPairArrayLike", "KeypointPairLike", "KeypointPairType"]
+__all__ = ["KeypointPair", "KeypointPairArrayLike", "KeypointPairBatch", "KeypointPairLike", "KeypointPairType"]
 
 
 def _keypoint_pair__keypoint0__special_field_converter_override(x: datatypes.KeypointIdLike) -> datatypes.KeypointId:
@@ -55,10 +52,9 @@ KeypointPairArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class KeypointPairType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.KeypointPair"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -68,20 +64,17 @@ class KeypointPairType(BaseExtensionType):
                     pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
                 ]
             ),
-            "rerun.datatypes.KeypointPair",
+            self._TYPE_NAME,
         )
 
 
-class KeypointPairArray(BaseExtensionArray[KeypointPairArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.KeypointPair"
-    _EXTENSION_TYPE = KeypointPairType
+class KeypointPairBatch(BaseBatch[KeypointPairArrayLike]):
+    _ARROW_TYPE = KeypointPairType()
 
     @staticmethod
     def _native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
         return KeypointPairExt.native_to_pa_array_override(data, data_type)
 
-
-KeypointPairType._ARRAY_TYPE = KeypointPairArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(KeypointPairType())

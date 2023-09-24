@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .scalar_scattering_ext import ScalarScatteringExt
 
 __all__ = [
     "ScalarScattering",
-    "ScalarScatteringArray",
     "ScalarScatteringArrayLike",
+    "ScalarScatteringBatch",
     "ScalarScatteringLike",
     "ScalarScatteringType",
 ]
@@ -44,24 +41,20 @@ else:
 ScalarScatteringArrayLike = Union[ScalarScattering, Sequence[ScalarScatteringLike], bool, npt.NDArray[np.bool_]]
 
 
-# --- Arrow support ---
-
-
 class ScalarScatteringType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.ScalarScattering"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.bool_(), "rerun.components.ScalarScattering")
+        pa.ExtensionType.__init__(self, pa.bool_(), self._TYPE_NAME)
 
 
-class ScalarScatteringArray(BaseExtensionArray[ScalarScatteringArrayLike]):
-    _EXTENSION_NAME = "rerun.components.ScalarScattering"
-    _EXTENSION_TYPE = ScalarScatteringType
+class ScalarScatteringBatch(BaseBatch[ScalarScatteringArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = ScalarScatteringType()
 
     @staticmethod
     def _native_to_pa_array(data: ScalarScatteringArrayLike, data_type: pa.DataType) -> pa.Array:
         return ScalarScatteringExt.native_to_pa_array_override(data, data_type)
 
-
-ScalarScatteringType._ARRAY_TYPE = ScalarScatteringArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ScalarScatteringType())

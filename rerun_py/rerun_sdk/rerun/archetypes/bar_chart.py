@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .bar_chart_ext import BarChartExt
 
 __all__ = ["BarChart"]
@@ -37,7 +35,7 @@ class BarChart(BarChartExt, Archetype):
 
     # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
 
-    values: components.TensorDataArray = field(
+    values: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )

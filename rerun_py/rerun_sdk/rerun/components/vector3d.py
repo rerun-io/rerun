@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["Vector3D", "Vector3DArray", "Vector3DType"]
+__all__ = ["Vector3D", "Vector3DBatch", "Vector3DType"]
 
 
 class Vector3D(datatypes.Vec3D):
@@ -23,18 +20,13 @@ class Vector3D(datatypes.Vec3D):
     pass
 
 
-class Vector3DType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.Vector3D"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Vec3DType
+class Vector3DType(datatypes.Vec3DType):
+    _TYPE_NAME: str = "rerun.components.Vector3D"
 
 
-class Vector3DArray(BaseDelegatingExtensionArray[datatypes.Vec3DArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Vector3D"
-    _EXTENSION_TYPE = Vector3DType
-    _DELEGATED_ARRAY_TYPE = datatypes.Vec3DArray
+class Vector3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
+    _ARROW_TYPE = Vector3DType()
 
-
-Vector3DType._ARRAY_TYPE = Vector3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Vector3DType())

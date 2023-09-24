@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .color_ext import ColorExt
 
-__all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
+__all__ = ["Color", "ColorArrayLike", "ColorBatch", "ColorLike", "ColorType"]
 
 
 @define
@@ -62,24 +59,20 @@ ColorArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class ColorType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Color"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint32(), "rerun.datatypes.Color")
+        pa.ExtensionType.__init__(self, pa.uint32(), self._TYPE_NAME)
 
 
-class ColorArray(BaseExtensionArray[ColorArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Color"
-    _EXTENSION_TYPE = ColorType
+class ColorBatch(BaseBatch[ColorArrayLike]):
+    _ARROW_TYPE = ColorType()
 
     @staticmethod
     def _native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
         return ColorExt.native_to_pa_array_override(data, data_type)
 
-
-ColorType._ARRAY_TYPE = ColorArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ColorType())

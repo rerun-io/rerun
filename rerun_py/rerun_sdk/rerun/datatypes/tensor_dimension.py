@@ -10,18 +10,15 @@ from typing import Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     str_or_none,
 )
 
 __all__ = [
     "TensorDimension",
-    "TensorDimensionArray",
     "TensorDimensionArrayLike",
+    "TensorDimensionBatch",
     "TensorDimensionLike",
     "TensorDimensionType",
 ]
@@ -44,10 +41,9 @@ TensorDimensionArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class TensorDimensionType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.TensorDimension"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -57,20 +53,17 @@ class TensorDimensionType(BaseExtensionType):
                     pa.field("name", pa.utf8(), nullable=True, metadata={}),
                 ]
             ),
-            "rerun.datatypes.TensorDimension",
+            self._TYPE_NAME,
         )
 
 
-class TensorDimensionArray(BaseExtensionArray[TensorDimensionArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.TensorDimension"
-    _EXTENSION_TYPE = TensorDimensionType
+class TensorDimensionBatch(BaseBatch[TensorDimensionArrayLike]):
+    _ARROW_TYPE = TensorDimensionType()
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_dimension_ext.py
 
-
-TensorDimensionType._ARRAY_TYPE = TensorDimensionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TensorDimensionType())

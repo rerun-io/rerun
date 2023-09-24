@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .image_ext import ImageExt
 
 __all__ = ["Image"]
@@ -50,7 +48,7 @@ class Image(ImageExt, Archetype):
 
     # You can define your own __init__ function as a member of ImageExt in image_ext.py
 
-    data: components.TensorDataArray = field(
+    data: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
     )
@@ -58,10 +56,10 @@ class Image(ImageExt, Archetype):
     The image data. Should always be a rank-2 or rank-3 tensor.
     """
 
-    draw_order: components.DrawOrderArray | None = field(
+    draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.

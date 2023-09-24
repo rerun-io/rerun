@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .depth_meter_ext import DepthMeterExt
 
-__all__ = ["DepthMeter", "DepthMeterArray", "DepthMeterArrayLike", "DepthMeterLike", "DepthMeterType"]
+__all__ = ["DepthMeter", "DepthMeterArrayLike", "DepthMeterBatch", "DepthMeterLike", "DepthMeterType"]
 
 
 @define
@@ -45,24 +42,20 @@ else:
 DepthMeterArrayLike = Union[DepthMeter, Sequence[DepthMeterLike], float, npt.NDArray[np.float32]]
 
 
-# --- Arrow support ---
-
-
 class DepthMeterType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.DepthMeter"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.DepthMeter")
+        pa.ExtensionType.__init__(self, pa.float32(), self._TYPE_NAME)
 
 
-class DepthMeterArray(BaseExtensionArray[DepthMeterArrayLike]):
-    _EXTENSION_NAME = "rerun.components.DepthMeter"
-    _EXTENSION_TYPE = DepthMeterType
+class DepthMeterBatch(BaseBatch[DepthMeterArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = DepthMeterType()
 
     @staticmethod
     def _native_to_pa_array(data: DepthMeterArrayLike, data_type: pa.DataType) -> pa.Array:
         return DepthMeterExt.native_to_pa_array_override(data, data_type)
 
-
-DepthMeterType._ARRAY_TYPE = DepthMeterArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(DepthMeterType())

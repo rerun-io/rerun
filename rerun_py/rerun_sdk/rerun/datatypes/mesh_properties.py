@@ -12,10 +12,7 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_uint32,
 )
@@ -23,8 +20,8 @@ from .mesh_properties_ext import MeshPropertiesExt
 
 __all__ = [
     "MeshProperties",
-    "MeshPropertiesArray",
     "MeshPropertiesArrayLike",
+    "MeshPropertiesBatch",
     "MeshPropertiesLike",
     "MeshPropertiesType",
 ]
@@ -52,10 +49,9 @@ MeshPropertiesArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class MeshPropertiesType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.MeshProperties"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -69,20 +65,17 @@ class MeshPropertiesType(BaseExtensionType):
                     )
                 ]
             ),
-            "rerun.datatypes.MeshProperties",
+            self._TYPE_NAME,
         )
 
 
-class MeshPropertiesArray(BaseExtensionArray[MeshPropertiesArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.MeshProperties"
-    _EXTENSION_TYPE = MeshPropertiesType
+class MeshPropertiesBatch(BaseBatch[MeshPropertiesArrayLike]):
+    _ARROW_TYPE = MeshPropertiesType()
 
     @staticmethod
     def _native_to_pa_array(data: MeshPropertiesArrayLike, data_type: pa.DataType) -> pa.Array:
         return MeshPropertiesExt.native_to_pa_array_override(data, data_type)
 
-
-MeshPropertiesType._ARRAY_TYPE = MeshPropertiesArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MeshPropertiesType())
