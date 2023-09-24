@@ -35,7 +35,8 @@ namespace rerun {
         ///     auto rec = rr::RecordingStream("rerun_example_transform3d");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     auto arrow = rr::Arrows3D({0.0f, 1.0f, 0.0f});
+        ///     auto arrow = rr::Arrows3D::from_vectors({0.0f, 1.0f, 0.0f}).with_origins({0.0f,
+        ///     0.0f, 0.0f});
         ///
         ///     rec.log("base", arrow);
         ///

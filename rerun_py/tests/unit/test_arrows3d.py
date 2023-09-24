@@ -52,7 +52,7 @@ def test_arrows3d() -> None:
 
         print(
             f"E: rr2.Arrows3D(\n"
-            f"    {vectors}\n"
+            f"    vectors={vectors}\n"
             f"    origins={origins}\n"
             f"    radii={radii}\n"
             f"    colors={colors}\n"
@@ -62,7 +62,7 @@ def test_arrows3d() -> None:
             f")"
         )
         arch = rr2.Arrows3D(
-            vectors,
+            vectors=vectors,
             origins=origins,
             radii=radii,
             colors=colors,
