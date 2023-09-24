@@ -1,14 +1,56 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, cast
+from typing import Any, Generic, Iterable, Protocol, TypeVar
 
 import pyarrow as pa
 from attrs import define, fields
 
 T = TypeVar("T")
 
-if TYPE_CHECKING:
-    from .log import ComponentBatchLike
+
+class ComponentBatchLike(Protocol):
+    """Describes interface for objects that can be converted to batch of rerun Components."""
+
+    def component_name(self) -> str:
+        """Returns the name of the component."""
+        ...
+
+    def as_arrow_array(self) -> pa.Array:
+        """
+        Returns a `pyarrow.Array` of the component data.
+
+        Each element in the array corresponds to an instance of the component. Single-instanced
+        components and splats must still be represented as a 1-element array.
+        """
+        ...
+
+
+class ArchetypeLike(Protocol):
+    """Describes interface for interpreting an object as a rerun Archetype."""
+
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        """
+        Returns an iterable of `ComponentBatchLike` objects.
+
+        Each object in the iterable must adhere to the `ComponentBatchLike`
+        interface. All of the batches should have the same length as the value
+        returned by `num_instances`, or length 1 if the component is a splat.,
+        or 0 if the component is being cleared.
+        """
+        ...
+
+    def num_instances(self) -> int | None:
+        """
+        (Optional) The number of instances in each batch.
+
+        If not implemented, the number of instances will be determined by the longest
+        batch in the bundle.
+
+        Each batch returned by `as_component_batches` should have this number of
+        elements, or 1 in the case it is a splat, or 0 in the case that
+        component is being cleared.
+        """
+        return None
 
 
 @define
@@ -68,6 +110,17 @@ class Archetype:
 class BaseExtensionType(pa.ExtensionType):  # type: ignore[misc]
     """Extension type for datatypes and non-delegating components."""
 
+    _TYPE_NAME: str
+    """The name used when constructing the extension type.
+
+    Should following rerun typing conventions:
+     - `rerun.datatypes.<TYPE>` for datatypes
+     - `rerun.components.<TYPE>` for components
+
+    Many component types simply subclass a datatype type and override
+    the `_TYPE_NAME` field.
+    """
+
     _ARRAY_TYPE: type[pa.ExtensionArray] = pa.ExtensionArray
     """The extension array class associated with this class."""
 
@@ -81,53 +134,12 @@ class BaseExtensionType(pa.ExtensionType):  # type: ignore[misc]
     def __arrow_ext_deserialize__(cls, storage_type: Any, serialized: Any) -> pa.ExtensionType:
         return cls()
 
-    def __arrow_ext_class__(self) -> type[pa.ExtensionArray]:
-        return self._ARRAY_TYPE
 
+class BaseBatch(Generic[T]):
+    _ARROW_TYPE: BaseExtensionType = None  # type: ignore[assignment]
+    """The pyarrow type of this batch."""
 
-class NamedExtensionArray(pa.ExtensionArray):  # type: ignore[misc]
-    """Common base class for any extension array that has a name."""
-
-    _EXTENSION_NAME = ""
-    """The fully qualified name of this class."""
-
-    @property
-    def extension_name(self) -> str:
-        return self._EXTENSION_NAME
-
-
-class BaseExtensionArray(NamedExtensionArray, Generic[T]):
-    """Extension array for datatypes and non-delegating components."""
-
-    _EXTENSION_TYPE = pa.ExtensionType
-    """The extension type class associated with this class."""
-
-    @classmethod
-    def optional_from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T] | None:
-        """
-        Primary method for creating Arrow arrays for optional components.
-
-        For optional components, the default value of None is preserved in the field to indicate that the optional
-        field was not specified.
-
-        If any value other than None is provided, it is passed through to `from_similar`.
-
-        Parameters
-        ----------
-        data : T | None
-            The data to convert into an Arrow array.
-
-        Returns
-        -------
-        The Arrow array encapsulating the data.
-        """
-        if data is None:
-            return None
-        else:
-            return cls.from_similar(data)
-
-    @classmethod
-    def from_similar(cls, data: T | None) -> BaseExtensionArray[T]:
+    def __init__(self, data: T | None) -> None:
         """
         Primary method for creating Arrow arrays for required components.
 
@@ -149,13 +161,53 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
         -------
         The Arrow array encapsulating the data.
         """
-        data_type = cls._EXTENSION_TYPE()
+
+        # If data is already an arrow array, use it
+        if isinstance(data, pa.Array):
+            if data.type == self._ARROW_TYPE:
+                self.pa_array = data
+                return
+            elif data.type == self._ARROW_TYPE.storage_type:
+                self.pa_array = self._ARROW_TYPE.wrap_array(data)
+                return
 
         if data is None:
-            pa_array = _empty_pa_array(data_type.storage_type)
+            pa_array = _empty_pa_array(self._ARROW_TYPE.storage_type)
         else:
-            pa_array = cls._native_to_pa_array(data, data_type.storage_type)
-        return cast(BaseExtensionArray[T], data_type.wrap_array(pa_array))
+            pa_array = self._native_to_pa_array(data, self._ARROW_TYPE.storage_type)
+
+        self.pa_array = self._ARROW_TYPE.wrap_array(pa_array)
+
+    @classmethod
+    def _optional(cls, data: T | None) -> BaseBatch[T] | None:
+        """
+        Primary method for creating Arrow arrays for optional components.
+
+        For optional components, the default value of None is preserved in the field to indicate that the optional
+        field was not specified.
+        If any value other than None is provided, it is passed through to `from_similar`.
+
+        Parameters
+        ----------
+        data : T | None
+            The data to convert into an Arrow array.
+
+        Returns
+        -------
+        The Arrow array encapsulating the data.
+        """
+        if data is None:
+            return None
+        else:
+            return cls(data)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BaseBatch):
+            return NotImplemented
+        return self.pa_array == other.pa_array  # type: ignore[no-any-return]
+
+    def __len__(self) -> int:
+        return len(self.pa_array)
 
     @staticmethod
     def _native_to_pa_array(data: T, data_type: pa.DataType) -> pa.Array:
@@ -188,21 +240,23 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):
         """
         raise NotImplementedError
 
+    def as_arrow_array(self) -> pa.Array:
+        """
+        The component as an arrow batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return self.pa_array
+
+
+class ComponentBatchMixin(ComponentBatchLike):
     def component_name(self) -> str:
         """
         The name of the component.
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self.extension_name
-
-    def as_arrow_batch(self) -> pa.Array:
-        """
-        The component as an arrow batch.
-
-        Part of the `ComponentBatchLike` logging interface.
-        """
-        return self
+        return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
 
 
 def _empty_pa_array(type: pa.DataType) -> pa.Array:
@@ -226,47 +280,3 @@ def _empty_pa_array(type: pa.DataType) -> pa.Array:
         return pa.StructArray.from_arrays([_empty_pa_array(field_type.type) for field_type in type], fields=list(type))
 
     return pa.array([], type=type)
-
-
-class BaseDelegatingExtensionType(pa.ExtensionType):  # type: ignore[misc]
-    """Extension type for delegating components."""
-
-    _TYPE_NAME = ""
-    """The fully qualified name of the component."""
-
-    _ARRAY_TYPE = pa.ExtensionArray
-    """The extension array class associated with this component."""
-
-    _DELEGATED_EXTENSION_TYPE = BaseExtensionType
-    """The extension type class associated with this component's datatype."""
-
-    def __init__(self) -> None:
-        # TODO(ab, cmc): we unwrap the type here because we can't have two layers of extension types for now
-        pa.ExtensionType.__init__(self, self._DELEGATED_EXTENSION_TYPE().storage_type, self._TYPE_NAME)
-
-    # Note: (de)serialization is not used in the Python SDK
-
-    def __arrow_ext_serialize__(self) -> bytes:
-        return b""
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def __arrow_ext_deserialize__(cls, storage_type: Any, serialized: Any) -> pa.ExtensionType:
-        return cls()
-
-    def __arrow_ext_class__(self) -> type[pa.ExtensionArray]:
-        return self._ARRAY_TYPE  # type: ignore[no-any-return]
-
-
-class BaseDelegatingExtensionArray(BaseExtensionArray[T]):
-    """Extension array for delegating components."""
-
-    _DELEGATED_ARRAY_TYPE = BaseExtensionArray[T]  # type: ignore[valid-type]
-    """The extension array class associated with this component's datatype."""
-
-    @classmethod
-    def from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T]:
-        arr = cls._DELEGATED_ARRAY_TYPE.from_similar(data)
-
-        # TODO(ab, cmc): we unwrap the type here because we can't have two layers of extension types for now
-        return cast(BaseDelegatingExtensionArray[T], cls._EXTENSION_TYPE().wrap_array(arr.storage))
