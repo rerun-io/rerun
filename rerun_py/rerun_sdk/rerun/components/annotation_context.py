@@ -46,7 +46,8 @@ AnnotationContextLike = AnnotationContext
 AnnotationContextArrayLike = Union[
     AnnotationContext,
     Sequence[AnnotationContextLike],
-    datatypes.ClassDescription,
+    datatypes.ClassDescriptionLike,
+    datatypes.ClassDescriptionArrayLike,
     Sequence[datatypes.ClassDescriptionMapElemLike],
 ]
 

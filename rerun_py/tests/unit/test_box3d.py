@@ -83,9 +83,9 @@ def test_boxes3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes3DArray)
-        assert arch.centers == centers_expected(centers, rrc.Position3DArray)
-        assert arch.rotations == expected_rotations(rotations, rrc.Rotation3DArray)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes3DBatch)
+        assert arch.centers == centers_expected(centers, rrc.Position3DBatch)
+        assert arch.rotations == expected_rotations(rotations, rrc.Rotation3DBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
         assert arch.labels == labels_expected(labels)

@@ -133,7 +133,7 @@ def log_extension_components(
     splats: dict[str, Any] = {}
 
     if len(identifiers_np):
-        instanced["rerun.components.InstanceKey"] = rrc.InstanceKeyArray.from_similar(identifiers_np).storage
+        instanced["rerun.components.InstanceKey"] = rrc.InstanceKeyBatch(identifiers_np).as_arrow_array().storage
 
     _add_extension_components(instanced, splats, ext, identifiers_np)
 

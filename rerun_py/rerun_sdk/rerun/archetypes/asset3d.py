@@ -67,7 +67,7 @@ class Asset3D(Asset3DExt, Archetype):
         rr.set_time_sequence("frame", i)
 
         translation = rr2.dt.TranslationRotationScale3D(translation=[0, 0, i - 10.0])
-        rr2.log_components("asset", [rr2.cmp.OutOfTreeTransform3DArray.from_similar(translation)])
+        rr2.log_components("asset", [rr2.cmp.OutOfTreeTransform3DBatch(translation)])
     ```
     """
 

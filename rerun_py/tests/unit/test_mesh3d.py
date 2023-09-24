@@ -29,7 +29,7 @@ mesh_properties_arrays: list[rrd.MeshPropertiesArrayLike] = [
 def mesh_properties_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, rrc.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]))
 
-    return rrc.MeshPropertiesArray.optional_from_similar(expected)
+    return rrc.MeshPropertiesBatch._optional(expected)
 
 
 mesh_material_arrays: list[rrd.MaterialArrayLike] = [
@@ -42,7 +42,7 @@ mesh_material_arrays: list[rrd.MaterialArrayLike] = [
 def mesh_material_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, rrc.Material(albedo_factor=0xAA0000CC))
 
-    return rrc.MaterialArray.optional_from_similar(expected)
+    return rrc.MaterialBatch._optional(expected)
 
 
 def test_mesh3d() -> None:
@@ -105,8 +105,8 @@ def test_mesh3d() -> None:
         )
         print(f"A: {arch}\n")
 
-        assert arch.vertex_positions == vec3ds_expected(vertex_positions, rrc.Position3DArray)
-        assert arch.vertex_normals == vec3ds_expected(vertex_normals, rrc.Vector3DArray)
+        assert arch.vertex_positions == vec3ds_expected(vertex_positions, rrc.Position3DBatch)
+        assert arch.vertex_normals == vec3ds_expected(vertex_normals, rrc.Vector3DBatch)
         assert arch.vertex_colors == colors_expected(vertex_colors)
         assert arch.mesh_properties == mesh_properties_expected(mesh_properties)
         assert arch.mesh_material == mesh_material_expected(mesh_material)
@@ -118,7 +118,7 @@ def test_nullable_albedo_factor() -> None:
     # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
     assert (
         len(
-            rr2.cmp.MaterialArray.from_similar(
+            rr2.cmp.MaterialBatch(
                 [
                     rr2.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
                     rr2.cmp.Material(),
@@ -133,7 +133,7 @@ def test_nullable_vertex_indices() -> None:
     # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
     assert (
         len(
-            rr2.cmp.MeshPropertiesArray.from_similar(
+            rr2.cmp.MeshPropertiesBatch(
                 [
                     rr2.cmp.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
                     rr2.cmp.MeshProperties(),

@@ -80,7 +80,7 @@ class ClassDescriptionExt:
 
     @staticmethod
     def native_to_pa_array_override(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import AnnotationInfoArray, ClassDescription, KeypointPairArray
+        from . import AnnotationInfoBatch, ClassDescription, KeypointPairBatch
 
         if isinstance(data, ClassDescription):
             data = [data]
@@ -91,7 +91,7 @@ class ClassDescriptionExt:
         annotations = [item.keypoint_annotations for item in descs]
         connections = [item.keypoint_connections for item in descs]
 
-        infos_array = AnnotationInfoArray.from_similar(infos).storage
+        infos_array = AnnotationInfoBatch(infos).as_arrow_array().storage
 
         annotation_offsets = list(
             itertools.chain([0], itertools.accumulate(len(ann) if ann else 0 for ann in annotations))
@@ -100,7 +100,7 @@ class ClassDescriptionExt:
         # annotation_null_map = pa.array([ann is None for ann in annotations], type=pa.bool_())
         # concat_annotations = list(itertools.chain.from_iterable(ann for ann in annotations if ann is not None))
         concat_annotations = list(itertools.chain.from_iterable(annotations))
-        annotation_values_array = AnnotationInfoArray.from_similar(concat_annotations).storage
+        annotation_values_array = AnnotationInfoBatch(concat_annotations).as_arrow_array().storage
         # annotations_array = pa.ListArray.from_arrays(annotation_offsets,
         #                                              annotation_values_array,
         #                                              mask=annotation_null_map)
@@ -115,7 +115,7 @@ class ClassDescriptionExt:
         # connection_null_map = pa.array([con is None for con in connections], type=pa.bool_())
         # concat_connections = list(itertools.chain.from_iterable(con for con in connections if con is not None))
         concat_connections = list(itertools.chain.from_iterable(connections))
-        connection_values_array = KeypointPairArray.from_similar(concat_connections).storage
+        connection_values_array = KeypointPairBatch(concat_connections).as_arrow_array().storage
         # connection_array = pa.ListArray.from_arrays(connections_offsets,
         #                                             connection_values_array,
         #                                             mask=connection_null_map)

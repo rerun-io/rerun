@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, cast
 
 if TYPE_CHECKING:
     from ..log import ComponentBatchLike
@@ -22,8 +22,9 @@ class TranslationAndMat3x3Ext:
     # Implement the ArchetypeLike
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import Transform3D
+        from ..datatypes import TranslationAndMat3x3
 
-        return Transform3D(self).as_component_batches()
+        return Transform3D(cast(TranslationAndMat3x3, self)).as_component_batches()
 
     def num_instances(self) -> int:
         # Always a mono-component

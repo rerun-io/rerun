@@ -35,12 +35,12 @@ CHECK_FIELDS: list[list[int]] = [
 
 
 def tensor_data_expected() -> Any:
-    return rrc.TensorDataArray.from_similar(IMAGE_INPUTS[0])
+    return rrc.TensorDataBatch(IMAGE_INPUTS[0])
 
 
 def compare_images(left: Any, right: Any, check_fields: list[int]) -> None:
     for field in check_fields:
-        assert left.storage.field(field) == right.storage.field(field)
+        assert left.as_arrow_array().storage.field(field) == right.as_arrow_array().storage.field(field)
 
 
 def test_image() -> None:

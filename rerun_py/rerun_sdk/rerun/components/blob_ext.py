@@ -17,11 +17,11 @@ def next_offset(acc: int, arr: Sized) -> int:
 class BlobExt:
     @staticmethod
     def native_to_pa_array_override(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Blob, BlobArray
+        from . import Blob, BlobBatch
 
         # someone or something is building things manually, let them!
-        if isinstance(data, BlobArray):
-            return data.storage
+        if isinstance(data, BlobBatch):
+            return data.as_arrow_array().storage
 
         # pure-numpy fast path
         elif isinstance(data, np.ndarray):

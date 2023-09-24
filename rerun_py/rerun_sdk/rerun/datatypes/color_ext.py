@@ -34,7 +34,7 @@ class ColorExt:
     - numpy array: interpreted as rgb or rgba values, range depending on dtype
     - anything else (int or convertible to int): interpreted as a 32-bit packed rgba value
 
-    Possible inputs for `ColorArray.from_similar()`:
+    Possible inputs for `ColorBatch()`:
     - a single `Color` instance
     - a sequence of `Color` instances
     - Nx3 or Nx4 numpy array, range depending on dtype
