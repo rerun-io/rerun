@@ -14,7 +14,11 @@ namespace rerun.archetypes;
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// \example annotation_context_rects
+/// \example annotation_context_rects "Rectangles"
+///
+/// \example annotation_context_segmentation "Segmentation"
+///
+/// \example annotation_context_connections "Connections"
 table AnnotationContext (
   "attr.rust.derive": "Eq, PartialEq",
   order: 100

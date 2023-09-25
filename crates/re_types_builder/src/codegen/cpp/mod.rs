@@ -1889,8 +1889,8 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
 }
 
 fn collect_examples(docs: &Docs) -> Examples {
-    // TODO(#2919): `cpp` examples are not required for now, so just default to empty
-    Examples::collect(docs, "cpp", &["```cpp,ignore"], &["```"]).unwrap_or_default()
+    // TODO(#2919): `cpp` examples are not required for now
+    Examples::collect(docs, "cpp", &["```cpp,ignore"], &["```"], false).unwrap_or_default()
 }
 
 fn quote_docstrings(docs: &Docs) -> TokenStream {

@@ -24,8 +24,9 @@ class AnnotationContext(Archetype):
     path-hierarchy when searching up through the ancestors of a given entity
     path.
 
-    Example
-    -------
+    Examples
+    --------
+    Rectangles:
     ```python
     import rerun as rr
     import rerun.experimental as rr2
@@ -40,6 +41,66 @@ class AnnotationContext(Archetype):
 
     # Log an extra rect to set the view bounds
     rr2.log("bounds", rr2.Boxes2D(half_sizes=[2.5, 2.5]))
+    ```
+
+    Segmentation:
+    ```python
+    import numpy as np
+    import rerun as rr
+    import rerun.experimental as rr2
+
+    rr.init("rerun_example_annotation_context_segmentation", spawn=True)
+
+    # Create a simple segmentation image
+    image = np.zeros((8, 12), dtype=np.uint8)
+    image[0:4, 0:6] = 1
+    image[4:8, 6:12] = 2
+
+    # Log an annotation context to assign a label and color to each class
+    rr2.log("segmentation", rr2.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
+
+    rr.log_segmentation_image("segmentation/image", np.array(image))
+    ```
+
+    Connections:
+    ```python
+    import rerun as rr
+    import rerun.experimental as rr2
+    from rerun.experimental import dt as rrd
+
+    rr.init("rerun_example_annotation_context_connections", spawn=True)
+
+    rr2.log(
+        "/",
+        rr2.AnnotationContext(
+            [
+                rrd.ClassDescription(
+                    info=0,
+                    keypoint_annotations=[
+                        (0, "zero", (255, 0, 0)),
+                        (1, "one", (0, 255, 0)),
+                        (2, "two", (0, 0, 255)),
+                        (3, "three", (255, 255, 0)),
+                    ],
+                    keypoint_connections=[(0, 2), (1, 2), (2, 3)],
+                )
+            ]
+        ),
+    )
+
+    rr2.log(
+        "points",
+        rr2.Points3D(
+            [
+                (0, 0, 0),
+                (50, 0, 20),
+                (100, 100, 30),
+                (0, 50, 40),
+            ],
+            class_ids=[0],
+            keypoint_ids=[0, 1, 2, 3],
+        ),
+    )
     ```
     """
 

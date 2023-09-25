@@ -490,7 +490,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
 }
 
 fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
-    Examples::collect(docs, "rs", &["```ignore"], &["```"])
+    Examples::collect(docs, "rs", &["```ignore"], &["```"], true)
 }
 
 fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {

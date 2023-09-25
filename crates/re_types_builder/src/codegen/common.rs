@@ -72,19 +72,25 @@ impl Examples {
         extension: &str,
         prefix: &[&str],
         suffix: &[&str],
+        required: bool,
     ) -> anyhow::Result<Self> {
         let mut lines = Vec::new();
         let mut count = 0;
 
         if let Some(examples) = docs.tagged_docs.get("example") {
-            count = examples.len();
             let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
             let mut examples = examples.iter().map(String::as_str).peekable();
             while let Some(Example { name, title }) = examples.next().map(Example::parse) {
                 let path = base_path.join(format!("{name}.{extension}"));
-                let contents = std::fs::read_to_string(&path)
-                    .with_context(|| format!("couldn't open code example {path:?}"))?;
+                let contents = match std::fs::read_to_string(&path) {
+                    Ok(contents) => contents,
+                    Err(_) if !required => continue,
+                    Err(e) => {
+                        return Err(e)
+                            .with_context(|| format!("couldn't open code example {path:?}"))
+                    }
+                };
                 let mut contents = contents.split('\n').collect_vec();
                 // trim trailing blank lines
                 while contents.last().is_some_and(is_blank) {
@@ -102,6 +108,8 @@ impl Examples {
                     // blank line between examples
                     lines.push(String::new());
                 }
+
+                count += 1;
             }
         }
 

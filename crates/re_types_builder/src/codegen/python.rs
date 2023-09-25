@@ -896,7 +896,7 @@ fn code_for_union(
 // --- Code generators ---
 
 fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
-    Examples::collect(docs, "py", &["```python"], &["```"])
+    Examples::collect(docs, "py", &["```python"], &["```"], true)
 }
 
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
