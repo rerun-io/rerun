@@ -35,7 +35,7 @@
 ///
 ///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_asset3d_simple").memory()?;
 ///
-///     rec.log_timeless("world", true, &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
+///     rec.log_timeless("world", &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 ///     rec.log("world/asset", &Asset3D::from_file(path)?)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
@@ -65,7 +65,7 @@
 ///     let (rec, storage) =
 ///         RecordingStreamBuilder::new("rerun_example_asset3d_out_of_tree").memory()?;
 ///
-///     rec.log_timeless("world", true, &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
+///     rec.log_timeless("world", &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 ///
 ///     rec.set_time_sequence("frame", 0);
 ///     rec.log("world/asset", &Asset3D::from_file(path)?)?;

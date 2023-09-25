@@ -127,12 +127,11 @@ fn log_baseline_objects(
         let path = format!("world/annotations/box-{id}");
         rec.log_timeless(
             path.clone(),
-            true,
             &rerun::archetypes::Boxes3D::from_half_sizes([bbox_half_size])
                 .with_labels([label])
                 .with_colors([Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log_timeless(path, true, &rerun::archetypes::Transform3D::new(transform))?;
+        rec.log_timeless(path, &rerun::archetypes::Transform3D::new(transform))?;
     }
 
     Ok(())
@@ -351,8 +350,8 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     let annotations = read_annotations(&store_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
-    rec.log_timeless("world", true, &ViewCoordinates::RUB)?;
-    rec.log_timeless("world/camera", true, &ViewCoordinates::RDF)?;
+    rec.log_timeless("world", &ViewCoordinates::RUB)?;
+    rec.log_timeless("world/camera", &ViewCoordinates::RDF)?;
 
     log_baseline_objects(rec, &annotations.objects)?;
 
