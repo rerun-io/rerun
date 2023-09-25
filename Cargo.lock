@@ -1367,7 +1367,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1376,7 +1376,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1409,7 +1409,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
@@ -1424,7 +1424,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1439,7 +1439,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "arboard",
  "egui",
@@ -1456,7 +1456,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.7.4"
-source = "git+https://github.com/lampsitter/egui_commonmark.git?rev=a4470c253b06a4a350e17418a7c6cbc413ade644#a4470c253b06a4a350e17418a7c6cbc413ade644"
+source = "git+https://github.com/lampsitter/egui_commonmark.git?rev=d42d340d2d617f19e3d52697faa9cfcfa3eafa27#d42d340d2d617f19e3d52697faa9cfcfa3eafa27"
 dependencies = [
  "egui",
  "egui_extras",
@@ -1466,7 +1466,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "egui",
  "ehttp",
@@ -1481,7 +1481,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1497,7 +1497,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "egui",
 ]
@@ -1539,7 +1539,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1641,7 +1641,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.3",
