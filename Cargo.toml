@@ -93,7 +93,7 @@ egui = { version = "0.22.0", features = [
 ] }
 egui_commonmark = { version = "0.7", default-features = false }
 egui_extras = { version = "0.22.0", features = ["http", "image", "puffin"] }
-egui_plot = { git = "https://github.com/emilk/egui", rev = "d949eaf" } # egui_lot is not yet published on crates.io
+egui_plot = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" } # egui_lot is not yet published on crates.io
 egui_tiles = { version = "0.2" }
 egui-wgpu = "0.22.0"
 ehttp = { version = "0.3" }
@@ -169,17 +169,17 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # Temporary patch until next egui release
-ecolor = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
-eframe = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
-egui = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
-emath = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
-epaint = { git = "https://github.com/emilk/egui", rev = "d949eaf" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+eframe = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+egui = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+emath = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+epaint = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
 
 # Temporary patch until next egui_commonmark release
-egui_commonmark = { git = "https://github.com/lampsitter/egui_commonmark.git", rev = "a4470c253b06a4a350e17418a7c6cbc413ade644" }
+egui_commonmark = { git = "https://github.com/lampsitter/egui_commonmark.git", rev = "d42d340d2d617f19e3d52697faa9cfcfa3eafa27" }
 
 # Temporary patch until next egui_tiles release
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "c66d6cba7ddb5b236be614d1816be4561260274e" }
