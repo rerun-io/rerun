@@ -56,8 +56,12 @@ impl DataUi for InstancePath {
                         );
                     });
 
-                    if crate::is_indicator_component(&component_name) {
-                        // no content to show
+                    if let Some(archetype_name) =
+                        crate::indicator_component_archetype(&component_name)
+                    {
+                        ui.weak(format!(
+                            "Indicator component for the {archetype_name} archetype"
+                        ));
                     } else if instance_key.is_splat() {
                         super::component::EntityComponentWithInstances {
                             entity_path: entity_path.clone(),
