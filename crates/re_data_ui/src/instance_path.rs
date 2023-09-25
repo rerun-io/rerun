@@ -48,11 +48,13 @@ impl DataUi for InstancePath {
                         continue; // no need to show components that are unset at this point in time
                     };
 
-                    item_ui::component_path_button(
-                        ctx,
-                        ui,
-                        &ComponentPath::new(entity_path.clone(), component_name),
-                    );
+                    crate::temporary_style_ui_for_component(ui, &component_name, |ui| {
+                        item_ui::component_path_button(
+                            ctx,
+                            ui,
+                            &ComponentPath::new(entity_path.clone(), component_name),
+                        );
+                    });
 
                     if crate::is_indicator_component(&component_name) {
                         // no content to show
