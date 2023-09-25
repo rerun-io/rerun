@@ -30,10 +30,12 @@ mod common;
 use self::common::{get_documentation, Examples, StringExt};
 
 mod cpp;
+mod docs;
 mod python;
 mod rust;
 
 pub use self::common::write_file;
 pub use self::cpp::CppCodeGenerator;
+pub use self::docs::DocsCodeGenerator;
 pub use self::python::PythonCodeGenerator;
 pub use self::rust::RustCodeGenerator;

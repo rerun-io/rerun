@@ -12,10 +12,21 @@ const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
+const DOC_CONTENT_DIR_PATH: &str = "../../docs/content/reference/data_types_test";
 const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun";
 const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "../../rerun_py/tests/test_types";
+
+macro_rules! join {
+    ($($task:expr,)*) => {join!($($task),*)};
+    ($($task:expr),*) => {{
+        #![allow(clippy::redundant_closure_call)]
+        ::rayon::scope(|scope| {
+            $(scope.spawn(|_| ($task)());)*
+        })
+    }}
+}
 
 fn main() {
     if cfg!(target_os = "windows") {
@@ -44,6 +55,7 @@ fn main() {
     let re_types_builder_hash = compute_crate_hash("re_types_builder");
     let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&["fbs"]));
     let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py", "cpp"]));
+    let doc_content_hash = compute_dir_hash(DOC_CONTENT_DIR_PATH, Some(&["md"]));
     let python_extensions_hash = compute_dir_filtered_hash(PYTHON_OUTPUT_DIR_PATH, |path| {
         path.to_str().unwrap().ends_with("_ext.py")
     });
@@ -55,6 +67,7 @@ fn main() {
         &re_types_builder_hash,
         &definitions_hash,
         &doc_examples_hash,
+        &doc_content_hash,
         &python_extensions_hash,
         &cpp_extensions_hash,
     ]);
@@ -63,6 +76,7 @@ fn main() {
     eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
     eprintln!("definitions_hash: {definitions_hash:?}");
     eprintln!("doc_examples_hash: {doc_examples_hash:?}");
+    eprintln!("doc_content_hash: {doc_content_hash:?}");
     eprintln!("python_extensions_hash: {python_extensions_hash:?}");
     eprintln!("cpp_extensions_hash: {cpp_extensions_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
@@ -89,40 +103,35 @@ fn main() {
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(DEFINITIONS_DIR_PATH, ENTRYPOINT_PATH);
 
-    join3(
-        || {
-            re_types_builder::generate_cpp_code(
-                &reporter,
-                CPP_OUTPUT_DIR_PATH,
-                &objects,
-                &arrow_registry,
-            );
-        },
-        || {
-            re_types_builder::generate_rust_code(
-                &reporter,
-                RUST_OUTPUT_DIR_PATH,
-                &objects,
-                &arrow_registry,
-            );
-        },
-        || {
-            re_types_builder::generate_python_code(
-                &reporter,
-                PYTHON_OUTPUT_DIR_PATH,
-                PYTHON_TESTING_OUTPUT_DIR_PATH,
-                &objects,
-                &arrow_registry,
-            );
-        },
+    join!(
+        || re_types_builder::generate_cpp_code(
+            &reporter,
+            CPP_OUTPUT_DIR_PATH,
+            &objects,
+            &arrow_registry,
+        ),
+        || re_types_builder::generate_rust_code(
+            &reporter,
+            RUST_OUTPUT_DIR_PATH,
+            &objects,
+            &arrow_registry,
+        ),
+        || re_types_builder::generate_python_code(
+            &reporter,
+            PYTHON_OUTPUT_DIR_PATH,
+            PYTHON_TESTING_OUTPUT_DIR_PATH,
+            &objects,
+            &arrow_registry,
+        ),
+        || re_types_builder::generate_docs(
+            &reporter,
+            DOC_CONTENT_DIR_PATH,
+            &objects,
+            &arrow_registry
+        ),
     );
 
     report.panic_on_errors();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
-}
-
-// Do 3 things in parallel
-fn join3(a: impl FnOnce() + Send, b: impl FnOnce() + Send, c: impl FnOnce() + Send) {
-    rayon::join(a, || rayon::join(b, c));
 }

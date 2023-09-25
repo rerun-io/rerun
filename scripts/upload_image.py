@@ -58,6 +58,9 @@ import tqdm
 from google.cloud import storage
 from PIL.Image import Image, Resampling
 
+
+# NOTE: We depend on the stack using the exact sizes they do right now in:
+#       - docs codegen (`image_url_stack`)
 SIZES = [
     480,
     768,
@@ -239,6 +242,9 @@ class Uploader:
         """
 
         logging.info(f"Base image width: {image.width}px")
+
+        # NOTE: We depend on the filenames using the exact format they have right now in:
+        #       - docs codegen (`image_url_stack`)
 
         # build image stack
         image_stack: list[tuple[str, int | None, Image]] = []

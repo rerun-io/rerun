@@ -14,7 +14,7 @@ namespace rerun.archetypes;
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// \example annotation_context_rects "Rectangles"
+/// \example annotation_context_rects title="Rectangles" image="https://static.rerun.io/9b446c36011ed30fce7dc6ed03d5fd9557460f70_annotation_context_rects_full.png"
 ///
 /// \example annotation_context_segmentation "Segmentation"
 ///

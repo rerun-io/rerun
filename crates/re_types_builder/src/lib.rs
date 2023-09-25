@@ -132,7 +132,9 @@ mod objects;
 pub mod report;
 
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
-pub use self::codegen::{CodeGenerator, CppCodeGenerator, PythonCodeGenerator, RustCodeGenerator};
+pub use self::codegen::{
+    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+};
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
 };
@@ -398,6 +400,18 @@ pub fn generate_python_code(
     );
 }
 
+pub fn generate_docs(
+    reporter: &Reporter,
+    output_docs_dir: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
+) {
+    re_tracing::profile_function!();
+    let mut gen = DocsCodeGenerator::new(output_docs_dir.as_ref());
+    let filepaths = gen.generate(reporter, objects, arrow_registry);
+    generate_gitattributes_for_generated_files(&output_docs_dir, filepaths.into_iter());
+}
+
 pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
     let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let manifest_dir = camino::Utf8PathBuf::from(manifest_dir);
@@ -505,6 +519,11 @@ fn test_to_snake_case() {
     assert_eq!(
         to_snake_case("rerun.components.translation_and_mat3x3"),
         "rerun.components.translation_and_mat3x3"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.components.AnnotationContext"),
+        "rerun.components.annotation_context"
     );
 }
 

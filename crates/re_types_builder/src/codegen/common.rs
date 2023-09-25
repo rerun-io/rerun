@@ -41,22 +41,53 @@ pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
     lines
 }
 
-struct Example<'a> {
-    name: &'a str,
-    title: Option<&'a str>,
+pub struct Example<'a> {
+    /// The snake_case name of the example.
+    ///
+    /// Used with `code-example:`, `std::fs::read_to_string`, etc.
+    pub name: &'a str,
+
+    /// The human-readable name of the example.
+    pub title: Option<&'a str>,
+
+    /// The URL for the fully-sized screenshot of the example.
+    pub image_url: Option<&'a str>,
 }
 
 impl<'a> Example<'a> {
-    fn parse(tag_content: &'a str) -> Self {
+    pub fn parse(tag_content: &'a str) -> Self {
+        fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
+            let start = args.find(tag)? + tag.len();
+            if !args[start..].starts_with("=\"") {
+                return None;
+            }
+            let start = start + 2;
+            let end = start + args[start..].find('"')?;
+            Some(&args[start..end])
+        }
+
         let tag_content = tag_content.trim();
-        let (name, title) = tag_content
+        let (name, args) = tag_content
             .split_once(' ')
             .map_or((tag_content, None), |(a, b)| (a, Some(b)));
-        let title = title
-            .and_then(|title| title.strip_prefix('"'))
-            .and_then(|title| title.strip_suffix('"'));
 
-        Example { name, title }
+        let (mut title, mut image_url) = (None, None);
+
+        if let Some(args) = args {
+            let args = args.trim();
+            if args.starts_with('"') {
+                title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
+            } else {
+                title = find_keyed("title", args);
+                image_url = find_keyed("image", args);
+            }
+        }
+
+        Example {
+            name,
+            title,
+            image_url,
+        }
     }
 }
 
@@ -81,7 +112,7 @@ impl Examples {
             let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
             let mut examples = examples.iter().map(String::as_str).peekable();
-            while let Some(Example { name, title }) = examples.next().map(Example::parse) {
+            while let Some(Example { name, title, .. }) = examples.next().map(Example::parse) {
                 let path = base_path.join(format!("{name}.{extension}"));
                 let contents = match std::fs::read_to_string(&path) {
                     Ok(contents) => contents,

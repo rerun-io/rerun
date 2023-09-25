@@ -1,0 +1,197 @@
+use crate::codegen::common::Example;
+use crate::objects::FieldKind;
+use crate::CodeGenerator;
+use crate::Object;
+use crate::ObjectField;
+use crate::ObjectKind;
+use crate::Objects;
+use crate::Reporter;
+use camino::Utf8PathBuf;
+use std::collections::BTreeSet;
+use std::fmt::Write;
+
+use super::common::get_documentation;
+
+macro_rules! putln {
+    ($o:ident) => {let _ = writeln!($o);};
+    ($o:ident, $($tt:tt)*) => {let _ = writeln!($o, $($tt)*);};
+}
+
+pub struct DocsCodeGenerator {
+    docs_dir: Utf8PathBuf,
+}
+
+impl DocsCodeGenerator {
+    pub fn new(docs_dir: impl Into<Utf8PathBuf>) -> Self {
+        Self {
+            docs_dir: docs_dir.into(),
+        }
+    }
+}
+
+impl CodeGenerator for DocsCodeGenerator {
+    fn generate(
+        &mut self,
+        _reporter: &Reporter,
+        objects: &Objects,
+        _arrow_registry: &crate::ArrowRegistry,
+    ) -> BTreeSet<camino::Utf8PathBuf> {
+        re_tracing::profile_function!();
+
+        let mut filepaths = BTreeSet::new();
+
+        let components = objects.ordered_objects(Some(ObjectKind::Component));
+        for object in objects.ordered_objects(Some(ObjectKind::Archetype)) {
+            let title = object.snake_case_name();
+            let order = object.order;
+            let top_level_docs = get_documentation(&object.docs, &[]);
+            let examples = object
+                .docs
+                .tagged_docs
+                .get("example")
+                .iter()
+                .flat_map(|v| v.iter())
+                .map(String::as_str)
+                .map(Example::parse)
+                .collect::<Vec<_>>();
+
+            let mut o = String::new();
+
+            frontmatter(&mut o, &title, order);
+            putln!(o);
+            for mut line in top_level_docs {
+                if line.starts_with(char::is_whitespace) {
+                    line.remove(0);
+                }
+                putln!(o, "{line}");
+            }
+            putln!(o);
+            components_and_apis(&mut o, &components, &object.fields);
+            putln!(o);
+            example_list(&mut o, &examples);
+
+            let path = self.docs_dir.join(format!("{title}.md"));
+            super::common::write_file(&path, &o);
+            filepaths.insert(path);
+        }
+
+        filepaths
+    }
+}
+
+fn frontmatter(o: &mut String, title: &str, order: u32) {
+    putln!(o, "---");
+    putln!(o, "title: {title}");
+    putln!(o, "order: {order}");
+    putln!(o, "---");
+}
+
+fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectField]) {
+    if fields.is_empty() {
+        return;
+    }
+
+    putln!(o, "## Components and APIs");
+
+    let required = fields
+        .iter()
+        .filter(|f| f.kind() == Some(FieldKind::Required))
+        .filter_map(|f| find_component(f, components))
+        .collect::<Vec<_>>();
+    if !required.is_empty() {
+        putln!(o);
+        putln!(o, "Required:");
+        for v in required {
+            putln!(o, "* {}", v.snake_case_name());
+        }
+    }
+
+    let recommended = fields
+        .iter()
+        .filter(|f| f.kind() == Some(FieldKind::Recommended))
+        .filter_map(|f| find_component(f, components))
+        .collect::<Vec<_>>();
+    if !recommended.is_empty() {
+        putln!(o);
+        putln!(o, "Recommended:");
+        for v in recommended {
+            putln!(o, "* {}", v.snake_case_name());
+        }
+    }
+
+    let optional = fields
+        .iter()
+        .filter(|f| f.kind() == Some(FieldKind::Optional))
+        .filter_map(|f| find_component(f, components))
+        .collect::<Vec<_>>();
+    if !optional.is_empty() {
+        putln!(o);
+        putln!(o, "Optional:");
+        for v in optional {
+            putln!(o, "* {}", v.snake_case_name());
+        }
+    }
+}
+
+fn find_component<'a>(field: &ObjectField, components: &[&'a Object]) -> Option<&'a Object> {
+    field
+        .typ
+        .fqname()
+        .and_then(|fqname| components.iter().find(|c| c.fqname == fqname))
+        .copied()
+}
+
+fn example_list(o: &mut String, examples: &[Example<'_>]) {
+    if examples.is_empty() {
+        return;
+    }
+
+    putln!(o, "## Examples");
+    putln!(o);
+
+    for Example { name, title, .. } in examples {
+        let title = title.unwrap_or(name);
+        putln!(o, "### {title}");
+        putln!(o);
+        putln!(o, "code-example: {name}");
+        putln!(o);
+
+        // NOTE: blocked by https://github.com/rerun-io/rerun/issues/2461
+        // image_url_stack(o, title, *image_url);
+        putln!(o);
+    }
+}
+
+// fn image_url_stack(o: &mut String, title: &str, image_url: Option<&str>) {
+//     const SIZES: &[usize] = &[480, 768, 1024, 1200];
+//
+//     let Some(image_url) = image_url else { return };
+//
+//     // image_url looks like
+//     // https://static.rerun.io/2ff32dfd45d15f35f7d0947c26445d4113fe6d03_annotation_context_rects_1200w.png
+//     // https://static.rerun.io/9b446c36011ed30fce7dc6ed03d5fd9557460f70_annotation_context_rects_full.png
+//     // etc.
+//
+//     // assuming the file always has an extension, retrieve it
+//     let Some((url_base, ext)) = image_url.rsplit_once('.') else {
+//         return;
+//     };
+//     // trim content after the last `_`
+//     let Some((url_base, _)) = url_base.rsplit_once('_') else {
+//         return;
+//     };
+//
+//     putln!(o, "<picture>");
+//     // now we can generate the stack:
+//     for width in SIZES {
+//         putln!(
+//             o,
+//             r#"  <source media="(max-width: {width}px)" srcset="{url_base}_{width}w.{ext}">"#
+//         );
+//     }
+//     putln!(
+//         o,
+//         r#"  <img src="{url_base}_full.{ext}" alt="screenshot of {title} example">"#
+//     );
+//     putln!(o, "</picture>");
+// }
