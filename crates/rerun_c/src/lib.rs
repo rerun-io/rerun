@@ -83,7 +83,6 @@ pub enum CErrorCode {
     InvalidStringArgument,
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
-    InvalidEntityPath,
 
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
@@ -324,12 +323,7 @@ fn rr_log_impl(
     } = *data_row;
 
     let entity_path = ptr::try_char_ptr_as_str(entity_path, "entity_path")?;
-    let entity_path = EntityPath::parse_strict(entity_path).map_err(|err| {
-        CError::new(
-            CErrorCode::InvalidEntityPath,
-            &format!("Failed to parse entity path {entity_path:?}: {err}"),
-        )
-    })?;
+    let entity_path = EntityPath::parse_forgiving(entity_path);
 
     re_log::debug!(
         "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
