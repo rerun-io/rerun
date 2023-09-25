@@ -12,17 +12,17 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            static Clear flat() {
-                return Clear(false);
-            }
+            static const Clear FLAT;
 
-            static Clear recursive() {
-                return Clear(true);
-            }
+            static const Clear RECURSIVE;
 
             Clear(bool recursive = false) : Clear(components::ClearIsRecursive(recursive)) {}
 
             // [CODEGEN COPY TO HEADER END]
+
+            const Clear Clear::FLAT = Clear(false);
+
+            const Clear Clear::RECURSIVE = Clear(true);
         };
 
 #endif

@@ -64,7 +64,7 @@ namespace rerun {
         ///     // Now clear them, one by one on each tick.
         ///     for (int i = 0; i <vectors.size(); ++i) {
         ///         auto entity_path = "arrows/" + std::to_string(i);
-        ///         rec.log(entity_path.c_str(), rr::Clear::flat());
+        ///         rec.log(entity_path.c_str(), rr::Clear::FLAT);
         ///     }
         /// }
         /// ```
@@ -112,7 +112,7 @@ namespace rerun {
         ///     }
         ///
         ///     // Now clear all of them at once.
-        ///     rec.log("arrows", rr::Clear::recursive());
+        ///     rec.log("arrows", rr::Clear::RECURSIVE);
         /// }
         /// ```
         struct Clear {
@@ -125,13 +125,9 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'clear_ext.cpp'
 
-            static Clear flat() {
-                return Clear(false);
-            }
+            static const Clear FLAT;
 
-            static Clear recursive() {
-                return Clear(true);
-            }
+            static const Clear RECURSIVE;
 
             Clear(bool recursive = false) : Clear(components::ClearIsRecursive(recursive)) {}
 
