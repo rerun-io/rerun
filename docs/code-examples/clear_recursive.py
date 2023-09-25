@@ -14,5 +14,4 @@ for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
     rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector, origins=origin, colors=color))
 
 # Now clear all of them at once.
-# TODO(cmc): `rr2.Clear.recursive()`
-rr2.log("arrows", rr2.Clear(True))
+rr2.log("arrows", rr2.Clear(recursive=True))  # or `rr2.Clear.recursive()`

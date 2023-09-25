@@ -18,6 +18,7 @@ all-features = true
 
 
 [dependencies]
+re_build_tools.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_tracing = { workspace = true, features = ["server"] }

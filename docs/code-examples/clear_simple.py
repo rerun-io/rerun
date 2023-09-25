@@ -15,5 +15,4 @@ for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
 
 # Now clear them, one by one on each tick.
 for i in range(len(vectors)):
-    # TODO(cmc): `rr2.Clear.flat()`
-    rr2.log(f"arrows/{i}", rr2.Clear(False))
+    rr2.log(f"arrows/{i}", rr2.Clear(recursive=False))  # or `rr2.Clear.flat()`

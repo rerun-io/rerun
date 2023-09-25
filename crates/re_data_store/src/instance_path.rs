@@ -112,7 +112,7 @@ fn test_parse_instance_path() {
     assert_eq!(
         InstancePath::from_str("world/points[#123]"),
         Ok(InstancePath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             instance_key: InstanceKey(123)
         })
     );

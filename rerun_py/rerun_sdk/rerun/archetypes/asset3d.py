@@ -34,8 +34,8 @@ class Asset3D(Asset3DExt, Archetype):
 
     rr.init("rerun_example_asset3d_simple", spawn=True)
 
-    # TODO(#2816): some viewcoords would be nice here
-    rr2.log("asset", rr2.Asset3D.from_file(sys.argv[1]))
+    rr2.log("world", rr2.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
+    rr2.log("world/asset", rr2.Asset3D.from_file(sys.argv[1]))
     ```
 
     3D asset with out-of-tree transform:
@@ -52,13 +52,13 @@ class Asset3D(Asset3DExt, Archetype):
 
     rr.init("rerun_example_asset3d_out_of_tree", spawn=True)
 
-    # TODO(#2816): some viewcoords would be nice here
+    rr2.log("world", rr2.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
 
     rr.set_time_sequence("frame", 0)
-    rr2.log("asset", rr2.Asset3D.from_file(sys.argv[1]))
+    rr2.log("world/asset", rr2.Asset3D.from_file(sys.argv[1]))
     # Those points will not be affected by their parent's out-of-tree transform!
     rr2.log(
-        "asset/points",
+        "world/asset/points",
         rr2.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T),
     )
 

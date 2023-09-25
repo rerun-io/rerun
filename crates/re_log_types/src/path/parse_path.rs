@@ -4,17 +4,6 @@ use re_types::{components::InstanceKey, ComponentName};
 
 use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Index};
 
-/// When parsing a [`DataPath`], it is important that we can distinguish the
-/// component and index from the actual entity path. This requires
-/// us to forbid certain characters in an entity part name.
-/// For instance, in `foo/bar.baz`, is `baz` a component name, or part of the entity path?
-/// So, when parsing a full [`DataPath`]s we are quite strict with what we allow.
-/// But when parsing [`EntityPath`]s we want to be a bit more forgiving, so we
-/// can accept things like `foo/bar.baz` and transform it into `foo/"bar.baz"`.
-/// This allows user to do things like `log(f"foo/{filename}", my_mesh)` without
-/// Rerun throwing a fit.
-const STRICT_ENTITY_PATH_PARSING: bool = false;
-
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
     #[error("Expected path, found empty string")]
@@ -47,7 +36,7 @@ pub enum PathParseError {
     #[error("Empty part")]
     EmptyPart,
 
-    #[error("Invalid character: {character:?} in entity path identifier {part:?}. Only ASCII characters, numbers, underscore, and dash are allowed. To put wild text in an entity path, surround it with double-quotes.")]
+    #[error("Invalid character: {character:?} in entity path identifier {part:?}. Only ASCII characters, numbers, underscore, and dash are allowed. To put arbitrary text in an entity path, surround it with double-quotes. See https://www.rerun.io/docs/concepts/entity-path for more.")]
     InvalidCharacterInPart { part: String, character: char },
 
     #[error("Invalid instance key: {0:?} (expected '[#1234]')")]
@@ -150,44 +139,60 @@ impl std::str::FromStr for DataPath {
     }
 }
 
-impl FromStr for EntityPath {
-    type Err = PathParseError;
+/// ## Entity path parsing
+/// When parsing a [`DataPath`], it is important that we can distinguish the
+/// component and index from the actual entity path. This requires
+/// us to forbid certain characters in an entity part name.
+/// For instance, in `foo/bar.baz`, is `baz` a component name, or part of the entity path?
+/// So, when parsing a full [`DataPath`]s we are quite strict with what we allow.
+/// But when parsing [`EntityPath`]s we want to be a bit more forgiving, so we
+/// can accept things like `foo/bar.baz` and transform it into `foo/"bar.baz"`.
+/// This allows user to do things like `log(f"foo/{filename}", my_mesh)` without
+/// Rerun throwing a fit.
+impl EntityPath {
+    /// Parse an entity path from a string, with strict checks for correctness.
+    ///
+    /// Parses anything that `ent_path.to_string()` outputs.
+    ///
+    /// For a forgiving parse that accepts anything, use [`Self::parse_forgiving`].
+    pub fn parse_strict(s: &str) -> Result<Self, PathParseError> {
+        let DataPath {
+            entity_path,
+            instance_key,
+            component_name,
+        } = DataPath::from_str(s)?;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if STRICT_ENTITY_PATH_PARSING {
-            let DataPath {
-                entity_path,
-                instance_key,
-                component_name,
-            } = DataPath::from_str(s)?;
+        if let Some(instance_key) = instance_key {
+            return Err(PathParseError::UnexpectedInstanceKey(instance_key));
+        }
+        if let Some(component_name) = component_name {
+            return Err(PathParseError::UnexpectedComponentName(component_name));
+        }
+        Ok(entity_path)
+    }
 
-            if let Some(instance_key) = instance_key {
-                return Err(PathParseError::UnexpectedInstanceKey(instance_key));
-            }
-            if let Some(component_name) = component_name {
-                return Err(PathParseError::UnexpectedComponentName(component_name));
-            }
-            Ok(entity_path)
-        } else {
-            let mut parts = parse_entity_path_forgiving(s)?;
+    /// Parses an entity path, handling any malformed input with a logged warning.
+    ///
+    /// For a strict parses, use [`Self::parse_strict`] instead.
+    pub fn parse_forgiving(s: &str) -> Self {
+        let mut parts = parse_entity_path_forgiving(s);
 
-            for part in &mut parts {
-                if let EntityPathPart::Name(name) = part {
-                    if validate_name(name).is_err() {
-                        // Quote this, e.g. `foo/invalid.name` -> `foo/"invalid.name"`
-                        *part = EntityPathPart::Index(Index::String(name.to_string()));
-                    }
+        for part in &mut parts {
+            if let EntityPathPart::Name(name) = part {
+                if validate_name(name).is_err() {
+                    // Quote this, e.g. `foo/invalid.name` -> `foo/"invalid.name"`
+                    *part = EntityPathPart::Index(Index::String(name.to_string()));
                 }
             }
-
-            let path = EntityPath::from(parts);
-
-            if path.to_string() != s {
-                re_log::warn_once!("Found an invalid entity path '{s}' that was interpreted as '{path}'. Only ASCII characters, numbers, underscore, and dash are allowed in identifiers. To put wild text in an entity path, surround it with double-quotes.");
-            }
-
-            Ok(path)
         }
+
+        let path = EntityPath::from(parts);
+
+        if path.to_string() != s {
+            re_log::warn_once!("Found an entity path '{s}' that was not in the normalized form. Please write it as '{path}' instead. Only ASCII characters, numbers, underscore, and dash are allowed in identifiers. To put arbitrary text in an entity path, surround it with double-quotes. See https://www.rerun.io/docs/concepts/entity-path for more");
+        }
+
+        path
     }
 }
 
@@ -220,30 +225,29 @@ impl FromStr for ComponentPath {
 ///
 /// Things like `foo/Hallå Där!` will be accepted, and transformed into
 /// the path `foo/"Hallå Där!"`.
-fn parse_entity_path_forgiving(path: &str) -> Result<Vec<EntityPathPart>, PathParseError> {
-    if path.is_empty() {
-        return Err(PathParseError::EmptyString);
-    }
-
-    if path == "/" {
-        return Ok(vec![]); // special-case root entity
-    }
-
-    if path.starts_with('/') {
-        return Err(PathParseError::LeadingSlash);
-    }
-
+fn parse_entity_path_forgiving(path: &str) -> Vec<EntityPathPart> {
+    #![allow(clippy::unwrap_used)]
+    // We parse on bytes, and take care to only split on either side of a one-byte ASCII character,
+    // making the `from_utf8(…).unwrap()`s below safe.
     let mut bytes = path.as_bytes();
 
     let mut parts = vec![];
 
     while let Some(c) = bytes.first() {
-        if *c == b'"' {
+        if *c == b'/' {
+            bytes = &bytes[1..]; // skip the /
+        } else if *c == b'"' {
             // Look for the terminating quote ignoring escaped quotes (\"):
             let mut i = 1;
             loop {
                 if i == bytes.len() {
-                    return Err(PathParseError::UnterminatedString);
+                    // Unterminated string - let's do our best:
+                    let unescaped =
+                        unescape_string_forgiving(std::str::from_utf8(&bytes[1..i]).unwrap());
+
+                    parts.push(EntityPathPart::Index(Index::String(unescaped)));
+                    bytes = &bytes[i..];
+                    break;
                 } else if bytes[i] == b'\\' && i + 1 < bytes.len() {
                     i += 2; // consume escape and what was escaped
                 } else if bytes[i] == b'"' {
@@ -253,27 +257,12 @@ fn parse_entity_path_forgiving(path: &str) -> Result<Vec<EntityPathPart>, PathPa
                 }
             }
 
-            let unescaped = unescape_string(std::str::from_utf8(&bytes[1..i]).unwrap())
-                .map_err(|details| PathParseError::BadEscape { details })?;
-
+            let unescaped = unescape_string_forgiving(std::str::from_utf8(&bytes[1..i]).unwrap());
             parts.push(EntityPathPart::Index(Index::String(unescaped)));
-
             bytes = &bytes[i + 1..]; // skip the closing quote
-
-            match bytes.first() {
-                None => {
-                    break;
-                }
-                Some(b'/') => {
-                    bytes = &bytes[1..];
-                }
-                _ => {
-                    return Err(PathParseError::MissingSlash);
-                }
-            }
         } else {
             let end = bytes.iter().position(|&b| b == b'/').unwrap_or(bytes.len());
-            parts.push(parse_part(std::str::from_utf8(&bytes[0..end]).unwrap())?);
+            parts.push(parse_part(std::str::from_utf8(&bytes[0..end]).unwrap()));
             if end == bytes.len() {
                 break;
             } else {
@@ -282,7 +271,7 @@ fn parse_entity_path_forgiving(path: &str) -> Result<Vec<EntityPathPart>, PathPa
         }
     }
 
-    Ok(parts)
+    parts
 }
 
 fn entity_path_parts_from_tokens(mut tokens: &[&str]) -> Result<Vec<EntityPathPart>> {
@@ -312,7 +301,7 @@ fn entity_path_parts_from_tokens(mut tokens: &[&str]) -> Result<Vec<EntityPathPa
                 .map_err(|details| PathParseError::BadEscape { details })?;
             parts.push(EntityPathPart::Index(Index::String(unescaped)));
         } else {
-            parts.push(parse_part(token)?);
+            parts.push(parse_part(token));
         }
 
         if let Some(next_token) = tokens.first() {
@@ -341,6 +330,9 @@ fn join(tokens: &[&str]) -> String {
 }
 
 fn tokenize(path: &str) -> Result<Vec<&str>> {
+    #![allow(clippy::unwrap_used)]
+    // We parse on bytes, and take care to only split on either side of a one-byte ASCI,
+    // making the `from_utf8(…)s below.u
     let mut bytes = path.as_bytes();
 
     fn is_special_character(c: u8) -> bool {
@@ -392,29 +384,31 @@ fn tokenize(path: &str) -> Result<Vec<&str>> {
         .collect())
 }
 
-fn parse_part(s: &str) -> Result<EntityPathPart> {
+fn parse_part(s: &str) -> EntityPathPart {
     use std::str::FromStr as _;
 
-    if s.is_empty() {
-        Err(PathParseError::DoubleSlash)
-    } else if let Some(s) = s.strip_prefix('#') {
+    if let Some(s) = s.strip_prefix('#') {
         if let Ok(sequence) = u64::from_str(s) {
-            Ok(EntityPathPart::Index(Index::Sequence(sequence)))
-        } else {
-            Err(PathParseError::InvalidSequence(s.into()))
+            return EntityPathPart::Index(Index::Sequence(sequence));
         }
-    } else if let Ok(integer) = i128::from_str(s) {
-        Ok(EntityPathPart::Index(Index::Integer(integer)))
+    }
+
+    if let Ok(integer) = i128::from_str(s) {
+        EntityPathPart::Index(Index::Integer(integer))
     } else if let Ok(uuid) = uuid::Uuid::parse_str(s) {
-        Ok(EntityPathPart::Index(Index::Uuid(uuid)))
+        EntityPathPart::Index(Index::Uuid(uuid))
     } else {
-        Ok(EntityPathPart::Name(s.into()))
+        EntityPathPart::Name(s.into())
     }
 }
 
 fn validate_name(name: &str) -> Result<()> {
     if name.is_empty() {
         return Err(PathParseError::EmptyPart);
+    }
+
+    if name.starts_with('#') {
+        return Err(PathParseError::InvalidSequence(name.to_owned()));
     }
 
     for c in name.chars() {
@@ -454,6 +448,16 @@ fn unescape_string(input: &str) -> Result<String, &'static str> {
     Ok(output)
 }
 
+fn unescape_string_forgiving(input: &str) -> String {
+    match unescape_string(input) {
+        Ok(s) => s,
+        Err(err) => {
+            re_log::warn_once!("Bad escape sequence in entity path string {input:?}: {err}");
+            input.to_owned()
+        }
+    }
+}
+
 #[test]
 fn test_unescape_string() {
     let input = r#"Hello \"World\" /  \\ \n\r\t"#;
@@ -462,11 +466,48 @@ fn test_unescape_string() {
 }
 
 #[test]
-fn test_parse_entity_path() {
+fn test_parse_entity_path_forgiving() {
+    use crate::entity_path_vec;
+
+    fn parse(s: &str) -> Vec<EntityPathPart> {
+        EntityPath::parse_forgiving(s).to_vec()
+    }
+
+    fn normalize(s: &str) -> String {
+        EntityPath::parse_forgiving(s).to_string()
+    }
+
+    assert_eq!(parse(""), entity_path_vec!());
+    assert_eq!(parse("/"), entity_path_vec!());
+    assert_eq!(parse("foo"), entity_path_vec!("foo"));
+    assert_eq!(parse("foo/bar"), entity_path_vec!("foo", "bar"));
+    assert_eq!(
+        parse(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
+        entity_path_vec!(
+            "foo",
+            Index::String("bar".into()),
+            Index::Sequence(123),
+            Index::Integer(-1234),
+            Index::Uuid(uuid::Uuid::parse_str("6d046bf4-e5d3-4599-9153-85dd97218cb3").unwrap())
+        )
+    );
+
+    assert_eq!(normalize(""), "/");
+    assert_eq!(normalize("/"), "/");
+    assert_eq!(normalize("//"), "/");
+    assert_eq!(normalize("/foo/bar/"), "foo/bar");
+    assert_eq!(normalize("foo/bar.baz"), r#"foo/"bar.baz""#);
+    assert_eq!(normalize("foo/#42"), "foo/#42");
+    assert_eq!(normalize("foo/#bar/baz"), r##"foo/"#bar"/baz"##);
+    assert_eq!(normalize("foo/Hallå Där!"), r#"foo/"Hallå Där!""#);
+}
+
+#[test]
+fn test_parse_entity_path_strict() {
     use crate::entity_path_vec;
 
     fn parse(s: &str) -> Result<Vec<EntityPathPart>> {
-        EntityPath::from_str(s).map(|path| path.to_vec())
+        EntityPath::parse_strict(s).map(|path| path.to_vec())
     }
 
     assert_eq!(parse(""), Err(PathParseError::EmptyString));
@@ -490,26 +531,15 @@ fn test_parse_entity_path() {
         Err(PathParseError::MissingSlash)
     );
 
-    if STRICT_ENTITY_PATH_PARSING {
-        assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
-        assert!(matches!(
-            parse(r#"entity.component"#),
-            Err(PathParseError::UnexpectedComponentName { .. })
-        ));
-        assert!(matches!(
-            parse(r#"entity[#123]"#),
-            Err(PathParseError::UnexpectedInstanceKey(InstanceKey(123)))
-        ));
-    } else {
-        assert_eq!(
-            EntityPath::from_str("foo/bar/").unwrap().to_string(),
-            "foo/bar"
-        );
-        assert_eq!(
-            EntityPath::from_str("foo/bar.baz").unwrap().to_string(),
-            r#"foo/"bar.baz""#
-        );
-    }
+    assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
+    assert!(matches!(
+        parse(r#"entity.component"#),
+        Err(PathParseError::UnexpectedComponentName { .. })
+    ));
+    assert!(matches!(
+        parse(r#"entity[#123]"#),
+        Err(PathParseError::UnexpectedInstanceKey(InstanceKey(123)))
+    ));
 }
 
 #[test]
@@ -517,21 +547,21 @@ fn test_parse_component_path() {
     assert_eq!(
         ComponentPath::from_str("world/points.rerun.components.Color"),
         Ok(ComponentPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             component_name: "rerun.components.Color".into(),
         })
     );
     assert_eq!(
         ComponentPath::from_str("world/points.Color"),
         Ok(ComponentPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             component_name: "rerun.components.Color".into(),
         })
     );
     assert_eq!(
         ComponentPath::from_str("world/points.my.custom.color"),
         Ok(ComponentPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             component_name: "my.custom.color".into(),
         })
     );
@@ -554,7 +584,7 @@ fn test_parse_data_path() {
     assert_eq!(
         DataPath::from_str("world/points[#42].rerun.components.Color"),
         Ok(DataPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             instance_key: Some(InstanceKey(42)),
             component_name: Some("rerun.components.Color".into()),
         })
@@ -562,7 +592,7 @@ fn test_parse_data_path() {
     assert_eq!(
         DataPath::from_str("world/points.rerun.components.Color"),
         Ok(DataPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             instance_key: None,
             component_name: Some("rerun.components.Color".into()),
         })
@@ -570,7 +600,7 @@ fn test_parse_data_path() {
     assert_eq!(
         DataPath::from_str("world/points[#42]"),
         Ok(DataPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             instance_key: Some(InstanceKey(42)),
             component_name: None,
         })
@@ -578,7 +608,7 @@ fn test_parse_data_path() {
     assert_eq!(
         DataPath::from_str("world/points"),
         Ok(DataPath {
-            entity_path: EntityPath::from_str("world/points").unwrap(),
+            entity_path: EntityPath::from("world/points"),
             instance_key: None,
             component_name: None,
         })
