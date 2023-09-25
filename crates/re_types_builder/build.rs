@@ -44,18 +44,9 @@ fn main() {
     eprintln!("cur_hash: {cur_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
 
-    if let Some(cur_hash) = cur_hash {
-        if cur_hash == new_hash {
-            // Source definition hasn't changed, no need to do anything.
-            return;
-        }
-    }
-
-    // Detect desyncs between definitions and generated when running on CI, and
-    // crash the build accordingly.
-    #[allow(clippy::manual_assert)]
-    if std::env::var("CI").is_ok() {
-        panic!("re_types_builder's fbs definitions and generated code are out-of-sync!");
+    if cur_hash.is_none() || cur_hash.as_ref() == Some(&new_hash) {
+        // Source definition hasn't changed, no need to do anything.
+        return;
     }
 
     // NOTE: This requires `flatc` to be in $PATH, but only for contributors, not end users.

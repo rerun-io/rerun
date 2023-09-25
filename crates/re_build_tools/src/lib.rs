@@ -6,6 +6,7 @@
 
 use anyhow::Context as _;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{path::PathBuf, process::Command};
 
 mod hashing;
@@ -21,6 +22,19 @@ pub use self::rebuild_detector::{
     get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
     rerun_if_changed_glob, rerun_if_changed_or_doesnt_exist, write_file_if_necessary,
 };
+
+/// Atomic bool indicating whether or not to print the cargo build instructions
+pub(crate) static OUTPUT_CARGO_BUILD_INSTRUCTIONS: AtomicBool = AtomicBool::new(true);
+
+/// Change whether or not this library should output cargo build instructions
+pub fn set_output_cargo_build_instructions(output_instructions: bool) {
+    OUTPUT_CARGO_BUILD_INSTRUCTIONS.store(output_instructions, Ordering::Relaxed);
+}
+
+/// Helper to check whether or not cargo build instructions should be printed.
+pub(crate) fn should_output_cargo_build_instructions() -> bool {
+    OUTPUT_CARGO_BUILD_INSTRUCTIONS.load(Ordering::Relaxed)
+}
 
 // Situations to consider
 // ----------------------
@@ -98,7 +112,9 @@ pub fn export_env_vars() {
 }
 
 fn set_env(name: &str, value: &str) {
-    println!("cargo:rustc-env={name}={value}");
+    if should_output_cargo_build_instructions() {
+        println!("cargo:rustc-env={name}={value}");
+    }
 }
 
 fn run_command(cmd: &str, args: &[&str]) -> anyhow::Result<String> {

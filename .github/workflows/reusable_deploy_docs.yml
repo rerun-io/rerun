@@ -106,7 +106,7 @@ jobs:
     name: Rust
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.9.1
+      image: rerunio/ci_docker:0.10.0
     steps:
       - name: Show context
         run: |
