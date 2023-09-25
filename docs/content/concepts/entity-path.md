@@ -29,10 +29,10 @@ Nothing needs to be explicitly logged to `"camera"` or `"camera/image/detection"
 
 #### Path parts
 
-A path can look like this: `camera/"left"/detection/#42/bbox`. Each part (between the slashes) can either be:
+A path can look like this: `camera/"Left"/detection/#42/bbox`. Each part (between the slashes) can either be:
 
-* A name (e.g. `camera`), intended for hard-coded names.
-* A `"quoted string"`, intended for dynamic strings, like serials numbers.
+* An identifier (e.g. `camera`), intended for hard-coded names. Only ASCII characters, numbers, underscore, and dash are allowed in identifiers (`[a-zA-Z0-9_-]+`).
+* A `"quoted string"`, intended for arbitrary strings, like file names and serials numbers.
 * An integer, intended for hashes or similar.
 * A number sequence, prefixed by `#`, intended for indices.
 * A UUID.

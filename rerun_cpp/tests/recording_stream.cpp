@@ -382,7 +382,6 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
         AND_GIVEN("an invalid path") {
             auto variant = GENERATE(table<const char*, rr::ErrorCode>({
-                std::tuple<const char*, rr::ErrorCode>("////", rr::ErrorCode::InvalidEntityPath),
                 std::tuple<const char*, rr::ErrorCode>(
                     nullptr,
                     rr::ErrorCode::UnexpectedNullArgument

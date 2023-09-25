@@ -7,6 +7,9 @@ use crate::{
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum CpuWriteGpuReadError {
+    #[error("Attempting to allocate an empty buffer.")]
+    ZeroSizeBufferAllocation,
+
     #[error("Buffer is full, can't append more data! Buffer has capacity for {buffer_element_capacity} elements.")]
     BufferFull { buffer_element_capacity: usize },
 
@@ -421,7 +424,11 @@ impl CpuWriteGpuReadBelt {
         device: &wgpu::Device,
         buffer_pool: &GpuBufferPool,
         num_elements: usize,
-    ) -> CpuWriteGpuReadBuffer<T> {
+    ) -> Result<CpuWriteGpuReadBuffer<T>, CpuWriteGpuReadError> {
+        if num_elements == 0 {
+            return Err(CpuWriteGpuReadError::ZeroSizeBufferAllocation);
+        }
+
         re_tracing::profile_function!();
 
         debug_assert!(num_elements > 0, "Cannot allocate zero-sized buffer");
@@ -476,7 +483,7 @@ impl CpuWriteGpuReadBelt {
 
         let cpu_buffer_view = chunk.allocate(num_elements, size);
         self.active_chunks.push(chunk);
-        cpu_buffer_view
+        Ok(cpu_buffer_view)
     }
 
     /// Prepare currently mapped buffers for use in a submission.

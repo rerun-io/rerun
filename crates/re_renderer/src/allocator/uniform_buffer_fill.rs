@@ -32,8 +32,8 @@ impl<T> UniformBufferAlignmentCheck<T> {
     /// But this leads to more unsafe code, harder to avoid holes in write combined memory access
     /// and potentially undefined values in the padding bytes on GPU.
     const CHECK: () = assert!(
-        std::mem::align_of::<T>() >= 256,
-        "Uniform buffers need to be aligned to 256 bytes. Use `#[repr(C, align(256))]`"
+        std::mem::align_of::<T>() >= 256 && std::mem::size_of::<T>() > 0,
+        "Uniform buffers need to be bigger than 0 bytes and aligned to 256 bytes. Use `#[repr(C, align(256))]`"
     );
 }
 
@@ -59,11 +59,6 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     let num_buffers = content.len() as u64;
     let element_size = std::mem::size_of::<T>() as u64;
 
-    assert!(
-        element_size > 0,
-        "Uniform buffer need to have a non-zero size"
-    );
-
     let buffer = ctx.gpu_resources.buffers.alloc(
         &ctx.device,
         &crate::wgpu_resources::BufferDesc {
@@ -74,11 +69,15 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
         },
     );
 
-    let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
-        &ctx.device,
-        &ctx.gpu_resources.buffers,
-        num_buffers as _,
-    );
+    let Some(mut staging_buffer) = ctx
+        .cpu_write_gpu_read_belt
+        .lock()
+        .allocate::<T>(&ctx.device, &ctx.gpu_resources.buffers, num_buffers as _)
+        .unwrap_debug_or_log_error()
+    else {
+        // This should only fail for zero sized T, which we assert statically on.
+        return Vec::new();
+    };
     staging_buffer.extend(content).unwrap_debug_or_log_error();
     staging_buffer
         .copy_to_buffer(

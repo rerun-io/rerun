@@ -34,9 +34,9 @@
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_view_coordinates").memory()?;
 ///
-///     rec.log("/", &ViewCoordinates::ULB)?;
+///     rec.log_timeless("world", &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 ///     rec.log(
-///         "xyz",
+///         "world/xyz",
 ///         &Arrows3D::from_vectors(
 ///             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], //
 ///         )
