@@ -1,7 +1,9 @@
 //! Helper binary for running the codegen manually. Useful during development!
 
 use camino::Utf8Path;
-use re_build_tools::{read_versioning_hash, write_versioning_hash};
+use re_build_tools::{
+    read_versioning_hash, set_ouput_cargo_build_instructions, write_versioning_hash,
+};
 use re_types_builder::{compute_re_types_hash, SourceLocations};
 
 const SOURCE_HASH_PATH: &str = "crates/re_types/source_hash.txt";
@@ -15,6 +17,8 @@ const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "rerun_py/tests/test_types";
 
 fn main() {
     re_log::setup_native_logging();
+    // This isn't a build.rs script, so opt out of cargo build instrctinsr
+    set_output_cargo_build_instructions(false);
 
     rayon::ThreadPoolBuilder::new()
         .thread_name(|i| format!("rayon-{i}"))
