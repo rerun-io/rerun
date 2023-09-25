@@ -5,20 +5,20 @@ from typing import TYPE_CHECKING
 from rerun.error_utils import _send_warning
 
 if TYPE_CHECKING:
-    from ..components import TensorDataArray
+    from ..components import TensorDataBatch
     from ..datatypes import TensorDataArrayLike
 
 
 class BarChartExt:
     @staticmethod
-    def values__field_converter_override(data: TensorDataArrayLike) -> TensorDataArray:
-        from ..components import TensorDataArray
+    def values__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
+        from ..components import TensorDataBatch
 
-        tensor_data = TensorDataArray.from_similar(data)
+        tensor_data = TensorDataBatch(data)
 
         # TODO(jleibs): Doing this on raw arrow data is not great. Clean this up
         # once we coerce to a canonical non-arrow type.
-        shape_dims = tensor_data[0].value["shape"].values.field(0).to_numpy()
+        shape_dims = tensor_data.as_arrow_array()[0].value["shape"].values.field(0).to_numpy()
 
         if len(shape_dims) != 1:
             _send_warning(

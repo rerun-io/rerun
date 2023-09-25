@@ -21,13 +21,13 @@ class RotationAxisAngleExt:
 
     @staticmethod
     def native_to_pa_array_override(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import AngleArray, RotationAxisAngle, Vec3DArray
+        from . import AngleBatch, RotationAxisAngle, Vec3DBatch
 
         if isinstance(data, RotationAxisAngle):
             data = [data]
 
-        axis_pa_array = Vec3DArray._native_to_pa_array([rotation.axis for rotation in data], data_type["axis"].type)
-        angle_pa_arr = AngleArray._native_to_pa_array([rotation.angle for rotation in data], data_type["angle"].type)
+        axis_pa_array = Vec3DBatch._native_to_pa_array([rotation.axis for rotation in data], data_type["axis"].type)
+        angle_pa_arr = AngleBatch._native_to_pa_array([rotation.angle for rotation in data], data_type["angle"].type)
 
         return pa.StructArray.from_arrays(
             [

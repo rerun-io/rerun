@@ -159,7 +159,7 @@ def test_transform3d_translation_and_mat3x3(trans: rr_dt.Vec3DLike | None, mat: 
 
     tm = rr_arch.Transform3D(rr_dt.TranslationAndMat3x3(translation=trans, matrix=mat))
 
-    assert tm.transform == rr_cmp.Transform3DArray.from_similar(
+    assert tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(
             rr_dt.TranslationAndMat3x3(
                 translation=expected_trans,
@@ -170,7 +170,7 @@ def test_transform3d_translation_and_mat3x3(trans: rr_dt.Vec3DLike | None, mat: 
 
     tm2 = rr_arch.Transform3D(rr_dt.TranslationAndMat3x3(translation=trans, matrix=mat, from_parent=True))
 
-    assert tm2.transform == rr_cmp.Transform3DArray.from_similar(
+    assert tm2.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(
             rr_dt.TranslationAndMat3x3(
                 translation=expected_trans,
@@ -187,13 +187,13 @@ def test_transform3d_translation_and_mat3x3(trans: rr_dt.Vec3DLike | None, mat: 
 def test_transform3d_translation_rotation_scale3d_translation(trans: rr_dt.Vec3DLike) -> None:
     tm = rr_arch.Transform3D(rr_dt.TranslationRotationScale3D(translation=trans))
 
-    assert tm.transform == rr_cmp.Transform3DArray.from_similar(
+    assert tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(rr_dt.TranslationRotationScale3D(translation=rr_dt.Vec3D([1, 2, 3])))
     )
 
     tm2 = rr_arch.Transform3D(rr_dt.TranslationRotationScale3D(translation=trans, from_parent=True))
 
-    assert tm2.transform == rr_cmp.Transform3DArray.from_similar(
+    assert tm2.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(rr_dt.TranslationRotationScale3D(translation=rr_dt.Vec3D([1, 2, 3]), from_parent=True))
     )
 
@@ -204,11 +204,11 @@ def test_transform3d_translation_rotation_scale3d_translation(trans: rr_dt.Vec3D
 def test_transform3d_translation_rotation_scale3d_rotation(rot: rr_dt.Rotation3DLike) -> None:
     tm = rr_arch.Transform3D(rr_dt.TranslationRotationScale3D(rotation=rot))
 
-    assert tm.transform == rr_cmp.Transform3DArray.from_similar(
+    assert tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(
             rr_dt.TranslationRotationScale3D(rotation=rr_dt.Rotation3D(rr_dt.Quaternion(xyzw=[1, 2, 3, 4])))
         )
-    ) or tm.transform == rr_cmp.Transform3DArray.from_similar(
+    ) or tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(
             rr_dt.TranslationRotationScale3D(
                 rotation=rr_dt.Rotation3D(rr_dt.RotationAxisAngle(rr_dt.Vec3D([1, 2, 3]), rr_dt.Angle(rad=4)))
@@ -221,8 +221,8 @@ def test_transform3d_translation_rotation_scale3d_rotation(rot: rr_dt.Rotation3D
 def test_transform3d_translation_rotation_scale3d_scale(scale: rr_dt.Scale3DLike) -> None:
     tm = rr_arch.Transform3D(rr_dt.TranslationRotationScale3D(scale=scale))
 
-    assert tm.transform == rr_cmp.Transform3DArray.from_similar(
+    assert tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(rr_dt.TranslationRotationScale3D(scale=rr_dt.Scale3D([1, 2, 3])))
-    ) or tm.transform == rr_cmp.Transform3DArray.from_similar(
+    ) or tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(rr_dt.TranslationRotationScale3D(scale=rr_dt.Scale3D(4.0)))
     )

@@ -61,7 +61,7 @@ def line_strips2d_expected(obj: Any) -> Any:
         ],
     )
 
-    return rrc.LineStrip2DArray.from_similar(expected)
+    return rrc.LineStrip2DBatch(expected)
 
 
 def test_line_strips2d() -> None:
@@ -128,7 +128,7 @@ def test_line_strips2d() -> None:
 def test_line_segments2d(data: rrc.LineStrip2DArrayLike) -> None:
     arch = rr2.LineStrips2D(data)
 
-    assert arch.strips == rrc.LineStrip2DArray.from_similar(
+    assert arch.strips == rrc.LineStrip2DBatch(
         [
             [[0, 0], [2, 1]],
             [[4, -1], [6, 0]],

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -166,6 +166,10 @@ def log_line_strips_2d(
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
 
+    # New types use Sequence, not Iterable
+    if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
+        line_strips = list(line_strips)
+
     stroke_widths = _normalize_radii(stroke_widths)
     radii = stroke_widths / 2.0
 
@@ -242,6 +246,10 @@ def log_line_strips_3d(
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
+
+    # New types use Sequence, not Iterable
+    if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
+        line_strips = list(line_strips)
 
     stroke_widths = _normalize_radii(stroke_widths)
     radii = stroke_widths / 2.0

@@ -52,11 +52,11 @@ vec2ds_arrays: list[rrd.Vec2DArrayLike] = [
 
 def vec2ds_expected(obj: Any, type_: Any | None) -> Any:
     if type_ is None:
-        type_ = rrd.Vec2DArray
+        type_ = rrd.Vec2DBatch
 
     expected = none_empty_or_value(obj, [[1.0, 2.0], [3.0, 4.0]])
 
-    return type_.optional_from_similar(expected)
+    return type_._optional(expected)
 
 
 vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
@@ -85,11 +85,11 @@ vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
 
 def vec3ds_expected(obj: Any, type_: Any | None) -> Any:
     if type_ is None:
-        type_ = rrd.Vec3DArray
+        type_ = rrd.Vec3DBatch
 
     expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
-    return type_.optional_from_similar(expected)
+    return type_._optional(expected)
 
 
 rotations_arrays: list[rrd.Rotation3DArrayLike] = [
@@ -106,7 +106,7 @@ rotations_arrays: list[rrd.Rotation3DArrayLike] = [
     rrd.RotationAxisAngle([1.0, 2.0, 3.0], rrd.Angle(4)),
     rrd.RotationAxisAngle(rrd.Vec3D([1, 2, 3]), rrd.Angle(4)),
     rrd.RotationAxisAngle(np.array([1, 2, 3], dtype=np.uint8), rrd.Angle(rad=4)),
-    # Sequence[Rotation3DArray]
+    # Sequence[Rotation3DBatch]
     [
         rrd.Rotation3D(rrd.Quaternion(xyzw=[1, 2, 3, 4])),
         [1, 2, 3, 4],
@@ -118,19 +118,17 @@ rotations_arrays: list[rrd.Rotation3DArrayLike] = [
 
 def expected_rotations(rotations: rrd.Rotation3DArrayLike, type_: Any) -> Any:
     if rotations is None:
-        return type_.optional_from_similar(None)
+        return type_._optional(None)
     elif hasattr(rotations, "__len__") and len(rotations) == 0:
-        return type_.optional_from_similar(rotations)
+        return type_._optional(rotations)
     elif isinstance(rotations, rrd.Rotation3D):
-        return type_.optional_from_similar(rotations)
+        return type_._optional(rotations)
     elif isinstance(rotations, rrd.RotationAxisAngle):
-        return type_.optional_from_similar(rrd.RotationAxisAngle([1, 2, 3], 4))
+        return type_._optional(rrd.RotationAxisAngle([1, 2, 3], 4))
     elif isinstance(rotations, rrd.Quaternion):
-        return type_.optional_from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
+        return type_._optional(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_.optional_from_similar(
-            [rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)]
-        )
+        return type_._optional([rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)])
 
 
 radii_arrays: list[rrc.RadiusArrayLike | None] = [
@@ -152,7 +150,7 @@ radii_arrays: list[rrc.RadiusArrayLike | None] = [
 def radii_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [1, 10])
 
-    return rrc.RadiusArray.optional_from_similar(expected)
+    return rrc.RadiusBatch._optional(expected)
 
 
 colors_arrays: list[rrd.ColorArrayLike | None] = [
@@ -256,7 +254,7 @@ colors_arrays: list[rrd.ColorArrayLike | None] = [
 
 def colors_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [0xAA0000CC, 0x00BB00DD])
-    return rrc.ColorArray.optional_from_similar(expected)
+    return rrc.ColorBatch._optional(expected)
 
 
 labels_arrays: list[rrd.Utf8ArrayLike | None] = [
@@ -274,7 +272,7 @@ labels_arrays: list[rrd.Utf8ArrayLike | None] = [
 
 def labels_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, ["hello", "friend"])
-    return rrc.TextArray.optional_from_similar(expected)
+    return rrc.TextBatch._optional(expected)
 
 
 draw_orders: list[rrc.DrawOrderLike | None] = [
@@ -288,7 +286,7 @@ draw_orders: list[rrc.DrawOrderLike | None] = [
 
 def draw_order_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [300])
-    return rrc.DrawOrderArray.optional_from_similar(expected)
+    return rrc.DrawOrderBatch._optional(expected)
 
 
 class_ids_arrays = [
@@ -311,7 +309,7 @@ class_ids_arrays = [
 
 def class_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [126, 127])
-    return rrc.ClassIdArray.optional_from_similar(expected)
+    return rrc.ClassIdBatch._optional(expected)
 
 
 keypoint_ids_arrays = [
@@ -334,7 +332,7 @@ keypoint_ids_arrays = [
 
 def keypoint_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [2, 3])
-    return rrc.KeypointIdArray.optional_from_similar(expected)
+    return rrc.KeypointIdBatch._optional(expected)
 
 
 instance_keys_arrays = [
@@ -351,4 +349,4 @@ instance_keys_arrays = [
 
 def instance_keys_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [U64_MAX_MINUS_1, U64_MAX])
-    return rrc.InstanceKeyArray.optional_from_similar(expected)
+    return rrc.InstanceKeyBatch._optional(expected)

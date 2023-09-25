@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Sequence
 
 from rerun.datatypes import AnnotationInfo, ClassDescription, ClassDescriptionLike
 from rerun.log_deprecated.log_decorator import log_decorator
@@ -12,7 +12,7 @@ __all__ = ["log_annotation_context", "AnnotationInfo", "ClassDescription", "Clas
 @log_decorator
 def log_annotation_context(
     entity_path: str,
-    class_descriptions: ClassDescriptionLike | Iterable[ClassDescriptionLike],
+    class_descriptions: ClassDescriptionLike | Sequence[ClassDescriptionLike],
     *,
     timeless: bool = True,
     recording: RecordingStream | None = None,

@@ -29,7 +29,7 @@ def _class_description_map_elem_converter(
 class ClassDescriptionMapElemExt:
     @staticmethod
     def native_to_pa_array_override(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import ClassDescriptionArray, ClassDescriptionMapElem, ClassIdArray
+        from . import ClassDescriptionBatch, ClassDescriptionMapElem, ClassIdBatch
 
         if isinstance(data, ClassDescriptionMapElem):
             data = [data]
@@ -39,8 +39,8 @@ class ClassDescriptionMapElemExt:
         ids = [item.class_id for item in map_items]
         class_descriptions = [item.class_description for item in map_items]
 
-        id_array = ClassIdArray.from_similar(ids).storage
-        desc_array = ClassDescriptionArray.from_similar(class_descriptions).storage
+        id_array = ClassIdBatch(ids).as_arrow_array().storage
+        desc_array = ClassDescriptionBatch(class_descriptions).as_arrow_array().storage
 
         return pa.StructArray.from_arrays(
             arrays=[id_array, desc_array],

@@ -66,7 +66,7 @@ class Mesh3D(Archetype):
     factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
     for i, factor in enumerate(factors):
         rr.set_time_sequence("frame", i)
-        rr2.log_components("triangle", [rr2.cmp.Position3DArray.from_similar(vertex_positions * factor)])
+        rr2.log_components("triangle", [rr2.cmp.Position3DBatch(vertex_positions * factor)])
     ```
     """
 
