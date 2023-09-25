@@ -81,7 +81,7 @@ namespace rerun {
                 std::streampos length = file.tellg();
                 file.seekg(0, std::ios::beg);
 
-                std::vector<uint8_t> data(length);
+                std::vector<uint8_t> data(static_cast<size_t>(length));
                 file.read(reinterpret_cast<char*>(data.data()), length);
 
                 return Asset3D::from_bytes(data, Asset3D::guess_media_type(path));

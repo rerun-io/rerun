@@ -204,7 +204,7 @@ impl MeshDrawData {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 instances.len(),
-            );
+            )?;
 
             let mesh_manager = ctx.mesh_manager.read();
             let mut num_processed_instances = 0;
