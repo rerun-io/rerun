@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use re_data_store::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::MeshInstance;
@@ -76,47 +75,27 @@ impl Asset3DPart {
         });
 
         if let Some(mesh) = mesh {
+            re_tracing::profile_scope!("mesh instances");
+
             let world_from_pose = ent_context.world_from_entity
                 * entity_from_pose.map_or(glam::Affine3A::IDENTITY, |t| t.0.into());
 
-            let mesh_instances = mesh
-                .mesh_instances
-                .iter()
-                .map(move |mesh_instance| {
-                    let pose_from_mesh = mesh_instance.world_from_mesh;
-                    let world_from_mesh = world_from_pose * pose_from_mesh;
+            instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                let pose_from_mesh = mesh_instance.world_from_mesh;
+                let world_from_mesh = world_from_pose * pose_from_mesh;
 
-                    MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }
-                })
-                .collect_vec();
+                MeshInstance {
+                    gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                    world_from_mesh,
+                    outline_mask_ids,
+                    picking_layer_id: picking_layer_id_from_instance_path_hash(
+                        picking_instance_hash,
+                    ),
+                    ..Default::default()
+                }
+            }));
 
-            let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
-
-            instances.extend(
-                mesh_instances
-                    .iter()
-                    .map(move |mesh_instance| MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh: ent_context.world_from_entity
-                            * mesh_instance.world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }),
-            );
-
-            self.0
-                .extend_bounding_box(bbox, ent_context.world_from_entity);
+            self.0.extend_bounding_box(mesh.bbox(), world_from_pose);
         };
 
         Ok(())

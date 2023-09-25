@@ -117,7 +117,7 @@ impl Mesh3DPart {
             }));
 
             self.0
-                .extend_bounding_box(*mesh.bbox(), ent_context.world_from_entity);
+                .extend_bounding_box(mesh.bbox(), ent_context.world_from_entity);
         };
 
         Ok(())
