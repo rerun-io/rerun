@@ -9,6 +9,8 @@ namespace rerun.archetypes;
 
 /// A 3D point cloud with positions and optional colors, radii, labels, etc.
 ///
+/// NOMERGE: A change to an archetype.
+///
 /// \example point3d_simple
 table Points3D (
   "attr.rust.derive": "PartialEq",
