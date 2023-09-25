@@ -5,17 +5,62 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 from rerun._baseclasses import Archetype
 
-from .. import components
+from .. import components, datatypes
 
 __all__ = ["AffixFuzzer3"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class AffixFuzzer3(Archetype):
-    # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
+    def __init__(
+        self: Any,
+        fuzz2001: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2002: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2003: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2004: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2005: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2006: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2007: components.AffixFuzzer7Like | None = None,
+        fuzz2008: components.AffixFuzzer8Like | None = None,
+        fuzz2009: components.AffixFuzzer9Like | None = None,
+        fuzz2010: components.AffixFuzzer10Like | None = None,
+        fuzz2011: components.AffixFuzzer11Like | None = None,
+        fuzz2012: components.AffixFuzzer12Like | None = None,
+        fuzz2013: components.AffixFuzzer13Like | None = None,
+        fuzz2014: datatypes.AffixFuzzer3Like | None = None,
+        fuzz2015: datatypes.AffixFuzzer3Like | None = None,
+        fuzz2016: components.AffixFuzzer16Like | None = None,
+        fuzz2017: components.AffixFuzzer17Like | None = None,
+        fuzz2018: components.AffixFuzzer18Like | None = None,
+    ):
+        """Create a new instance of the AffixFuzzer3 archetype."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
+        self.__attrs_init__(
+            fuzz2001=fuzz2001,
+            fuzz2002=fuzz2002,
+            fuzz2003=fuzz2003,
+            fuzz2004=fuzz2004,
+            fuzz2005=fuzz2005,
+            fuzz2006=fuzz2006,
+            fuzz2007=fuzz2007,
+            fuzz2008=fuzz2008,
+            fuzz2009=fuzz2009,
+            fuzz2010=fuzz2010,
+            fuzz2011=fuzz2011,
+            fuzz2012=fuzz2012,
+            fuzz2013=fuzz2013,
+            fuzz2014=fuzz2014,
+            fuzz2015=fuzz2015,
+            fuzz2016=fuzz2016,
+            fuzz2017=fuzz2017,
+            fuzz2018=fuzz2018,
+        )
 
     fuzz2001: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},

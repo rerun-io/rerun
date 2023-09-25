@@ -5,17 +5,62 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 from rerun._baseclasses import Archetype
 
-from .. import components
+from .. import components, datatypes
 
 __all__ = ["AffixFuzzer2"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class AffixFuzzer2(Archetype):
-    # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
+    def __init__(
+        self: Any,
+        fuzz1101: datatypes.AffixFuzzer1ArrayLike,
+        fuzz1102: datatypes.AffixFuzzer1ArrayLike,
+        fuzz1103: datatypes.AffixFuzzer1ArrayLike,
+        fuzz1104: datatypes.AffixFuzzer1ArrayLike,
+        fuzz1105: datatypes.AffixFuzzer1ArrayLike,
+        fuzz1106: datatypes.AffixFuzzer1ArrayLike,
+        fuzz1107: components.AffixFuzzer7ArrayLike,
+        fuzz1108: components.AffixFuzzer8ArrayLike,
+        fuzz1109: components.AffixFuzzer9ArrayLike,
+        fuzz1110: components.AffixFuzzer10ArrayLike,
+        fuzz1111: components.AffixFuzzer11ArrayLike,
+        fuzz1112: components.AffixFuzzer12ArrayLike,
+        fuzz1113: components.AffixFuzzer13ArrayLike,
+        fuzz1114: datatypes.AffixFuzzer3ArrayLike,
+        fuzz1115: datatypes.AffixFuzzer3ArrayLike,
+        fuzz1116: components.AffixFuzzer16ArrayLike,
+        fuzz1117: components.AffixFuzzer17ArrayLike,
+        fuzz1118: components.AffixFuzzer18ArrayLike,
+    ):
+        """Create a new instance of the AffixFuzzer2 archetype."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
+        self.__attrs_init__(
+            fuzz1101=fuzz1101,
+            fuzz1102=fuzz1102,
+            fuzz1103=fuzz1103,
+            fuzz1104=fuzz1104,
+            fuzz1105=fuzz1105,
+            fuzz1106=fuzz1106,
+            fuzz1107=fuzz1107,
+            fuzz1108=fuzz1108,
+            fuzz1109=fuzz1109,
+            fuzz1110=fuzz1110,
+            fuzz1111=fuzz1111,
+            fuzz1112=fuzz1112,
+            fuzz1113=fuzz1113,
+            fuzz1114=fuzz1114,
+            fuzz1115=fuzz1115,
+            fuzz1116=fuzz1116,
+            fuzz1117=fuzz1117,
+            fuzz1118=fuzz1118,
+        )
 
     fuzz1101: components.AffixFuzzer1Batch = field(
         metadata={"component": "required"},

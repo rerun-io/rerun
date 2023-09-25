@@ -5,17 +5,62 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 from rerun._baseclasses import Archetype
 
-from .. import components
+from .. import components, datatypes
 
 __all__ = ["AffixFuzzer4"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class AffixFuzzer4(Archetype):
-    # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py
+    def __init__(
+        self: Any,
+        fuzz2101: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2102: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2103: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2104: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2105: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2106: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2107: components.AffixFuzzer7ArrayLike | None = None,
+        fuzz2108: components.AffixFuzzer8ArrayLike | None = None,
+        fuzz2109: components.AffixFuzzer9ArrayLike | None = None,
+        fuzz2110: components.AffixFuzzer10ArrayLike | None = None,
+        fuzz2111: components.AffixFuzzer11ArrayLike | None = None,
+        fuzz2112: components.AffixFuzzer12ArrayLike | None = None,
+        fuzz2113: components.AffixFuzzer13ArrayLike | None = None,
+        fuzz2114: datatypes.AffixFuzzer3ArrayLike | None = None,
+        fuzz2115: datatypes.AffixFuzzer3ArrayLike | None = None,
+        fuzz2116: components.AffixFuzzer16ArrayLike | None = None,
+        fuzz2117: components.AffixFuzzer17ArrayLike | None = None,
+        fuzz2118: components.AffixFuzzer18ArrayLike | None = None,
+    ):
+        """Create a new instance of the AffixFuzzer4 archetype."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py
+        self.__attrs_init__(
+            fuzz2101=fuzz2101,
+            fuzz2102=fuzz2102,
+            fuzz2103=fuzz2103,
+            fuzz2104=fuzz2104,
+            fuzz2105=fuzz2105,
+            fuzz2106=fuzz2106,
+            fuzz2107=fuzz2107,
+            fuzz2108=fuzz2108,
+            fuzz2109=fuzz2109,
+            fuzz2110=fuzz2110,
+            fuzz2111=fuzz2111,
+            fuzz2112=fuzz2112,
+            fuzz2113=fuzz2113,
+            fuzz2114=fuzz2114,
+            fuzz2115=fuzz2115,
+            fuzz2116=fuzz2116,
+            fuzz2117=fuzz2117,
+            fuzz2118=fuzz2118,
+        )
 
     fuzz2101: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},
