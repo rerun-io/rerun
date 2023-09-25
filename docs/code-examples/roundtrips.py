@@ -23,6 +23,7 @@ opt_out_entirely = {
     "annotation_context_connections": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
     "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
+    "asset3d_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
     "bar_chart": ["cpp"],
     "custom_data": ["cpp"],
     "depth_image_3d": ["cpp"],
@@ -37,6 +38,7 @@ opt_out_entirely = {
     "tensor_one_dim": ["cpp"],
     "tensor_simple": ["cpp"],
     "text_log_integration": ["cpp", "rust"],
+    "view_coordinates_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],

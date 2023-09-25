@@ -10,5 +10,5 @@ if len(sys.argv) < 2:
 
 rr.init("rerun_example_asset3d_simple", spawn=True)
 
-# TODO(#2816): some viewcoords would be nice here
-rr2.log("asset", rr2.Asset3D.from_file(sys.argv[1]))
+rr2.log("world", rr2.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
+rr2.log("world/asset", rr2.Asset3D.from_file(sys.argv[1]))
