@@ -38,16 +38,21 @@ impl Mesh3DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
+        let vertex_positions: Vec<_> = {
+            re_tracing::profile_scope!("vertex_positions");
+            arch_view.iter_required_component::<Position3D>()?.collect()
+        };
+        if vertex_positions.is_empty() {
+            return Ok(());
+        }
+
         let mesh = {
             re_tracing::profile_scope!("collect");
             // NOTE:
             // - Per-vertex properties are joined using the cluster key as usual.
             // - Per-mesh properties are just treated as a "global var", essentially.
             Mesh3D {
-                vertex_positions: {
-                    re_tracing::profile_scope!("vertex_positions");
-                    arch_view.iter_required_component::<Position3D>()?.collect()
-                },
+                vertex_positions,
                 vertex_normals: if arch_view.has_component::<Vector3D>() {
                     re_tracing::profile_scope!("vertex_normals");
                     Some(
