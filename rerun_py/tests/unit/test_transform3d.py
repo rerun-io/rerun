@@ -159,17 +159,6 @@ def test_transform3d_translation_and_mat3x3(trans: rr_dt.Vec3DLike | None, mat: 
 
     tm = rr_arch.Transform3D(rr_dt.TranslationAndMat3x3(translation=trans, matrix=mat))
 
-    print(tm.transform.pa_array)
-    print(
-        rr_cmp.Transform3DBatch(
-            rr_dt.Transform3D(
-                rr_dt.TranslationAndMat3x3(
-                    translation=expected_trans,
-                    matrix=expected_mat,
-                )
-            )
-        ).pa_array
-    )
 
     assert tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(
