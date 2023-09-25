@@ -34,7 +34,7 @@ int main() {
         auto entity_path = "arrows/" + std::to_string(i);
         rec.log(
             entity_path.c_str(),
-            rr::Arrows3D(vectors[i]).with_origins(origins[i]).with_colors(colors[i])
+            rr::Arrows3D::from_vectors(vectors[i]).with_origins(origins[i]).with_colors(colors[i])
         );
     }
 

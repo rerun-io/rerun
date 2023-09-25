@@ -12,7 +12,7 @@ SCENARIO(
     TEST_TAG
 ) {
     GIVEN("Constructed from builder and manually") {
-        auto from_builder = Arrows3D({{1.0, 2.0, 3.0}, {10.0, 20.0, 30.0}})
+        auto from_builder = Arrows3D::from_vectors({{1.0, 2.0, 3.0}, {10.0, 20.0, 30.0}})
                                 .with_origins({{4.0, 5.0, 6.0}, {40.0, 50.0, 60.0}})
                                 .with_radii({1.0, 10.0})
                                 .with_colors({{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}})

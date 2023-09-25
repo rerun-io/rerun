@@ -40,7 +40,7 @@ fn roundtrip() {
         ]),
     };
 
-    let arch = Arrows3D::new([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])
+    let arch = Arrows3D::from_vectors([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])
         .with_origins([[4.0, 5.0, 6.0], [40.0, 50.0, 60.0]])
         .with_radii([1.0, 10.0])
         .with_colors([0xAA0000CC, 0x00BB00DD])

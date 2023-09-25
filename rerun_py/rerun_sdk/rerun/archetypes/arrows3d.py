@@ -11,12 +11,13 @@ from .. import components
 from .._baseclasses import (
     Archetype,
 )
+from .arrows3d_ext import Arrows3DExt
 
 __all__ = ["Arrows3D"]
 
 
-@define(str=False, repr=False)
-class Arrows3D(Archetype):
+@define(str=False, repr=False, init=False)
+class Arrows3D(Arrows3DExt, Archetype):
     """
     A batch of 3D arrows with optional colors, radii, labels, etc.
 
@@ -33,14 +34,15 @@ class Arrows3D(Archetype):
 
     lengths = np.log2(np.arange(0, 100) + 1)
     angles = np.arange(start=0, stop=tau, step=tau * 0.01)
+    origins = np.zeros((3, 100))
     vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angles) * lengths])
     colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
-    rr2.log("arrows", rr2.Arrows3D(vectors, colors=colors))
+    rr2.log("arrows", rr2.Arrows3D(origins=origins, vectors=vectors, colors=colors))
     ```
     """
 
-    # You can define your own __init__ function as a member of Arrows3DExt in arrows3d_ext.py
+    # __init__ can be found in arrows3d_ext.py
 
     vectors: components.Vector3DArray = field(
         metadata={"component": "required"},
@@ -57,6 +59,8 @@ class Arrows3D(Archetype):
     )
     """
     All the origin points for each arrow in the batch.
+
+    If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     """
 
     radii: components.RadiusArray | None = field(
@@ -111,3 +115,7 @@ class Arrows3D(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(Arrows3DExt, "deferred_patch_class"):
+    Arrows3DExt.deferred_patch_class(Arrows3D)

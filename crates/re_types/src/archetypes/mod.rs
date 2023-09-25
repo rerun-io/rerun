@@ -2,6 +2,7 @@
 
 mod annotation_context;
 mod arrows3d;
+mod arrows3d_ext;
 mod asset3d;
 mod asset3d_ext;
 mod bar_chart;

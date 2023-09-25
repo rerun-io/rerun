@@ -27,7 +27,7 @@ def main() -> None:
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
     arrows3d = rr2.Arrows3D(
-        vectors,
+        vectors=vectors,
         origins=origins,
         radii=radii,
         colors=colors,
