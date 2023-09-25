@@ -16,11 +16,11 @@ namespace rerun.datatypes;
 /// \py
 /// \py ```python
 /// \py # uniform scaling
-/// \py scale = rr.dt.Scale3D(3.)
+/// \py scale = rr.datatypes.Scale3D(3.)
 /// \py
 /// \py # non-uniform scaling
-/// \py scale = rr.dt.Scale3D([1, 1, -1])
-/// \py scale = rr.dt.Scale3D(rr.dt.Vec3D([1, 1, -1]))
+/// \py scale = rr.datatypes.Scale3D([1, 1, -1])
+/// \py scale = rr.datatypes.Scale3D(rr.dt.Vec3D([1, 1, -1]))
 /// \py ```
 union Scale3D (
   "attr.python.aliases": "datatypes.Vec3DLike",

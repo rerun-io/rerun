@@ -25,7 +25,6 @@ class Clear(ClearExt, Archetype):
     ```python
 
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_clear_simple", spawn=True)
 
@@ -35,18 +34,17 @@ class Clear(ClearExt, Archetype):
 
     # Log a handful of arrows.
     for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-        rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector, origins=origin, colors=color))
+        rr.log(f"arrows/{i}", rr.Arrows3D(vectors=vector, origins=origin, colors=color))
 
     # Now clear them, one by one on each tick.
     for i in range(len(vectors)):
-        rr2.log(f"arrows/{i}", rr2.Clear(recursive=False))  # or `rr2.Clear.flat()`
+        rr.log(f"arrows/{i}", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
     ```
 
     Recursive:
     ```python
 
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_clear_simple", spawn=True)
 
@@ -56,10 +54,10 @@ class Clear(ClearExt, Archetype):
 
     # Log a handful of arrows.
     for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-        rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector, origins=origin, colors=color))
+        rr.log(f"arrows/{i}", rr.Arrows3D(vectors=vector, origins=origin, colors=color))
 
     # Now clear all of them at once.
-    rr2.log("arrows", rr2.Clear(recursive=True))  # or `rr2.Clear.recursive()`
+    rr.log("arrows", rr.Clear(recursive=True))  # or `rr.Clear.recursive()`
     ```
     """
 

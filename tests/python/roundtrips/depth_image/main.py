@@ -8,7 +8,6 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -23,7 +22,7 @@ def main() -> None:
     image[0, :] = [0, 1, 2]
     image[1, :] = [3, 4, 5]
 
-    rr2.log("depth_image", rr2.DepthImage(data=image, meter=1000))
+    rr.log("depth_image", rr.DepthImage(data=image, meter=1000))
 
     rr.script_teardown(args)
 

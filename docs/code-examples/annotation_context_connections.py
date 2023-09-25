@@ -1,12 +1,10 @@
 import rerun as rr
-import rerun.experimental as rr2
-from rerun.experimental import dt as rrd
 
 rr.init("rerun_example_annotation_context_connections", spawn=True)
 
-rr2.log(
+rr.log(
     "/",
-    rr2.AnnotationContext(
+    rr.AnnotationContext(
         [
             rrd.ClassDescription(
                 info=0,
@@ -22,9 +20,9 @@ rr2.log(
     ),
 )
 
-rr2.log(
+rr.log(
     "points",
-    rr2.Points3D(
+    rr.Points3D(
         [
             (0, 0, 0),
             (50, 0, 20),

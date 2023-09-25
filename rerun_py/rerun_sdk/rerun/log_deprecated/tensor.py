@@ -5,7 +5,9 @@ from typing import Any, Protocol, Sequence, Union
 import numpy as np
 import numpy.typing as npt
 
-from rerun.datatypes.tensor_data import TensorDataLike
+from rerun._log import log
+from rerun.archetypes import BarChart
+from rerun.datatypes.tensor_data import TensorData, TensorDataLike
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -94,9 +96,8 @@ def _log_tensor(
     recording: RecordingStream | None = None,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
-    from rerun.experimental import BarChart, Tensor, dt, log
 
-    tensor_data = dt.TensorData(array=tensor, names=names)
+    tensor_data = TensorData(array=tensor, names=names)
 
     # Our legacy documentation is that 1D tensors were interpreted as barcharts
     if len(tensor_data.shape) == 1:

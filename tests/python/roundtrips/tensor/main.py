@@ -8,7 +8,7 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
+from rerun.datatypes import TensorData
 
 
 def main() -> None:
@@ -19,9 +19,9 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_roundtrip_tensor")
 
     tensor = np.array(np.arange(0, 360), dtype=np.int32).reshape((3, 4, 5, 6))
-    tensor = rr2.dt.TensorData(array=tensor)
+    tensor = TensorData(array=tensor)
 
-    rr2.log("tensor", rr2.Tensor(tensor))
+    rr.log("tensor", rr.Tensor(tensor))
 
     rr.script_teardown(args)
 

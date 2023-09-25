@@ -13,7 +13,6 @@ import argparse
 import logging
 
 import rerun as rr  # pip install rerun-sdk
-import rerun.experimental as rr2
 
 
 def setup_logging() -> None:
@@ -82,7 +81,7 @@ def main() -> None:
     for frame_offset in range(args.repeat):
         log_stuff(frame_offset)
 
-    rr2.log("text_document", rr2.TextDocument("This is to show the difference between TextLog and TextDocument"))
+    rr.log("text_document", rr.TextDocument("This is to show the difference between TextLog and TextDocument"))
 
     rr.script_teardown(args)
 

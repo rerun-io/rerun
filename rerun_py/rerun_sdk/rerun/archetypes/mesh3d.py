@@ -23,18 +23,17 @@ class Mesh3D(Archetype):
     Simple indexed 3D mesh:
     ```python
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_mesh3d_indexed", spawn=True)
 
-    rr2.log(
+    rr.log(
         "triangle",
-        rr2.Mesh3D(
+        rr.Mesh3D(
             [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             vertex_normals=[0.0, 0.0, 1.0],
             vertex_colors=[[0, 0, 255], [0, 255, 0], [255, 0, 0]],
-            mesh_properties=rr2.cmp.MeshProperties(vertex_indices=[2, 1, 0]),
-            mesh_material=rr2.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+            mesh_properties=rr.cmp.MeshProperties(vertex_indices=[2, 1, 0]),
+            mesh_material=rr.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
         ),
     )
     ```
@@ -43,7 +42,6 @@ class Mesh3D(Archetype):
     ```python
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_mesh3d_partial_updates", spawn=True)
 
@@ -51,9 +49,9 @@ class Mesh3D(Archetype):
 
     # Log the initial state of our triangle
     rr.set_time_sequence("frame", 0)
-    rr2.log(
+    rr.log(
         "triangle",
-        rr2.Mesh3D(
+        rr.Mesh3D(
             vertex_positions,
             vertex_normals=[0.0, 0.0, 1.0],
             vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
@@ -64,7 +62,7 @@ class Mesh3D(Archetype):
     factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
     for i, factor in enumerate(factors):
         rr.set_time_sequence("frame", i)
-        rr2.log_components("triangle", [rr2.cmp.Position3DBatch(vertex_positions * factor)])
+        rr.log_components("triangle", [rr.cmp.Position3DBatch(vertex_positions * factor)])
     ```
     """
 

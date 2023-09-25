@@ -26,11 +26,11 @@ class Scale3D(Scale3DExt):
     -------
     ```python
     # uniform scaling
-    scale = rr.dt.Scale3D(3.)
+    scale = rr.datatypes.Scale3D(3.)
 
     # non-uniform scaling
-    scale = rr.dt.Scale3D([1, 1, -1])
-    scale = rr.dt.Scale3D(rr.dt.Vec3D([1, 1, -1]))
+    scale = rr.datatypes.Scale3D([1, 1, -1])
+    scale = rr.datatypes.Scale3D(rr.dt.Vec3D([1, 1, -1]))
     ```
     """
 

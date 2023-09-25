@@ -56,8 +56,7 @@ def log_annotation_context(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    import rerun.experimental as rr2
 
     recording = RecordingStream.to_native(recording)
 
-    rr2.log(entity_path, rr2.AnnotationContext(class_descriptions), timeless=timeless, recording=recording)
+    rr.log(entity_path, rr.AnnotationContext(class_descriptions), timeless=timeless, recording=recording)
