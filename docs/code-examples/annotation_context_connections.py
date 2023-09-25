@@ -1,4 +1,5 @@
 import rerun as rr
+from rerun.datatypes import ClassDescription
 
 rr.init("rerun_example_annotation_context_connections", spawn=True)
 
@@ -6,7 +7,7 @@ rr.log(
     "/",
     rr.AnnotationContext(
         [
-            rrd.ClassDescription(
+            ClassDescription(
                 info=0,
                 keypoint_annotations=[
                     (0, "zero", (255, 0, 0)),

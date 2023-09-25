@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Sequence
 
+from rerun._log import log
+from rerun.archetypes import AnnotationContext
 from rerun.datatypes import AnnotationInfo, ClassDescription, ClassDescriptionLike
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -59,4 +61,4 @@ def log_annotation_context(
 
     recording = RecordingStream.to_native(recording)
 
-    rr.log(entity_path, rr.AnnotationContext(class_descriptions), timeless=timeless, recording=recording)
+    log(entity_path, AnnotationContext(class_descriptions), timeless=timeless, recording=recording)

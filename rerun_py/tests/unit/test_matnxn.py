@@ -88,8 +88,6 @@ def test_mat3x3array() -> None:
 
 # Tests the snippet that are embedded in the docs.
 def test_mat3x3_doc_text() -> None:
-    import rerun.experimental as rr
-
     np.testing.assert_array_equal(
         Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
     )
@@ -122,8 +120,6 @@ def test_mat4x4array() -> None:
 
 # Tests the snippet that are embedded in the docs.
 def test_mat4x4_doc_text() -> None:
-    import rerun.experimental as rr
-
     np.testing.assert_array_equal(
         Mat4x4([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
         np.array([1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16], dtype=np.float32),
