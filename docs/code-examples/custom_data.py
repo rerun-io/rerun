@@ -27,7 +27,7 @@ class ConfidenceBatch(rr2.ComponentBatchLike):
         return pa.array(self.confidence, type=pa.float32())
 
 
-class CustomPoints3D(rr2.ArchetypeLike):
+class CustomPoints3D(rr2.AsComponents):
     def __init__(self: Any, points3d: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
         self.points3d = points3d
         self.confidences = confidences

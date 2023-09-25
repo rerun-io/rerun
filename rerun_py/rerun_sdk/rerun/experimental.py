@@ -10,7 +10,7 @@ from rerun.log_deprecated.experimental.blueprint import add_space_view, new_blue
 
 __all__ = [
     "AnnotationContext",
-    "ArchetypeLike",
+    "AsComponents",
     "Arrows3D",
     "Asset3D",
     "Boxes2D",
@@ -75,4 +75,4 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
-from .log import ArchetypeLike, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from .log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
