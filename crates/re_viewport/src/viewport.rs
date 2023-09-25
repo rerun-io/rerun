@@ -146,19 +146,14 @@ impl<'a, 'b> Viewport<'a, 'b> {
             ctx,
             space_views: &mut blueprint.space_views,
             maximized: &mut blueprint.maximized,
+            has_been_user_edited: &mut blueprint.has_been_user_edited,
         };
 
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
 
             re_tracing::profile_scope!("tree.ui");
-            let tree_before = tree.clone();
             tree.ui(&mut tab_viewer, ui);
-
-            // Detect if the user has moved a tab or similar:
-            if !blueprint.has_been_user_edited && *tree != tree_before {
-                blueprint.has_been_user_edited = true;
-            }
         });
     }
 
@@ -238,6 +233,7 @@ struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     space_views: &'a mut BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
+    has_been_user_edited: &'a mut bool,
 }
 
 impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
@@ -389,6 +385,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 .on_hover_text("Restore - show all spaces")
                 .clicked()
             {
+                *self.has_been_user_edited = true;
                 *self.maximized = None;
             }
         } else if num_space_views > 1 {
@@ -400,6 +397,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 .on_hover_text("Maximize Space View")
                 .clicked()
             {
+                *self.has_been_user_edited = true;
                 *self.maximized = Some(space_view_id);
                 // Just maximize - don't select. See https://github.com/rerun-io/rerun/issues/2861
             }

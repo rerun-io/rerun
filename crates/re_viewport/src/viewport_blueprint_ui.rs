@@ -133,6 +133,7 @@ impl ViewportBlueprint<'_> {
             });
 
         if remove {
+            self.has_been_user_edited = true;
             tree_actions.remove.push(tile_id);
         }
 
@@ -179,6 +180,7 @@ impl ViewportBlueprint<'_> {
 
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
+                    self.has_been_user_edited = true;
                     tree_actions.remove.push(tile_id);
                 }
 
@@ -197,6 +199,7 @@ impl ViewportBlueprint<'_> {
             .on_hover_text("Space View");
 
         if response.clicked() {
+            // Focus change is *not* counted towards `has_been_user_edited`.
             tree_actions.focus_tab = Some(space_view.id);
         }
 
