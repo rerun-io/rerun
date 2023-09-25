@@ -142,6 +142,15 @@ jobs:
           command: fmt
           args: --all -- --check
 
+      - name: Codegen
+        uses: actions-rs/cargo@v1
+        with:
+          command: codegen
+
+      - name: No Diffs From Running Codegen
+        run: |
+          git diff --exit-code
+
       - name: Cranky
         uses: actions-rs/cargo@v1
         with:
