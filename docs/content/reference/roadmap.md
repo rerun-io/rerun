@@ -4,7 +4,7 @@ order: 1
 ---
 Rerun is building a visualization engine for streams of multimodal data that's easy to use, adapt, and extend.
 
-Open an issue or pull request on [Github](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/PXtCgFBSmH) to let the community know what you'd like to see.
+Open an issue or pull request on [GitHub](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/PXtCgFBSmH) to let the community know what you'd like to see.
 
 
 This page is meant to give an high level overview of ongoing and planned work.
