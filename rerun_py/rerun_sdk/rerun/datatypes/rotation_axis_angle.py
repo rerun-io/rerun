@@ -30,11 +30,11 @@ def _rotation_axis_angle__axis__special_field_converter_override(x: datatypes.Ve
         return datatypes.Vec3D(x)
 
 
-@define
+@define(init=False)
 class RotationAxisAngle(RotationAxisAngleExt):
     """3D rotation represented by a rotation around a given axis."""
 
-    # You can define your own __init__ function as a member of RotationAxisAngleExt in rotation_axis_angle_ext.py
+    # __init__ can be found in rotation_axis_angle_ext.py
 
     axis: datatypes.Vec3D = field(converter=_rotation_axis_angle__axis__special_field_converter_override)
     """
