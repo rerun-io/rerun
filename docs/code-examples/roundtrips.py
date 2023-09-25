@@ -28,7 +28,7 @@ opt_out_entirely = {
     "custom_data": ["cpp"],
     "depth_image_3d": ["cpp"],
     "depth_image_simple": ["cpp"],
-    "image_advanced": ["cpp", "rust"],
+    "image_advanced": ["cpp", "rust"], # Missing example for Rust
     "image_simple": ["cpp"],
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"],
@@ -37,7 +37,7 @@ opt_out_entirely = {
     "segmentation_image_simple": ["cpp"],
     "tensor_one_dim": ["cpp"],
     "tensor_simple": ["cpp"],
-    "text_log_integration": ["cpp", "rust"],
+    "text_log_integration": ["cpp", "rust"], # Missing example for Rust
     "view_coordinates_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
 
     # This is this script, it's not an example.
