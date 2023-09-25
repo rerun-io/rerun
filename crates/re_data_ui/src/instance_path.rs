@@ -58,7 +58,9 @@ impl DataUi for InstancePath {
                         &ComponentPath::new(entity_path.clone(), component_name),
                     );
 
-                    if instance_key.is_splat() {
+                    if crate::is_indicator_component(&component_name) {
+                        // no content to show
+                    } else if instance_key.is_splat() {
                         super::component::EntityComponentWithInstances {
                             entity_path: entity_path.clone(),
                             component_data,

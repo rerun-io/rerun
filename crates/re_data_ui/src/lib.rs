@@ -35,6 +35,11 @@ pub fn is_component_visible_in_ui(component_name: &re_types::ComponentName) -> b
     !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }
 
+/// Is this an indicator component for an archetype?
+pub fn is_indicator_component(component_name: &re_types::ComponentName) -> bool {
+    component_name.starts_with("rerun.components.") && component_name.ends_with("Indicator")
+}
+
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
