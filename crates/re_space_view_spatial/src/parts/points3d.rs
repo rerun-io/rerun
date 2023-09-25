@@ -113,7 +113,7 @@ impl Points3DPart {
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_obj,
+                ent_context.world_from_entity,
             )?);
         }
 
@@ -121,7 +121,7 @@ impl Points3DPart {
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
                 .batch("3d points")
-                .world_from_obj(ent_context.world_from_obj)
+                .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -174,7 +174,7 @@ impl Points3DPart {
 
             self.data.extend_bounding_box_with_points(
                 positions.iter().copied(),
-                ent_context.world_from_obj,
+                ent_context.world_from_entity,
             );
         }
 

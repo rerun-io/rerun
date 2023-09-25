@@ -37,7 +37,7 @@ impl Asset3DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let transform = arch_view
+        let entity_from_pose = arch_view
             .iter_raw_optional_component::<OutOfTreeTransform3D>()?
             .and_then(|mut batch| batch.next());
 
@@ -76,30 +76,27 @@ impl Asset3DPart {
         });
 
         if let Some(mesh) = mesh {
-            let mut mesh_instances = mesh
+            let world_from_pose = ent_context.world_from_entity
+                * entity_from_pose.map_or(glam::Affine3A::IDENTITY, |t| t.0.into());
+
+            let mesh_instances = mesh
                 .mesh_instances
                 .iter()
-                .map(move |mesh_instance| MeshInstance {
-                    gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                    world_from_mesh: ent_context.world_from_obj * mesh_instance.world_from_mesh,
-                    outline_mask_ids,
-                    picking_layer_id: picking_layer_id_from_instance_path_hash(
-                        picking_instance_hash,
-                    ),
-                    ..Default::default()
+                .map(move |mesh_instance| {
+                    let pose_from_mesh = mesh_instance.world_from_mesh;
+                    let world_from_mesh = world_from_pose * pose_from_mesh;
+
+                    MeshInstance {
+                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                        world_from_mesh,
+                        outline_mask_ids,
+                        picking_layer_id: picking_layer_id_from_instance_path_hash(
+                            picking_instance_hash,
+                        ),
+                        ..Default::default()
+                    }
                 })
                 .collect_vec();
-
-            // Apply the out-of-tree transform.
-            if let Some(transform) = transform.as_ref() {
-                let (scale, rotation, translation) =
-                    glam::Affine3A::from(transform.0).to_scale_rotation_translation();
-                let transform =
-                    glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
-                for instance in &mut mesh_instances {
-                    instance.world_from_mesh = transform * instance.world_from_mesh;
-                }
-            }
 
             let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
 
@@ -108,7 +105,8 @@ impl Asset3DPart {
                     .iter()
                     .map(move |mesh_instance| MeshInstance {
                         gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh: ent_context.world_from_obj * mesh_instance.world_from_mesh,
+                        world_from_mesh: ent_context.world_from_entity
+                            * mesh_instance.world_from_mesh,
                         outline_mask_ids,
                         picking_layer_id: picking_layer_id_from_instance_path_hash(
                             picking_instance_hash,
@@ -117,7 +115,8 @@ impl Asset3DPart {
                     }),
             );
 
-            self.0.extend_bounding_box(bbox, ent_context.world_from_obj);
+            self.0
+                .extend_bounding_box(bbox, ent_context.world_from_entity);
         };
 
         Ok(())

@@ -108,14 +108,14 @@ impl Arrows3DPart {
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_obj,
+                ent_context.world_from_entity,
             )?);
         }
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
             .batch("arrows")
-            .world_from_obj(ent_context.world_from_obj)
+            .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -156,7 +156,7 @@ impl Arrows3DPart {
         }
 
         self.data
-            .extend_bounding_box(bounding_box, ent_context.world_from_obj);
+            .extend_bounding_box(bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }
