@@ -39,11 +39,11 @@ where
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
     for (ent_path, props) in query.iter_entities_for_system(System::name()) {
-        let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
+        let Some(world_from_entity) = transforms.reference_from_entity(ent_path) else {
             continue;
         };
         let entity_context = SpatialSceneEntityContext {
-            world_from_obj,
+            world_from_entity,
             depth_offset: *depth_offsets
                 .per_entity
                 .get(&ent_path.hash())
