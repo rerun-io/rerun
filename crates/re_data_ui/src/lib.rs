@@ -40,6 +40,16 @@ pub fn is_indicator_component(component_name: &re_types::ComponentName) -> bool 
     component_name.starts_with("rerun.components.") && component_name.ends_with("Indicator")
 }
 
+/// If this is an indicator component, for which archetype?
+pub fn indicator_component_archetype(component_name: &re_types::ComponentName) -> Option<String> {
+    if let Some(name) = component_name.strip_prefix("rerun.components.") {
+        if let Some(name) = name.strip_suffix("Indicator") {
+            return Some(name.to_owned());
+        }
+    }
+    None
+}
+
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
