@@ -744,7 +744,7 @@ fn log_image_file(
     );
 
     recording
-        .log_timeless(
+        .log_with_timeless(
             entity_path,
             timeless,
             &rerun::archetypes::Image::new(tensor),
