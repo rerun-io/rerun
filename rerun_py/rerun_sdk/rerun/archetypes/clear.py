@@ -65,9 +65,9 @@ class Clear(ClearExt, Archetype):
 
     # __init__ can be found in clear_ext.py
 
-    settings: components.ClearSettingsBatch = field(
+    recursive: components.ClearIsRecursiveBatch = field(
         metadata={"component": "required"},
-        converter=components.ClearSettingsBatch,  # type: ignore[misc]
+        converter=components.ClearIsRecursiveBatch,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

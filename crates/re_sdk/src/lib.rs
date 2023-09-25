@@ -71,7 +71,7 @@ pub mod time {
 pub mod components {
     pub use re_components::Quaternion;
     pub use re_types::components::{
-        AnnotationContext, Blob, ClassId, ClearSettings, Color, DepthMeter, DisconnectedSpace,
+        AnnotationContext, Blob, ClassId, ClearIsRecursive, Color, DepthMeter, DisconnectedSpace,
         DrawOrder, HalfSizes2D, HalfSizes3D, InstanceKey, KeypointId, LineStrip2D, LineStrip3D,
         Material, MediaType, MeshProperties, Origin2D, Origin3D, OutOfTreeTransform3D,
         PinholeProjection, Position2D, Position3D, Radius, Resolution, Rotation3D, Scalar,
