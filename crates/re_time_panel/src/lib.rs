@@ -550,6 +550,10 @@ impl TimePanel {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
+                if !re_data_ui::is_component_visible_in_ui(component_name) {
+                    continue;
+                }
+
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);
                 let component_name = component_path.component_name.short_name();
                 let item = Item::ComponentPath(component_path);

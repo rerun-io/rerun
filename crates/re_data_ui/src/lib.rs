@@ -29,6 +29,12 @@ pub use crate::image::{
 pub use component_ui_registry::create_component_ui_registry;
 pub use image_meaning::image_meaning_for_entity;
 
+/// Show this component in the UI.
+pub fn is_component_visible_in_ui(component_name: &re_types::ComponentName) -> bool {
+    const HIDDEN_COMPONENTS: &[&str] = &["rerun.components.InstanceKey"];
+    !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
+}
+
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
