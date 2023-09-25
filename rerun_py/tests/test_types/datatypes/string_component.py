@@ -9,15 +9,12 @@ from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from rerun._baseclasses import BaseBatch, BaseExtensionType
 
 __all__ = [
     "StringComponent",
-    "StringComponentArray",
     "StringComponentArrayLike",
+    "StringComponentBatch",
     "StringComponentLike",
     "StringComponentType",
 ]
@@ -40,24 +37,20 @@ StringComponentArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class StringComponentType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.testing.datatypes.StringComponent"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), "rerun.testing.datatypes.StringComponent")
+        pa.ExtensionType.__init__(self, pa.utf8(), self._TYPE_NAME)
 
 
-class StringComponentArray(BaseExtensionArray[StringComponentArrayLike]):
-    _EXTENSION_NAME = "rerun.testing.datatypes.StringComponent"
-    _EXTENSION_TYPE = StringComponentType
+class StringComponentBatch(BaseBatch[StringComponentArrayLike]):
+    _ARROW_TYPE = StringComponentType()
 
     @staticmethod
     def _native_to_pa_array(data: StringComponentArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in string_component_ext.py
 
-
-StringComponentType._ARRAY_TYPE = StringComponentArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(StringComponentType())

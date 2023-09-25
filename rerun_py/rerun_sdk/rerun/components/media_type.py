@@ -6,13 +6,10 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 from .media_type_ext import MediaTypeExt
 
-__all__ = ["MediaType", "MediaTypeArray", "MediaTypeType"]
+__all__ = ["MediaType", "MediaTypeBatch", "MediaTypeType"]
 
 
 class MediaType(MediaTypeExt, datatypes.Utf8):
@@ -29,18 +26,13 @@ class MediaType(MediaTypeExt, datatypes.Utf8):
     pass
 
 
-class MediaTypeType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.MediaType"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Utf8Type
+class MediaTypeType(datatypes.Utf8Type):
+    _TYPE_NAME: str = "rerun.components.MediaType"
 
 
-class MediaTypeArray(BaseDelegatingExtensionArray[datatypes.Utf8ArrayLike]):
-    _EXTENSION_NAME = "rerun.components.MediaType"
-    _EXTENSION_TYPE = MediaTypeType
-    _DELEGATED_ARRAY_TYPE = datatypes.Utf8Array
+class MediaTypeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+    _ARROW_TYPE = MediaTypeType()
 
-
-MediaTypeType._ARRAY_TYPE = MediaTypeArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MediaTypeType())

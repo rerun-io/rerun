@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_float32,
 )
 from .vec3d_ext import Vec3DExt
 
-__all__ = ["Vec3D", "Vec3DArray", "Vec3DArrayLike", "Vec3DLike", "Vec3DType"]
+__all__ = ["Vec3D", "Vec3DArrayLike", "Vec3DBatch", "Vec3DLike", "Vec3DType"]
 
 
 @define
@@ -47,26 +44,22 @@ Vec3DArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class Vec3DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Vec3D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), "rerun.datatypes.Vec3D"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3), self._TYPE_NAME
         )
 
 
-class Vec3DArray(BaseExtensionArray[Vec3DArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Vec3D"
-    _EXTENSION_TYPE = Vec3DType
+class Vec3DBatch(BaseBatch[Vec3DArrayLike]):
+    _ARROW_TYPE = Vec3DType()
 
     @staticmethod
     def _native_to_pa_array(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Vec3DExt.native_to_pa_array_override(data, data_type)
 
-
-Vec3DType._ARRAY_TYPE = Vec3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Vec3DType())

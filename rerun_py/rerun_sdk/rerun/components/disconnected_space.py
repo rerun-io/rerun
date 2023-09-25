@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .disconnected_space_ext import DisconnectedSpaceExt
 
 __all__ = [
     "DisconnectedSpace",
-    "DisconnectedSpaceArray",
     "DisconnectedSpaceArrayLike",
+    "DisconnectedSpaceBatch",
     "DisconnectedSpaceLike",
     "DisconnectedSpaceType",
 ]
@@ -50,24 +47,20 @@ else:
 DisconnectedSpaceArrayLike = Union[DisconnectedSpace, Sequence[DisconnectedSpaceLike], bool, npt.NDArray[np.bool_]]
 
 
-# --- Arrow support ---
-
-
 class DisconnectedSpaceType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.DisconnectedSpace"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.bool_(), "rerun.components.DisconnectedSpace")
+        pa.ExtensionType.__init__(self, pa.bool_(), self._TYPE_NAME)
 
 
-class DisconnectedSpaceArray(BaseExtensionArray[DisconnectedSpaceArrayLike]):
-    _EXTENSION_NAME = "rerun.components.DisconnectedSpace"
-    _EXTENSION_TYPE = DisconnectedSpaceType
+class DisconnectedSpaceBatch(BaseBatch[DisconnectedSpaceArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = DisconnectedSpaceType()
 
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
         return DisconnectedSpaceExt.native_to_pa_array_override(data, data_type)
 
-
-DisconnectedSpaceType._ARRAY_TYPE = DisconnectedSpaceArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(DisconnectedSpaceType())

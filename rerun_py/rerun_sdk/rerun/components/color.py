@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["Color", "ColorArray", "ColorType"]
+__all__ = ["Color", "ColorBatch", "ColorType"]
 
 
 class Color(datatypes.Color):
@@ -32,18 +29,13 @@ class Color(datatypes.Color):
     pass
 
 
-class ColorType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.Color"
-    _DELEGATED_EXTENSION_TYPE = datatypes.ColorType
+class ColorType(datatypes.ColorType):
+    _TYPE_NAME: str = "rerun.components.Color"
 
 
-class ColorArray(BaseDelegatingExtensionArray[datatypes.ColorArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Color"
-    _EXTENSION_TYPE = ColorType
-    _DELEGATED_ARRAY_TYPE = datatypes.ColorArray
+class ColorBatch(datatypes.ColorBatch, ComponentBatchMixin):
+    _ARROW_TYPE = ColorType()
 
-
-ColorType._ARRAY_TYPE = ColorArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ColorType())

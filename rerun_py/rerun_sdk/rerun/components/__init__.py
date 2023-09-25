@@ -4,196 +4,196 @@ from __future__ import annotations
 
 from .annotation_context import (
     AnnotationContext,
-    AnnotationContextArray,
     AnnotationContextArrayLike,
+    AnnotationContextBatch,
     AnnotationContextLike,
     AnnotationContextType,
 )
-from .blob import Blob, BlobArray, BlobArrayLike, BlobLike, BlobType
-from .class_id import ClassId, ClassIdArray, ClassIdType
+from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
+from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_settings import (
     ClearSettings,
-    ClearSettingsArray,
     ClearSettingsArrayLike,
+    ClearSettingsBatch,
     ClearSettingsLike,
     ClearSettingsType,
 )
-from .color import Color, ColorArray, ColorType
-from .depth_meter import DepthMeter, DepthMeterArray, DepthMeterArrayLike, DepthMeterLike, DepthMeterType
+from .color import Color, ColorBatch, ColorType
+from .depth_meter import DepthMeter, DepthMeterArrayLike, DepthMeterBatch, DepthMeterLike, DepthMeterType
 from .disconnected_space import (
     DisconnectedSpace,
-    DisconnectedSpaceArray,
     DisconnectedSpaceArrayLike,
+    DisconnectedSpaceBatch,
     DisconnectedSpaceLike,
     DisconnectedSpaceType,
 )
-from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
-from .half_sizes2d import HalfSizes2D, HalfSizes2DArray, HalfSizes2DType
-from .half_sizes3d import HalfSizes3D, HalfSizes3DArray, HalfSizes3DType
-from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
-from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdType
-from .line_strip2d import LineStrip2D, LineStrip2DArray, LineStrip2DArrayLike, LineStrip2DLike, LineStrip2DType
-from .line_strip3d import LineStrip3D, LineStrip3DArray, LineStrip3DArrayLike, LineStrip3DLike, LineStrip3DType
-from .material import Material, MaterialArray, MaterialType
-from .media_type import MediaType, MediaTypeArray, MediaTypeType
-from .mesh_properties import MeshProperties, MeshPropertiesArray, MeshPropertiesType
-from .origin2d import Origin2D, Origin2DArray, Origin2DType
-from .origin3d import Origin3D, Origin3DArray, Origin3DType
-from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DArray, OutOfTreeTransform3DType
-from .pinhole_projection import PinholeProjection, PinholeProjectionArray, PinholeProjectionType
-from .position2d import Position2D, Position2DArray, Position2DType
-from .position3d import Position3D, Position3DArray, Position3DType
-from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
-from .resolution import Resolution, ResolutionArray, ResolutionType
-from .rotation3d import Rotation3D, Rotation3DArray, Rotation3DType
-from .scalar import Scalar, ScalarArray, ScalarArrayLike, ScalarLike, ScalarType
+from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
+from .half_sizes2d import HalfSizes2D, HalfSizes2DBatch, HalfSizes2DType
+from .half_sizes3d import HalfSizes3D, HalfSizes3DBatch, HalfSizes3DType
+from .instance_key import InstanceKey, InstanceKeyArrayLike, InstanceKeyBatch, InstanceKeyLike, InstanceKeyType
+from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
+from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
+from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
+from .material import Material, MaterialBatch, MaterialType
+from .media_type import MediaType, MediaTypeBatch, MediaTypeType
+from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
+from .origin2d import Origin2D, Origin2DBatch, Origin2DType
+from .origin3d import Origin3D, Origin3DBatch, Origin3DType
+from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
+from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
+from .position2d import Position2D, Position2DBatch, Position2DType
+from .position3d import Position3D, Position3DBatch, Position3DType
+from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
+from .resolution import Resolution, ResolutionBatch, ResolutionType
+from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
+from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
 from .scalar_scattering import (
     ScalarScattering,
-    ScalarScatteringArray,
     ScalarScatteringArrayLike,
+    ScalarScatteringBatch,
     ScalarScatteringLike,
     ScalarScatteringType,
 )
-from .tensor_data import TensorData, TensorDataArray, TensorDataType
-from .text import Text, TextArray, TextType
-from .text_log_level import TextLogLevel, TextLogLevelArray, TextLogLevelType
-from .transform3d import Transform3D, Transform3DArray, Transform3DType
-from .vector3d import Vector3D, Vector3DArray, Vector3DType
+from .tensor_data import TensorData, TensorDataBatch, TensorDataType
+from .text import Text, TextBatch, TextType
+from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
+from .transform3d import Transform3D, Transform3DBatch, Transform3DType
+from .vector3d import Vector3D, Vector3DBatch, Vector3DType
 from .view_coordinates import (
     ViewCoordinates,
-    ViewCoordinatesArray,
     ViewCoordinatesArrayLike,
+    ViewCoordinatesBatch,
     ViewCoordinatesLike,
     ViewCoordinatesType,
 )
 
 __all__ = [
     "AnnotationContext",
-    "AnnotationContextArray",
     "AnnotationContextArrayLike",
+    "AnnotationContextBatch",
     "AnnotationContextLike",
     "AnnotationContextType",
     "Blob",
-    "BlobArray",
     "BlobArrayLike",
+    "BlobBatch",
     "BlobLike",
     "BlobType",
     "ClassId",
-    "ClassIdArray",
+    "ClassIdBatch",
     "ClassIdType",
     "ClearSettings",
-    "ClearSettingsArray",
     "ClearSettingsArrayLike",
+    "ClearSettingsBatch",
     "ClearSettingsLike",
     "ClearSettingsType",
     "Color",
-    "ColorArray",
+    "ColorBatch",
     "ColorType",
     "DepthMeter",
-    "DepthMeterArray",
     "DepthMeterArrayLike",
+    "DepthMeterBatch",
     "DepthMeterLike",
     "DepthMeterType",
     "DisconnectedSpace",
-    "DisconnectedSpaceArray",
     "DisconnectedSpaceArrayLike",
+    "DisconnectedSpaceBatch",
     "DisconnectedSpaceLike",
     "DisconnectedSpaceType",
     "DrawOrder",
-    "DrawOrderArray",
     "DrawOrderArrayLike",
+    "DrawOrderBatch",
     "DrawOrderLike",
     "DrawOrderType",
     "HalfSizes2D",
-    "HalfSizes2DArray",
+    "HalfSizes2DBatch",
     "HalfSizes2DType",
     "HalfSizes3D",
-    "HalfSizes3DArray",
+    "HalfSizes3DBatch",
     "HalfSizes3DType",
     "InstanceKey",
-    "InstanceKeyArray",
     "InstanceKeyArrayLike",
+    "InstanceKeyBatch",
     "InstanceKeyLike",
     "InstanceKeyType",
     "KeypointId",
-    "KeypointIdArray",
+    "KeypointIdBatch",
     "KeypointIdType",
     "LineStrip2D",
-    "LineStrip2DArray",
     "LineStrip2DArrayLike",
+    "LineStrip2DBatch",
     "LineStrip2DLike",
     "LineStrip2DType",
     "LineStrip3D",
-    "LineStrip3DArray",
     "LineStrip3DArrayLike",
+    "LineStrip3DBatch",
     "LineStrip3DLike",
     "LineStrip3DType",
     "Material",
-    "MaterialArray",
+    "MaterialBatch",
     "MaterialType",
     "MediaType",
-    "MediaTypeArray",
+    "MediaTypeBatch",
     "MediaTypeType",
     "MeshProperties",
-    "MeshPropertiesArray",
+    "MeshPropertiesBatch",
     "MeshPropertiesType",
     "Origin2D",
-    "Origin2DArray",
+    "Origin2DBatch",
     "Origin2DType",
     "Origin3D",
-    "Origin3DArray",
+    "Origin3DBatch",
     "Origin3DType",
     "OutOfTreeTransform3D",
-    "OutOfTreeTransform3DArray",
+    "OutOfTreeTransform3DBatch",
     "OutOfTreeTransform3DType",
     "PinholeProjection",
-    "PinholeProjectionArray",
+    "PinholeProjectionBatch",
     "PinholeProjectionType",
     "Position2D",
-    "Position2DArray",
+    "Position2DBatch",
     "Position2DType",
     "Position3D",
-    "Position3DArray",
+    "Position3DBatch",
     "Position3DType",
     "Radius",
-    "RadiusArray",
     "RadiusArrayLike",
+    "RadiusBatch",
     "RadiusLike",
     "RadiusType",
     "Resolution",
-    "ResolutionArray",
+    "ResolutionBatch",
     "ResolutionType",
     "Rotation3D",
-    "Rotation3DArray",
+    "Rotation3DBatch",
     "Rotation3DType",
     "Scalar",
-    "ScalarArray",
     "ScalarArrayLike",
+    "ScalarBatch",
     "ScalarLike",
     "ScalarScattering",
-    "ScalarScatteringArray",
     "ScalarScatteringArrayLike",
+    "ScalarScatteringBatch",
     "ScalarScatteringLike",
     "ScalarScatteringType",
     "ScalarType",
     "TensorData",
-    "TensorDataArray",
+    "TensorDataBatch",
     "TensorDataType",
     "Text",
-    "TextArray",
+    "TextBatch",
     "TextLogLevel",
-    "TextLogLevelArray",
+    "TextLogLevelBatch",
     "TextLogLevelType",
     "TextType",
     "Transform3D",
-    "Transform3DArray",
+    "Transform3DBatch",
     "Transform3DType",
     "Vector3D",
-    "Vector3DArray",
+    "Vector3DBatch",
     "Vector3DType",
     "ViewCoordinates",
-    "ViewCoordinatesArray",
     "ViewCoordinatesArrayLike",
+    "ViewCoordinatesBatch",
     "ViewCoordinatesLike",
     "ViewCoordinatesType",
 ]

@@ -68,27 +68,31 @@ namespace rerun {
             std::optional<rerun::components::Resolution> resolution;
 
             /// Sets the view coordinates for the camera.
-            /// The default is "RDF", i.e. X=Right, Y=Down, Z=Forward, and this is also the
-            /// recommended setting. This means that the camera frustum will point along the
-            /// positive Z axis of the parent space, and the cameras "up" direction will be along
-            /// the negative Y axis of the parent space.
             ///
-            /// The camera frustum will point whichever axis is set to `F` (or the oppositve of
-            /// `B`). When logging a depth image under this entity, this is the direction the point
-            /// cloud will be projected. With XYZ=RDF, the default forward is +Z.
+            /// All common values are available as constants on the `components.ViewCoordinates`
+            /// class.
             ///
-            /// The frustum's "up" direction will be whichever axis is set to `U` (or the oppositve
+            /// The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is
+            /// also the recommended setting. This means that the camera frustum will point along
+            /// the positive Z axis of the parent space, and the cameras "up" direction will be
+            /// along the negative Y axis of the parent space.
+            ///
+            /// The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
+            /// When logging a depth image under this entity, this is the direction the point cloud
+            /// will be projected. With `RDF`, the default forward is +Z.
+            ///
+            /// The frustum's "up" direction will be whichever axis is set to `U` (or the opposite
             /// of `D`). This will match the negative Y direction of pixel space (all images are
-            /// assumed to have xyz=RDF). With RDF, the default is up is -Y.
+            /// assumed to have xyz=RDF). With `RDF`, the default is up is -Y.
             ///
             /// The frustum's "right" direction will be whichever axis is set to `R` (or the
-            /// oppositve of `L`). This will match the positive X direction of pixel space (all
-            /// images are assumed to have xyz=RDF). With RDF, the default right is +x.
+            /// opposite of `L`). This will match the positive X direction of pixel space (all
+            /// images are assumed to have xyz=RDF). With `RDF`, the default right is +x.
             ///
-            /// Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left,
+            /// Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left,
             /// Z=Up).
             ///
-            /// NOTE: setting this to something else than "RDF" (the default) will change the
+            /// NOTE: setting this to something else than `RDF` (the default) will change the
             /// orientation of the camera frustum, and make the pinhole matrix not match up with the
             /// coordinate system of the pinhole entity.
             ///
@@ -136,27 +140,31 @@ namespace rerun {
             }
 
             /// Sets the view coordinates for the camera.
-            /// The default is "RDF", i.e. X=Right, Y=Down, Z=Forward, and this is also the
-            /// recommended setting. This means that the camera frustum will point along the
-            /// positive Z axis of the parent space, and the cameras "up" direction will be along
-            /// the negative Y axis of the parent space.
             ///
-            /// The camera frustum will point whichever axis is set to `F` (or the oppositve of
-            /// `B`). When logging a depth image under this entity, this is the direction the point
-            /// cloud will be projected. With XYZ=RDF, the default forward is +Z.
+            /// All common values are available as constants on the `components.ViewCoordinates`
+            /// class.
             ///
-            /// The frustum's "up" direction will be whichever axis is set to `U` (or the oppositve
+            /// The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is
+            /// also the recommended setting. This means that the camera frustum will point along
+            /// the positive Z axis of the parent space, and the cameras "up" direction will be
+            /// along the negative Y axis of the parent space.
+            ///
+            /// The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
+            /// When logging a depth image under this entity, this is the direction the point cloud
+            /// will be projected. With `RDF`, the default forward is +Z.
+            ///
+            /// The frustum's "up" direction will be whichever axis is set to `U` (or the opposite
             /// of `D`). This will match the negative Y direction of pixel space (all images are
-            /// assumed to have xyz=RDF). With RDF, the default is up is -Y.
+            /// assumed to have xyz=RDF). With `RDF`, the default is up is -Y.
             ///
             /// The frustum's "right" direction will be whichever axis is set to `R` (or the
-            /// oppositve of `L`). This will match the positive X direction of pixel space (all
-            /// images are assumed to have xyz=RDF). With RDF, the default right is +x.
+            /// opposite of `L`). This will match the positive X direction of pixel space (all
+            /// images are assumed to have xyz=RDF). With `RDF`, the default right is +x.
             ///
-            /// Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left,
+            /// Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left,
             /// Z=Up).
             ///
-            /// NOTE: setting this to something else than "RDF" (the default) will change the
+            /// NOTE: setting this to something else than `RDF` (the default) will change the
             /// orientation of the camera frustum, and make the pinhole matrix not match up with the
             /// coordinate system of the pinhole entity.
             ///

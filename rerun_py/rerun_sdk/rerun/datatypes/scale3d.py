@@ -11,13 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .scale3d_ext import Scale3DExt
 
-__all__ = ["Scale3D", "Scale3DArray", "Scale3DArrayLike", "Scale3DLike", "Scale3DType"]
+__all__ = ["Scale3D", "Scale3DArrayLike", "Scale3DBatch", "Scale3DLike", "Scale3DType"]
 
 
 @define
@@ -61,10 +58,10 @@ else:
     Scale3DLike = Any
     Scale3DArrayLike = Any
 
-# --- Arrow support ---
-
 
 class Scale3DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Scale3D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -80,20 +77,17 @@ class Scale3DType(BaseExtensionType):
                     pa.field("Uniform", pa.float32(), nullable=False, metadata={}),
                 ]
             ),
-            "rerun.datatypes.Scale3D",
+            self._TYPE_NAME,
         )
 
 
-class Scale3DArray(BaseExtensionArray[Scale3DArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Scale3D"
-    _EXTENSION_TYPE = Scale3DType
+class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
+    _ARROW_TYPE = Scale3DType()
 
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in scale3d_ext.py
 
-
-Scale3DType._ARRAY_TYPE = Scale3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Scale3DType())

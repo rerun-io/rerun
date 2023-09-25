@@ -6,13 +6,10 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 from .text_log_level_ext import TextLogLevelExt
 
-__all__ = ["TextLogLevel", "TextLogLevelArray", "TextLogLevelType"]
+__all__ = ["TextLogLevel", "TextLogLevelBatch", "TextLogLevelType"]
 
 
 class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
@@ -34,18 +31,13 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     pass
 
 
-class TextLogLevelType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.TextLogLevel"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Utf8Type
+class TextLogLevelType(datatypes.Utf8Type):
+    _TYPE_NAME: str = "rerun.components.TextLogLevel"
 
 
-class TextLogLevelArray(BaseDelegatingExtensionArray[datatypes.Utf8ArrayLike]):
-    _EXTENSION_NAME = "rerun.components.TextLogLevel"
-    _EXTENSION_TYPE = TextLogLevelType
-    _DELEGATED_ARRAY_TYPE = datatypes.Utf8Array
+class TextLogLevelBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+    _ARROW_TYPE = TextLogLevelType()
 
-
-TextLogLevelType._ARRAY_TYPE = TextLogLevelArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TextLogLevelType())

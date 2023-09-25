@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .boxes2d_ext import Boxes2DExt
 
 __all__ = ["Boxes2D"]
@@ -39,54 +37,54 @@ class Boxes2D(Boxes2DExt, Archetype):
 
     # __init__ can be found in boxes2d_ext.py
 
-    half_sizes: components.HalfSizes2DArray = field(
+    half_sizes: components.HalfSizes2DBatch = field(
         metadata={"component": "required"},
-        converter=components.HalfSizes2DArray.from_similar,  # type: ignore[misc]
+        converter=components.HalfSizes2DBatch,  # type: ignore[misc]
     )
     """
     All half-extents that make up the batch of boxes.
     """
 
-    centers: components.Position2DArray | None = field(
+    centers: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position2DArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.Position2DBatch._optional,  # type: ignore[misc]
     )
     """
     Optional center positions of the boxes.
     """
 
-    radii: components.RadiusArray | None = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     Optional radii for the lines that make up the boxes.
     """
 
-    colors: components.ColorArray | None = field(
+    colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional colors for the boxes.
     """
 
-    labels: components.TextArray | None = field(
+    labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     Optional text labels for the boxes.
     """
 
-    draw_order: components.DrawOrderArray | None = field(
+    draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.
@@ -95,10 +93,10 @@ class Boxes2D(Boxes2DExt, Archetype):
     The default for 2D boxes is 10.0.
     """
 
-    class_ids: components.ClassIdArray | None = field(
+    class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional `ClassId`s for the boxes.
@@ -106,10 +104,10 @@ class Boxes2D(Boxes2DExt, Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
+    instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual boxes in the batch.

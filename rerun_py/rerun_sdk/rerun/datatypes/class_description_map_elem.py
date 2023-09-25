@@ -11,16 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .class_description_map_elem_ext import ClassDescriptionMapElemExt
 
 __all__ = [
     "ClassDescriptionMapElem",
-    "ClassDescriptionMapElemArray",
     "ClassDescriptionMapElemArrayLike",
+    "ClassDescriptionMapElemBatch",
     "ClassDescriptionMapElemLike",
     "ClassDescriptionMapElemType",
 ]
@@ -62,10 +59,9 @@ ClassDescriptionMapElemArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class ClassDescriptionMapElemType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.ClassDescriptionMapElem"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -132,20 +128,17 @@ class ClassDescriptionMapElemType(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.datatypes.ClassDescriptionMapElem",
+            self._TYPE_NAME,
         )
 
 
-class ClassDescriptionMapElemArray(BaseExtensionArray[ClassDescriptionMapElemArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.ClassDescriptionMapElem"
-    _EXTENSION_TYPE = ClassDescriptionMapElemType
+class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):
+    _ARROW_TYPE = ClassDescriptionMapElemType()
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClassDescriptionMapElemExt.native_to_pa_array_override(data, data_type)
 
-
-ClassDescriptionMapElemType._ARRAY_TYPE = ClassDescriptionMapElemArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassDescriptionMapElemType())

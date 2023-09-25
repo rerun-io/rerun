@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["Clear"]
 
@@ -68,9 +66,9 @@ class Clear(Archetype):
 
     # You can define your own __init__ function as a member of ClearExt in clear_ext.py
 
-    settings: components.ClearSettingsArray = field(
+    settings: components.ClearSettingsBatch = field(
         metadata={"component": "required"},
-        converter=components.ClearSettingsArray.from_similar,  # type: ignore[misc]
+        converter=components.ClearSettingsBatch,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

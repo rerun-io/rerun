@@ -10,13 +10,10 @@ from typing import TYPE_CHECKING, Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .utf8_ext import Utf8Ext
 
-__all__ = ["Utf8", "Utf8Array", "Utf8ArrayLike", "Utf8Like", "Utf8Type"]
+__all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like", "Utf8Type"]
 
 
 @define
@@ -39,24 +36,20 @@ else:
 Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str]]
 
 
-# --- Arrow support ---
-
-
 class Utf8Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Utf8"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), "rerun.datatypes.Utf8")
+        pa.ExtensionType.__init__(self, pa.utf8(), self._TYPE_NAME)
 
 
-class Utf8Array(BaseExtensionArray[Utf8ArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Utf8"
-    _EXTENSION_TYPE = Utf8Type
+class Utf8Batch(BaseBatch[Utf8ArrayLike]):
+    _ARROW_TYPE = Utf8Type()
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Utf8Ext.native_to_pa_array_override(data, data_type)
 
-
-Utf8Type._ARRAY_TYPE = Utf8Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Utf8Type())

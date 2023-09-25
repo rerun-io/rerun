@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["TimeSeriesScalar"]
 
@@ -64,18 +62,18 @@ class TimeSeriesScalar(Archetype):
 
     # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
 
-    scalar: components.ScalarArray = field(
+    scalar: components.ScalarBatch = field(
         metadata={"component": "required"},
-        converter=components.ScalarArray.from_similar,  # type: ignore[misc]
+        converter=components.ScalarBatch,  # type: ignore[misc]
     )
     """
     The scalar value to log.
     """
 
-    radius: components.RadiusArray | None = field(
+    radius: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     An optional radius for the point.
@@ -88,10 +86,10 @@ class TimeSeriesScalar(Archetype):
     line will use the default width of `1.0`.
     """
 
-    color: components.ColorArray | None = field(
+    color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional color for the scalar entry.
@@ -107,10 +105,10 @@ class TimeSeriesScalar(Archetype):
     Otherwise, the line will appear gray in the legend.
     """
 
-    label: components.TextArray | None = field(
+    label: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     An optional label for the point.
@@ -123,10 +121,10 @@ class TimeSeriesScalar(Archetype):
     the space it's in.
     """
 
-    scattered: components.ScalarScatteringArray | None = field(
+    scattered: components.ScalarScatteringBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ScalarScatteringArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ScalarScatteringBatch._optional,  # type: ignore[misc]
     )
     """
     Specifies whether a point in a scatter plot should form a continuous line.

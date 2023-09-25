@@ -11,16 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .annotation_context_ext import AnnotationContextExt
 
 __all__ = [
     "AnnotationContext",
-    "AnnotationContextArray",
     "AnnotationContextArrayLike",
+    "AnnotationContextBatch",
     "AnnotationContextLike",
     "AnnotationContextType",
 ]
@@ -55,10 +52,9 @@ AnnotationContextArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class AnnotationContextType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.AnnotationContext"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -136,20 +132,17 @@ class AnnotationContextType(BaseExtensionType):
                     metadata={},
                 )
             ),
-            "rerun.components.AnnotationContext",
+            self._TYPE_NAME,
         )
 
 
-class AnnotationContextArray(BaseExtensionArray[AnnotationContextArrayLike]):
-    _EXTENSION_NAME = "rerun.components.AnnotationContext"
-    _EXTENSION_TYPE = AnnotationContextType
+class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = AnnotationContextType()
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
         return AnnotationContextExt.native_to_pa_array_override(data, data_type)
 
-
-AnnotationContextType._ARRAY_TYPE = AnnotationContextArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AnnotationContextType())

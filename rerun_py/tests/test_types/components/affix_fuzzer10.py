@@ -9,15 +9,12 @@ from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from rerun._converters import (
     str_or_none,
 )
 
-__all__ = ["AffixFuzzer10", "AffixFuzzer10Array", "AffixFuzzer10ArrayLike", "AffixFuzzer10Like", "AffixFuzzer10Type"]
+__all__ = ["AffixFuzzer10", "AffixFuzzer10ArrayLike", "AffixFuzzer10Batch", "AffixFuzzer10Like", "AffixFuzzer10Type"]
 
 
 @define
@@ -34,24 +31,20 @@ AffixFuzzer10ArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class AffixFuzzer10Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.testing.components.AffixFuzzer10"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), "rerun.testing.components.AffixFuzzer10")
+        pa.ExtensionType.__init__(self, pa.utf8(), self._TYPE_NAME)
 
 
-class AffixFuzzer10Array(BaseExtensionArray[AffixFuzzer10ArrayLike]):
-    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer10"
-    _EXTENSION_TYPE = AffixFuzzer10Type
+class AffixFuzzer10Batch(BaseBatch[AffixFuzzer10ArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = AffixFuzzer10Type()
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer10ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer10_ext.py
 
-
-AffixFuzzer10Type._ARRAY_TYPE = AffixFuzzer10Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer10Type())

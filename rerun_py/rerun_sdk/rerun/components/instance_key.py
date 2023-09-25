@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .instance_key_ext import InstanceKeyExt
 
-__all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
+__all__ = ["InstanceKey", "InstanceKeyArrayLike", "InstanceKeyBatch", "InstanceKeyLike", "InstanceKeyType"]
 
 
 @define
@@ -45,24 +42,20 @@ else:
 InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], int, npt.NDArray[np.uint64]]
 
 
-# --- Arrow support ---
-
-
 class InstanceKeyType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.InstanceKey"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint64(), "rerun.components.InstanceKey")
+        pa.ExtensionType.__init__(self, pa.uint64(), self._TYPE_NAME)
 
 
-class InstanceKeyArray(BaseExtensionArray[InstanceKeyArrayLike]):
-    _EXTENSION_NAME = "rerun.components.InstanceKey"
-    _EXTENSION_TYPE = InstanceKeyType
+class InstanceKeyBatch(BaseBatch[InstanceKeyArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = InstanceKeyType()
 
     @staticmethod
     def _native_to_pa_array(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
         return InstanceKeyExt.native_to_pa_array_override(data, data_type)
 
-
-InstanceKeyType._ARRAY_TYPE = InstanceKeyArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(InstanceKeyType())

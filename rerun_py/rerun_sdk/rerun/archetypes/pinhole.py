@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .pinhole_ext import PinholeExt
 
 __all__ = ["Pinhole"]
@@ -39,18 +37,18 @@ class Pinhole(PinholeExt, Archetype):
 
     # __init__ can be found in pinhole_ext.py
 
-    image_from_camera: components.PinholeProjectionArray = field(
+    image_from_camera: components.PinholeProjectionBatch = field(
         metadata={"component": "required"},
-        converter=components.PinholeProjectionArray.from_similar,  # type: ignore[misc]
+        converter=components.PinholeProjectionBatch,  # type: ignore[misc]
     )
     """
     Camera projection, from image coordinates to view coordinates.
     """
 
-    resolution: components.ResolutionArray | None = field(
+    resolution: components.ResolutionBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ResolutionArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ResolutionBatch._optional,  # type: ignore[misc]
     )
     """
     Pixel resolution (usually integers) of child image space. Width and height.
@@ -63,32 +61,35 @@ class Pinhole(PinholeExt, Archetype):
     `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
     """
 
-    camera_xyz: components.ViewCoordinatesArray | None = field(
+    camera_xyz: components.ViewCoordinatesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ViewCoordinatesArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._optional,  # type: ignore[misc]
     )
     """
     Sets the view coordinates for the camera.
-    The default is "RDF", i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
+
+    All common values are available as constants on the `components.ViewCoordinates` class.
+
+    The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
     This means that the camera frustum will point along the positive Z axis of the parent space,
     and the cameras "up" direction will be along the negative Y axis of the parent space.
 
-    The camera frustum will point whichever axis is set to `F` (or the oppositve of `B`).
+    The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
     When logging a depth image under this entity, this is the direction the point cloud will be projected.
-    With XYZ=RDF, the default forward is +Z.
+    With `RDF`, the default forward is +Z.
 
-    The frustum's "up" direction will be whichever axis is set to `U` (or the oppositve of `D`).
+    The frustum's "up" direction will be whichever axis is set to `U` (or the opposite of `D`).
     This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
-    With RDF, the default is up is -Y.
+    With `RDF`, the default is up is -Y.
 
-    The frustum's "right" direction will be whichever axis is set to `R` (or the oppositve of `L`).
+    The frustum's "right" direction will be whichever axis is set to `R` (or the opposite of `L`).
     This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
-    With RDF, the default right is +x.
+    With `RDF`, the default right is +x.
 
-    Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left, Z=Up).
+    Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).
 
-    NOTE: setting this to something else than "RDF" (the default) will change the orientation of the camera frustum,
+    NOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,
     and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
 
     The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,

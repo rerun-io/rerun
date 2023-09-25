@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .._converters import (
     to_np_uint8,
 )
 from .blob_ext import BlobExt
 
-__all__ = ["Blob", "BlobArray", "BlobArrayLike", "BlobLike", "BlobType"]
+__all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 
 
 @define
@@ -43,26 +40,22 @@ else:
 BlobArrayLike = Union[Blob, Sequence[BlobLike], bytes, npt.NDArray[np.uint8]]
 
 
-# --- Arrow support ---
-
-
 class BlobType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.Blob"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})), "rerun.components.Blob"
+            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})), self._TYPE_NAME
         )
 
 
-class BlobArray(BaseExtensionArray[BlobArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Blob"
-    _EXTENSION_TYPE = BlobType
+class BlobBatch(BaseBatch[BlobArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = BlobType()
 
     @staticmethod
     def _native_to_pa_array(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
         return BlobExt.native_to_pa_array_override(data, data_type)
 
-
-BlobType._ARRAY_TYPE = BlobArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(BlobType())

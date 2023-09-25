@@ -11,15 +11,12 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from rerun._baseclasses import BaseBatch, BaseExtensionType
 
 __all__ = [
     "PrimitiveComponent",
-    "PrimitiveComponentArray",
     "PrimitiveComponentArrayLike",
+    "PrimitiveComponentBatch",
     "PrimitiveComponentLike",
     "PrimitiveComponentType",
 ]
@@ -46,24 +43,20 @@ PrimitiveComponentArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class PrimitiveComponentType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.testing.datatypes.PrimitiveComponent"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint32(), "rerun.testing.datatypes.PrimitiveComponent")
+        pa.ExtensionType.__init__(self, pa.uint32(), self._TYPE_NAME)
 
 
-class PrimitiveComponentArray(BaseExtensionArray[PrimitiveComponentArrayLike]):
-    _EXTENSION_NAME = "rerun.testing.datatypes.PrimitiveComponent"
-    _EXTENSION_TYPE = PrimitiveComponentType
+class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
+    _ARROW_TYPE = PrimitiveComponentType()
 
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in primitive_component_ext.py
 
-
-PrimitiveComponentType._ARRAY_TYPE = PrimitiveComponentArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(PrimitiveComponentType())
