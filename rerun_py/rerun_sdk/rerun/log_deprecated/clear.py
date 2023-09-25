@@ -30,4 +30,4 @@ def log_cleared(
     from rerun.experimental import Clear, log
 
     recording = RecordingStream.to_native(recording)
-    return log(entity_path, Clear(recursive), recording=recording)
+    return log(entity_path, Clear(recursive=recursive), recording=recording)
