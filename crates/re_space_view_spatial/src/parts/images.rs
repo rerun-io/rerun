@@ -102,13 +102,13 @@ fn to_textured_rect(
 
             Some(re_renderer::renderer::TexturedRect {
                 top_left_corner_position: ent_context
-                    .world_from_obj
+                    .world_from_entity
                     .transform_point3(glam::Vec3::ZERO),
                 extent_u: ent_context
-                    .world_from_obj
+                    .world_from_entity
                     .transform_vector3(glam::Vec3::X * width as f32),
                 extent_v: ent_context
-                    .world_from_obj
+                    .world_from_entity
                     .transform_vector3(glam::Vec3::Y * height as f32),
                 colormapped_texture,
                 options: RectangleOptions {

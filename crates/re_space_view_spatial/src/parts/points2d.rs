@@ -117,7 +117,7 @@ impl Points2DPart {
                     re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
                         | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
                 )
-                .world_from_obj(ent_context.world_from_obj)
+                .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -174,7 +174,7 @@ impl Points2DPart {
             arch_view
                 .iter_required_component::<Position2D>()?
                 .map(|pt| pt.into()),
-            ent_context.world_from_obj,
+            ent_context.world_from_entity,
         );
 
         Ok(())
