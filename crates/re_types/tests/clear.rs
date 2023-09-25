@@ -6,10 +6,10 @@ use re_types::{archetypes::Clear, components::ClearIsRecursive, Archetype as _};
 fn roundtrip() {
     let all_expected = [
         Clear {
-            settings: ClearIsRecursive(true),
+            recursive: ClearIsRecursive(true),
         }, //
         Clear {
-            settings: ClearIsRecursive(false),
+            recursive: ClearIsRecursive(false),
         },
     ];
 
@@ -19,7 +19,7 @@ fn roundtrip() {
     ];
 
     let expected_extensions: HashMap<_, _> = [
-        ("settings", vec!["rerun.components.Clear"]), //
+        ("recursive", vec!["rerun.components.Clear"]), //
     ]
     .into();
 

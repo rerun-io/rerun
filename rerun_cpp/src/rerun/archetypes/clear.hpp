@@ -116,7 +116,7 @@ namespace rerun {
         /// }
         /// ```
         struct Clear {
-            rerun::components::ClearIsRecursive settings;
+            rerun::components::ClearIsRecursive recursive;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -138,7 +138,8 @@ namespace rerun {
           public:
             Clear() = default;
 
-            Clear(rerun::components::ClearIsRecursive _settings) : settings(std::move(_settings)) {}
+            Clear(rerun::components::ClearIsRecursive _recursive)
+                : recursive(std::move(_recursive)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

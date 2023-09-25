@@ -98,7 +98,7 @@
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clear {
-    pub settings: crate::components::ClearIsRecursive,
+    pub recursive: crate::components::ClearIsRecursive,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
@@ -162,7 +162,7 @@ impl crate::Archetype for Clear {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
             Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.settings as &dyn crate::ComponentBatch).into()),
+            Some((&self.recursive as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -178,7 +178,7 @@ impl crate::Archetype for Clear {
         use crate::{Loggable as _, ResultExt as _};
         Ok([{
             Some({
-                let array = <crate::components::ClearIsRecursive>::try_to_arrow([&self.settings]);
+                let array = <crate::components::ClearIsRecursive>::try_to_arrow([&self.recursive]);
                 array.map(|array| {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
                         "rerun.components.ClearIsRecursive".into(),
@@ -186,13 +186,13 @@ impl crate::Archetype for Clear {
                         None,
                     );
                     (
-                        ::arrow2::datatypes::Field::new("settings", datatype, false),
+                        ::arrow2::datatypes::Field::new("recursive", datatype, false),
                         array,
                     )
                 })
             })
             .transpose()
-            .with_context("rerun.archetypes.Clear#settings")?
+            .with_context("rerun.archetypes.Clear#recursive")?
         }]
         .into_iter()
         .flatten()
@@ -210,27 +210,27 @@ impl crate::Archetype for Clear {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let settings = {
+        let recursive = {
             let array = arrays_by_name
-                .get("settings")
+                .get("recursive")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#settings")?;
+                .with_context("rerun.archetypes.Clear#recursive")?;
             <crate::components::ClearIsRecursive>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Clear#settings")?
+                .with_context("rerun.archetypes.Clear#recursive")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#settings")?
+                .with_context("rerun.archetypes.Clear#recursive")?
         };
-        Ok(Self { settings })
+        Ok(Self { recursive })
     }
 }
 
 impl Clear {
-    pub fn new(settings: impl Into<crate::components::ClearIsRecursive>) -> Self {
+    pub fn new(recursive: impl Into<crate::components::ClearIsRecursive>) -> Self {
         Self {
-            settings: settings.into(),
+            recursive: recursive.into(),
         }
     }
 }
