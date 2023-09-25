@@ -11,15 +11,12 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from rerun._baseclasses import BaseBatch, BaseExtensionType
 
 __all__ = [
     "FlattenedScalar",
-    "FlattenedScalarArray",
     "FlattenedScalarArrayLike",
+    "FlattenedScalarBatch",
     "FlattenedScalarLike",
     "FlattenedScalarType",
 ]
@@ -46,28 +43,22 @@ FlattenedScalarArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class FlattenedScalarType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.testing.datatypes.FlattenedScalar"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]),
-            "rerun.testing.datatypes.FlattenedScalar",
+            self, pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]), self._TYPE_NAME
         )
 
 
-class FlattenedScalarArray(BaseExtensionArray[FlattenedScalarArrayLike]):
-    _EXTENSION_NAME = "rerun.testing.datatypes.FlattenedScalar"
-    _EXTENSION_TYPE = FlattenedScalarType
+class FlattenedScalarBatch(BaseBatch[FlattenedScalarArrayLike]):
+    _ARROW_TYPE = FlattenedScalarType()
 
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in flattened_scalar_ext.py
 
-
-FlattenedScalarType._ARRAY_TYPE = FlattenedScalarArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(FlattenedScalarType())

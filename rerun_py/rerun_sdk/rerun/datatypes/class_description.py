@@ -11,16 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .class_description_ext import ClassDescriptionExt
 
 __all__ = [
     "ClassDescription",
-    "ClassDescriptionArray",
     "ClassDescriptionArrayLike",
+    "ClassDescriptionBatch",
     "ClassDescriptionLike",
     "ClassDescriptionType",
 ]
@@ -80,10 +77,9 @@ ClassDescriptionArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class ClassDescriptionType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.ClassDescription"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -140,20 +136,17 @@ class ClassDescriptionType(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.datatypes.ClassDescription",
+            self._TYPE_NAME,
         )
 
 
-class ClassDescriptionArray(BaseExtensionArray[ClassDescriptionArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.ClassDescription"
-    _EXTENSION_TYPE = ClassDescriptionType
+class ClassDescriptionBatch(BaseBatch[ClassDescriptionArrayLike]):
+    _ARROW_TYPE = ClassDescriptionType()
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClassDescriptionExt.native_to_pa_array_override(data, data_type)
 
-
-ClassDescriptionType._ARRAY_TYPE = ClassDescriptionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassDescriptionType())

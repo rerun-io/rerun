@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_float32,
 )
 from .vec4d_ext import Vec4DExt
 
-__all__ = ["Vec4D", "Vec4DArray", "Vec4DArrayLike", "Vec4DLike", "Vec4DType"]
+__all__ = ["Vec4D", "Vec4DArrayLike", "Vec4DBatch", "Vec4DLike", "Vec4DType"]
 
 
 @define
@@ -47,26 +44,22 @@ Vec4DArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class Vec4DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Vec4D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), "rerun.datatypes.Vec4D"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), self._TYPE_NAME
         )
 
 
-class Vec4DArray(BaseExtensionArray[Vec4DArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Vec4D"
-    _EXTENSION_TYPE = Vec4DType
+class Vec4DBatch(BaseBatch[Vec4DArrayLike]):
+    _ARROW_TYPE = Vec4DType()
 
     @staticmethod
     def _native_to_pa_array(data: Vec4DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Vec4DExt.native_to_pa_array_override(data, data_type)
 
-
-Vec4DType._ARRAY_TYPE = Vec4DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Vec4DType())

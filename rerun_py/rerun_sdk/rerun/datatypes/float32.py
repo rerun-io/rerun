@@ -12,12 +12,9 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 
-__all__ = ["Float32", "Float32Array", "Float32ArrayLike", "Float32Like", "Float32Type"]
+__all__ = ["Float32", "Float32ArrayLike", "Float32Batch", "Float32Like", "Float32Type"]
 
 
 @define
@@ -41,24 +38,20 @@ Float32ArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class Float32Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Float32"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), "rerun.datatypes.Float32")
+        pa.ExtensionType.__init__(self, pa.float32(), self._TYPE_NAME)
 
 
-class Float32Array(BaseExtensionArray[Float32ArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Float32"
-    _EXTENSION_TYPE = Float32Type
+class Float32Batch(BaseBatch[Float32ArrayLike]):
+    _ARROW_TYPE = Float32Type()
 
     @staticmethod
     def _native_to_pa_array(data: Float32ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in float32_ext.py
 
-
-Float32Type._ARRAY_TYPE = Float32Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Float32Type())

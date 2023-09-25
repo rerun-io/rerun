@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .pinhole_ext import PinholeExt
 
 __all__ = ["Pinhole"]
@@ -39,18 +37,18 @@ class Pinhole(PinholeExt, Archetype):
 
     # __init__ can be found in pinhole_ext.py
 
-    image_from_camera: components.PinholeProjectionArray = field(
+    image_from_camera: components.PinholeProjectionBatch = field(
         metadata={"component": "required"},
-        converter=components.PinholeProjectionArray.from_similar,  # type: ignore[misc]
+        converter=components.PinholeProjectionBatch,  # type: ignore[misc]
     )
     """
     Camera projection, from image coordinates to view coordinates.
     """
 
-    resolution: components.ResolutionArray | None = field(
+    resolution: components.ResolutionBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ResolutionArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ResolutionBatch._optional,  # type: ignore[misc]
     )
     """
     Pixel resolution (usually integers) of child image space. Width and height.
@@ -63,10 +61,10 @@ class Pinhole(PinholeExt, Archetype):
     `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
     """
 
-    camera_xyz: components.ViewCoordinatesArray | None = field(
+    camera_xyz: components.ViewCoordinatesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ViewCoordinatesArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._optional,  # type: ignore[misc]
     )
     """
     Sets the view coordinates for the camera.

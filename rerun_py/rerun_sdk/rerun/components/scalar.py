@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .scalar_ext import ScalarExt
 
-__all__ = ["Scalar", "ScalarArray", "ScalarArrayLike", "ScalarLike", "ScalarType"]
+__all__ = ["Scalar", "ScalarArrayLike", "ScalarBatch", "ScalarLike", "ScalarType"]
 
 
 @define
@@ -49,24 +46,20 @@ else:
 ScalarArrayLike = Union[Scalar, Sequence[ScalarLike], float, npt.NDArray[np.float64]]
 
 
-# --- Arrow support ---
-
-
 class ScalarType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.Scalar"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float64(), "rerun.components.Scalar")
+        pa.ExtensionType.__init__(self, pa.float64(), self._TYPE_NAME)
 
 
-class ScalarArray(BaseExtensionArray[ScalarArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Scalar"
-    _EXTENSION_TYPE = ScalarType
+class ScalarBatch(BaseBatch[ScalarArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = ScalarType()
 
     @staticmethod
     def _native_to_pa_array(data: ScalarArrayLike, data_type: pa.DataType) -> pa.Array:
         return ScalarExt.native_to_pa_array_override(data, data_type)
 
-
-ScalarType._ARRAY_TYPE = ScalarArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ScalarType())

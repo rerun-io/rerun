@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["Text", "TextArray", "TextType"]
+__all__ = ["Text", "TextBatch", "TextType"]
 
 
 class Text(datatypes.Utf8):
@@ -23,18 +20,13 @@ class Text(datatypes.Utf8):
     pass
 
 
-class TextType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.Text"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Utf8Type
+class TextType(datatypes.Utf8Type):
+    _TYPE_NAME: str = "rerun.components.Text"
 
 
-class TextArray(BaseDelegatingExtensionArray[datatypes.Utf8ArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Text"
-    _EXTENSION_TYPE = TextType
-    _DELEGATED_ARRAY_TYPE = datatypes.Utf8Array
+class TextBatch(datatypes.Utf8Batch, ComponentBatchMixin):
+    _ARROW_TYPE = TextType()
 
-
-TextType._ARRAY_TYPE = TextArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TextType())

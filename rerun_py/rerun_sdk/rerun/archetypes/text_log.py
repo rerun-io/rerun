@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["TextLog"]
 
@@ -21,19 +19,19 @@ class TextLog(Archetype):
 
     # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
 
-    body: components.TextArray = field(
+    body: components.TextBatch = field(
         metadata={"component": "required"},
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextBatch,  # type: ignore[misc]
     )
-    level: components.TextLogLevelArray | None = field(
+    level: components.TextLogLevelBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextLogLevelArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextLogLevelBatch._optional,  # type: ignore[misc]
     )
-    color: components.ColorArray | None = field(
+    color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

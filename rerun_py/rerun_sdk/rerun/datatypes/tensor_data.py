@@ -12,13 +12,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .tensor_data_ext import TensorDataExt
 
-__all__ = ["TensorData", "TensorDataArray", "TensorDataArrayLike", "TensorDataLike", "TensorDataType"]
+__all__ = ["TensorData", "TensorDataArrayLike", "TensorDataBatch", "TensorDataLike", "TensorDataType"]
 
 
 def _tensor_data__buffer__special_field_converter_override(x: datatypes.TensorBufferLike) -> datatypes.TensorBuffer:
@@ -55,10 +52,9 @@ else:
 TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
 
 
-# --- Arrow support ---
-
-
 class TensorDataType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.TensorData"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -166,20 +162,17 @@ class TensorDataType(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.datatypes.TensorData",
+            self._TYPE_NAME,
         )
 
 
-class TensorDataArray(BaseExtensionArray[TensorDataArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.TensorData"
-    _EXTENSION_TYPE = TensorDataType
+class TensorDataBatch(BaseBatch[TensorDataArrayLike]):
+    _ARROW_TYPE = TensorDataType()
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
         return TensorDataExt.native_to_pa_array_override(data, data_type)
 
-
-TensorDataType._ARRAY_TYPE = TensorDataArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TensorDataType())

@@ -59,7 +59,7 @@ def line_strips3d_expected(obj: Any) -> Any:
             [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1], [0, 1, 0], [0, 1, 1]],
         ],
     )
-    return rrc.LineStrip3DArray.from_similar(expected)
+    return rrc.LineStrip3DBatch(expected)
 
 
 def test_line_strips3d() -> None:
@@ -132,7 +132,7 @@ def test_line_strips3d() -> None:
 def test_line_segments3d(data: rrc.LineStrip3DArrayLike) -> None:
     arch = rr2.LineStrips3D(data)
 
-    assert arch.strips == rrc.LineStrip3DArray.from_similar(
+    assert arch.strips == rrc.LineStrip3DBatch(
         [[[0, 0, 0], [0, 0, 1]], [[1, 0, 0], [1, 0, 1]], [[1, 1, 0], [1, 1, 1]], [[0, 1, 0], [0, 1, 1]]],
     )
 

@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = [
     "ViewCoordinates",
-    "ViewCoordinatesArray",
     "ViewCoordinatesArrayLike",
+    "ViewCoordinatesBatch",
     "ViewCoordinatesLike",
     "ViewCoordinatesType",
 ]
@@ -70,28 +67,22 @@ else:
 ViewCoordinatesArrayLike = Union[ViewCoordinates, Sequence[ViewCoordinatesLike], npt.ArrayLike]
 
 
-# --- Arrow support ---
-
-
 class ViewCoordinatesType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.ViewCoordinates"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 3),
-            "rerun.components.ViewCoordinates",
+            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 3), self._TYPE_NAME
         )
 
 
-class ViewCoordinatesArray(BaseExtensionArray[ViewCoordinatesArrayLike]):
-    _EXTENSION_NAME = "rerun.components.ViewCoordinates"
-    _EXTENSION_TYPE = ViewCoordinatesType
+class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = ViewCoordinatesType()
 
     @staticmethod
     def _native_to_pa_array(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:
         return ViewCoordinatesExt.native_to_pa_array_override(data, data_type)
 
-
-ViewCoordinatesType._ARRAY_TYPE = ViewCoordinatesArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ViewCoordinatesType())

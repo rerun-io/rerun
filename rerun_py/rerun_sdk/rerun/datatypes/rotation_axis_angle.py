@@ -11,16 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .rotation_axis_angle_ext import RotationAxisAngleExt
 
 __all__ = [
     "RotationAxisAngle",
-    "RotationAxisAngleArray",
     "RotationAxisAngleArrayLike",
+    "RotationAxisAngleBatch",
     "RotationAxisAngleLike",
     "RotationAxisAngleType",
 ]
@@ -63,10 +60,9 @@ RotationAxisAngleArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class RotationAxisAngleType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.RotationAxisAngle"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -92,20 +88,17 @@ class RotationAxisAngleType(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.datatypes.RotationAxisAngle",
+            self._TYPE_NAME,
         )
 
 
-class RotationAxisAngleArray(BaseExtensionArray[RotationAxisAngleArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.RotationAxisAngle"
-    _EXTENSION_TYPE = RotationAxisAngleType
+class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
+    _ARROW_TYPE = RotationAxisAngleType()
 
     @staticmethod
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
         return RotationAxisAngleExt.native_to_pa_array_override(data, data_type)
 
-
-RotationAxisAngleType._ARRAY_TYPE = RotationAxisAngleArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(RotationAxisAngleType())

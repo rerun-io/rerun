@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .asset3d_ext import Asset3DExt
 
 __all__ = ["Asset3D"]
@@ -69,24 +67,24 @@ class Asset3D(Asset3DExt, Archetype):
         rr.set_time_sequence("frame", i)
 
         translation = rr2.dt.TranslationRotationScale3D(translation=[0, 0, i - 10.0])
-        rr2.log_components("asset", [rr2.cmp.OutOfTreeTransform3DArray.from_similar(translation)])
+        rr2.log_components("asset", [rr2.cmp.OutOfTreeTransform3DBatch(translation)])
     ```
     """
 
     # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
 
-    data: components.BlobArray = field(
+    data: components.BlobBatch = field(
         metadata={"component": "required"},
-        converter=components.BlobArray.from_similar,  # type: ignore[misc]
+        converter=components.BlobBatch,  # type: ignore[misc]
     )
     """
     The asset's bytes.
     """
 
-    media_type: components.MediaTypeArray | None = field(
+    media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MediaTypeArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
     )
     """
     The Media Type of the asset.
@@ -99,10 +97,10 @@ class Asset3D(Asset3DExt, Archetype):
     If it cannot guess, it won't be able to render the asset.
     """
 
-    transform: components.OutOfTreeTransform3DArray | None = field(
+    transform: components.OutOfTreeTransform3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.OutOfTreeTransform3DArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.OutOfTreeTransform3DBatch._optional,  # type: ignore[misc]
     )
     """
     An out-of-tree transform.

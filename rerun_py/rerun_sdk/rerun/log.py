@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Protocol
+from typing import Any, Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -8,7 +8,7 @@ import pyarrow as pa
 import rerun_bindings as bindings
 
 from . import components as cmp
-from ._baseclasses import NamedExtensionArray
+from ._baseclasses import ArchetypeLike, ComponentBatchLike
 from .error_utils import _send_warning
 from .recording_stream import RecordingStream
 
@@ -45,53 +45,8 @@ class IndicatorComponentBatch:
     def component_name(self) -> str:
         return self._archetype_name.replace("archetypes", "components") + "Indicator"
 
-    def as_arrow_batch(self) -> pa.Array:
+    def as_arrow_array(self) -> pa.Array:
         return pa.nulls(self._num_instances, type=pa.null())
-
-
-class ComponentBatchLike(Protocol):
-    """Describes interface for objects that can be converted to batch of rerun Components."""
-
-    def component_name(self) -> str:
-        """Returns the name of the component."""
-        ...
-
-    def as_arrow_batch(self) -> pa.Array:
-        """
-        Returns a `pyarrow.Array` of the component data.
-
-        Each element in the array corresponds to an instance of the component. Single-instanced
-        components and splats must still be represented as a 1-element array.
-        """
-        ...
-
-
-class ArchetypeLike(Protocol):
-    """Describes interface for interpreting an object as a rerun Archetype."""
-
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
-        """
-        Returns an iterable of `ComponentBatchLike` objects.
-
-        Each object in the iterable must adhere to the `ComponentBatchLike`
-        interface. All of the batches should have the same length as the value
-        returned by `num_instances`, or length 1 if the component is a splat.,
-        or 0 if the component is being cleared.
-        """
-        ...
-
-    def num_instances(self) -> int | None:
-        """
-        (Optional) The number of instances in each batch.
-
-        If not implemented, the number of instances will be determined by the longest
-        batch in the bundle.
-
-        Each batch returned by `as_component_batches` should have this number of
-        elements, or 1 in the case it is a splat, or 0 in the case that
-        component is being cleared.
-        """
-        return None
 
 
 # adapted from rerun.log_deprecated._add_extension_components
@@ -137,7 +92,7 @@ def _add_extension_components(
             instanced[name] = pa_value  # noqa
 
 
-def _splat() -> cmp.InstanceKeyArray:
+def _splat() -> cmp.InstanceKeyBatch:
     """Helper to generate a splat InstanceKeyArray."""
 
     _MAX_U64 = 2**64 - 1
@@ -232,13 +187,13 @@ def log_components(
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    instanced: dict[str, NamedExtensionArray] = {}
-    splats: dict[str, NamedExtensionArray] = {}
+    instanced: dict[str, pa.Array] = {}
+    splats: dict[str, pa.Array] = {}
 
     components = list(components)
 
     names = [comp.component_name() for comp in components]
-    arrow_arrays = [comp.as_arrow_batch() for comp in components]
+    arrow_arrays = [comp.as_arrow_array() for comp in components]
 
     if num_instances is None:
         num_instances = max(len(arr) for arr in arrow_arrays)

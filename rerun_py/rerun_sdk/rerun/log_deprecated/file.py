@@ -112,7 +112,7 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
         translation = transform[..., -1]
         mat = [transform[..., 0], transform[..., 1], transform[..., 2]]
-        asset3d.transform = rr2.dt.Transform3DArray.from_similar(
+        asset3d.transform = rr2.cmp.OutOfTreeTransform3DBatch(
             rr2.dt.TranslationAndMat3x3(translation=translation, matrix=mat)
         )
 

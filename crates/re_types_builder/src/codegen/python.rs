@@ -263,13 +263,13 @@ impl PythonCodeGenerator {
                     let name = &obj.name;
 
                     if obj.is_delegating_component() {
-                        vec![name.clone(), format!("{name}Array"), format!("{name}Type")]
+                        vec![name.clone(), format!("{name}Batch"), format!("{name}Type")]
                     } else {
                         vec![
                             format!("{name}"),
-                            format!("{name}Like"),
-                            format!("{name}Array"),
                             format!("{name}ArrayLike"),
+                            format!("{name}Batch"),
+                            format!("{name}Like"),
                             format!("{name}Type"),
                         ]
                     }
@@ -323,9 +323,8 @@ impl PythonCodeGenerator {
             from {rerun_path}_baseclasses import (
                 Archetype,
                 BaseExtensionType,
-                BaseExtensionArray,
-                BaseDelegatingExtensionType,
-                BaseDelegatingExtensionArray
+                BaseBatch,
+                ComponentBatchMixin
             )
             from {rerun_path}_converters import (
                 int_or_none,
@@ -532,13 +531,12 @@ fn code_for_struct(
             {
                 format!("converter={}.{converter_override_name}", ext_class.name)
             } else if *kind == ObjectKind::Archetype {
-                // Archetypes default to using `from_similar` from the Component
+                // Archetypes use the ComponentBatch constructor for their fields
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
-                // archetype always delegate field init to the component array object
                 if field.is_nullable {
-                    format!("converter={typ_unwrapped}Array.optional_from_similar, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch._optional, # type: ignore[misc]\n")
                 } else {
-                    format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch, # type: ignore[misc]\n")
                 }
             } else if !default_converter.is_empty() {
                 code.push_text(&converter_function, 1, 0);
@@ -677,7 +675,7 @@ fn code_for_struct(
             let (typ, _) = quote_field_type_from_field(objects, field, false);
             let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
             let typ = if *kind == ObjectKind::Archetype {
-                format!("{typ_unwrapped}Array")
+                format!("{typ_unwrapped}Batch")
             } else {
                 typ
             };
@@ -729,26 +727,9 @@ fn code_for_struct(
 
     match kind {
         ObjectKind::Archetype => (),
-        ObjectKind::Component => {
-            // a component might be either delegating to a datatype or using a native type
-            if let Type::Object(ref dtype_fqname) = obj.fields[0].typ {
-                let dtype_obj = &objects[dtype_fqname];
-                code.push_text(
-                    quote_arrow_support_from_delegating_component(obj, dtype_obj),
-                    1,
-                    0,
-                );
-            } else {
-                code.push_text(
-                    quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
-                    1,
-                    0,
-                );
-            }
-        }
-        ObjectKind::Datatype => {
+        ObjectKind::Component | ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
                 0,
             );
@@ -902,7 +883,7 @@ fn code_for_union(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
                 0,
             );
@@ -1405,53 +1386,6 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
     }
 }
 
-fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Object) -> String {
-    let Object {
-        fqname, name, kind, ..
-    } = obj;
-
-    assert_eq!(
-        *kind,
-        ObjectKind::Component,
-        "this function only handles components"
-    );
-
-    // extract datatype, must be *only* one
-    assert_eq!(
-        obj.fields.len(),
-        1,
-        "component must have exactly one field, but {} has {}",
-        fqname,
-        obj.fields.len()
-    );
-
-    let extension_type = format!("{name}Type");
-    let extension_array = format!("{name}Array");
-
-    let dtype_extension_type = format!("{}Type", dtype_obj.name);
-    let dtype_extension_array = format!("{}Array", dtype_obj.name);
-    let dtype_extension_array_like = format!("{}ArrayLike", dtype_obj.name);
-
-    unindent::unindent(&format!(
-        r#"
-
-        class {extension_type}(BaseDelegatingExtensionType):
-            _TYPE_NAME = "{fqname}"
-            _DELEGATED_EXTENSION_TYPE = datatypes.{dtype_extension_type}
-
-        class {extension_array}(BaseDelegatingExtensionArray[datatypes.{dtype_extension_array_like}]):
-            _EXTENSION_NAME = "{fqname}"
-            _EXTENSION_TYPE = {extension_type}
-            _DELEGATED_ARRAY_TYPE = datatypes.{dtype_extension_array}
-
-        {extension_type}._ARRAY_TYPE = {extension_array}
-
-        # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-        # pa.register_extension_type({extension_type}())
-        "#
-    ))
-}
-
 /// Arrow support objects
 ///
 /// Generated for Components using native types and Datatypes. Components using a Datatype instead
@@ -1459,26 +1393,39 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
 fn quote_arrow_support_from_obj(
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
+    objects: &Objects,
     obj: &Object,
 ) -> String {
     let Object { fqname, name, .. } = obj;
 
-    let (ext_type_base, ext_array_base) =
-        if obj.kind == ObjectKind::Datatype || obj.is_non_delegating_component() {
-            ("BaseExtensionType", "BaseExtensionArray")
-        } else if obj.is_delegating_component() {
-            (
-                "BaseDelegatingExtensionType",
-                "BaseDelegatingExtensionArray",
-            )
+    let mut type_superclasses: Vec<String> = vec![];
+    let mut batch_superclasses: Vec<String> = vec![];
+
+    let many_aliases = if let Some(data_type) = obj.delegate_datatype(objects) {
+        format!("datatypes.{}ArrayLike", data_type.name)
+    } else {
+        format!("{name}ArrayLike")
+    };
+
+    if obj.kind == ObjectKind::Datatype {
+        type_superclasses.push("BaseExtensionType".to_owned());
+        batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
+    } else if obj.kind == ObjectKind::Component {
+        if let Some(data_type) = obj.delegate_datatype(objects) {
+            let data_extension_type = format!("datatypes.{}Type", data_type.name);
+            let data_extension_array = format!("datatypes.{}Batch", data_type.name);
+            type_superclasses.push(data_extension_type);
+            batch_superclasses.push(data_extension_array);
         } else {
-            unreachable!("archetypes do not have arrow support")
-        };
+            type_superclasses.push("BaseExtensionType".to_owned());
+            batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
+        }
+        batch_superclasses.push("ComponentBatchMixin".to_owned());
+    }
 
     let datatype = quote_arrow_datatype(&arrow_registry.get(fqname));
-    let extension_array = format!("{name}Array");
+    let extension_batch = format!("{name}Batch");
     let extension_type = format!("{name}Type");
-    let many_aliases = format!("{name}ArrayLike");
 
     let override_ = if ext_class.has_native_to_pa_array {
         format!(
@@ -1492,31 +1439,56 @@ fn quote_arrow_support_from_obj(
         )
     };
 
-    unindent::unindent(&format!(
-        r#"
+    let type_superclass_decl = if type_superclasses.is_empty() {
+        String::new()
+    } else {
+        format!("({})", type_superclasses.join(","))
+    };
 
-        # --- Arrow support ---
+    let batch_superclass_decl = if batch_superclasses.is_empty() {
+        String::new()
+    } else {
+        format!("({})", batch_superclasses.join(","))
+    };
 
-        class {extension_type}({ext_type_base}):
-            def __init__(self) -> None:
-                pa.ExtensionType.__init__(
-                    self, {datatype}, "{fqname}"
-                )
+    if obj.kind == ObjectKind::Datatype || obj.is_non_delegating_component() {
+        // Datatypes and non-delegating components declare init
+        unindent::unindent(&format!(
+            r#"
+            class {extension_type}{type_superclass_decl}:
+                _TYPE_NAME: str = "{fqname}"
 
-        class {extension_array}({ext_array_base}[{many_aliases}]):
-            _EXTENSION_NAME = "{fqname}"
-            _EXTENSION_TYPE = {extension_type}
+                def __init__(self) -> None:
+                    pa.ExtensionType.__init__(
+                        self, {datatype}, self._TYPE_NAME
+                    )
 
-            @staticmethod
-            def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
-                {override_}
+            class {extension_batch}{batch_superclass_decl}:
+                _ARROW_TYPE = {extension_type}()
 
-        {extension_type}._ARRAY_TYPE = {extension_array}
+                @staticmethod
+                def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
+                    {override_}
 
-        # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-        # pa.register_extension_type({extension_type}())
-        "#
-    ))
+            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
+            # pa.register_extension_type({extension_type}())
+            "#
+        ))
+    } else {
+        // Delegating components are already inheriting from their base type
+        unindent::unindent(&format!(
+            r#"
+            class {extension_type}{type_superclass_decl}:
+                _TYPE_NAME: str = "{fqname}"
+
+            class {extension_batch}{batch_superclass_decl}:
+                _ARROW_TYPE = {extension_type}()
+
+            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
+            # pa.register_extension_type({extension_type}())
+            "#
+        ))
+    }
 }
 
 // --- Arrow registry code generators ---

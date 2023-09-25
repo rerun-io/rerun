@@ -72,8 +72,8 @@ def test_arrows3d() -> None:
         )
         print(f"A: {arch}\n")
 
-        assert arch.vectors == vec3ds_expected(vectors, rrc.Vector3DArray)
-        assert arch.origins == vec3ds_expected(origins, rrc.Origin3DArray)
+        assert arch.vectors == vec3ds_expected(vectors, rrc.Vector3DBatch)
+        assert arch.origins == vec3ds_expected(origins, rrc.Origin3DBatch)
         assert arch.radii == radii_expected(radii)
         assert arch.colors == colors_expected(colors)
         assert arch.labels == labels_expected(labels)

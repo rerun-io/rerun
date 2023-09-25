@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["DisconnectedSpace"]
 
@@ -45,9 +43,9 @@ class DisconnectedSpace(Archetype):
 
     # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
 
-    disconnected_space: components.DisconnectedSpaceArray = field(
+    disconnected_space: components.DisconnectedSpaceBatch = field(
         metadata={"component": "required"},
-        converter=components.DisconnectedSpaceArray.from_similar,  # type: ignore[misc]
+        converter=components.DisconnectedSpaceBatch,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

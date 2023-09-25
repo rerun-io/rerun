@@ -22,7 +22,7 @@ class ConfidenceBatch(rr2.ComponentBatchLike):
         """The name of the custom component."""
         return "user.Confidence"
 
-    def as_arrow_batch(self) -> pa.Array:
+    def as_arrow_array(self) -> pa.Array:
         """The arrow batch representing the custom component."""
         return pa.array(self.confidence, type=pa.float32())
 

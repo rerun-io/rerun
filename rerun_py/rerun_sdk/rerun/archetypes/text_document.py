@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["TextDocument"]
 
@@ -21,14 +19,14 @@ class TextDocument(Archetype):
 
     # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
 
-    body: components.TextArray = field(
+    body: components.TextBatch = field(
         metadata={"component": "required"},
-        converter=components.TextArray.from_similar,  # type: ignore[misc]
+        converter=components.TextBatch,  # type: ignore[misc]
     )
-    media_type: components.MediaTypeArray | None = field(
+    media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MediaTypeArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
     )
     """
     The Media Type of the text.

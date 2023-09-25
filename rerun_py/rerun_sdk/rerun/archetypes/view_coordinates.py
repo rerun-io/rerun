@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates"]
@@ -50,9 +48,9 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
-    xyz: components.ViewCoordinatesArray = field(
+    xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},
-        converter=components.ViewCoordinatesArray.from_similar,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

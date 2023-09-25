@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["MeshProperties", "MeshPropertiesArray", "MeshPropertiesType"]
+__all__ = ["MeshProperties", "MeshPropertiesBatch", "MeshPropertiesType"]
 
 
 class MeshProperties(datatypes.MeshProperties):
@@ -21,18 +18,13 @@ class MeshProperties(datatypes.MeshProperties):
     pass
 
 
-class MeshPropertiesType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.MeshProperties"
-    _DELEGATED_EXTENSION_TYPE = datatypes.MeshPropertiesType
+class MeshPropertiesType(datatypes.MeshPropertiesType):
+    _TYPE_NAME: str = "rerun.components.MeshProperties"
 
 
-class MeshPropertiesArray(BaseDelegatingExtensionArray[datatypes.MeshPropertiesArrayLike]):
-    _EXTENSION_NAME = "rerun.components.MeshProperties"
-    _EXTENSION_TYPE = MeshPropertiesType
-    _DELEGATED_ARRAY_TYPE = datatypes.MeshPropertiesArray
+class MeshPropertiesBatch(datatypes.MeshPropertiesBatch, ComponentBatchMixin):
+    _ARROW_TYPE = MeshPropertiesType()
 
-
-MeshPropertiesType._ARRAY_TYPE = MeshPropertiesArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MeshPropertiesType())

@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_float32,
 )
 from .mat4x4_ext import Mat4x4Ext
 
-__all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type"]
+__all__ = ["Mat4x4", "Mat4x4ArrayLike", "Mat4x4Batch", "Mat4x4Like", "Mat4x4Type"]
 
 
 @define(init=False)
@@ -86,26 +83,22 @@ Mat4x4ArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class Mat4x4Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Mat4x4"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 16), "rerun.datatypes.Mat4x4"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 16), self._TYPE_NAME
         )
 
 
-class Mat4x4Array(BaseExtensionArray[Mat4x4ArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Mat4x4"
-    _EXTENSION_TYPE = Mat4x4Type
+class Mat4x4Batch(BaseBatch[Mat4x4ArrayLike]):
+    _ARROW_TYPE = Mat4x4Type()
 
     @staticmethod
     def _native_to_pa_array(data: Mat4x4ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Mat4x4Ext.native_to_pa_array_override(data, data_type)
 
-
-Mat4x4Type._ARRAY_TYPE = Mat4x4Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Mat4x4Type())
