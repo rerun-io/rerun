@@ -82,7 +82,7 @@ def main() -> None:
     for frame_offset in range(args.repeat):
         log_stuff(frame_offset)
 
-    rr2.log("text_document", rr2.TextDocument(body="This is to show the difference between TextLog and TextDocument"))
+    rr2.log("text_document", rr2.TextDocument("This is to show the difference between TextLog and TextDocument"))
 
     rr.script_teardown(args)
 

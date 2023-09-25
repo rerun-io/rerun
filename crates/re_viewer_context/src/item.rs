@@ -1,6 +1,7 @@
-use itertools::Itertools;
+use itertools::Itertools as _;
+
 use re_data_store::InstancePath;
-use re_log_types::ComponentPath;
+use re_log_types::{ComponentPath, DataPath, EntityPath};
 
 use super::{DataBlueprintGroupHandle, SpaceViewId};
 
@@ -15,6 +16,67 @@ pub enum Item {
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, DataBlueprintGroupHandle),
+}
+
+impl From<SpaceViewId> for Item {
+    #[inline]
+    fn from(space_view_id: SpaceViewId) -> Self {
+        Self::SpaceView(space_view_id)
+    }
+}
+
+impl From<ComponentPath> for Item {
+    #[inline]
+    fn from(component_path: ComponentPath) -> Self {
+        Self::ComponentPath(component_path)
+    }
+}
+
+impl From<InstancePath> for Item {
+    #[inline]
+    fn from(instance_path: InstancePath) -> Self {
+        Self::InstancePath(None, instance_path)
+    }
+}
+
+impl From<EntityPath> for Item {
+    #[inline]
+    fn from(entity_path: EntityPath) -> Self {
+        Self::InstancePath(None, InstancePath::from(entity_path))
+    }
+}
+
+impl std::str::FromStr for Item {
+    type Err = re_log_types::PathParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let DataPath {
+            entity_path,
+            instance_key,
+            component_name,
+        } = DataPath::from_str(s)?;
+
+        match (instance_key, component_name) {
+            (Some(instance_key), Some(_component_name)) => {
+                // TODO(emilk): support selecting a specific component of a specific instance.
+                Err(re_log_types::PathParseError::UnexpectedInstanceKey(
+                    instance_key,
+                ))
+            }
+            (Some(instance_key), None) => Ok(Item::InstancePath(
+                None,
+                InstancePath::instance(entity_path, instance_key),
+            )),
+            (None, Some(component_name)) => Ok(Item::ComponentPath(ComponentPath {
+                entity_path,
+                component_name,
+            })),
+            (None, None) => Ok(Item::InstancePath(
+                None,
+                InstancePath::entity_splat(entity_path),
+            )),
+        }
+    }
 }
 
 impl std::fmt::Debug for Item {
