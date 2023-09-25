@@ -185,7 +185,7 @@ class BaseBatch(Generic[T]):
 
         For optional components, the default value of None is preserved in the field to indicate that the optional
         field was not specified.
-        If any value other than None is provided, it is passed through to `from_similar`.
+        If any value other than None is provided, it is passed through to `__init__`.
 
         Parameters
         ----------
