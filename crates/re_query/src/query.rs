@@ -246,7 +246,7 @@ pub fn query_archetype<A: Archetype>(
 
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
-    use re_components::datagen::build_frame_nr;
+    use re_log_types::build_frame_nr;
     use re_types::components::{Color, Position2D};
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());

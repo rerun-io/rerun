@@ -28,7 +28,7 @@ pub use rerun::{
     components::{
         AnnotationContext, Blob, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey,
         KeypointId, LineStrip2D, LineStrip3D, Origin3D, OutOfTreeTransform3D, PinholeProjection,
-        Position2D, Position3D, Quaternion, Radius, Text, Transform3D, Vector3D, ViewCoordinates,
+        Position2D, Position3D, Radius, Text, Transform3D, Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
     datatypes::{AnnotationInfo, ClassDescription},
@@ -38,8 +38,6 @@ pub use rerun::{
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
-
-use crate::arrow::get_registered_component_names;
 
 // --- FFI ---
 
@@ -100,7 +98,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // These two components are necessary for imports to work
     // TODO(jleibs): Refactor import logic so all we need is main
-    m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
     m.add_class::<PyMemorySinkStorage>()?;
     m.add_class::<PyRecordingStream>()?;

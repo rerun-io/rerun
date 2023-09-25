@@ -82,7 +82,7 @@ fn log_msg_from_file_contents(
     let FileContents { name, bytes } = file_contents;
 
     let entity_path = re_log_types::EntityPath::from_single_string(name.clone());
-    let cells = re_components::data_cells_from_file_contents(&name, bytes.to_vec())?;
+    let cells = re_log_types::data_cells_from_file_contents(&name, bytes.to_vec())?;
 
     let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
 

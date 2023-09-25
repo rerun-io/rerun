@@ -10,10 +10,10 @@ use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
-use re_components::datagen::{
-    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_positions2d,
+use re_log_types::{
+    build_frame_nr, build_log_time, DataCell, Duration, EntityPath, Time, TimeType, Timeline,
 };
-use re_log_types::{DataCell, Duration, EntityPath, Time, TimeType, Timeline};
+use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
 use re_types::{components::InstanceKey, Loggable as _};
 
 // ---
