@@ -20,11 +20,10 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER END]
         };
+#endif
 
         const Clear Clear::FLAT = Clear(false);
 
         const Clear Clear::RECURSIVE = Clear(true);
-#endif
-
     } // namespace archetypes
 } // namespace rerun
