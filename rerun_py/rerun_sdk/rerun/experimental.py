@@ -50,6 +50,7 @@ __all__ = [
 from . import archetypes as arch
 from . import components as cmp
 from . import datatypes as dt
+from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
 from .archetypes import (
     AnnotationContext,
     Arrows3D,
@@ -75,4 +76,3 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
-from .log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components

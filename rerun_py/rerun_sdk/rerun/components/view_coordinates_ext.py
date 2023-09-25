@@ -8,7 +8,7 @@ import numpy.typing as npt
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from ..log import ComponentBatchLike
+    from .._log import ComponentBatchLike
     from . import ViewCoordinates, ViewCoordinatesArrayLike
 
 

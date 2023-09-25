@@ -8,7 +8,7 @@ import pyarrow as pa
 from .._unions import build_dense_union, union_discriminant_type
 
 if TYPE_CHECKING:
-    from ..log import ComponentBatchLike
+    from .._log import ComponentBatchLike
     from . import (
         Mat3x3,
         Rotation3D,
