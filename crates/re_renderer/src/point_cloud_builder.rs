@@ -31,11 +31,15 @@ impl PointCloudBuilder {
         const RESERVE_SIZE: usize = 512;
 
         // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
-        let color_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<Color32>(
-            &ctx.device,
-            &ctx.gpu_resources.buffers,
-            PointCloudDrawData::MAX_NUM_POINTS,
-        );
+        let color_buffer = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .allocate::<Color32>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                PointCloudDrawData::MAX_NUM_POINTS,
+            )
+            .expect("Failed to allocate color buffer"); // TODO(#3408): Should never happen but should propagate error anyways
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
             .lock()
@@ -43,7 +47,8 @@ impl PointCloudBuilder {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 PointCloudDrawData::MAX_NUM_POINTS,
-            );
+            )
+            .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {
             vertices: Vec::with_capacity(RESERVE_SIZE),

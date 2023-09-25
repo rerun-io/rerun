@@ -43,7 +43,8 @@ impl LineStripSeriesBuilder {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 LineDrawData::MAX_NUM_STRIPS,
-            );
+            )
+            .expect("Failed to allocate picking instance id buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {
             vertices: Vec::with_capacity(RESERVE_SIZE * 2),
