@@ -129,6 +129,17 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      # It's important that we run codegen and check for diffs first because
+      # `cargo check` also causes other diffs, such as patching `examples_manifest.json`
+      - name: Codegen
+        uses: actions-rs/cargo@v1
+        with:
+          command: codegen
+
+      - name: No Diffs From Running Codegen
+        run: |
+          git diff --exit-code
+
       # First do our check with --locked to make sure `Cargo.lock` is up to date
       - name: Check all features
         uses: actions-rs/cargo@v1
@@ -141,15 +152,6 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-      - name: Codegen
-        uses: actions-rs/cargo@v1
-        with:
-          command: codegen
-
-      - name: No Diffs From Running Codegen
-        run: |
-          git diff --exit-code
 
       - name: Cranky
         uses: actions-rs/cargo@v1
