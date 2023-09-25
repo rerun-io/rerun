@@ -21,7 +21,11 @@
 /// ```ignore
 /// //! Log a simple 3D asset.
 ///
-/// use rerun::{archetypes::Asset3D, external::anyhow, RecordingStreamBuilder};
+/// use rerun::{
+///     archetypes::{Asset3D, ViewCoordinates},
+///     external::anyhow,
+///     RecordingStreamBuilder,
+/// };
 ///
 /// fn main() -> Result<(), anyhow::Error> {
 ///     let args = std::env::args().collect::<Vec<_>>();
@@ -31,8 +35,8 @@
 ///
 ///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_asset3d_simple").memory()?;
 ///
-///     // TODO(#2816): some viewcoords would be nice here
-///     rec.log("asset", &Asset3D::from_file(path)?)?;
+///     rec.log_timeless("world", true, &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
+///     rec.log("world/asset", &Asset3D::from_file(path)?)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
@@ -44,7 +48,7 @@
 /// //! Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 ///
 /// use rerun::{
-///     archetypes::{Asset3D, Points3D},
+///     archetypes::{Asset3D, Points3D, ViewCoordinates},
 ///     components::OutOfTreeTransform3D,
 ///     datatypes::TranslationRotationScale3D,
 ///     demo_util::grid,
@@ -61,13 +65,13 @@
 ///     let (rec, storage) =
 ///         RecordingStreamBuilder::new("rerun_example_asset3d_out_of_tree").memory()?;
 ///
-///     // TODO(#2816): some viewcoords would be nice here
+///     rec.log_timeless("world", true, &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 ///
 ///     rec.set_time_sequence("frame", 0);
-///     rec.log("asset", &Asset3D::from_file(path)?)?;
+///     rec.log("world/asset", &Asset3D::from_file(path)?)?;
 ///     // Those points will not be affected by their parent's out-of-tree transform!
 ///     rec.log(
-///         "asset/points",
+///         "world/asset/points",
 ///         &Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
 ///     )?;
 ///
@@ -77,7 +81,7 @@
 ///         // Modify the asset's out-of-tree transform: this will not affect its children (i.e. the points)!
 ///         let translation = TranslationRotationScale3D::translation([0.0, 0.0, i as f32 - 10.0]);
 ///         rec.log_component_batches(
-///             "asset",
+///             "world/asset",
 ///             false,
 ///             1,
 ///             [&OutOfTreeTransform3D::from(translation) as _],
