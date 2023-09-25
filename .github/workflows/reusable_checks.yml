@@ -130,8 +130,6 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      # It's important that we run codegen and check for diffs first because
-      # `cargo check` also causes other diffs, such as patching `examples_manifest.json`
       - name: Codegen
         uses: actions-rs/cargo@v1
         with:
