@@ -543,15 +543,13 @@ impl TimePanel {
         if !tree.components.is_empty() {
             let clip_rect_save = ui.clip_rect();
 
-            for (component_name, data) in &tree.components {
+            for component_name in re_data_ui::ui_visible_components(tree.components.keys()) {
+                let data = &tree.components[component_name];
+
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.num_timeless_messages() == 0
                 {
                     continue; // ignore fields that have no data for the current timeline
-                }
-
-                if !re_data_ui::is_component_visible_in_ui(component_name) {
-                    continue;
                 }
 
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);

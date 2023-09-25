@@ -41,11 +41,7 @@ impl DataUi for InstancePath {
         egui::Grid::new("entity_instance")
             .num_columns(2)
             .show(ui, |ui| {
-                for component_name in components {
-                    if !crate::is_component_visible_in_ui(&component_name) {
-                        continue;
-                    }
-
+                for &component_name in crate::ui_visible_components(&components) {
                     let Some((_, component_data)) =
                         get_component_with_instances(store, query, entity_path, component_name)
                     else {
