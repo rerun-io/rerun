@@ -38,21 +38,20 @@ pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
     })();
 
     if let Some(DataType::Extension(name, _, _)) = datatype {
-        match name.as_str() {
-            // TODO(#1775): This should be registered dynamically.
-            // NOTE: Can't call `Tuid::name()`, `Component` lives in `re_log_types`.
-            "rerun.tuid" => Box::new(|w, index| {
+        // TODO(#1775): This should be registered dynamically.
+        // NOTE: Can't call `Tuid::name()`, `Component` lives in `re_log_types`.
+        if name.as_str() == "rerun.tuid" {
+            return Box::new(|w, index| {
                 if let Some(tuid) = parse_tuid(array, index) {
                     w.write_fmt(format_args!("{tuid}"))
                 } else {
                     w.write_str("<ERR>")
                 }
-            }),
-            _ => get_display(array, null),
+            });
         }
-    } else {
-        get_display(array, null)
     }
+
+    get_display(array, null)
 }
 
 // TODO(#1775): This should be defined and registered by the `re_tuid` crate.
@@ -202,6 +201,8 @@ where
     let mut table = Table::new();
     table.load_preset(presets::UTF8_FULL);
 
+    const WIDTH_UPPER_BOUNDARY: u16 = 100;
+
     let names = names
         .into_iter()
         .map(|name| name.as_ref().to_owned())
@@ -227,7 +228,7 @@ where
         .map(|(name, data_type)| {
             Cell::new(format!(
                 "{}\n---\n{}",
-                name,
+                name.replace("rerun.components.", "").replace("rerun.", ""),
                 DisplayDataType(data_type.clone())
             ))
         });
@@ -239,10 +240,33 @@ where
             .map(|disp| {
                 let mut string = String::new();
                 (disp)(&mut string, row).unwrap();
-                Cell::new(string)
+                let chars: Vec<_> = string.chars().collect();
+                if chars.len() > WIDTH_UPPER_BOUNDARY as usize {
+                    Cell::new(
+                        chars
+                            .into_iter()
+                            .take(WIDTH_UPPER_BOUNDARY.saturating_sub(3).into())
+                            .chain(['.', '.', '.'])
+                            .collect::<String>(),
+                    )
+                } else {
+                    Cell::new(string)
+                }
             })
             .collect();
         table.add_row(cells);
     }
+
+    table.set_content_arrangement(comfy_table::ContentArrangement::DynamicFullWidth);
+    // NOTE: `Percentage` only works for terminals that report their sizes.
+    let width = if table.width().is_some() {
+        comfy_table::Width::Percentage((100.0 / arrays.len() as f32) as u16)
+    } else {
+        comfy_table::Width::Fixed(WIDTH_UPPER_BOUNDARY)
+    };
+    table.set_constraints(
+        std::iter::repeat(comfy_table::ColumnConstraint::UpperBoundary(width)).take(arrays.len()),
+    );
+
     table
 }
