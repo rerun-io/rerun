@@ -11,12 +11,12 @@ from .annotation_context import (
 )
 from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
-from .clear_settings import (
-    ClearSettings,
-    ClearSettingsArrayLike,
-    ClearSettingsBatch,
-    ClearSettingsLike,
-    ClearSettingsType,
+from .clear_is_recursive import (
+    ClearIsRecursive,
+    ClearIsRecursiveArrayLike,
+    ClearIsRecursiveBatch,
+    ClearIsRecursiveLike,
+    ClearIsRecursiveType,
 )
 from .color import Color, ColorBatch, ColorType
 from .depth_meter import DepthMeter, DepthMeterArrayLike, DepthMeterBatch, DepthMeterLike, DepthMeterType
@@ -81,11 +81,11 @@ __all__ = [
     "ClassId",
     "ClassIdBatch",
     "ClassIdType",
-    "ClearSettings",
-    "ClearSettingsArrayLike",
-    "ClearSettingsBatch",
-    "ClearSettingsLike",
-    "ClearSettingsType",
+    "ClearIsRecursive",
+    "ClearIsRecursiveArrayLike",
+    "ClearIsRecursiveBatch",
+    "ClearIsRecursiveLike",
+    "ClearIsRecursiveType",
     "Color",
     "ColorBatch",
     "ColorType",

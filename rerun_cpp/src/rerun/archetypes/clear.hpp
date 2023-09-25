@@ -5,7 +5,7 @@
 
 #include "../arrow.hpp"
 #include "../component_batch.hpp"
-#include "../components/clear_settings.hpp"
+#include "../components/clear_is_recursive.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
@@ -116,7 +116,7 @@ namespace rerun {
         /// }
         /// ```
         struct Clear {
-            rerun::components::ClearSettings settings;
+            rerun::components::ClearIsRecursive settings;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -133,12 +133,12 @@ namespace rerun {
                 return Clear(true);
             }
 
-            Clear(bool recursive = false) : Clear(components::ClearSettings(recursive)) {}
+            Clear(bool recursive = false) : Clear(components::ClearIsRecursive(recursive)) {}
 
           public:
             Clear() = default;
 
-            Clear(rerun::components::ClearSettings _settings) : settings(std::move(_settings)) {}
+            Clear(rerun::components::ClearIsRecursive _settings) : settings(std::move(_settings)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

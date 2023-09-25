@@ -8,7 +8,7 @@ namespace rerun {
 
 #ifdef EDIT_EXTENSION
         struct ClearExt {
-            rerun::components::ClearSettings clear;
+            rerun::components::ClearIsRecursive clear;
 
             // [CODEGEN COPY TO HEADER START]
 
@@ -20,7 +20,7 @@ namespace rerun {
                 return Clear(true);
             }
 
-            Clear(bool recursive = false) : Clear(components::ClearSettings(recursive)) {}
+            Clear(bool recursive = false) : Clear(components::ClearIsRecursive(recursive)) {}
 
             // [CODEGEN COPY TO HEADER END]
         };

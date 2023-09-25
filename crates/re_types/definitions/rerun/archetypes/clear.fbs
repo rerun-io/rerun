@@ -15,5 +15,5 @@ table Clear (
   "attr.rust.derive": "PartialEq, Eq",
   order: 100
 ) {
-  settings: rerun.components.ClearSettings ("attr.rerun.component_required", order: 100);
+  settings: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
 }

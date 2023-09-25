@@ -11,7 +11,7 @@ def test_clear() -> None:
     arch = rr2.Clear(recursive=recursive)
     print(f"{arch}\n")
 
-    assert arch.settings == rr_cmp.ClearSettingsBatch([True])
+    assert arch.settings == rr_cmp.ClearIsRecursiveBatch([True])
 
 
 if __name__ == "__main__":

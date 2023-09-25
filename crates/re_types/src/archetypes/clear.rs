@@ -98,11 +98,11 @@
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clear {
-    pub settings: crate::components::ClearSettings,
+    pub settings: crate::components::ClearIsRecursive,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ClearSettings".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.ClearIsRecursive".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ClearIndicator".into()]);
@@ -113,7 +113,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ClearSettings".into(),
+            "rerun.components.ClearIsRecursive".into(),
             "rerun.components.ClearIndicator".into(),
             "rerun.components.InstanceKey".into(),
         ]
@@ -178,10 +178,10 @@ impl crate::Archetype for Clear {
         use crate::{Loggable as _, ResultExt as _};
         Ok([{
             Some({
-                let array = <crate::components::ClearSettings>::try_to_arrow([&self.settings]);
+                let array = <crate::components::ClearIsRecursive>::try_to_arrow([&self.settings]);
                 array.map(|array| {
                     let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.ClearSettings".into(),
+                        "rerun.components.ClearIsRecursive".into(),
                         Box::new(array.data_type().clone()),
                         None,
                     );
@@ -215,7 +215,7 @@ impl crate::Archetype for Clear {
                 .get("settings")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Clear#settings")?;
-            <crate::components::ClearSettings>::try_from_arrow_opt(&**array)
+            <crate::components::ClearIsRecursive>::try_from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Clear#settings")?
                 .into_iter()
                 .next()
@@ -228,7 +228,7 @@ impl crate::Archetype for Clear {
 }
 
 impl Clear {
-    pub fn new(settings: impl Into<crate::components::ClearSettings>) -> Self {
+    pub fn new(settings: impl Into<crate::components::ClearIsRecursive>) -> Self {
         Self {
             settings: settings.into(),
         }

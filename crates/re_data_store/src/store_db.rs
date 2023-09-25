@@ -84,12 +84,12 @@ impl EntityDb {
 
             self.try_add_data_row(&row)?;
 
-            // Look for a `ClearSettings` component, and if it's there, go through the clear path
+            // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
             // instead.
-            use re_types::components::ClearSettings;
-            if let Some(idx) = row.find_cell(&ClearSettings::name()) {
+            use re_types::components::ClearIsRecursive;
+            if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
                 let cell = &row.cells()[idx];
-                let settings = cell.try_to_native_mono::<ClearSettings>().unwrap();
+                let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
                 let path_op = if settings.map_or(false, |s| s.0) {
                     PathOp::ClearRecursive(row.entity_path.clone())
                 } else {
