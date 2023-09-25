@@ -226,6 +226,9 @@ impl FromStr for ComponentPath {
 /// Things like `foo/Hallå Där!` will be accepted, and transformed into
 /// the path `foo/"Hallå Där!"`.
 fn parse_entity_path_forgiving(path: &str) -> Vec<EntityPathPart> {
+    #![allow(clippy::unwrap_used)]
+    // We parse on bytes, and take care to only split on either side of a one-byte ASCII character,
+    // making the `from_utf8(…).unwrap()`s below safe.
     let mut bytes = path.as_bytes();
 
     let mut parts = vec![];
@@ -327,6 +330,9 @@ fn join(tokens: &[&str]) -> String {
 }
 
 fn tokenize(path: &str) -> Result<Vec<&str>> {
+    #![allow(clippy::unwrap_used)]
+    // We parse on bytes, and take care to only split on either side of a one-byte ASCI,
+    // making the `from_utf8(…)s below.u
     let mut bytes = path.as_bytes();
 
     fn is_special_character(c: u8) -> bool {
