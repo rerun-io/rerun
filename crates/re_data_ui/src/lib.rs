@@ -29,6 +29,27 @@ pub use crate::image::{
 pub use component_ui_registry::create_component_ui_registry;
 pub use image_meaning::image_meaning_for_entity;
 
+/// Show this component in the UI.
+pub fn is_component_visible_in_ui(component_name: &re_types::ComponentName) -> bool {
+    const HIDDEN_COMPONENTS: &[&str] = &["rerun.components.InstanceKey"];
+    !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
+}
+
+/// Is this an indicator component for an archetype?
+pub fn is_indicator_component(component_name: &re_types::ComponentName) -> bool {
+    component_name.starts_with("rerun.components.") && component_name.ends_with("Indicator")
+}
+
+/// If this is an indicator component, for which archetype?
+pub fn indicator_component_archetype(component_name: &re_types::ComponentName) -> Option<String> {
+    if let Some(name) = component_name.strip_prefix("rerun.components.") {
+        if let Some(name) = name.strip_suffix("Indicator") {
+            return Some(name.to_owned());
+        }
+    }
+    None
+}
+
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {
     /// If you need to lookup something in the data store, use the given query to do so.

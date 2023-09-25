@@ -6,15 +6,12 @@ use re_viewer_context::{UiVerbosity, ViewerContext};
 use super::DataUi;
 use crate::item_ui;
 
-const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.components.InstanceKey"];
-const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &[];
-
 impl DataUi for InstancePath {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        _verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let Self {
@@ -45,26 +42,15 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for component_name in components {
+                    if !crate::is_component_visible_in_ui(&component_name) {
+                        continue;
+                    }
+
                     let Some((_, component_data)) =
                         get_component_with_instances(store, query, entity_path, component_name)
                     else {
                         continue; // no need to show components that are unset at this point in time
                     };
-
-                    // Certain fields are hidden.
-                    if HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY.contains(&component_name.as_ref()) {
-                        continue;
-                    }
-                    match verbosity {
-                        UiVerbosity::Small | UiVerbosity::Reduced => {
-                            if HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY
-                                .contains(&component_name.as_ref())
-                            {
-                                continue;
-                            }
-                        }
-                        UiVerbosity::All => {}
-                    }
 
                     item_ui::component_path_button(
                         ctx,
@@ -72,7 +58,9 @@ impl DataUi for InstancePath {
                         &ComponentPath::new(entity_path.clone(), component_name),
                     );
 
-                    if instance_key.is_splat() {
+                    if crate::is_indicator_component(&component_name) {
+                        // no content to show
+                    } else if instance_key.is_splat() {
                         super::component::EntityComponentWithInstances {
                             entity_path: entity_path.clone(),
                             component_data,

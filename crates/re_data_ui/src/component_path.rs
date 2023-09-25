@@ -18,7 +18,11 @@ impl DataUi for ComponentPath {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        if let Some((_, component_data)) =
+        if let Some(archetype_name) = crate::indicator_component_archetype(component_name) {
+            ui.label(format!(
+                "Indicator component for the {archetype_name} archetype"
+            ));
+        } else if let Some((_, component_data)) =
             re_query::get_component_with_instances(store, query, entity_path, *component_name)
         {
             super::component::EntityComponentWithInstances {

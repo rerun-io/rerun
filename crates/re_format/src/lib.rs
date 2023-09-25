@@ -74,15 +74,18 @@ fn test_format_float() {
 /// Pretty format a large number by using SI notation (base 10), e.g.
 ///
 /// ```
-/// # use re_format::format_large_number;
-/// assert_eq!(format_large_number(123 as _), "123");
-/// assert_eq!(format_large_number(12_345 as _), "12k");
-/// assert_eq!(format_large_number(1_234_567 as _), "1.2M");
-/// assert_eq!(format_large_number(123_456_789 as _), "123M");
+/// # use re_format::approximate_large_number;
+/// assert_eq!(approximate_large_number(123 as _), "123");
+/// assert_eq!(approximate_large_number(12_345 as _), "12k");
+/// assert_eq!(approximate_large_number(1_234_567 as _), "1.2M");
+/// assert_eq!(approximate_large_number(123_456_789 as _), "123M");
 /// ```
-pub fn format_large_number(number: f64) -> String {
+///
+/// Prefer to use [`format_number`], which outputs an exact string,
+/// while still being readable thanks to half-width spaces used as thousands-separators.
+pub fn approximate_large_number(number: f64) -> String {
     if number < 0.0 {
-        return format!("-{}", format_large_number(-number));
+        return format!("-{}", approximate_large_number(-number));
     }
 
     if number < 1000.0 {
@@ -118,7 +121,7 @@ fn test_format_large_number() {
     ];
 
     for (value, expected) in test_cases {
-        assert_eq!(expected, format_large_number(value));
+        assert_eq!(expected, approximate_large_number(value));
     }
 }
 
