@@ -36,7 +36,7 @@ pub enum PathParseError {
     #[error("Empty part")]
     EmptyPart,
 
-    #[error("Invalid character: {character:?} in entity path identifier {part:?}. Only ASCII characters, numbers, underscore, and dash are allowed. To put wild text in an entity path, surround it with double-quotes.")]
+    #[error("Invalid character: {character:?} in entity path identifier {part:?}. Only ASCII characters, numbers, underscore, and dash are allowed. To put arbitrary text in an entity path, surround it with double-quotes. See https://www.rerun.io/docs/concepts/entity-path for more.")]
     InvalidCharacterInPart { part: String, character: char },
 
     #[error("Invalid instance key: {0:?} (expected '[#1234]')")]
@@ -189,7 +189,7 @@ impl EntityPath {
         let path = EntityPath::from(parts);
 
         if path.to_string() != s {
-            re_log::warn_once!("Found an entity path '{s}' that was not in the normalized form. Please write it as '{path}' instead. Only ASCII characters, numbers, underscore, and dash are allowed in identifiers. To put wild text in an entity path, surround it with double-quotes.");
+            re_log::warn_once!("Found an entity path '{s}' that was not in the normalized form. Please write it as '{path}' instead. Only ASCII characters, numbers, underscore, and dash are allowed in identifiers. To put arbitrary text in an entity path, surround it with double-quotes. See https://www.rerun.io/docs/concepts/entity-path for more");
         }
 
         path
