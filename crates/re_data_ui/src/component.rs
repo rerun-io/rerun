@@ -94,7 +94,7 @@ impl DataUi for EntityComponentWithInstances {
         } else if one_line {
             ui.label(format!(
                 "{} values",
-                re_format::format_large_number(num_instances as _)
+                re_format::format_number(num_instances)
             ));
         } else {
             egui_extras::TableBuilder::new(ui)
@@ -146,7 +146,7 @@ impl DataUi for EntityComponentWithInstances {
             if num_instances > displayed_row {
                 ui.label(format!(
                     "…and {} more.",
-                    re_format::format_large_number((num_instances - displayed_row) as _)
+                    re_format::format_number(num_instances - displayed_row)
                 ));
             }
         }

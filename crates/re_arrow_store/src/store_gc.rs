@@ -135,7 +135,7 @@ impl DataStore {
                     kind = "gc",
                     id = self.gc_id,
                     %options.target,
-                    initial_num_rows = re_format::format_large_number(initial_num_rows as _),
+                    initial_num_rows = re_format::format_number(initial_num_rows as _),
                     initial_num_bytes = re_format::format_bytes(initial_num_bytes),
                     target_num_bytes = re_format::format_bytes(target_num_bytes),
                     drop_at_least_num_bytes = re_format::format_bytes(num_bytes_to_drop),
@@ -153,7 +153,7 @@ impl DataStore {
                     kind = "gc",
                     id = self.gc_id,
                     %options.target,
-                    initial_num_rows = re_format::format_large_number(initial_num_rows as _),
+                    initial_num_rows = re_format::format_number(initial_num_rows as _),
                     initial_num_bytes = re_format::format_bytes(initial_num_bytes),
                     "starting GC"
                 );
@@ -178,9 +178,9 @@ impl DataStore {
             kind = "gc",
             id = self.gc_id,
             %options.target,
-            initial_num_rows = re_format::format_large_number(initial_num_rows as _),
+            initial_num_rows = re_format::format_number(initial_num_rows as _),
             initial_num_bytes = re_format::format_bytes(initial_num_bytes),
-            new_num_rows = re_format::format_large_number(new_num_rows as _),
+            new_num_rows = re_format::format_number(new_num_rows as _),
             new_num_bytes = re_format::format_bytes(new_num_bytes),
             "GC done"
         );
