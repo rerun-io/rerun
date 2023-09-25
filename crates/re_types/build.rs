@@ -35,7 +35,7 @@ fn main() {
     }
 
     // Only re-build if source-hash exists
-    if !<str as AsRef<Path>>::as_ref(SOURCE_HASH_PATH).exists() {
+    if Path::new(SOURCE_HASH_PATH).exists() {
         return;
     }
 
