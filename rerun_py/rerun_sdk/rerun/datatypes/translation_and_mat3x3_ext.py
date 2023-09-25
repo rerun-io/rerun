@@ -19,7 +19,7 @@ class TranslationAndMat3x3Ext:
             translation=translation, matrix=matrix, from_parent=from_parent
         )
 
-    # Implement the ArchetypeLike
+    # Implement the AsComponents
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import Transform3D
         from ..datatypes import TranslationAndMat3x3

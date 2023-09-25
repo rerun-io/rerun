@@ -8,11 +8,11 @@ import pyarrow as pa
 import rerun_bindings as bindings
 
 from . import components as cmp
-from ._baseclasses import ArchetypeLike, ComponentBatchLike
+from ._baseclasses import AsComponents, ComponentBatchLike
 from .error_utils import _send_warning
 from .recording_stream import RecordingStream
 
-__all__ = ["log", "IndicatorComponentBatch", "ArchetypeLike"]
+__all__ = ["log", "IndicatorComponentBatch", "AsComponents"]
 
 
 EXT_PREFIX = "ext."
@@ -101,7 +101,7 @@ def _splat() -> cmp.InstanceKeyBatch:
 
 def log(
     entity_path: str,
-    entity: ArchetypeLike | Iterable[ComponentBatchLike],
+    entity: AsComponents | Iterable[ComponentBatchLike],
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
