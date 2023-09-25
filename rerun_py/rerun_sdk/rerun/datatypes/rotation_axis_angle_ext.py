@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, cast
 
 import pyarrow as pa
 
 if TYPE_CHECKING:
+    from ..log import ComponentBatchLike
     from . import Angle, AngleLike, RotationAxisAngleArrayLike
 
 
@@ -36,3 +37,14 @@ class RotationAxisAngleExt:
             ],
             fields=list(data_type),
         )
+
+    # Implement the ArchetypeLike
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        from ..datatypes import TranslationRotationScale3D
+        from . import RotationAxisAngle
+
+        return TranslationRotationScale3D(rotation=cast(RotationAxisAngle, self)).as_component_batches()
+
+    def num_instances(self) -> int:
+        # Always a mono-component
+        return 1

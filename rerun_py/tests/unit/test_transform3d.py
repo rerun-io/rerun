@@ -226,3 +226,10 @@ def test_transform3d_translation_rotation_scale3d_scale(scale: rr_dt.Scale3DLike
     ) or tm.transform == rr_cmp.Transform3DBatch(
         rr_dt.Transform3D(rr_dt.TranslationRotationScale3D(scale=rr_dt.Scale3D(4.0)))
     )
+
+
+def test_rotation_axis_angle_loggable() -> None:
+    assert [b.as_arrow_array() for b in rr_dt.RotationAxisAngle([1, 2, 3], 4).as_component_batches()] == [
+        b.as_arrow_array()
+        for b in rr_dt.TranslationRotationScale3D(rotation=rr_dt.RotationAxisAngle([1, 2, 3], 4)).as_component_batches()
+    ]
