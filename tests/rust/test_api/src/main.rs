@@ -19,7 +19,7 @@ use std::{
 
 use itertools::Itertools;
 use rerun::{
-    archetypes::{SegmentationImage, TextLog},
+    archetypes::{Clear, SegmentationImage, TextLog},
     datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
     EntityPath, RecordingStream,
@@ -81,10 +81,10 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     rec.set_time_seconds("sim_time", 2f64);
-    rec.log("null_test/rect/0", &rerun::archetypes::Clear::flat())?;
+    rec.log("null_test/rect/0", &Clear::flat())?;
 
     rec.set_time_seconds("sim_time", 3f64);
-    rec.log("null_test/rect", &rerun::archetypes::Clear::recursive())?;
+    rec.log("null_test/rect", &Clear::recursive())?;
 
     rec.set_time_seconds("sim_time", 4f64);
     rec.log(
@@ -412,9 +412,8 @@ fn test_text_logs(rec: &RecordingStream) -> anyhow::Result<()> {
 
 fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
-        archetypes::{LineStrips3D, Points3D, Transform3D},
-        components::{Color, Position3D, ViewCoordinates},
-        coordinates::SignedAxis3,
+        archetypes::{LineStrips3D, Points3D, Transform3D, ViewCoordinates},
+        components::{Color, Position3D},
         datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
     };
 
@@ -428,18 +427,8 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
         rec: &RecordingStream,
         ent_path: impl Into<EntityPath>,
     ) -> anyhow::Result<()> {
-        // TODO(#2816): Pinhole archetype
-        let view_coords = ViewCoordinates::from_up_and_handedness(
-            SignedAxis3::POSITIVE_Z,
-            rerun::coordinates::Handedness::Right,
-        );
-        rec.log_component_batches(
-            ent_path,
-            true,
-            1,
-            [&view_coords as _, &Color::from_rgb(255, 215, 0) as _],
-        )
-        .map_err(Into::into)
+        rec.log_timeless(ent_path, &ViewCoordinates::RIGHT_HAND_Z_UP)
+            .map_err(Into::into)
     }
     log_coordinate_space(rec, "transforms3d")?;
     log_coordinate_space(rec, "transforms3d/sun")?;
