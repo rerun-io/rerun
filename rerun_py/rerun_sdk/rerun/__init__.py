@@ -58,7 +58,6 @@ __all__ = [
     "log_points",
     "log_rect",
     "log_rects",
-    "log_rigid3",
     "log_scalar",
     "log_segmentation_image",
     "log_tensor",
@@ -82,16 +81,7 @@ __all__ = [
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
-from .components_deprecated.transform3d import (
-    Quaternion,
-    Rigid3D,
-    RotationAxisAngle,
-    Scale3D,
-    Transform3D,
-    Translation3D,
-    TranslationAndMat3,
-    TranslationRotationScale3D,
-)
+from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
 from .log_deprecated.bounding_box import log_obb, log_obbs
@@ -108,8 +98,10 @@ from .log_deprecated.scalar import log_scalar
 from .log_deprecated.tensor import log_tensor
 from .log_deprecated.text import LoggingHandler, log_text_entry
 from .log_deprecated.transform import (
+    Rigid3D,
+    Translation3D,
+    TranslationAndMat3,
     log_disconnected_space,
-    log_rigid3,
     log_transform3d,
     log_view_coordinates,
 )

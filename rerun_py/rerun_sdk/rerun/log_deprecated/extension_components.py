@@ -8,7 +8,6 @@ import pyarrow as pa
 
 import rerun.error_utils
 from rerun import bindings
-from rerun.components_deprecated import instance_key_splat
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -22,6 +21,15 @@ __all__ = [
 EXT_PREFIX = "ext."
 
 EXT_COMPONENT_TYPES: dict[str, Any] = {}
+
+
+def instance_key_splat() -> Any:
+    """Helper to generate a splat InstanceKeyArray."""
+
+    from rerun.components import InstanceKeyType
+
+    _MAX_U64 = 2**64 - 1
+    return pa.array([_MAX_U64], type=InstanceKeyType().storage_type)  # type: ignore[no-any-return]
 
 
 def _add_extension_components(
