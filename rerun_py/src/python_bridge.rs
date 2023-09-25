@@ -717,7 +717,7 @@ fn log_image_file(
         return Ok(());
     };
 
-    let entity_path = parse_entity_path(entity_path)?;
+    let entity_path = parse_entity_path(entity_path);
 
     let img_bytes = match (img_bytes, img_path) {
         (Some(img_bytes), None) => img_bytes,
@@ -772,25 +772,24 @@ fn set_panels(
     timeline_view_expanded: Option<bool>,
     blueprint: Option<&PyRecordingStream>,
 ) {
-    blueprint_view_expanded
-        .map(|expanded| set_panel(PanelState::BLUEPRINT_VIEW_PATH, expanded, blueprint));
-    selection_view_expanded
-        .map(|expanded| set_panel(PanelState::SELECTION_VIEW_PATH, expanded, blueprint));
-    timeline_view_expanded
-        .map(|expanded| set_panel(PanelState::TIMELINE_VIEW_PATH, expanded, blueprint));
+    if let Some(expanded) = blueprint_view_expanded {
+        set_panel(PanelState::BLUEPRINT_VIEW_PATH, expanded, blueprint);
+    }
+    if let Some(expanded) = selection_view_expanded {
+        set_panel(PanelState::SELECTION_VIEW_PATH, expanded, blueprint);
+    }
+    if let Some(expanded) = timeline_view_expanded {
+        set_panel(PanelState::TIMELINE_VIEW_PATH, expanded, blueprint);
+    }
 }
 
-fn set_panel(
-    entity_path: &str,
-    expanded: bool,
-    blueprint: Option<&PyRecordingStream>,
-) -> PyResult<()> {
+fn set_panel(entity_path: &str, expanded: bool, blueprint: Option<&PyRecordingStream>) {
     let Some(blueprint) = get_blueprint_recording(blueprint) else {
-        return Ok(());
+        return;
     };
 
     // TODO(jleibs): Validation this is a valid blueprint path?
-    let entity_path = parse_entity_path(entity_path)?;
+    let entity_path = parse_entity_path(entity_path);
 
     let panel_state = PanelState { expanded };
 
@@ -806,8 +805,6 @@ fn set_panel(
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
     blueprint.record_row(row, !timeless);
-
-    Ok(())
 }
 
 #[pyfunction]
@@ -834,8 +831,7 @@ fn add_space_view(
 
     let entity_path = parse_entity_path(
         format!("{}/{}", SpaceViewComponent::SPACEVIEW_PREFIX, space_view.id).as_str(),
-    )
-    .unwrap();
+    );
 
     let space_view = SpaceViewComponent { space_view };
 
@@ -892,7 +888,7 @@ fn log_arrow_msg(
         return Ok(());
     };
 
-    let entity_path = parse_entity_path(entity_path)?;
+    let entity_path = parse_entity_path(entity_path);
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
@@ -1049,7 +1045,7 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
     }
 }
 
-fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
-    use std::str::FromStr as _;
-    EntityPath::from_str(entity_path).map_err(|err| PyTypeError::new_err(err.to_string()))
+fn parse_entity_path(entity_path: &str) -> EntityPath {
+    // We accept anything!
+    EntityPath::parse_forgiving(entity_path)
 }
