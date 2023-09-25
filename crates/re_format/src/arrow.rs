@@ -245,8 +245,8 @@ where
                     Cell::new(
                         chars
                             .into_iter()
-                            .take(WIDTH_UPPER_BOUNDARY.saturating_sub(3).into())
-                            .chain(['.', '.', '.'])
+                            .take(WIDTH_UPPER_BOUNDARY.saturating_sub(1).into())
+                            .chain(['…'])
                             .collect::<String>(),
                     )
                 } else {
