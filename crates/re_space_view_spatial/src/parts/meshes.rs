@@ -101,22 +101,23 @@ impl Mesh3DPart {
         if let Some(mesh) = mesh {
             re_tracing::profile_scope!("mesh instances");
 
-            instances.extend(
-                mesh.mesh_instances
-                    .iter()
-                    .map(move |mesh_instance| MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh: ent_context.world_from_obj * mesh_instance.world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }),
-            );
+            instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                let entity_from_mesh = mesh_instance.world_from_mesh;
+                let world_from_mesh = ent_context.world_from_entity * entity_from_mesh;
+
+                MeshInstance {
+                    gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                    world_from_mesh,
+                    outline_mask_ids,
+                    picking_layer_id: picking_layer_id_from_instance_path_hash(
+                        picking_instance_hash,
+                    ),
+                    ..Default::default()
+                }
+            }));
 
             self.0
-                .extend_bounding_box(*mesh.bbox(), ent_context.world_from_obj);
+                .extend_bounding_box(mesh.bbox(), ent_context.world_from_entity);
         };
 
         Ok(())
