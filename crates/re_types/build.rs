@@ -35,7 +35,7 @@ fn main() {
     }
 
     // Only re-build if source-hash exists
-    if Path::new(SOURCE_HASH_PATH).exists() {
+    if !Path::new(SOURCE_HASH_PATH).exists() {
         return;
     }
 
