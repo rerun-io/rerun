@@ -81,7 +81,7 @@ fn test_format_float() {
 /// assert_eq!(approximate_large_number(123_456_789 as _), "123M");
 /// ```
 ///
-/// Prefer to use [`Self::format_number`], which outputs an exact string,
+/// Prefer to use [`format_number`], which outputs an exact string,
 /// while still being readable thanks to half-width spaces used as thousands-separators.
 pub fn approximate_large_number(number: f64) -> String {
     if number < 0.0 {
