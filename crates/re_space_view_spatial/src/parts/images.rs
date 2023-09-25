@@ -653,7 +653,7 @@ impl ViewPartSystem for ImagesPart {
             ent_path,
             &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
         ) {
-            tensor.is_shaped_like_an_image() && !tensor.is_vector()
+            tensor.is_shaped_like_an_image()
         } else {
             false
         }

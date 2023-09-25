@@ -23,7 +23,7 @@ class AnnotationContextExt:
 
     @staticmethod
     def native_to_pa_array_override(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
-        from ..datatypes import ClassDescription, ClassDescriptionMapElemArray
+        from ..datatypes import ClassDescription, ClassDescriptionMapElemBatch
         from . import AnnotationContext
 
         if isinstance(data, ClassDescription):
@@ -36,6 +36,6 @@ class AnnotationContextExt:
         if not isinstance(data, AnnotationContext):
             data = AnnotationContext(class_map=data)  # type: ignore[arg-type]
 
-        internal_array = ClassDescriptionMapElemArray.from_similar(data.class_map).storage
+        internal_array = ClassDescriptionMapElemBatch(data.class_map).as_arrow_array().storage
 
         return pa.ListArray.from_arrays(offsets=[0, len(internal_array)], values=internal_array).cast(data_type)

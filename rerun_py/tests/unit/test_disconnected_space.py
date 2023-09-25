@@ -23,7 +23,7 @@ def test_disconnected_space() -> None:
         arch = rr2.DisconnectedSpace(disconnected_space)
         print(f"{arch}\n")
 
-        assert arch.disconnected_space == rr_cmp.DisconnectedSpaceArray.from_similar([True])
+        assert arch.disconnected_space == rr_cmp.DisconnectedSpaceBatch([True])
 
 
 if __name__ == "__main__":

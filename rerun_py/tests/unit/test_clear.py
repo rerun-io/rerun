@@ -23,7 +23,7 @@ def test_clear() -> None:
         arch = rr2.Clear(settings)
         print(f"{arch}\n")
 
-        assert arch.settings == rr_cmp.ClearSettingsArray.from_similar([True])
+        assert arch.settings == rr_cmp.ClearSettingsBatch([True])
 
 
 if __name__ == "__main__":

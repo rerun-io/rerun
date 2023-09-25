@@ -84,8 +84,8 @@ def test_boxes2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes2DArray)
-        assert arch.centers == centers_expected(centers, rrc.Position2DArray)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes2DBatch)
+        assert arch.centers == centers_expected(centers, rrc.Position2DBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
         assert arch.labels == labels_expected(labels)

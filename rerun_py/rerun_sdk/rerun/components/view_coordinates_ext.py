@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, cast
 
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 
 if TYPE_CHECKING:
     from ..log import ComponentBatchLike
-    from . import ViewCoordinates, ViewCoordinatesArrayLike, ViewCoordinatesLike
+    from . import ViewCoordinates, ViewCoordinatesArrayLike
 
 
 class ViewCoordinatesExt:
@@ -21,7 +22,7 @@ class ViewCoordinatesExt:
         Back = 6
 
     @staticmethod
-    def coordinates__field_converter_override(data: ViewCoordinatesLike) -> pa.Array:
+    def coordinates__field_converter_override(data: npt.ArrayLike) -> npt.NDArray[np.uint8]:
         coordinates = np.asarray(data, dtype=np.uint8)
         if coordinates.shape != (3,):
             raise ValueError(f"ViewCoordinates must be a 3-element array. Got: {coordinates.shape}")
@@ -62,8 +63,9 @@ class ViewCoordinatesExt:
     # Implement the ArchetypeLike protocol
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import ViewCoordinates
+        from ..components import ViewCoordinates as ViewCoordinatesComponent
 
-        return ViewCoordinates(self).as_component_batches()
+        return ViewCoordinates(cast(ViewCoordinatesComponent, self)).as_component_batches()
 
     def num_instances(self) -> int:
         # Always a mono-component

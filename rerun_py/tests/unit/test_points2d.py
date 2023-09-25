@@ -82,7 +82,7 @@ def test_points2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.positions == positions_expected(positions, rrc.Position2DArray)
+        assert arch.positions == positions_expected(positions, rrc.Position2DBatch)
         assert arch.radii == radii_expected(radii)
         assert arch.colors == colors_expected(colors)
         assert arch.labels == labels_expected(labels)
@@ -105,7 +105,7 @@ def test_points2d() -> None:
 def test_point2d_single_color(data: rrd.ColorArrayLike) -> None:
     pts = rr2.Points2D(positions=np.zeros((5, 2)), colors=data)
 
-    assert pts.colors == rrc.ColorArray.from_similar(rrd.Color([0, 128, 0, 255]))
+    assert pts.colors == rrc.ColorBatch(rrd.Color([0, 128, 0, 255]))
 
 
 @pytest.mark.parametrize(
@@ -131,7 +131,7 @@ def test_point2d_single_color(data: rrd.ColorArrayLike) -> None:
 def test_point2d_multiple_colors(data: rrd.ColorArrayLike) -> None:
     pts = rr2.Points2D(positions=np.zeros((5, 2)), colors=data)
 
-    assert pts.colors == rrc.ColorArray.from_similar(
+    assert pts.colors == rrc.ColorBatch(
         [
             rrd.Color([0, 128, 0, 255]),
             rrd.Color([128, 0, 0, 255]),

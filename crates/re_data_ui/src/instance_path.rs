@@ -17,10 +17,26 @@ impl DataUi for InstancePath {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
+        let Self {
+            entity_path,
+            instance_key,
+        } = self;
+
         let store = &ctx.store_db.entity_db.data_store;
 
-        let Some(mut components) = store.all_components(&query.timeline, &self.entity_path) else {
-            ui.label(format!("No components in entity {}", self.entity_path));
+        let Some(mut components) = store.all_components(&query.timeline, entity_path) else {
+            if ctx.store_db.entity_db.knows_of_entity(entity_path) {
+                ui.label(format!(
+                    "No components in entity {:?} on timeline {:?}",
+                    entity_path,
+                    query.timeline.name()
+                ));
+            } else {
+                ui.label(
+                    ctx.re_ui
+                        .error_text(format!("Unknown entity: {entity_path:?}")),
+                );
+            }
             return;
         };
         components.sort();
@@ -29,12 +45,9 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for component_name in components {
-                    let Some((_, component_data)) = get_component_with_instances(
-                        store,
-                        query,
-                        &self.entity_path,
-                        component_name,
-                    ) else {
+                    let Some((_, component_data)) =
+                        get_component_with_instances(store, query, entity_path, component_name)
+                    else {
                         continue; // no need to show components that are unset at this point in time
                     };
 
@@ -56,12 +69,12 @@ impl DataUi for InstancePath {
                     item_ui::component_path_button(
                         ctx,
                         ui,
-                        &ComponentPath::new(self.entity_path.clone(), component_name),
+                        &ComponentPath::new(entity_path.clone(), component_name),
                     );
 
-                    if self.instance_key.is_splat() {
+                    if instance_key.is_splat() {
                         super::component::EntityComponentWithInstances {
-                            entity_path: self.entity_path.clone(),
+                            entity_path: entity_path.clone(),
                             component_data,
                         }
                         .data_ui(ctx, ui, UiVerbosity::Small, query);
@@ -71,9 +84,9 @@ impl DataUi for InstancePath {
                             ui,
                             UiVerbosity::Small,
                             query,
-                            &self.entity_path,
+                            entity_path,
                             &component_data,
-                            &self.instance_key,
+                            instance_key,
                         );
                     }
 

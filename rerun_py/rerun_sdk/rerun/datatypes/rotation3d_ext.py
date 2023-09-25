@@ -33,7 +33,7 @@ class Rotation3DExt:
 
     @staticmethod
     def native_to_pa_array_override(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Quaternion, QuaternionArray, Rotation3D, RotationAxisAngle, RotationAxisAngleArray
+        from . import Quaternion, QuaternionBatch, Rotation3D, RotationAxisAngle, RotationAxisAngleBatch
 
         if isinstance(data, Rotation3D) or isinstance(data, RotationAxisAngle) or isinstance(data, Quaternion):
             data = [data]
@@ -81,8 +81,8 @@ class Rotation3DExt:
             ],
             children=[
                 pa.nulls(num_nulls, pa.null()),
-                QuaternionArray._native_to_pa_array(quaternions, union_discriminant_type(data_type, "Quaternion")),
-                RotationAxisAngleArray._native_to_pa_array(
+                QuaternionBatch._native_to_pa_array(quaternions, union_discriminant_type(data_type, "Quaternion")),
+                RotationAxisAngleBatch._native_to_pa_array(
                     rotation_axis_angles, union_discriminant_type(data_type, "AxisAngle")
                 ),
             ],

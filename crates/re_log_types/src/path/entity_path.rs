@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    hash::Hash64, parse_entity_path, path::entity_path_impl::EntityPathImpl, EntityPathPart,
-    SizeBytes,
-};
+use crate::{hash::Hash64, path::entity_path_impl::EntityPathImpl, EntityPathPart, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -126,6 +123,11 @@ impl EntityPath {
     }
 
     #[inline]
+    pub fn to_vec(&self) -> Vec<EntityPathPart> {
+        self.path.to_vec()
+    }
+
+    #[inline]
     pub fn is_root(&self) -> bool {
         self.path.is_root()
     }
@@ -208,18 +210,19 @@ impl From<&[EntityPathPart]> for EntityPath {
     }
 }
 
-#[allow(clippy::fallible_impl_from)]
+#[allow(clippy::fallible_impl_from)] // TODO(#3393): we should force users to handle errors instead, and have a nice macro for constructing entity path
 impl From<&str> for EntityPath {
     #[inline]
     fn from(path: &str) -> Self {
-        Self::from(parse_entity_path(path).unwrap())
+        path.parse().unwrap()
     }
 }
 
+#[allow(clippy::fallible_impl_from)] // TODO(#3393): we should force users to handle errors instead, and have a nice macro for constructing entity path
 impl From<String> for EntityPath {
     #[inline]
     fn from(path: String) -> Self {
-        Self::from(path.as_str())
+        path.parse().unwrap()
     }
 }
 
