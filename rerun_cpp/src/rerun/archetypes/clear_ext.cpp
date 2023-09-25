@@ -19,12 +19,11 @@ namespace rerun {
             Clear(bool is_recursive = false) : Clear(components::ClearIsRecursive(is_recursive)) {}
 
             // [CODEGEN COPY TO HEADER END]
-
-            const Clear Clear::FLAT = Clear(false);
-
-            const Clear Clear::RECURSIVE = Clear(true);
         };
 
+        const Clear Clear::FLAT = Clear(false);
+
+        const Clear Clear::RECURSIVE = Clear(true);
 #endif
 
     } // namespace archetypes
