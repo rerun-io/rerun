@@ -8,18 +8,24 @@ from __future__ import annotations
 import numpy.typing as npt
 from deprecated import deprecated
 
-from rerun.components_deprecated.quaternion import Quaternion
-from rerun.components_deprecated.transform3d import (
-    Rigid3D,
+from rerun.datatypes import (
+    Quaternion,
     RotationAxisAngle,
     Scale3D,
-    Translation3D,
-    TranslationAndMat3,
+    TranslationAndMat3x3,
     TranslationRotationScale3D,
+    Vec3D,
 )
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
+
+# Legacy alias for `TranslationAndMat3x3`
+# TODO(jleibs): Deprecation notices on these
+TranslationAndMat3 = TranslationAndMat3x3
+Rigid3D = TranslationRotationScale3D
+Translation3D = Vec3D
+
 
 __all__ = [
     "log_view_coordinates",
@@ -261,166 +267,27 @@ def log_transform3d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    import numpy as np
+    from rerun.archetypes import Transform3D
+    from rerun.log import log
 
-    from rerun.experimental import Transform3D, log
-    from rerun.experimental import dt as rrd
+    new_transform: TranslationRotationScale3D | TranslationAndMat3x3 | None = None
 
     if isinstance(transform, RotationAxisAngle):
-        axis = transform.axis
-        angle = rrd.Angle(rad=transform.radians) if transform.radians is not None else rrd.Angle(deg=transform.degrees)
-        new_transform = rrd.TranslationRotationScale3D(
-            rotation=rrd.RotationAxisAngle(axis=np.array(axis), angle=angle), from_parent=from_parent
-        )
+        rotation = transform
+        new_transform = TranslationRotationScale3D(rotation=rotation, from_parent=from_parent)
     elif isinstance(transform, Quaternion):
-        quat = rrd.Quaternion(xyzw=transform.xyzw)
-        new_transform = rrd.TranslationRotationScale3D(rotation=quat, from_parent=from_parent)
+        quat = transform
+        new_transform = TranslationRotationScale3D(rotation=quat, from_parent=from_parent)
     elif isinstance(transform, Translation3D):
-        translation = transform.translation
-        new_transform = rrd.TranslationRotationScale3D(translation=translation, from_parent=from_parent)
+        translation = transform
+        new_transform = TranslationRotationScale3D(translation=translation, from_parent=from_parent)
     elif isinstance(transform, Scale3D):
-        scale = transform.scale
-        new_transform = rrd.TranslationRotationScale3D(scale=scale, from_parent=from_parent)
-    elif isinstance(transform, Rigid3D):
-        return log_transform3d(
-            entity_path,
-            TranslationRotationScale3D(transform.translation, transform.rotation, None),
-            from_parent=from_parent,
-            timeless=timeless,
-            recording=recording,
-        )
-    elif isinstance(transform, TranslationRotationScale3D):
-        translation = None
-        if isinstance(transform.translation, Translation3D):
-            translation = transform.translation.translation
-        elif transform.translation is not None:
-            translation = transform.translation
-
-        rotation = None
-        if isinstance(transform.rotation, Quaternion):
-            rotation = rrd.Rotation3D(rrd.Quaternion(xyzw=transform.rotation.xyzw))
-        elif isinstance(transform.rotation, RotationAxisAngle):
-            axis = transform.rotation.axis
-            angle = (
-                rrd.Angle(rad=transform.rotation.radians)
-                if transform.rotation.radians is not None
-                else rrd.Angle(deg=transform.rotation.degrees)
-            )
-            rotation = rrd.Rotation3D(rrd.RotationAxisAngle(axis=np.array(axis), angle=angle))
-
-        scale = None
-        if isinstance(transform.scale, Scale3D):
-            scale = transform.scale.scale
-        elif transform.scale is not None:
-            scale = transform.scale
-
-        new_transform = rrd.TranslationRotationScale3D(translation, rotation, scale, from_parent=from_parent)
-    elif isinstance(transform, TranslationAndMat3):
-        translation = None
-        if isinstance(transform.translation, Translation3D):
-            translation = transform.translation.translation
-        elif transform.translation is not None:
-            translation = transform.translation
-
-        return log(
-            entity_path,
-            Transform3D(rrd.TranslationAndMat3x3(translation, transform.matrix, from_parent=from_parent)),
-            timeless=timeless,
-            recording=recording,
-        )
+        scale = transform
+        new_transform = TranslationRotationScale3D(scale=scale, from_parent=from_parent)
+    elif isinstance(transform, (Rigid3D, TranslationRotationScale3D, TranslationAndMat3)):
+        new_transform = transform
+        new_transform.from_parent = from_parent
+    else:
+        raise ValueError("Invalid transform type.")
 
     log(entity_path, Transform3D(new_transform), timeless=timeless, recording=recording)
-
-
-@deprecated(version="0.7.0", reason="Use log_transform3d instead and, if xyz was set, use log_view_coordinates.")
-@log_decorator
-def log_rigid3(
-    entity_path: str,
-    *,
-    parent_from_child: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
-    child_from_parent: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
-    xyz: str = "",
-    timeless: bool = False,
-    recording: RecordingStream | None = None,
-) -> None:
-    """
-    Log a proper rigid 3D transform between this entity and the parent (_deprecated_).
-
-    Set either `parent_from_child` or `child_from_parent` to a tuple of `(translation_xyz, quat_xyzw)`.
-
-    Note: This function is deprecated. Use [`rerun.log_transform3d`][] instead.
-
-    Parent-from-child
-    -----------------
-    Also known as pose (e.g. camera extrinsics).
-
-    The translation is the position of the entity in the parent space.
-    The resulting transform from child to parent corresponds to taking a point in the child space,
-    rotating it by the given rotations, and then translating it by the given translation:
-
-    `point_parent = translation + quat * point_child * quat*`
-
-    Example
-    -------
-    ```
-    t = 0.0
-    translation = [math.sin(t), math.cos(t), 0.0] # circle around origin
-    rotation = [0.5, 0.0, 0.0, np.sin(np.pi/3)] # 60 degrees around x-axis
-    rerun.log_rigid3("sun/planet", parent_from_child=(translation, rotation))
-    ```
-
-    Parameters
-    ----------
-    entity_path:
-        Path of the *child* space in the space hierarchy.
-    parent_from_child:
-        A tuple of `(translation_xyz, quat_xyzw)` mapping points in the child space to the parent space.
-    child_from_parent:
-        the inverse of `parent_from_child`
-    xyz:
-        Optionally set the view coordinates of this entity, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
-        This is a convenience for also calling [log_view_coordinates][rerun.log_view_coordinates].
-    timeless:
-        If true, the transform will be timeless (default: False).
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-    recording = RecordingStream.to_native(recording)
-
-    if parent_from_child and child_from_parent:
-        raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
-
-    if parent_from_child:
-        rotation = None
-        if parent_from_child[1] is not None:
-            rotation = Quaternion(xyzw=parent_from_child[1])
-        log_transform3d(
-            entity_path,
-            Rigid3D(translation=parent_from_child[0], rotation=rotation),
-            timeless=timeless,
-            recording=recording,
-        )
-    elif child_from_parent:
-        rotation = None
-        if child_from_parent[1] is not None:
-            rotation = Quaternion(xyzw=child_from_parent[1])
-        log_transform3d(
-            entity_path,
-            Rigid3D(translation=child_from_parent[0], rotation=rotation),
-            from_parent=True,
-            timeless=timeless,
-            recording=recording,
-        )
-    else:
-        raise TypeError("Set either parent_from_child or child_from_parent.")
-
-    if xyz != "":
-        log_view_coordinates(
-            entity_path,
-            xyz=xyz,
-            timeless=timeless,
-            recording=recording,
-        )
