@@ -5,9 +5,6 @@ Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/s
 """
 from __future__ import annotations
 
-import numpy.typing as npt
-from deprecated import deprecated
-
 from rerun.datatypes import (
     Quaternion,
     RotationAxisAngle,
@@ -21,7 +18,7 @@ from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 # Legacy alias for `TranslationAndMat3x3`
-# TODO(jleibs): Deprecation notices on these
+# TODO(#3275): Deprecation notices on these
 TranslationAndMat3 = TranslationAndMat3x3
 Rigid3D = TranslationRotationScale3D
 Translation3D = Vec3D
@@ -30,7 +27,6 @@ Translation3D = Vec3D
 __all__ = [
     "log_view_coordinates",
     "log_disconnected_space",
-    "log_rigid3",
     "log_transform3d",
 ]
 

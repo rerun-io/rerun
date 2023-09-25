@@ -12,8 +12,8 @@ class RotationAxisAngleExt:
     def __init__(
         self: Any,
         axis: Vec3DLike,
-        *,
         angle: AngleLike | None = None,
+        *,
         radians: float | None = None,
         degrees: float | None = None,
     ) -> None:
