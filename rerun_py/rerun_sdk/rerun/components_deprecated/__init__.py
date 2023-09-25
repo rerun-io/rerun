@@ -11,7 +11,6 @@ all = [
     "box",
     "experimental",
     "pinhole",
-    "quaternion",
     "rect2d",
     "scalar_plot_props",
     "scalar",
