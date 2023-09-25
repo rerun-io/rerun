@@ -39,7 +39,6 @@ impl PointCloudBuilder {
                 &ctx.gpu_resources.buffers,
                 PointCloudDrawData::MAX_NUM_POINTS,
             )
-            .unwrap_debug_or_log_error()
             .expect("Failed to allocate color buffer"); // TODO(#3408): Should never happen but should propagate error anyways
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
@@ -49,7 +48,6 @@ impl PointCloudBuilder {
                 &ctx.gpu_resources.buffers,
                 PointCloudDrawData::MAX_NUM_POINTS,
             )
-            .unwrap_debug_or_log_error()
             .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {

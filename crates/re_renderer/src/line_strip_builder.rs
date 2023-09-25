@@ -44,7 +44,6 @@ impl LineStripSeriesBuilder {
                 &ctx.gpu_resources.buffers,
                 LineDrawData::MAX_NUM_STRIPS,
             )
-            .unwrap_debug_or_log_error()
             .expect("Failed to allocate picking instance id buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {
