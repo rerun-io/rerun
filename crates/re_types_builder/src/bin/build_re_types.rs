@@ -2,7 +2,7 @@
 
 use camino::Utf8Path;
 use re_build_tools::{
-    read_versioning_hash, set_ouput_cargo_build_instructions, write_versioning_hash,
+    read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };
 use re_types_builder::{compute_re_types_hash, SourceLocations};
 
