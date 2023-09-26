@@ -87,11 +87,11 @@ Each of the 3 side panels has a corresponding button in the upper right corner. 
 show the corresponding panel.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_pane/26cba988d81f960832801bcda2c7d233c2b34401/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_pane/26cba988d81f960832801bcda2c7d233c2b34401/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_pane/26cba988d81f960832801bcda2c7d233c2b34401/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_pane/26cba988d81f960832801bcda2c7d233c2b34401/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough2_toggle_pane/26cba988d81f960832801bcda2c7d233c2b34401/full.png" alt="viewer walkthrough toggle panel screenshots">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/1200w.png">
+  <img src="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/full.png" alt="viewer walkthrough toggle panel screenshots">
 </picture>
 
 For now, leave the panels visible since we will use them through the remainder of this guide.
