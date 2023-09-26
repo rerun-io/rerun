@@ -750,16 +750,6 @@ fn code_for_struct(
         };
         doc_string_lines.push(r#"""""#.to_owned());
 
-        let attribute_init = if obj_or_delegate.is_union() {
-            vec!["inner=inner".to_owned()]
-        } else {
-            obj_or_delegate
-                .fields
-                .iter()
-                .map(|field| format!("{}={}", field.name, field.name))
-                .collect::<Vec<_>>()
-        };
-
         code.push_text(
             format!("def __init__(self: Any, {}):", arguments.join(", "),),
             2,
@@ -771,18 +761,29 @@ fn code_for_struct(
         }
 
         code.push_text(
-            &unindent::unindent(&format!(
-                r#"
-                # You can define your own __init__ function as a member of {} in {}
-                self.__attrs_init__({})
-                "#,
-                ext_class.name,
-                ext_class.file_name,
-                attribute_init.join(", ")
-            )),
-            2,
+            format!(
+                "# You can define your own __init__ function as a member of {} in {}",
+                ext_class.name, ext_class.file_name
+            ),
+            1,
             8,
         );
+
+        if obj_or_delegate.is_union() {
+            code.push_text("self.inner = inner", 1, 8);
+        } else {
+            let attribute_init = obj_or_delegate
+                .fields
+                .iter()
+                .map(|field| format!("{}={}", field.name, field.name))
+                .collect::<Vec<_>>();
+
+            code.push_text(
+                format!("self.__attrs_init__({})", attribute_init.join(", ")),
+                1,
+                8,
+            );
+        };
     }
 
     if obj.is_delegating_component() {
