@@ -25,7 +25,7 @@ IMAGE_INPUTS: list[TensorDataLike] = [
     RANDOM_IMAGE_SOURCE,
 ]
 
-METER_INPUTS = [1000, DepthMeter(1000)]
+METER_INPUTS: list[rr.components.DepthMeterLike] = [1000, DepthMeter(1000)]
 
 
 def depth_image_expected() -> Any:

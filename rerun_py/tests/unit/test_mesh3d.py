@@ -9,9 +9,9 @@ from rerun.datatypes import (
     ClassIdArrayLike,
     ColorArrayLike,
     Material,
-    MaterialArrayLike,
+    MaterialLike,
     MeshProperties,
-    MeshPropertiesArrayLike,
+    MeshPropertiesLike,
     Vec3DArrayLike,
 )
 
@@ -27,10 +27,9 @@ from .common_arrays import (
     vec3ds_expected,
 )
 
-mesh_properties_arrays: list[MeshPropertiesArrayLike] = [
-    [],
+mesh_properties_objects: list[MeshPropertiesLike | None] = [
+    None,
     MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
-    [MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6])],
 ]
 
 
@@ -40,10 +39,9 @@ def mesh_properties_expected(obj: Any) -> Any:
     return MeshPropertiesBatch._optional(expected)
 
 
-mesh_material_arrays: list[MaterialArrayLike] = [
-    [],
+mesh_materials: list[MaterialLike | None] = [
+    None,
     Material(albedo_factor=0xAA0000CC),
-    [Material(albedo_factor=0xAA0000CC)],
 ]
 
 
@@ -62,8 +60,8 @@ def test_mesh3d() -> None:
         vertex_positions_arrays,
         vertex_normals_arrays,
         vertex_colors_arrays,
-        mesh_properties_arrays,
-        mesh_material_arrays,
+        mesh_properties_objects,
+        mesh_materials,
         class_ids_arrays,
         instance_keys_arrays,
     )
@@ -78,16 +76,13 @@ def test_mesh3d() -> None:
         instance_keys,
     ) in all_arrays:
         vertex_positions = vertex_positions if vertex_positions is not None else vertex_positions_arrays[-1]
-        vertex_normals = vertex_normals if vertex_normals is not None else vertex_normals_arrays[-1]
-        mesh_properties = mesh_properties if mesh_properties is not None else mesh_properties_arrays[-1]
-        mesh_material = mesh_material if mesh_material is not None else mesh_material_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         vertex_positions = cast(Vec3DArrayLike, vertex_positions)
         vertex_normals = cast(Optional[Vec3DArrayLike], vertex_normals)
         vertex_colors = cast(Optional[ColorArrayLike], vertex_colors)
-        mesh_properties = cast(Optional[MeshPropertiesArrayLike], mesh_properties)
-        mesh_material = cast(Optional[MaterialArrayLike], mesh_material)
+        mesh_properties = cast(Optional[MeshPropertiesLike], mesh_properties)
+        mesh_material = cast(Optional[MaterialLike], mesh_material)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
@@ -96,7 +91,7 @@ def test_mesh3d() -> None:
             f"    {vertex_positions}\n"
             f"    vertex_normals={vertex_normals}\n"
             f"    vertex_colors={vertex_colors}\n"
-            f"    mesh_properties={mesh_properties}\n"
+            f"    mesh_properties={mesh_properties_objects}\n"
             f"    mesh_material={mesh_material}\n"
             f"    class_ids={class_ids}\n"
             f"    instance_keys={instance_keys}\n"
