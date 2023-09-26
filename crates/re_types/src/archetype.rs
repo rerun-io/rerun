@@ -142,7 +142,7 @@ pub trait Archetype {
     #[inline]
     fn try_to_arrow(
         &self,
-    ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>>
+    ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
     {
         self.as_component_batches()
             .into_iter()
@@ -163,7 +163,7 @@ pub trait Archetype {
     ///
     /// For the fallible version, see [`Archetype::try_to_arrow`].
     #[inline]
-    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)> {
+    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
         self.try_to_arrow().detailed_unwrap()
     }
 
@@ -176,7 +176,7 @@ pub trait Archetype {
     /// logged to stderr.
     #[inline]
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,
