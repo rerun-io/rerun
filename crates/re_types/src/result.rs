@@ -68,13 +68,6 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
-    #[error("Expected a single value of {component} but found {count}")]
-    MultipleOfMono {
-        component: ComponentName,
-        count: usize,
-        backtrace: _Backtrace,
-    },
-
     #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
     MissingStructField {
         datatype: ::arrow2::datatypes::DataType,
@@ -204,7 +197,6 @@ impl DeserializationError {
             | DeserializationError::MissingUnionArm { backtrace, .. }
             | DeserializationError::MissingData { backtrace }
             | DeserializationError::MissingComponent { backtrace, .. }
-            | DeserializationError::MultipleOfMono { backtrace, .. }
             | DeserializationError::DatatypeMismatch { backtrace, .. }
             | DeserializationError::OffsetOutOfBounds { backtrace, .. }
             | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. } => {

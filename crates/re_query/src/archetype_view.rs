@@ -324,15 +324,10 @@ impl<A: Archetype> ArchetypeView<A> {
                 backtrace: re_types::_Backtrace::new_unresolved(),
             })?;
         let count = 1 + iter.count();
-        if count == 1 {
-            Ok(value)
-        } else {
-            Err(DeserializationError::MultipleOfMono {
-                component: C::name(),
-                count,
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            })
+        if count != 1 {
+            re_log::warn_once!("Expected a single value of {} but found {count}", C::name());
         }
+        Ok(value)
     }
 
     /// Iterate over optional values as native [`Component`]s.
@@ -430,15 +425,13 @@ impl<A: Archetype> ArchetypeView<A> {
         if let Some(mut iter) = self.iter_raw_optional_component::<C>()? {
             if let Some(value) = iter.next() {
                 let count = 1 + iter.count();
-                if count == 1 {
-                    Ok(Some(value))
-                } else {
-                    Err(DeserializationError::MultipleOfMono {
-                        component: C::name(),
-                        count,
-                        backtrace: ::backtrace::Backtrace::new_unresolved(),
-                    })
+                if count != 1 {
+                    re_log::warn_once!(
+                        "Expected a single value of {} but found {count}",
+                        C::name()
+                    );
                 }
+                Ok(Some(value))
             } else {
                 Ok(None)
             }
