@@ -1505,7 +1505,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.2.0"
-source = "git+https://github.com/rerun-io/egui_tiles?rev=c66d6cba7ddb5b236be614d1816be4561260274e#c66d6cba7ddb5b236be614d1816be4561260274e"
+source = "git+https://github.com/rerun-io/egui_tiles?rev=66e8abfd755db92a386764dcdafa3fb272a936e7#66e8abfd755db92a386764dcdafa3fb272a936e7"
 dependencies = [
  "ahash 0.8.3",
  "egui",
