@@ -35,7 +35,7 @@ class CustomPoints3D(rr.AsComponents):
         points3d = np.asarray(self.points3d)
         return (
             list(rr.Points3D(points3d).as_component_batches())  # The components from Points3D
-            + [rr.IndicatorComponentBatch("user.CustomPoints3D", len(points3d))]  # Our custom indicator
+            + [rr.IndicatorComponentBatch("user.CustomPoints3D")]  # Our custom indicator
             + [ConfidenceBatch(self.confidences)]  # Custom confidence data
         )
 

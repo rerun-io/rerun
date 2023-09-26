@@ -38,15 +38,17 @@ class IndicatorComponentBatch:
         The number of instances of the in this batch.
     """
 
-    def __init__(self, archetype_name: str, num_instances: int) -> None:
+    data: pa.Array
+
+    def __init__(self, archetype_name: str) -> None:
+        self.data = pa.nulls(1, type=pa.null())
         self._archetype_name = archetype_name
-        self._num_instances = num_instances
 
     def component_name(self) -> str:
         return self._archetype_name.replace("archetypes", "components") + "Indicator"
 
     def as_arrow_array(self) -> pa.Array:
-        return pa.nulls(self._num_instances, type=pa.null())
+        return self.data
 
 
 # adapted from rerun.log_deprecated._add_extension_components
