@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["Resolution", "ResolutionArray", "ResolutionType"]
+__all__ = ["Resolution", "ResolutionBatch", "ResolutionType"]
 
 
 class Resolution(datatypes.Vec2D):
@@ -27,18 +24,13 @@ class Resolution(datatypes.Vec2D):
     pass
 
 
-class ResolutionType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.Resolution"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Vec2DType
+class ResolutionType(datatypes.Vec2DType):
+    _TYPE_NAME: str = "rerun.components.Resolution"
 
 
-class ResolutionArray(BaseDelegatingExtensionArray[datatypes.Vec2DArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Resolution"
-    _EXTENSION_TYPE = ResolutionType
-    _DELEGATED_ARRAY_TYPE = datatypes.Vec2DArray
+class ResolutionBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
+    _ARROW_TYPE = ResolutionType()
 
-
-ResolutionType._ARRAY_TYPE = ResolutionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ResolutionType())

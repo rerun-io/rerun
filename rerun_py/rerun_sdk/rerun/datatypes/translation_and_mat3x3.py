@@ -11,16 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .translation_and_mat3x3_ext import TranslationAndMat3x3Ext
 
 __all__ = [
     "TranslationAndMat3x3",
-    "TranslationAndMat3x3Array",
     "TranslationAndMat3x3ArrayLike",
+    "TranslationAndMat3x3Batch",
     "TranslationAndMat3x3Like",
     "TranslationAndMat3x3Type",
 ]
@@ -86,10 +83,9 @@ TranslationAndMat3x3ArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class TranslationAndMat3x3Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.TranslationAndMat3x3"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -110,20 +106,17 @@ class TranslationAndMat3x3Type(BaseExtensionType):
                     pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
                 ]
             ),
-            "rerun.datatypes.TranslationAndMat3x3",
+            self._TYPE_NAME,
         )
 
 
-class TranslationAndMat3x3Array(BaseExtensionArray[TranslationAndMat3x3ArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.TranslationAndMat3x3"
-    _EXTENSION_TYPE = TranslationAndMat3x3Type
+class TranslationAndMat3x3Batch(BaseBatch[TranslationAndMat3x3ArrayLike]):
+    _ARROW_TYPE = TranslationAndMat3x3Type()
 
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_and_mat3x3_ext.py
 
-
-TranslationAndMat3x3Type._ARRAY_TYPE = TranslationAndMat3x3Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TranslationAndMat3x3Type())

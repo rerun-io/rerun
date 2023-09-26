@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Clear, components::ClearSettings, Archetype as _};
+use re_types::{archetypes::Clear, components::ClearIsRecursive, Archetype as _};
 
 #[test]
 fn roundtrip() {
     let all_expected = [
         Clear {
-            settings: ClearSettings(true),
+            recursive: ClearIsRecursive(true),
         }, //
         Clear {
-            settings: ClearSettings(false),
+            recursive: ClearIsRecursive(false),
         },
     ];
 
@@ -19,7 +19,7 @@ fn roundtrip() {
     ];
 
     let expected_extensions: HashMap<_, _> = [
-        ("settings", vec!["rerun.components.Clear"]), //
+        ("recursive", vec!["rerun.components.Clear"]), //
     ]
     .into();
 

@@ -23,6 +23,34 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 # When dataset filtering is turned on, drop views with less than this many valid points.
 FILTER_MIN_VISIBLE: Final = 500
 
+DESCRIPTION = """
+# Sparse Reconstruction by COLMAP
+
+This example was generated from the output of a sparse reconstruction
+done with COLMAP.
+
+[COLMAP](https://colmap.github.io/index.html) is a general-purpose
+Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline
+with a graphical and command-line interface.
+
+In this example a short video clip has been processed offline by the
+COLMAP pipeline, and we use Rerun to visualize the individual
+camera frames, estimated camera poses, and resulting point clouds over time.
+
+## How it was made
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
+
+### Colored 3D Points
+The colored 3D points were added to the scene by logging the
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/point3d)
+to the [points entity](recording://points):
+```python
+rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})
+```
+**Note:** we added some [custom per-point errors](recording://points.ext.error) that you can see when you
+hover over the points in the 3D view.
+""".strip()
+
 
 def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.NDArray[np.float_]]:
     """Scale the camera intrinsics to match the resized image."""
@@ -81,6 +109,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type="text/markdown"), timeless=True)
     rr.log_view_coordinates("/", up="-Y", timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.

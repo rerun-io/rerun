@@ -5,14 +5,11 @@
 
 from __future__ import annotations
 
-from rerun._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
 
-__all__ = ["AffixFuzzer19", "AffixFuzzer19Array", "AffixFuzzer19Type"]
+__all__ = ["AffixFuzzer19", "AffixFuzzer19Batch", "AffixFuzzer19Type"]
 
 
 class AffixFuzzer19(datatypes.AffixFuzzer5):
@@ -22,18 +19,13 @@ class AffixFuzzer19(datatypes.AffixFuzzer5):
     pass
 
 
-class AffixFuzzer19Type(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.testing.components.AffixFuzzer19"
-    _DELEGATED_EXTENSION_TYPE = datatypes.AffixFuzzer5Type
+class AffixFuzzer19Type(datatypes.AffixFuzzer5Type):
+    _TYPE_NAME: str = "rerun.testing.components.AffixFuzzer19"
 
 
-class AffixFuzzer19Array(BaseDelegatingExtensionArray[datatypes.AffixFuzzer5ArrayLike]):
-    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer19"
-    _EXTENSION_TYPE = AffixFuzzer19Type
-    _DELEGATED_ARRAY_TYPE = datatypes.AffixFuzzer5Array
+class AffixFuzzer19Batch(datatypes.AffixFuzzer5Batch, ComponentBatchMixin):
+    _ARROW_TYPE = AffixFuzzer19Type()
 
-
-AffixFuzzer19Type._ARRAY_TYPE = AffixFuzzer19Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer19Type())

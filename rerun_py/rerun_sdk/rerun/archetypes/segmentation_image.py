@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .segmentation_image_ext import SegmentationImageExt
 
 __all__ = ["SegmentationImage"]
@@ -33,7 +31,6 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     # Create a segmentation image
     image = np.zeros((8, 12), dtype=np.uint8)
@@ -43,15 +40,15 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     rr.init("rerun_example_segmentation_image", spawn=True)
 
     # Assign a label and color to each class
-    rr2.log("/", rr2.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
+    rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
 
-    rr2.log("image", rr2.SegmentationImage(image))
+    rr.log("image", rr.SegmentationImage(image))
     ```
     """
 
     # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
 
-    data: components.TensorDataArray = field(
+    data: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
     )
@@ -59,10 +56,10 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     The image data. Should always be a rank-2 tensor.
     """
 
-    draw_order: components.DrawOrderArray | None = field(
+    draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.

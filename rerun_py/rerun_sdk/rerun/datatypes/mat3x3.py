@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_float32,
 )
 from .mat3x3_ext import Mat3x3Ext
 
-__all__ = ["Mat3x3", "Mat3x3Array", "Mat3x3ArrayLike", "Mat3x3Like", "Mat3x3Type"]
+__all__ = ["Mat3x3", "Mat3x3ArrayLike", "Mat3x3Batch", "Mat3x3Like", "Mat3x3Type"]
 
 
 @define(init=False)
@@ -41,21 +38,21 @@ class Mat3x3(Mat3x3Ext):
     However, construction is done from a list of rows, which follows NumPy's convention:
     ```python
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
+        rr.datatypes.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
     )
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        rr.datatypes.Mat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
         np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32),
     )
     ```
     If you want to construct a matrix from a list of columns instead, use the named `columns` parameter:
     ```python
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
+        rr.datatypes.Mat3x3(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
         np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
     )
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3(columns=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        rr.datatypes.Mat3x3(columns=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
         np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
     )
     ```
@@ -84,26 +81,22 @@ Mat3x3ArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class Mat3x3Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Mat3x3"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9), "rerun.datatypes.Mat3x3"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9), self._TYPE_NAME
         )
 
 
-class Mat3x3Array(BaseExtensionArray[Mat3x3ArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Mat3x3"
-    _EXTENSION_TYPE = Mat3x3Type
+class Mat3x3Batch(BaseBatch[Mat3x3ArrayLike]):
+    _ARROW_TYPE = Mat3x3Type()
 
     @staticmethod
     def _native_to_pa_array(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Mat3x3Ext.native_to_pa_array_override(data, data_type)
 
-
-Mat3x3Type._ARRAY_TYPE = Mat3x3Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Mat3x3Type())

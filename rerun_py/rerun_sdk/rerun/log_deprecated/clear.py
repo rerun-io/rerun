@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from rerun._log import log
+from rerun.archetypes import Clear
 from rerun.recording_stream import RecordingStream
 
 
@@ -27,7 +29,6 @@ def log_cleared(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
-    from rerun.experimental import Clear, log
 
     recording = RecordingStream.to_native(recording)
-    return log(entity_path, Clear(recursive), recording=recording)
+    return log(entity_path, Clear(recursive=recursive), recording=recording)

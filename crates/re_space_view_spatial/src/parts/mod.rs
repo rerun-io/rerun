@@ -1,7 +1,7 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
 mod arrows3d;
-mod assets;
+mod assets3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
@@ -47,7 +47,7 @@ pub fn register_parts(
     system_registry: &mut SpaceViewSystemRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
     system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
-    system_registry.register_part_system::<assets::Asset3DPart>()?;
+    system_registry.register_part_system::<assets3d::Asset3DPart>()?;
     system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
     system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
     system_registry.register_part_system::<cameras::CamerasPart>()?;
@@ -272,7 +272,7 @@ pub fn load_keypoint_connections(
     let mut line_builder = ent_context.shared_render_builders.lines();
     let mut line_batch = line_builder
         .batch("keypoint connections")
-        .world_from_obj(ent_context.world_from_obj)
+        .world_from_obj(ent_context.world_from_entity)
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
     for ((class_id, _time), keypoints_in_class) in keypoints {

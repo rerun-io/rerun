@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .arrows3d_ext import Arrows3DExt
 
 __all__ = ["Arrows3D"]
@@ -28,7 +26,6 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_arrow3d", spawn=True)
 
@@ -38,24 +35,24 @@ class Arrows3D(Arrows3DExt, Archetype):
     vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angles) * lengths])
     colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
-    rr2.log("arrows", rr2.Arrows3D(origins=origins, vectors=vectors, colors=colors))
+    rr.log("arrows", rr.Arrows3D(origins=origins, vectors=vectors, colors=colors))
     ```
     """
 
     # __init__ can be found in arrows3d_ext.py
 
-    vectors: components.Vector3DArray = field(
+    vectors: components.Vector3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Vector3DArray.from_similar,  # type: ignore[misc]
+        converter=components.Vector3DBatch,  # type: ignore[misc]
     )
     """
     All the vectors for each arrow in the batch.
     """
 
-    origins: components.Origin3DArray | None = field(
+    origins: components.Origin3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Origin3DArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.Origin3DBatch._optional,  # type: ignore[misc]
     )
     """
     All the origin points for each arrow in the batch.
@@ -63,10 +60,10 @@ class Arrows3D(Arrows3DExt, Archetype):
     If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     """
 
-    radii: components.RadiusArray | None = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     Optional radii for the arrows.
@@ -75,28 +72,28 @@ class Arrows3D(Arrows3DExt, Archetype):
     The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
     """
 
-    colors: components.ColorArray | None = field(
+    colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional colors for the points.
     """
 
-    labels: components.TextArray | None = field(
+    labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     Optional text labels for the arrows.
     """
 
-    class_ids: components.ClassIdArray | None = field(
+    class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional class Ids for the points.
@@ -104,10 +101,10 @@ class Arrows3D(Arrows3DExt, Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
+    instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual point in the batch.

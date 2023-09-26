@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["Material", "MaterialArray", "MaterialType"]
+__all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 
 class Material(datatypes.Material):
@@ -21,18 +18,13 @@ class Material(datatypes.Material):
     pass
 
 
-class MaterialType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.Material"
-    _DELEGATED_EXTENSION_TYPE = datatypes.MaterialType
+class MaterialType(datatypes.MaterialType):
+    _TYPE_NAME: str = "rerun.components.Material"
 
 
-class MaterialArray(BaseDelegatingExtensionArray[datatypes.MaterialArrayLike]):
-    _EXTENSION_NAME = "rerun.components.Material"
-    _EXTENSION_TYPE = MaterialType
-    _DELEGATED_ARRAY_TYPE = datatypes.MaterialArray
+class MaterialBatch(datatypes.MaterialBatch, ComponentBatchMixin):
+    _ARROW_TYPE = MaterialType()
 
-
-MaterialType._ARRAY_TYPE = MaterialArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(MaterialType())

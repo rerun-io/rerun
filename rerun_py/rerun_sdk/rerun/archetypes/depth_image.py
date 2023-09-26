@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .depth_image_ext import DepthImageExt
 
 __all__ = ["DepthImage"]
@@ -30,7 +28,6 @@ class DepthImage(DepthImageExt, Archetype):
 
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     # Create a dummy depth image
     image = 65535 * np.ones((8, 12), dtype=np.uint16)
@@ -41,13 +38,13 @@ class DepthImage(DepthImageExt, Archetype):
     rr.init("rerun_example_depth_image", spawn=True)
 
     # Log the tensor, assigning names to each dimension
-    rr2.log("depth", rr2.DepthImage(image, meter=10_000.0))
+    rr.log("depth", rr.DepthImage(image, meter=10_000.0))
     ```
     """
 
     # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
 
-    data: components.TensorDataArray = field(
+    data: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
     )
@@ -55,10 +52,10 @@ class DepthImage(DepthImageExt, Archetype):
     The depth-image data. Should always be a rank-2 tensor.
     """
 
-    meter: components.DepthMeterArray | None = field(
+    meter: components.DepthMeterBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DepthMeterArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.DepthMeterBatch._optional,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies how long a meter is in the native depth units.
@@ -67,10 +64,10 @@ class DepthImage(DepthImageExt, Archetype):
     and a range of up to ~65 meters (2^16 / 1000).
     """
 
-    draw_order: components.DrawOrderArray | None = field(
+    draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order.

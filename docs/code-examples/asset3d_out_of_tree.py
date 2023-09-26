@@ -3,7 +3,8 @@ import sys
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
+from rerun.components import OutOfTreeTransform3DBatch
+from rerun.datatypes import TranslationRotationScale3D
 
 if len(sys.argv) < 2:
     print(f"Usage: {sys.argv[0]} <path_to_asset.[gltf|glb]>")
@@ -11,19 +12,19 @@ if len(sys.argv) < 2:
 
 rr.init("rerun_example_asset3d_out_of_tree", spawn=True)
 
-# TODO(#2816): some viewcoords would be nice here
+rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
 
 rr.set_time_sequence("frame", 0)
-rr2.log("asset", rr2.Asset3D.from_file(sys.argv[1]))
+rr.log("world/asset", rr.Asset3D.from_file(sys.argv[1]))
 # Those points will not be affected by their parent's out-of-tree transform!
-rr2.log(
-    "asset/points",
-    rr2.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T),
+rr.log(
+    "world/asset/points",
+    rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T),
 )
 
-asset = rr2.Asset3D.from_file(sys.argv[1])
+asset = rr.Asset3D.from_file(sys.argv[1])
 for i in range(1, 20):
     rr.set_time_sequence("frame", i)
 
-    translation = rr2.dt.TranslationRotationScale3D(translation=[0, 0, i - 10.0])
-    rr2.log_components("asset", [rr2.cmp.OutOfTreeTransform3DArray.from_similar(translation)])
+    translation = TranslationRotationScale3D(translation=[0, 0, i - 10.0])
+    rr.log_components("asset", [OutOfTreeTransform3DBatch(translation)])

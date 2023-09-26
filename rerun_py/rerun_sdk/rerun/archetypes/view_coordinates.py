@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates"]
@@ -33,14 +31,13 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     ```python
 
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_view_coordinates", spawn=True)
 
-    rr2.log("/", rr2.ViewCoordinates.ULB)
-    rr2.log(
-        "xyz",
-        rr2.Arrows3D(
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
+    rr.log(
+        "world/xyz",
+        rr.Arrows3D(
             vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
             colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
         ),
@@ -50,9 +47,9 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
 
-    xyz: components.ViewCoordinatesArray = field(
+    xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},
-        converter=components.ViewCoordinatesArray.from_similar,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

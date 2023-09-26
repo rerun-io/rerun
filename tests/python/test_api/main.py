@@ -35,19 +35,17 @@ def run_segmentation(experimental_api: bool) -> None:
 
     # Log a bunch of classified 2D points
     if experimental_api:
-        import rerun.experimental as rr2
-
         # Note: this uses the new, WIP object-oriented API
-        rr2.log("seg_test/single_point", rr2.Points2D([64, 64], class_ids=13))
-        rr2.log("seg_test/single_point_labeled", rr2.Points2D([90, 50], class_ids=13, labels="labeled point"))
-        rr2.log("seg_test/several_points0", rr2.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
-        rr2.log(
+        rr.log("seg_test/single_point", rr.Points2D([64, 64], class_ids=13))
+        rr.log("seg_test/single_point_labeled", rr.Points2D([90, 50], class_ids=13, labels="labeled point"))
+        rr.log("seg_test/several_points0", rr.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
+        rr.log(
             "seg_test/several_points1",
-            rr2.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
+            rr.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
         )
-        rr2.log(
-            "seg_test/many points",
-            rr2.Points2D(
+        rr.log(
+            "seg_test/many_points",
+            rr.Points2D(
                 [[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)],
                 class_ids=np.array([42], dtype=np.uint8),
             ),
@@ -62,7 +60,7 @@ def run_segmentation(experimental_api: bool) -> None:
             class_ids=np.array([13, 42, 99], dtype=np.uint8),
         )
         rr.log_points(
-            "seg_test/many points",
+            "seg_test/many_points",
             np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
             class_ids=np.array([42], dtype=np.uint8),
         )
@@ -73,7 +71,7 @@ def run_segmentation(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 2)
 
     if experimental_api:
-        rr2.log("seg_test", rr2.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), timeless=False)
+        rr.log("seg_test", rr.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), timeless=False)
     else:
         rr.log_annotation_context("seg_test", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
 
@@ -85,9 +83,9 @@ def run_segmentation(experimental_api: bool) -> None:
     # Log an updated segmentation map with specific colors
     rr.set_time_seconds("sim_time", 3)
     if experimental_api:
-        rr2.log(
+        rr.log(
             "seg_test",
-            rr2.AnnotationContext(
+            rr.AnnotationContext(
                 [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]
             ),
             timeless=False,
@@ -103,13 +101,15 @@ def run_segmentation(experimental_api: bool) -> None:
     # Log with a mixture of set and unset colors / labels
     rr.set_time_seconds("sim_time", 4)
     if experimental_api:
-        rr2.log(
+        from rerun.datatypes import AnnotationInfo
+
+        rr.log(
             "seg_test",
-            rr2.AnnotationContext(
+            rr.AnnotationContext(
                 [
-                    rr2.dt.AnnotationInfo(13, color=(255, 0, 0)),
+                    AnnotationInfo(13, color=(255, 0, 0)),
                     (42, "label2", (0, 255, 0)),
-                    rr2.dt.AnnotationInfo(99, label="label3"),
+                    AnnotationInfo(99, label="label3"),
                 ]
             ),
             timeless=False,
@@ -180,56 +180,55 @@ def transforms(experimental_api: bool) -> None:
     rr.log_disconnected_space("transforms/disconnected")
 
     if experimental_api:
-        import rerun.experimental as rr2
-        from rerun.experimental import dt as rrd
+        from rerun.datatypes import Angle, RotationAxisAngle, TranslationAndMat3x3, TranslationRotationScale3D
 
         # Log scale along the x axis only.
-        rr2.log("transforms/x_scaled", rrd.TranslationRotationScale3D(scale=(3, 1, 1)))
+        rr.log("transforms/x_scaled", TranslationRotationScale3D(scale=(3, 1, 1)))
 
         # Log a rotation around the z axis.
-        rr2.log(
+        rr.log(
             "transforms/z_rotated_object",
-            rrd.TranslationRotationScale3D(rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=45))),
+            TranslationRotationScale3D(rotation=RotationAxisAngle(axis=(1, 0, 0), angle=Angle(deg=45))),
         )
 
         # Log a transform from parent to child with a translation and skew along y and x.
-        rr2.log(
+        rr.log(
             "transforms/child_from_parent_translation",
-            rrd.TranslationRotationScale3D(translation=(-1, 0, 0), from_parent=True),
+            TranslationRotationScale3D(translation=(-1, 0, 0), from_parent=True),
         )
 
         # Log translation only.
-        rr2.log("transforms/translation", rrd.TranslationRotationScale3D(translation=(2, 0, 0)))
-        rr2.log("transforms/translation2", rrd.TranslationAndMat3x3(translation=(3, 0, 0)))
+        rr.log("transforms/translation", TranslationRotationScale3D(translation=(2, 0, 0)))
+        rr.log("transforms/translation2", TranslationAndMat3x3(translation=(3, 0, 0)))
 
         # Log uniform scale followed by translation along the Y-axis.
-        rr2.log(
+        rr.log(
             "transforms/scaled_and_translated_object",
-            rrd.TranslationRotationScale3D(translation=[0, 0, 1], scale=3),
+            TranslationRotationScale3D(translation=[0, 0, 1], scale=3),
         )
 
         # Log translation + rotation, also called a rigid transform.
-        rr2.log(
+        rr.log(
             "transforms/rigid3",
-            rrd.TranslationRotationScale3D(
-                translation=[1, 0, 1], rotation=rrd.RotationAxisAngle(axis=(0, 1, 0), angle=rrd.Angle(rad=1.57))
+            TranslationRotationScale3D(
+                translation=[1, 0, 1], rotation=RotationAxisAngle(axis=(0, 1, 0), angle=Angle(rad=1.57))
             ),
         )
 
         # Log translation, rotation & scale all at once.
-        rr2.log(
+        rr.log(
             "transforms/transformed",
-            rrd.TranslationRotationScale3D(
+            TranslationRotationScale3D(
                 translation=[2, 0, 1],
-                rotation=rrd.RotationAxisAngle(axis=(0, 0, 1), angle=rrd.Angle(deg=20)),
+                rotation=RotationAxisAngle(axis=(0, 0, 1), angle=Angle(deg=20)),
                 scale=2,
             ),
         )
 
         # Log a transform with translation and shear along x.
-        rr2.log(
+        rr.log(
             "transforms/shear",
-            rrd.TranslationAndMat3x3(translation=(3, 0, 1), matrix=np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
+            TranslationAndMat3x3(translation=(3, 0, 1), matrix=np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
         )
     else:
         # Log scale along the x axis only.
@@ -404,23 +403,22 @@ def transforms_rigid_3d(experimental_api: bool) -> None:
         rr.set_time_seconds("sim_time", time)
 
         if experimental_api:
-            import rerun.experimental as rr2
-            from rerun.experimental import dt as rrd
+            from rerun.datatypes import Angle, RotationAxisAngle, TranslationRotationScale3D
 
-            rr2.log(
+            rr.log(
                 "transforms3d/sun/planet",
-                rrd.TranslationRotationScale3D(
+                TranslationRotationScale3D(
                     translation=[
                         math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
                         math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
                         0.0,
                     ],
-                    rotation=rrd.RotationAxisAngle(axis=(1, 0, 0), angle=rrd.Angle(deg=20)),
+                    rotation=RotationAxisAngle(axis=(1, 0, 0), angle=Angle(deg=20)),
                 ),
             )
-            rr2.log(
+            rr.log(
                 "transforms3d/sun/planet/moon",
-                rrd.TranslationRotationScale3D(
+                TranslationRotationScale3D(
                     translation=[
                         math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
                         math.sin(time * rotation_speed_moon) * planet_to_moon_distance,

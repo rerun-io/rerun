@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_float32,
 )
 from .quaternion_ext import QuaternionExt
 
-__all__ = ["Quaternion", "QuaternionArray", "QuaternionArrayLike", "QuaternionLike", "QuaternionType"]
+__all__ = ["Quaternion", "QuaternionArrayLike", "QuaternionBatch", "QuaternionLike", "QuaternionType"]
 
 
 @define(init=False)
@@ -49,26 +46,22 @@ QuaternionArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class QuaternionType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Quaternion"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), "rerun.datatypes.Quaternion"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), self._TYPE_NAME
         )
 
 
-class QuaternionArray(BaseExtensionArray[QuaternionArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Quaternion"
-    _EXTENSION_TYPE = QuaternionType
+class QuaternionBatch(BaseBatch[QuaternionArrayLike]):
+    _ARROW_TYPE = QuaternionType()
 
     @staticmethod
     def _native_to_pa_array(data: QuaternionArrayLike, data_type: pa.DataType) -> pa.Array:
         return QuaternionExt.native_to_pa_array_override(data, data_type)
 
-
-QuaternionType._ARRAY_TYPE = QuaternionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(QuaternionType())

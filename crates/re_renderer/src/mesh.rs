@@ -223,7 +223,7 @@ impl GpuMesh {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 vb_combined_size as _,
-            );
+            )?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_positions))?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_colors))?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_normals))?;
@@ -252,7 +252,7 @@ impl GpuMesh {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 data.triangle_indices.len(),
-            );
+            )?;
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.triangle_indices))?;
             staging_buffer.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),

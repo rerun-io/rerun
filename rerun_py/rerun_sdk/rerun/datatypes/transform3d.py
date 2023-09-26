@@ -11,13 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .transform3d_ext import Transform3DExt
 
-__all__ = ["Transform3D", "Transform3DArray", "Transform3DArrayLike", "Transform3DLike", "Transform3DType"]
+__all__ = ["Transform3D", "Transform3DArrayLike", "Transform3DBatch", "Transform3DLike", "Transform3DType"]
 
 
 @define
@@ -50,10 +47,10 @@ else:
     Transform3DLike = Any
     Transform3DArrayLike = Any
 
-# --- Arrow support ---
-
 
 class Transform3DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Transform3D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -184,20 +181,17 @@ class Transform3DType(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.datatypes.Transform3D",
+            self._TYPE_NAME,
         )
 
 
-class Transform3DArray(BaseExtensionArray[Transform3DArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Transform3D"
-    _EXTENSION_TYPE = Transform3DType
+class Transform3DBatch(BaseBatch[Transform3DArrayLike]):
+    _ARROW_TYPE = Transform3DType()
 
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Transform3DExt.native_to_pa_array_override(data, data_type)
 
-
-Transform3DType._ARRAY_TYPE = Transform3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Transform3DType())

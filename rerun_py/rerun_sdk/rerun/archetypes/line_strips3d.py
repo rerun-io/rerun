@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["LineStrips3D"]
 
@@ -25,13 +23,12 @@ class LineStrips3D(Archetype):
     Many strips:
     ```python
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_line_strip3d", spawn=True)
 
-    rr2.log(
+    rr.log(
         "strips",
-        rr2.LineStrips3D(
+        rr.LineStrips3D(
             [
                 [
                     [0, 0, 2],
@@ -62,13 +59,12 @@ class LineStrips3D(Archetype):
     #!/usr/bin/env python3
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_line_segments3d", spawn=True)
 
-    rr2.log(
+    rr.log(
         "segments",
-        rr2.LineStrips3D(
+        rr.LineStrips3D(
             np.array(
                 [
                     [[0, 0, 0], [0, 0, 1]],
@@ -84,45 +80,45 @@ class LineStrips3D(Archetype):
 
     # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
 
-    strips: components.LineStrip3DArray = field(
+    strips: components.LineStrip3DBatch = field(
         metadata={"component": "required"},
-        converter=components.LineStrip3DArray.from_similar,  # type: ignore[misc]
+        converter=components.LineStrip3DBatch,  # type: ignore[misc]
     )
     """
     All the actual 3D line strips that make up the batch.
     """
 
-    radii: components.RadiusArray | None = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     Optional radii for the line strips.
     """
 
-    colors: components.ColorArray | None = field(
+    colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional colors for the line strips.
     """
 
-    labels: components.TextArray | None = field(
+    labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     Optional text labels for the line strips.
     """
 
-    class_ids: components.ClassIdArray | None = field(
+    class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional `ClassId`s for the lines.
@@ -130,10 +126,10 @@ class LineStrips3D(Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
+    instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual line strip in the batch.

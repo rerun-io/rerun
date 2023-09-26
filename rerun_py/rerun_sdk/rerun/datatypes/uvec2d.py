@@ -12,15 +12,12 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_uint32,
 )
 
-__all__ = ["UVec2D", "UVec2DArray", "UVec2DArrayLike", "UVec2DLike", "UVec2DType"]
+__all__ = ["UVec2D", "UVec2DArrayLike", "UVec2DBatch", "UVec2DLike", "UVec2DType"]
 
 
 @define
@@ -46,26 +43,22 @@ UVec2DArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class UVec2DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.UVec2D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={}), 2), "rerun.datatypes.UVec2D"
+            self, pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={}), 2), self._TYPE_NAME
         )
 
 
-class UVec2DArray(BaseExtensionArray[UVec2DArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.UVec2D"
-    _EXTENSION_TYPE = UVec2DType
+class UVec2DBatch(BaseBatch[UVec2DArrayLike]):
+    _ARROW_TYPE = UVec2DType()
 
     @staticmethod
     def _native_to_pa_array(data: UVec2DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in uvec2d_ext.py
 
-
-UVec2DType._ARRAY_TYPE = UVec2DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(UVec2DType())

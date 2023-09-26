@@ -1,6 +1,6 @@
-use std::hash::Hash;
+use std::{hash::Hash, str::FromStr};
 
-use re_log_types::{EntityPath, EntityPathHash, RowId};
+use re_log_types::{DataPath, EntityPath, EntityPathHash, PathParseError, RowId};
 use re_types::components::InstanceKey;
 
 use crate::{store_db::EntityDb, VersionedInstancePath, VersionedInstancePathHash};
@@ -17,6 +17,13 @@ pub struct InstancePath {
     ///
     /// If we refer to all instance, [`InstanceKey::SPLAT`] is used.
     pub instance_key: InstanceKey,
+}
+
+impl From<EntityPath> for InstancePath {
+    #[inline]
+    fn from(entity_path: EntityPath) -> Self {
+        Self::entity_splat(entity_path)
+    }
 }
 
 impl InstancePath {
@@ -75,6 +82,40 @@ impl std::fmt::Display for InstancePath {
             format!("{}[{}]", self.entity_path, self.instance_key).fmt(f)
         }
     }
+}
+
+impl FromStr for InstancePath {
+    type Err = PathParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let DataPath {
+            entity_path,
+            instance_key,
+            component_name,
+        } = DataPath::from_str(s)?;
+
+        if let Some(component_name) = component_name {
+            return Err(PathParseError::UnexpectedComponentName(component_name));
+        }
+
+        let instance_key = instance_key.unwrap_or(InstanceKey::SPLAT);
+
+        Ok(InstancePath {
+            entity_path,
+            instance_key,
+        })
+    }
+}
+
+#[test]
+fn test_parse_instance_path() {
+    assert_eq!(
+        InstancePath::from_str("world/points[#123]"),
+        Ok(InstancePath {
+            entity_path: EntityPath::from("world/points"),
+            instance_key: InstanceKey(123)
+        })
+    );
 }
 
 // ----------------------------------------------------------------------------

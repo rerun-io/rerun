@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["Points3D"]
 
@@ -24,37 +22,36 @@ class Points3D(Archetype):
     -------
     ```python
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_points3d_simple", spawn=True)
 
-    rr2.log("points", rr2.Points3D([[0, 0, 0], [1, 1, 1]]))
+    rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
     ```
     """
 
     # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
 
-    positions: components.Position3DArray = field(
+    positions: components.Position3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position3DArray.from_similar,  # type: ignore[misc]
+        converter=components.Position3DBatch,  # type: ignore[misc]
     )
     """
     All the 3D positions at which the point cloud shows points.
     """
 
-    radii: components.RadiusArray | None = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     Optional radii for the points, effectively turning them into circles.
     """
 
-    colors: components.ColorArray | None = field(
+    colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional colors for the points.
@@ -63,19 +60,19 @@ class Points3D(Archetype):
     As either 0-1 floats or 0-255 integers, with separate alpha.
     """
 
-    labels: components.TextArray | None = field(
+    labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     Optional text labels for the points.
     """
 
-    class_ids: components.ClassIdArray | None = field(
+    class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional class Ids for the points.
@@ -83,10 +80,10 @@ class Points3D(Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    keypoint_ids: components.KeypointIdArray | None = field(
+    keypoint_ids: components.KeypointIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.KeypointIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.KeypointIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional keypoint IDs for the points, identifying them within a class.
@@ -99,10 +96,10 @@ class Points3D(Archetype):
     detected skeleton.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
+    instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual point in the batch.

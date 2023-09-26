@@ -8,15 +8,14 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
+from .clear_ext import ClearExt
 
 __all__ = ["Clear"]
 
 
-@define(str=False, repr=False)
-class Clear(Archetype):
+@define(str=False, repr=False, init=False)
+class Clear(ClearExt, Archetype):
     """
     Empties all the components of an entity.
 
@@ -26,7 +25,6 @@ class Clear(Archetype):
     ```python
 
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_clear_simple", spawn=True)
 
@@ -36,19 +34,17 @@ class Clear(Archetype):
 
     # Log a handful of arrows.
     for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-        rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector, origins=origin, colors=color))
+        rr.log(f"arrows/{i}", rr.Arrows3D(vectors=vector, origins=origin, colors=color))
 
     # Now clear them, one by one on each tick.
     for i in range(len(vectors)):
-        # TODO(cmc): `rr2.Clear.flat()`
-        rr2.log(f"arrows/{i}", rr2.Clear(False))
+        rr.log(f"arrows/{i}", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
     ```
 
     Recursive:
     ```python
 
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_clear_simple", spawn=True)
 
@@ -58,19 +54,22 @@ class Clear(Archetype):
 
     # Log a handful of arrows.
     for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-        rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector, origins=origin, colors=color))
+        rr.log(f"arrows/{i}", rr.Arrows3D(vectors=vector, origins=origin, colors=color))
 
     # Now clear all of them at once.
-    # TODO(cmc): `rr2.Clear.recursive()`
-    rr2.log("arrows", rr2.Clear(True))
+    rr.log("arrows", rr.Clear(recursive=True))  # or `rr.Clear.recursive()`
     ```
     """
 
-    # You can define your own __init__ function as a member of ClearExt in clear_ext.py
+    # __init__ can be found in clear_ext.py
 
-    settings: components.ClearSettingsArray = field(
+    recursive: components.ClearIsRecursiveBatch = field(
         metadata={"component": "required"},
-        converter=components.ClearSettingsArray.from_similar,  # type: ignore[misc]
+        converter=components.ClearIsRecursiveBatch,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(ClearExt, "deferred_patch_class"):
+    ClearExt.deferred_patch_class(Clear)

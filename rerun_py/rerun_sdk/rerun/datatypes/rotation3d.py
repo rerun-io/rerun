@@ -11,13 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .rotation3d_ext import Rotation3DExt
 
-__all__ = ["Rotation3D", "Rotation3DArray", "Rotation3DArrayLike", "Rotation3DLike", "Rotation3DType"]
+__all__ = ["Rotation3D", "Rotation3DArrayLike", "Rotation3DBatch", "Rotation3DLike", "Rotation3DType"]
 
 
 @define
@@ -48,10 +45,10 @@ else:
     Rotation3DLike = Any
     Rotation3DArrayLike = Any
 
-# --- Arrow support ---
-
 
 class Rotation3DType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Rotation3D"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -93,20 +90,17 @@ class Rotation3DType(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.datatypes.Rotation3D",
+            self._TYPE_NAME,
         )
 
 
-class Rotation3DArray(BaseExtensionArray[Rotation3DArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Rotation3D"
-    _EXTENSION_TYPE = Rotation3DType
+class Rotation3DBatch(BaseBatch[Rotation3DArrayLike]):
+    _ARROW_TYPE = Rotation3DType()
 
     @staticmethod
     def _native_to_pa_array(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Rotation3DExt.native_to_pa_array_override(data, data_type)
 
-
-Rotation3DType._ARRAY_TYPE = Rotation3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Rotation3DType())

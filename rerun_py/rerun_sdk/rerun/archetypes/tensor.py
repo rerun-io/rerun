@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["Tensor"]
 
@@ -41,9 +39,9 @@ class Tensor(Archetype):
 
     # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
 
-    data: components.TensorDataArray = field(
+    data: components.TensorDataBatch = field(
         metadata={"component": "required"},
-        converter=components.TensorDataArray.from_similar,  # type: ignore[misc]
+        converter=components.TensorDataBatch,  # type: ignore[misc]
     )
     """
     The tensor data

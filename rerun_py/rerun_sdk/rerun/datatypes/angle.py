@@ -10,13 +10,10 @@ from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .angle_ext import AngleExt
 
-__all__ = ["Angle", "AngleArray", "AngleArrayLike", "AngleLike", "AngleType"]
+__all__ = ["Angle", "AngleArrayLike", "AngleBatch", "AngleLike", "AngleType"]
 
 
 @define(init=False)
@@ -51,10 +48,10 @@ else:
     AngleLike = Any
     AngleArrayLike = Any
 
-# --- Arrow support ---
-
 
 class AngleType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Angle"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -65,20 +62,17 @@ class AngleType(BaseExtensionType):
                     pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
                 ]
             ),
-            "rerun.datatypes.Angle",
+            self._TYPE_NAME,
         )
 
 
-class AngleArray(BaseExtensionArray[AngleArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Angle"
-    _EXTENSION_TYPE = AngleType
+class AngleBatch(BaseBatch[AngleArrayLike]):
+    _ARROW_TYPE = AngleType()
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
         return AngleExt.native_to_pa_array_override(data, data_type)
 
-
-AngleType._ARRAY_TYPE = AngleArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AngleType())

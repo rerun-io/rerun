@@ -4,23 +4,23 @@ from typing import Any
 
 import numpy as np
 import pytest
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
+from rerun.datatypes.tensor_data import TensorDataBatch
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
 
 
-IMAGE_INPUTS: list[rrd.TensorDataLike] = [
+IMAGE_INPUTS: list[TensorDataLike] = [
     # Full explicit construction
-    rrd.TensorData(
+    TensorData(
         shape=[
-            rrd.TensorDimension(10, "height"),
-            rrd.TensorDimension(20, "width"),
-            rrd.TensorDimension(3, "depth"),
+            TensorDimension(10, "height"),
+            TensorDimension(20, "width"),
+            TensorDimension(3, "depth"),
         ],
-        buffer=rrd.TensorBuffer(RANDOM_IMAGE_SOURCE),
+        buffer=TensorBuffer(RANDOM_IMAGE_SOURCE),
     ),
     # Implicit construction from ndarray
     RANDOM_IMAGE_SOURCE,
@@ -35,24 +35,24 @@ CHECK_FIELDS: list[list[int]] = [
 
 
 def tensor_data_expected() -> Any:
-    return rrc.TensorDataArray.from_similar(IMAGE_INPUTS[0])
+    return TensorDataBatch(IMAGE_INPUTS[0])
 
 
 def compare_images(left: Any, right: Any, check_fields: list[int]) -> None:
     for field in check_fields:
-        assert left.storage.field(field) == right.storage.field(field)
+        assert left.as_arrow_array().storage.field(field) == right.as_arrow_array().storage.field(field)
 
 
 def test_image() -> None:
     expected = tensor_data_expected()
 
     for input, check_fields in zip(IMAGE_INPUTS, CHECK_FIELDS):
-        arch = rr2.Image(data=input)
+        arch = rr.Image(data=input)
 
         compare_images(arch.data, expected, check_fields)
 
 
-GOOD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
+GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     # Mono
     rng.uniform(0.0, 1.0, (10, 20)),
     # RGB
@@ -68,7 +68,7 @@ GOOD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     rng.uniform(0.0, 1.0, (10, 20, 4, 1)),
 ]
 
-BAD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
+BAD_IMAGE_INPUTS: list[TensorDataLike] = [
     rng.uniform(0.0, 1.0, (10,)),
     rng.uniform(0.0, 1.0, (10, 20, 2)),
     rng.uniform(0.0, 1.0, (10, 20, 5)),
@@ -82,8 +82,8 @@ def test_image_shapes() -> None:
     rr.set_strict_mode(True)
 
     for img in GOOD_IMAGE_INPUTS:
-        rr2.Image(img)
+        rr.Image(img)
 
     for img in BAD_IMAGE_INPUTS:
         with pytest.raises(TypeError):
-            rr2.Image(img)
+            rr.Image(img)

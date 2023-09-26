@@ -117,7 +117,7 @@ impl Lines2DPart {
         let mut line_batch = line_builder
             .batch("lines 2d")
             .depth_offset(ent_context.depth_offset)
-            .world_from_obj(ent_context.world_from_obj)
+            .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -148,7 +148,7 @@ impl Lines2DPart {
         }
 
         self.data
-            .extend_bounding_box(bounding_box, ent_context.world_from_obj);
+            .extend_bounding_box(bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }

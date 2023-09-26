@@ -68,6 +68,13 @@ pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
 };
 
+mod load_file;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::load_file::data_cells_from_file_path;
+
+pub use self::load_file::{data_cells_from_file_contents, FromFileError};
+
 pub mod external {
     pub use arrow2;
     pub use arrow2_convert;
@@ -487,6 +494,18 @@ macro_rules! component_legacy_shim {
             }
         }
     };
+}
 
+// ---
 
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
+#[inline]
+pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
+    (Timeline::log_time(), log_time.into())
+}
+
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`TimePoint`].
+#[inline]
+pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
+    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }

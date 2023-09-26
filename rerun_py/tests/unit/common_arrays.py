@@ -3,8 +3,39 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+from rerun.components import (
+    ClassId,
+    ClassIdBatch,
+    Color,
+    ColorBatch,
+    DrawOrder,
+    DrawOrderBatch,
+    DrawOrderLike,
+    InstanceKey,
+    InstanceKeyBatch,
+    KeypointId,
+    KeypointIdBatch,
+    Radius,
+    RadiusArrayLike,
+    RadiusBatch,
+    TextBatch,
+)
+from rerun.datatypes import (
+    Angle,
+    ColorArrayLike,
+    Quaternion,
+    Rotation3D,
+    Rotation3DArrayLike,
+    RotationAxisAngle,
+    Utf8,
+    Utf8ArrayLike,
+    Vec2D,
+    Vec2DArrayLike,
+    Vec2DBatch,
+    Vec3D,
+    Vec3DArrayLike,
+    Vec3DBatch,
+)
 
 U64_MAX_MINUS_1 = 2**64 - 2
 U64_MAX = 2**64 - 1
@@ -26,13 +57,13 @@ def none_empty_or_value(obj: Any, value: Any) -> Any:
         return value
 
 
-vec2ds_arrays: list[rrd.Vec2DArrayLike] = [
+vec2ds_arrays: list[Vec2DArrayLike] = [
     [],
     np.array([]),
     # Vec2DArrayLike: Sequence[Point2DLike]: Point2D
     [
-        rrd.Vec2D([1, 2]),
-        rrd.Vec2D([3, 4]),
+        Vec2D([1, 2]),
+        Vec2D([3, 4]),
     ],
     # Vec2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float32]
     [
@@ -52,20 +83,20 @@ vec2ds_arrays: list[rrd.Vec2DArrayLike] = [
 
 def vec2ds_expected(obj: Any, type_: Any | None) -> Any:
     if type_ is None:
-        type_ = rrd.Vec2DArray
+        type_ = Vec2DBatch
 
     expected = none_empty_or_value(obj, [[1.0, 2.0], [3.0, 4.0]])
 
-    return type_.optional_from_similar(expected)
+    return type_._optional(expected)
 
 
-vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
+vec3ds_arrays: list[Vec3DArrayLike] = [
     [],
     np.array([]),
     # Vec3DArrayLike: Sequence[Position3DLike]: Position3D
     [
-        rrd.Vec3D([1, 2, 3]),
-        rrd.Vec3D([4, 5, 6]),
+        Vec3D([1, 2, 3]),
+        Vec3D([4, 5, 6]),
     ],
     # Vec3DArrayLike: Sequence[Position3DLike]: npt.NDArray[np.float32]
     [
@@ -85,55 +116,53 @@ vec3ds_arrays: list[rrd.Vec3DArrayLike] = [
 
 def vec3ds_expected(obj: Any, type_: Any | None) -> Any:
     if type_ is None:
-        type_ = rrd.Vec3DArray
+        type_ = Vec3DBatch
 
     expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
-    return type_.optional_from_similar(expected)
+    return type_._optional(expected)
 
 
-rotations_arrays: list[rrd.Rotation3DArrayLike] = [
+rotations_arrays: list[Rotation3DArrayLike] = [
     [],
     # Rotation3D
-    rrd.Rotation3D(rrd.Quaternion(xyzw=[1, 2, 3, 4])),
-    rrd.Rotation3D(rrd.RotationAxisAngle([1.0, 2.0, 3.0], rrd.Angle(4))),
+    Rotation3D(Quaternion(xyzw=[1, 2, 3, 4])),
+    Rotation3D(RotationAxisAngle([1.0, 2.0, 3.0], Angle(4))),
     # Quaternion
-    rrd.Quaternion(xyzw=[1, 2, 3, 4]),
-    rrd.Quaternion(xyzw=[1.0, 2.0, 3.0, 4.0]),
-    rrd.Quaternion(xyzw=np.array([1, 2, 3, 4])),
+    Quaternion(xyzw=[1, 2, 3, 4]),
+    Quaternion(xyzw=[1.0, 2.0, 3.0, 4.0]),
+    Quaternion(xyzw=np.array([1, 2, 3, 4])),
     # RotationAxisAngle
-    rrd.RotationAxisAngle([1, 2, 3], 4),
-    rrd.RotationAxisAngle([1.0, 2.0, 3.0], rrd.Angle(4)),
-    rrd.RotationAxisAngle(rrd.Vec3D([1, 2, 3]), rrd.Angle(4)),
-    rrd.RotationAxisAngle(np.array([1, 2, 3], dtype=np.uint8), rrd.Angle(rad=4)),
-    # Sequence[Rotation3DArray]
+    RotationAxisAngle([1, 2, 3], 4),
+    RotationAxisAngle([1.0, 2.0, 3.0], Angle(4)),
+    RotationAxisAngle(Vec3D([1, 2, 3]), Angle(4)),
+    RotationAxisAngle(np.array([1, 2, 3], dtype=np.uint8), Angle(rad=4)),
+    # Sequence[Rotation3DBatch]
     [
-        rrd.Rotation3D(rrd.Quaternion(xyzw=[1, 2, 3, 4])),
+        Rotation3D(Quaternion(xyzw=[1, 2, 3, 4])),
         [1, 2, 3, 4],
-        rrd.Quaternion(xyzw=[1, 2, 3, 4]),
-        rrd.RotationAxisAngle([1, 2, 3], 4),
+        Quaternion(xyzw=[1, 2, 3, 4]),
+        RotationAxisAngle([1, 2, 3], 4),
     ],
 ]
 
 
-def expected_rotations(rotations: rrd.Rotation3DArrayLike, type_: Any) -> Any:
+def expected_rotations(rotations: Rotation3DArrayLike, type_: Any) -> Any:
     if rotations is None:
-        return type_.optional_from_similar(None)
+        return type_._optional(None)
     elif hasattr(rotations, "__len__") and len(rotations) == 0:
-        return type_.optional_from_similar(rotations)
-    elif isinstance(rotations, rrd.Rotation3D):
-        return type_.optional_from_similar(rotations)
-    elif isinstance(rotations, rrd.RotationAxisAngle):
-        return type_.optional_from_similar(rrd.RotationAxisAngle([1, 2, 3], 4))
-    elif isinstance(rotations, rrd.Quaternion):
-        return type_.optional_from_similar(rrd.Quaternion(xyzw=[1, 2, 3, 4]))
+        return type_._optional(rotations)
+    elif isinstance(rotations, Rotation3D):
+        return type_._optional(rotations)
+    elif isinstance(rotations, RotationAxisAngle):
+        return type_._optional(RotationAxisAngle([1, 2, 3], 4))
+    elif isinstance(rotations, Quaternion):
+        return type_._optional(Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_.optional_from_similar(
-            [rrd.Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [rrd.RotationAxisAngle([1, 2, 3], 4)]
-        )
+        return type_._optional([Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [RotationAxisAngle([1, 2, 3], 4)])
 
 
-radii_arrays: list[rrc.RadiusArrayLike | None] = [
+radii_arrays: list[RadiusArrayLike | None] = [
     None,
     [],
     np.array([]),
@@ -141,8 +170,8 @@ radii_arrays: list[rrc.RadiusArrayLike | None] = [
     [1, 10],
     # RadiusArrayLike: Sequence[RadiusLike]: Radius
     [
-        rrc.Radius(1),
-        rrc.Radius(10),
+        Radius(1),
+        Radius(10),
     ],
     # RadiusArrayLike: npt.NDArray[np.float32]
     np.array([1, 10], dtype=np.float32),
@@ -152,10 +181,10 @@ radii_arrays: list[rrc.RadiusArrayLike | None] = [
 def radii_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [1, 10])
 
-    return rrc.RadiusArray.optional_from_similar(expected)
+    return RadiusBatch._optional(expected)
 
 
-colors_arrays: list[rrd.ColorArrayLike | None] = [
+colors_arrays: list[ColorArrayLike | None] = [
     None,
     [],
     np.array([]),
@@ -166,8 +195,8 @@ colors_arrays: list[rrd.ColorArrayLike | None] = [
     ],
     # ColorArrayLike: Sequence[ColorLike]: Color
     [
-        rrd.Color(0xAA0000CC),
-        rrd.Color(0x00BB00DD),
+        Color(0xAA0000CC),
+        Color(0x00BB00DD),
     ],
     # ColorArrayLike: Sequence[ColorLike]: npt.NDArray[np.uint8]
     np.array(
@@ -256,39 +285,39 @@ colors_arrays: list[rrd.ColorArrayLike | None] = [
 
 def colors_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [0xAA0000CC, 0x00BB00DD])
-    return rrc.ColorArray.optional_from_similar(expected)
+    return ColorBatch._optional(expected)
 
 
-labels_arrays: list[rrd.Utf8ArrayLike | None] = [
+labels_arrays: list[Utf8ArrayLike | None] = [
     None,
     [],
     # Utf8ArrayLike: Sequence[TextLike]: str
     ["hello", "friend"],
     # Utf8ArrayLike: Sequence[TextLike]: Label
     [
-        rrd.Utf8("hello"),
-        rrd.Utf8("friend"),
+        Utf8("hello"),
+        Utf8("friend"),
     ],
 ]
 
 
 def labels_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, ["hello", "friend"])
-    return rrc.TextArray.optional_from_similar(expected)
+    return TextBatch._optional(expected)
 
 
-draw_orders: list[rrc.DrawOrderLike | None] = [
+draw_orders: list[DrawOrderLike | None] = [
     None,
     # DrawOrderLike: float
     300,
     # DrawOrderLike: DrawOrder
-    rrc.DrawOrder(300),
+    DrawOrder(300),
 ]
 
 
 def draw_order_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [300])
-    return rrc.DrawOrderArray.optional_from_similar(expected)
+    return DrawOrderBatch._optional(expected)
 
 
 class_ids_arrays = [
@@ -297,7 +326,7 @@ class_ids_arrays = [
     # ClassIdArrayLike: Sequence[ClassIdLike]: int
     [126, 127],
     # ClassIdArrayLike: Sequence[ClassIdLike]: ClassId
-    [rrd.ClassId(126), rrd.ClassId(127)],
+    [ClassId(126), ClassId(127)],
     # ClassIdArrayLike: np.NDArray[np.uint8]
     np.array([126, 127], dtype=np.uint8),
     # ClassIdArrayLike: np.NDArray[np.uint16]
@@ -311,7 +340,7 @@ class_ids_arrays = [
 
 def class_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [126, 127])
-    return rrc.ClassIdArray.optional_from_similar(expected)
+    return ClassIdBatch._optional(expected)
 
 
 keypoint_ids_arrays = [
@@ -320,7 +349,7 @@ keypoint_ids_arrays = [
     # KeypointIdArrayLike: Sequence[KeypointIdLike]: int
     [2, 3],
     # KeypointIdArrayLike: Sequence[KeypointIdLike]: KeypointId
-    [rrd.KeypointId(2), rrd.KeypointId(3)],
+    [KeypointId(2), KeypointId(3)],
     # KeypointIdArrayLike: np.NDArray[np.uint8]
     np.array([2, 3], dtype=np.uint8),
     # KeypointIdArrayLike: np.NDArray[np.uint16]
@@ -334,7 +363,7 @@ keypoint_ids_arrays = [
 
 def keypoint_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [2, 3])
-    return rrc.KeypointIdArray.optional_from_similar(expected)
+    return KeypointIdBatch._optional(expected)
 
 
 instance_keys_arrays = [
@@ -343,7 +372,7 @@ instance_keys_arrays = [
     # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: int
     [U64_MAX_MINUS_1, U64_MAX],
     # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: InstanceKey
-    [rrc.InstanceKey(U64_MAX_MINUS_1), rrc.InstanceKey(U64_MAX)],
+    [InstanceKey(U64_MAX_MINUS_1), InstanceKey(U64_MAX)],
     # InstanceKeyArrayLike: np.NDArray[np.uint64]
     np.array([U64_MAX_MINUS_1, U64_MAX], dtype=np.uint64),
 ]
@@ -351,4 +380,4 @@ instance_keys_arrays = [
 
 def instance_keys_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [U64_MAX_MINUS_1, U64_MAX])
-    return rrc.InstanceKeyArray.optional_from_similar(expected)
+    return InstanceKeyBatch._optional(expected)

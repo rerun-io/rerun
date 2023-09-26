@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["LineStrips2D"]
 
@@ -25,13 +23,12 @@ class LineStrips2D(Archetype):
     Many strips:
     ```python
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_line_strip2d", spawn=True)
 
-    rr2.log(
+    rr.log(
         "strips",
-        rr2.LineStrips2D(
+        rr.LineStrips2D(
             [
                 [[0, 0], [2, 1], [4, -1], [6, 0]],
                 [[0, 3], [1, 4], [2, 2], [3, 4], [4, 2], [5, 4], [6, 3]],
@@ -43,78 +40,77 @@ class LineStrips2D(Archetype):
     )
 
     # Log an extra rect to set the view bounds
-    rr2.log("bounds", rr2.Boxes2D(centers=[3, 1.5], half_sizes=[4.0, 4.5]))
+    rr.log("bounds", rr.Boxes2D(centers=[3, 1.5], half_sizes=[4.0, 4.5]))
     ```
 
     Many individual segments:
     ```python
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_line_segments2d", spawn=True)
 
-    rr2.log(
+    rr.log(
         "segments",
-        rr2.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
+        rr.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
     )
 
     # Log an extra rect to set the view bounds
-    rr2.log("bounds", rr2.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
+    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
     ```
     """
 
     # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py
 
-    strips: components.LineStrip2DArray = field(
+    strips: components.LineStrip2DBatch = field(
         metadata={"component": "required"},
-        converter=components.LineStrip2DArray.from_similar,  # type: ignore[misc]
+        converter=components.LineStrip2DBatch,  # type: ignore[misc]
     )
     """
     All the actual 2D line strips that make up the batch.
     """
 
-    radii: components.RadiusArray | None = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     Optional radii for the line strips.
     """
 
-    colors: components.ColorArray | None = field(
+    colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional colors for the line strips.
     """
 
-    labels: components.TextArray | None = field(
+    labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     Optional text labels for the line strips.
     """
 
-    draw_order: components.DrawOrderArray | None = field(
+    draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
     """
     An optional floating point value that specifies the 2D drawing order of each line strip.
     Objects with higher values are drawn on top of those with lower values.
     """
 
-    class_ids: components.ClassIdArray | None = field(
+    class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
     """
     Optional `ClassId`s for the lines.
@@ -122,10 +118,10 @@ class LineStrips2D(Archetype):
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    instance_keys: components.InstanceKeyArray | None = field(
+    instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.InstanceKeyArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
     """
     Unique identifiers for each individual line strip in the batch.

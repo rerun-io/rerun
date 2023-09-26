@@ -11,21 +11,48 @@ import numpy as np
 # API RE-EXPORTS
 
 __all__ = [
+    "AnnotationContext",
     "AnnotationInfo",
+    "Arrows3D",
+    "AsComponents",
+    "Asset3D",
+    "BarChart",
+    "Boxes2D",
+    "Boxes3D",
     "ClassDescription",
+    "Clear",
+    "ComponentBatchLike",
+    "DepthImage",
+    "DisconnectedSpace",
+    "Image",
+    "ImageEncoded",
     "ImageFormat",
+    "IndicatorComponentBatch",
+    "LineStrips2D",
+    "LineStrips3D",
     "LoggingHandler",
+    "Mesh3D",
     "MeshFormat",
+    "Pinhole",
+    "Points2D",
+    "Points3D",
     "Quaternion",
     "RecordingStream",
     "RectFormat",
     "Rigid3D",
     "RotationAxisAngle",
     "Scale3D",
+    "SegmentationImage",
+    "Tensor",
+    "TextDocument",
+    "TextLog",
+    "TimeSeriesScalar",
     "Transform3D",
     "Translation3D",
     "TranslationAndMat3",
+    "TranslationAndMat3x3",
     "TranslationRotationScale3D",
+    "ViewCoordinates",
     "bindings",
     "connect",
     "disconnect",
@@ -39,17 +66,18 @@ __all__ = [
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
+    "log_components",
     "log_depth_image",
     "log_disconnected_space",
     "log_extension_components",
-    "log_image",
     "log_image_file",
+    "log_image",
     "log_line_segments",
     "log_line_strip",
     "log_line_strips_2d",
     "log_line_strips_3d",
-    "log_mesh",
     "log_mesh_file",
+    "log_mesh",
     "log_meshes",
     "log_obb",
     "log_obbs",
@@ -58,13 +86,13 @@ __all__ = [
     "log_points",
     "log_rect",
     "log_rects",
-    "log_rigid3",
     "log_scalar",
     "log_segmentation_image",
     "log_tensor",
     "log_text_entry",
     "log_transform3d",
     "log_view_coordinates",
+    "log",
     "memory_recording",
     "reset_time",
     "save",
@@ -82,23 +110,41 @@ __all__ = [
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
-from .components_deprecated.transform3d import (
-    Quaternion,
-    Rigid3D,
-    RotationAxisAngle,
-    Scale3D,
+from ._image import ImageEncoded, ImageFormat
+from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from .archetypes import (
+    AnnotationContext,
+    Arrows3D,
+    Asset3D,
+    BarChart,
+    Boxes2D,
+    Boxes3D,
+    Clear,
+    DepthImage,
+    DisconnectedSpace,
+    Image,
+    LineStrips2D,
+    LineStrips3D,
+    Mesh3D,
+    Pinhole,
+    Points2D,
+    Points3D,
+    SegmentationImage,
+    Tensor,
+    TextDocument,
+    TextLog,
+    TimeSeriesScalar,
     Transform3D,
-    Translation3D,
-    TranslationAndMat3,
-    TranslationRotationScale3D,
+    ViewCoordinates,
 )
+from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
 from .log_deprecated.bounding_box import log_obb, log_obbs
 from .log_deprecated.camera import log_pinhole
 from .log_deprecated.clear import log_cleared
 from .log_deprecated.extension_components import log_extension_components
-from .log_deprecated.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
+from .log_deprecated.file import MeshFormat, log_image_file, log_mesh_file
 from .log_deprecated.image import log_depth_image, log_image, log_segmentation_image
 from .log_deprecated.lines import log_line_segments, log_line_strip, log_line_strips_2d, log_line_strips_3d
 from .log_deprecated.mesh import log_mesh, log_meshes
@@ -108,8 +154,10 @@ from .log_deprecated.scalar import log_scalar
 from .log_deprecated.tensor import log_tensor
 from .log_deprecated.text import LoggingHandler, log_text_entry
 from .log_deprecated.transform import (
+    Rigid3D,
+    Translation3D,
+    TranslationAndMat3,
     log_disconnected_space,
-    log_rigid3,
     log_transform3d,
     log_view_coordinates,
 )

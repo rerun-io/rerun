@@ -7,6 +7,8 @@ use std::{
 
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 
+use crate::should_output_cargo_build_instructions;
+
 /// Call from `build.rs` to trigger a rebuild whenever any source file of the given package
 /// _or any of its dependencies_ changes, recursively.
 ///
@@ -40,7 +42,9 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
 
 /// Call from `build.rs` to trigger a rebuild whenever an environment variable changes.
 pub fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::VarError> {
-    println!("cargo:rerun-if-env-changed={env_var_name}");
+    if should_output_cargo_build_instructions() {
+        println!("cargo:rerun-if-env-changed={env_var_name}");
+    }
     std::env::var(env_var_name)
 }
 
@@ -58,14 +62,18 @@ pub fn rerun_if_changed(path: impl AsRef<Path>) {
     let path = path.as_ref();
     // Make sure the file exists, otherwise we'll be rebuilding all the time.
     assert!(path.exists(), "Failed to find {path:?}");
-    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+    if should_output_cargo_build_instructions() {
+        println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+    }
 }
 
 /// Call from `build.rs` to trigger a rebuild whenever the file at `path` changes, or it doesn't
 /// exist.
 pub fn rerun_if_changed_or_doesnt_exist(path: impl AsRef<Path>) {
     let path = path.as_ref();
-    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+    if should_output_cargo_build_instructions() {
+        println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+    }
 }
 
 /// Call from `build.rs` to trigger a rebuild whenever any of the files identified by the given

@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .tensor_buffer_ext import TensorBufferExt
 
-__all__ = ["TensorBuffer", "TensorBufferArray", "TensorBufferArrayLike", "TensorBufferLike", "TensorBufferType"]
+__all__ = ["TensorBuffer", "TensorBufferArrayLike", "TensorBufferBatch", "TensorBufferLike", "TensorBufferType"]
 
 
 @define
@@ -31,7 +28,7 @@ class TensorBuffer(TensorBufferExt):
 
     # You can define your own __init__ function as a member of TensorBufferExt in tensor_buffer_ext.py
 
-    inner: npt.NDArray[np.float16] | (npt.NDArray[np.float32] | (npt.NDArray[np.float64] | (npt.NDArray[np.int16] | (npt.NDArray[np.int32] | (npt.NDArray[np.int64] | (npt.NDArray[np.int8] | (npt.NDArray[np.uint16] | (npt.NDArray[np.uint32] | (npt.NDArray[np.uint64] | npt.NDArray[np.uint8]))))))))) = field(converter=TensorBufferExt.inner__field_converter_override)  # type: ignore[misc]
+    inner: npt.NDArray[np.float16] | npt.NDArray[np.float32] | npt.NDArray[np.float64] | npt.NDArray[np.int16] | npt.NDArray[np.int32] | npt.NDArray[np.int64] | npt.NDArray[np.int8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[np.uint64] | npt.NDArray[np.uint8] = field(converter=TensorBufferExt.inner__field_converter_override)  # type: ignore[misc]
     """
     U8 (npt.NDArray[np.uint8]):
 
@@ -97,10 +94,10 @@ else:
     TensorBufferLike = Any
     TensorBufferArrayLike = Any
 
-# --- Arrow support ---
-
 
 class TensorBufferType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.TensorBuffer"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -181,20 +178,17 @@ class TensorBufferType(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.datatypes.TensorBuffer",
+            self._TYPE_NAME,
         )
 
 
-class TensorBufferArray(BaseExtensionArray[TensorBufferArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.TensorBuffer"
-    _EXTENSION_TYPE = TensorBufferType
+class TensorBufferBatch(BaseBatch[TensorBufferArrayLike]):
+    _ARROW_TYPE = TensorBufferType()
 
     @staticmethod
     def _native_to_pa_array(data: TensorBufferArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_buffer_ext.py
 
-
-TensorBufferType._ARRAY_TYPE = TensorBufferArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(TensorBufferType())

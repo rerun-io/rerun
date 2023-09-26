@@ -296,7 +296,7 @@ impl PointCloudDrawData {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 num_points_written,
-            );
+            )?;
             staging_buffer.extend_from_slice(vertices)?;
             staging_buffer.fill_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d(

@@ -7,7 +7,6 @@ from __future__ import annotations
 import argparse
 
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -17,9 +16,9 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_pinhole")
 
-    rr2.log(
+    rr.log(
         "pinhole",
-        rr2.Pinhole(image_from_camera=[[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [1.5, 1.5, 1.0]], resolution=[3840, 2160]),
+        rr.Pinhole(image_from_camera=[[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [1.5, 1.5, 1.0]], resolution=[3840, 2160]),
     )
 
     rr.script_teardown(args)

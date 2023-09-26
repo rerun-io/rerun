@@ -2,7 +2,7 @@
 title: "3D Line Mapping Revisited"
 python: hhttps://github.com/rerun-io/limap
 tags: [2D, 3D, structure-from-motion, time-series, line-detection, pinhole-camera]
-thumbnail: https://static.rerun.io/1c99ab95ad2a9e673effa0e104f5240912c80850_limap_480w.png
+thumbnail: https://static.rerun.io/limap/30b9ad1ae36df7dc809edfd40c11620292bc7294/480w.png
 thumbnail_dimensions: [480, 277]
 ---
 
@@ -13,11 +13,11 @@ https://vimeo.com/865327785?autoplay=1&loop=1&autopause=0&background=1&muted=1&r
 The work covers all stages of line-based structure-from-motion: line detection, line matching, line triangulation, track building and joint optimization. As shown in the figure, detected points and their interaction with lines is also used to aid the reconstruction.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/924954fe0cf39a4e02ef51fc48dd5a24bd618cbb_limap-overview_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/1c3528db7299ceaf9b7422b5be89c1aad805af7f_limap-overview_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/f6bab491a2fd0ac8215095de65555b66ec932326_limap-overview_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/8cd2c725f579dbef19c63a187742e16b6b67cf80_limap-overview_1200w.png">
-  <img src="https://static.rerun.io/8d066d407d2ce1117744555b0e7691c54d7715d4_limap-overview_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/limap-overview/3312bb34674ff070e4ef635471a53d1528722663/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/limap-overview/3312bb34674ff070e4ef635471a53d1528722663/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/limap-overview/3312bb34674ff070e4ef635471a53d1528722663/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/limap-overview/3312bb34674ff070e4ef635471a53d1528722663/1200w.png">
+  <img src="https://static.rerun.io/limap-overview/3312bb34674ff070e4ef635471a53d1528722663/full.png" alt="">
 </picture>
 
 LIMAP matches detected 2D lines between images and computes 3D candidates for each match. These are scored, and only the best candidate one is kept (green in video). To remove duplicates and reduce noise candidates are grouped together when they likely belong to the same line.

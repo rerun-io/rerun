@@ -7,7 +7,6 @@ from __future__ import annotations
 import argparse
 
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -17,10 +16,10 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_text_document")
 
-    rr2.log("text_document", rr2.TextDocument(body="Hello, TextDocument!"))
-    rr2.log(
+    rr.log("text_document", rr.TextDocument("Hello, TextDocument!"))
+    rr.log(
         "markdown",
-        rr2.TextDocument(
+        rr.TextDocument(
             body="# Hello\nMarkdown with `code`!\n\nA random image:\n\n![A random image](https://picsum.photos/640/480)",
             media_type="text/markdown",
         ),

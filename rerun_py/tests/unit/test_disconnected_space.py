@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import itertools
 
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rr_cmp
+import rerun as rr
+from rerun.components import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceLike
 
 
 def test_disconnected_space() -> None:
-    disconnected_spaces: list[rr_cmp.DisconnectedSpaceLike] = [
+    disconnected_spaces: list[DisconnectedSpaceLike] = [
         # DisconnectedSpaceLike: bool
         True,
         # DisconnectedSpaceLike: DisconnectedSpace
-        rr_cmp.DisconnectedSpace(True),
+        DisconnectedSpace(True),
     ]
 
     all_arrays = itertools.zip_longest(
@@ -19,11 +19,11 @@ def test_disconnected_space() -> None:
     )
 
     for disconnected_space in all_arrays:
-        print(f"rr2.DisconnectedSpace(\n" f"    disconnected_space={disconnected_space}\n" f")")
-        arch = rr2.DisconnectedSpace(disconnected_space)
+        print(f"rr.DisconnectedSpace(\n" f"    disconnected_space={disconnected_space}\n" f")")
+        arch = rr.DisconnectedSpace(disconnected_space)
         print(f"{arch}\n")
 
-        assert arch.disconnected_space == rr_cmp.DisconnectedSpaceArray.from_similar([True])
+        assert arch.disconnected_space == DisconnectedSpaceBatch([True])
 
 
 if __name__ == "__main__":

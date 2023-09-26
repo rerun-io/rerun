@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use re_error::ResultExt as _;
+use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 
 /// `on_msg` can be used to wake up the UI thread on Wasm.

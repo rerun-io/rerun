@@ -124,6 +124,14 @@ impl SpaceViewClass for TextDocumentSpaceView {
                             {
                                 if media_type == &re_types::components::MediaType::markdown() {
                                     re_tracing::profile_scope!("egui_commonmark");
+
+                                    // Make sure headers are big:
+                                    ui.style_mut()
+                                        .text_styles
+                                        .entry(egui::TextStyle::Heading)
+                                        .or_insert(egui::FontId::proportional(32.0))
+                                        .size = 24.0;
+
                                     egui_commonmark::CommonMarkViewer::new("markdown_viewer")
                                         .max_image_width(Some(ui.available_width().floor() as _))
                                         .show(ui, &mut state.commonmark_cache, body);

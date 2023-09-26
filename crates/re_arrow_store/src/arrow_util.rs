@@ -224,82 +224,41 @@ impl ArrayExt for dyn Array {
 
 #[test]
 fn test_clean_for_polars_nomodify() {
-    use re_components::datagen::build_some_colors;
     use re_log_types::DataCell;
+    use re_types::datagen::build_some_colors;
 
     // Colors don't need polars cleaning
     let cell: DataCell = build_some_colors(5).try_into().unwrap();
     let cleaned = cell.as_arrow_ref().clean_for_polars();
     assert_eq!(cell.as_arrow_ref(), &*cleaned);
+
+    #[cfg(feature = "polars")]
+    crate::polars_util::dataframe_from_cells(&[Some(cell)]).unwrap();
 }
 
-#[cfg(test)]
-mod tests {
-    use arrow2::datatypes::{DataType, Field, UnionMode};
-    use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-    use re_components::FixedSizeArrayField;
+#[test]
+fn test_clean_for_polars_modify() {
+    use std::f32::consts::PI;
+
     use re_log_types::DataCell;
+    use re_types::components::Transform3D;
+    use re_types::datatypes::{
+        Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+    };
 
-    use crate::ArrayExt;
+    let cell = DataCell::try_from_native([
+        Transform3D::new(TranslationAndMat3x3::translation([1.0, 0.0, 0.0])), //
+        Transform3D::new(TranslationRotationScale3D {
+            rotation: Some(RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(PI / 4.)).into()),
+            scale: Some(Scale3D::from(2.0)),
+            ..Default::default()
+        }),
+    ])
+    .unwrap();
 
-    #[derive(
-        Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize,
-    )]
-    #[arrow_field(transparent)]
-    pub struct Vec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3]);
+    let cleaned = cell.as_arrow_ref().clean_for_polars();
+    assert_ne!(cell.as_arrow_ref(), &*cleaned);
 
-    #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
-    #[arrow_field(type = "dense")]
-    enum TestComponentWithUnionAndFixedSizeList {
-        Bool(bool),
-        Vec3D(Vec3D),
-    }
-
-    re_log_types::component_legacy_shim!(TestComponentWithUnionAndFixedSizeList);
-
-    impl re_log_types::LegacyComponent for TestComponentWithUnionAndFixedSizeList {
-        fn legacy_name() -> re_log_types::ComponentName {
-            "test_component_with_union_and_fixed_size_list".into()
-        }
-    }
-
-    #[test]
-    fn test_clean_for_polars_modify() {
-        // Pick a type with both Unions and FixedSizeLists
-        let elements = vec![TestComponentWithUnionAndFixedSizeList::Bool(false)];
-
-        let cell: DataCell = elements.try_into().unwrap();
-        assert_eq!(
-            *cell.datatype(),
-            DataType::Union(
-                vec![
-                    Field::new("Bool", DataType::Boolean, false),
-                    Field::new(
-                        "Vec3D",
-                        DataType::FixedSizeList(
-                            Box::new(Field::new("item", DataType::Float32, false)),
-                            3
-                        ),
-                        false
-                    )
-                ],
-                None,
-                UnionMode::Dense
-            )
-        );
-
-        let cleaned = cell.as_arrow_ref().clean_for_polars();
-
-        assert_eq!(
-            *cleaned.data_type(),
-            DataType::Struct(vec![
-                Field::new("Bool", DataType::Boolean, false),
-                Field::new(
-                    "Vec3D",
-                    DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
-                    false
-                )
-            ],)
-        );
-    }
+    #[cfg(feature = "polars")]
+    crate::polars_util::dataframe_from_cells(&[Some(cell)]).unwrap();
 }

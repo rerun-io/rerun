@@ -17,7 +17,7 @@ def next_offset(acc: int, arr: Sized) -> int:
 class LineStrip3DExt:
     @staticmethod
     def native_to_pa_array_override(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        from ..datatypes import Vec3DArray
+        from ..datatypes import Vec3DBatch
         from . import LineStrip3D
 
         # pure-numpy fast path
@@ -25,34 +25,34 @@ class LineStrip3DExt:
             if len(data) == 0:
                 inners = []
             elif data.ndim == 2:
-                inners = [Vec3DArray.from_similar(data).storage]
+                inners = [Vec3DBatch(data).as_arrow_array().as_arrow_array().storage]
             else:
                 o = 0
                 offsets = [o] + [o := next_offset(o, arr) for arr in data]
-                inner = Vec3DArray.from_similar(data.reshape(-1)).storage
+                inner = Vec3DBatch(data.reshape(-1)).as_arrow_array().storage
                 return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         # pure-object
         elif isinstance(data, LineStrip3D):
-            inners = [Vec3DArray.from_similar(data.points).storage]
+            inners = [Vec3DBatch(data.points).as_arrow_array().storage]
 
         # sequences
         elif isinstance(data, Sequence):
             if len(data) == 0:
                 inners = []
-            elif isinstance(data, np.ndarray):
-                inners = [Vec3DArray.from_similar(datum).storage for datum in data]
+            elif isinstance(data[0], np.ndarray):
+                inners = [Vec3DBatch(datum).as_arrow_array().storage for datum in data]  # type: ignore[arg-type]
             elif isinstance(data[0], LineStrip3D):
-                inners = [Vec3DArray.from_similar(datum.points).storage for datum in data]  # type: ignore[union-attr]
+                inners = [Vec3DBatch(datum.points).as_arrow_array().storage for datum in data]  # type: ignore[union-attr]
             else:
-                inners = [Vec3DArray.from_similar(datum).storage for datum in data]  # type: ignore[arg-type]
+                inners = [Vec3DBatch(datum).as_arrow_array().storage for datum in data]  # type: ignore[arg-type]
 
         else:
-            inners = [Vec3DArray.from_similar(data).storage]
+            inners = [Vec3DBatch(data).as_arrow_array().storage]
 
         if len(inners) == 0:
             offsets = pa.array([0], type=pa.int32())
-            inner = Vec3DArray.from_similar([]).storage
+            inner = Vec3DBatch([]).as_arrow_array().storage
             return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         o = 0

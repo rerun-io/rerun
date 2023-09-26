@@ -38,16 +38,21 @@ impl Mesh3DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
+        let vertex_positions: Vec<_> = {
+            re_tracing::profile_scope!("vertex_positions");
+            arch_view.iter_required_component::<Position3D>()?.collect()
+        };
+        if vertex_positions.is_empty() {
+            return Ok(());
+        }
+
         let mesh = {
             re_tracing::profile_scope!("collect");
             // NOTE:
             // - Per-vertex properties are joined using the cluster key as usual.
             // - Per-mesh properties are just treated as a "global var", essentially.
             Mesh3D {
-                vertex_positions: {
-                    re_tracing::profile_scope!("vertex_positions");
-                    arch_view.iter_required_component::<Position3D>()?.collect()
-                },
+                vertex_positions,
                 vertex_normals: if arch_view.has_component::<Vector3D>() {
                     re_tracing::profile_scope!("vertex_normals");
                     Some(
@@ -71,12 +76,8 @@ impl Mesh3DPart {
                 } else {
                     None
                 },
-                mesh_properties: arch_view
-                    .iter_raw_optional_component::<MeshProperties>()?
-                    .and_then(|mut comp_batch| comp_batch.next()),
-                mesh_material: arch_view
-                    .iter_raw_optional_component::<Material>()?
-                    .and_then(|mut comp_batch| comp_batch.next()),
+                mesh_properties: arch_view.raw_optional_mono_component::<MeshProperties>()?,
+                mesh_material: arch_view.raw_optional_mono_component::<Material>()?,
                 class_ids: None,
                 instance_keys: None,
             }
@@ -101,22 +102,23 @@ impl Mesh3DPart {
         if let Some(mesh) = mesh {
             re_tracing::profile_scope!("mesh instances");
 
-            instances.extend(
-                mesh.mesh_instances
-                    .iter()
-                    .map(move |mesh_instance| MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh: ent_context.world_from_obj * mesh_instance.world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }),
-            );
+            instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                let entity_from_mesh = mesh_instance.world_from_mesh;
+                let world_from_mesh = ent_context.world_from_entity * entity_from_mesh;
+
+                MeshInstance {
+                    gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                    world_from_mesh,
+                    outline_mask_ids,
+                    picking_layer_id: picking_layer_id_from_instance_path_hash(
+                        picking_instance_hash,
+                    ),
+                    ..Default::default()
+                }
+            }));
 
             self.0
-                .extend_bounding_box(*mesh.bbox(), ent_context.world_from_obj);
+                .extend_bounding_box(mesh.bbox(), ent_context.world_from_entity);
         };
 
         Ok(())

@@ -8,7 +8,7 @@ import pyarrow as pa
 from .._unions import build_dense_union, union_discriminant_type
 
 if TYPE_CHECKING:
-    from ..log import ComponentBatchLike
+    from .._log import ComponentBatchLike
     from . import (
         Mat3x3,
         Rotation3D,
@@ -23,11 +23,11 @@ if TYPE_CHECKING:
 class Transform3DExt:
     @staticmethod
     def native_to_pa_array_override(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        from ..datatypes import Transform3DArray
+        from ..datatypes import Transform3DBatch
         from . import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
 
-        if isinstance(data, Transform3DArray):
-            return data.storage
+        if isinstance(data, Transform3DBatch):
+            return data.pa_array.storage
 
         if isinstance(data, Transform3D):
             data = data.inner
@@ -52,11 +52,12 @@ class Transform3DExt:
         # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
         return storage
 
-    # Implement the ArchetypeLike
+    # Implement the AsComponents
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import Transform3D
+        from ..datatypes import Transform3D as Transform3DDataType
 
-        return Transform3D(self).as_component_batches()
+        return Transform3D(cast(Transform3DDataType, self)).as_component_batches()
 
     def num_instances(self) -> int:
         # Always a mono-component
@@ -66,7 +67,7 @@ class Transform3DExt:
 # TODO(#2623): lots of boilerplate here that could be auto-generated
 # To address that:
 # 1) rewrite everything in the form of `xxx__native_to_pa_array_override()`
-# 2) higher level `xxx__native_to_pa_array_override()` should call into lower level `xxx::from_similar()`
+# 2) higher level `xxx__native_to_pa_array_override()` should call into lower level `xxx::__init__()`
 # 3) identify regularities and auto-gen them
 
 
@@ -93,12 +94,12 @@ def _build_union_array_from_scale(scale: Scale3D | None, type_: pa.DenseUnionTyp
 
 
 def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
-    from . import Mat3x3Array, Mat3x3Type
+    from . import Mat3x3Batch, Mat3x3Type
 
     if mat is None:
         return pa.nulls(1, Mat3x3Type().storage_type)
     else:
-        return Mat3x3Array._native_to_pa_array(mat, Mat3x3Type().storage_type)
+        return Mat3x3Batch._native_to_pa_array(mat, Mat3x3Type().storage_type)
 
 
 def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
@@ -111,12 +112,12 @@ def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
 
 
 def _optional_rotation_to_arrow(rotation: Rotation3D | None, storage_type: pa.DataType) -> pa.Array:
-    from . import Rotation3DArray
+    from . import Rotation3DBatch
 
     if rotation is None:
         return pa.nulls(1, storage_type)
     else:
-        return Rotation3DArray._native_to_pa_array(rotation, storage_type)
+        return Rotation3DBatch._native_to_pa_array(rotation, storage_type)
 
 
 def _build_struct_array_from_translation_mat3x3(

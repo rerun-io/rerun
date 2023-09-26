@@ -8,9 +8,7 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import (
-    Archetype,
-)
+from .._baseclasses import Archetype
 
 __all__ = ["TimeSeriesScalar"]
 
@@ -29,13 +27,12 @@ class TimeSeriesScalar(Archetype):
     import math
 
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_scalar", spawn=True)
 
     for step in range(0, 64):
         rr.set_time_sequence("step", step)
-        rr2.log("scalar", rr2.TimeSeriesScalar(math.sin(step / 10.0)))
+        rr.log("scalar", rr.TimeSeriesScalar(math.sin(step / 10.0)))
     ```
 
     ```python
@@ -44,7 +41,6 @@ class TimeSeriesScalar(Archetype):
 
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_scalar_multiple_plots", spawn=True)
     lcg_state = np.int64(0)
@@ -53,29 +49,29 @@ class TimeSeriesScalar(Archetype):
         rr.set_time_sequence("step", t)
 
         # Log two time series under a shared root so that they show in the same plot by default.
-        rr2.log("trig/sin", rr2.TimeSeriesScalar(sin(float(t) / 100.0), label="sin(0.01t)", color=[255, 0, 0]))
-        rr2.log("trig/cos", rr2.TimeSeriesScalar(cos(float(t) / 100.0), label="cos(0.01t)", color=[0, 255, 0]))
+        rr.log("trig/sin", rr.TimeSeriesScalar(sin(float(t) / 100.0), label="sin(0.01t)", color=[255, 0, 0]))
+        rr.log("trig/cos", rr.TimeSeriesScalar(cos(float(t) / 100.0), label="cos(0.01t)", color=[0, 255, 0]))
 
         # Log scattered points under a different root so that they shows in a different plot by default.
         lcg_state = (1140671485 * lcg_state + 128201163) % 16777216  # simple linear congruency generator
-        rr2.log("scatter/lcg", rr2.TimeSeriesScalar(lcg_state, scattered=True))
+        rr.log("scatter/lcg", rr.TimeSeriesScalar(lcg_state, scattered=True))
     ```
     """
 
     # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
 
-    scalar: components.ScalarArray = field(
+    scalar: components.ScalarBatch = field(
         metadata={"component": "required"},
-        converter=components.ScalarArray.from_similar,  # type: ignore[misc]
+        converter=components.ScalarBatch,  # type: ignore[misc]
     )
     """
     The scalar value to log.
     """
 
-    radius: components.RadiusArray | None = field(
+    radius: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     """
     An optional radius for the point.
@@ -88,10 +84,10 @@ class TimeSeriesScalar(Archetype):
     line will use the default width of `1.0`.
     """
 
-    color: components.ColorArray | None = field(
+    color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     """
     Optional color for the scalar entry.
@@ -107,10 +103,10 @@ class TimeSeriesScalar(Archetype):
     Otherwise, the line will appear gray in the legend.
     """
 
-    label: components.TextArray | None = field(
+    label: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     """
     An optional label for the point.
@@ -123,10 +119,10 @@ class TimeSeriesScalar(Archetype):
     the space it's in.
     """
 
-    scattered: components.ScalarScatteringArray | None = field(
+    scattered: components.ScalarScatteringBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ScalarScatteringArray.optional_from_similar,  # type: ignore[misc]
+        converter=components.ScalarScatteringBatch._optional,  # type: ignore[misc]
     )
     """
     Specifies whether a point in a scatter plot should form a continuous line.

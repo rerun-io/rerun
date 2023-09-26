@@ -11,16 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .annotation_info_ext import AnnotationInfoExt
 
 __all__ = [
     "AnnotationInfo",
-    "AnnotationInfoArray",
     "AnnotationInfoArrayLike",
+    "AnnotationInfoBatch",
     "AnnotationInfoLike",
     "AnnotationInfoType",
 ]
@@ -86,10 +83,9 @@ AnnotationInfoArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class AnnotationInfoType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.AnnotationInfo"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -100,20 +96,17 @@ class AnnotationInfoType(BaseExtensionType):
                     pa.field("color", pa.uint32(), nullable=True, metadata={}),
                 ]
             ),
-            "rerun.datatypes.AnnotationInfo",
+            self._TYPE_NAME,
         )
 
 
-class AnnotationInfoArray(BaseExtensionArray[AnnotationInfoArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.AnnotationInfo"
-    _EXTENSION_TYPE = AnnotationInfoType
+class AnnotationInfoBatch(BaseBatch[AnnotationInfoArrayLike]):
+    _ARROW_TYPE = AnnotationInfoType()
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
         return AnnotationInfoExt.native_to_pa_array_override(data, data_type)
 
-
-AnnotationInfoType._ARRAY_TYPE = AnnotationInfoArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AnnotationInfoType())

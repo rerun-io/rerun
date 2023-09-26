@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["PinholeProjection", "PinholeProjectionArray", "PinholeProjectionType"]
+__all__ = ["PinholeProjection", "PinholeProjectionBatch", "PinholeProjectionType"]
 
 
 class PinholeProjection(datatypes.Mat3x3):
@@ -36,18 +33,13 @@ class PinholeProjection(datatypes.Mat3x3):
     pass
 
 
-class PinholeProjectionType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.PinholeProjection"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Mat3x3Type
+class PinholeProjectionType(datatypes.Mat3x3Type):
+    _TYPE_NAME: str = "rerun.components.PinholeProjection"
 
 
-class PinholeProjectionArray(BaseDelegatingExtensionArray[datatypes.Mat3x3ArrayLike]):
-    _EXTENSION_NAME = "rerun.components.PinholeProjection"
-    _EXTENSION_TYPE = PinholeProjectionType
-    _DELEGATED_ARRAY_TYPE = datatypes.Mat3x3Array
+class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):
+    _ARROW_TYPE = PinholeProjectionType()
 
-
-PinholeProjectionType._ARRAY_TYPE = PinholeProjectionArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(PinholeProjectionType())

@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .draw_order_ext import DrawOrderExt
 
-__all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
+__all__ = ["DrawOrder", "DrawOrderArrayLike", "DrawOrderBatch", "DrawOrderLike", "DrawOrderType"]
 
 
 @define
@@ -53,24 +50,20 @@ else:
 DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], float, npt.NDArray[np.float32]]
 
 
-# --- Arrow support ---
-
-
 class DrawOrderType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.components.DrawOrder"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.DrawOrder")
+        pa.ExtensionType.__init__(self, pa.float32(), self._TYPE_NAME)
 
 
-class DrawOrderArray(BaseExtensionArray[DrawOrderArrayLike]):
-    _EXTENSION_NAME = "rerun.components.DrawOrder"
-    _EXTENSION_TYPE = DrawOrderType
+class DrawOrderBatch(BaseBatch[DrawOrderArrayLike], ComponentBatchMixin):
+    _ARROW_TYPE = DrawOrderType()
 
     @staticmethod
     def _native_to_pa_array(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
         return DrawOrderExt.native_to_pa_array_override(data, data_type)
 
-
-DrawOrderType._ARRAY_TYPE = DrawOrderArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(DrawOrderType())

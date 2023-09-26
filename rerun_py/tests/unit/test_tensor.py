@@ -4,33 +4,33 @@ from typing import Any
 
 import numpy as np
 import pytest
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.components import TensorData, TensorDataBatch
+from rerun.datatypes import TensorBuffer, TensorDataLike, TensorDimension
 
 rng = np.random.default_rng(12345)
 RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
 
 
-TENSOR_DATA_INPUTS: list[rrd.TensorDataLike] = [
+TENSOR_DATA_INPUTS: list[TensorDataLike] = [
     # Full explicit construction
-    rrd.TensorData(
+    TensorData(
         shape=[
-            rrd.TensorDimension(8, name="a"),
-            rrd.TensorDimension(6, name="b"),
-            rrd.TensorDimension(3, name="c"),
-            rrd.TensorDimension(5, name="d"),
+            TensorDimension(8, name="a"),
+            TensorDimension(6, name="b"),
+            TensorDimension(3, name="c"),
+            TensorDimension(5, name="d"),
         ],
-        buffer=rrd.TensorBuffer(RANDOM_TENSOR_SOURCE),
+        buffer=TensorBuffer(RANDOM_TENSOR_SOURCE),
     ),
     # Implicit construction from ndarray
     RANDOM_TENSOR_SOURCE,
     # Explicit construction from array
-    rrd.TensorData(array=RANDOM_TENSOR_SOURCE),
+    TensorData(array=RANDOM_TENSOR_SOURCE),
     # Explicit construction from array
-    rrd.TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
+    TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
     # Explicit construction from array
-    rrd.TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
+    TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
 ]
 
 # 0 = shape
@@ -45,19 +45,19 @@ CHECK_FIELDS: list[list[int]] = [
 
 
 def tensor_data_expected() -> Any:
-    return rrc.TensorDataArray.from_similar(TENSOR_DATA_INPUTS[0])
+    return TensorDataBatch(TENSOR_DATA_INPUTS[0])
 
 
 def compare_tensors(left: Any, right: Any, check_fields: list[int]) -> None:
     for field in check_fields:
-        assert left.storage.field(field) == right.storage.field(field)
+        assert left.as_arrow_array().storage.field(field) == right.as_arrow_array().storage.field(field)
 
 
 def test_tensor() -> None:
     expected = tensor_data_expected()
 
     for input, check_fields in zip(TENSOR_DATA_INPUTS, CHECK_FIELDS):
-        arch = rr2.Tensor(data=input)
+        arch = rr.Tensor(data=input)
 
         compare_tensors(arch.data, expected, check_fields)
 
@@ -69,29 +69,29 @@ def test_bad_tensors() -> None:
 
     # No buffers
     with pytest.raises(ValueError):
-        rrd.TensorData(),
+        TensorData(),
 
     # Buffer with no indication of shape
     with pytest.raises(ValueError):
-        rrd.TensorData(
+        TensorData(
             buffer=RANDOM_TENSOR_SOURCE,
         ),
 
     # Both array and buffer
     with pytest.raises(ValueError):
-        rrd.TensorData(
+        TensorData(
             array=RANDOM_TENSOR_SOURCE,
             buffer=RANDOM_TENSOR_SOURCE,
         ),
 
     # Wrong size buffer for dimensions
     with pytest.raises(ValueError):
-        rrd.TensorData(
+        TensorData(
             shape=[
-                rrd.TensorDimension(8, name="a"),
-                rrd.TensorDimension(6, name="b"),
-                rrd.TensorDimension(3, name="c"),
-                rrd.TensorDimension(4, name="d"),
+                TensorDimension(8, name="a"),
+                TensorDimension(6, name="b"),
+                TensorDimension(3, name="c"),
+                TensorDimension(4, name="d"),
             ],
             buffer=RANDOM_TENSOR_SOURCE,
         ),
@@ -100,19 +100,19 @@ def test_bad_tensors() -> None:
 
     # Wrong number of names
     with pytest.raises(TypeError):
-        rrd.TensorData(
+        TensorData(
             names=["a", "b", "c"],
             array=RANDOM_TENSOR_SOURCE,
         ),
 
     # Shape disagrees with array
     with pytest.raises(TypeError):
-        rrd.TensorData(
+        TensorData(
             shape=[
-                rrd.TensorDimension(8, name="a"),
-                rrd.TensorDimension(6, name="b"),
-                rrd.TensorDimension(5, name="c"),
-                rrd.TensorDimension(3, name="d"),
+                TensorDimension(8, name="a"),
+                TensorDimension(6, name="b"),
+                TensorDimension(5, name="c"),
+                TensorDimension(3, name="d"),
             ],
             array=RANDOM_TENSOR_SOURCE,
         ),

@@ -12,16 +12,13 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_float32,
 )
 from .mat4x4_ext import Mat4x4Ext
 
-__all__ = ["Mat4x4", "Mat4x4Array", "Mat4x4ArrayLike", "Mat4x4Like", "Mat4x4Type"]
+__all__ = ["Mat4x4", "Mat4x4ArrayLike", "Mat4x4Batch", "Mat4x4Like", "Mat4x4Type"]
 
 
 @define(init=False)
@@ -42,22 +39,22 @@ class Mat4x4(Mat4x4Ext):
     However, construction is done from a list of rows, which follows NumPy's convention:
     ```python
     np.testing.assert_array_equal(
-        rr.dt.Mat4x4([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
+        rr.datatypes.Mat4x4([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
         np.array([1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16], dtype=np.float32),
     )
     np.testing.assert_array_equal(
-        rr.dt.Mat4x4([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
+        rr.datatypes.Mat4x4([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
         np.array([1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16], dtype=np.float32),
     )
     ```
     If you want to construct a matrix from a list of columns instead, use the named `columns` parameter:
     ```python
     np.testing.assert_array_equal(
-        rr.dt.Mat4x4(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
+        rr.datatypes.Mat4x4(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).flat_columns,
         np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], dtype=np.float32),
     )
     np.testing.assert_array_equal(
-        rr.dt.Mat4x4(columns=[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
+        rr.datatypes.Mat4x4(columns=[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]).flat_columns,
         np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], dtype=np.float32),
     )
     ```
@@ -86,26 +83,22 @@ Mat4x4ArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class Mat4x4Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.Mat4x4"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 16), "rerun.datatypes.Mat4x4"
+            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 16), self._TYPE_NAME
         )
 
 
-class Mat4x4Array(BaseExtensionArray[Mat4x4ArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.Mat4x4"
-    _EXTENSION_TYPE = Mat4x4Type
+class Mat4x4Batch(BaseBatch[Mat4x4ArrayLike]):
+    _ARROW_TYPE = Mat4x4Type()
 
     @staticmethod
     def _native_to_pa_array(data: Mat4x4ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Mat4x4Ext.native_to_pa_array_override(data, data_type)
 
-
-Mat4x4Type._ARRAY_TYPE = Mat4x4Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(Mat4x4Type())

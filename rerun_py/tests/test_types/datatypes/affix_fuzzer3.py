@@ -11,21 +11,18 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from rerun._baseclasses import BaseBatch, BaseExtensionType
 
 from .. import datatypes
 
-__all__ = ["AffixFuzzer3", "AffixFuzzer3Array", "AffixFuzzer3ArrayLike", "AffixFuzzer3Like", "AffixFuzzer3Type"]
+__all__ = ["AffixFuzzer3", "AffixFuzzer3ArrayLike", "AffixFuzzer3Batch", "AffixFuzzer3Like", "AffixFuzzer3Type"]
 
 
 @define
 class AffixFuzzer3:
     # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
 
-    inner: float | (list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32]) = field()
+    inner: float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] = field()
     """
     degrees (float):
 
@@ -57,10 +54,10 @@ else:
     AffixFuzzer3Like = Any
     AffixFuzzer3ArrayLike = Any
 
-# --- Arrow support ---
-
 
 class AffixFuzzer3Type(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.testing.datatypes.AffixFuzzer3"
+
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
@@ -122,20 +119,17 @@ class AffixFuzzer3Type(BaseExtensionType):
                     ),
                 ]
             ),
-            "rerun.testing.datatypes.AffixFuzzer3",
+            self._TYPE_NAME,
         )
 
 
-class AffixFuzzer3Array(BaseExtensionArray[AffixFuzzer3ArrayLike]):
-    _EXTENSION_NAME = "rerun.testing.datatypes.AffixFuzzer3"
-    _EXTENSION_TYPE = AffixFuzzer3Type
+class AffixFuzzer3Batch(BaseBatch[AffixFuzzer3ArrayLike]):
+    _ARROW_TYPE = AffixFuzzer3Type()
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer3ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer3_ext.py
 
-
-AffixFuzzer3Type._ARRAY_TYPE = AffixFuzzer3Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer3Type())

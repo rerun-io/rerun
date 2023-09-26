@@ -29,7 +29,8 @@ def _send_warning(
     You can also use this for unrecoverable problems,
     or raise an exception and let the @log_decorator handle it instead.
     """
-    from rerun.experimental import TextLog, log
+    from rerun._log import log
+    from rerun.archetypes import TextLog
 
     if rerun.strict_mode():
         raise TypeError(message)

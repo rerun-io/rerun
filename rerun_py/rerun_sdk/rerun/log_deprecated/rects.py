@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
 
-from rerun.components_deprecated.rect2d import RectFormat
+from rerun._log import log
+from rerun.archetypes import Boxes2D
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated import Color, Colors, OptionalClassIds
 from rerun.log_deprecated.log_decorator import log_decorator
@@ -16,6 +18,28 @@ __all__ = [
     "log_rect",
     "log_rects",
 ]
+
+
+class RectFormat(Enum):
+    """How to specify rectangles (axis-aligned bounding boxes)."""
+
+    XYWH = "XYWH"
+    """[x,y,w,h], with x,y = left,top."""
+
+    YXHW = "YXHW"
+    """[y,x,h,w], with x,y = left,top."""
+
+    XYXY = "XYXY"
+    """[x0, y0, x1, y1], with x0,y0 = left,top and x1,y1 = right,bottom."""
+
+    YXYX = "YXYX"
+    """[y0, x0, y1, x1], with x0,y0 = left,top and x1,y1 = right,bottom."""
+
+    XCYCWH = "XCYCWH"
+    """[x_center, y_center, width, height]."""
+
+    XCYCW2H2 = "XCYCW2H2"
+    """[x_center, y_center, width/2, height/2]."""
 
 
 @log_decorator
@@ -141,12 +165,10 @@ def log_rects(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import Boxes2D, log
-
     if rects is None:
         raise ValueError("`rects` argument must be set")
 
-    if np.any(rects):  # type: ignore[arg-type]
+    if np.any(rects):
         rects = np.asarray(rects, dtype="float32")
         if rects.ndim == 1:
             rects = np.expand_dims(rects, axis=0)

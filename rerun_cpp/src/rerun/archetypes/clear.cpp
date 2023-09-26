@@ -13,7 +13,7 @@ namespace rerun {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(1);
 
-            comp_batches.emplace_back(settings);
+            comp_batches.emplace_back(recursive);
             comp_batches.emplace_back(
                 ComponentBatch<components::IndicatorComponent<Clear::INDICATOR_COMPONENT_NAME>>(
                     nullptr,

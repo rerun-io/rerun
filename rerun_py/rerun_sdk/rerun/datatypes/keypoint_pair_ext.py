@@ -26,7 +26,7 @@ def _keypoint_pair_converter(
 class KeypointPairExt:
     @staticmethod
     def native_to_pa_array_override(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import KeypointIdArray, KeypointPair
+        from . import KeypointIdBatch, KeypointPair
 
         if isinstance(data, KeypointPair):
             data = [data]
@@ -36,8 +36,8 @@ class KeypointPairExt:
         keypoint0 = [pair.keypoint0 for pair in keypoints]
         keypoint1 = [pair.keypoint1 for pair in keypoints]
 
-        keypoint0_array = KeypointIdArray.from_similar(keypoint0).storage
-        keypoint1_array = KeypointIdArray.from_similar(keypoint1).storage
+        keypoint0_array = KeypointIdBatch(keypoint0).as_arrow_array().storage
+        keypoint1_array = KeypointIdBatch(keypoint1).as_arrow_array().storage
 
         return pa.StructArray.from_arrays(
             arrays=[keypoint0_array, keypoint1_array],

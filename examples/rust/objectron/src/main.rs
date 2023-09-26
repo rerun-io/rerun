@@ -16,10 +16,12 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, Context as _};
+use anyhow::Context as _;
 
 use rerun::{
-    archetypes::{Image, LineStrips2D, Pinhole, Points2D, Points3D, Transform3D},
+    archetypes::{
+        Boxes3D, Image, LineStrips2D, Pinhole, Points2D, Points3D, Transform3D, ViewCoordinates,
+    },
     components::HalfSizes3D,
     datatypes::TranslationRotationScale3D,
     external::re_log,
@@ -75,19 +77,6 @@ impl<'a> From<&'a [objectron::FrameAnnotation]> for AnnotationsPerFrame<'a> {
     }
 }
 
-fn log_coordinate_space(
-    rec: &RecordingStream,
-    ent_path: impl Into<rerun::EntityPath>,
-    axes: &str,
-) -> anyhow::Result<()> {
-    // TODO(#2816): ViewCoordinates archetype
-    let view_coords: rerun::components::ViewCoordinates = axes
-        .parse()
-        .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
-    rec.log_component_batches(ent_path, true, 1, [&view_coords as _])
-        .map_err(Into::into)
-}
-
 fn log_ar_frame(
     rec: &RecordingStream,
     annotations: &AnnotationsPerFrame<'_>,
@@ -138,13 +127,13 @@ fn log_baseline_objects(
 
     for (id, bbox_half_size, transform, label) in boxes {
         let path = format!("world/annotations/box-{id}");
-        rec.log(
+        rec.log_timeless(
             path.clone(),
-            &rerun::archetypes::Boxes3D::from_half_sizes([bbox_half_size])
+            &Boxes3D::from_half_sizes([bbox_half_size])
                 .with_labels([label])
                 .with_colors([Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log(path, &rerun::archetypes::Transform3D::new(transform))?;
+        rec.log_timeless(path, &Transform3D::new(transform))?;
     }
 
     Ok(())
@@ -363,8 +352,8 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     let annotations = read_annotations(&store_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
-    log_coordinate_space(rec, "world", "RUB")?;
-    log_coordinate_space(rec, "world/camera", "RDF")?;
+    rec.log_timeless("world", &ViewCoordinates::RUB)?;
+    rec.log_timeless("world/camera", &ViewCoordinates::RDF)?;
 
     log_baseline_objects(rec, &annotations.objects)?;
 

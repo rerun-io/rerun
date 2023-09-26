@@ -12,13 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import (
-    BaseExtensionArray,
-    BaseExtensionType,
-)
+from .._baseclasses import BaseBatch, BaseExtensionType
 from .class_id_ext import ClassIdExt
 
-__all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
+__all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike", "ClassIdType"]
 
 
 @define
@@ -53,24 +50,20 @@ ClassIdArrayLike = Union[
 ]
 
 
-# --- Arrow support ---
-
-
 class ClassIdType(BaseExtensionType):
+    _TYPE_NAME: str = "rerun.datatypes.ClassId"
+
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.datatypes.ClassId")
+        pa.ExtensionType.__init__(self, pa.uint16(), self._TYPE_NAME)
 
 
-class ClassIdArray(BaseExtensionArray[ClassIdArrayLike]):
-    _EXTENSION_NAME = "rerun.datatypes.ClassId"
-    _EXTENSION_TYPE = ClassIdType
+class ClassIdBatch(BaseBatch[ClassIdArrayLike]):
+    _ARROW_TYPE = ClassIdType()
 
     @staticmethod
     def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClassIdExt.native_to_pa_array_override(data, data_type)
 
-
-ClassIdType._ARRAY_TYPE = ClassIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ClassIdType())

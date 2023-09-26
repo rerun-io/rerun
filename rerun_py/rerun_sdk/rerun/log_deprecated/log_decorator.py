@@ -7,6 +7,8 @@ from typing import Any, Callable, TypeVar, cast
 
 import rerun
 from rerun import bindings
+from rerun._log import log
+from rerun.archetypes import TextLog
 from rerun.recording_stream import RecordingStream
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
@@ -32,8 +34,6 @@ def log_decorator(func: _TFunc) -> _TFunc:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        from rerun.experimental import TextLog, log
-
         recording = RecordingStream.to_native(kwargs.get("recording"))
         if not bindings.is_enabled(recording):
             # NOTE: use `warnings` which handles runtime deduplication.

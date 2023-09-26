@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
+from rerun._log import log
+from rerun.archetypes import Asset3D
+from rerun.components import MediaType, OutOfTreeTransform3DBatch
+from rerun.datatypes import TranslationAndMat3x3
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
+from .._image import ImageEncoded, ImageFormat
+
 __all__ = [
     "MeshFormat",
-    "ImageFormat",
     "log_mesh_file",
     "log_image_file",
 ]
@@ -32,17 +35,6 @@ class MeshFormat(Enum):
     # viewer.
     OBJ = "OBJ"
     """Wavefront .obj format."""
-
-
-@dataclass
-class ImageFormat(Enum):
-    """Image file format."""
-
-    JPEG = "jpeg"
-    """JPEG format."""
-
-    PNG = "png"
-    """PNG format."""
 
 
 @log_decorator
@@ -93,18 +85,17 @@ def log_mesh_file(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    import rerun.experimental as rr2
 
     recording = RecordingStream.to_native(recording)
 
     if mesh_path is not None:
-        asset3d = rr2.Asset3D.from_file(str(mesh_path))
+        asset3d = Asset3D.from_file(str(mesh_path))
     elif mesh_bytes is not None:
         if mesh_format == MeshFormat.GLB:
-            media_type = rr2.cmp.MediaType.glb()
+            media_type = MediaType.glb()
         else:
-            media_type = rr2.cmp.MediaType.obj()
-        asset3d = rr2.Asset3D.from_bytes(mesh_bytes, media_type)
+            media_type = MediaType.obj()
+        asset3d = Asset3D.from_bytes(mesh_bytes, media_type)
     else:
         raise ValueError("must specify either `mesh_path` or `mesh_bytes`")
 
@@ -112,11 +103,9 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
         translation = transform[..., -1]
         mat = [transform[..., 0], transform[..., 1], transform[..., 2]]
-        asset3d.transform = rr2.dt.Transform3DArray.from_similar(
-            rr2.dt.TranslationAndMat3x3(translation=translation, matrix=mat)
-        )
+        asset3d.transform = OutOfTreeTransform3DBatch(TranslationAndMat3x3(translation=translation, matrix=mat))
 
-    return rr2.log(entity_path, asset3d, timeless=timeless, recording=recording)
+    return log(entity_path, asset3d, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -163,14 +152,13 @@ def log_image_file(
 
     recording = RecordingStream.to_native(recording)
 
-    img_format = getattr(img_format, "value", None)
-
-    # Image file arrow handling happens inside the python bridge
-    bindings.log_image_file(
+    log(
         entity_path,
-        img_bytes=img_bytes,
-        img_path=img_path,
-        img_format=img_format,
+        ImageEncoded(
+            path=img_path,
+            contents=img_bytes,
+            format=img_format,
+        ),
         timeless=timeless,
         recording=recording,
     )

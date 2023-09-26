@@ -6,12 +6,9 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import (
-    BaseDelegatingExtensionArray,
-    BaseDelegatingExtensionType,
-)
+from .._baseclasses import ComponentBatchMixin
 
-__all__ = ["HalfSizes3D", "HalfSizes3DArray", "HalfSizes3DType"]
+__all__ = ["HalfSizes3D", "HalfSizes3DBatch", "HalfSizes3DType"]
 
 
 class HalfSizes3D(datatypes.Vec3D):
@@ -28,18 +25,13 @@ class HalfSizes3D(datatypes.Vec3D):
     pass
 
 
-class HalfSizes3DType(BaseDelegatingExtensionType):
-    _TYPE_NAME = "rerun.components.HalfSizes3D"
-    _DELEGATED_EXTENSION_TYPE = datatypes.Vec3DType
+class HalfSizes3DType(datatypes.Vec3DType):
+    _TYPE_NAME: str = "rerun.components.HalfSizes3D"
 
 
-class HalfSizes3DArray(BaseDelegatingExtensionArray[datatypes.Vec3DArrayLike]):
-    _EXTENSION_NAME = "rerun.components.HalfSizes3D"
-    _EXTENSION_TYPE = HalfSizes3DType
-    _DELEGATED_ARRAY_TYPE = datatypes.Vec3DArray
+class HalfSizes3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
+    _ARROW_TYPE = HalfSizes3DType()
 
-
-HalfSizes3DType._ARRAY_TYPE = HalfSizes3DArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(HalfSizes3DType())

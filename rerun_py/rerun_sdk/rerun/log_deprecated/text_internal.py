@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from rerun._log import log
+from rerun.archetypes import TextLog
 from rerun.log_deprecated import Color, _normalize_colors
 from rerun.recording_stream import RecordingStream
 
@@ -43,7 +45,6 @@ def log_text_entry_internal(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import TextLog, log
 
     recording = RecordingStream.to_native(recording)
 

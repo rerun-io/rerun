@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 import numpy as np
 import numpy.typing as npt
 
+from rerun._log import log
+from rerun.archetypes import LineStrips2D, LineStrips3D
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated import Color, Colors, _normalize_radii
 from rerun.log_deprecated.log_decorator import log_decorator
@@ -67,7 +69,6 @@ def log_line_strip(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import LineStrips2D, LineStrips3D, log
 
     if positions is None:
         raise ValueError("`positions` argument must be set")
@@ -152,7 +153,6 @@ def log_line_strips_2d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import LineStrips2D, log
 
     if line_strips is None:
         raise ValueError("`line_strips` argument must be set")
@@ -165,6 +165,10 @@ def log_line_strips_2d(
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
+
+    # New types use Sequence, not Iterable
+    if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
+        line_strips = list(line_strips)
 
     stroke_widths = _normalize_radii(stroke_widths)
     radii = stroke_widths / 2.0
@@ -229,7 +233,6 @@ def log_line_strips_3d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import LineStrips3D, log
 
     if line_strips is None:
         raise ValueError("`line_strips` argument must be set")
@@ -242,6 +245,10 @@ def log_line_strips_3d(
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
+
+    # New types use Sequence, not Iterable
+    if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
+        line_strips = list(line_strips)
 
     stroke_widths = _normalize_radii(stroke_widths)
     radii = stroke_widths / 2.0
@@ -303,7 +310,6 @@ def log_line_segments(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import LineStrips2D, LineStrips3D, log
 
     if positions is None:
         raise ValueError("`positions` argument must be set")

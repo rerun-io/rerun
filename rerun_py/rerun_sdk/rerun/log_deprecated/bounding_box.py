@@ -5,6 +5,9 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
+from rerun._log import log
+from rerun.archetypes import Boxes3D
+from rerun.datatypes import Quaternion
 from rerun.log_deprecated import (
     Color,
     Colors,
@@ -139,8 +142,6 @@ def log_obbs(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import Boxes3D, dt, log
-
     if half_sizes is None:
         raise ValueError("`half_sizes` argument must be set")
 
@@ -158,7 +159,7 @@ def log_obbs(
         rotations_q = np.asarray(rotations_q, dtype="float32")
         if rotations_q.ndim == 1:
             rotations_q = np.expand_dims(rotations_q, axis=0)
-        rotations = [dt.Quaternion(xyzw=quat) for quat in rotations_q]
+        rotations = [Quaternion(xyzw=quat) for quat in rotations_q]
     else:
         rotations = None
 
