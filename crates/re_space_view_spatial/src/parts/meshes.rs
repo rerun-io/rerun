@@ -76,12 +76,8 @@ impl Mesh3DPart {
                 } else {
                     None
                 },
-                mesh_properties: arch_view
-                    .iter_raw_optional_component::<MeshProperties>()?
-                    .and_then(|mut comp_batch| comp_batch.next()),
-                mesh_material: arch_view
-                    .iter_raw_optional_component::<Material>()?
-                    .and_then(|mut comp_batch| comp_batch.next()),
+                mesh_properties: arch_view.raw_optional_mono_component::<MeshProperties>()?,
+                mesh_material: arch_view.raw_optional_mono_component::<Material>()?,
                 class_ids: None,
                 instance_keys: None,
             }

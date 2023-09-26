@@ -283,12 +283,13 @@ impl<A: Archetype> ArchetypeView<A> {
         self.components.get(&name).map_or(false, |c| !c.is_empty())
     }
 
-    /// Iterate over the values of a required [`Component`].
+    /// Iterate over the values of a required multi-component.
     #[inline]
     pub fn iter_required_component<'a, C: Component + 'a>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
         re_tracing::profile_function!();
+
         debug_assert!(A::required_components()
             .iter()
             .any(|c| c.as_ref() == C::name()));
@@ -313,8 +314,10 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Get a single required mono-component.
     #[inline]
     pub fn required_mono_component<C: Component>(&self) -> DeserializationResult<C> {
+        re_tracing::profile_function!();
+
         let mut iter = self.iter_required_component::<C>()?;
-        let  value = iter
+        let value = iter
             .next()
             .ok_or_else(|| DeserializationError::MissingComponent {
                 component: C::name(),
@@ -403,8 +406,6 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Iterate over optional values as native [`Component`]s.
     ///
     /// The contents of the cell are returned as-is, without joining with any other component.
-    //
-    // TODO(#3415): improve mono queries
     #[inline]
     pub fn iter_raw_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
@@ -421,6 +422,29 @@ impl<A: Archetype> ArchetypeView<A> {
         }
 
         Ok(None)
+    }
+
+    /// Get a single required mono-component.
+    #[inline]
+    pub fn raw_optional_mono_component<C: Component>(&self) -> DeserializationResult<Option<C>> {
+        if let Some(mut iter) = self.iter_raw_optional_component::<C>()? {
+            if let Some(value) = iter.next() {
+                let count = 1 + iter.count();
+                if count == 1 {
+                    Ok(Some(value))
+                } else {
+                    Err(DeserializationError::MultipleOfMono {
+                        component: C::name(),
+                        count,
+                        backtrace: ::backtrace::Backtrace::new_unresolved(),
+                    })
+                }
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`]

@@ -36,13 +36,9 @@ impl Asset3DPart {
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let entity_from_pose = arch_view
-            .iter_raw_optional_component::<OutOfTreeTransform3D>()?
-            .and_then(|mut batch| batch.next());
+        let entity_from_pose = arch_view.raw_optional_mono_component::<OutOfTreeTransform3D>()?;
 
-        let media_type = arch_view
-            .iter_raw_optional_component::<MediaType>()?
-            .and_then(|mut batch| batch.next());
+        let media_type = arch_view.raw_optional_mono_component::<MediaType>()?;
 
         let mesh = Asset3D {
             data: arch_view.required_mono_component::<Blob>()?,
