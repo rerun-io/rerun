@@ -419,7 +419,7 @@ impl<A: Archetype> ArchetypeView<A> {
         Ok(None)
     }
 
-    /// Get a single required mono-component.
+    /// Get a single optional mono-component.
     #[inline]
     pub fn raw_optional_mono_component<C: Component>(&self) -> DeserializationResult<Option<C>> {
         if let Some(mut iter) = self.iter_raw_optional_component::<C>()? {
