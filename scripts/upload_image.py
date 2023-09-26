@@ -251,8 +251,6 @@ class Uploader:
             The `<picture>` HTML tag for the image stack.
         """
 
-        progress = tqdm.tqdm(total=len(SIZES) + 1, desc=f"Uploading {name}{file_ext} image stack")
-
         logging.info(f"Base image width: {image.width}px")
 
         with BytesIO() as buffer:
@@ -265,7 +263,7 @@ class Uploader:
         html_str = "<picture>\n"
 
         # upload images
-        for width, image in image_stack:
+        for index, (width, image) in enumerate(image_stack):
             with BytesIO() as buffer:
                 image.save(buffer, output_format, optimize=True, quality=80, compress_level=9)
                 image_data = buffer.getvalue()
@@ -284,8 +282,7 @@ class Uploader:
             else:
                 html_str += f'  <img src="https://static.rerun.io/{object_name}" alt="">\n'
 
-            progress.update()
-        progress.close()
+            logging.info(f"uploaded width={width or 'full'} ({index+1}/{len(image_stack)})")
 
         html_str += "</picture>"
         return html_str
