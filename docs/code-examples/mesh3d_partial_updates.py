@@ -1,6 +1,7 @@
 """Log a simple colored triangle, then update its vertices' positions each frame."""
 import numpy as np
 import rerun as rr
+from rerun.components import Position3DBatch
 
 rr.init("rerun_example_mesh3d_partial_updates", spawn=True)
 
@@ -21,4 +22,4 @@ rr.log(
 factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
 for i, factor in enumerate(factors):
     rr.set_time_sequence("frame", i)
-    rr.log_components("triangle", [rr.cmp.Position3DBatch(vertex_positions * factor)])
+    rr.log_components("triangle", [Position3DBatch(vertex_positions * factor)])

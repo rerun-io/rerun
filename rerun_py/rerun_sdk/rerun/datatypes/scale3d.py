@@ -30,7 +30,7 @@ class Scale3D(Scale3DExt):
 
     # non-uniform scaling
     scale = rr.datatypes.Scale3D([1, 1, -1])
-    scale = rr.datatypes.Scale3D(rr.dt.Vec3D([1, 1, -1]))
+    scale = rr.datatypes.Scale3D(rr.datatypes.Vec3D([1, 1, -1]))
     ```
     """
 
