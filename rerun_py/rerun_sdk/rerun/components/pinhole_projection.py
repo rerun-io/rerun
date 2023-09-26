@@ -30,14 +30,8 @@ class PinholeProjection(datatypes.Mat3x3):
     """
 
     def __init__(self: Any, flat_columns: datatypes.Mat3x3Like):
-        """
-        Create a new instance of the PinholeProjection component.
+        """Create a new instance of the PinholeProjection component."""
 
-        Parameters
-        ----------
-        flat_columns:
-             Flat list of matrix coefficients in column-major order.
-        """
         # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
         self.__attrs_init__(flat_columns=flat_columns)
 

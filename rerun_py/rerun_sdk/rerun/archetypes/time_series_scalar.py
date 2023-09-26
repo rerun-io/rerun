@@ -114,6 +114,7 @@ class TimeSeriesScalar(Archetype):
              the line will switch between a scattered and a continuous representation as
              required.
         """
+
         # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
         self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
 

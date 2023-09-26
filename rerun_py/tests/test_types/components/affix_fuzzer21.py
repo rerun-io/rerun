@@ -18,6 +18,7 @@ __all__ = ["AffixFuzzer21", "AffixFuzzer21Batch", "AffixFuzzer21Type"]
 class AffixFuzzer21(datatypes.AffixFuzzer21):
     def __init__(self: Any, single_half: float, many_halves: npt.ArrayLike):
         """Create a new instance of the AffixFuzzer21 component."""
+
         # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py
         self.__attrs_init__(single_half=single_half, many_halves=many_halves)
 

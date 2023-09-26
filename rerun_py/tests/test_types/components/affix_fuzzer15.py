@@ -17,6 +17,7 @@ __all__ = ["AffixFuzzer15", "AffixFuzzer15Batch", "AffixFuzzer15Type"]
 class AffixFuzzer15(datatypes.AffixFuzzer3):
     def __init__(self: Any, inner: datatypes.AffixFuzzer3Like | None = None):
         """Create a new instance of the AffixFuzzer15 component."""
+
         # You can define your own __init__ function as a member of AffixFuzzer15Ext in affix_fuzzer15_ext.py
         self.inner = inner
 

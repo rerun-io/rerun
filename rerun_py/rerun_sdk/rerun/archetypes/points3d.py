@@ -73,6 +73,7 @@ class Points3D(Archetype):
         instance_keys:
              Unique identifiers for each individual point in the batch.
         """
+
         # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
         self.__attrs_init__(
             positions=positions,

@@ -26,6 +26,7 @@ class MeshProperties(datatypes.MeshProperties):
              If specified, is a flattened array of indices that describe the mesh's triangles,
              i.e. its length must be divisible by 3.
         """
+
         # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
         self.__attrs_init__(vertex_indices=vertex_indices)
 

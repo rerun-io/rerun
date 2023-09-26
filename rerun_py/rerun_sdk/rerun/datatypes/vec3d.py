@@ -27,6 +27,7 @@ class Vec3D(Vec3DExt):
 
     def __init__(self: Any, xyz: Vec3DLike):
         """Create a new instance of the Vec3D datatype."""
+
         # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
         self.__attrs_init__(xyz=xyz)
 

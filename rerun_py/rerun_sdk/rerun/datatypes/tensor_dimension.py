@@ -30,6 +30,7 @@ class TensorDimension:
 
     def __init__(self: Any, size: int, name: str | None = None):
         """Create a new instance of the TensorDimension datatype."""
+
         # You can define your own __init__ function as a member of TensorDimensionExt in tensor_dimension_ext.py
         self.__attrs_init__(size=size, name=name)
 

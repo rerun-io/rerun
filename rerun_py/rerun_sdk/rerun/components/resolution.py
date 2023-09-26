@@ -22,6 +22,7 @@ class Resolution(datatypes.Vec2D):
 
     def __init__(self: Any, xy: datatypes.Vec2DLike):
         """Create a new instance of the Resolution component."""
+
         # You can define your own __init__ function as a member of ResolutionExt in resolution_ext.py
         self.__attrs_init__(xy=xy)
 

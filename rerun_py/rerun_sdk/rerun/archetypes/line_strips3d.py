@@ -109,6 +109,7 @@ class LineStrips3D(Archetype):
         instance_keys:
              Unique identifiers for each individual line strip in the batch.
         """
+
         # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
         self.__attrs_init__(
             strips=strips, radii=radii, colors=colors, labels=labels, class_ids=class_ids, instance_keys=instance_keys

@@ -48,6 +48,7 @@ class Tensor(Archetype):
         data:
              The tensor data
         """
+
         # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
         self.__attrs_init__(data=data)
 

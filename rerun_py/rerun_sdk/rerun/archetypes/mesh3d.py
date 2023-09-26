@@ -106,6 +106,7 @@ class Mesh3D(Archetype):
         instance_keys:
              Unique identifiers for each individual vertex in the mesh.
         """
+
         # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
         self.__attrs_init__(
             vertex_positions=vertex_positions,

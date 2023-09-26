@@ -24,6 +24,7 @@ class DepthMeter(DepthMeterExt):
 
     def __init__(self: Any, value: DepthMeterLike):
         """Create a new instance of the DepthMeter component."""
+
         # You can define your own __init__ function as a member of DepthMeterExt in depth_meter_ext.py
         self.__attrs_init__(value=value)
 

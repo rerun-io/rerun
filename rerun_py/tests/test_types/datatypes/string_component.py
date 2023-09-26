@@ -24,6 +24,7 @@ __all__ = [
 class StringComponent:
     def __init__(self: Any, value: StringComponentLike):
         """Create a new instance of the StringComponent datatype."""
+
         # You can define your own __init__ function as a member of StringComponentExt in string_component_ext.py
         self.__attrs_init__(value=value)
 

@@ -16,6 +16,7 @@ __all__ = ["TensorData", "TensorDataBatch", "TensorDataType"]
 class TensorData(datatypes.TensorData):
     def __init__(self: Any, shape: datatypes.TensorDimensionArrayLike, buffer: datatypes.TensorBufferLike):
         """Create a new instance of the TensorData component."""
+
         # You can define your own __init__ function as a member of TensorDataExt in tensor_data_ext.py
         self.__attrs_init__(shape=shape, buffer=buffer)
 

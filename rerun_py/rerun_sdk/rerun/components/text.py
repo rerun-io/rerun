@@ -18,6 +18,7 @@ class Text(datatypes.Utf8):
 
     def __init__(self: Any, value: datatypes.Utf8Like):
         """Create a new instance of the Text component."""
+
         # You can define your own __init__ function as a member of TextExt in text_ext.py
         self.__attrs_init__(value=value)
 

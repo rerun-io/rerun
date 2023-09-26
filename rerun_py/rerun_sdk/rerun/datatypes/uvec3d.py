@@ -26,6 +26,7 @@ class UVec3D:
 
     def __init__(self: Any, xyz: UVec3DLike):
         """Create a new instance of the UVec3D datatype."""
+
         # You can define your own __init__ function as a member of UVec3DExt in uvec3d_ext.py
         self.__attrs_init__(xyz=xyz)
 

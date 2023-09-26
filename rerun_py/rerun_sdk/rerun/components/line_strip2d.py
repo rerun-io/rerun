@@ -38,6 +38,7 @@ class LineStrip2D(LineStrip2DExt):
 
     def __init__(self: Any, points: LineStrip2DLike):
         """Create a new instance of the LineStrip2D component."""
+
         # You can define your own __init__ function as a member of LineStrip2DExt in line_strip2d_ext.py
         self.__attrs_init__(points=points)
 

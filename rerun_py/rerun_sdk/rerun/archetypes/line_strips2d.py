@@ -95,6 +95,7 @@ class LineStrips2D(Archetype):
         instance_keys:
              Unique identifiers for each individual line strip in the batch.
         """
+
         # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py
         self.__attrs_init__(
             strips=strips,

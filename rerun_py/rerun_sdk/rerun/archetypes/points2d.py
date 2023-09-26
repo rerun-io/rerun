@@ -80,6 +80,7 @@ class Points2D(Archetype):
         instance_keys:
              Unique identifiers for each individual point in the batch.
         """
+
         # You can define your own __init__ function as a member of Points2DExt in points2d_ext.py
         self.__attrs_init__(
             positions=positions,

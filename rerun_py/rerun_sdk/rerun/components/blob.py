@@ -25,6 +25,7 @@ __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 class Blob(BlobExt):
     def __init__(self: Any, data: BlobLike):
         """Create a new instance of the Blob component."""
+
         # You can define your own __init__ function as a member of BlobExt in blob_ext.py
         self.__attrs_init__(data=data)
 

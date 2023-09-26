@@ -33,6 +33,7 @@ class Color(ColorExt):
 
     def __init__(self: Any, rgba: ColorLike):
         """Create a new instance of the Color datatype."""
+
         # You can define your own __init__ function as a member of ColorExt in color_ext.py
         self.__attrs_init__(rgba=rgba)
 

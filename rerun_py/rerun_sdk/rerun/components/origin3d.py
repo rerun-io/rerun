@@ -18,6 +18,7 @@ class Origin3D(datatypes.Vec3D):
 
     def __init__(self: Any, xyz: datatypes.Vec3DLike):
         """Create a new instance of the Origin3D component."""
+
         # You can define your own __init__ function as a member of Origin3DExt in origin3d_ext.py
         self.__attrs_init__(xyz=xyz)
 

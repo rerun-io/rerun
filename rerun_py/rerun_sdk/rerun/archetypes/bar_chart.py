@@ -43,6 +43,7 @@ class BarChart(BarChartExt, Archetype):
         values:
              The values. Should always be a rank-1 tensor.
         """
+
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
         self.__attrs_init__(values=values)
 

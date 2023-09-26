@@ -60,6 +60,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
              An optional floating point value that specifies the 2D drawing order.
              Objects with higher values are drawn on top of those with lower values.
         """
+
         # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
         self.__attrs_init__(data=data, draw_order=draw_order)
 

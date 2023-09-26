@@ -27,6 +27,7 @@ class Vec4D(Vec4DExt):
 
     def __init__(self: Any, xyzw: Vec4DLike):
         """Create a new instance of the Vec4D datatype."""
+
         # You can define your own __init__ function as a member of Vec4DExt in vec4d_ext.py
         self.__attrs_init__(xyzw=xyzw)
 

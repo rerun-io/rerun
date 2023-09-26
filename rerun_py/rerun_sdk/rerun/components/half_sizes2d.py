@@ -23,6 +23,7 @@ class HalfSizes2D(datatypes.Vec2D):
 
     def __init__(self: Any, xy: datatypes.Vec2DLike):
         """Create a new instance of the HalfSizes2D component."""
+
         # You can define your own __init__ function as a member of HalfSizes2DExt in half_sizes2d_ext.py
         self.__attrs_init__(xy=xy)
 

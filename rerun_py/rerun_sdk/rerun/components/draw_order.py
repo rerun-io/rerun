@@ -32,6 +32,7 @@ class DrawOrder(DrawOrderExt):
 
     def __init__(self: Any, value: DrawOrderLike):
         """Create a new instance of the DrawOrder component."""
+
         # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
         self.__attrs_init__(value=value)
 

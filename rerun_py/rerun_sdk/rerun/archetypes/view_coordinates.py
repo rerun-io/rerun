@@ -49,6 +49,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     def __init__(self: Any, xyz: components.ViewCoordinatesLike):
         """Create a new instance of the ViewCoordinates archetype."""
+
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
         self.__attrs_init__(xyz=xyz)
 

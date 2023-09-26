@@ -27,6 +27,7 @@ class Vec2D(Vec2DExt):
 
     def __init__(self: Any, xy: Vec2DLike):
         """Create a new instance of the Vec2D datatype."""
+
         # You can define your own __init__ function as a member of Vec2DExt in vec2d_ext.py
         self.__attrs_init__(xy=xy)
 

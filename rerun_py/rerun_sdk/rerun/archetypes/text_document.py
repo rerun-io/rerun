@@ -36,6 +36,7 @@ class TextDocument(Archetype):
 
              If omitted, `text/plain` is assumed.
         """
+
         # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
         self.__attrs_init__(body=body, media_type=media_type)
 

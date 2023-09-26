@@ -37,6 +37,7 @@ class Material(MaterialExt):
         albedo_factor:
              Optional color multiplier.
         """
+
         # You can define your own __init__ function as a member of MaterialExt in material_ext.py
         self.__attrs_init__(albedo_factor=albedo_factor)
 

@@ -100,6 +100,7 @@ class Asset3D(Asset3DExt, Archetype):
 
              Applies a transformation to the asset itself without impacting its children.
         """
+
         # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
         self.__attrs_init__(data=data, media_type=media_type, transform=transform)
 

@@ -31,6 +31,7 @@ def _affix_fuzzer5__single_optional_union__special_field_converter_override(
 class AffixFuzzer5:
     def __init__(self: Any, single_optional_union: datatypes.AffixFuzzer4Like | None = None):
         """Create a new instance of the AffixFuzzer5 datatype."""
+
         # You can define your own __init__ function as a member of AffixFuzzer5Ext in affix_fuzzer5_ext.py
         self.__attrs_init__(single_optional_union=single_optional_union)
 
