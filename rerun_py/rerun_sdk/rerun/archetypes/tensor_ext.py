@@ -23,14 +23,14 @@ class TensorExt:
         as `TensorData` of varying shapes.
 
         For simple cases, you can pass array objects and optionally specify the names of
-        the dimensions.
+        the dimensions. The shape of the `TensorData` will be inferred from the array.
 
         Parameters
         ----------
         self:
             The TensorData object to construct.
         data: TensorDataLike | None
-            A TensorData object or numpy array
+            A TensorData object, or type that can be converted to a numpy array.
         names: Sequence[str] | None
             The names of the tensor dimensions when generating the shape from an array.
         """
