@@ -555,15 +555,6 @@ fn code_for_struct(
         }
     }
 
-    // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
-    // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
-    // take precedence over the `ExtensionClass`.
-    let init_define_arg = if ext_class.has_init {
-        "init=False".to_owned()
-    } else {
-        String::new()
-    };
-
     let mut superclasses = vec![];
 
     // Extension class needs to come first, so its __init__ method is called if there is one.
@@ -591,30 +582,15 @@ fn code_for_struct(
     };
 
     let define_args = if *kind == ObjectKind::Archetype {
-        format!(
-            "str=False, repr=False{}{init_define_arg}",
-            if init_define_arg.is_empty() { "" } else { ", " }
-        )
+        "str=False, repr=False, init=False"
     } else {
-        init_define_arg
-    };
-
-    let define_args = if define_args.is_empty() {
-        define_args
-    } else {
-        format!("({define_args})")
-    };
-
-    let define_decorator = if obj.is_delegating_component() {
-        String::new()
-    } else {
-        format!("@define{define_args}")
+        "init=False"
     };
 
     code.push_unindented_text(
         format!(
             r#"
-                {define_decorator}
+                @define({define_args})
                 class {name}{superclass_decl}:
                 "#
         ),
