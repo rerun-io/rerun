@@ -6,18 +6,23 @@ import numpy as np
 
 from rerun.error_utils import _send_warning
 
-from ..datatypes import Vec3DArrayLike
+from .. import components, datatypes
 
 
 class Boxes3DExt:
     def __init__(
         self: Any,
         *,
-        sizes: Vec3DArrayLike | None = None,
-        mins: Vec3DArrayLike | None = None,
-        centers: Vec3DArrayLike | None = None,
-        half_sizes: Vec3DArrayLike | None = None,
-        **kwargs: Any,
+        sizes: datatypes.Vec3DArrayLike | None = None,
+        mins: datatypes.Vec3DArrayLike | None = None,
+        half_sizes: datatypes.Vec3DArrayLike | None = None,
+        centers: datatypes.Vec3DArrayLike | None = None,
+        rotations: datatypes.Rotation3DArrayLike | None = None,
+        colors: datatypes.ColorArrayLike | None = None,
+        radii: components.RadiusArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
     ) -> None:
         if sizes is not None:
             if half_sizes is not None:
@@ -39,4 +44,13 @@ class Boxes3DExt:
             half_sizes = np.asarray(half_sizes, dtype=np.float32)
             centers = mins + half_sizes
 
-        self.__attrs_init__(half_sizes=half_sizes, centers=centers, **kwargs)
+        self.__attrs_init__(
+            half_sizes=half_sizes,
+            centers=centers,
+            rotations=rotations,
+            colors=colors,
+            radii=radii,
+            labels=labels,
+            class_ids=class_ids,
+            instance_keys=instance_keys,
+        )
