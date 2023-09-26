@@ -5,9 +5,8 @@ from typing import Any
 import numpy as np
 import pytest
 import rerun as rr
-from rerun.datatypes.tensor_buffer import TensorBuffer
-from rerun.datatypes.tensor_data import TensorData, TensorDataBatch, TensorDataLike
-from rerun.datatypes.tensor_dimension import TensorDimension
+from rerun.components import TensorData, TensorDataBatch
+from rerun.datatypes import TensorBuffer, TensorDataLike, TensorDimension
 
 rng = np.random.default_rng(12345)
 RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
