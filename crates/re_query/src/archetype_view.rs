@@ -398,6 +398,21 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
+    /// Get a single optional mono-component.
+    #[inline]
+    pub fn optional_mono_component<C: Component>(&self) -> DeserializationResult<Option<C>> {
+        let mut iter = self.iter_optional_component::<C>()?;
+        if let Some(first_value) = iter.next() {
+            let count = 1 + iter.count();
+            if count != 1 {
+                re_log::warn_once!("Expected a single value of {} but found {count}", C::name());
+            }
+            Ok(first_value)
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Iterate over optional values as native [`Component`]s.
     ///
     /// The contents of the cell are returned as-is, without joining with any other component.

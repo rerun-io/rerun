@@ -23,8 +23,9 @@ pub struct Annotations {
 impl Annotations {
     pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
         re_tracing::profile_function!();
-        view.required_mono_component::<re_types::components::AnnotationContext>()
+        view.optional_mono_component::<re_types::components::AnnotationContext>()
             .ok()
+            .flatten()
             .map(|ctx| Self {
                 row_id: view.primary_row_id(),
                 class_map: ctx
