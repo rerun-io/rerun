@@ -126,8 +126,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, LineVertex, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawRendererError, FileResolver, FileSystem, LineVertex, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 pub mod gpu_data {
@@ -965,7 +965,7 @@ impl Renderer for LineRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawRendererError> {
         let (pipeline_handle, bind_group_all_lines) = match phase {
             DrawPhase::OutlineMask => (
                 self.render_pipeline_outline_mask,

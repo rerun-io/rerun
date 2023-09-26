@@ -22,8 +22,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawRendererError, FileResolver, FileSystem, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 mod gpu_data {
@@ -420,7 +420,7 @@ impl Renderer for MeshRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawRendererError> {
         re_tracing::profile_function!();
 
         let Some(instance_buffer) = &draw_data.instance_buffer else {

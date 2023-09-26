@@ -39,7 +39,7 @@ use crate::{
     context::{RenderContext, SharedRendererData},
     draw_phases::DrawPhase,
     include_shader_module,
-    wgpu_resources::WgpuResourcePools,
+    wgpu_resources::{PoolError, WgpuResourcePools},
     FileResolver, FileSystem,
 };
 
@@ -48,6 +48,12 @@ use crate::{
 /// Valid only for the frame in which it was created (typically uses temp allocations!).
 pub trait DrawData {
     type Renderer: Renderer<RendererDrawData = Self> + Send + Sync;
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum DrawRendererError {
+    #[error(transparent)]
+    Pool(#[from] PoolError),
 }
 
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
@@ -74,7 +80,7 @@ pub trait Renderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()>;
+    ) -> Result<(), DrawRendererError>;
 
     /// Combination of flags indicating in which phases [`Renderer::draw`] should be called.
     fn participated_phases() -> &'static [DrawPhase];

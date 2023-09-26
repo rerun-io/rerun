@@ -2,7 +2,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     context::SharedRendererData,
     include_shader_module,
-    renderer::{screen_triangle_vertex_shader, DrawData, Renderer},
+    renderer::{screen_triangle_vertex_shader, DrawData, DrawRendererError, Renderer},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -210,7 +210,7 @@ impl Renderer for Compositor {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a CompositorDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawRendererError> {
         let pipeline_handle = match phase {
             DrawPhase::Compositing => self.render_pipeline_regular,
             DrawPhase::CompositingScreenshot => self.render_pipeline_screenshot,

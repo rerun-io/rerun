@@ -11,7 +11,7 @@ use crate::{
     RectInt,
 };
 
-use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, DrawRendererError, FileResolver, FileSystem, RenderContext, Renderer};
 
 use smallvec::smallvec;
 
@@ -243,7 +243,7 @@ impl Renderer for DebugOverlayRenderer {
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a DebugOverlayDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawRendererError> {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
