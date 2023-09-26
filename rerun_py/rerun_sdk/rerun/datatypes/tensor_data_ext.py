@@ -167,12 +167,13 @@ class TensorDataExt:
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
-        expected_buffer_size = prod(d.size for d in self.shape)
+        if self.buffer.kind != "jpeg":
+            expected_buffer_size = prod(d.size for d in self.shape)
 
-        if len(self.buffer.inner) != expected_buffer_size:
-            raise ValueError(
-                f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
-            )
+            if len(self.buffer.inner) != expected_buffer_size:
+                raise ValueError(
+                    f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
+                )
 
     ################################################################################
     # Arrow converters
