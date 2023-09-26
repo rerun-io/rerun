@@ -9,6 +9,13 @@ namespace rerun {
     namespace archetypes {
         const char Mesh3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Mesh3DIndicator";
 
+        AnonymousComponentBatch Mesh3D::indicator() {
+            return ComponentBatch<components::IndicatorComponent<Mesh3D::INDICATOR_COMPONENT_NAME>>(
+                nullptr,
+                1
+            );
+        }
+
         std::vector<AnonymousComponentBatch> Mesh3D::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(7);
@@ -32,12 +39,7 @@ namespace rerun {
             if (instance_keys.has_value()) {
                 comp_batches.emplace_back(instance_keys.value());
             }
-            comp_batches.emplace_back(
-                ComponentBatch<components::IndicatorComponent<Mesh3D::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(Mesh3D::indicator());
 
             return comp_batches;
         }

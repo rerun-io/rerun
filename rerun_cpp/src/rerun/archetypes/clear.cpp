@@ -9,17 +9,19 @@ namespace rerun {
     namespace archetypes {
         const char Clear::INDICATOR_COMPONENT_NAME[] = "rerun.components.ClearIndicator";
 
+        AnonymousComponentBatch Clear::indicator() {
+            return ComponentBatch<components::IndicatorComponent<Clear::INDICATOR_COMPONENT_NAME>>(
+                nullptr,
+                1
+            );
+        }
+
         std::vector<AnonymousComponentBatch> Clear::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(1);
 
             comp_batches.emplace_back(recursive);
-            comp_batches.emplace_back(
-                ComponentBatch<components::IndicatorComponent<Clear::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(Clear::indicator());
 
             return comp_batches;
         }
