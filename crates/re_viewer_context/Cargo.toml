@@ -19,7 +19,6 @@ all-features = true
 re_arrow_store.workspace = true
 re_data_source.workspace = true
 re_data_store = { workspace = true, features = ["serde"] }
-re_error.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
