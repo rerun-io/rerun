@@ -94,7 +94,7 @@ impl<'a> ResolvedClassDescription<'a> {
     #[inline]
     pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
         ResolvedAnnotationInfo {
-            class_id: self.class_description.map(|desc| desc.info.id.into()),
+            class_id: self.class_id,
             annotation_info: self.class_description.map(|desc| desc.info.clone()),
         }
     }
