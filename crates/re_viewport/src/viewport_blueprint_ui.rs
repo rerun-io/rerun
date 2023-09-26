@@ -123,12 +123,12 @@ impl ViewportBlueprint<'_> {
             });
 
         if remove {
-            self.has_been_user_edited = true;
+            self.mark_user_interaction();
             self.deferred_tree_actions.remove.push(tile_id);
         }
 
         if visibility_changed {
-            self.has_been_user_edited = true;
+            self.auto_layout = false; // Keep `auto_space_views` enabled.
             self.tree.set_visible(tile_id, visible);
         }
     }
@@ -169,7 +169,6 @@ impl ViewportBlueprint<'_> {
 
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
-                    self.has_been_user_edited = true;
                     self.deferred_tree_actions.remove.push(tile_id);
                 }
 
@@ -188,14 +187,13 @@ impl ViewportBlueprint<'_> {
             .on_hover_text("Space View");
 
         if response.clicked() {
-            // Focus change is *not* counted towards `has_been_user_edited`.
             self.deferred_tree_actions.focus_tab = Some(space_view.id);
         }
 
         item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if visibility_changed {
-            self.has_been_user_edited = true;
+            self.auto_layout = false; // Keep `auto_space_views` enabled.
             self.tree.set_visible(tile_id, visible);
         }
     }
