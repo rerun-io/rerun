@@ -303,7 +303,30 @@ impl<A: Archetype> ArchetypeView<A> {
 
             Ok(component_value_iter)
         } else {
-            Err(re_types::DeserializationError::MissingData {
+            Err(DeserializationError::MissingComponent {
+                component: C::name(),
+                backtrace: ::backtrace::Backtrace::new_unresolved(),
+            })
+        }
+    }
+
+    /// Get a single required mono-component.
+    #[inline]
+    pub fn required_mono_component<C: Component>(&self) -> DeserializationResult<C> {
+        let mut iter = self.iter_required_component::<C>()?;
+        let  value = iter
+            .next()
+            .ok_or_else(|| DeserializationError::MissingComponent {
+                component: C::name(),
+                backtrace: re_types::_Backtrace::new_unresolved(),
+            })?;
+        let count = 1 + iter.count();
+        if count == 1 {
+            Ok(value)
+        } else {
+            Err(DeserializationError::MultipleOfMono {
+                component: C::name(),
+                count,
                 backtrace: ::backtrace::Backtrace::new_unresolved(),
             })
         }

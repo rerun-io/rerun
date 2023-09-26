@@ -1,3 +1,5 @@
+use crate::ComponentName;
+
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
 // attempt to use nightly features.
 pub type _Backtrace = backtrace::Backtrace;
@@ -59,6 +61,19 @@ pub enum DeserializationError {
 
     #[error("Expected non-nullable data but didn't find any")]
     MissingData { backtrace: _Backtrace },
+
+    #[error("Expected non-nullable data but didn't find any for compoent {component}")]
+    MissingComponent {
+        component: ComponentName,
+        backtrace: _Backtrace,
+    },
+
+    #[error("Expected a single value of {component} but found {count}")]
+    MultipleOfMono {
+        component: ComponentName,
+        count: usize,
+        backtrace: _Backtrace,
+    },
 
     #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
     MissingStructField {
@@ -188,6 +203,8 @@ impl DeserializationError {
             | DeserializationError::MissingStructField { backtrace, .. }
             | DeserializationError::MissingUnionArm { backtrace, .. }
             | DeserializationError::MissingData { backtrace }
+            | DeserializationError::MissingComponent { backtrace, .. }
+            | DeserializationError::MultipleOfMono { backtrace, .. }
             | DeserializationError::DatatypeMismatch { backtrace, .. }
             | DeserializationError::OffsetOutOfBounds { backtrace, .. }
             | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. } => {

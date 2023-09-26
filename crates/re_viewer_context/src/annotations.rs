@@ -23,10 +23,8 @@ pub struct Annotations {
 impl Annotations {
     pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
         re_tracing::profile_function!();
-        // TODO(jleibs): Mono helpers for ArchetypeView.
-        view.iter_required_component::<re_types::components::AnnotationContext>()
+        view.required_mono_component::<re_types::components::AnnotationContext>()
             .ok()
-            .and_then(|mut iter| iter.next())
             .map(|ctx| Self {
                 row_id: view.primary_row_id(),
                 class_map: ctx
