@@ -5,6 +5,8 @@ Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/s
 """
 from __future__ import annotations
 
+from rerun._log import log
+from rerun.archetypes import DisconnectedSpace, ViewCoordinates
 from rerun.datatypes import (
     Quaternion,
     RotationAxisAngle,
@@ -119,8 +121,6 @@ def log_view_coordinates(
 
     """
     recording = RecordingStream.to_native(recording)
-    from rerun.archetypes import ViewCoordinates
-    from rerun.experimental import log
 
     if xyz == "" and up == "":
         _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
@@ -175,7 +175,6 @@ def log_disconnected_space(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
-    from rerun.experimental import DisconnectedSpace, log
 
     recording = RecordingStream.to_native(recording)
 

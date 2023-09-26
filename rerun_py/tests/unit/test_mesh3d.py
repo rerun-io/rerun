@@ -3,9 +3,17 @@ from __future__ import annotations
 import itertools
 from typing import Any, Optional, cast
 
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.components import InstanceKeyArrayLike, MaterialBatch, MeshPropertiesBatch, Position3DBatch, Vector3DBatch
+from rerun.datatypes import (
+    ClassIdArrayLike,
+    ColorArrayLike,
+    Material,
+    MaterialArrayLike,
+    MeshProperties,
+    MeshPropertiesArrayLike,
+    Vec3DArrayLike,
+)
 
 from .common_arrays import (
     class_ids_arrays,
@@ -19,30 +27,30 @@ from .common_arrays import (
     vec3ds_expected,
 )
 
-mesh_properties_arrays: list[rrd.MeshPropertiesArrayLike] = [
+mesh_properties_arrays: list[MeshPropertiesArrayLike] = [
     [],
-    rrd.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
-    [rrd.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6])],
+    MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
+    [MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6])],
 ]
 
 
 def mesh_properties_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, rrc.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]))
+    expected = none_empty_or_value(obj, MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]))
 
-    return rrc.MeshPropertiesBatch._optional(expected)
+    return MeshPropertiesBatch._optional(expected)
 
 
-mesh_material_arrays: list[rrd.MaterialArrayLike] = [
+mesh_material_arrays: list[MaterialArrayLike] = [
     [],
-    rrd.Material(albedo_factor=0xAA0000CC),
-    [rrd.Material(albedo_factor=0xAA0000CC)],
+    Material(albedo_factor=0xAA0000CC),
+    [Material(albedo_factor=0xAA0000CC)],
 ]
 
 
 def mesh_material_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, rrc.Material(albedo_factor=0xAA0000CC))
+    expected = none_empty_or_value(obj, Material(albedo_factor=0xAA0000CC))
 
-    return rrc.MaterialBatch._optional(expected)
+    return MaterialBatch._optional(expected)
 
 
 def test_mesh3d() -> None:
@@ -75,16 +83,16 @@ def test_mesh3d() -> None:
         mesh_material = mesh_material if mesh_material is not None else mesh_material_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        vertex_positions = cast(rrd.Vec3DArrayLike, vertex_positions)
-        vertex_normals = cast(Optional[rrd.Vec3DArrayLike], vertex_normals)
-        vertex_colors = cast(Optional[rrd.ColorArrayLike], vertex_colors)
-        mesh_properties = cast(Optional[rrd.MeshPropertiesArrayLike], mesh_properties)
-        mesh_material = cast(Optional[rrd.MaterialArrayLike], mesh_material)
-        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
+        vertex_positions = cast(Vec3DArrayLike, vertex_positions)
+        vertex_normals = cast(Optional[Vec3DArrayLike], vertex_normals)
+        vertex_colors = cast(Optional[ColorArrayLike], vertex_colors)
+        mesh_properties = cast(Optional[MeshPropertiesArrayLike], mesh_properties)
+        mesh_material = cast(Optional[MaterialArrayLike], mesh_material)
+        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"E: rr2.Mesh3D(\n"
+            f"E: rr.Mesh3D(\n"
             f"    {vertex_positions}\n"
             f"    vertex_normals={vertex_normals}\n"
             f"    vertex_colors={vertex_colors}\n"
@@ -94,7 +102,7 @@ def test_mesh3d() -> None:
             f"    instance_keys={instance_keys}\n"
             f")"
         )
-        arch = rr2.Mesh3D(
+        arch = rr.Mesh3D(
             vertex_positions,
             vertex_normals=vertex_normals,
             vertex_colors=vertex_colors,
@@ -105,8 +113,8 @@ def test_mesh3d() -> None:
         )
         print(f"A: {arch}\n")
 
-        assert arch.vertex_positions == vec3ds_expected(vertex_positions, rrc.Position3DBatch)
-        assert arch.vertex_normals == vec3ds_expected(vertex_normals, rrc.Vector3DBatch)
+        assert arch.vertex_positions == vec3ds_expected(vertex_positions, Position3DBatch)
+        assert arch.vertex_normals == vec3ds_expected(vertex_normals, Vector3DBatch)
         assert arch.vertex_colors == colors_expected(vertex_colors)
         assert arch.mesh_properties == mesh_properties_expected(mesh_properties)
         assert arch.mesh_material == mesh_material_expected(mesh_material)
@@ -118,10 +126,10 @@ def test_nullable_albedo_factor() -> None:
     # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
     assert (
         len(
-            rr2.cmp.MaterialBatch(
+            MaterialBatch(
                 [
-                    rr2.cmp.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
-                    rr2.cmp.Material(),
+                    Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+                    Material(),
                 ]
             )
         )
@@ -133,10 +141,10 @@ def test_nullable_vertex_indices() -> None:
     # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
     assert (
         len(
-            rr2.cmp.MeshPropertiesBatch(
+            MeshPropertiesBatch(
                 [
-                    rr2.cmp.MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
-                    rr2.cmp.MeshProperties(),
+                    MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
+                    MeshProperties(),
                 ]
             )
         )

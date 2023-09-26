@@ -7,7 +7,6 @@ from __future__ import annotations
 import argparse
 
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -17,7 +16,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_view_coordinates")
 
-    rr2.log("/", rr2.ViewCoordinates.RDF)
+    rr.log("/", rr.ViewCoordinates.RDF)
 
     rr.script_teardown(args)
 

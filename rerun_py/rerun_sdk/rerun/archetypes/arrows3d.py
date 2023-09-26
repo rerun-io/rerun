@@ -26,7 +26,6 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_arrow3d", spawn=True)
 
@@ -36,7 +35,7 @@ class Arrows3D(Arrows3DExt, Archetype):
     vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angles) * lengths])
     colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
-    rr2.log("arrows", rr2.Arrows3D(origins=origins, vectors=vectors, colors=colors))
+    rr.log("arrows", rr.Arrows3D(origins=origins, vectors=vectors, colors=colors))
     ```
     """
 

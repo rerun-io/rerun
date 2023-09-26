@@ -8,14 +8,13 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
-from rerun.experimental import dt as rrd
+from rerun.datatypes import Angle, Quaternion, RotationAxisAngle
 
 
 def main() -> None:
     half_sizes = np.array([[10, 9, 8], [5, -5, 5]])
     centers = np.array([[0, 0, 0], [-1, 1, -2]])
-    rotations = [rrd.Quaternion(xyzw=[0, 1, 2, 3]), rrd.RotationAxisAngle([0, 1, 2], rrd.Angle(deg=45))]
+    rotations = [Quaternion(xyzw=[0, 1, 2, 3]), RotationAxisAngle([0, 1, 2], Angle(deg=45))]
     colors = np.array(
         [
             0xAA0000CC,
@@ -28,7 +27,7 @@ def main() -> None:
     class_ids = np.array([126, 127], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    boxes3d = rr2.Boxes3D(
+    boxes3d = rr.Boxes3D(
         half_sizes=half_sizes,
         centers=centers,
         rotations=rotations,
@@ -45,7 +44,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_box3d")
 
-    rr2.log("boxes3d", boxes3d)
+    rr.log("boxes3d", boxes3d)
 
     rr.script_teardown(args)
 

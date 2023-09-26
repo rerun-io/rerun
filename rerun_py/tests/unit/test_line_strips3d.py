@@ -5,9 +5,14 @@ from typing import Any, Optional, cast
 
 import numpy as np
 import pytest
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.components.instance_key import InstanceKeyArrayLike
+from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
+from rerun.components.radius import RadiusArrayLike
+from rerun.datatypes import Vec3D
+from rerun.datatypes.class_id import ClassIdArrayLike
+from rerun.datatypes.color import ColorArrayLike
+from rerun.datatypes.utf8 import Utf8ArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -24,11 +29,11 @@ from .common_arrays import (
 )
 
 # fmt: off
-strips_arrays: list[rrc.LineStrip3DArrayLike] = [
+strips_arrays: list[LineStrip3DArrayLike] = [
     [],
     [
-        [rrd.Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
-        [rrd.Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),
+        [Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
+        [Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),
                    [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)]], # type: ignore[list-item]
     [
         [0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2],
@@ -59,7 +64,7 @@ def line_strips3d_expected(obj: Any) -> Any:
             [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1], [0, 1, 0], [0, 1, 1]],
         ],
     )
-    return rrc.LineStrip3DBatch(expected)
+    return LineStrip3DBatch(expected)
 
 
 def test_line_strips3d() -> None:
@@ -76,15 +81,15 @@ def test_line_strips3d() -> None:
         strips = strips if strips is not None else strips_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        strips = cast(rrc.LineStrip3DArrayLike, strips)
-        radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
-        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
+        strips = cast(LineStrip3DArrayLike, strips)
+        radii = cast(Optional[RadiusArrayLike], radii)
+        colors = cast(Optional[ColorArrayLike], colors)
+        labels = cast(Optional[Utf8ArrayLike], labels)
+        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"rr2.LineStrips3D(\n"
+            f"rr.LineStrips3D(\n"
             f"    {strips}\n"
             f"    radii={radii}\n"
             f"    colors={colors}\n"
@@ -93,7 +98,7 @@ def test_line_strips3d() -> None:
             f"    instance_keys={instance_keys}\n"
             f")"
         )
-        arch = rr2.LineStrips3D(
+        arch = rr.LineStrips3D(
             strips,
             radii=radii,
             colors=colors,
@@ -129,10 +134,10 @@ def test_line_strips3d() -> None:
         ).reshape([4, 2, 3]),
     ],
 )
-def test_line_segments3d(data: rrc.LineStrip3DArrayLike) -> None:
-    arch = rr2.LineStrips3D(data)
+def test_line_segments3d(data: LineStrip3DArrayLike) -> None:
+    arch = rr.LineStrips3D(data)
 
-    assert arch.strips == rrc.LineStrip3DBatch(
+    assert arch.strips == LineStrip3DBatch(
         [[[0, 0, 0], [0, 0, 1]], [[1, 0, 0], [1, 0, 1]], [[1, 1, 0], [1, 1, 1]], [[0, 1, 0], [0, 1, 1]]],
     )
 

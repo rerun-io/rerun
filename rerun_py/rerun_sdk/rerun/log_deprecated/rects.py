@@ -6,6 +6,8 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
+from rerun._log import log
+from rerun.archetypes import Boxes2D
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated import Color, Colors, OptionalClassIds
 from rerun.log_deprecated.log_decorator import log_decorator
@@ -163,12 +165,10 @@ def log_rects(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import Boxes2D, log
-
     if rects is None:
         raise ValueError("`rects` argument must be set")
 
-    if np.any(rects):  # type: ignore[arg-type]
+    if np.any(rects):
         rects = np.asarray(rects, dtype="float32")
         if rects.ndim == 1:
             rects = np.expand_dims(rects, axis=0)

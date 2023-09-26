@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy.typing as npt
 
+from rerun._log import log
+from rerun.archetypes import Pinhole
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -125,7 +127,6 @@ def log_pinhole(
         The pinhole matrix (the `child_from_parent` argument) always project along the third (Z) axis,
         but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
     """
-    from rerun.experimental import Pinhole, log
 
     arch = Pinhole(
         image_from_camera=child_from_parent,

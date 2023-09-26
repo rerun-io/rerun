@@ -810,6 +810,7 @@ fn set_panel(entity_path: &str, expanded: bool, blueprint: Option<&PyRecordingSt
 #[pyfunction]
 fn add_space_view(
     name: &str,
+    space_view_class: &str,
     origin: &str,
     entity_paths: Vec<&str>,
     blueprint: Option<&PyRecordingStream>,
@@ -820,7 +821,7 @@ fn add_space_view(
 
     let entity_paths = entity_paths.into_iter().map(|s| s.into()).collect_vec();
     let mut space_view =
-        SpaceViewBlueprint::new("Spatial".into(), &origin.into(), entity_paths.iter());
+        SpaceViewBlueprint::new(space_view_class.into(), &origin.into(), entity_paths.iter());
 
     // Choose the space-view id deterministically from the name; this means the user
     // can run the application multiple times and get sane behavior.
