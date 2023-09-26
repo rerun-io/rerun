@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from rerun._log import log
+from rerun.archetypes import TimeSeriesScalar
 from rerun.log_deprecated import Color, _normalize_colors
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -111,7 +113,6 @@ def log_scalar(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import TimeSeriesScalar, log
 
     recording = RecordingStream.to_native(recording)
 

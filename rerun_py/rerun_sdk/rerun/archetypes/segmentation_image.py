@@ -31,7 +31,6 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     # Create a segmentation image
     image = np.zeros((8, 12), dtype=np.uint8)
@@ -41,9 +40,9 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     rr.init("rerun_example_segmentation_image", spawn=True)
 
     # Assign a label and color to each class
-    rr2.log("/", rr2.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
+    rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
 
-    rr2.log("image", rr2.SegmentationImage(image))
+    rr.log("image", rr.SegmentationImage(image))
     ```
     """
 

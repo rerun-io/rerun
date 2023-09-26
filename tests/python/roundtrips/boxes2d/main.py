@@ -8,7 +8,6 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -27,7 +26,7 @@ def main() -> None:
     class_ids = np.array([126, 127], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    boxes2d = rr2.Boxes2D(
+    boxes2d = rr.Boxes2D(
         half_sizes=half_sizes,
         centers=centers,
         colors=colors,
@@ -44,7 +43,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_box2d")
 
-    rr2.log("boxes2d", boxes2d)
+    rr.log("boxes2d", boxes2d)
 
     rr.script_teardown(args)
 

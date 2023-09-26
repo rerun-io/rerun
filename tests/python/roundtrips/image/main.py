@@ -8,7 +8,7 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
+from rerun.datatypes import TensorData
 
 
 def main() -> None:
@@ -26,9 +26,9 @@ def main() -> None:
         image[i, :, 1] = i
     image[:, :, 2] = 128
 
-    image = rr2.dt.TensorData(array=image)
+    image = TensorData(array=image)
 
-    rr2.log("image", rr2.Image(image))
+    rr.log("image", rr.Image(image))
 
     # 4x5 mono image. Pixel = x * y * 123.4
     image = np.zeros((4, 5), dtype=np.float16)
@@ -36,9 +36,9 @@ def main() -> None:
         for j in range(5):
             image[i, j] = i * j * 123.4
 
-    image = rr2.dt.TensorData(array=image)
+    image = TensorData(array=image)
 
-    rr2.log("image_f16", rr2.Image(image))
+    rr.log("image_f16", rr.Image(image))
 
     rr.script_teardown(args)
 

@@ -49,6 +49,7 @@ __all__ = [
     "Transform3D",
     "Translation3D",
     "TranslationAndMat3",
+    "TranslationAndMat3x3",
     "TranslationRotationScale3D",
     "ViewCoordinates",
     "bindings",
@@ -108,7 +109,7 @@ __all__ = [
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
-from ._log import AsComponents, ComponentBatchLike, log, log_components
+from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
 from .archetypes import (
     AnnotationContext,
     Arrows3D,

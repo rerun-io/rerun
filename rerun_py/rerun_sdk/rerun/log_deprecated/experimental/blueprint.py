@@ -88,6 +88,7 @@ def new_blueprint(
 def add_space_view(
     *,
     origin: str,
+    space_view_class: str,
     name: str | None,
     entity_paths: list[str] | None,
     blueprint: RecordingStream | None = None,
@@ -100,6 +101,8 @@ def add_space_view(
     origin : str
         The EntityPath to use as the origin of this space view. All other entities will be transformed
         to be displayed relative to this origin.
+    space_view_class: str
+        The class of the space view to add.
     name : Optional[str]
         The name of the space view to show in the UI. Will default to the origin if not provided.
     entity_paths : Optional[List[str]]
@@ -112,7 +115,7 @@ def add_space_view(
     if entity_paths is None:
         entity_paths = [origin]
     blueprint = RecordingStream.to_native(blueprint)
-    bindings.add_space_view(name, origin, entity_paths, blueprint)
+    bindings.add_space_view(name, space_view_class, origin, entity_paths, blueprint)
 
 
 def set_panels(

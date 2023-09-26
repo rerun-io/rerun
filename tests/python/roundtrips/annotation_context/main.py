@@ -7,15 +7,14 @@ from __future__ import annotations
 import argparse
 
 import rerun as rr
-import rerun.experimental as rr2
-from rerun.experimental import dt as rrd
+from rerun.datatypes import ClassDescription
 
 
 def main() -> None:
-    annotation_context = rr2.AnnotationContext(
+    annotation_context = rr.AnnotationContext(
         [
             (1, "hello"),
-            rrd.ClassDescription(
+            ClassDescription(
                 info=(2, "world", [3, 4, 5]),
                 keypoint_annotations=[(17, "head"), (42, "shoulders")],
                 keypoint_connections=[(1, 2), (3, 4)],
@@ -29,7 +28,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_annotation_context")
 
-    rr2.log("annotation_context", annotation_context)
+    rr.log("annotation_context", annotation_context)
 
     rr.script_teardown(args)
 

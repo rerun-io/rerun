@@ -38,21 +38,21 @@ class Mat3x3(Mat3x3Ext):
     However, construction is done from a list of rows, which follows NumPy's convention:
     ```python
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
+        rr.datatypes.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32)
     )
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        rr.datatypes.Mat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
         np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32),
     )
     ```
     If you want to construct a matrix from a list of columns instead, use the named `columns` parameter:
     ```python
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
+        rr.datatypes.Mat3x3(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
         np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
     )
     np.testing.assert_array_equal(
-        rr.dt.Mat3x3(columns=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        rr.datatypes.Mat3x3(columns=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
         np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
     )
     ```

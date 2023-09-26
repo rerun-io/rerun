@@ -8,6 +8,7 @@ import pyarrow as pa
 
 import rerun.error_utils
 from rerun import bindings
+from rerun.components import InstanceKeyBatch
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -125,7 +126,6 @@ def log_extension_components(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
 
     recording = RecordingStream.to_native(recording)
 
@@ -141,7 +141,7 @@ def log_extension_components(
     splats: dict[str, Any] = {}
 
     if len(identifiers_np):
-        instanced["rerun.components.InstanceKey"] = rrc.InstanceKeyBatch(identifiers_np).as_arrow_array().storage
+        instanced["rerun.components.InstanceKey"] = InstanceKeyBatch(identifiers_np).as_arrow_array().storage
 
     _add_extension_components(instanced, splats, ext, identifiers_np)
 

@@ -4,21 +4,21 @@ from typing import Any
 
 import numpy as np
 import pytest
-import rerun.experimental as rr2
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.integers(0, 255, size=(10, 20))
 
 
-IMAGE_INPUTS: list[rrd.TensorDataLike] = [
+IMAGE_INPUTS: list[TensorDataLike] = [
     # Full explicit construction
-    rrd.TensorData(
+    TensorData(
         shape=[
-            rrd.TensorDimension(10, "height"),
-            rrd.TensorDimension(20, "width"),
+            TensorDimension(10, "height"),
+            TensorDimension(20, "width"),
         ],
-        buffer=rrd.TensorBuffer(RANDOM_IMAGE_SOURCE),
+        buffer=TensorBuffer(RANDOM_IMAGE_SOURCE),
     ),
     # Implicit construction from ndarray
     RANDOM_IMAGE_SOURCE,
@@ -26,19 +26,19 @@ IMAGE_INPUTS: list[rrd.TensorDataLike] = [
 
 
 def segmentation_image_image_expected() -> Any:
-    return rr2.SegmentationImage(data=RANDOM_IMAGE_SOURCE)
+    return rr.SegmentationImage(data=RANDOM_IMAGE_SOURCE)
 
 
 def test_image() -> None:
     expected = segmentation_image_image_expected()
 
     for img in IMAGE_INPUTS:
-        arch = rr2.SegmentationImage(data=img)
+        arch = rr.SegmentationImage(data=img)
 
         assert arch == expected
 
 
-GOOD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
+GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     # Mono
     rng.integers(0, 255, (10, 20)),
     # Assorted Extra Dimensions
@@ -46,7 +46,7 @@ GOOD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
     rng.integers(0, 255, (10, 20, 1)),
 ]
 
-BAD_IMAGE_INPUTS: list[rrd.TensorDataLike] = [
+BAD_IMAGE_INPUTS: list[TensorDataLike] = [
     rng.integers(0, 255, (10, 20, 3)),
     rng.integers(0, 255, (10, 20, 4)),
     rng.integers(0, 255, (10,)),
@@ -66,8 +66,8 @@ def test_segmentation_image_shapes() -> None:
     rr.set_strict_mode(True)
 
     for img in GOOD_IMAGE_INPUTS:
-        rr2.DepthImage(img)
+        rr.DepthImage(img)
 
     for img in BAD_IMAGE_INPUTS:
         with pytest.raises(TypeError):
-            rr2.DepthImage(img)
+            rr.DepthImage(img)
