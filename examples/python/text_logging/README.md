@@ -1,7 +1,7 @@
 ---
 title: Text Logging
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/text_logging/main.py
-thumbnail: https://static.rerun.io/33696e46db189cc690d5f31f1db3a641032232e6_text_logging_480w.png
+thumbnail: https://static.rerun.io/text_logging/1ff0efdbfd09d20ad117b311b01a5be2c25c03f3/480w.png
 thumbnail_dimensions: [480, 323]
 ---
 

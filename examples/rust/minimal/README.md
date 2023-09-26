@@ -2,7 +2,7 @@
 title: Minimal example
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/minimal/main.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/minimal/src/main.rs
-thumbnail: https://static.rerun.io/92a1f80b5cf2cd2c04a10d8ced35849da8f1c0ed_minimal_480w.png
+thumbnail: https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png
 ---
 
 <picture>

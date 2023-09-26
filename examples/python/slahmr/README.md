@@ -2,7 +2,7 @@
 title: Decoupling Human and Camera Motion from Videos in the Wild
 python: https://github.com/rerun-io/slahmr
 tags: [3D, SLAM, keypoint-detection, mesh, time-series]
-thumbnail: https://static.rerun.io/43709757e7179f0272d3749560f529747f3e9149_slahmr_480w.png
+thumbnail: https://static.rerun.io/slahmr/3fad4f6b2c1a807fb92e8d33a2f90f7391c290a2/480w.png
 thumbnail_dimensions: [480, 293]
 ---
 

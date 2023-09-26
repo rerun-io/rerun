@@ -1,7 +1,7 @@
 ---
 title: Car
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/car/main.py
-thumbnail: https://static.rerun.io/8a3845b71f90bc36af78978f83e60ddd65e40667_car_480w.png
+thumbnail: https://static.rerun.io/car/014857675dfed92c3f6a9492e3291c48a982ac83/480w.png
 thumbnail_dimensions: [480, 235]
 ---
 

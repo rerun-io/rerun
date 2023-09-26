@@ -3,7 +3,7 @@ title: Plots
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/plots/main.py
 tags: [2d, plots, api-example]
 description: "Demonstration of various plots and charts supported by Rerun."
-thumbnail: https://static.rerun.io/ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4_plots_480w.png
+thumbnail: https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/480w.png
 thumbnail_dimensions: [480, 271]
 demo: true
 ---

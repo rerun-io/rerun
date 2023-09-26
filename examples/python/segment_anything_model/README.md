@@ -2,7 +2,7 @@
 title: Segment Anything Model
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/segment_anything_model/main.py
 tags: [2D, sam, segmentation]
-thumbnail: https://static.rerun.io/4aa50186208378d417d1738ee7e53e3f804961ad_segment_anything_model_480w.png
+thumbnail: https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/480w.png
 thumbnail_dimensions: [480, 283]
 ---
 

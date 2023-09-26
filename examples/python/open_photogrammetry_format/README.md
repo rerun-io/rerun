@@ -2,7 +2,7 @@
 title: Open Photogrammetry Format
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/open_photogrammetry_format/main.py
 tags: [2d, 3d, camera, photogrammetry]
-thumbnail: https://static.rerun.io/20716c6a10ffaa3960a212673adcbfff36da682e_open_photogrammetry_format_480w.png
+thumbnail: https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/480w.png
 thumbnail_dimensions: [480, 310]
 ---
 
