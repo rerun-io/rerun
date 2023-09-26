@@ -25,6 +25,7 @@ __all__ = [
     "DepthImage",
     "DisconnectedSpace",
     "Image",
+    "ImageEncoded",
     "ImageFormat",
     "IndicatorComponentBatch",
     "LineStrips2D",
@@ -109,6 +110,7 @@ __all__ = [
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
+from ._image import ImageEncoded, ImageFormat
 from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
 from .archetypes import (
     AnnotationContext,
@@ -142,7 +144,7 @@ from .log_deprecated.bounding_box import log_obb, log_obbs
 from .log_deprecated.camera import log_pinhole
 from .log_deprecated.clear import log_cleared
 from .log_deprecated.extension_components import log_extension_components
-from .log_deprecated.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
+from .log_deprecated.file import MeshFormat, log_image_file, log_mesh_file
 from .log_deprecated.image import log_depth_image, log_image, log_segmentation_image
 from .log_deprecated.lines import log_line_segments, log_line_strip, log_line_strips_2d, log_line_strips_3d
 from .log_deprecated.mesh import log_mesh, log_meshes
