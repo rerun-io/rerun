@@ -2,7 +2,7 @@
 title: Decoupling Human and Camera Motion from Videos in the Wild
 python: https://github.com/rerun-io/slahmr
 tags: [3D, SLAM, keypoint-detection, mesh, time-series]
-thumbnail: https://static.rerun.io/43709757e7179f0272d3749560f529747f3e9149_slahmr_480w.png
+thumbnail: https://static.rerun.io/slahmr/3fad4f6b2c1a807fb92e8d33a2f90f7391c290a2/480w.png
 thumbnail_dimensions: [480, 293]
 ---
 
@@ -13,11 +13,11 @@ https://vimeo.com/865974657?autoplay=1&loop=1&autopause=0&background=1&muted=1&r
 “Decoupling Human and Camera Motion from Videos in the Wild” (SLAHMR) combines the outputs of ViTPose, PHALP, DROID-SLAM, HuMoR, and SMPL over three optimization stages. It’s interesting to see how it becomes more and more consistent with each step.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/164c4ff3d203ccfe414a9a1d88a4054a16d6f9a9_slahmr_overview_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/96e558150be0814a1bafc6ee9be4d61a1c294975_slahmr_overview_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/091c297b9f17339145ddf783934751ce2e1119bf_slahmr_overview_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ef125c31b56021de74daa2932cb56f1e6a2ee8e8_slahmr_overview_1200w.png">
-  <img src="https://static.rerun.io/e2a1716305c6e73107d5c54ae88fa5b2e9170acd_slahmr_overview_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/slahmr_overview/9e19834b2054b109d5093c1e5ffa0e7348ef3899/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/slahmr_overview/9e19834b2054b109d5093c1e5ffa0e7348ef3899/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/slahmr_overview/9e19834b2054b109d5093c1e5ffa0e7348ef3899/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/slahmr_overview/9e19834b2054b109d5093c1e5ffa0e7348ef3899/1200w.png">
+  <img src="https://static.rerun.io/slahmr_overview/9e19834b2054b109d5093c1e5ffa0e7348ef3899/full.png" alt="">
 </picture>
 
 Input to the method is a video sequence. ViTPose is used to detect 2D skeletons, PHALP for 3D shape and pose estimation of the humans, and DROID-SLAM to estimate the camera trajectory. Note that the 3D poses are initially quite noisy and inconsistent.

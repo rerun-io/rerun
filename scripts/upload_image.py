@@ -68,6 +68,19 @@ SIZES = [
 ASPECT_RATIO_RANGE = (1.6, 1.8)
 
 
+def build_image_stack(image: Image) -> list[tuple[int | None, Image]]:
+    image_stack: list[tuple[int | None, Image]] = [(None, image)]
+
+    for size in SIZES:
+        if image.width > size:
+            logging.info(f"Resizing to: {size}px")
+            new_image = image.resize(size=(size, int(size * image.height / image.width)), resample=Resampling.LANCZOS)
+
+            image_stack.append((size, new_image))
+
+    return image_stack
+
+
 def image_from_clipboard() -> Image:
     """
     Get image from the clipboard.
@@ -106,7 +119,7 @@ class Uploader:
         self.run_pngcrush = pngcrush
         self.auto_accept = auto_accept
 
-    def _check_aspect_ratio(self, image: Path | Image):
+    def _check_aspect_ratio(self, image: Path | Image) -> None:
         if isinstance(image, Path):
             image = PIL.Image.open(image)
 
@@ -212,9 +225,9 @@ class Uploader:
         self,
         image: Image,
         name: str,
-        output_format: str = "PNG",
-        file_ext: str = ".png",
-        content_type: str = "image/png",
+        output_format: str | None = "PNG",
+        file_ext: str | None = ".png",
+        content_type: str | None = "image/png",
     ) -> str:
         """
         Create a multi-resolution stack and upload it.
@@ -228,7 +241,7 @@ class Uploader:
         output_format : str, optional
             The output format of the image.
         file_ext : str, optional
-            The file extension of the image.
+            The file extension of the image, including the period.
         content_type : str, optional
             The content type of the image.
 
@@ -240,30 +253,26 @@ class Uploader:
 
         logging.info(f"Base image width: {image.width}px")
 
-        # build image stack
-        image_stack: list[tuple[str, int | None, Image]] = []
-        for width in SIZES:
-            if image.width > width:
-                logging.info(f"Resizing to: {width}px")
-                new_image = image.resize(
-                    size=(width, int(width * image.height / image.width)), resample=Resampling.LANCZOS
-                )
+        with BytesIO() as buffer:
+            image.save(buffer, output_format, optimize=True, quality=80, compress_level=9)
+            original_image_data = buffer.getvalue()
+        digest = data_hash(original_image_data)
 
-                image_stack.append((f"{name}_{width}w", width, new_image))
-
-        image_stack.append((f"{name}_full", None, image))
+        image_stack = build_image_stack(image)
 
         html_str = "<picture>\n"
 
         # upload images
-        for name, width, image in image_stack:
+        for index, (width, image) in enumerate(image_stack):
             with BytesIO() as buffer:
                 image.save(buffer, output_format, optimize=True, quality=80, compress_level=9)
                 image_data = buffer.getvalue()
 
-            digest = data_hash(image_data)
+            if width is None:
+                object_name = f"{name}/{digest}/full{file_ext}"
+            else:
+                object_name = f"{name}/{digest}/{width}w{file_ext}"
 
-            object_name = f"{digest}_{name}{file_ext}"
             self.upload_data(image_data, object_name, content_type, None)
 
             if width is not None:
@@ -273,10 +282,14 @@ class Uploader:
             else:
                 html_str += f'  <img src="https://static.rerun.io/{object_name}" alt="">\n'
 
+            logging.info(f"uploaded width={width or 'full'} ({index+1}/{len(image_stack)})")
+
         html_str += "</picture>"
         return html_str
 
-    def upload_data(self, data: bytes, name: str, content_type: str | None = None, content_encoding: str | None = None):
+    def upload_data(
+        self, data: bytes, path: str, content_type: str | None = None, content_encoding: str | None = None
+    ) -> None:
         """
         Low-level upload of data.
 
@@ -284,8 +297,8 @@ class Uploader:
         ----------
         data : bytes
             The data to upload.
-        name : str
-            The name of the object.
+        path : str
+            The path of the object.
         content_type : str, optional
             The content type of the object.
         content_encoding : str, optional
@@ -295,10 +308,14 @@ class Uploader:
         if self.run_pngcrush and content_type == "image/png":
             data = run_pngcrush(data)
 
-        logging.info(f"Uploading {name} (size: {len(data)}, type: {content_type}, encoding: {content_encoding})")
-        destination = self.bucket.blob(name)
+        logging.info(f"Uploading {path} (size: {len(data)}, type: {content_type}, encoding: {content_encoding})")
+        destination = self.bucket.blob(path)
         destination.content_type = content_type
         destination.content_encoding = content_encoding
+
+        if destination.exists():
+            logging.warn(f"blob {path} already exists in GCS, skipping upload")
+            return
 
         stream = BytesIO(data)
         destination.upload_from_file(stream)
@@ -360,7 +377,7 @@ def download_file(url: str, path: Path) -> None:
             f.write(chunk)
 
 
-def run(args) -> None:
+def run(args: argparse.Namespace) -> None:
     """Run the script based on the provided args."""
     try:
         if shutil.which("pngcrush") is None and not args.skip_pngcrush:

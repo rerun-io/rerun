@@ -16,9 +16,9 @@ Rust API: [Transform3D](https://docs.rs/rerun/latest/rerun/components/struct.Tra
 code-example: transform3d_simple
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/9e5bf32baf0492dc4721bea477be7a26fff6bc98_transform3d_simple_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/bbbe9a9872ca24a237ff27701e7e833e3e9ec4df_transform3d_simple_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/4e35c234549ca93a0412645d6be2c534b9a1b47a_transform3d_simple_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/eea6f00a413dae4228aebf9493f02816c74503d3_transform3d_simple_1200w.png">
-  <img src="https://static.rerun.io/141368b07360ce3fcb1553079258ae3f42bdb9ac_transform3d_simple_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png">
+  <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png" alt="">
 </picture>
