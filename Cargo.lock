@@ -4163,7 +4163,6 @@ name = "re_error"
 version = "0.9.0-alpha.4"
 dependencies = [
  "anyhow",
- "re_log",
 ]
 
 [[package]]
@@ -4211,7 +4210,6 @@ dependencies = [
  "mimalloc",
  "parking_lot 0.12.1",
  "re_build_info",
- "re_error",
  "re_log",
  "re_log_types",
  "re_smart_channel",
@@ -4686,7 +4684,6 @@ dependencies = [
  "quote",
  "rayon",
  "re_build_tools",
- "re_error",
  "re_log",
  "re_tracing",
  "rust-format",

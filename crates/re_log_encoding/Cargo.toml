@@ -30,7 +30,6 @@ encoder = ["dep:rmp-serde", "dep:lz4_flex"]
 
 # Rerun:
 re_build_info.workspace = true
-re_error.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true
 re_smart_channel.workspace = true
