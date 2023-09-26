@@ -48,17 +48,24 @@ class ImageEncoded(AsComponents):
         """
         A monochrome or color image encoded with a common format (PNG, JPEG, etc).
 
+        The encoded image can be loaded from either a a file using its `path` or
+        provided directly via `contents`.
+
         Parameters
         ----------
         path:
-            A path to an image file stored on the local filesystem.
+            A path to an image file stored on the local filesystem. Mutually
+            exclusive with contents.
         contents:
-            The contents of the image file. Can be a BufferedReader, BytesIO, or bytes.
+            The contents of the image file. Can be a BufferedReader, BytesIO, or
+            bytes. Mutually exclusive with contents.
         format:
-            The format of the image file. If not provided, it will be inferred from the file extension.
+            The format of the image file. If not provided, it will be inferred
+            from the file extension.
         draw_order:
-            An optional floating point value that specifies the 2D drawing order.
-            Objects with higher values are drawn on top of those with lower values.
+            An optional floating point value that specifies the 2D drawing
+            order. Objects with higher values are drawn on top of those with
+            lower values.
         """
         if len([x for x in (path, contents) if x is not None]) != 1:
             raise ValueError("Must provide exactly one of 'path' or 'contents'")
@@ -79,7 +86,7 @@ class ImageEncoded(AsComponents):
         if buffer is None:
             raise ValueError("Input data could not be coerced to IO[bytes]")
 
-        # Note that PIL loading is lazy. This will should only identify the type of file
+        # Note that PIL loading is lazy. This will only identify the type of file
         # and not decode the whole jpeg.
         img_data = PILImage.open(buffer, formats=formats)
 
