@@ -1,5 +1,7 @@
 //! Generates flatbuffers reflection code from `reflection.fbs`.
 
+use std::path::Path;
+
 use xshell::{cmd, Shell};
 
 use re_build_tools::{
@@ -26,6 +28,11 @@ fn main() {
     if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
         // We don't need to rebuild - we should have done so beforehand!
         // See `RELEASES.md`
+        return;
+    }
+
+    // Only re-build if source-hash exists
+    if !Path::new(SOURCE_HASH_PATH).exists() {
         return;
     }
 

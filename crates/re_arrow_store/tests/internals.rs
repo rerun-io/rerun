@@ -5,9 +5,8 @@
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use re_arrow_store::{DataStore, DataStoreConfig};
-use re_components::datagen::{build_frame_nr, build_some_instances};
-use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
-use re_types::{components::InstanceKey, Loggable as _};
+use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimePoint};
+use re_types::{components::InstanceKey, datagen::build_some_instances, Loggable as _};
 
 // --- Internals ---
 

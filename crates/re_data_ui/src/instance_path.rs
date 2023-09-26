@@ -41,25 +41,27 @@ impl DataUi for InstancePath {
         egui::Grid::new("entity_instance")
             .num_columns(2)
             .show(ui, |ui| {
-                for component_name in components {
-                    if !crate::is_component_visible_in_ui(&component_name) {
-                        continue;
-                    }
-
+                for &component_name in crate::ui_visible_components(&components) {
                     let Some((_, component_data)) =
                         get_component_with_instances(store, query, entity_path, component_name)
                     else {
                         continue; // no need to show components that are unset at this point in time
                     };
 
-                    item_ui::component_path_button(
-                        ctx,
-                        ui,
-                        &ComponentPath::new(entity_path.clone(), component_name),
-                    );
+                    crate::temporary_style_ui_for_component(ui, &component_name, |ui| {
+                        item_ui::component_path_button(
+                            ctx,
+                            ui,
+                            &ComponentPath::new(entity_path.clone(), component_name),
+                        );
+                    });
 
-                    if crate::is_indicator_component(&component_name) {
-                        // no content to show
+                    if let Some(archetype_name) =
+                        crate::indicator_component_archetype(&component_name)
+                    {
+                        ui.weak(format!(
+                            "Indicator component for the {archetype_name} archetype"
+                        ));
                     } else if instance_key.is_splat() {
                         super::component::EntityComponentWithInstances {
                             entity_path: entity_path.clone(),

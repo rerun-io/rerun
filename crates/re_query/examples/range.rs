@@ -5,9 +5,9 @@
 //! ```
 
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
-use re_components::datagen::{build_frame_nr, build_some_colors, build_some_positions2d};
-use re_log_types::{DataRow, EntityPath, RowId, TimeType};
+use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimeType};
 use re_query::range_entity_with_primary;
+use re_types::datagen::{build_some_colors, build_some_positions2d};
 use re_types::{
     components::{Color, InstanceKey, Position2D},
     Loggable as _,

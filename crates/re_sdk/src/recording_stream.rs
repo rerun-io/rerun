@@ -1357,8 +1357,7 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_components::datagen::data_table_example;
-    use re_log_types::RowId;
+    use re_log_types::{DataTable, RowId};
 
     use super::*;
 
@@ -1378,7 +1377,7 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
@@ -1445,7 +1444,7 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
@@ -1525,7 +1524,7 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
@@ -1579,7 +1578,7 @@ mod tests {
             .memory()
             .unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
