@@ -25,11 +25,11 @@ class TorchTensorLike(Protocol):
 if TYPE_CHECKING:
     from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike, TensorDimension, TensorDimensionLike
 
-    Tensor = Union[TensorDataLike, TorchTensorLike]
+    TensorLike = Union[TensorDataLike, TorchTensorLike]
     """Type helper for a tensor-like object that can be logged to Rerun."""
 
 
-def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
+def _to_numpy(tensor: TensorLike) -> npt.NDArray[Any]:
     # isinstance is 4x faster than catching AttributeError
     if isinstance(tensor, np.ndarray):
         return tensor
@@ -51,7 +51,7 @@ class TensorDataExt:
         *,
         shape: Sequence[TensorDimensionLike] | None = None,
         buffer: TensorBufferLike | None = None,
-        array: Tensor | None = None,
+        array: TensorLike | None = None,
         names: Sequence[str | None] | None = None,
         jpeg_quality: int | None = None,
     ) -> None:
