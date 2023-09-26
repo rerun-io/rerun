@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Protocol, Sequence, Union
+from typing import Any, Protocol, Sequence
 
-import numpy as np
 import numpy.typing as npt
 
 from rerun._log import log
-from rerun.archetypes import BarChart
+from rerun.archetypes import BarChart, Tensor
 from rerun.datatypes.tensor_data import TensorData, TensorDataLike
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated.log_decorator import log_decorator
@@ -22,22 +21,6 @@ class TorchTensorLike(Protocol):
 
     def numpy(self, force: bool) -> npt.NDArray[Any]:
         ...
-
-
-Tensor = Union[npt.ArrayLike, TorchTensorLike]
-"""Type helper for a tensor-like object that can be logged to Rerun."""
-
-
-def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
-    # isinstance is 4x faster than catching AttributeError
-    if isinstance(tensor, np.ndarray):
-        return tensor
-
-    try:
-        # Make available to the cpu
-        return tensor.numpy(force=True)  # type: ignore[union-attr]
-    except AttributeError:
-        return np.array(tensor, copy=False)
 
 
 @log_decorator
