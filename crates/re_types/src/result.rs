@@ -62,7 +62,7 @@ pub enum DeserializationError {
     #[error("Expected non-nullable data but didn't find any")]
     MissingData { backtrace: _Backtrace },
 
-    #[error("Expected non-nullable data but didn't find any for compoent {component}")]
+    #[error("Expected non-nullable data but didn't find any for component {component}")]
     MissingComponent {
         component: ComponentName,
         backtrace: _Backtrace,
