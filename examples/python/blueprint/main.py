@@ -6,6 +6,7 @@ import argparse
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
+import rerun.experimental as rr_exp
 
 
 def main() -> None:
@@ -47,11 +48,13 @@ def main() -> None:
 
     if not args.skip_blueprint:
         if args.auto_space_views:
-            rr.set_auto_space_views(True)
+            rr_exp.set_auto_space_views(True)
 
-        rr.set_panels(all_expanded=False)
+        rr_exp.set_panels(all_expanded=False)
 
-        rr.add_space_view(name="overlaid", origin="/", entity_paths=["image", "rect/0", "rect/1"])
+        rr_exp.add_space_view(
+            name="overlaid", space_view_class="2D", origin="/", entity_paths=["image", "rect/0", "rect/1"]
+        )
 
 
 if __name__ == "__main__":

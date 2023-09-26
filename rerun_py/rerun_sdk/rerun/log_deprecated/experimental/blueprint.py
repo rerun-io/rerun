@@ -88,6 +88,7 @@ def new_blueprint(
 def add_space_view(
     *,
     origin: str,
+    space_view_class: str,
     name: str | None,
     entity_paths: list[str] | None,
     blueprint: RecordingStream | None = None,
@@ -112,7 +113,7 @@ def add_space_view(
     if entity_paths is None:
         entity_paths = [origin]
     blueprint = RecordingStream.to_native(blueprint)
-    bindings.add_space_view(name, origin, entity_paths, blueprint)
+    bindings.add_space_view(name, space_view_class, origin, entity_paths, blueprint)
 
 
 def set_panels(
