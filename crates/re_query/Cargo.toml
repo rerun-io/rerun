@@ -26,11 +26,10 @@ polars = ["dep:polars-core", "re_arrow_store/polars"]
 [dependencies]
 # Rerun dependencies:
 re_arrow_store.workspace = true
-re_components = { workspace = true, features = ["arrow_datagen"] }
 re_data_store.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
-re_types.workspace = true
+re_types = { workspace = true, features = ["datagen"] }
 re_log.workspace = true
 re_tracing.workspace = true
 
@@ -74,8 +73,4 @@ required-features = ["polars"]
 
 [[bench]]
 name = "query_benchmark"
-harness = false
-
-[[bench]]
-name = "query_benchmark2"
 harness = false

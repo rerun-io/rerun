@@ -15,10 +15,10 @@ This is particularly useful for visualizing the output of classifications algori
 but can be used more generally for any kind of reoccurring categorization within a Rerun recording.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/bb5f5e06931b4924ce3c0243d8285eee558e8f21_classids_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/43c5455dd453e8a3668f0426c3d8961d22a5471e_classids_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/c445af268f7700536bec97bd54134cfe5a48304e_classids_1024w.png">
-  <img src="https://static.rerun.io/7f881338f1970161f52a00f1ddd01d4dcccf8a46_classids_full.png" alt="viewer screenshot showing various tracked objects and their class ids">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/classids/7f881338f1970161f52a00f1ddd01d4dcccf8a46/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/classids/7f881338f1970161f52a00f1ddd01d4dcccf8a46/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/classids/7f881338f1970161f52a00f1ddd01d4dcccf8a46/1024w.png">
+  <img src="https://static.rerun.io/classids/7f881338f1970161f52a00f1ddd01d4dcccf8a46/full.png" alt="viewer screenshot showing various tracked objects and their class ids">
 </picture>
 
 
@@ -39,7 +39,7 @@ Just as with labels & colors this allows you to use the same connection informat
 Keypoints are currently only applicable to 2D and 3D points.
 
 <picture>
-  <img src="https://static.rerun.io/98b627503df82a6e04c01133dcf6395b040cbd53_keypoints_full.png" alt="keypoint shown on a 3d skeleton">
+  <img src="https://static.rerun.io/keypoints/07b268032ab7cd26812de6b83e018b8ab55ed2f2/full.png" alt="keypoint shown on a 3d skeleton">
 </picture>
 
 
@@ -75,9 +75,9 @@ you can explicitly determine the color of each class.
 * Rust: Log a [`Tensor`](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html) with [`TensorDataMeaning::ClassId`](https://docs.rs/rerun/latest/rerun/components/enum.TensorDataMeaning.html#variant.ClassId)
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/b1da782a05e2f7c0048f4bddf9ea29fef7c80b4e_segmentation_image_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/f63cb085ee392f38e6431ab7e8c79aecb1b4e6e1_segmentation_image_768w.png">
-  <img src="https://static.rerun.io/716eeff1a99f51a6e77fca85c4e7dccf76b77c69_segmentation_image_full.png" alt="screenshot of a segmentation image">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/768w.png">
+  <img src="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/full.png" alt="screenshot of a segmentation image">
 </picture>
 
 

@@ -22,14 +22,13 @@ class Points2D(Archetype):
     -------
     ```python
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_points2d", spawn=True)
 
-    rr2.log("points", rr2.Points2D([[0, 0], [1, 1]]))
+    rr.log("points", rr.Points2D([[0, 0], [1, 1]]))
 
     # Log an extra rect to set the view bounds
-    rr2.log("bounds", rr2.Boxes2D(half_sizes=[2, 1.5]))
+    rr.log("bounds", rr.Boxes2D(half_sizes=[2, 1.5]))
     ```
     """
 

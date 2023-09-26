@@ -1,8 +1,7 @@
 mod common;
 
 use re_arrow_store::{DataStore, TimeInt, TimeRange};
-use re_components::datagen::build_frame_nr;
-use re_log_types::{DataRow, EntityPath, RowId};
+use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId};
 use re_query::range_archetype;
 use re_types::{
     archetypes::Points2D,

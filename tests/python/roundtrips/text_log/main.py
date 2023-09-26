@@ -7,7 +7,6 @@ from __future__ import annotations
 import argparse
 
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -17,9 +16,9 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_text_log")
 
-    rr2.log("log", rr2.TextLog(body="No level"))
-    rr2.log("log", rr2.TextLog(body="INFO level", level="INFO"))
-    rr2.log("log", rr2.TextLog(body="WILD level", level="WILD"))
+    rr.log("log", rr.TextLog(body="No level"))
+    rr.log("log", rr.TextLog(body="INFO level", level="INFO"))
+    rr.log("log", rr.TextLog(body="WILD level", level="WILD"))
 
     rr.script_teardown(args)
 

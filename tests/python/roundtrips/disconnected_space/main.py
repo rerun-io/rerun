@@ -7,7 +7,6 @@ from __future__ import annotations
 import argparse
 
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -17,7 +16,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_disconnected_space")
 
-    rr2.log("disconnected_space", rr2.DisconnectedSpace(True))
+    rr.log("disconnected_space", rr.DisconnectedSpace(True))
 
     rr.script_teardown(args)
 

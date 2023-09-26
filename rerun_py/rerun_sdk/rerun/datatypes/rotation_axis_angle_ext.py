@@ -1,14 +1,32 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import Angle, AngleLike, RotationAxisAngleArrayLike
+    from . import Angle, AngleLike, RotationAxisAngleArrayLike, Vec3DLike
 
 
 class RotationAxisAngleExt:
+    def __init__(
+        self: Any,
+        axis: Vec3DLike,
+        angle: AngleLike | None = None,
+        *,
+        radians: float | None = None,
+        degrees: float | None = None,
+    ) -> None:
+        from . import Angle
+
+        if len([x for x in (angle, radians, degrees) if x is not None]) != 1:
+            raise ValueError("Must provide exactly one of angle, radians, or degrees")
+        if radians is not None:
+            angle = Angle(rad=radians)
+        if degrees is not None:
+            angle = Angle(deg=degrees)
+        self.__attrs_init__(axis=axis, angle=angle)
+
     # needed because the default converter doesn't handle well Angle, which has an overridden __init__
     @staticmethod
     def angle__field_converter_override(x: AngleLike) -> Angle:

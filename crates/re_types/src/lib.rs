@@ -135,6 +135,9 @@ pub use self::result::{
 };
 pub use self::size_bytes::SizeBytes;
 
+#[cfg(feature = "datagen")]
+pub mod datagen;
+
 // ---
 
 mod arrow_buffer;
@@ -149,6 +152,12 @@ pub mod external {
 
     #[cfg(feature = "ecolor")]
     pub use ecolor;
+
+    #[cfg(feature = "glam")]
+    pub use glam;
+
+    #[cfg(feature = "image")]
+    pub use image;
 }
 
 // TODO(jleibs): Should all of this go into `tensor_data_ext`? Don't have a good way to export

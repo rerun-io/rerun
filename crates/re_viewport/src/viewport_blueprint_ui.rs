@@ -12,16 +12,9 @@ use re_viewer_context::{
 
 use crate::{
     space_view_heuristics::{all_possible_space_views, identify_entities_per_system_per_class},
+    viewport_blueprint::TreeActions,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
-
-// We delay any modifications to the tree until the end of the frame,
-// so that we don't iterate over something while modifying it.
-#[derive(Default)]
-struct TreeActions {
-    focus_tab: Option<SpaceViewId>,
-    remove: Vec<egui_tiles::TileId>,
-}
 
 impl ViewportBlueprint<'_> {
     /// Show the blueprint panel tree view.
@@ -33,32 +26,31 @@ impl ViewportBlueprint<'_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 if let Some(root) = self.tree.root() {
-                    let mut tree_actions = TreeActions::default();
-
-                    self.tile_ui(ctx, ui, &mut tree_actions, root);
-
-                    let TreeActions { focus_tab, remove } = tree_actions;
-
-                    if let Some(tab) = &focus_tab {
-                        self.tree.make_active(|tile| match tile {
-                            egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
-                            egui_tiles::Tile::Container(_) => false,
-                        });
-                    }
-
-                    for tile_id in remove {
-                        for tile in self.tree.tiles.remove_recursively(tile_id) {
-                            if let egui_tiles::Tile::Pane(space_view_id) = tile {
-                                self.remove(&space_view_id);
-                            }
-                        }
-
-                        if Some(tile_id) == self.tree.root {
-                            self.tree.root = None;
-                        }
-                    }
+                    self.tile_ui(ctx, ui, root);
                 }
             });
+
+        let TreeActions { focus_tab, remove } = std::mem::take(&mut self.deferred_tree_actions);
+
+        if let Some(focus_tab) = &focus_tab {
+            let found = self.tree.make_active(|tile| match tile {
+                egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
+                egui_tiles::Tile::Container(_) => false,
+            });
+            re_log::trace!("Found {focus_tab}: {found}");
+        }
+
+        for tile_id in remove {
+            for tile in self.tree.tiles.remove_recursively(tile_id) {
+                if let egui_tiles::Tile::Pane(space_view_id) = tile {
+                    self.remove(&space_view_id);
+                }
+            }
+
+            if Some(tile_id) == self.tree.root {
+                self.tree.root = None;
+            }
+        }
     }
 
     /// If a group or spaceview has a total of this number of elements, show its subtree by default?
@@ -71,7 +63,6 @@ impl ViewportBlueprint<'_> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
     ) {
         // Temporarily remove the tile so we don't get borrow-checker fights:
@@ -81,11 +72,11 @@ impl ViewportBlueprint<'_> {
 
         match &mut tile {
             egui_tiles::Tile::Container(container) => {
-                self.container_tree_ui(ctx, ui, tree_actions, tile_id, container);
+                self.container_tree_ui(ctx, ui, tile_id, container);
             }
             egui_tiles::Tile::Pane(space_view_id) => {
                 // A space view
-                self.space_view_entry_ui(ctx, ui, tree_actions, tile_id, space_view_id);
+                self.space_view_entry_ui(ctx, ui, tile_id, space_view_id);
             }
         };
 
@@ -96,7 +87,6 @@ impl ViewportBlueprint<'_> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
         container: &mut egui_tiles::Container,
     ) {
@@ -106,7 +96,7 @@ impl ViewportBlueprint<'_> {
             // so if the child is made invisible, we should do the same for the parent.
             let child_is_visible = self.tree.is_visible(child_id);
             self.tree.set_visible(tile_id, child_is_visible);
-            return self.tile_ui(ctx, ui, tree_actions, child_id);
+            return self.tile_ui(ctx, ui, child_id);
         }
 
         let mut visibility_changed = false;
@@ -128,13 +118,13 @@ impl ViewportBlueprint<'_> {
             })
             .show_collapsing(ui, ui.id().with(tile_id), default_open, |_, ui| {
                 for &child in container.children() {
-                    self.tile_ui(ctx, ui, tree_actions, child);
+                    self.tile_ui(ctx, ui, child);
                 }
             });
 
         if remove {
             self.has_been_user_edited = true;
-            tree_actions.remove.push(tile_id);
+            self.deferred_tree_actions.remove.push(tile_id);
         }
 
         if visibility_changed {
@@ -147,13 +137,12 @@ impl ViewportBlueprint<'_> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        tree_actions: &mut TreeActions,
         tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
     ) {
         let Some(space_view) = self.space_views.get_mut(space_view_id) else {
             re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
-            tree_actions.remove.push(tile_id);
+            self.deferred_tree_actions.remove.push(tile_id);
             return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
@@ -181,7 +170,7 @@ impl ViewportBlueprint<'_> {
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
                     self.has_been_user_edited = true;
-                    tree_actions.remove.push(tile_id);
+                    self.deferred_tree_actions.remove.push(tile_id);
                 }
 
                 response | vis_response
@@ -200,7 +189,7 @@ impl ViewportBlueprint<'_> {
 
         if response.clicked() {
             // Focus change is *not* counted towards `has_been_user_edited`.
-            tree_actions.focus_tab = Some(space_view.id);
+            self.deferred_tree_actions.focus_tab = Some(space_view.id);
         }
 
         item_ui::select_hovered_on_click(ctx, &response, &[item]);

@@ -10,7 +10,7 @@ class ClearExt:
         recursive: bool,
     ) -> None:
         # Enforce named parameter.
-        self.__attrs_init__(settings=recursive)
+        self.__attrs_init__(recursive=recursive)
 
     @staticmethod
     def deferred_patch_class(cls: Any) -> None:

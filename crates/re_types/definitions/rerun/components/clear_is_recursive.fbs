@@ -9,8 +9,8 @@ namespace rerun.components;
 
 // ---
 
-/// Configures how a clear operation should behave.
-struct ClearSettings (
+/// Configures how a clear operation should behave - recurive or no?
+struct ClearIsRecursive (
   "attr.arrow.transparent",
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",

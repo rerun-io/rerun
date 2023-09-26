@@ -1,7 +1,7 @@
 include "./components/annotation_context.fbs";
 include "./components/blob.fbs";
 include "./components/class_id.fbs";
-include "./components/clear_settings.fbs";
+include "./components/clear_is_recursive.fbs";
 include "./components/color.fbs";
 include "./components/depth_meter.fbs";
 include "./components/disconnected_space.fbs";

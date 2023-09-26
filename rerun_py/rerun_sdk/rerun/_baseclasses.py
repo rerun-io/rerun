@@ -25,8 +25,8 @@ class ComponentBatchLike(Protocol):
         ...
 
 
-class ArchetypeLike(Protocol):
-    """Describes interface for interpreting an object as a rerun Archetype."""
+class AsComponents(Protocol):
+    """Describes interface for interpreting an object as a bundle of Components."""
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -78,7 +78,7 @@ class Archetype:
         """
         The number of instances that make up the batch.
 
-        Part of the `ArchetypeLike` logging interface.
+        Part of the `AsComponents` logging interface.
         """
         for fld in fields(type(self)):
             # TODO(jleibs): What to do if multiple required components have different lengths?
@@ -90,9 +90,9 @@ class Archetype:
         """
         Return all the component batches that make up the archetype.
 
-        Part of the `ArchetypeLike` logging interface.
+        Part of the `AsComponents` logging interface.
         """
-        from .log import IndicatorComponentBatch
+        from ._log import IndicatorComponentBatch
 
         yield IndicatorComponentBatch(self.archetype_name(), self.num_instances())
 

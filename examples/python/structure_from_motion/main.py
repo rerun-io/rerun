@@ -15,7 +15,6 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
-import rerun.experimental as rr2
 from read_write_model import Camera, read_model
 from tqdm import tqdm
 
@@ -110,7 +109,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    rr2.log("description", rr2.TextDocument(DESCRIPTION, media_type="text/markdown"), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type="text/markdown"), timeless=True)
     rr.log_view_coordinates("/", up="-Y", timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.

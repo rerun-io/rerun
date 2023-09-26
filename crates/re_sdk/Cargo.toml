@@ -25,10 +25,10 @@ default = ["demo", "glam", "image"]
 demo = []
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
-glam = ["re_components/glam"]
+glam = ["re_types/glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
-image = ["re_components/image"]
+image = ["re_types/image"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -53,7 +53,6 @@ web_viewer = [
 
 [dependencies]
 re_build_info.workspace = true
-re_components.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
@@ -80,7 +79,7 @@ webbrowser = { version = "0.8", optional = true }
 
 
 [dev-dependencies]
-re_components = { workspace = true, features = ["arrow_datagen"] }
+re_types = { workspace = true, features = ["datagen"] }
 
 arrow2_convert.workspace = true
 ndarray.workspace = true

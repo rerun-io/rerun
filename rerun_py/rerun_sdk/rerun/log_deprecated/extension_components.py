@@ -8,7 +8,7 @@ import pyarrow as pa
 
 import rerun.error_utils
 from rerun import bindings
-from rerun.components_deprecated import instance_key_splat
+from rerun.components import InstanceKeyBatch
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -22,6 +22,15 @@ __all__ = [
 EXT_PREFIX = "ext."
 
 EXT_COMPONENT_TYPES: dict[str, Any] = {}
+
+
+def instance_key_splat() -> Any:
+    """Helper to generate a splat InstanceKeyArray."""
+
+    from rerun.components import InstanceKeyType
+
+    _MAX_U64 = 2**64 - 1
+    return pa.array([_MAX_U64], type=InstanceKeyType().storage_type)  # type: ignore[no-any-return]
 
 
 def _add_extension_components(
@@ -117,7 +126,6 @@ def log_extension_components(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import cmp as rrc
 
     recording = RecordingStream.to_native(recording)
 
@@ -133,7 +141,7 @@ def log_extension_components(
     splats: dict[str, Any] = {}
 
     if len(identifiers_np):
-        instanced["rerun.components.InstanceKey"] = rrc.InstanceKeyBatch(identifiers_np).as_arrow_array().storage
+        instanced["rerun.components.InstanceKey"] = InstanceKeyBatch(identifiers_np).as_arrow_array().storage
 
     _add_extension_components(instanced, splats, ext, identifiers_np)
 

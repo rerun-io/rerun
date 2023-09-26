@@ -24,24 +24,23 @@ class Transform3D(Archetype):
     from math import pi
 
     import rerun as rr
-    import rerun.experimental as rr2
-    from rerun.experimental import dt as rrd
+    from rerun.datatypes import Angle, RotationAxisAngle
 
     rr.init("rerun_example_transform3d", spawn=True)
 
-    rr2.log("base", rr2.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
+    rr.log("base", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
-    rr2.log("base/translated", rrd.TranslationAndMat3x3(translation=[1, 0, 0]))
-    rr2.log("base/translated", rr2.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
+    rr.log("base/translated", rr.TranslationAndMat3x3(translation=[1, 0, 0]))
+    rr.log("base/translated", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
-    rr2.log(
+    rr.log(
         "base/rotated_scaled",
-        rrd.TranslationRotationScale3D(
-            rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], angle=rrd.Angle(rad=pi / 4)),
+        rr.TranslationRotationScale3D(
+            rotation=RotationAxisAngle(axis=[0, 0, 1], angle=Angle(rad=pi / 4)),
             scale=2,
         ),
     )
-    rr2.log("base/rotated_scaled", rr2.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
+    rr.log("base/rotated_scaled", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
     ```
     """
 

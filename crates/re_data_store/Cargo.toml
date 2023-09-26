@@ -25,7 +25,6 @@ serde = ["dep:serde", "re_log_types/serde"]
 
 [dependencies]
 re_arrow_store.workspace = true
-re_components.workspace = true
 re_format.workspace = true
 re_int_histogram.workspace = true
 re_log_encoding = { workspace = true, optional = true }
@@ -44,7 +43,7 @@ serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
 
 [dev-dependencies]
-re_components = { workspace = true, features = ["arrow_datagen"] }
+re_types = { workspace = true, features = ["datagen"] }
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 criterion = "0.5"
 mimalloc.workspace = true

@@ -8,7 +8,7 @@ import pyarrow as pa
 from .._unions import build_dense_union, union_discriminant_type
 
 if TYPE_CHECKING:
-    from ..log import ComponentBatchLike
+    from .._log import ComponentBatchLike
     from . import (
         Mat3x3,
         Rotation3D,
@@ -52,7 +52,7 @@ class Transform3DExt:
         # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
         return storage
 
-    # Implement the ArchetypeLike
+    # Implement the AsComponents
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import Transform3D
         from ..datatypes import Transform3D as Transform3DDataType

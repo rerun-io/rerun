@@ -39,5 +39,5 @@ int main() {
     }
 
     // Now clear all of them at once.
-    rec.log("arrows", rr::Clear::recursive());
+    rec.log("arrows", rr::Clear::RECURSIVE);
 }

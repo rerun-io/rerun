@@ -5,7 +5,7 @@
 
 #include "../arrow.hpp"
 #include "../component_batch.hpp"
-#include "../components/clear_settings.hpp"
+#include "../components/clear_is_recursive.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
@@ -64,7 +64,7 @@ namespace rerun {
         ///     // Now clear them, one by one on each tick.
         ///     for (int i = 0; i <vectors.size(); ++i) {
         ///         auto entity_path = "arrows/" + std::to_string(i);
-        ///         rec.log(entity_path.c_str(), rr::Clear::flat());
+        ///         rec.log(entity_path.c_str(), rr::Clear::FLAT);
         ///     }
         /// }
         /// ```
@@ -112,11 +112,11 @@ namespace rerun {
         ///     }
         ///
         ///     // Now clear all of them at once.
-        ///     rec.log("arrows", rr::Clear::recursive());
+        ///     rec.log("arrows", rr::Clear::RECURSIVE);
         /// }
         /// ```
         struct Clear {
-            rerun::components::ClearSettings settings;
+            rerun::components::ClearIsRecursive recursive;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -125,20 +125,17 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'clear_ext.cpp'
 
-            static Clear flat() {
-                return Clear(false);
-            }
+            static const Clear FLAT;
 
-            static Clear recursive() {
-                return Clear(true);
-            }
+            static const Clear RECURSIVE;
 
-            Clear(bool recursive = false) : Clear(components::ClearSettings(recursive)) {}
+            Clear(bool is_recursive = false) : Clear(components::ClearIsRecursive(is_recursive)) {}
 
           public:
             Clear() = default;
 
-            Clear(rerun::components::ClearSettings _settings) : settings(std::move(_settings)) {}
+            Clear(rerun::components::ClearIsRecursive _recursive)
+                : recursive(std::move(_recursive)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

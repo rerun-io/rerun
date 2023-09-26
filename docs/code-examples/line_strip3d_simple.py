@@ -1,6 +1,5 @@
 """Log a simple line strip."""
 import rerun as rr
-import rerun.experimental as rr2
 
 rr.init("rerun_example_line_strip3d", spawn=True)
 
@@ -15,4 +14,4 @@ points = [
     [0, 1, 1],
 ]
 
-rr2.log("strip", rr2.LineStrips3D([points]))
+rr.log("strip", rr.LineStrips3D([points]))

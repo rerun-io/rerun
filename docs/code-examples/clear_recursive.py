@@ -1,7 +1,6 @@
 """Log a batch of 3D arrows."""
 
 import rerun as rr
-import rerun.experimental as rr2
 
 rr.init("rerun_example_clear_simple", spawn=True)
 
@@ -11,7 +10,7 @@ colors = [(200, 0, 0), (0, 200, 0), (0, 0, 200), (200, 0, 200)]
 
 # Log a handful of arrows.
 for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-    rr2.log(f"arrows/{i}", rr2.Arrows3D(vectors=vector, origins=origin, colors=color))
+    rr.log(f"arrows/{i}", rr.Arrows3D(vectors=vector, origins=origin, colors=color))
 
 # Now clear all of them at once.
-rr2.log("arrows", rr2.Clear(recursive=True))  # or `rr2.Clear.recursive()`
+rr.log("arrows", rr.Clear(recursive=True))  # or `rr.Clear.recursive()`

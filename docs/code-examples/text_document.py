@@ -2,15 +2,14 @@
 """Log a `TextDocument`."""
 
 import rerun as rr
-import rerun.experimental as rr2
 
 rr.init("rerun_example_text_document", spawn=True)
 
-rr2.log("text_document", rr2.TextDocument("Hello, TextDocument!"))
+rr.log("text_document", rr.TextDocument("Hello, TextDocument!"))
 
-rr2.log(
+rr.log(
     "markdown",
-    rr2.TextDocument(
+    rr.TextDocument(
         """
 # Hello Markdown!
 [Click here to see the raw text](recording://markdown.Text).

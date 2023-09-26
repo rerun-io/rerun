@@ -14,7 +14,7 @@ Parts of the Selection view
 ---------------------------
 
 <picture>
-  <img src="https://static.rerun.io/e44fe4ce530302b5a1e355202953e3a5af93a1a0_selection-overview_full.png" alt="overview of the selection panel">
+  <img src="https://static.rerun.io/selection-overview/e44fe4ce530302b5a1e355202953e3a5af93a1a0/full.png" alt="overview of the selection panel">
 </picture>
 
 

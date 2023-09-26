@@ -1367,7 +1367,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1376,7 +1376,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1409,7 +1409,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
@@ -1424,7 +1424,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1439,7 +1439,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "arboard",
  "egui",
@@ -1456,7 +1456,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.7.4"
-source = "git+https://github.com/lampsitter/egui_commonmark.git?rev=a4470c253b06a4a350e17418a7c6cbc413ade644#a4470c253b06a4a350e17418a7c6cbc413ade644"
+source = "git+https://github.com/lampsitter/egui_commonmark.git?rev=d42d340d2d617f19e3d52697faa9cfcfa3eafa27#d42d340d2d617f19e3d52697faa9cfcfa3eafa27"
 dependencies = [
  "egui",
  "egui_extras",
@@ -1466,7 +1466,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "egui",
  "ehttp",
@@ -1481,7 +1481,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1497,7 +1497,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "egui",
 ]
@@ -1505,7 +1505,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.2.0"
-source = "git+https://github.com/rerun-io/egui_tiles?rev=c66d6cba7ddb5b236be614d1816be4561260274e#c66d6cba7ddb5b236be614d1816be4561260274e"
+source = "git+https://github.com/rerun-io/egui_tiles?rev=f093f065c048a69be1ea125e9706ef3db302d255#f093f065c048a69be1ea125e9706ef3db302d255"
 dependencies = [
  "ahash 0.8.3",
  "egui",
@@ -1539,7 +1539,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1641,7 +1641,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=d949eaf#d949eaf682ea96784afb0f3463e11387db610646"
+source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.3",
@@ -2189,7 +2189,6 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "crunchy",
- "serde",
 ]
 
 [[package]]
@@ -4041,7 +4040,6 @@ dependencies = [
  "polars-core",
  "polars-ops",
  "rand",
- "re_components",
  "re_error",
  "re_format",
  "re_log",
@@ -4081,36 +4079,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_components"
-version = "0.9.0-alpha.4"
-dependencies = [
- "array-init",
- "arrow2",
- "arrow2_convert",
- "bytemuck",
- "crossbeam",
- "document-features",
- "ecolor",
- "glam",
- "half 2.3.1",
- "image",
- "itertools 0.11.0",
- "lazy_static",
- "ndarray",
- "rand",
- "re_log",
- "re_log_types",
- "re_tracing",
- "re_types",
- "rmp-serde",
- "serde",
- "similar-asserts",
- "thiserror",
- "zune-core",
- "zune-jpeg",
-]
-
-[[package]]
 name = "re_crash_handler"
 version = "0.9.0-alpha.4"
 dependencies = [
@@ -4130,7 +4098,6 @@ dependencies = [
  "itertools 0.11.0",
  "rayon",
  "re_build_tools",
- "re_components",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -4152,7 +4119,6 @@ dependencies = [
  "nohash-hasher",
  "rand",
  "re_arrow_store",
- "re_components",
  "re_format",
  "re_int_histogram",
  "re_log",
@@ -4178,7 +4144,6 @@ dependencies = [
  "image",
  "itertools 0.11.0",
  "re_arrow_store",
- "re_components",
  "re_data_store",
  "re_error",
  "re_format",
@@ -4198,7 +4163,6 @@ name = "re_error"
 version = "0.9.0-alpha.4"
 dependencies = [
  "anyhow",
- "re_log",
 ]
 
 [[package]]
@@ -4246,12 +4210,11 @@ dependencies = [
  "mimalloc",
  "parking_lot 0.12.1",
  "re_build_info",
- "re_components",
- "re_error",
  "re_log",
  "re_log_types",
  "re_smart_channel",
  "re_tracing",
+ "re_types",
  "rmp-serde",
  "serde_test",
  "thiserror",
@@ -4330,7 +4293,6 @@ dependencies = [
  "polars-core",
  "rand",
  "re_arrow_store",
- "re_components",
  "re_data_store",
  "re_format",
  "re_log",
@@ -4410,7 +4372,6 @@ dependencies = [
  "rand",
  "re_build_info",
  "re_build_tools",
- "re_components",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -4472,7 +4433,6 @@ dependencies = [
  "egui",
  "egui_plot",
  "re_arrow_store",
- "re_components",
  "re_data_store",
  "re_log",
  "re_log_types",
@@ -4502,7 +4462,6 @@ dependencies = [
  "parking_lot 0.12.1",
  "rayon",
  "re_arrow_store",
- "re_components",
  "re_data_store",
  "re_data_ui",
  "re_error",
@@ -4533,7 +4492,6 @@ dependencies = [
  "half 2.3.1",
  "ndarray",
  "re_arrow_store",
- "re_components",
  "re_data_store",
  "re_data_ui",
  "re_log",
@@ -4574,7 +4532,6 @@ dependencies = [
  "egui",
  "egui_extras",
  "re_arrow_store",
- "re_components",
  "re_data_store",
  "re_data_ui",
  "re_log",
@@ -4596,7 +4553,6 @@ dependencies = [
  "egui_plot",
  "itertools 0.11.0",
  "re_arrow_store",
- "re_components",
  "re_format",
  "re_log",
  "re_log_types",
@@ -4694,6 +4650,7 @@ dependencies = [
  "mime_guess",
  "ndarray",
  "once_cell",
+ "rand",
  "rayon",
  "re_build_tools",
  "re_error",
@@ -4727,7 +4684,6 @@ dependencies = [
  "quote",
  "rayon",
  "re_build_tools",
- "re_error",
  "re_log",
  "re_tracing",
  "rust-format",
@@ -4779,7 +4735,6 @@ dependencies = [
  "re_arrow_store",
  "re_build_info",
  "re_build_tools",
- "re_components",
  "re_data_source",
  "re_data_store",
  "re_data_ui",
@@ -4838,7 +4793,6 @@ dependencies = [
  "nohash-hasher",
  "parking_lot 0.12.1",
  "re_arrow_store",
- "re_components",
  "re_data_source",
  "re_data_store",
  "re_log",
@@ -4871,7 +4825,6 @@ dependencies = [
  "itertools 0.11.0",
  "nohash-hasher",
  "re_arrow_store",
- "re_components",
  "re_data_store",
  "re_data_ui",
  "re_log",
@@ -5059,7 +5012,6 @@ dependencies = [
  "rand",
  "re_build_info",
  "re_build_tools",
- "re_components",
  "re_error",
  "re_log",
  "re_log_types",

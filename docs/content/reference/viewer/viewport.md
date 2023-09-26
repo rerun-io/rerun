@@ -10,7 +10,7 @@ View controls
 -------------
 
 <picture>
-  <img src="https://static.rerun.io/d93ec977f99173207c57ab790b8e3112131b1bc1_view-controls_full.png" alt="">
+  <img src="https://static.rerun.io/view-controls/e911cec51fcf840e014340b3cb135b7faeb2e8b6/full.png" alt="">
 </picture>
 
 

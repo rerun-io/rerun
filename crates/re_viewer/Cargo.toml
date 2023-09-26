@@ -40,7 +40,6 @@ webgl = ["re_renderer/webgl"]
 # Internal:
 re_arrow_store.workspace = true
 re_build_info.workspace = true
-re_components = { workspace = true, features = ["ecolor", "image"] }
 re_data_source.workspace = true
 re_data_store = { workspace = true, features = ["serde"] }
 re_data_ui.workspace = true

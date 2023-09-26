@@ -8,7 +8,7 @@ import numpy.typing as npt
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from ..log import ComponentBatchLike
+    from .._log import ComponentBatchLike
     from . import ViewCoordinates, ViewCoordinatesArrayLike
 
 
@@ -60,7 +60,7 @@ class ViewCoordinatesExt:
 
         return pa.FixedSizeListArray.from_arrays(data, type=data_type)
 
-    # Implement the ArchetypeLike protocol
+    # Implement the AsComponents protocol
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import ViewCoordinates
         from ..components import ViewCoordinates as ViewCoordinatesComponent
