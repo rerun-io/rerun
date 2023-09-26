@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["Points3D"]
@@ -29,7 +31,26 @@ class Points3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
+    def __init__(
+        self: Any,
+        positions: datatypes.Vec3DArrayLike,
+        radii: components.RadiusArrayLike | None = None,
+        colors: datatypes.ColorArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
+    ):
+        # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
+        self.__attrs_init__(
+            positions=positions,
+            radii=radii,
+            colors=colors,
+            labels=labels,
+            class_ids=class_ids,
+            keypoint_ids=keypoint_ids,
+            instance_keys=instance_keys,
+        )
 
     positions: components.Position3DBatch = field(
         metadata={"component": "required"},

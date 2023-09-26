@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -14,10 +16,11 @@ __all__ = ["ClassId", "ClassIdBatch", "ClassIdType"]
 class ClassId(datatypes.ClassId):
     """A 16-bit ID representing a type of semantic class."""
 
-    # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
+    def __init__(self: Any, id: int):
+        # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
+        self.__attrs_init__(id=id)
 
     # Note: there are no fields here because ClassId delegates to datatypes.ClassId
-    pass
 
 
 class ClassIdType(datatypes.ClassIdType):

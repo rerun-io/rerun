@@ -19,7 +19,9 @@ __all__ = ["Float32", "Float32ArrayLike", "Float32Batch", "Float32Like", "Float3
 
 @define
 class Float32:
-    # You can define your own __init__ function as a member of Float32Ext in float32_ext.py
+    def __init__(self: Any, value: float):
+        # You can define your own __init__ function as a member of Float32Ext in float32_ext.py
+        self.__attrs_init__(value=value)
 
     value: float = field(converter=float)
 

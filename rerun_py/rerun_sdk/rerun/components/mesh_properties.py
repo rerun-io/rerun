@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy.typing as npt
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -12,10 +16,11 @@ __all__ = ["MeshProperties", "MeshPropertiesBatch", "MeshPropertiesType"]
 
 
 class MeshProperties(datatypes.MeshProperties):
-    # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
+    def __init__(self: Any, vertex_indices: npt.ArrayLike | None = None):
+        # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
+        self.__attrs_init__(vertex_indices=vertex_indices)
 
     # Note: there are no fields here because MeshProperties delegates to datatypes.MeshProperties
-    pass
 
 
 class MeshPropertiesType(datatypes.MeshPropertiesType):

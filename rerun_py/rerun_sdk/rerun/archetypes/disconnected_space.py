@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
 from .. import components
@@ -40,7 +42,9 @@ class DisconnectedSpace(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
+    def __init__(self: Any, disconnected_space: components.DisconnectedSpaceLike):
+        # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
+        self.__attrs_init__(disconnected_space=disconnected_space)
 
     disconnected_space: components.DisconnectedSpaceBatch = field(
         metadata={"component": "required"},

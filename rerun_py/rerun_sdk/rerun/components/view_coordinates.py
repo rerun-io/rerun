@@ -45,7 +45,9 @@ class ViewCoordinates(ViewCoordinatesExt):
      Back = 6
     """
 
-    # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
+    def __init__(self: Any, coordinates: npt.ArrayLike):
+        # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
+        self.__attrs_init__(coordinates=coordinates)
 
     coordinates: npt.NDArray[np.uint8] = field(
         converter=ViewCoordinatesExt.coordinates__field_converter_override,  # type: ignore[misc]

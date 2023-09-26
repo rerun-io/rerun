@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy.typing as npt
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -14,10 +18,11 @@ __all__ = ["Origin3D", "Origin3DBatch", "Origin3DType"]
 class Origin3D(datatypes.Vec3D):
     """A point of origin in 3D space."""
 
-    # You can define your own __init__ function as a member of Origin3DExt in origin3d_ext.py
+    def __init__(self: Any, xyz: npt.ArrayLike):
+        # You can define your own __init__ function as a member of Origin3DExt in origin3d_ext.py
+        self.__attrs_init__(xyz=xyz)
 
     # Note: there are no fields here because Origin3D delegates to datatypes.Vec3D
-    pass
 
 
 class Origin3DType(datatypes.Vec3DType):

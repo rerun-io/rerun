@@ -40,7 +40,9 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     This is internal to the `AnnotationContext` structure.
     """
 
-    # You can define your own __init__ function as a member of ClassDescriptionMapElemExt in class_description_map_elem_ext.py
+    def __init__(self: Any, class_id: datatypes.ClassIdLike, class_description: datatypes.ClassDescriptionLike):
+        # You can define your own __init__ function as a member of ClassDescriptionMapElemExt in class_description_map_elem_ext.py
+        self.__attrs_init__(class_id=class_id, class_description=class_description)
 
     class_id: datatypes.ClassId = field(
         converter=_class_description_map_elem__class_id__special_field_converter_override

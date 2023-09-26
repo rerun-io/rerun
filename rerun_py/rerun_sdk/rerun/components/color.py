@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -23,10 +25,11 @@ class Color(datatypes.Color):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    # You can define your own __init__ function as a member of ColorExt in color_ext.py
+    def __init__(self: Any, rgba: int):
+        # You can define your own __init__ function as a member of ColorExt in color_ext.py
+        self.__attrs_init__(rgba=rgba)
 
     # Note: there are no fields here because Color delegates to datatypes.Color
-    pass
 
 
 class ColorType(datatypes.ColorType):

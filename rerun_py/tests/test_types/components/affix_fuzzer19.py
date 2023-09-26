@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
@@ -13,10 +15,11 @@ __all__ = ["AffixFuzzer19", "AffixFuzzer19Batch", "AffixFuzzer19Type"]
 
 
 class AffixFuzzer19(datatypes.AffixFuzzer5):
-    # You can define your own __init__ function as a member of AffixFuzzer19Ext in affix_fuzzer19_ext.py
+    def __init__(self: Any, single_optional_union: datatypes.AffixFuzzer4Like | None = None):
+        # You can define your own __init__ function as a member of AffixFuzzer19Ext in affix_fuzzer19_ext.py
+        self.__attrs_init__(single_optional_union=single_optional_union)
 
     # Note: there are no fields here because AffixFuzzer19 delegates to datatypes.AffixFuzzer5
-    pass
 
 
 class AffixFuzzer19Type(datatypes.AffixFuzzer5Type):

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -19,7 +19,9 @@ __all__ = ["AffixFuzzer10", "AffixFuzzer10ArrayLike", "AffixFuzzer10Batch", "Aff
 
 @define
 class AffixFuzzer10:
-    # You can define your own __init__ function as a member of AffixFuzzer10Ext in affix_fuzzer10_ext.py
+    def __init__(self: Any, single_string_optional: str | None = None):
+        # You can define your own __init__ function as a member of AffixFuzzer10Ext in affix_fuzzer10_ext.py
+        self.__attrs_init__(single_string_optional=single_string_optional)
 
     single_string_optional: str | None = field(default=None, converter=str_or_none)
 

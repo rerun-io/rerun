@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -12,10 +14,11 @@ __all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 
 class Material(datatypes.Material):
-    # You can define your own __init__ function as a member of MaterialExt in material_ext.py
+    def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
+        # You can define your own __init__ function as a member of MaterialExt in material_ext.py
+        self.__attrs_init__(albedo_factor=albedo_factor)
 
     # Note: there are no fields here because Material delegates to datatypes.Material
-    pass
 
 
 class MaterialType(datatypes.MaterialType):

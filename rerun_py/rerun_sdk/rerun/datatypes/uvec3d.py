@@ -24,7 +24,9 @@ __all__ = ["UVec3D", "UVec3DArrayLike", "UVec3DBatch", "UVec3DLike", "UVec3DType
 class UVec3D:
     """A uint32 vector in 3D space."""
 
-    # You can define your own __init__ function as a member of UVec3DExt in uvec3d_ext.py
+    def __init__(self: Any, xyz: npt.ArrayLike):
+        # You can define your own __init__ function as a member of UVec3DExt in uvec3d_ext.py
+        self.__attrs_init__(xyz=xyz)
 
     xyz: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
 

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -12,10 +14,11 @@ __all__ = ["TensorData", "TensorDataBatch", "TensorDataType"]
 
 
 class TensorData(datatypes.TensorData):
-    # You can define your own __init__ function as a member of TensorDataExt in tensor_data_ext.py
+    def __init__(self: Any, shape: datatypes.TensorDimensionArrayLike, buffer: datatypes.TensorBufferLike):
+        # You can define your own __init__ function as a member of TensorDataExt in tensor_data_ext.py
+        self.__attrs_init__(shape=shape, buffer=buffer)
 
     # Note: there are no fields here because TensorData delegates to datatypes.TensorData
-    pass
 
 
 class TensorDataType(datatypes.TensorDataType):

@@ -28,7 +28,9 @@ __all__ = [
 class ScalarScattering(ScalarScatteringExt):
     """If true, a scalar will be shown as individual point in a scatter plot."""
 
-    # You can define your own __init__ function as a member of ScalarScatteringExt in scalar_scattering_ext.py
+    def __init__(self: Any, scattered: bool):
+        # You can define your own __init__ function as a member of ScalarScatteringExt in scalar_scattering_ext.py
+        self.__attrs_init__(scattered=scattered)
 
     scattered: bool = field(converter=bool)
 

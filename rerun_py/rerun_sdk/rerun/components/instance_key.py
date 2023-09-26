@@ -22,7 +22,9 @@ __all__ = ["InstanceKey", "InstanceKeyArrayLike", "InstanceKeyBatch", "InstanceK
 class InstanceKey(InstanceKeyExt):
     """A unique numeric identifier for each individual instance within a batch."""
 
-    # You can define your own __init__ function as a member of InstanceKeyExt in instance_key_ext.py
+    def __init__(self: Any, value: int):
+        # You can define your own __init__ function as a member of InstanceKeyExt in instance_key_ext.py
+        self.__attrs_init__(value=value)
 
     value: int = field(converter=int)
 

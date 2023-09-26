@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -14,10 +16,11 @@ __all__ = ["Rotation3D", "Rotation3DBatch", "Rotation3DType"]
 class Rotation3D(datatypes.Rotation3D):
     """A 3D rotation, represented either by a quaternion or a rotation around axis."""
 
-    # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
+    def __init__(self: Any, Quaternion: datatypes.QuaternionLike, AxisAngle: datatypes.RotationAxisAngleLike):
+        # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
+        self.__attrs_init__(Quaternion=Quaternion, AxisAngle=AxisAngle)
 
     # Note: there are no fields here because Rotation3D delegates to datatypes.Rotation3D
-    pass
 
 
 class Rotation3DType(datatypes.Rotation3DType):

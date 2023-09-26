@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -18,10 +20,17 @@ class OutOfTreeTransform3D(datatypes.Transform3D):
     "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
     """
 
-    # You can define your own __init__ function as a member of OutOfTreeTransform3DExt in out_of_tree_transform3d_ext.py
+    def __init__(
+        self: Any,
+        TranslationAndMat3x3: datatypes.TranslationAndMat3x3Like,
+        TranslationRotationScale: datatypes.TranslationRotationScale3DLike,
+    ):
+        # You can define your own __init__ function as a member of OutOfTreeTransform3DExt in out_of_tree_transform3d_ext.py
+        self.__attrs_init__(
+            TranslationAndMat3x3=TranslationAndMat3x3, TranslationRotationScale=TranslationRotationScale
+        )
 
     # Note: there are no fields here because OutOfTreeTransform3D delegates to datatypes.Transform3D
-    pass
 
 
 class OutOfTreeTransform3DType(datatypes.Transform3DType):

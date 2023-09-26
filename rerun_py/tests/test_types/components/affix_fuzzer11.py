@@ -21,7 +21,9 @@ __all__ = ["AffixFuzzer11", "AffixFuzzer11ArrayLike", "AffixFuzzer11Batch", "Aff
 
 @define
 class AffixFuzzer11:
-    # You can define your own __init__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
+    def __init__(self: Any, many_floats_optional: npt.ArrayLike | None = None):
+        # You can define your own __init__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
+        self.__attrs_init__(many_floats_optional=many_floats_optional)
 
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
 

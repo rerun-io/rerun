@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -21,10 +23,11 @@ class KeypointId(datatypes.KeypointId):
     [`rerun.components.AnnotationContext`].
     """
 
-    # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
+    def __init__(self: Any, id: int):
+        # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
+        self.__attrs_init__(id=id)
 
     # Note: there are no fields here because KeypointId delegates to datatypes.KeypointId
-    pass
 
 
 class KeypointIdType(datatypes.KeypointIdType):

@@ -21,7 +21,9 @@ __all__ = ["AffixFuzzer2", "AffixFuzzer2ArrayLike", "AffixFuzzer2Batch", "AffixF
 
 @define
 class AffixFuzzer2:
-    # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
+    def __init__(self: Any, single_float_optional: float | None = None):
+        # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
+        self.__attrs_init__(single_float_optional=single_float_optional)
 
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 

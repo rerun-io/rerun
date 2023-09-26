@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 from .bar_chart_ext import BarChartExt
 
@@ -32,7 +34,9 @@ class BarChart(BarChartExt, Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
+    def __init__(self: Any, values: datatypes.TensorDataLike):
+        # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
+        self.__attrs_init__(values=values)
 
     values: components.TensorDataBatch = field(
         metadata={"component": "required"},

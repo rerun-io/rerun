@@ -24,7 +24,9 @@ __all__ = [
 
 @define
 class PrimitiveComponent:
-    # You can define your own __init__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
+    def __init__(self: Any, value: int):
+        # You can define your own __init__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
+        self.__attrs_init__(value=value)
 
     value: int = field(converter=int)
 

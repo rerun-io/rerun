@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -14,10 +16,17 @@ __all__ = ["Transform3D", "Transform3DBatch", "Transform3DType"]
 class Transform3D(datatypes.Transform3D):
     """An affine transform between two 3D spaces, represented in a given direction."""
 
-    # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
+    def __init__(
+        self: Any,
+        TranslationAndMat3x3: datatypes.TranslationAndMat3x3Like,
+        TranslationRotationScale: datatypes.TranslationRotationScale3DLike,
+    ):
+        # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
+        self.__attrs_init__(
+            TranslationAndMat3x3=TranslationAndMat3x3, TranslationRotationScale=TranslationRotationScale
+        )
 
     # Note: there are no fields here because Transform3D delegates to datatypes.Transform3D
-    pass
 
 
 class Transform3DType(datatypes.Transform3DType):

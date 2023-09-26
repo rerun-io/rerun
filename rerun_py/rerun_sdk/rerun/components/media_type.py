@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 from .media_type_ext import MediaTypeExt
@@ -20,10 +22,11 @@ class MediaType(MediaTypeExt, datatypes.Utf8):
     consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
     """
 
-    # You can define your own __init__ function as a member of MediaTypeExt in media_type_ext.py
+    def __init__(self: Any, value: str):
+        # You can define your own __init__ function as a member of MediaTypeExt in media_type_ext.py
+        self.__attrs_init__(value=value)
 
     # Note: there are no fields here because MediaType delegates to datatypes.Utf8
-    pass
 
 
 class MediaTypeType(datatypes.Utf8Type):

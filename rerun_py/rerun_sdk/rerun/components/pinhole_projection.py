@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy.typing as npt
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -27,10 +31,11 @@ class PinholeProjection(datatypes.Mat3x3):
     ```
     """
 
-    # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
+    def __init__(self: Any, flat_columns: npt.ArrayLike):
+        # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
+        self.__attrs_init__(flat_columns=flat_columns)
 
     # Note: there are no fields here because PinholeProjection delegates to datatypes.Mat3x3
-    pass
 
 
 class PinholeProjectionType(datatypes.Mat3x3Type):

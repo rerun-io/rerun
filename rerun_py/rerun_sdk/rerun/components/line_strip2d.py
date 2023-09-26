@@ -36,7 +36,9 @@ class LineStrip2D(LineStrip2DExt):
     ```
     """
 
-    # You can define your own __init__ function as a member of LineStrip2DExt in line_strip2d_ext.py
+    def __init__(self: Any, points: datatypes.Vec2DArrayLike):
+        # You can define your own __init__ function as a member of LineStrip2DExt in line_strip2d_ext.py
+        self.__attrs_init__(points=points)
 
     points: list[datatypes.Vec2D] = field()
 

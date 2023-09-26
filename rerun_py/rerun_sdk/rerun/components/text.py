@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -14,10 +16,11 @@ __all__ = ["Text", "TextBatch", "TextType"]
 class Text(datatypes.Utf8):
     """A string of text, e.g. for labels and text documents."""
 
-    # You can define your own __init__ function as a member of TextExt in text_ext.py
+    def __init__(self: Any, value: str):
+        # You can define your own __init__ function as a member of TextExt in text_ext.py
+        self.__attrs_init__(value=value)
 
     # Note: there are no fields here because Text delegates to datatypes.Utf8
-    pass
 
 
 class TextType(datatypes.Utf8Type):

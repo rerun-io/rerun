@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 from .image_ext import ImageExt
 
@@ -45,7 +47,9 @@ class Image(ImageExt, Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of ImageExt in image_ext.py
+    def __init__(self: Any, data: datatypes.TensorDataLike, draw_order: components.DrawOrderLike | None = None):
+        # You can define your own __init__ function as a member of ImageExt in image_ext.py
+        self.__attrs_init__(data=data, draw_order=draw_order)
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 from .text_log_level_ext import TextLogLevelExt
@@ -25,10 +27,11 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     * `"TRACE"`
     """
 
-    # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
+    def __init__(self: Any, value: str):
+        # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
+        self.__attrs_init__(value=value)
 
     # Note: there are no fields here because TextLogLevel delegates to datatypes.Utf8
-    pass
 
 
 class TextLogLevelType(datatypes.Utf8Type):

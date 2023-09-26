@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["Mesh3D"]
@@ -68,7 +70,26 @@ class Mesh3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
+    def __init__(
+        self: Any,
+        vertex_positions: datatypes.Vec3DArrayLike,
+        mesh_properties: datatypes.MeshPropertiesLike | None = None,
+        vertex_normals: datatypes.Vec3DArrayLike | None = None,
+        vertex_colors: datatypes.ColorArrayLike | None = None,
+        mesh_material: datatypes.MaterialLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
+    ):
+        # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
+        self.__attrs_init__(
+            vertex_positions=vertex_positions,
+            mesh_properties=mesh_properties,
+            vertex_normals=vertex_normals,
+            vertex_colors=vertex_colors,
+            mesh_material=mesh_material,
+            class_ids=class_ids,
+            instance_keys=instance_keys,
+        )
 
     vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},

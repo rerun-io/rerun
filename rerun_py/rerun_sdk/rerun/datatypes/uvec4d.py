@@ -24,7 +24,9 @@ __all__ = ["UVec4D", "UVec4DArrayLike", "UVec4DBatch", "UVec4DLike", "UVec4DType
 class UVec4D:
     """A uint vector in 4D space."""
 
-    # You can define your own __init__ function as a member of UVec4DExt in uvec4d_ext.py
+    def __init__(self: Any, xyzw: npt.ArrayLike):
+        # You can define your own __init__ function as a member of UVec4DExt in uvec4d_ext.py
+        self.__attrs_init__(xyzw=xyzw)
 
     xyzw: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
 

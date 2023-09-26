@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy.typing as npt
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -14,10 +18,11 @@ __all__ = ["Position2D", "Position2DBatch", "Position2DType"]
 class Position2D(datatypes.Vec2D):
     """A position in 2D space."""
 
-    # You can define your own __init__ function as a member of Position2DExt in position2d_ext.py
+    def __init__(self: Any, xy: npt.ArrayLike):
+        # You can define your own __init__ function as a member of Position2DExt in position2d_ext.py
+        self.__attrs_init__(xy=xy)
 
     # Note: there are no fields here because Position2D delegates to datatypes.Vec2D
-    pass
 
 
 class Position2DType(datatypes.Vec2DType):

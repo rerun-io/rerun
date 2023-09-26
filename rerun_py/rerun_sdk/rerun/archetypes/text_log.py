@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["TextLog"]
@@ -17,7 +19,14 @@ __all__ = ["TextLog"]
 class TextLog(Archetype):
     """A log entry in a text log, comprised of a text body and its log level."""
 
-    # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
+    def __init__(
+        self: Any,
+        body: datatypes.Utf8Like,
+        level: datatypes.Utf8Like | None = None,
+        color: datatypes.ColorLike | None = None,
+    ):
+        # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
+        self.__attrs_init__(body=body, level=level, color=color)
 
     body: components.TextBatch = field(
         metadata={"component": "required"},

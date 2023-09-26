@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy.typing as npt
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -18,10 +22,11 @@ class Resolution(datatypes.Vec2D):
     Typically in integer units, but for some usecases floating point may be used.
     """
 
-    # You can define your own __init__ function as a member of ResolutionExt in resolution_ext.py
+    def __init__(self: Any, xy: npt.ArrayLike):
+        # You can define your own __init__ function as a member of ResolutionExt in resolution_ext.py
+        self.__attrs_init__(xy=xy)
 
     # Note: there are no fields here because Resolution delegates to datatypes.Vec2D
-    pass
 
 
 class ResolutionType(datatypes.Vec2DType):

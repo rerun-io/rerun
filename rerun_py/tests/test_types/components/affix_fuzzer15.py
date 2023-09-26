@@ -5,6 +5,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy.typing as npt
 from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
@@ -13,10 +16,19 @@ __all__ = ["AffixFuzzer15", "AffixFuzzer15Batch", "AffixFuzzer15Type"]
 
 
 class AffixFuzzer15(datatypes.AffixFuzzer3):
-    # You can define your own __init__ function as a member of AffixFuzzer15Ext in affix_fuzzer15_ext.py
+    def __init__(
+        self: Any,
+        degrees: float,
+        craziness: datatypes.AffixFuzzer1ArrayLike,
+        fixed_size_shenanigans: npt.ArrayLike,
+        radians: float | None = None,
+    ):
+        # You can define your own __init__ function as a member of AffixFuzzer15Ext in affix_fuzzer15_ext.py
+        self.__attrs_init__(
+            degrees=degrees, radians=radians, craziness=craziness, fixed_size_shenanigans=fixed_size_shenanigans
+        )
 
     # Note: there are no fields here because AffixFuzzer15 delegates to datatypes.AffixFuzzer3
-    pass
 
 
 class AffixFuzzer15Type(datatypes.AffixFuzzer3Type):

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -28,7 +28,9 @@ __all__ = [
 class TensorDimension:
     """A single dimension within a multi-dimensional tensor."""
 
-    # You can define your own __init__ function as a member of TensorDimensionExt in tensor_dimension_ext.py
+    def __init__(self: Any, size: int, name: str | None = None):
+        # You can define your own __init__ function as a member of TensorDimensionExt in tensor_dimension_ext.py
+        self.__attrs_init__(size=size, name=name)
 
     size: int = field(converter=int)
     name: str | None = field(default=None, converter=str_or_none)

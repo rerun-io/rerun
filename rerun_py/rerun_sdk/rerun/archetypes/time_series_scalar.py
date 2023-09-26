@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["TimeSeriesScalar"]
@@ -58,7 +60,16 @@ class TimeSeriesScalar(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
+    def __init__(
+        self: Any,
+        scalar: components.ScalarLike,
+        radius: components.RadiusLike | None = None,
+        color: datatypes.ColorLike | None = None,
+        label: datatypes.Utf8Like | None = None,
+        scattered: components.ScalarScatteringLike | None = None,
+    ):
+        # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
+        self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
 
     scalar: components.ScalarBatch = field(
         metadata={"component": "required"},

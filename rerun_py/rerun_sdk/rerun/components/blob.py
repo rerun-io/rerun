@@ -23,7 +23,9 @@ __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 
 @define
 class Blob(BlobExt):
-    # You can define your own __init__ function as a member of BlobExt in blob_ext.py
+    def __init__(self: Any, data: npt.ArrayLike):
+        # You can define your own __init__ function as a member of BlobExt in blob_ext.py
+        self.__attrs_init__(data=data)
 
     data: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
 

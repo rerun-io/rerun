@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -16,7 +16,9 @@ __all__ = ["AffixFuzzer12", "AffixFuzzer12ArrayLike", "AffixFuzzer12Batch", "Aff
 
 @define
 class AffixFuzzer12:
-    # You can define your own __init__ function as a member of AffixFuzzer12Ext in affix_fuzzer12_ext.py
+    def __init__(self: Any, many_strings_required: list[str]):
+        # You can define your own __init__ function as a member of AffixFuzzer12Ext in affix_fuzzer12_ext.py
+        self.__attrs_init__(many_strings_required=many_strings_required)
 
     many_strings_required: list[str] = field()
 

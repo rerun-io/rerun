@@ -25,7 +25,9 @@ __all__ = ["Vec3D", "Vec3DArrayLike", "Vec3DBatch", "Vec3DLike", "Vec3DType"]
 class Vec3D(Vec3DExt):
     """A vector in 3D space."""
 
-    # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
+    def __init__(self: Any, xyz: npt.ArrayLike):
+        # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
+        self.__attrs_init__(xyz=xyz)
 
     xyz: npt.NDArray[np.float32] = field(converter=to_np_float32)
 

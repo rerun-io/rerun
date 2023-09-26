@@ -36,7 +36,9 @@ class LineStrip3D(LineStrip3DExt):
     ```
     """
 
-    # You can define your own __init__ function as a member of LineStrip3DExt in line_strip3d_ext.py
+    def __init__(self: Any, points: datatypes.Vec3DArrayLike):
+        # You can define your own __init__ function as a member of LineStrip3DExt in line_strip3d_ext.py
+        self.__attrs_init__(points=points)
 
     points: list[datatypes.Vec3D] = field()
 

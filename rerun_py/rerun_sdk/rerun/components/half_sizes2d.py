@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy.typing as npt
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -19,10 +23,11 @@ class HalfSizes2D(datatypes.Vec2D):
     Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
     """
 
-    # You can define your own __init__ function as a member of HalfSizes2DExt in half_sizes2d_ext.py
+    def __init__(self: Any, xy: npt.ArrayLike):
+        # You can define your own __init__ function as a member of HalfSizes2DExt in half_sizes2d_ext.py
+        self.__attrs_init__(xy=xy)
 
     # Note: there are no fields here because HalfSizes2D delegates to datatypes.Vec2D
-    pass
 
 
 class HalfSizes2DType(datatypes.Vec2DType):

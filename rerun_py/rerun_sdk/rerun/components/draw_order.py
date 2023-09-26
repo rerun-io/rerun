@@ -30,7 +30,9 @@ class DrawOrder(DrawOrderExt):
     Draw order for entities with the same draw order is generally undefined.
     """
 
-    # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
+    def __init__(self: Any, value: float):
+        # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
+        self.__attrs_init__(value=value)
 
     value: float = field(converter=float)
 

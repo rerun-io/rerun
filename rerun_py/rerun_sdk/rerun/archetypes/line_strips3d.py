@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["LineStrips3D"]
@@ -78,7 +80,19 @@ class LineStrips3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
+    def __init__(
+        self: Any,
+        strips: components.LineStrip3DArrayLike,
+        radii: components.RadiusArrayLike | None = None,
+        colors: datatypes.ColorArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
+    ):
+        # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
+        self.__attrs_init__(
+            strips=strips, radii=radii, colors=colors, labels=labels, class_ids=class_ids, instance_keys=instance_keys
+        )
 
     strips: components.LineStrip3DBatch = field(
         metadata={"component": "required"},

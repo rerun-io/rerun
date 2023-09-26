@@ -28,7 +28,9 @@ __all__ = [
 class ClearIsRecursive(ClearIsRecursiveExt):
     """Configures how a clear operation should behave - recurive or no?."""
 
-    # You can define your own __init__ function as a member of ClearIsRecursiveExt in clear_is_recursive_ext.py
+    def __init__(self: Any, recursive: bool):
+        # You can define your own __init__ function as a member of ClearIsRecursiveExt in clear_is_recursive_ext.py
+        self.__attrs_init__(recursive=recursive)
 
     recursive: bool = field(converter=bool)
     """

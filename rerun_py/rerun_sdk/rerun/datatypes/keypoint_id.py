@@ -29,7 +29,9 @@ class KeypointId(KeypointIdExt):
     [`rerun.components.AnnotationContext`].
     """
 
-    # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
+    def __init__(self: Any, id: int):
+        # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
+        self.__attrs_init__(id=id)
 
     id: int = field(converter=int)
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -21,7 +21,9 @@ __all__ = ["AffixFuzzer21", "AffixFuzzer21ArrayLike", "AffixFuzzer21Batch", "Aff
 
 @define
 class AffixFuzzer21:
-    # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py
+    def __init__(self: Any, single_half: float, many_halves: npt.ArrayLike):
+        # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py
+        self.__attrs_init__(single_half=single_half, many_halves=many_halves)
 
     single_half: float = field(converter=float)
     many_halves: npt.NDArray[np.float16] = field(converter=to_np_float16)

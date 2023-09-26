@@ -31,7 +31,9 @@ class Color(ColorExt):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    # You can define your own __init__ function as a member of ColorExt in color_ext.py
+    def __init__(self: Any, rgba: int):
+        # You can define your own __init__ function as a member of ColorExt in color_ext.py
+        self.__attrs_init__(rgba=rgba)
 
     rgba: int = field(
         converter=ColorExt.rgba__field_converter_override,  # type: ignore[misc]
@@ -46,7 +48,7 @@ class Color(ColorExt):
 
 
 if TYPE_CHECKING:
-    ColorLike = Union[Color, int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
+    ColorLike = Union[Color, int, Sequence[Union[int, float]], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
 else:
     ColorLike = Any
 
@@ -54,7 +56,8 @@ ColorArrayLike = Union[
     Color,
     Sequence[ColorLike],
     int,
-    Sequence[Sequence[int]],
+    Sequence[Union[int, float]],
+    Sequence[Sequence[Union[int, float]]],
     npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]],
 ]
 

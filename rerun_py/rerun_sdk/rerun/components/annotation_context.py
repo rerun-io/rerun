@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -35,7 +35,9 @@ class AnnotationContext(AnnotationContextExt):
     path.
     """
 
-    # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
+    def __init__(self: Any, class_map: datatypes.ClassDescriptionMapElemArrayLike):
+        # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
+        self.__attrs_init__(class_map=class_map)
 
     class_map: list[datatypes.ClassDescriptionMapElem] = field(
         converter=AnnotationContextExt.class_map__field_converter_override,  # type: ignore[misc]

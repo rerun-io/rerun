@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["Tensor"]
@@ -37,7 +39,9 @@ class Tensor(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
+    def __init__(self: Any, data: datatypes.TensorDataLike):
+        # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
+        self.__attrs_init__(data=data)
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

@@ -22,7 +22,9 @@ __all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike", "ClassI
 class ClassId(ClassIdExt):
     """A 16-bit ID representing a type of semantic class."""
 
-    # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
+    def __init__(self: Any, id: int):
+        # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
+        self.__attrs_init__(id=id)
 
     id: int = field(converter=int)
 
@@ -39,15 +41,7 @@ if TYPE_CHECKING:
 else:
     ClassIdLike = Any
 
-ClassIdArrayLike = Union[
-    ClassId,
-    Sequence[ClassIdLike],
-    int,
-    npt.NDArray[np.uint8],
-    npt.NDArray[np.uint16],
-    npt.NDArray[np.uint32],
-    npt.NDArray[np.uint64],
-]
+ClassIdArrayLike = Union[ClassId, Sequence[ClassIdLike], int, npt.ArrayLike]
 
 
 class ClassIdType(BaseExtensionType):

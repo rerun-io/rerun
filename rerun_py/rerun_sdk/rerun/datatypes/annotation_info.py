@@ -50,7 +50,9 @@ class AnnotationInfo(AnnotationInfoExt):
     The id refers either to a class or key-point id
     """
 
-    # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py
+    def __init__(self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.ColorLike | None = None):
+        # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py
+        self.__attrs_init__(id=id, label=label, color=color)
 
     id: int = field(converter=int)
     """

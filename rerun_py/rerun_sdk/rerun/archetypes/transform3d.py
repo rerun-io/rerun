@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["Transform3D"]
@@ -44,7 +46,9 @@ class Transform3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
+    def __init__(self: Any, transform: datatypes.Transform3DLike):
+        # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
+        self.__attrs_init__(transform=transform)
 
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},

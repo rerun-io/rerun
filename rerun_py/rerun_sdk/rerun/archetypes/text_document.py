@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["TextDocument"]
@@ -17,7 +19,9 @@ __all__ = ["TextDocument"]
 class TextDocument(Archetype):
     """A text element intended to be displayed in its own text-box."""
 
-    # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
+    def __init__(self: Any, body: datatypes.Utf8Like, media_type: datatypes.Utf8Like | None = None):
+        # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
+        self.__attrs_init__(body=body, media_type=media_type)
 
     body: components.TextBatch = field(
         metadata={"component": "required"},
