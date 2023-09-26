@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from ..datatypes import TensorData
-
 if TYPE_CHECKING:
     from ..datatypes import TensorBufferLike, TensorData, TensorDimensionLike
     from ..datatypes.tensor_data_ext import TensorLike
