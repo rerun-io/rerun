@@ -47,7 +47,7 @@ pub struct ViewportBlueprint<'a> {
     /// Show one tab as maximized?
     pub maximized: Option<SpaceViewId>,
 
-    /// Whether the viewport layout id determined automatically.
+    /// Whether the viewport layout is determined automatically.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
     pub auto_layout: bool,
