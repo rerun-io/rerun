@@ -197,32 +197,17 @@ jobs:
           command: test
           args: --doc --all-features
 
-      # run `cargo doc` in two steps, one without `rerun-cli`, then only `rerun-cli`
-      # this fixes the race condition caused by having two crates with the same
-      # name in the workspace (`rerun`, `rerun-cli` bin)
-      - name: cargo doc --exclude rerun-cli
+      - name: cargo doc
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps --all-features --workspace --exclude rerun-cli
+          args: --no-deps --all-features --workspace
 
-      - name: cargo doc -p rerun-cli
+      - name: cargo doc --document-private-items
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps --all-features --workspace -p rerun-cli
-
-      - name: cargo doc --document-private-items --exclude rerun-cli
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --document-private-items --no-deps --all-features --workspace --exclude rerun-cli
-
-      - name: cargo doc --document-private-items -p rerun-cli
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --document-private-items --no-deps --all-features -p rerun-cli
+          args: --document-private-items --no-deps --all-features --workspace
 
       # Just a normal `cargo test` should always work:
       - name: cargo test --all-targets
