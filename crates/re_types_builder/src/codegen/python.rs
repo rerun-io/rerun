@@ -360,6 +360,13 @@ impl PythonCodeGenerator {
                 .fields
                 .iter()
                 .filter_map(quote_import_clauses_from_field)
+                .chain(obj.fields.iter().filter_map(|field| {
+                    field.typ.fqname().and_then(|fqname| {
+                        objects[fqname]
+                            .delegate_datatype(objects)
+                            .map(|delegate| quote_import_clauses_from_fqname(&delegate.fqname))
+                    })
+                }))
                 .collect();
             for clause in import_clauses {
                 code.push_text(&clause, 1, 0);
@@ -623,13 +630,88 @@ fn code_for_struct(
             4,
         );
     } else {
+        // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
+        // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
+
+        fn like_type(fqname: &str, objects: &Objects) -> String {
+            if let Some(delegate) = objects.objects[fqname].delegate_datatype(objects) {
+                fqname_to_type(&delegate.fqname)
+            } else {
+                fqname_to_type(fqname)
+            }
+        }
+
+        fn argument(field: &ObjectField, objects: &Objects) -> String {
+            let type_annotation =
+                if let Some(fqname) = field.typ.plural_inner().and_then(|inner| inner.fqname()) {
+                    format!("{}ArrayLike", like_type(fqname, objects))
+                } else if let Type::Object(fqname) = &field.typ {
+                    format!("{}Like", like_type(fqname, objects))
+                } else {
+                    let type_annotation = quote_field_type_from_field(objects, field, false).0;
+                    // Relax type annotation for numpy arrays.
+                    if type_annotation.starts_with("npt.NDArray") {
+                        "npt.ArrayLike".to_owned()
+                    } else {
+                        type_annotation
+                    }
+                };
+
+            if field.is_nullable {
+                format!("{}: {} | None = None", field.name, type_annotation)
+            } else {
+                format!("{}: {}", field.name, type_annotation)
+            }
+        }
+
+        let fields = if let Some(delegate) = obj.delegate_datatype(objects) {
+            &delegate.fields
+        } else {
+            fields
+        };
+
+        let required_arguments = fields
+            .iter()
+            .filter(|field| !field.is_nullable)
+            .map(|field| argument(field, objects))
+            .collect::<Vec<_>>();
+        let optional_arguments = fields
+            .iter()
+            .filter(|field| field.is_nullable)
+            .map(|field| argument(field, objects))
+            .collect::<Vec<_>>();
+
+        let arguments = if optional_arguments.is_empty() {
+            required_arguments
+        } else {
+            required_arguments
+                .into_iter()
+                .chain(optional_arguments)
+                .collect()
+        };
+
         code.push_text(
-            format!(
-                "# You can define your own __init__ function as a member of {} in {}",
-                ext_class.name, ext_class.file_name
-            ),
+            format!("def __init__(self: Any, {}):", arguments.join(", "),),
             2,
             4,
+        );
+
+        let attribute_init = fields
+            .iter()
+            .map(|field| format!("{}={}", field.name, field.name))
+            .collect::<Vec<_>>();
+        code.push_text(
+            format!(
+                r#"
+
+                # You can define your own __init__ function as a member of {} in {}
+                self.__attrs_init__({})"#,
+                ext_class.name,
+                ext_class.file_name,
+                attribute_init.join(", ")
+            ),
+            2,
+            8,
         );
     }
 
@@ -643,7 +725,11 @@ fn code_for_struct(
             1,
             4,
         );
-        code.push_text("pass", 2, 4);
+
+        // If extension class had the init method, this class is now empty!
+        if ext_class.has_init {
+            code.push_text("pass", 2, 4);
+        }
     } else {
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
         // complains.
@@ -1158,23 +1244,29 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases...
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
-    fqname.map(|fqname| {
-        let fqname = fqname.replace(".testing", "");
-        let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-        if from.starts_with("rerun.datatypes") {
-            "from .. import datatypes".to_owned()
-        } else if from.starts_with("rerun.components") {
-            "from .. import components".to_owned()
-        } else if from.starts_with("rerun.archetypes") {
-            // NOTE: This is assuming importing other archetypes is legal… which whether it is or
-            // isn't for this code generator to say.
-            "from .. import archetypes".to_owned()
-        } else if from.is_empty() {
-            format!("from . import {class}")
-        } else {
-            format!("from {from} import {class}")
-        }
-    })
+    fqname.map(|fqname| quote_import_clauses_from_fqname(&fqname))
+}
+
+fn quote_import_clauses_from_fqname(fqname: &str) -> String {
+    // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
+    // nasty lazy circular dependencies in weird edge cases...
+    // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
+
+    let fqname = fqname.replace(".testing", "");
+    let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
+    if from.starts_with("rerun.datatypes") {
+        "from .. import datatypes".to_owned()
+    } else if from.starts_with("rerun.components") {
+        "from .. import components".to_owned()
+    } else if from.starts_with("rerun.archetypes") {
+        // NOTE: This is assuming importing other archetypes is legal… which whether it is or
+        // isn't for this code generator to say.
+        "from .. import archetypes".to_owned()
+    } else if from.is_empty() {
+        format!("from . import {class}")
+    } else {
+        format!("from {from} import {class}")
+    }
 }
 
 /// Returns type name as string and whether it was force unwrapped.
@@ -1353,37 +1445,49 @@ fn quote_field_converter_from_field(
     (converter, function)
 }
 
-fn quote_type_from_element_type(typ: &ElementType) -> String {
+fn fqname_to_type(fqname: &str) -> String {
+    let fqname = fqname.replace(".testing", "");
+    let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
+    if from.starts_with("rerun.datatypes") {
+        format!("datatypes.{class}")
+    } else if from.starts_with("rerun.components") {
+        format!("components.{class}")
+    } else if from.starts_with("rerun.archetypes") {
+        // NOTE: This is assuming importing other archetypes is legal… which whether it is or
+        // isn't for this code generator to say.
+        format!("archetypes.{class}")
+    } else if from.is_empty() {
+        format!("from . import {class}")
+    } else {
+        format!("from {from} import {class}")
+    }
+}
+
+fn quote_type_from_type(typ: &Type) -> String {
     match typ {
-        ElementType::UInt8
-        | ElementType::UInt16
-        | ElementType::UInt32
-        | ElementType::UInt64
-        | ElementType::Int8
-        | ElementType::Int16
-        | ElementType::Int32
-        | ElementType::Int64 => "int".to_owned(),
-        ElementType::Bool => "bool".to_owned(),
-        ElementType::Float16 | ElementType::Float32 | ElementType::Float64 => "float".to_owned(),
-        ElementType::String => "str".to_owned(),
-        ElementType::Object(fqname) => {
-            let fqname = fqname.replace(".testing", "");
-            let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-            if from.starts_with("rerun.datatypes") {
-                format!("datatypes.{class}")
-            } else if from.starts_with("rerun.components") {
-                format!("components.{class}")
-            } else if from.starts_with("rerun.archetypes") {
-                // NOTE: This is assuming importing other archetypes is legal… which whether it is or
-                // isn't for this code generator to say.
-                format!("archetypes.{class}")
-            } else if from.is_empty() {
-                format!("from . import {class}")
-            } else {
-                format!("from {from} import {class}")
-            }
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64 => "int".to_owned(),
+        Type::Bool => "bool".to_owned(),
+        Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::String => "str".to_owned(),
+        Type::Object(fqname) => fqname_to_type(fqname),
+        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+            format!(
+                "list[{}]",
+                quote_type_from_type(&Type::from(elem_type.clone()))
+            )
         }
     }
+}
+
+fn quote_type_from_element_type(typ: &ElementType) -> String {
+    quote_type_from_type(&Type::from(typ.clone()))
 }
 
 /// Arrow support objects
