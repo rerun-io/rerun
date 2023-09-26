@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 else:
     RadiusLike = Any
 
-RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.NDArray[np.float32]]
+RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.ArrayLike]
 
 
 class RadiusType(BaseExtensionType):

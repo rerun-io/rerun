@@ -50,15 +50,7 @@ if TYPE_CHECKING:
 else:
     KeypointIdLike = Any
 
-KeypointIdArrayLike = Union[
-    KeypointId,
-    Sequence[KeypointIdLike],
-    int,
-    npt.NDArray[np.uint8],
-    npt.NDArray[np.uint16],
-    npt.NDArray[np.uint32],
-    npt.NDArray[np.uint64],
-]
+KeypointIdArrayLike = Union[KeypointId, Sequence[KeypointIdLike], int, npt.ArrayLike]
 
 
 class KeypointIdType(BaseExtensionType):
