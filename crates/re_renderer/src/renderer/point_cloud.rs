@@ -35,8 +35,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawRendererError, FileResolver, FileSystem, RenderContext, Renderer,
-    SharedRendererData, WgpuResourcePools,
+    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
 };
 
 bitflags! {
@@ -715,7 +715,7 @@ impl Renderer for PointCloudRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> Result<(), DrawRendererError> {
+    ) -> Result<(), DrawError> {
         let (pipeline_handle, bind_group_all_points) = match phase {
             DrawPhase::OutlineMask => (
                 self.render_pipeline_outline_mask,

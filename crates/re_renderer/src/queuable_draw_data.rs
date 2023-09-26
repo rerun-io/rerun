@@ -1,6 +1,6 @@
 use crate::{
     draw_phases::DrawPhase,
-    renderer::{DrawData, DrawRendererError, Renderer},
+    renderer::{DrawData, DrawError, Renderer},
     RenderContext,
 };
 
@@ -10,7 +10,7 @@ pub enum QueueableDrawDataError {
     FailedToRetrieveRenderer(&'static str),
 
     #[error(transparent)]
-    DrawRenderer(#[from] DrawRendererError),
+    DrawRenderer(#[from] DrawError),
 
     #[error("Mismatching draw data type, expected {0}")]
     UnexpectedDrawDataType(&'static str),

@@ -51,7 +51,7 @@ pub trait DrawData {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum DrawRendererError {
+pub enum DrawError {
     #[error(transparent)]
     Pool(#[from] PoolError),
 }
@@ -80,7 +80,7 @@ pub trait Renderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> Result<(), DrawRendererError>;
+    ) -> Result<(), DrawError>;
 
     /// Combination of flags indicating in which phases [`Renderer::draw`] should be called.
     fn participated_phases() -> &'static [DrawPhase];

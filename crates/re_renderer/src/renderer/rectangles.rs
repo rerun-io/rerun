@@ -28,8 +28,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawRendererError, FileResolver, FileSystem, RenderContext, Renderer,
-    SharedRendererData, WgpuResourcePools,
+    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
 };
 
 /// Texture filter setting for magnification (a texel covers several pixels).
@@ -632,7 +632,7 @@ impl Renderer for RectangleRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> Result<(), DrawRendererError> {
+    ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
         if draw_data.instances.is_empty() {
             return Ok(());

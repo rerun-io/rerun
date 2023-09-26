@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-use super::{DrawData, DrawRendererError, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer};
 
 /// Renders a generated skybox from a color gradient
 ///
@@ -100,7 +100,7 @@ impl Renderer for GenericSkybox {
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &GenericSkyboxDrawData,
-    ) -> Result<(), DrawRendererError> {
+    ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
