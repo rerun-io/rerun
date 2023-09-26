@@ -263,8 +263,8 @@ def log_transform3d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun._log import log
     from rerun.archetypes import Transform3D
-    from rerun.log import log
 
     new_transform: TranslationRotationScale3D | TranslationAndMat3x3 | None = None
 

@@ -92,7 +92,7 @@ class Archetype:
 
         Part of the `AsComponents` logging interface.
         """
-        from .log import IndicatorComponentBatch
+        from ._log import IndicatorComponentBatch
 
         yield IndicatorComponentBatch(self.archetype_name(), self.num_instances())
 
