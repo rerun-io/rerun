@@ -85,6 +85,12 @@ impl crate::Archetype for DisconnectedSpace {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: DisconnectedSpaceIndicator = DisconnectedSpaceIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -111,7 +117,7 @@ impl crate::Archetype for DisconnectedSpace {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::indicator().into()),
+            Some(Self::indicator()),
             Some((&self.disconnected_space as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()

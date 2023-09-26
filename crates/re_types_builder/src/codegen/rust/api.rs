@@ -832,7 +832,7 @@ fn quote_trait_impls_from_obj(
 
             let all_component_batches = {
                 std::iter::once(quote!{
-                    Some(Self::indicator().into())
+                    Some(Self::indicator())
                 }).chain(obj.fields.iter().map(|obj_field| {
                     let field_name = format_ident!("{}", obj_field.name);
                     let is_plural = obj_field.typ.is_plural();
@@ -1006,6 +1006,12 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn name() -> crate::ArchetypeName {
                         #fqname.into()
+                    }
+
+                    #[inline]
+                    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+                        static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
+                        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
                     }
 
                     #[inline]

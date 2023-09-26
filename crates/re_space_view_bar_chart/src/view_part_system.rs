@@ -30,7 +30,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(BarChart::indicator().name()).collect()
+        std::iter::once(BarChart::indicator().as_ref().name()).collect()
     }
 
     fn heuristic_filter(

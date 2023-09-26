@@ -107,6 +107,12 @@ impl crate::Archetype for SegmentationImage {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: SegmentationImageIndicator = SegmentationImageIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -133,7 +139,7 @@ impl crate::Archetype for SegmentationImage {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::indicator().into()),
+            Some(Self::indicator()),
             Some((&self.data as &dyn crate::ComponentBatch).into()),
             self.draw_order
                 .as_ref()

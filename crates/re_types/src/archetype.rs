@@ -64,8 +64,8 @@ pub trait Archetype {
     /// This allows for associating arbitrary indicator components with arbitrary data.
     /// Check out the `manual_indicator` API example to see what's possible.
     #[inline]
-    fn indicator() -> Box<dyn ComponentBatch> {
-        Box::<<Self as Archetype>::Indicator>::default()
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
+        MaybeOwnedComponentBatch::Owned(Box::<<Self as Archetype>::Indicator>::default())
     }
 
     /// Returns the names of all components that _must_ be provided by the user when constructing
@@ -76,7 +76,7 @@ pub trait Archetype {
     /// this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentName]> {
-        std::borrow::Cow::Owned(vec![Self::indicator().name()])
+        std::borrow::Cow::Owned(vec![Self::indicator().as_ref().name()])
     }
 
     /// Returns the names of all components that _may_ be provided by the user when constructing
@@ -240,11 +240,15 @@ pub struct GenericIndicatorComponent<A: Archetype> {
     _phantom: std::marker::PhantomData<A>,
 }
 
+impl<A: Archetype> GenericIndicatorComponent<A> {
+    pub const DEFAULT: Self = Self {
+        _phantom: std::marker::PhantomData::<A>,
+    };
+}
+
 impl<A: Archetype> Default for GenericIndicatorComponent<A> {
     fn default() -> Self {
-        Self {
-            _phantom: Default::default(),
-        }
+        Self::DEFAULT
     }
 }
 

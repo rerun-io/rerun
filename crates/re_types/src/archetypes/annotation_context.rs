@@ -98,6 +98,12 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: AnnotationContextIndicator = AnnotationContextIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -124,7 +130,7 @@ impl crate::Archetype for AnnotationContext {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::indicator().into()),
+            Some(Self::indicator()),
             Some((&self.context as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()

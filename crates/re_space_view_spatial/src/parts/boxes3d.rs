@@ -137,7 +137,7 @@ impl ViewPartSystem for Boxes3DPart {
         _ent_path: &EntityPath,
         components: &std::collections::BTreeSet<re_types::ComponentName>,
     ) -> bool {
-        components.contains(&Boxes3D::indicator().name())
+        components.contains(&Boxes3D::indicator().as_ref().name())
     }
 
     fn execute(

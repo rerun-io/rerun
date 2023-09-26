@@ -177,7 +177,7 @@ impl ViewPartSystem for Arrows3DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Arrows3D::indicator().name()).collect()
+        std::iter::once(Arrows3D::indicator().as_ref().name()).collect()
     }
 
     fn execute(

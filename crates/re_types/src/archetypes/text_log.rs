@@ -61,6 +61,12 @@ impl crate::Archetype for TextLog {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: TextLogIndicator = TextLogIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -87,7 +93,7 @@ impl crate::Archetype for TextLog {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::indicator().into()),
+            Some(Self::indicator()),
             Some((&self.body as &dyn crate::ComponentBatch).into()),
             self.level
                 .as_ref()

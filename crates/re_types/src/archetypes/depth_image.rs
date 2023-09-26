@@ -99,6 +99,12 @@ impl crate::Archetype for DepthImage {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: DepthImageIndicator = DepthImageIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -125,7 +131,7 @@ impl crate::Archetype for DepthImage {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::indicator().into()),
+            Some(Self::indicator()),
             Some((&self.data as &dyn crate::ComponentBatch).into()),
             self.meter
                 .as_ref()

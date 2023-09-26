@@ -54,7 +54,7 @@ impl Archetype for CustomPoints3D {
             .into_iter()
             .chain(
                 [
-                    Some(Self::indicator().into()),
+                    Some(Self::indicator()),
                     self.confidences
                         .as_ref()
                         .map(|v| (v as &dyn ComponentBatch).into()),

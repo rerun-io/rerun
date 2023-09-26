@@ -219,7 +219,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &Image::indicator().name(),
+            &Image::indicator().as_ref().name(),
         ) {
             return Ok(());
         }
@@ -307,7 +307,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &DepthImage::indicator().name(),
+            &DepthImage::indicator().as_ref().name(),
         ) {
             return Ok(());
         }
@@ -428,7 +428,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &SegmentationImage::indicator().name(),
+            &SegmentationImage::indicator().as_ref().name(),
         ) {
             return Ok(());
         }
@@ -631,9 +631,9 @@ impl ViewPartSystem for ImagesPart {
 
     fn indicator_components(&self) -> ComponentNameSet {
         [
-            Image::indicator().name(),
-            DepthImage::indicator().name(),
-            SegmentationImage::indicator().name(),
+            Image::indicator().as_ref().name(),
+            DepthImage::indicator().as_ref().name(),
+            SegmentationImage::indicator().as_ref().name(),
         ]
         .into_iter()
         .collect()

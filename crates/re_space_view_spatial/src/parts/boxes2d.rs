@@ -174,7 +174,7 @@ impl ViewPartSystem for Boxes2DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Boxes2D::indicator().name()).collect()
+        std::iter::once(Boxes2D::indicator().as_ref().name()).collect()
     }
 
     fn execute(
