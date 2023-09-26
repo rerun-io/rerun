@@ -14,8 +14,7 @@ where
     E: std::fmt::Display,
 {
     #[track_caller]
-    fn ok_or_log_error(self) -> Option<T>
-    {
+    fn ok_or_log_error(self) -> Option<T> {
         match self {
             Ok(t) => Some(t),
             Err(err) => {
@@ -29,8 +28,7 @@ where
 
     /// Log a warning if there is an `Err`, but only log the exact same message once.
     #[track_caller]
-    fn warn_on_err_once(self, msg: impl std::fmt::Display) -> Option<T>
-    {
+    fn warn_on_err_once(self, msg: impl std::fmt::Display) -> Option<T> {
         match self {
             Ok(value) => Some(value),
             Err(err) => {
@@ -43,8 +41,7 @@ where
     }
 
     #[track_caller]
-    fn unwrap_debug_or_log_error(self) -> Option<T>
-    {
+    fn unwrap_debug_or_log_error(self) -> Option<T> {
         if cfg!(debug_assertions) {
             match self {
                 Ok(value) => Some(value),
