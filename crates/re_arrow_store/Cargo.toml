@@ -72,7 +72,7 @@ polars-ops = { workspace = true, optional = true, features = [
 
 
 [dev-dependencies]
-re_components = { workspace = true, features = ["arrow_datagen"] }
+re_types = { workspace = true, features = ["datagen"] }
 
 anyhow.workspace = true
 criterion = "0.5"

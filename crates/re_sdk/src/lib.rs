@@ -69,7 +69,6 @@ pub mod time {
 /// They all implement the [`Component`][`re_types::Component`] trait,
 /// and can be used in [`RecordingStream::log_component_batches`].
 pub mod components {
-    pub use re_components::Quaternion;
     pub use re_types::components::{
         AnnotationContext, Blob, ClassId, ClearIsRecursive, Color, DepthMeter, DisconnectedSpace,
         DrawOrder, HalfSizes2D, HalfSizes3D, InstanceKey, KeypointId, LineStrip2D, LineStrip3D,
@@ -113,12 +112,6 @@ pub mod external {
     pub use re_log::external::*;
     pub use re_log_types::external::*;
     pub use re_types::external::*;
-
-    #[cfg(feature = "glam")]
-    pub use re_components::external::glam;
-
-    #[cfg(feature = "image")]
-    pub use re_components::external::image;
 }
 
 // -----

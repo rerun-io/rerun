@@ -5,11 +5,8 @@
 //! ```
 
 use re_arrow_store::{test_row, DataStore};
-use re_components::datagen::{
-    build_frame_nr, build_log_time, build_some_instances, build_some_instances_from,
-    build_some_positions2d,
-};
-use re_log_types::{EntityPath, Time};
+use re_log_types::{build_frame_nr, build_log_time, EntityPath, Time};
+use re_types::datagen::{build_some_instances, build_some_instances_from, build_some_positions2d};
 use re_types::{components::InstanceKey, testing::build_some_large_structs, Loggable};
 
 // ---
