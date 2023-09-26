@@ -314,6 +314,7 @@ class Uploader:
         destination.content_encoding = content_encoding
 
         if destination.exists():
+            logging.warn(f"blob {path} already exists in GCS, skipping upload")
             return
 
         stream = BytesIO(data)
