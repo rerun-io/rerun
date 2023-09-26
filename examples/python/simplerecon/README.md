@@ -24,11 +24,11 @@ https://vimeo.com/865974337?autoplay=1&loop=1&autopause=0&background=1&muted=1&r
 The method works well for applications such as robotic navigation, autonomous driving, and AR. It takes input images, their intrinsics, and relative camera poses to predict dense depth maps, combining monocular depth estimation and MVS via plane sweep.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/6074c6c7039eccb14796dffda6e158b4d6a09c0e_simplerecon-overview_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ed7ded09ee1d32c9adae4b8df0b539a57e2286f0_simplerecon-overview_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/431dd4d4c6d4245ccf4904a38e24ff143713c97d_simplerecon-overview_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/59058fb7a7a4a5e3d63116aeb7197fb3f32fe19a_simplerecon-overview_1200w.png">
-  <img src="https://static.rerun.io/1f2400ba4f3b90f967f9503b855364363f776dbb_simplerecon-overview_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/simplerecon-overview/84359b6ec787147dc915d0a3fe764537d8212835/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/simplerecon-overview/84359b6ec787147dc915d0a3fe764537d8212835/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/simplerecon-overview/84359b6ec787147dc915d0a3fe764537d8212835/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/simplerecon-overview/84359b6ec787147dc915d0a3fe764537d8212835/1200w.png">
+  <img src="https://static.rerun.io/simplerecon-overview/84359b6ec787147dc915d0a3fe764537d8212835/full.png" alt="">
 </picture>
 
 Metadata incorporated in the cost volume improves depth estimation accuracy and 3D reconstruction quality. The lightweight and interpretable 2D CNN architecture benefits from added metadata for each frame, leading to better performance.

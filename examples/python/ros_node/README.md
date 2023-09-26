@@ -7,11 +7,11 @@ thumbnail_dimensions: [480, 266]
 ---
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/6e9326c44de2653b022d2048b608894208f2c391_ros_node_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/6d8aadfd16463e74fa4e37566d8f492d61961635_ros_node_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/b9521f5c7bc13bb684a47105a7d3d6055256428a_ros_node_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/6ac049203829f2b0f1acd82cdca20a5ab0be65bb_ros_node_1200w.png">
-  <img src="https://static.rerun.io/de224f02697d8fa26a387e497ef5823a68122356_ros_node_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/1200w.png">
+  <img src="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/full.png" alt="">
 </picture>
 
 # Overview

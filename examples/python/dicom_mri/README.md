@@ -9,11 +9,11 @@ demo: true
 ---
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/b8b25dd01e892e6daf5177e6fc05ff5feb19ee8d_dicom_mri_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/b12bad7fcfce72261ee50aff4fa3cfd2f28edad1_dicom_mri_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/3e54e32841920daa8512219a60dfa95ec100b78a_dicom_mri_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/93f1c2302233cacf03d5dcc3cd3749b3f76dea56_dicom_mri_1200w.png">
-  <img src="https://static.rerun.io/e39f34a1b1ddd101545007f43a61783e1d2e5f8e_dicom_mri_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/1200w.png">
+  <img src="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/full.png" alt="">
 </picture>
 
 Example using a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.

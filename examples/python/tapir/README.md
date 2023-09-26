@@ -16,9 +16,9 @@ https://vimeo.com/865975034?autoplay=1&loop=1&autopause=0&background=1&muted=1&r
 2. iteratively refine by taking neighboring frames into account.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/f47b954cd1f7a1109df1419b39cc020a364f098d_tapir_overview_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/d792402b789613bfda8354573688e2abf1a7d669_tapir_overview_768w.png">
-  <img style="max-width: 30em; width: 100%; margin-left: auto; margin-right: auto;" src="https://static.rerun.io/7f5e5bb87e77aa9ed0cfbf694eaee8ecdb89cafa_tapir_overview_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/tapir_overview/9018c62ec8334458936542434b4730ade258b21e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/tapir_overview/9018c62ec8334458936542434b4730ade258b21e/768w.png">
+  <img src="https://static.rerun.io/tapir_overview/9018c62ec8334458936542434b4730ade258b21e/full.png" alt="">
 </picture>
 
 In the first stage the image features in the query image at the query point are compared to the feature maps of the other images using the dot product. The resulting similarity map (or “cost volume”) gives a high score for similar image features.

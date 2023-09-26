@@ -12,7 +12,7 @@ Everything visible in the [Viewport](viewport.md) has a representation here,
 making it an easy way to select a Space View and the [Entities](../../concepts/entity-component.md) it shows.
 
 <picture>
-  <img src="https://static.rerun.io/79c57ffce8e90fdf867b48f35c4088673f133445_blueprint-view_full.png" alt="screenshot of the blueprint view">
+  <img src="https://static.rerun.io/blueprint-view/d01d0f5baf46d56f32925f9b10d793d1495a3a39/full.png" alt="screenshot of the blueprint view">
 </picture>
 
 

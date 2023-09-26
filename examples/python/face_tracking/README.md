@@ -7,11 +7,11 @@ thumbnail_dimensions: [480, 335]
 ---
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/9f4ecc9d8447375cbad0af17fe2faf8ad2761025_mp_face_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/16020f7f1cb4e07c0b481b4887e713e6dd827298_mp_face_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/9e90eff729dee3252659a8ea528fe01ecb44bd92_mp_face_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/4897ba71ff5da36c5fed3d6bd8f4f134520ef90f_mp_face_1200w.png">
-  <img src="https://static.rerun.io/8b951a755f57a210d48c37d032156c872fd7cc41_mp_face_full.png" alt="screenshot of the Rerun visualization of the MediaPipe Face Detector and Landmarker">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/1200w.png">
+  <img src="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/full.png" alt="screenshot of the Rerun visualization of the MediaPipe Face Detector and Landmarker">
 </picture>
 
 
