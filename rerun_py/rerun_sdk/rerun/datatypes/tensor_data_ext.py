@@ -87,8 +87,6 @@ class TensorDataExt:
             Note that compressing to JPEG costs a bit of CPU time, both when logging
             and later when viewing them.
         """
-        # TODO(jleibs): Need to figure out how to get the above docstring to show up in the TensorData class
-        # documentation.
         if array is None and buffer is None:
             raise ValueError("Must provide one of 'array' or 'buffer'")
         if array is not None and buffer is not None:
