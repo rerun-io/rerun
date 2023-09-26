@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Rotation3D", "Rotation3DBatch", "Rotation3DType"]
 
 
+@define(init=False)
 class Rotation3D(datatypes.Rotation3D):
     """A 3D rotation, represented either by a quaternion or a rotation around axis."""
 

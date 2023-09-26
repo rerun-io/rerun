@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class TensorDimension:
     """A single dimension within a multi-dimensional tensor."""
 

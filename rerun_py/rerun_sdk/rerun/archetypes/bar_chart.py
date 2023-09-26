@@ -16,7 +16,7 @@ from .bar_chart_ext import BarChartExt
 __all__ = ["BarChart"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class BarChart(BarChartExt, Archetype):
     """
     A Barchart.

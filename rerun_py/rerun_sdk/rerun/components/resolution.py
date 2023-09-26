@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Resolution", "ResolutionBatch", "ResolutionType"]
 
 
+@define(init=False)
 class Resolution(datatypes.Vec2D):
     """
     Pixel resolution width & height, e.g. of a camera sensor.

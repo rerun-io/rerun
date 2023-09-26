@@ -33,7 +33,7 @@ def _affix_fuzzer1__almost_flattened_scalar__special_field_converter_override(
         return datatypes.FlattenedScalar(x)
 
 
-@define
+@define(init=False)
 class AffixFuzzer1:
     def __init__(
         self: Any,

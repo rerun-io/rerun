@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
 from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
@@ -14,6 +15,7 @@ from .. import datatypes
 __all__ = ["AffixFuzzer15", "AffixFuzzer15Batch", "AffixFuzzer15Type"]
 
 
+@define(init=False)
 class AffixFuzzer15(datatypes.AffixFuzzer3):
     def __init__(self: Any, inner: datatypes.AffixFuzzer3Like | None = None):
         """Create a new instance of the AffixFuzzer15 component."""

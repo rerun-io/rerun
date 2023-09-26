@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Vector3D", "Vector3DBatch", "Vector3DType"]
 
 
+@define(init=False)
 class Vector3D(datatypes.Vec3D):
     """A vector in 3D space."""
 

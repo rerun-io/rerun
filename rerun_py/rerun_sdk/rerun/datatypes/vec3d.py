@@ -21,7 +21,7 @@ from .vec3d_ext import Vec3DExt
 __all__ = ["Vec3D", "Vec3DArrayLike", "Vec3DBatch", "Vec3DLike", "Vec3DType"]
 
 
-@define
+@define(init=False)
 class Vec3D(Vec3DExt):
     """A vector in 3D space."""
 

@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["Points2D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Points2D(Archetype):
     """
     A 2D point cloud with positions and optional colors, radii, labels, etc.

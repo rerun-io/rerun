@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class FlattenedScalar:
     def __init__(self: Any, value: FlattenedScalarLike):
         """Create a new instance of the FlattenedScalar datatype."""

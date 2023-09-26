@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 from .media_type_ext import MediaTypeExt
@@ -14,6 +16,7 @@ from .media_type_ext import MediaTypeExt
 __all__ = ["MediaType", "MediaTypeBatch", "MediaTypeType"]
 
 
+@define(init=False)
 class MediaType(MediaTypeExt, datatypes.Utf8):
     """
     A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.

@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Origin3D", "Origin3DBatch", "Origin3DType"]
 
 
+@define(init=False)
 class Origin3D(datatypes.Vec3D):
     """A point of origin in 3D space."""
 

@@ -21,7 +21,7 @@ from .vec4d_ext import Vec4DExt
 __all__ = ["Vec4D", "Vec4DArrayLike", "Vec4DBatch", "Vec4DLike", "Vec4DType"]
 
 
-@define
+@define(init=False)
 class Vec4D(Vec4DExt):
     """A vector in 4D space."""
 

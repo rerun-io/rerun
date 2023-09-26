@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class AnnotationContext(AnnotationContextExt):
     """
     The `AnnotationContext` provides additional information on how to display entities.

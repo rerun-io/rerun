@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class StringComponent:
     def __init__(self: Any, value: StringComponentLike):
         """Create a new instance of the StringComponent datatype."""

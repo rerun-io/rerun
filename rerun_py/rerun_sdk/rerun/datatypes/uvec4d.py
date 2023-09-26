@@ -20,7 +20,7 @@ from .._converters import (
 __all__ = ["UVec4D", "UVec4DArrayLike", "UVec4DBatch", "UVec4DLike", "UVec4DType"]
 
 
-@define
+@define(init=False)
 class UVec4D:
     """A uint vector in 4D space."""
 

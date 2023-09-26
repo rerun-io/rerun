@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class ClearIsRecursive(ClearIsRecursiveExt):
     """Configures how a clear operation should behave - recurive or no?."""
 

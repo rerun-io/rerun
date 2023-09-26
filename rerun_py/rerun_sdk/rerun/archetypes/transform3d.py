@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["Transform3D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Transform3D(Archetype):
     """
     A 3D transform.

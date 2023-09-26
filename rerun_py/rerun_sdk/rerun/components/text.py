@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Text", "TextBatch", "TextType"]
 
 
+@define(init=False)
 class Text(datatypes.Utf8):
     """A string of text, e.g. for labels and text documents."""
 

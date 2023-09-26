@@ -18,7 +18,7 @@ from .scalar_ext import ScalarExt
 __all__ = ["Scalar", "ScalarArrayLike", "ScalarBatch", "ScalarLike", "ScalarType"]
 
 
-@define
+@define(init=False)
 class Scalar(ScalarExt):
     """
     A double-precision scalar.

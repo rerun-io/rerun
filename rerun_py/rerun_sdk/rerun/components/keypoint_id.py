@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["KeypointId", "KeypointIdBatch", "KeypointIdType"]
 
 
+@define(init=False)
 class KeypointId(datatypes.KeypointId):
     """
     A 16-bit ID representing a type of semantic keypoint within a class.

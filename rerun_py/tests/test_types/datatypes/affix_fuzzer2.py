@@ -19,7 +19,7 @@ from rerun._converters import (
 __all__ = ["AffixFuzzer2", "AffixFuzzer2ArrayLike", "AffixFuzzer2Batch", "AffixFuzzer2Like", "AffixFuzzer2Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer2:
     def __init__(self: Any, single_float_optional: float | None = None):
         """Create a new instance of the AffixFuzzer2 datatype."""

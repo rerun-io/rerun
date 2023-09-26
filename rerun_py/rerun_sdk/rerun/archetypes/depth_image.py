@@ -16,7 +16,7 @@ from .depth_image_ext import DepthImageExt
 __all__ = ["DepthImage"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class DepthImage(DepthImageExt, Archetype):
     """
     A depth image.

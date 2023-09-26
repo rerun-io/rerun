@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["PinholeProjection", "PinholeProjectionBatch", "PinholeProjectionType"]
 
 
+@define(init=False)
 class PinholeProjection(datatypes.Mat3x3):
     """
     Camera projection, from image coordinates to view coordinates.

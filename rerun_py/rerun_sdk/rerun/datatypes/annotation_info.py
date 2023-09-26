@@ -41,7 +41,7 @@ def _annotation_info__color__special_field_converter_override(x: datatypes.Color
         return datatypes.Color(x)
 
 
-@define
+@define(init=False)
 class AnnotationInfo(AnnotationInfoExt):
     """
     Annotation info annotating a class id or key-point id.

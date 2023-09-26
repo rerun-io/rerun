@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 
+@define(init=False)
 class Material(datatypes.Material):
     def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
         """

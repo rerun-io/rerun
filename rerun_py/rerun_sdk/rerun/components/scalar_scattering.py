@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class ScalarScattering(ScalarScatteringExt):
     """If true, a scalar will be shown as individual point in a scatter plot."""
 

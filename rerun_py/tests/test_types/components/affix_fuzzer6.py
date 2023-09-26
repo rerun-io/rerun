@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy.typing as npt
+from attrs import define
 from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
@@ -15,6 +16,7 @@ from .. import datatypes
 __all__ = ["AffixFuzzer6", "AffixFuzzer6Batch", "AffixFuzzer6Type"]
 
 
+@define(init=False)
 class AffixFuzzer6(datatypes.AffixFuzzer1):
     def __init__(
         self: Any,

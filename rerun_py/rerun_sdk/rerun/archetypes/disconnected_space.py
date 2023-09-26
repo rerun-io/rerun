@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["DisconnectedSpace"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class DisconnectedSpace(Archetype):
     """
     Specifies that the entity path at which this is logged is disconnected from its parent.

@@ -15,7 +15,7 @@ from .. import components, datatypes
 __all__ = ["AffixFuzzer1"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class AffixFuzzer1(Archetype):
     def __init__(
         self: Any,

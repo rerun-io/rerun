@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class PrimitiveComponent:
     def __init__(self: Any, value: PrimitiveComponentLike):
         """Create a new instance of the PrimitiveComponent datatype."""

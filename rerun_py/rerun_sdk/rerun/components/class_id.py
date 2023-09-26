@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["ClassId", "ClassIdBatch", "ClassIdType"]
 
 
+@define(init=False)
 class ClassId(datatypes.ClassId):
     """A 16-bit ID representing a type of semantic class."""
 

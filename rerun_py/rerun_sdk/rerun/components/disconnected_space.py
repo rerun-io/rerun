@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class DisconnectedSpace(DisconnectedSpaceExt):
     """
     Specifies that the entity path at which this is logged is disconnected from its parent.

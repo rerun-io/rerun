@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["AnnotationContext"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class AnnotationContext(Archetype):
     """
     The `AnnotationContext` provides additional information on how to display entities.

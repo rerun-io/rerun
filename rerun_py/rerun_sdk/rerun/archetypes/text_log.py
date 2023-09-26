@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["TextLog"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class TextLog(Archetype):
     """A log entry in a text log, comprised of a text body and its log level."""
 

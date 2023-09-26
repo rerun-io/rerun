@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["TensorData", "TensorDataBatch", "TensorDataType"]
 
 
+@define(init=False)
 class TensorData(datatypes.TensorData):
     def __init__(self: Any, shape: datatypes.TensorDimensionArrayLike, buffer: datatypes.TensorBufferLike):
         """Create a new instance of the TensorData component."""

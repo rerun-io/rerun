@@ -21,7 +21,7 @@ from .vec2d_ext import Vec2DExt
 __all__ = ["Vec2D", "Vec2DArrayLike", "Vec2DBatch", "Vec2DLike", "Vec2DType"]
 
 
-@define
+@define(init=False)
 class Vec2D(Vec2DExt):
     """A vector in 2D space."""
 

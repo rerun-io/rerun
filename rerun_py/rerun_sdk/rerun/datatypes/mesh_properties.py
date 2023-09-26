@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class MeshProperties(MeshPropertiesExt):
     def __init__(self: Any, vertex_indices: npt.ArrayLike | None = None):
         """

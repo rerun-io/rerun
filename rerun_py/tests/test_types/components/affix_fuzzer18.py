@@ -16,7 +16,7 @@ from .. import datatypes
 __all__ = ["AffixFuzzer18", "AffixFuzzer18ArrayLike", "AffixFuzzer18Batch", "AffixFuzzer18Like", "AffixFuzzer18Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer18:
     def __init__(self: Any, many_optional_unions: datatypes.AffixFuzzer4ArrayLike | None = None):
         """Create a new instance of the AffixFuzzer18 component."""

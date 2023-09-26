@@ -18,7 +18,7 @@ from .depth_meter_ext import DepthMeterExt
 __all__ = ["DepthMeter", "DepthMeterArrayLike", "DepthMeterBatch", "DepthMeterLike", "DepthMeterType"]
 
 
-@define
+@define(init=False)
 class DepthMeter(DepthMeterExt):
     """A component indicating how long a meter is, expressed in native units."""
 

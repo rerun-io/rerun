@@ -19,7 +19,7 @@ from .line_strip2d_ext import LineStrip2DExt
 __all__ = ["LineStrip2D", "LineStrip2DArrayLike", "LineStrip2DBatch", "LineStrip2DLike", "LineStrip2DType"]
 
 
-@define
+@define(init=False)
 class LineStrip2D(LineStrip2DExt):
     r"""
     A line strip in 2D space.

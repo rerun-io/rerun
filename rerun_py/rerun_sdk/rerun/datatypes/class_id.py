@@ -18,7 +18,7 @@ from .class_id_ext import ClassIdExt
 __all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike", "ClassIdType"]
 
 
-@define
+@define(init=False)
 class ClassId(ClassIdExt):
     """A 16-bit ID representing a type of semantic class."""
 

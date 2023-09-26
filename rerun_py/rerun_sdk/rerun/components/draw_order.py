@@ -18,7 +18,7 @@ from .draw_order_ext import DrawOrderExt
 __all__ = ["DrawOrder", "DrawOrderArrayLike", "DrawOrderBatch", "DrawOrderLike", "DrawOrderType"]
 
 
-@define
+@define(init=False)
 class DrawOrder(DrawOrderExt):
     """
     Draw order used for the display order of 2D elements.

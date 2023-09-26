@@ -18,7 +18,7 @@ from .keypoint_id_ext import KeypointIdExt
 __all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLike", "KeypointIdType"]
 
 
-@define
+@define(init=False)
 class KeypointId(KeypointIdExt):
     """
     A 16-bit ID representing a type of semantic keypoint within a class.

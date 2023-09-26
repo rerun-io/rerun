@@ -21,7 +21,7 @@ from .blob_ext import BlobExt
 __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 
 
-@define
+@define(init=False)
 class Blob(BlobExt):
     def __init__(self: Any, data: BlobLike):
         """Create a new instance of the Blob component."""

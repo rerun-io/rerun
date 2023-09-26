@@ -14,7 +14,7 @@ from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 __all__ = ["AffixFuzzer9", "AffixFuzzer9ArrayLike", "AffixFuzzer9Batch", "AffixFuzzer9Like", "AffixFuzzer9Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer9:
     def __init__(self: Any, single_string_required: AffixFuzzer9Like):
         """Create a new instance of the AffixFuzzer9 component."""

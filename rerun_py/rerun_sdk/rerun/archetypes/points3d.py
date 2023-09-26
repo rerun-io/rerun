@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["Points3D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Points3D(Archetype):
     """
     A 3D point cloud with positions and optional colors, radii, labels, etc.

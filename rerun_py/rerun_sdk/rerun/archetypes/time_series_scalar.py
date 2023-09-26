@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["TimeSeriesScalar"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class TimeSeriesScalar(Archetype):
     """
     Log a double-precision scalar that will be visualized as a timeseries plot.

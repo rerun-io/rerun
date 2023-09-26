@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["Mesh3D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Mesh3D(Archetype):
     """
     A 3D triangle mesh as specified by its per-mesh and per-vertex properties.

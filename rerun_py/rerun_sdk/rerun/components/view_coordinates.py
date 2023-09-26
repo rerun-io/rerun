@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class ViewCoordinates(ViewCoordinatesExt):
     """
     How we interpret the coordinate system of an entity/space.

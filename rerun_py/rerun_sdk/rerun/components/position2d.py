@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Position2D", "Position2DBatch", "Position2DType"]
 
 
+@define(init=False)
 class Position2D(datatypes.Vec2D):
     """A position in 2D space."""
 

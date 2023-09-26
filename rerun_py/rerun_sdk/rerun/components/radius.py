@@ -18,7 +18,7 @@ from .radius_ext import RadiusExt
 __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType"]
 
 
-@define
+@define(init=False)
 class Radius(RadiusExt):
     """A Radius component."""
 

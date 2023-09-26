@@ -19,7 +19,7 @@ from rerun._converters import (
 __all__ = ["AffixFuzzer11", "AffixFuzzer11ArrayLike", "AffixFuzzer11Batch", "AffixFuzzer11Like", "AffixFuzzer11Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer11:
     def __init__(self: Any, many_floats_optional: npt.ArrayLike | None = None):
         """Create a new instance of the AffixFuzzer11 component."""

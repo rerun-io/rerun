@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Transform3D", "Transform3DBatch", "Transform3DType"]
 
 
+@define(init=False)
 class Transform3D(datatypes.Transform3D):
     """An affine transform between two 3D spaces, represented in a given direction."""
 

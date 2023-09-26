@@ -16,7 +16,7 @@ from .utf8_ext import Utf8Ext
 __all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like", "Utf8Type"]
 
 
-@define
+@define(init=False)
 class Utf8(Utf8Ext):
     """A string of text, encoded as UTF-8."""
 

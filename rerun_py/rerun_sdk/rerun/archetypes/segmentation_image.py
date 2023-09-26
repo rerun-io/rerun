@@ -16,7 +16,7 @@ from .segmentation_image_ext import SegmentationImageExt
 __all__ = ["SegmentationImage"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class SegmentationImage(SegmentationImageExt, Archetype):
     """
     An image made up of integer class-ids.

@@ -16,7 +16,7 @@ from .image_ext import ImageExt
 __all__ = ["Image"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Image(ImageExt, Archetype):
     """
     A monochrome or color image.

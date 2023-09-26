@@ -31,7 +31,7 @@ def _keypoint_pair__keypoint1__special_field_converter_override(x: datatypes.Key
         return datatypes.KeypointId(x)
 
 
-@define
+@define(init=False)
 class KeypointPair(KeypointPairExt):
     """A connection between two `Keypoints`."""
 

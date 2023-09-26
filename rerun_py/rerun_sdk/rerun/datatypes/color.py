@@ -18,7 +18,7 @@ from .color_ext import ColorExt
 __all__ = ["Color", "ColorArrayLike", "ColorBatch", "ColorLike", "ColorType"]
 
 
-@define
+@define(init=False)
 class Color(ColorExt):
     """
     An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.

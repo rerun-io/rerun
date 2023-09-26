@@ -18,7 +18,7 @@ from .instance_key_ext import InstanceKeyExt
 __all__ = ["InstanceKey", "InstanceKeyArrayLike", "InstanceKeyBatch", "InstanceKeyLike", "InstanceKeyType"]
 
 
-@define
+@define(init=False)
 class InstanceKey(InstanceKeyExt):
     """A unique numeric identifier for each individual instance within a batch."""
 

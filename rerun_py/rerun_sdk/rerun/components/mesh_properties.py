@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy.typing as npt
+from attrs import define
 
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
@@ -15,6 +16,7 @@ from .._baseclasses import ComponentBatchMixin
 __all__ = ["MeshProperties", "MeshPropertiesBatch", "MeshPropertiesType"]
 
 
+@define(init=False)
 class MeshProperties(datatypes.MeshProperties):
     def __init__(self: Any, vertex_indices: npt.ArrayLike | None = None):
         """

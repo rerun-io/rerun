@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 from .text_log_level_ext import TextLogLevelExt
@@ -14,6 +16,7 @@ from .text_log_level_ext import TextLogLevelExt
 __all__ = ["TextLogLevel", "TextLogLevelBatch", "TextLogLevelType"]
 
 
+@define(init=False)
 class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     """
     The severity level of a text log message.

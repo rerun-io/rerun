@@ -19,7 +19,7 @@ from .line_strip3d_ext import LineStrip3DExt
 __all__ = ["LineStrip3D", "LineStrip3DArrayLike", "LineStrip3DBatch", "LineStrip3DLike", "LineStrip3DType"]
 
 
-@define
+@define(init=False)
 class LineStrip3D(LineStrip3DExt):
     r"""
     A line strip in 3D space.

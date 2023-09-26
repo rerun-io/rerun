@@ -19,7 +19,7 @@ from rerun._converters import (
 __all__ = ["AffixFuzzer21", "AffixFuzzer21ArrayLike", "AffixFuzzer21Batch", "AffixFuzzer21Like", "AffixFuzzer21Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer21:
     def __init__(self: Any, single_half: float, many_halves: npt.ArrayLike):
         """Create a new instance of the AffixFuzzer21 datatype."""

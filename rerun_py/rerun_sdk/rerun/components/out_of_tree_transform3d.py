@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["OutOfTreeTransform3D", "OutOfTreeTransform3DBatch", "OutOfTreeTransform3DType"]
 
 
+@define(init=False)
 class OutOfTreeTransform3D(datatypes.Transform3D):
     """
     An out-of-tree affine transform between two 3D spaces, represented in a given direction.

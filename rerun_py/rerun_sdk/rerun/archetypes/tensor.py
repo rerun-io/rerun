@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["Tensor"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Tensor(Archetype):
     """
     A generic n-dimensional Tensor.

@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Color", "ColorBatch", "ColorType"]
 
 
+@define(init=False)
 class Color(datatypes.Color):
     """
     An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.

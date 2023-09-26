@@ -15,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["LineStrips3D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class LineStrips3D(Archetype):
     """
     A batch of line strips with positions and optional colors, radii, labels, etc.

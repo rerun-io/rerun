@@ -16,7 +16,7 @@ from .asset3d_ext import Asset3DExt
 __all__ = ["Asset3D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Asset3D(Asset3DExt, Archetype):
     """
     A prepacked 3D asset (.gltf, .glb, .obj, etc).

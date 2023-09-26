@@ -16,7 +16,7 @@ from .view_coordinates_ext import ViewCoordinatesExt
 __all__ = ["ViewCoordinates"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """
     How we interpret the coordinate system of an entity/space.

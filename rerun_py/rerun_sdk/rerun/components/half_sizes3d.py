@@ -7,12 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from attrs import define
+
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["HalfSizes3D", "HalfSizes3DBatch", "HalfSizes3DType"]
 
 
+@define(init=False)
 class HalfSizes3D(datatypes.Vec3D):
     """
     Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
