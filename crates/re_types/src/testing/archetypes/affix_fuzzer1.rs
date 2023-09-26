@@ -236,7 +236,7 @@ impl crate::Archetype for AffixFuzzer1 {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator().into()),
             Some((&self.fuzz1001 as &dyn crate::ComponentBatch).into()),
             Some((&self.fuzz1002 as &dyn crate::ComponentBatch).into()),
             Some((&self.fuzz1003 as &dyn crate::ComponentBatch).into()),

@@ -111,7 +111,7 @@ impl crate::Archetype for DisconnectedSpace {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator().into()),
             Some((&self.disconnected_space as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()

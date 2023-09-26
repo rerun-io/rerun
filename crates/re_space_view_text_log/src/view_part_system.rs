@@ -50,7 +50,7 @@ impl ViewPartSystem for TextLogSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TextLog::indicator_component()).collect()
+        std::iter::once(TextLog::indicator().name()).collect()
     }
 
     fn execute(

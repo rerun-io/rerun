@@ -38,13 +38,9 @@ pub trait Archetype {
     ///
     /// ## Internal representation
     ///
-    /// Indicator components are non-splatted null arrays.
+    /// Indicator components are always-splatted null arrays.
     /// Their names follow the pattern `rerun.components.{ArchetypeName}Indicator`, e.g.
     /// `rerun.components.Points3DIndicator`.
-    ///
-    /// The reason for not using splats is so that indicator components don't require dedicated rows.
-    /// This is not an issue because of the way null arrays are stored: storing 1 null value or 1M null
-    /// values takes the same size.
     ///
     /// Since null arrays aren't actually arrays and we don't actually have any data to shuffle
     /// around per-se, we can't implement the usual [`Loggable`] traits.
@@ -54,7 +50,7 @@ pub trait Archetype {
     // TODO(rust-lang/rust#29661): We'd like to just default this to the right thing which is
     // pretty much always `A::Indicator`, but defaults are unstable.
     // type Indicator: ComponentBatch = A::Indicator;
-    type Indicator: ComponentBatch;
+    type Indicator: 'static + ComponentBatch + Default;
 
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
@@ -62,6 +58,15 @@ pub trait Archetype {
     // ---
 
     // TODO(cmc): Should we also generate and return static IntSets?
+
+    /// Creates a [`ComponentBatch`] out of the associated [`Self::Indicator`] component.
+    ///
+    /// This allows for associating arbitrary indicator components with arbitrary data.
+    /// Check out the `manual_indicator` API example to see what's possible.
+    #[inline]
+    fn indicator() -> Box<dyn ComponentBatch> {
+        Box::<<Self as Archetype>::Indicator>::default()
+    }
 
     /// Returns the names of all components that _must_ be provided by the user when constructing
     /// this archetype.
@@ -71,7 +76,7 @@ pub trait Archetype {
     /// this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentName]> {
-        std::borrow::Cow::Owned(vec![Self::indicator_component()])
+        std::borrow::Cow::Owned(vec![Self::indicator().name()])
     }
 
     /// Returns the names of all components that _may_ be provided by the user when constructing
@@ -99,14 +104,6 @@ pub trait Archetype {
         .flatten()
         .collect::<Vec<_>>()
         .into()
-    }
-
-    /// Returns the name of the associated indicator component.
-    #[inline]
-    fn indicator_component() -> ComponentName {
-        format!("{}Indicator", Self::name().full_name())
-            .replace("archetypes", "components")
-            .into()
     }
 
     /// Returns the number of instances of the archetype, i.e. the number of instances currently
@@ -145,7 +142,7 @@ pub trait Archetype {
     #[inline]
     fn try_to_arrow(
         &self,
-    ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
+    ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>>
     {
         self.as_component_batches()
             .into_iter()
@@ -166,7 +163,7 @@ pub trait Archetype {
     ///
     /// For the fallible version, see [`Archetype::try_to_arrow`].
     #[inline]
-    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
+    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)> {
         self.try_to_arrow().detailed_unwrap()
     }
 
@@ -179,7 +176,7 @@ pub trait Archetype {
     /// logged to stderr.
     #[inline]
     fn try_from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,
@@ -240,21 +237,14 @@ impl ArchetypeName {
 /// [indicator component]: [`Archetype::Indicator`]
 #[derive(Debug, Clone, Copy)]
 pub struct GenericIndicatorComponent<A: Archetype> {
-    num_instances: usize,
     _phantom: std::marker::PhantomData<A>,
 }
 
-impl<'a, A: 'a + Archetype> GenericIndicatorComponent<A> {
-    /// Allocates a new [`ComponentBatch`] that represents `num_instances` elements worth of this
-    /// indicator component.
-    ///
-    /// Indicator components don't actually carry any data, thus this is extremely cheap.
-    #[inline]
-    pub fn batch(num_instances: usize) -> Box<dyn ComponentBatch + 'a> {
-        Box::new(Self {
-            num_instances,
-            _phantom: std::marker::PhantomData::<A>,
-        })
+impl<A: Archetype> Default for GenericIndicatorComponent<A> {
+    fn default() -> Self {
+        Self {
+            _phantom: Default::default(),
+        }
     }
 }
 
@@ -263,12 +253,14 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
 
     #[inline]
     fn name(&self) -> Self::Name {
-        A::indicator_component()
+        format!("{}Indicator", A::name().full_name())
+            .replace("archetypes", "components")
+            .into()
     }
 
     #[inline]
     fn num_instances(&self) -> usize {
-        self.num_instances
+        1
     }
 
     #[inline]

@@ -108,7 +108,7 @@ impl ViewPartSystem for Asset3DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Asset3D::indicator_component()).collect()
+        std::iter::once(Asset3D::indicator().name()).collect()
     }
 
     fn execute(

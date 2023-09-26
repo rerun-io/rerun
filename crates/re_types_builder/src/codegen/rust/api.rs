@@ -832,7 +832,7 @@ fn quote_trait_impls_from_obj(
 
             let all_component_batches = {
                 std::iter::once(quote!{
-                    Some(Self::Indicator::batch(self.num_instances() as _).into())
+                    Some(Self::indicator().into())
                 }).chain(obj.fields.iter().map(|obj_field| {
                     let field_name = format_ident!("{}", obj_field.name);
                     let is_plural = obj_field.typ.is_plural();

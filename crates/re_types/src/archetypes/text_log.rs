@@ -87,7 +87,7 @@ impl crate::Archetype for TextLog {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator().into()),
             Some((&self.body as &dyn crate::ComponentBatch).into()),
             self.level
                 .as_ref()

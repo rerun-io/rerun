@@ -131,7 +131,7 @@ impl crate::Archetype for Transform3D {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator().into()),
             Some((&self.transform as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()

@@ -154,7 +154,7 @@ impl crate::Archetype for Points2D {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator().into()),
             Some((&self.positions as &dyn crate::ComponentBatch).into()),
             self.radii
                 .as_ref()
