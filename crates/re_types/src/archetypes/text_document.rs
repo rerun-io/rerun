@@ -153,58 +153,6 @@ impl crate::AsComponents for TextDocument {
     fn num_instances(&self) -> usize {
         1
     }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::Text>::try_to_arrow([&self.body]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Text".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("body", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.TextDocument#body")?
-            },
-            {
-                self.media_type
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::MediaType>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.MediaType".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("media_type", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.TextDocument#media_type")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
 }
 
 impl TextDocument {

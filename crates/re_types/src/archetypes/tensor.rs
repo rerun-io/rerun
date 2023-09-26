@@ -145,36 +145,6 @@ impl crate::AsComponents for Tensor {
     fn num_instances(&self) -> usize {
         1
     }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::TensorData>::try_to_arrow([&self.data]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.TensorData".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("data", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.Tensor#data")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
 }
 
 impl Tensor {

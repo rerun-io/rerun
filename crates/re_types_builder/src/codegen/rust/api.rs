@@ -855,75 +855,6 @@ fn quote_trait_impls_from_obj(
                 }))
             };
 
-            let all_serializers = {
-                obj.fields.iter().map(|obj_field| {
-                    let obj_field_fqname = obj_field.fqname.as_str();
-                    let field_name_str = &obj_field.name;
-                    let field_name = format_ident!("{}", obj_field.name);
-
-                    let is_plural = obj_field.typ.is_plural();
-                    let is_nullable = obj_field.is_nullable;
-
-                    // NOTE: unwrapping is safe since the field must point to a component.
-                    let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
-
-                    let fqname = obj_field.typ.fqname().unwrap();
-
-                    let extract_datatype_and_return = quote! {
-                        array.map(|array| {
-                            // NOTE: Temporarily injecting the extension metadata as well as the
-                            // legacy fully-qualified name into the `Field` object so we can work
-                            // around `arrow2-convert` limitations and map to old names while we're
-                            // migrating.
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                #fqname.into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
-                        })
-                    };
-
-                    // NOTE: Archetypes are AoS (arrays of structs), thus the nullability we're
-                    // dealing with here is the nullability of an entire array of components, not
-                    // the nullability of individual elements (i.e. instances)!
-                    match (is_plural, is_nullable) {
-                        (true, true) => quote! {
-                             self.#field_name.as_ref().map(|many| {
-                                let array = <#component>::try_to_arrow(many.iter());
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (true, false) => quote! {
-                            Some({
-                                let array = <#component>::try_to_arrow(self.#field_name.iter());
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (false, true) => quote! {
-                             self.#field_name.as_ref().map(|single| {
-                                let array = <#component>::try_to_arrow([single]);
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (false, false) => quote! {
-                            Some({
-                                let array = <#component>::try_to_arrow([&self.#field_name]);
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                    }
-                })
-            };
-
             let all_deserializers = {
                 obj.fields.iter().map(|obj_field| {
                     let obj_field_fqname = obj_field.fqname.as_str();
@@ -1063,14 +994,6 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn num_instances(&self) -> usize {
                         #num_instances
-                    }
-
-                    #[inline]
-                    fn try_to_arrow(
-                        &self,
-                    ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::{Loggable as _, ResultExt as _};
-                        Ok([ #({ #all_serializers }),*, ].into_iter().flatten().collect())
                     }
                 }
             }

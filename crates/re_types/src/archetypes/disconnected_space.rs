@@ -154,39 +154,6 @@ impl crate::AsComponents for DisconnectedSpace {
     fn num_instances(&self) -> usize {
         1
     }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array =
-                    <crate::components::DisconnectedSpace>::try_to_arrow(
-                        [&self.disconnected_space],
-                    );
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.DisconnectedSpace".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("disconnected_space", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
 }
 
 impl DisconnectedSpace {

@@ -155,36 +155,6 @@ impl crate::AsComponents for ViewCoordinates {
     fn num_instances(&self) -> usize {
         1
     }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::ViewCoordinates>::try_to_arrow([&self.xyz]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.ViewCoordinates".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("xyz", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.ViewCoordinates#xyz")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
 }
 
 impl ViewCoordinates {
