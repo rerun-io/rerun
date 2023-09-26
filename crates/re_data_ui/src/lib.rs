@@ -3,7 +3,9 @@
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
 use itertools::Itertools;
+
 use re_log_types::{DataCell, EntityPath, PathOp, TimePoint};
+use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 mod annotation_context;
@@ -29,25 +31,63 @@ pub use crate::image::{
 pub use component_ui_registry::create_component_ui_registry;
 pub use image_meaning::image_meaning_for_entity;
 
+/// Filter out components that should not be shown in the UI,
+/// and order the other components in a cosnsiten way.
+pub fn ui_visible_components<'a>(
+    iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
+) -> impl Iterator<Item = &'a ComponentName> {
+    let mut components: Vec<&ComponentName> = iter
+        .into_iter()
+        .filter(|c| is_component_visible_in_ui(c))
+        .collect();
+
+    // Put indicator components first:
+    components.sort_by_key(|c| !is_indicator_component(c));
+
+    components.into_iter()
+}
+
 /// Show this component in the UI.
-pub fn is_component_visible_in_ui(component_name: &re_types::ComponentName) -> bool {
+fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
     const HIDDEN_COMPONENTS: &[&str] = &["rerun.components.InstanceKey"];
     !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }
 
 /// Is this an indicator component for an archetype?
-pub fn is_indicator_component(component_name: &re_types::ComponentName) -> bool {
+pub fn is_indicator_component(component_name: &ComponentName) -> bool {
     component_name.starts_with("rerun.components.") && component_name.ends_with("Indicator")
 }
 
 /// If this is an indicator component, for which archetype?
-pub fn indicator_component_archetype(component_name: &re_types::ComponentName) -> Option<String> {
+pub fn indicator_component_archetype(component_name: &ComponentName) -> Option<String> {
     if let Some(name) = component_name.strip_prefix("rerun.components.") {
         if let Some(name) = name.strip_suffix("Indicator") {
             return Some(name.to_owned());
         }
     }
     None
+}
+
+pub fn temporary_style_ui_for_component<R>(
+    ui: &mut egui::Ui,
+    component_name: &ComponentName,
+    add_contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    let old_style: egui::Style = (**ui.style()).clone();
+
+    if crate::is_indicator_component(component_name) {
+        // Make indicator components stand out by making them slightly fainter:
+
+        let inactive = &mut ui.style_mut().visuals.widgets.inactive;
+        // TODO(emilk): get a color from the design-tokens
+        inactive.fg_stroke.color = inactive.fg_stroke.color.linear_multiply(0.45);
+    }
+
+    let ret = add_contents(ui);
+
+    ui.set_style(old_style);
+
+    ret
 }
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].

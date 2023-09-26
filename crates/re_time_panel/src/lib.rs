@@ -543,37 +543,38 @@ impl TimePanel {
         if !tree.components.is_empty() {
             let clip_rect_save = ui.clip_rect();
 
-            for (component_name, data) in &tree.components {
+            for component_name in re_data_ui::ui_visible_components(tree.components.keys()) {
+                let data = &tree.components[component_name];
+
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.num_timeless_messages() == 0
                 {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                if !re_data_ui::is_component_visible_in_ui(component_name) {
-                    continue;
-                }
-
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);
-                let component_name = component_path.component_name.short_name();
+                let short_component_name = component_path.component_name.short_name();
                 let item = Item::ComponentPath(component_path);
 
                 let mut clip_rect = clip_rect_save;
                 clip_rect.max.x = tree_max_y;
                 ui.set_clip_rect(clip_rect);
 
-                let response = ListItem::new(ctx.re_ui, component_name)
-                    .selected(ctx.selection().contains(&item))
-                    .width_allocation_mode(WidthAllocationMode::Compact)
-                    .force_hovered(
-                        ctx.selection_state().highlight_for_ui_element(&item)
-                            == HoverHighlight::Hovered,
-                    )
-                    .with_icon_fn(|_, ui, rect, visual| {
-                        ui.painter()
-                            .circle_filled(rect.center(), 2.0, visual.text_color());
-                    })
-                    .show(ui);
+                let response =
+                    re_data_ui::temporary_style_ui_for_component(ui, component_name, |ui| {
+                        ListItem::new(ctx.re_ui, short_component_name)
+                            .selected(ctx.selection().contains(&item))
+                            .width_allocation_mode(WidthAllocationMode::Compact)
+                            .force_hovered(
+                                ctx.selection_state().highlight_for_ui_element(&item)
+                                    == HoverHighlight::Hovered,
+                            )
+                            .with_icon_fn(|_, ui, rect, visual| {
+                                ui.painter()
+                                    .circle_filled(rect.center(), 2.0, visual.text_color());
+                            })
+                            .show(ui)
+                    });
 
                 ui.set_clip_rect(clip_rect_save);
 
