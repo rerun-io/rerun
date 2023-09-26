@@ -232,6 +232,7 @@ fn test_clean_for_polars_nomodify() {
     let cleaned = cell.as_arrow_ref().clean_for_polars();
     assert_eq!(cell.as_arrow_ref(), &*cleaned);
 
+    #[cfg(feature = "polars")]
     crate::polars_util::dataframe_from_cells(&[Some(cell)]).unwrap();
 }
 
@@ -258,5 +259,6 @@ fn test_clean_for_polars_modify() {
     let cleaned = cell.as_arrow_ref().clean_for_polars();
     assert_ne!(cell.as_arrow_ref(), &*cleaned);
 
+    #[cfg(feature = "polars")]
     crate::polars_util::dataframe_from_cells(&[Some(cell)]).unwrap();
 }
