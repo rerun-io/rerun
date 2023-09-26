@@ -632,158 +632,7 @@ fn code_for_struct(
     } else {
         // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
         // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
-
-        // TODO: not needed?
-        fn like_type(fqname: &str, objects: &Objects) -> String {
-            if let Some(delegate) = objects.objects[fqname].delegate_datatype(objects) {
-                fqname_to_type(&delegate.fqname)
-            } else {
-                fqname_to_type(fqname)
-            }
-        }
-
-        fn quote_field_argument(field: &ObjectField, objects: &Objects) -> String {
-            let type_annotation =
-                if let Some(fqname) = field.typ.plural_inner().and_then(|inner| inner.fqname()) {
-                    format!("{}ArrayLike", like_type(fqname, objects))
-                } else if let Type::Object(fqname) = &field.typ {
-                    format!("{}Like", like_type(fqname, objects))
-                } else {
-                    let type_annotation = quote_field_type_from_field(objects, field, false).0;
-                    // Relax type annotation for numpy arrays.
-                    if type_annotation.starts_with("npt.NDArray") {
-                        "npt.ArrayLike".to_owned()
-                    } else {
-                        type_annotation
-                    }
-                };
-
-            if field.is_nullable {
-                format!("{}: {} | None = None", field.name, type_annotation)
-            } else {
-                format!("{}: {}", field.name, type_annotation)
-            }
-        }
-
-        fn init_argument_and_doc(field: &ObjectField, objects: &Objects) -> (String, String) {
-            let argument = quote_field_argument(field, objects);
-
-            let doc = if field.docs.doc.is_empty() {
-                String::new()
-            } else {
-                let doc_content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
-                format!("{}:\n    {}", field.name, doc_content.join("\n    "))
-            };
-
-            (argument, doc)
-        }
-
-        let obj_or_delegate = if let Some(delegate) = obj.delegate_datatype(objects) {
-            delegate
-        } else {
-            obj
-        };
-
-        // If the type is fully transparent (single non-nullable field and not an archetype),
-        // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
-        // -> Whatever type aliases there are for this type, we need to pick them up.
-        let (arguments, argument_docs): (Vec<_>, Vec<_>) = if *kind != ObjectKind::Archetype
-            && obj_or_delegate.fields.len() == 1
-            && !obj_or_delegate.fields[0].is_nullable
-        {
-            let field = &obj_or_delegate.fields[0];
-            // If it is a delegate or on, the type name is in a different namespace.
-            let argument = if let Some(delegate) = obj.delegate_datatype(objects) {
-                format!("{}: {}Like", field.name, fqname_to_type(&delegate.fqname))
-            } else {
-                format!("{}: {}Like", field.name, name)
-            };
-
-            let doc_content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
-            let arg_doc = if doc_content.is_empty() {
-                Vec::new()
-            } else {
-                vec![format!(
-                    "{}:\n    {}",
-                    field.name,
-                    doc_content.join("\n    ")
-                )]
-            };
-            (vec![argument], arg_doc)
-        } else if obj_or_delegate.is_union() {
-            let argument = format!(
-                "inner: {}Like | None = None",
-                fqname_to_type(&obj_or_delegate.fqname)
-            );
-            (vec![argument], Vec::new())
-        } else {
-            obj_or_delegate
-                .fields
-                .iter()
-                .sorted_by_key(|field| field.is_nullable)
-                .map(|field| init_argument_and_doc(field, objects))
-                .unzip()
-        };
-
-        let argument_docs = argument_docs
-            .into_iter()
-            .filter(|doc| !doc.is_empty())
-            .collect::<Vec<_>>();
-
-        let doc_typedesc = match kind {
-            ObjectKind::Datatype => "datatype",
-            ObjectKind::Component => "component",
-            ObjectKind::Archetype => "archetype",
-        };
-
-        let mut doc_string_lines = vec![
-            r#"""""#.to_owned(),
-            format!("Create a new instance of the {name} {doc_typedesc}."),
-        ];
-        if !argument_docs.is_empty() {
-            doc_string_lines.push("\n".to_owned());
-            doc_string_lines.push("Parameters".to_owned());
-            doc_string_lines.push("----------".to_owned());
-            for doc in argument_docs {
-                doc_string_lines.push(doc);
-            }
-        };
-        doc_string_lines.push(r#"""""#.to_owned());
-
-        code.push_text(
-            format!("def __init__(self: Any, {}):", arguments.join(", "),),
-            2,
-            4,
-        );
-
-        for doc in doc_string_lines {
-            code.push_text(doc, 1, 8);
-        }
-
-        code.push_text(
-            format!(
-                "# You can define your own __init__ function as a member of {} in {}",
-                ext_class.name, ext_class.file_name
-            ),
-            1,
-            8,
-        );
-
-        if obj_or_delegate.is_union() {
-            code.push_text("self.inner = inner", 1, 8);
-        } else {
-            let attribute_init = obj_or_delegate
-                .fields
-                .iter()
-                .map(|field| format!("{}={}", field.name, field.name))
-                .collect::<Vec<_>>();
-
-            code.push_text(
-                format!("self.__attrs_init__({})", attribute_init.join(", ")),
-                1,
-                8,
-            );
-        };
+        code.push_text(quote_init_method(obj, &ext_class, objects), 2, 4);
     }
 
     if obj.is_delegating_component() {
@@ -1664,6 +1513,157 @@ fn quote_arrow_support_from_obj(
             "#
         ))
     }
+}
+
+fn quote_argument_type_alias(
+    arg_type_fqname: &str,
+    class_fqname: &str,
+    objects: &Objects,
+    array: bool,
+) -> String {
+    let obj = &objects[arg_type_fqname];
+
+    let base = if let Some(delegate) = obj.delegate_datatype(objects) {
+        fqname_to_type(&delegate.fqname)
+    } else if arg_type_fqname == class_fqname {
+        // We're in the same namespace, so we can use the object name directly.
+        // (in fact we have to since we don't import ourselves)
+        obj.name.clone()
+    } else {
+        fqname_to_type(arg_type_fqname)
+    };
+
+    if array {
+        format!("{base}ArrayLike")
+    } else {
+        format!("{base}Like")
+    }
+}
+
+fn quote_init_argument_from_field(
+    field: &ObjectField,
+    objects: &Objects,
+    current_obj_fqname: &str,
+) -> String {
+    let type_annotation = if let Some(fqname) = field.typ.fqname() {
+        quote_argument_type_alias(fqname, current_obj_fqname, objects, field.typ.is_plural())
+    } else {
+        let type_annotation = quote_field_type_from_field(objects, field, false).0;
+        // Relax type annotation for numpy arrays.
+        if type_annotation.starts_with("npt.NDArray") {
+            "npt.ArrayLike".to_owned()
+        } else {
+            type_annotation
+        }
+    };
+
+    if field.is_nullable {
+        format!("{}: {} | None = None", field.name, type_annotation)
+    } else {
+        format!("{}: {}", field.name, type_annotation)
+    }
+}
+
+fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects) -> String {
+    let obj_or_delegate = if let Some(delegate) = obj.delegate_datatype(objects) {
+        delegate
+    } else {
+        obj
+    };
+
+    // If the type is fully transparent (single non-nullable field and not an archetype),
+    // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
+    // -> Whatever type aliases there are for this type, we need to pick them up.
+    let arguments: Vec<_> = if obj.kind != ObjectKind::Archetype
+        && obj_or_delegate.fields.len() == 1
+        && !obj_or_delegate.fields[0].is_nullable
+    {
+        vec![format!(
+            "{}: {}",
+            obj_or_delegate.fields[0].name,
+            quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+        )]
+    } else if obj_or_delegate.is_union() {
+        vec![format!(
+            "inner: {} | None = None",
+            quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+        )]
+    } else {
+        obj_or_delegate
+            .fields
+            .iter()
+            .sorted_by_key(|field| field.is_nullable)
+            .map(|field| quote_init_argument_from_field(field, objects, &obj.fqname))
+            .collect()
+    };
+
+    let argument_docs = if obj_or_delegate.is_union() {
+        Vec::new()
+    } else {
+        obj_or_delegate
+            .fields
+            .iter()
+            .filter_map(|field| {
+                if field.docs.doc.is_empty() {
+                    None
+                } else {
+                    let doc_content =
+                        crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+                    Some(format!(
+                        "{}:\n    {}",
+                        field.name,
+                        doc_content.join("\n    ")
+                    ))
+                }
+            })
+            .collect::<Vec<_>>()
+    };
+    let head = format!("def __init__(self: Any, {}):", arguments.join(", "));
+
+    let doc_typedesc = match obj.kind {
+        ObjectKind::Datatype => "datatype",
+        ObjectKind::Component => "component",
+        ObjectKind::Archetype => "archetype",
+    };
+    let mut doc_string_lines = vec![
+        r#"""""#.to_owned(),
+        format!("Create a new instance of the {} {doc_typedesc}.", obj.name),
+    ];
+    if !argument_docs.is_empty() {
+        doc_string_lines.push("\n".to_owned());
+        doc_string_lines.push("Parameters".to_owned());
+        doc_string_lines.push("----------".to_owned());
+        for doc in argument_docs {
+            doc_string_lines.push(doc);
+        }
+    };
+    doc_string_lines.push(r#"""""#.to_owned());
+    let doc_block = doc_string_lines.join("\n");
+
+    let custom_init_hint = format!(
+        "# You can define your own __init__ function as a member of {} in {}",
+        ext_class.name, ext_class.file_name
+    );
+
+    let forwarding_call = if obj_or_delegate.is_union() {
+        "self.inner = inner".to_owned()
+    } else {
+        let attribute_init = obj_or_delegate
+            .fields
+            .iter()
+            .map(|field| format!("{}={}", field.name, field.name))
+            .collect::<Vec<_>>();
+
+        format!("self.__attrs_init__({})", attribute_init.join(", "))
+    };
+
+    format!(
+        "{head}\n{}",
+        indent::indent_all_by(
+            4,
+            format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),
+        )
+    )
 }
 
 // --- Arrow registry code generators ---
