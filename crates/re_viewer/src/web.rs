@@ -2,7 +2,7 @@ use eframe::wasm_bindgen::{self, prelude::*};
 
 use std::sync::Arc;
 
-use re_error::ResultExt as _;
+use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
 
 #[global_allocator]

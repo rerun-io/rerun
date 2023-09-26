@@ -1,26 +1,42 @@
 pub trait ResultExt<T, E> {
     /// Logs an error if the result is an error and returns the result.
-    fn ok_or_log_error(self) -> Option<T>
-    where
-        E: std::fmt::Display;
+    fn ok_or_log_error(self) -> Option<T>;
+
+    /// Log a warning if there is an `Err`, but only log the exact same message once.
+    fn warn_on_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
 
     /// Unwraps in debug builds otherwise logs an error if the result is an error and returns the result.
-    fn unwrap_debug_or_log_error(self) -> Option<T>
-    where
-        E: std::fmt::Display + std::fmt::Debug;
+    fn unwrap_debug_or_log_error(self) -> Option<T>;
 }
 
-impl<T, E> ResultExt<T, E> for Result<T, E> {
+impl<T, E> ResultExt<T, E> for Result<T, E>
+where
+    E: std::fmt::Display,
+{
     #[track_caller]
     fn ok_or_log_error(self) -> Option<T>
-    where
-        E: std::fmt::Display,
     {
         match self {
             Ok(t) => Some(t),
             Err(err) => {
                 let loc = std::panic::Location::caller();
-                log::error!("{}:{} {err}", loc.file(), loc.line());
+                let (file, line) = (loc.file(), loc.line());
+                log::error!("{file}:{line} {err}");
+                None
+            }
+        }
+    }
+
+    /// Log a warning if there is an `Err`, but only log the exact same message once.
+    #[track_caller]
+    fn warn_on_err_once(self, msg: impl std::fmt::Display) -> Option<T>
+    {
+        match self {
+            Ok(value) => Some(value),
+            Err(err) => {
+                let loc = std::panic::Location::caller();
+                let (file, line) = (loc.file(), loc.line());
+                crate::warn_once!("{file}:{line} {msg}: {err}");
                 None
             }
         }
@@ -28,11 +44,16 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 
     #[track_caller]
     fn unwrap_debug_or_log_error(self) -> Option<T>
-    where
-        E: std::fmt::Display + std::fmt::Debug,
     {
         if cfg!(debug_assertions) {
-            Some(self.unwrap())
+            match self {
+                Ok(value) => Some(value),
+                Err(err) => {
+                    let loc = std::panic::Location::caller();
+                    let (file, line) = (loc.file(), loc.line());
+                    panic!("{file}:{line} {err}");
+                }
+            }
         } else {
             self.ok_or_log_error()
         }

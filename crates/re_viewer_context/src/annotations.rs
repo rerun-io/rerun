@@ -23,8 +23,11 @@ pub struct Annotations {
 impl Annotations {
     pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
         re_tracing::profile_function!();
+
+        use re_log::ResultExt as _;
+
         view.optional_mono_component::<re_types::components::AnnotationContext>()
-            .ok()
+            .warn_on_err_once("Failed to load AnnotationContext")
             .flatten()
             .map(|ctx| Self {
                 row_id: view.primary_row_id(),
