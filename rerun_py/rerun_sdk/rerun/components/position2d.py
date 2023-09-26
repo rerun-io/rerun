@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy.typing as npt
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -18,7 +16,8 @@ __all__ = ["Position2D", "Position2DBatch", "Position2DType"]
 class Position2D(datatypes.Vec2D):
     """A position in 2D space."""
 
-    def __init__(self: Any, xy: npt.ArrayLike):
+    def __init__(self: Any, xy: datatypes.Vec2DLike):
+        """Create a new instance of the Position2D component."""
         # You can define your own __init__ function as a member of Position2DExt in position2d_ext.py
         self.__attrs_init__(xy=xy)
 

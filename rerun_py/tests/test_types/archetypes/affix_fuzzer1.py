@@ -95,6 +95,7 @@ class AffixFuzzer1(Archetype):
         fuzz2117: components.AffixFuzzer17ArrayLike | None = None,
         fuzz2118: components.AffixFuzzer18ArrayLike | None = None,
     ):
+        """Create a new instance of the AffixFuzzer1 archetype."""
         # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py
         self.__attrs_init__(
             fuzz1001=fuzz1001,

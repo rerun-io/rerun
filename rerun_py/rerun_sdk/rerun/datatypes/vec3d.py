@@ -25,7 +25,8 @@ __all__ = ["Vec3D", "Vec3DArrayLike", "Vec3DBatch", "Vec3DLike", "Vec3DType"]
 class Vec3D(Vec3DExt):
     """A vector in 3D space."""
 
-    def __init__(self: Any, xyz: npt.ArrayLike):
+    def __init__(self: Any, xyz: Vec3DLike):
+        """Create a new instance of the Vec3D datatype."""
         # You can define your own __init__ function as a member of Vec3DExt in vec3d_ext.py
         self.__attrs_init__(xyz=xyz)
 

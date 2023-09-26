@@ -22,7 +22,8 @@ __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType
 class Radius(RadiusExt):
     """A Radius component."""
 
-    def __init__(self: Any, value: float):
+    def __init__(self: Any, value: RadiusLike):
+        """Create a new instance of the Radius component."""
         # You can define your own __init__ function as a member of RadiusExt in radius_ext.py
         self.__attrs_init__(value=value)
 

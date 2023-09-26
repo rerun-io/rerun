@@ -36,7 +36,8 @@ class LineStrip3D(LineStrip3DExt):
     ```
     """
 
-    def __init__(self: Any, points: datatypes.Vec3DArrayLike):
+    def __init__(self: Any, points: LineStrip3DLike):
+        """Create a new instance of the LineStrip3D component."""
         # You can define your own __init__ function as a member of LineStrip3DExt in line_strip3d_ext.py
         self.__attrs_init__(points=points)
 

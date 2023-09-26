@@ -27,7 +27,8 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     * `"TRACE"`
     """
 
-    def __init__(self: Any, value: str):
+    def __init__(self: Any, value: datatypes.Utf8Like):
+        """Create a new instance of the TextLogLevel component."""
         # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
         self.__attrs_init__(value=value)
 

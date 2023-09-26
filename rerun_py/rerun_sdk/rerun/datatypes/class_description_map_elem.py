@@ -41,6 +41,7 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     """
 
     def __init__(self: Any, class_id: datatypes.ClassIdLike, class_description: datatypes.ClassDescriptionLike):
+        """Create a new instance of the ClassDescriptionMapElem datatype."""
         # You can define your own __init__ function as a member of ClassDescriptionMapElemExt in class_description_map_elem_ext.py
         self.__attrs_init__(class_id=class_id, class_description=class_description)
 

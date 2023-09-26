@@ -29,7 +29,8 @@ class KeypointId(KeypointIdExt):
     [`rerun.components.AnnotationContext`].
     """
 
-    def __init__(self: Any, id: int):
+    def __init__(self: Any, id: KeypointIdLike):
+        """Create a new instance of the KeypointId datatype."""
         # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
         self.__attrs_init__(id=id)
 

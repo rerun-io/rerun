@@ -29,6 +29,14 @@ def _material__albedo_factor__special_field_converter_override(x: datatypes.Colo
 @define
 class Material(MaterialExt):
     def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
+        """
+        Create a new instance of the Material datatype.
+
+        Parameters
+        ----------
+        albedo_factor:
+             Optional color multiplier.
+        """
         # You can define your own __init__ function as a member of MaterialExt in material_ext.py
         self.__attrs_init__(albedo_factor=albedo_factor)
 

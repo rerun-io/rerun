@@ -80,6 +80,32 @@ class Mesh3D(Archetype):
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,
     ):
+        """
+        Create a new instance of the Mesh3D archetype.
+
+        Parameters
+        ----------
+        vertex_positions:
+             The positions of each vertex.
+
+             If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
+        mesh_properties:
+             Optional properties for the mesh as a whole (including indexed drawing).
+        vertex_normals:
+             An optional normal for each vertex.
+
+             If specified, this must have as many elements as `vertex_positions`.
+        vertex_colors:
+             An optional color for each vertex.
+        mesh_material:
+             Optional material properties for the mesh as a whole.
+        class_ids:
+             Optional class Ids for the vertices.
+
+             The class ID provides colors and labels if not specified explicitly.
+        instance_keys:
+             Unique identifiers for each individual vertex in the mesh.
+        """
         # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
         self.__attrs_init__(
             vertex_positions=vertex_positions,

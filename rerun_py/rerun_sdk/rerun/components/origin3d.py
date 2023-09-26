@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy.typing as npt
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -18,7 +16,8 @@ __all__ = ["Origin3D", "Origin3DBatch", "Origin3DType"]
 class Origin3D(datatypes.Vec3D):
     """A point of origin in 3D space."""
 
-    def __init__(self: Any, xyz: npt.ArrayLike):
+    def __init__(self: Any, xyz: datatypes.Vec3DLike):
+        """Create a new instance of the Origin3D component."""
         # You can define your own __init__ function as a member of Origin3DExt in origin3d_ext.py
         self.__attrs_init__(xyz=xyz)
 

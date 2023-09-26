@@ -31,7 +31,8 @@ class Color(ColorExt):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    def __init__(self: Any, rgba: int):
+    def __init__(self: Any, rgba: ColorLike):
+        """Create a new instance of the Color datatype."""
         # You can define your own __init__ function as a member of ColorExt in color_ext.py
         self.__attrs_init__(rgba=rgba)
 

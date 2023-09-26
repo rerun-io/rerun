@@ -47,6 +47,14 @@ class Transform3D(Archetype):
     """
 
     def __init__(self: Any, transform: datatypes.Transform3DLike):
+        """
+        Create a new instance of the Transform3D archetype.
+
+        Parameters
+        ----------
+        transform:
+             The transform
+        """
         # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
         self.__attrs_init__(transform=transform)
 

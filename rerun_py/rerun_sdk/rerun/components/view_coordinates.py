@@ -45,7 +45,15 @@ class ViewCoordinates(ViewCoordinatesExt):
      Back = 6
     """
 
-    def __init__(self: Any, coordinates: npt.ArrayLike):
+    def __init__(self: Any, coordinates: ViewCoordinatesLike):
+        """
+        Create a new instance of the ViewCoordinates component.
+
+        Parameters
+        ----------
+        coordinates:
+             The directions of the [x, y, z] axes.
+        """
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
         self.__attrs_init__(coordinates=coordinates)
 

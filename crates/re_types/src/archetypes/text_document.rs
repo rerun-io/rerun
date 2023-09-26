@@ -16,6 +16,7 @@
 /// A text element intended to be displayed in its own text-box.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextDocument {
+    /// Contents of the text document.
     pub body: crate::components::Text,
 
     /// The Media Type of the text.

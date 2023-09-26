@@ -16,7 +16,8 @@ __all__ = ["ClassId", "ClassIdBatch", "ClassIdType"]
 class ClassId(datatypes.ClassId):
     """A 16-bit ID representing a type of semantic class."""
 
-    def __init__(self: Any, id: int):
+    def __init__(self: Any, id: datatypes.ClassIdLike):
+        """Create a new instance of the ClassId component."""
         # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
         self.__attrs_init__(id=id)
 

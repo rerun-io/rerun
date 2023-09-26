@@ -36,6 +36,7 @@ class KeypointPair(KeypointPairExt):
     """A connection between two `Keypoints`."""
 
     def __init__(self: Any, keypoint0: datatypes.KeypointIdLike, keypoint1: datatypes.KeypointIdLike):
+        """Create a new instance of the KeypointPair datatype."""
         # You can define your own __init__ function as a member of KeypointPairExt in keypoint_pair_ext.py
         self.__attrs_init__(keypoint0=keypoint0, keypoint1=keypoint1)
 

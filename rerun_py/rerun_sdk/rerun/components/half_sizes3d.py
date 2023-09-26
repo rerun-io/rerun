@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy.typing as npt
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
@@ -23,7 +21,8 @@ class HalfSizes3D(datatypes.Vec3D):
     Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
     """
 
-    def __init__(self: Any, xyz: npt.ArrayLike):
+    def __init__(self: Any, xyz: datatypes.Vec3DLike):
+        """Create a new instance of the HalfSizes3D component."""
         # You can define your own __init__ function as a member of HalfSizes3DExt in half_sizes3d_ext.py
         self.__attrs_init__(xyz=xyz)
 

@@ -16,7 +16,8 @@ __all__ = ["Text", "TextBatch", "TextType"]
 class Text(datatypes.Utf8):
     """A string of text, e.g. for labels and text documents."""
 
-    def __init__(self: Any, value: str):
+    def __init__(self: Any, value: datatypes.Utf8Like):
+        """Create a new instance of the Text component."""
         # You can define your own __init__ function as a member of TextExt in text_ext.py
         self.__attrs_init__(value=value)
 

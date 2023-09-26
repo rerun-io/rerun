@@ -24,7 +24,8 @@ __all__ = ["UVec3D", "UVec3DArrayLike", "UVec3DBatch", "UVec3DLike", "UVec3DType
 class UVec3D:
     """A uint32 vector in 3D space."""
 
-    def __init__(self: Any, xyz: npt.ArrayLike):
+    def __init__(self: Any, xyz: UVec3DLike):
+        """Create a new instance of the UVec3D datatype."""
         # You can define your own __init__ function as a member of UVec3DExt in uvec3d_ext.py
         self.__attrs_init__(xyz=xyz)
 

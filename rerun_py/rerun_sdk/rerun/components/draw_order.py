@@ -30,7 +30,8 @@ class DrawOrder(DrawOrderExt):
     Draw order for entities with the same draw order is generally undefined.
     """
 
-    def __init__(self: Any, value: float):
+    def __init__(self: Any, value: DrawOrderLike):
+        """Create a new instance of the DrawOrder component."""
         # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
         self.__attrs_init__(value=value)
 

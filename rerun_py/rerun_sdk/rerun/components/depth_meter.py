@@ -22,7 +22,8 @@ __all__ = ["DepthMeter", "DepthMeterArrayLike", "DepthMeterBatch", "DepthMeterLi
 class DepthMeter(DepthMeterExt):
     """A component indicating how long a meter is, expressed in native units."""
 
-    def __init__(self: Any, value: float):
+    def __init__(self: Any, value: DepthMeterLike):
+        """Create a new instance of the DepthMeter component."""
         # You can define your own __init__ function as a member of DepthMeterExt in depth_meter_ext.py
         self.__attrs_init__(value=value)
 

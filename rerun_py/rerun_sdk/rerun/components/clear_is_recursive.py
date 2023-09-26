@@ -28,7 +28,15 @@ __all__ = [
 class ClearIsRecursive(ClearIsRecursiveExt):
     """Configures how a clear operation should behave - recurive or no?."""
 
-    def __init__(self: Any, recursive: bool):
+    def __init__(self: Any, recursive: ClearIsRecursiveLike):
+        """
+        Create a new instance of the ClearIsRecursive component.
+
+        Parameters
+        ----------
+        recursive:
+             If true, also clears all recursive children entities.
+        """
         # You can define your own __init__ function as a member of ClearIsRecursiveExt in clear_is_recursive_ext.py
         self.__attrs_init__(recursive=recursive)
 

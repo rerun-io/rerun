@@ -22,7 +22,8 @@ __all__ = ["InstanceKey", "InstanceKeyArrayLike", "InstanceKeyBatch", "InstanceK
 class InstanceKey(InstanceKeyExt):
     """A unique numeric identifier for each individual instance within a batch."""
 
-    def __init__(self: Any, value: int):
+    def __init__(self: Any, value: InstanceKeyLike):
+        """Create a new instance of the InstanceKey component."""
         # You can define your own __init__ function as a member of InstanceKeyExt in instance_key_ext.py
         self.__attrs_init__(value=value)
 

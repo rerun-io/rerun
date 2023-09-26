@@ -51,6 +51,18 @@ class AnnotationInfo(AnnotationInfoExt):
     """
 
     def __init__(self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.ColorLike | None = None):
+        """
+        Create a new instance of the AnnotationInfo datatype.
+
+        Parameters
+        ----------
+        id:
+             `ClassId` or `KeypointId` to which this annotation info belongs.
+        label:
+             The label that will be shown in the UI.
+        color:
+             The color that will be applied to the annotated entity.
+        """
         # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py
         self.__attrs_init__(id=id, label=label, color=color)
 

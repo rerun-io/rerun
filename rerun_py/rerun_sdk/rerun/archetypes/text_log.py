@@ -25,6 +25,7 @@ class TextLog(Archetype):
         level: datatypes.Utf8Like | None = None,
         color: datatypes.ColorLike | None = None,
     ):
+        """Create a new instance of the TextLog archetype."""
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
         self.__attrs_init__(body=body, level=level, color=color)
 

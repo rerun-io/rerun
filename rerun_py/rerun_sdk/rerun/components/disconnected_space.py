@@ -34,7 +34,8 @@ class DisconnectedSpace(DisconnectedSpaceExt):
     If a transform or pinhole is logged on the same path, this component will be ignored.
     """
 
-    def __init__(self: Any, is_disconnected: bool):
+    def __init__(self: Any, is_disconnected: DisconnectedSpaceLike):
+        """Create a new instance of the DisconnectedSpace component."""
         # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
         self.__attrs_init__(is_disconnected=is_disconnected)
 

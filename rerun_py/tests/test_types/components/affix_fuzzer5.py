@@ -28,6 +28,7 @@ class AffixFuzzer5(datatypes.AffixFuzzer1):
         many_strings_optional: list[str] | None = None,
         from_parent: bool | None = None,
     ):
+        """Create a new instance of the AffixFuzzer5 component."""
         # You can define your own __init__ function as a member of AffixFuzzer5Ext in affix_fuzzer5_ext.py
         self.__attrs_init__(
             single_float_optional=single_float_optional,

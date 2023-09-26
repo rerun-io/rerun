@@ -16,15 +16,10 @@ __all__ = ["Transform3D", "Transform3DBatch", "Transform3DType"]
 class Transform3D(datatypes.Transform3D):
     """An affine transform between two 3D spaces, represented in a given direction."""
 
-    def __init__(
-        self: Any,
-        TranslationAndMat3x3: datatypes.TranslationAndMat3x3Like,
-        TranslationRotationScale: datatypes.TranslationRotationScale3DLike,
-    ):
+    def __init__(self: Any, inner: datatypes.Transform3DLike | None = None):
+        """Create a new instance of the Transform3D component."""
         # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
-        self.__attrs_init__(
-            TranslationAndMat3x3=TranslationAndMat3x3, TranslationRotationScale=TranslationRotationScale
-        )
+        self.__attrs_init__(inner=inner)
 
     # Note: there are no fields here because Transform3D delegates to datatypes.Transform3D
 

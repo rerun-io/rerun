@@ -40,6 +40,14 @@ class Tensor(Archetype):
     """
 
     def __init__(self: Any, data: datatypes.TensorDataLike):
+        """
+        Create a new instance of the Tensor archetype.
+
+        Parameters
+        ----------
+        data:
+             The tensor data
+        """
         # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
         self.__attrs_init__(data=data)
 

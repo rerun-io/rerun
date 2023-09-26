@@ -20,15 +20,10 @@ class OutOfTreeTransform3D(datatypes.Transform3D):
     "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
     """
 
-    def __init__(
-        self: Any,
-        TranslationAndMat3x3: datatypes.TranslationAndMat3x3Like,
-        TranslationRotationScale: datatypes.TranslationRotationScale3DLike,
-    ):
+    def __init__(self: Any, inner: datatypes.Transform3DLike | None = None):
+        """Create a new instance of the OutOfTreeTransform3D component."""
         # You can define your own __init__ function as a member of OutOfTreeTransform3DExt in out_of_tree_transform3d_ext.py
-        self.__attrs_init__(
-            TranslationAndMat3x3=TranslationAndMat3x3, TranslationRotationScale=TranslationRotationScale
-        )
+        self.__attrs_init__(inner=inner)
 
     # Note: there are no fields here because OutOfTreeTransform3D delegates to datatypes.Transform3D
 

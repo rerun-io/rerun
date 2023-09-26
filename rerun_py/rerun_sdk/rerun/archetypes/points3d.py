@@ -41,6 +41,38 @@ class Points3D(Archetype):
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,
     ):
+        """
+        Create a new instance of the Points3D archetype.
+
+        Parameters
+        ----------
+        positions:
+             All the 3D positions at which the point cloud shows points.
+        radii:
+             Optional radii for the points, effectively turning them into circles.
+        colors:
+             Optional colors for the points.
+
+             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+             As either 0-1 floats or 0-255 integers, with separate alpha.
+        labels:
+             Optional text labels for the points.
+        class_ids:
+             Optional class Ids for the points.
+
+             The class ID provides colors and labels if not specified explicitly.
+        keypoint_ids:
+             Optional keypoint IDs for the points, identifying them within a class.
+
+             If keypoint IDs are passed in but no class IDs were specified, the class ID will
+             default to 0.
+             This is useful to identify points within a single classification (which is identified
+             with `class_id`).
+             E.g. the classification might be 'Person' and the keypoints refer to joints on a
+             detected skeleton.
+        instance_keys:
+             Unique identifiers for each individual point in the batch.
+        """
         # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
         self.__attrs_init__(
             positions=positions,

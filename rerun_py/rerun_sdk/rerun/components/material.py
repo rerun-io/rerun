@@ -15,6 +15,14 @@ __all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 class Material(datatypes.Material):
     def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
+        """
+        Create a new instance of the Material component.
+
+        Parameters
+        ----------
+        albedo_factor:
+             Optional color multiplier.
+        """
         # You can define your own __init__ function as a member of MaterialExt in material_ext.py
         self.__attrs_init__(albedo_factor=albedo_factor)
 

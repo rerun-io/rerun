@@ -22,7 +22,8 @@ class MediaType(MediaTypeExt, datatypes.Utf8):
     consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
     """
 
-    def __init__(self: Any, value: str):
+    def __init__(self: Any, value: datatypes.Utf8Like):
+        """Create a new instance of the MediaType component."""
         # You can define your own __init__ function as a member of MediaTypeExt in media_type_ext.py
         self.__attrs_init__(value=value)
 
