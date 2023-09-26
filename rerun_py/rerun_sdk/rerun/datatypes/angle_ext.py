@@ -10,6 +10,17 @@ if TYPE_CHECKING:
 
 class AngleExt:
     def __init__(self: Any, rad: float | None = None, deg: float | None = None) -> None:
+        """
+        Create a new instance of the Angle datatype.
+
+        Parameters
+        ----------
+        rad:
+            Angle in radians, specify either `rad` or `deg`.
+        deg:
+            Angle in degrees, specify either `rad` or `deg`.
+        """
+
         if rad is not None:
             self.__attrs_init__(inner=rad, kind="radians")  # pyright: ignore[reportGeneralTypeIssues]
         elif deg is not None:

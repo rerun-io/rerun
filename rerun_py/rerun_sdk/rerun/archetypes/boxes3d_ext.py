@@ -24,6 +24,37 @@ class Boxes3DExt:
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,
     ) -> None:
+        """
+        Create a new instance of the Boxes3D archetype.
+
+        Parameters
+        ----------
+        sizes:
+            Full extents in x/y/z. Specify this instead of `half_sizes`
+        half_sizes:
+            All half-extents that make up the batch of boxes. Specify this instead of `sizes`
+        mins:
+            Minimum coordinates of the boxes. Specify this instead of `centers`.
+
+            Only valid when used together with either `sizes` or `half_sizes`.
+        centers:
+            Optional center positions of the boxes.
+        rotations:
+            Optional rotations of the boxes.
+        colors:
+            Optional colors for the boxes.
+        radii:
+            Optional radii for the lines that make up the boxes.
+        labels:
+            Optional text labels for the boxes.
+        class_ids:
+            Optional `ClassId`s for the boxes.
+
+            The class ID provides colors and labels if not specified explicitly.
+        instance_keys:
+            Unique identifiers for each individual boxes in the batch.
+        """
+
         if sizes is not None:
             if half_sizes is not None:
                 _send_warning("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
