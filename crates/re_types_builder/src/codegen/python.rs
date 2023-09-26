@@ -633,6 +633,7 @@ fn code_for_struct(
         // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
         // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
 
+        // TODO: not needed?
         fn like_type(fqname: &str, objects: &Objects) -> String {
             if let Some(delegate) = objects.objects[fqname].delegate_datatype(objects) {
                 fqname_to_type(&delegate.fqname)
@@ -641,7 +642,7 @@ fn code_for_struct(
             }
         }
 
-        fn argument(field: &ObjectField, objects: &Objects) -> String {
+        fn quote_field_argument(field: &ObjectField, objects: &Objects) -> String {
             let type_annotation =
                 if let Some(fqname) = field.typ.plural_inner().and_then(|inner| inner.fqname()) {
                     format!("{}ArrayLike", like_type(fqname, objects))
@@ -664,30 +665,99 @@ fn code_for_struct(
             }
         }
 
-        let fields = if let Some(delegate) = obj.delegate_datatype(objects) {
-            &delegate.fields
+        fn init_argument_and_doc(field: &ObjectField, objects: &Objects) -> (String, String) {
+            let argument = quote_field_argument(field, objects);
+
+            let doc = if field.docs.doc.is_empty() {
+                String::new()
+            } else {
+                let doc_content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+                format!("{}:\n    {}", field.name, doc_content.join("\n    "))
+            };
+
+            (argument, doc)
+        }
+
+        let obj_or_delegate = if let Some(delegate) = obj.delegate_datatype(objects) {
+            delegate
         } else {
-            fields
+            obj
         };
 
-        let required_arguments = fields
-            .iter()
-            .filter(|field| !field.is_nullable)
-            .map(|field| argument(field, objects))
-            .collect::<Vec<_>>();
-        let optional_arguments = fields
-            .iter()
-            .filter(|field| field.is_nullable)
-            .map(|field| argument(field, objects))
+        // If the type is fully transparent (single non-nullable field and not an archetype),
+        // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
+        // -> Whatever type aliases there are for this type, we need to pick them up.
+        let (arguments, argument_docs): (Vec<_>, Vec<_>) = if *kind != ObjectKind::Archetype
+            && obj_or_delegate.fields.len() == 1
+            && !obj_or_delegate.fields[0].is_nullable
+        {
+            let field = &obj_or_delegate.fields[0];
+            // If it is a delegate or on, the type name is in a different namespace.
+            let argument = if let Some(delegate) = obj.delegate_datatype(objects) {
+                format!("{}: {}Like", field.name, fqname_to_type(&delegate.fqname))
+            } else {
+                format!("{}: {}Like", field.name, name)
+            };
+
+            let doc_content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+            let arg_doc = if doc_content.is_empty() {
+                Vec::new()
+            } else {
+                vec![format!(
+                    "{}:\n    {}",
+                    field.name,
+                    doc_content.join("\n    ")
+                )]
+            };
+            (vec![argument], arg_doc)
+        } else if obj_or_delegate.is_union() {
+            let argument = format!(
+                "inner: {}Like | None = None",
+                fqname_to_type(&obj_or_delegate.fqname)
+            );
+            (vec![argument], Vec::new())
+        } else {
+            obj_or_delegate
+                .fields
+                .iter()
+                .sorted_by_key(|field| field.is_nullable)
+                .map(|field| init_argument_and_doc(field, objects))
+                .unzip()
+        };
+
+        let argument_docs = argument_docs
+            .into_iter()
+            .filter(|doc| !doc.is_empty())
             .collect::<Vec<_>>();
 
-        let arguments = if optional_arguments.is_empty() {
-            required_arguments
+        let doc_typedesc = match kind {
+            ObjectKind::Datatype => "datatype",
+            ObjectKind::Component => "component",
+            ObjectKind::Archetype => "archetype",
+        };
+
+        let mut doc_string_lines = vec![
+            r#"""""#.to_owned(),
+            format!("Create a new instance of the {name} {doc_typedesc}."),
+        ];
+        if !argument_docs.is_empty() {
+            doc_string_lines.push("\n".to_owned());
+            doc_string_lines.push("Parameters".to_owned());
+            doc_string_lines.push("----------".to_owned());
+            for doc in argument_docs {
+                doc_string_lines.push(doc);
+            }
+        };
+        doc_string_lines.push(r#"""""#.to_owned());
+
+        let attribute_init = if obj_or_delegate.is_union() {
+            vec!["inner=inner".to_owned()]
         } else {
-            required_arguments
-                .into_iter()
-                .chain(optional_arguments)
-                .collect()
+            obj_or_delegate
+                .fields
+                .iter()
+                .map(|field| format!("{}={}", field.name, field.name))
+                .collect::<Vec<_>>()
         };
 
         code.push_text(
@@ -696,20 +766,20 @@ fn code_for_struct(
             4,
         );
 
-        let attribute_init = fields
-            .iter()
-            .map(|field| format!("{}={}", field.name, field.name))
-            .collect::<Vec<_>>();
-        code.push_text(
-            format!(
-                r#"
+        for doc in doc_string_lines {
+            code.push_text(doc, 1, 8);
+        }
 
+        code.push_text(
+            &unindent::unindent(&format!(
+                r#"
                 # You can define your own __init__ function as a member of {} in {}
-                self.__attrs_init__({})"#,
+                self.__attrs_init__({})
+                "#,
                 ext_class.name,
                 ext_class.file_name,
                 attribute_init.join(", ")
-            ),
+            )),
             2,
             8,
         );
