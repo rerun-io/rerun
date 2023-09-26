@@ -101,6 +101,8 @@ def add_space_view(
     origin : str
         The EntityPath to use as the origin of this space view. All other entities will be transformed
         to be displayed relative to this origin.
+    space_view_class: str
+        The class of the space view to add.
     name : Optional[str]
         The name of the space view to show in the UI. Will default to the origin if not provided.
     entity_paths : Optional[List[str]]
