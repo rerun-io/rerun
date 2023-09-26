@@ -19,7 +19,7 @@ class Rotation3D(datatypes.Rotation3D):
     def __init__(self: Any, inner: datatypes.Rotation3DLike | None = None):
         """Create a new instance of the Rotation3D component."""
         # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
-        self.__attrs_init__(inner=inner)
+        self.inner = inner
 
     # Note: there are no fields here because Rotation3D delegates to datatypes.Rotation3D
 

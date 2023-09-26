@@ -18,7 +18,7 @@ class AffixFuzzer15(datatypes.AffixFuzzer3):
     def __init__(self: Any, inner: datatypes.AffixFuzzer3Like | None = None):
         """Create a new instance of the AffixFuzzer15 component."""
         # You can define your own __init__ function as a member of AffixFuzzer15Ext in affix_fuzzer15_ext.py
-        self.__attrs_init__(inner=inner)
+        self.inner = inner
 
     # Note: there are no fields here because AffixFuzzer15 delegates to datatypes.AffixFuzzer3
 

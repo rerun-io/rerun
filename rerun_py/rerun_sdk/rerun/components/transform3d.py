@@ -19,7 +19,7 @@ class Transform3D(datatypes.Transform3D):
     def __init__(self: Any, inner: datatypes.Transform3DLike | None = None):
         """Create a new instance of the Transform3D component."""
         # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
-        self.__attrs_init__(inner=inner)
+        self.inner = inner
 
     # Note: there are no fields here because Transform3D delegates to datatypes.Transform3D
 
