@@ -1596,6 +1596,7 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
             .map(|field| quote_init_argument_from_field(field, objects, &obj.fqname))
             .collect()
     };
+    let head = format!("def __init__(self: Any, {}):", arguments.join(", "));
 
     let argument_docs = if obj_or_delegate.is_union() {
         Vec::new()
@@ -1618,8 +1619,6 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
             })
             .collect::<Vec<_>>()
     };
-    let head = format!("def __init__(self: Any, {}):", arguments.join(", "));
-
     let doc_typedesc = match obj.kind {
         ObjectKind::Datatype => "datatype",
         ObjectKind::Component => "component",
