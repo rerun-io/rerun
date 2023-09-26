@@ -11,4 +11,4 @@ tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
 rr.init("rerun_example_tensors", spawn=True)
 
 # Log the tensor, assigning names to each dimension
-rr.log_tensor("tensor", tensor, names=("width", "height", "channel", "batch"))
+rr.log("tensor", rr.Tensor(array=tensor, names=("width", "height", "channel", "batch")))
