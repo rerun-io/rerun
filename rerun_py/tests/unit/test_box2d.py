@@ -5,7 +5,7 @@ from typing import Optional, cast
 
 import rerun as rr
 from rerun.components import (
-    DrawOrderArrayLike,
+    DrawOrderLike,
     HalfSizes2DBatch,
     InstanceKeyArrayLike,
     Position2DBatch,
@@ -62,7 +62,7 @@ def test_boxes2d() -> None:
         radii = cast(Optional[RadiusArrayLike], radii)
         colors = cast(Optional[ColorArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[DrawOrderArrayLike], draw_order)
+        draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
