@@ -10,9 +10,8 @@
 use std::f32::consts::TAU;
 
 use rerun::{
-    archetypes::{Arrows3D, Boxes3D, Points3D},
-    components::{Color, ViewCoordinates},
-    coordinates::SignedAxis3,
+    archetypes::{Arrows3D, Boxes3D, Points3D, ViewCoordinates},
+    components::Color,
     external::re_log,
     RecordingStream,
 };
@@ -35,14 +34,9 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     const WIDTH_M: f32 = 0.4;
     const WIDTH_H: f32 = 0.6;
 
-    // TODO(#2816): ViewCoordinates archetype
-    let view_coords = ViewCoordinates::from_up_and_handedness(
-        SignedAxis3::POSITIVE_Y,
-        rerun::coordinates::Handedness::Right,
-    );
-    rec.log_component_batches("world", true, 1, [&view_coords as _])?;
+    rec.log_timeless("world", &ViewCoordinates::RIGHT_HAND_Y_UP)?;
 
-    rec.log(
+    rec.log_timeless(
         "world/frame",
         &Boxes3D::from_half_sizes([(LENGTH_S, LENGTH_S, 1.0)]),
     )?;
@@ -85,14 +79,12 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         Ok(())
     }
 
+    #[rustfmt::skip]
     for step in 0..args.steps {
-        #[rustfmt::skip]
         log_hand(rec, "seconds", step, (step % 60) as f32 / 60.0, LENGTH_S, WIDTH_S, 0)?;
-        #[rustfmt::skip]
         log_hand(rec, "minutes", step, (step % 3600) as f32 / 3600.0, LENGTH_M, WIDTH_M, 128)?;
-        #[rustfmt::skip]
         log_hand(rec, "hours", step, (step % 43200) as f32 / 43200.0, LENGTH_H, WIDTH_H, 255)?;
-    }
+    };
 
     Ok(())
 }

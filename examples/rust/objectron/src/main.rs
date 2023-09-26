@@ -19,7 +19,9 @@ use std::{
 use anyhow::Context as _;
 
 use rerun::{
-    archetypes::{Image, LineStrips2D, Pinhole, Points2D, Points3D, Transform3D, ViewCoordinates},
+    archetypes::{
+        Boxes3D, Image, LineStrips2D, Pinhole, Points2D, Points3D, Transform3D, ViewCoordinates,
+    },
     components::HalfSizes3D,
     datatypes::TranslationRotationScale3D,
     external::re_log,
@@ -127,11 +129,11 @@ fn log_baseline_objects(
         let path = format!("world/annotations/box-{id}");
         rec.log_timeless(
             path.clone(),
-            &rerun::archetypes::Boxes3D::from_half_sizes([bbox_half_size])
+            &Boxes3D::from_half_sizes([bbox_half_size])
                 .with_labels([label])
                 .with_colors([Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log_timeless(path, &rerun::archetypes::Transform3D::new(transform))?;
+        rec.log_timeless(path, &Transform3D::new(transform))?;
     }
 
     Ok(())
