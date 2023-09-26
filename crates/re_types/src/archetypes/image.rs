@@ -121,11 +121,49 @@ impl crate::Archetype for Image {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let data = {
+            let array = arrays_by_name
+                .get("data")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Image#data")?;
+            <crate::components::TensorData>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Image#data")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Image#data")?
+        };
+        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
+            Some({
+                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Image#draw_order")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.Image#draw_order")?
+            })
+        } else {
+            None
+        };
+        Ok(Self { data, draw_order })
     }
+}
 
+impl crate::AsComponents for Image {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.data as &dyn crate::ComponentBatch).into()),
@@ -136,6 +174,11 @@ impl crate::Archetype for Image {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 
     #[inline]
@@ -188,46 +231,6 @@ impl crate::Archetype for Image {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let data = {
-            let array = arrays_by_name
-                .get("data")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#data")?;
-            <crate::components::TensorData>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#data")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#data")?
-        };
-        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
-            Some({
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Image#draw_order")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Image#draw_order")?
-            })
-        } else {
-            None
-        };
-        Ok(Self { data, draw_order })
     }
 }
 

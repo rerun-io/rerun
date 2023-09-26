@@ -4,7 +4,7 @@ use re_types::{
     archetypes::Mesh3D,
     components::{ClassId, InstanceKey, Position3D, Vector3D},
     datatypes::{Color, Material, MeshProperties, Vec3D},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]

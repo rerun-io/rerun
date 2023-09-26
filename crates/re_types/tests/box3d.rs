@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Boxes3D, components, datatypes, Archetype as _};
+use re_types::{archetypes::Boxes3D, components, datatypes, Archetype as _, AsComponents as _};
 
 #[test]
 fn roundtrip() {

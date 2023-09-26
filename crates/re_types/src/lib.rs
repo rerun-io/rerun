@@ -109,6 +109,73 @@
 
 // ---
 
+/// Describes the interface for interpreting an object as a bundle of [`Component`]s.
+pub trait AsComponents {
+    /// Exposes the object's contents as a set of [`ComponentBatch`]s.
+    ///
+    /// This is the main mechanism for easily extending builtin archetypes or even writing
+    /// fully custom ones.
+    /// Have a look at our [Custom Data] example to learn more about extending archetypes.
+    ///
+    /// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
+    //
+    // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
+    // depending on their presence (or lack thereof) at runtime anyway.
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>>;
+
+    /// The number of instances in each batch.
+    ///
+    /// If not implemented, the number of instances will be determined by the longest
+    /// batch in the bundle.
+    ///
+    /// Each batch returned by `as_component_batches` should have this number of
+    /// elements, or 1 in the case it is a splat, or 0 in the case that
+    /// component is being cleared.
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.as_component_batches()
+            .first()
+            .map_or(0, |comp_batch| comp_batch.as_ref().num_instances())
+    }
+
+    // ---
+
+    /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
+    ///
+    /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
+    /// as-is, which is what you want in 99.9% of cases.
+    ///
+    /// For the non-fallible version, see [`Archetype::to_arrow`].
+    #[inline]
+    fn try_to_arrow(
+        &self,
+    ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
+    {
+        self.as_component_batches()
+            .into_iter()
+            .map(|comp_batch| {
+                comp_batch
+                    .as_ref()
+                    .try_to_arrow()
+                    .map(|array| (comp_batch.as_ref().arrow_field(), array))
+                    .with_context(comp_batch.as_ref().name())
+            })
+            .collect()
+    }
+
+    /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
+    ///
+    /// Panics on failure.
+    ///
+    /// For the fallible version, see [`Archetype::try_to_arrow`].
+    #[inline]
+    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
+        self.try_to_arrow().detailed_unwrap()
+    }
+}
+
+// ---
+
 /// Number of decimals shown for all vector display methods.
 pub const DISPLAY_PRECISION: usize = 3;
 
@@ -122,7 +189,9 @@ mod loggable_batch;
 mod result;
 mod size_bytes;
 
-pub use self::archetype::{Archetype, ArchetypeName, GenericIndicatorComponent};
+pub use self::archetype::{
+    Archetype, ArchetypeName, GenericIndicatorComponent, NamedIndicatorComponent,
+};
 pub use self::loggable::{
     Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable,
 };

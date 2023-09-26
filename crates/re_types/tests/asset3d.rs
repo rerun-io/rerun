@@ -6,7 +6,7 @@ use re_types::{
     datatypes::{
         Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationRotationScale3D, Utf8, Vec3D,
     },
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]

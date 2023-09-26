@@ -1036,23 +1036,6 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn num_instances(&self) -> usize {
-                        #num_instances
-                    }
-
-                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-                        [#(#all_component_batches,)*].into_iter().flatten().collect()
-                    }
-
-                    #[inline]
-                    fn try_to_arrow(
-                        &self,
-                    ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::{Loggable as _, ResultExt as _};
-                        Ok([ #({ #all_serializers }),*, ].into_iter().flatten().collect())
-                    }
-
-                    #[inline]
                     fn try_from_arrow(
                         arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
@@ -1068,6 +1051,26 @@ fn quote_trait_impls_from_obj(
                         Ok(Self {
                             #(#quoted_field_names,)*
                         })
+                    }
+                }
+
+                impl crate::AsComponents for #name {
+                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+                        use crate::Archetype as _;
+                        [#(#all_component_batches,)*].into_iter().flatten().collect()
+                    }
+
+                    #[inline]
+                    fn num_instances(&self) -> usize {
+                        #num_instances
+                    }
+
+                    #[inline]
+                    fn try_to_arrow(
+                        &self,
+                    ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
+                        use crate::{Loggable as _, ResultExt as _};
+                        Ok([ #({ #all_serializers }),*, ].into_iter().flatten().collect())
                     }
                 }
             }

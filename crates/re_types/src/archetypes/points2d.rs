@@ -154,11 +154,129 @@ impl crate::Archetype for Points2D {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        self.positions.len()
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let positions = {
+            let array = arrays_by_name
+                .get("positions")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Points2D#positions")?;
+            <crate::components::Position2D>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Points2D#positions")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.archetypes.Points2D#positions")?
+        };
+        let radii = if let Some(array) = arrays_by_name.get("radii") {
+            Some({
+                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points2D#radii")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points2D#radii")?
+            })
+        } else {
+            None
+        };
+        let colors = if let Some(array) = arrays_by_name.get("colors") {
+            Some({
+                <crate::components::Color>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points2D#colors")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points2D#colors")?
+            })
+        } else {
+            None
+        };
+        let labels = if let Some(array) = arrays_by_name.get("labels") {
+            Some({
+                <crate::components::Text>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points2D#labels")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points2D#labels")?
+            })
+        } else {
+            None
+        };
+        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
+            Some({
+                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points2D#draw_order")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.Points2D#draw_order")?
+            })
+        } else {
+            None
+        };
+        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
+            Some({
+                <crate::components::ClassId>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points2D#class_ids")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points2D#class_ids")?
+            })
+        } else {
+            None
+        };
+        let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
+            Some({
+                <crate::components::KeypointId>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points2D#keypoint_ids")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points2D#keypoint_ids")?
+            })
+        } else {
+            None
+        };
+        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
+            Some({
+                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points2D#instance_keys")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points2D#instance_keys")?
+            })
+        } else {
+            None
+        };
+        Ok(Self {
+            positions,
+            radii,
+            colors,
+            labels,
+            draw_order,
+            class_ids,
+            keypoint_ids,
+            instance_keys,
+        })
     }
+}
 
+impl crate::AsComponents for Points2D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.positions as &dyn crate::ComponentBatch).into()),
@@ -187,6 +305,11 @@ impl crate::Archetype for Points2D {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.positions.len()
     }
 
     #[inline]
@@ -360,126 +483,6 @@ impl crate::Archetype for Points2D {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let positions = {
-            let array = arrays_by_name
-                .get("positions")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Points2D#positions")?;
-            <crate::components::Position2D>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Points2D#positions")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Points2D#positions")?
-        };
-        let radii = if let Some(array) = arrays_by_name.get("radii") {
-            Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points2D#radii")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_name.get("colors") {
-            Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points2D#colors")?
-            })
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_name.get("labels") {
-            Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points2D#labels")?
-            })
-        } else {
-            None
-        };
-        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
-            Some({
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#draw_order")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Points2D#draw_order")?
-            })
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
-            Some({
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points2D#class_ids")?
-            })
-        } else {
-            None
-        };
-        let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
-            Some({
-                <crate::components::KeypointId>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#keypoint_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points2D#keypoint_ids")?
-            })
-        } else {
-            None
-        };
-        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
-            Some({
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#instance_keys")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points2D#instance_keys")?
-            })
-        } else {
-            None
-        };
-        Ok(Self {
-            positions,
-            radii,
-            colors,
-            labels,
-            draw_order,
-            class_ids,
-            keypoint_ids,
-            instance_keys,
-        })
     }
 }
 

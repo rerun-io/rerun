@@ -45,7 +45,7 @@ pub fn data_cells_from_file_path(
 
     match extension.as_str() {
         "glb" | "gltf" | "obj" => {
-            use re_types::{archetypes::Asset3D, Archetype};
+            use re_types::{archetypes::Asset3D, AsComponents as _};
             let cells: Result<Vec<_>, _> = Asset3D::from_file(file_path)?
                 // TODO(#3414): this should be a method of `Archetype`
                 .as_component_batches()
@@ -65,10 +65,10 @@ pub fn data_cells_from_file_path(
 
         #[cfg(feature = "image")]
         _ => {
-            use re_types::Archetype;
-            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
+            use re_types::{Archetype, AsComponents as _};
+            let indicator = <re_types::archetypes::Image as Archetype>::indicator().as_ref();
             let indicator_cell = DataCell::from_arrow(
-                re_types::archetypes::Image::indicator().as_ref().name(),
+                re_types::archetypes::Image::indicator().name(),
                 indicator.to_arrow(),
             );
 
@@ -105,7 +105,7 @@ pub fn data_cells_from_file_contents(
 
     match extension.as_str() {
         "glb" | "gltf" | "obj" => {
-            use re_types::{archetypes::Asset3D, components::MediaType, Archetype};
+            use re_types::{archetypes::Asset3D, components::MediaType, AsComponents as _};
             let cells: Result<Vec<_>, _> =
                 Asset3D::from_bytes(bytes, MediaType::guess_from_path(file_name))
                     .as_component_batches()
@@ -132,8 +132,8 @@ pub fn data_cells_from_file_contents(
                     .map_err(re_types::tensor_data::TensorImageLoadError::from)?
             };
 
-            use re_types::Archetype;
-            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
+            use re_types::{Archetype, AsComponents as _};
+            let indicator = <re_types::archetypes::Image as Archetype>::indicator().as_ref();
             let indicator_cell = DataCell::from_arrow(
                 re_types::archetypes::Image::indicator().as_ref().name(),
                 indicator.to_arrow(),

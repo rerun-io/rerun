@@ -5,7 +5,7 @@ use std::{collections::HashMap, f32::consts::PI};
 use arrow2::types::f16;
 use re_types::{
     testing::{archetypes::AffixFuzzer1, components, datatypes},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]

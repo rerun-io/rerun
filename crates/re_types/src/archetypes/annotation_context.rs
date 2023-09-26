@@ -124,11 +124,36 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let context = {
+            let array = arrays_by_name
+                .get("context")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.AnnotationContext#context")?;
+            <crate::components::AnnotationContext>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.AnnotationContext#context")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.AnnotationContext#context")?
+        };
+        Ok(Self { context })
     }
+}
 
+impl crate::AsComponents for AnnotationContext {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.context as &dyn crate::ComponentBatch).into()),
@@ -136,6 +161,11 @@ impl crate::Archetype for AnnotationContext {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 
     #[inline]
@@ -166,33 +196,6 @@ impl crate::Archetype for AnnotationContext {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let context = {
-            let array = arrays_by_name
-                .get("context")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.AnnotationContext#context")?;
-            <crate::components::AnnotationContext>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.AnnotationContext#context")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.AnnotationContext#context")?
-        };
-        Ok(Self { context })
     }
 }
 

@@ -87,11 +87,62 @@ impl crate::Archetype for TextLog {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let body = {
+            let array = arrays_by_name
+                .get("body")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.TextLog#body")?;
+            <crate::components::Text>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TextLog#body")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.TextLog#body")?
+        };
+        let level = if let Some(array) = arrays_by_name.get("level") {
+            Some({
+                <crate::components::TextLogLevel>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.TextLog#level")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.TextLog#level")?
+            })
+        } else {
+            None
+        };
+        let color = if let Some(array) = arrays_by_name.get("color") {
+            Some({
+                <crate::components::Color>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.TextLog#color")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.TextLog#color")?
+            })
+        } else {
+            None
+        };
+        Ok(Self { body, level, color })
     }
+}
 
+impl crate::AsComponents for TextLog {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.body as &dyn crate::ComponentBatch).into()),
@@ -105,6 +156,11 @@ impl crate::Archetype for TextLog {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 
     #[inline]
@@ -177,59 +233,6 @@ impl crate::Archetype for TextLog {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let body = {
-            let array = arrays_by_name
-                .get("body")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#body")?;
-            <crate::components::Text>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#body")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#body")?
-        };
-        let level = if let Some(array) = arrays_by_name.get("level") {
-            Some({
-                <crate::components::TextLogLevel>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TextLog#level")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TextLog#level")?
-            })
-        } else {
-            None
-        };
-        let color = if let Some(array) = arrays_by_name.get("color") {
-            Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TextLog#color")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TextLog#color")?
-            })
-        } else {
-            None
-        };
-        Ok(Self { body, level, color })
     }
 }
 

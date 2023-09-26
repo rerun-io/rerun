@@ -161,11 +161,36 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let recursive = {
+            let array = arrays_by_name
+                .get("recursive")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Clear#recursive")?;
+            <crate::components::ClearIsRecursive>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Clear#recursive")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Clear#recursive")?
+        };
+        Ok(Self { recursive })
     }
+}
 
+impl crate::AsComponents for Clear {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.recursive as &dyn crate::ComponentBatch).into()),
@@ -173,6 +198,11 @@ impl crate::Archetype for Clear {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 
     #[inline]
@@ -203,33 +233,6 @@ impl crate::Archetype for Clear {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let recursive = {
-            let array = arrays_by_name
-                .get("recursive")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#recursive")?;
-            <crate::components::ClearIsRecursive>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Clear#recursive")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#recursive")?
-        };
-        Ok(Self { recursive })
     }
 }
 

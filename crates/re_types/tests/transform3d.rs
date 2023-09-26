@@ -7,7 +7,7 @@ use re_types::{
         self, Angle, Mat3x3, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
         TranslationRotationScale3D, Vec3D,
     },
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]

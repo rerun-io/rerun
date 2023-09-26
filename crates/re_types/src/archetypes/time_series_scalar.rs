@@ -204,11 +204,94 @@ impl crate::Archetype for TimeSeriesScalar {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let scalar = {
+            let array = arrays_by_name
+                .get("scalar")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?;
+            <crate::components::Scalar>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
+        };
+        let radius = if let Some(array) = arrays_by_name.get("radius") {
+            Some({
+                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
+            })
+        } else {
+            None
+        };
+        let color = if let Some(array) = arrays_by_name.get("color") {
+            Some({
+                <crate::components::Color>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#color")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#color")?
+            })
+        } else {
+            None
+        };
+        let label = if let Some(array) = arrays_by_name.get("label") {
+            Some({
+                <crate::components::Text>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#label")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#label")?
+            })
+        } else {
+            None
+        };
+        let scattered = if let Some(array) = arrays_by_name.get("scattered") {
+            Some({
+                <crate::components::ScalarScattering>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
+            })
+        } else {
+            None
+        };
+        Ok(Self {
+            scalar,
+            radius,
+            color,
+            label,
+            scattered,
+        })
     }
+}
 
+impl crate::AsComponents for TimeSeriesScalar {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.scalar as &dyn crate::ComponentBatch).into()),
@@ -228,6 +311,11 @@ impl crate::Archetype for TimeSeriesScalar {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 
     #[inline]
@@ -340,91 +428,6 @@ impl crate::Archetype for TimeSeriesScalar {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let scalar = {
-            let array = arrays_by_name
-                .get("scalar")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?;
-            <crate::components::Scalar>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
-        };
-        let radius = if let Some(array) = arrays_by_name.get("radius") {
-            Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
-            })
-        } else {
-            None
-        };
-        let color = if let Some(array) = arrays_by_name.get("color") {
-            Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#color")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#color")?
-            })
-        } else {
-            None
-        };
-        let label = if let Some(array) = arrays_by_name.get("label") {
-            Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#label")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#label")?
-            })
-        } else {
-            None
-        };
-        let scattered = if let Some(array) = arrays_by_name.get("scattered") {
-            Some({
-                <crate::components::ScalarScattering>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
-            })
-        } else {
-            None
-        };
-        Ok(Self {
-            scalar,
-            radius,
-            color,
-            label,
-            scattered,
-        })
     }
 }
 

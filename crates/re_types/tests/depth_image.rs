@@ -4,7 +4,7 @@ use re_types::{
     archetypes::DepthImage,
     components::DepthMeter,
     datatypes::{TensorBuffer, TensorData, TensorDimension},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 mod util;

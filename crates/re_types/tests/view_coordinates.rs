@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::ViewCoordinates, components, view_coordinates::ViewDir, Archetype as _,
+    AsComponents as _,
 };
 
 #[test]

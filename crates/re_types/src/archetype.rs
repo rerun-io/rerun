@@ -1,5 +1,5 @@
 use crate::{
-    ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch, ResultExt as _,
+    ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch,
     SerializationResult, _Backtrace,
 };
 
@@ -104,67 +104,6 @@ pub trait Archetype {
         .flatten()
         .collect::<Vec<_>>()
         .into()
-    }
-
-    /// Returns the number of instances of the archetype, i.e. the number of instances currently
-    /// present in its required component(s).
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.as_component_batches()
-            .first()
-            .map_or(0, |comp_batch| comp_batch.as_ref().num_instances())
-    }
-
-    /// Exposes the archetype's contents as a set of [`ComponentBatch`]s.
-    ///
-    /// This is the main mechanism for easily extending builtin archetypes or even writing
-    /// fully custom ones.
-    /// Have a look at our [Custom Data] example to learn more about extending archetypes.
-    ///
-    /// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
-    //
-    // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
-    // depending on their presence (or lack thereof) at runtime anyway.
-    #[inline]
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        vec![]
-    }
-
-    // ---
-
-    /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.
-    ///
-    /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
-    /// as-is, which is what you want in 99.9% of cases.
-    ///
-    /// This can _never_ fail for Rerun's built-in archetypes.
-    /// For the non-fallible version, see [`Archetype::to_arrow`].
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
-    {
-        self.as_component_batches()
-            .into_iter()
-            .map(|comp_batch| {
-                comp_batch
-                    .as_ref()
-                    .try_to_arrow()
-                    .map(|array| (comp_batch.as_ref().arrow_field(), array))
-                    .with_context(comp_batch.as_ref().name())
-            })
-            .collect()
-    }
-
-    /// Serializes all non-null [`Component`]s of this [`Archetype`] into Arrow arrays.
-    ///
-    /// Panics on failure.
-    /// This can _never_ fail for Rerun's built-in archetypes.
-    ///
-    /// For the fallible version, see [`Archetype::try_to_arrow`].
-    #[inline]
-    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
-        self.try_to_arrow().detailed_unwrap()
     }
 
     // ---
@@ -291,3 +230,61 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
 }
 
 impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {}
+
+// ---
+
+/// An arbitrary named [indicator component].
+///
+/// [indicator component]: [`Archetype::Indicator`]
+#[derive(Debug, Clone, Copy)]
+pub struct NamedIndicatorComponent(pub ComponentName);
+
+impl NamedIndicatorComponent {
+    #[inline]
+    pub fn as_batch(&self) -> MaybeOwnedComponentBatch<'_> {
+        MaybeOwnedComponentBatch::Ref(self)
+    }
+
+    #[inline]
+    pub fn to_batch(self) -> MaybeOwnedComponentBatch<'static> {
+        MaybeOwnedComponentBatch::Owned(Box::new(self))
+    }
+}
+
+impl crate::LoggableBatch for NamedIndicatorComponent {
+    type Name = ComponentName;
+
+    #[inline]
+    fn name(&self) -> Self::Name {
+        self.0
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
+    }
+
+    #[inline]
+    fn arrow_field(&self) -> arrow2::datatypes::Field {
+        let name = self.name().to_string();
+        arrow2::datatypes::Field::new(
+            name.clone(),
+            arrow2::datatypes::DataType::Extension(
+                name,
+                Box::new(arrow2::datatypes::DataType::Null),
+                None,
+            ),
+            false,
+        )
+    }
+
+    #[inline]
+    fn try_to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+        Ok(
+            arrow2::array::NullArray::new(arrow2::datatypes::DataType::Null, self.num_instances())
+                .boxed(),
+        )
+    }
+}
+
+impl crate::ComponentBatch for NamedIndicatorComponent {}

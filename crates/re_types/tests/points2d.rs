@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Points2D, components, Archetype as _};
+use re_types::{archetypes::Points2D, components, Archetype as _, AsComponents as _};
 
 #[test]
 fn roundtrip() {

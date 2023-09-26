@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::LineStrips3D,
     components::{ClassId, Color, InstanceKey, LineStrip3D, Radius},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]

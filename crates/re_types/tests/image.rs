@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::Image,
     datatypes::{TensorBuffer, TensorData, TensorDimension},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 mod util;

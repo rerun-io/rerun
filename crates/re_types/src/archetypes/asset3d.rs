@@ -184,11 +184,66 @@ impl crate::Archetype for Asset3D {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let data = {
+            let array = arrays_by_name
+                .get("data")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Asset3D#data")?;
+            <crate::components::Blob>::try_from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Asset3D#data")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Asset3D#data")?
+        };
+        let media_type = if let Some(array) = arrays_by_name.get("media_type") {
+            Some({
+                <crate::components::MediaType>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Asset3D#media_type")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.Asset3D#media_type")?
+            })
+        } else {
+            None
+        };
+        let transform = if let Some(array) = arrays_by_name.get("transform") {
+            Some({
+                <crate::components::OutOfTreeTransform3D>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Asset3D#transform")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.Asset3D#transform")?
+            })
+        } else {
+            None
+        };
+        Ok(Self {
+            data,
+            media_type,
+            transform,
+        })
     }
+}
 
+impl crate::AsComponents for Asset3D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.data as &dyn crate::ComponentBatch).into()),
@@ -202,6 +257,11 @@ impl crate::Archetype for Asset3D {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 
     #[inline]
@@ -275,63 +335,6 @@ impl crate::Archetype for Asset3D {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let data = {
-            let array = arrays_by_name
-                .get("data")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#data")?;
-            <crate::components::Blob>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Asset3D#data")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#data")?
-        };
-        let media_type = if let Some(array) = arrays_by_name.get("media_type") {
-            Some({
-                <crate::components::MediaType>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-            })
-        } else {
-            None
-        };
-        let transform = if let Some(array) = arrays_by_name.get("transform") {
-            Some({
-                <crate::components::OutOfTreeTransform3D>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-            })
-        } else {
-            None
-        };
-        Ok(Self {
-            data,
-            media_type,
-            transform,
-        })
     }
 }
 

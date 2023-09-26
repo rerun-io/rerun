@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Pinhole, components, Archetype as _};
+use re_types::{archetypes::Pinhole, components, Archetype as _, AsComponents as _};
 
 mod util;
 

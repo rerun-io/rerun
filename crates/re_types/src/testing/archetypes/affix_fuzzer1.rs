@@ -236,11 +236,1038 @@ impl crate::Archetype for AffixFuzzer1 {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn try_from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let fuzz1001 = {
+            let array = arrays_by_name
+                .get("fuzz1001")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?;
+            <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?
+        };
+        let fuzz1002 = {
+            let array = arrays_by_name
+                .get("fuzz1002")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?;
+            <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?
+        };
+        let fuzz1003 = {
+            let array = arrays_by_name
+                .get("fuzz1003")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?;
+            <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?
+        };
+        let fuzz1004 = {
+            let array = arrays_by_name
+                .get("fuzz1004")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?;
+            <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?
+        };
+        let fuzz1005 = {
+            let array = arrays_by_name
+                .get("fuzz1005")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?;
+            <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?
+        };
+        let fuzz1006 = {
+            let array = arrays_by_name
+                .get("fuzz1006")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?;
+            <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?
+        };
+        let fuzz1007 = {
+            let array = arrays_by_name
+                .get("fuzz1007")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?;
+            <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?
+        };
+        let fuzz1008 = {
+            let array = arrays_by_name
+                .get("fuzz1008")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?;
+            <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?
+        };
+        let fuzz1009 = {
+            let array = arrays_by_name
+                .get("fuzz1009")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?;
+            <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?
+        };
+        let fuzz1010 = {
+            let array = arrays_by_name
+                .get("fuzz1010")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?;
+            <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?
+        };
+        let fuzz1011 = {
+            let array = arrays_by_name
+                .get("fuzz1011")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?;
+            <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?
+        };
+        let fuzz1012 = {
+            let array = arrays_by_name
+                .get("fuzz1012")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?;
+            <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?
+        };
+        let fuzz1013 = {
+            let array = arrays_by_name
+                .get("fuzz1013")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?;
+            <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?
+        };
+        let fuzz1014 = {
+            let array = arrays_by_name
+                .get("fuzz1014")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?;
+            <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?
+        };
+        let fuzz1015 = {
+            let array = arrays_by_name
+                .get("fuzz1015")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?;
+            <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?
+        };
+        let fuzz1016 = {
+            let array = arrays_by_name
+                .get("fuzz1016")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?;
+            <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?
+        };
+        let fuzz1017 = {
+            let array = arrays_by_name
+                .get("fuzz1017")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?;
+            <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?
+        };
+        let fuzz1018 = {
+            let array = arrays_by_name
+                .get("fuzz1018")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?;
+            <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?
+        };
+        let fuzz1019 = {
+            let array = arrays_by_name
+                .get("fuzz1019")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?;
+            <crate::testing::components::AffixFuzzer19>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?
+        };
+        let fuzz1020 = {
+            let array = arrays_by_name
+                .get("fuzz1020")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?;
+            <crate::testing::components::AffixFuzzer20>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?
+        };
+        let fuzz1021 = {
+            let array = arrays_by_name
+                .get("fuzz1021")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?;
+            <crate::testing::components::AffixFuzzer21>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?
+        };
+        let fuzz1101 = {
+            let array = arrays_by_name
+                .get("fuzz1101")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1101")?;
+            <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1101")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1101")?
+        };
+        let fuzz1102 = {
+            let array = arrays_by_name
+                .get("fuzz1102")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1102")?;
+            <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1102")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1102")?
+        };
+        let fuzz1103 = {
+            let array = arrays_by_name
+                .get("fuzz1103")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1103")?;
+            <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1103")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1103")?
+        };
+        let fuzz1104 = {
+            let array = arrays_by_name
+                .get("fuzz1104")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1104")?;
+            <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1104")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1104")?
+        };
+        let fuzz1105 = {
+            let array = arrays_by_name
+                .get("fuzz1105")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1105")?;
+            <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1105")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1105")?
+        };
+        let fuzz1106 = {
+            let array = arrays_by_name
+                .get("fuzz1106")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1106")?;
+            <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1106")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1106")?
+        };
+        let fuzz1107 = {
+            let array = arrays_by_name
+                .get("fuzz1107")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1107")?;
+            <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1107")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1107")?
+        };
+        let fuzz1108 = {
+            let array = arrays_by_name
+                .get("fuzz1108")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1108")?;
+            <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1108")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1108")?
+        };
+        let fuzz1109 = {
+            let array = arrays_by_name
+                .get("fuzz1109")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1109")?;
+            <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1109")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1109")?
+        };
+        let fuzz1110 = {
+            let array = arrays_by_name
+                .get("fuzz1110")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1110")?;
+            <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1110")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1110")?
+        };
+        let fuzz1111 = {
+            let array = arrays_by_name
+                .get("fuzz1111")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1111")?;
+            <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1111")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1111")?
+        };
+        let fuzz1112 = {
+            let array = arrays_by_name
+                .get("fuzz1112")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1112")?;
+            <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1112")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1112")?
+        };
+        let fuzz1113 = {
+            let array = arrays_by_name
+                .get("fuzz1113")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1113")?;
+            <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1113")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1113")?
+        };
+        let fuzz1114 = {
+            let array = arrays_by_name
+                .get("fuzz1114")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1114")?;
+            <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1114")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1114")?
+        };
+        let fuzz1115 = {
+            let array = arrays_by_name
+                .get("fuzz1115")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1115")?;
+            <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1115")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1115")?
+        };
+        let fuzz1116 = {
+            let array = arrays_by_name
+                .get("fuzz1116")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1116")?;
+            <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1116")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1116")?
+        };
+        let fuzz1117 = {
+            let array = arrays_by_name
+                .get("fuzz1117")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1117")?;
+            <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1117")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1117")?
+        };
+        let fuzz1118 = {
+            let array = arrays_by_name
+                .get("fuzz1118")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1118")?;
+            <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1118")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1118")?
+        };
+        let fuzz2001 = if let Some(array) = arrays_by_name.get("fuzz2001") {
+            Some({
+                <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2001")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2001")?
+            })
+        } else {
+            None
+        };
+        let fuzz2002 = if let Some(array) = arrays_by_name.get("fuzz2002") {
+            Some({
+                <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2002")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2002")?
+            })
+        } else {
+            None
+        };
+        let fuzz2003 = if let Some(array) = arrays_by_name.get("fuzz2003") {
+            Some({
+                <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2003")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2003")?
+            })
+        } else {
+            None
+        };
+        let fuzz2004 = if let Some(array) = arrays_by_name.get("fuzz2004") {
+            Some({
+                <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2004")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2004")?
+            })
+        } else {
+            None
+        };
+        let fuzz2005 = if let Some(array) = arrays_by_name.get("fuzz2005") {
+            Some({
+                <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2005")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2005")?
+            })
+        } else {
+            None
+        };
+        let fuzz2006 = if let Some(array) = arrays_by_name.get("fuzz2006") {
+            Some({
+                <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2006")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2006")?
+            })
+        } else {
+            None
+        };
+        let fuzz2007 = if let Some(array) = arrays_by_name.get("fuzz2007") {
+            Some({
+                <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2007")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2007")?
+            })
+        } else {
+            None
+        };
+        let fuzz2008 = if let Some(array) = arrays_by_name.get("fuzz2008") {
+            Some({
+                <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2008")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2008")?
+            })
+        } else {
+            None
+        };
+        let fuzz2009 = if let Some(array) = arrays_by_name.get("fuzz2009") {
+            Some({
+                <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2009")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2009")?
+            })
+        } else {
+            None
+        };
+        let fuzz2010 = if let Some(array) = arrays_by_name.get("fuzz2010") {
+            Some({
+                <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2010")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2010")?
+            })
+        } else {
+            None
+        };
+        let fuzz2011 = if let Some(array) = arrays_by_name.get("fuzz2011") {
+            Some({
+                <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2011")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2011")?
+            })
+        } else {
+            None
+        };
+        let fuzz2012 = if let Some(array) = arrays_by_name.get("fuzz2012") {
+            Some({
+                <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2012")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2012")?
+            })
+        } else {
+            None
+        };
+        let fuzz2013 = if let Some(array) = arrays_by_name.get("fuzz2013") {
+            Some({
+                <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2013")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2013")?
+            })
+        } else {
+            None
+        };
+        let fuzz2014 = if let Some(array) = arrays_by_name.get("fuzz2014") {
+            Some({
+                <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2014")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2014")?
+            })
+        } else {
+            None
+        };
+        let fuzz2015 = if let Some(array) = arrays_by_name.get("fuzz2015") {
+            Some({
+                <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2015")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2015")?
+            })
+        } else {
+            None
+        };
+        let fuzz2016 = if let Some(array) = arrays_by_name.get("fuzz2016") {
+            Some({
+                <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2016")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2016")?
+            })
+        } else {
+            None
+        };
+        let fuzz2017 = if let Some(array) = arrays_by_name.get("fuzz2017") {
+            Some({
+                <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2017")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2017")?
+            })
+        } else {
+            None
+        };
+        let fuzz2018 = if let Some(array) = arrays_by_name.get("fuzz2018") {
+            Some({
+                <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2018")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2018")?
+            })
+        } else {
+            None
+        };
+        let fuzz2101 = if let Some(array) = arrays_by_name.get("fuzz2101") {
+            Some({
+                <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2101")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2101")?
+            })
+        } else {
+            None
+        };
+        let fuzz2102 = if let Some(array) = arrays_by_name.get("fuzz2102") {
+            Some({
+                <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2102")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2102")?
+            })
+        } else {
+            None
+        };
+        let fuzz2103 = if let Some(array) = arrays_by_name.get("fuzz2103") {
+            Some({
+                <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2103")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2103")?
+            })
+        } else {
+            None
+        };
+        let fuzz2104 = if let Some(array) = arrays_by_name.get("fuzz2104") {
+            Some({
+                <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2104")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2104")?
+            })
+        } else {
+            None
+        };
+        let fuzz2105 = if let Some(array) = arrays_by_name.get("fuzz2105") {
+            Some({
+                <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2105")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2105")?
+            })
+        } else {
+            None
+        };
+        let fuzz2106 = if let Some(array) = arrays_by_name.get("fuzz2106") {
+            Some({
+                <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2106")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2106")?
+            })
+        } else {
+            None
+        };
+        let fuzz2107 = if let Some(array) = arrays_by_name.get("fuzz2107") {
+            Some({
+                <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2107")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2107")?
+            })
+        } else {
+            None
+        };
+        let fuzz2108 = if let Some(array) = arrays_by_name.get("fuzz2108") {
+            Some({
+                <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2108")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2108")?
+            })
+        } else {
+            None
+        };
+        let fuzz2109 = if let Some(array) = arrays_by_name.get("fuzz2109") {
+            Some({
+                <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2109")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2109")?
+            })
+        } else {
+            None
+        };
+        let fuzz2110 = if let Some(array) = arrays_by_name.get("fuzz2110") {
+            Some({
+                <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2110")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2110")?
+            })
+        } else {
+            None
+        };
+        let fuzz2111 = if let Some(array) = arrays_by_name.get("fuzz2111") {
+            Some({
+                <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2111")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2111")?
+            })
+        } else {
+            None
+        };
+        let fuzz2112 = if let Some(array) = arrays_by_name.get("fuzz2112") {
+            Some({
+                <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2112")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2112")?
+            })
+        } else {
+            None
+        };
+        let fuzz2113 = if let Some(array) = arrays_by_name.get("fuzz2113") {
+            Some({
+                <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2113")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2113")?
+            })
+        } else {
+            None
+        };
+        let fuzz2114 = if let Some(array) = arrays_by_name.get("fuzz2114") {
+            Some({
+                <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2114")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2114")?
+            })
+        } else {
+            None
+        };
+        let fuzz2115 = if let Some(array) = arrays_by_name.get("fuzz2115") {
+            Some({
+                <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2115")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2115")?
+            })
+        } else {
+            None
+        };
+        let fuzz2116 = if let Some(array) = arrays_by_name.get("fuzz2116") {
+            Some({
+                <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2116")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2116")?
+            })
+        } else {
+            None
+        };
+        let fuzz2117 = if let Some(array) = arrays_by_name.get("fuzz2117") {
+            Some({
+                <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2117")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2117")?
+            })
+        } else {
+            None
+        };
+        let fuzz2118 = if let Some(array) = arrays_by_name.get("fuzz2118") {
+            Some({
+                <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2118")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2118")?
+            })
+        } else {
+            None
+        };
+        Ok(Self {
+            fuzz1001,
+            fuzz1002,
+            fuzz1003,
+            fuzz1004,
+            fuzz1005,
+            fuzz1006,
+            fuzz1007,
+            fuzz1008,
+            fuzz1009,
+            fuzz1010,
+            fuzz1011,
+            fuzz1012,
+            fuzz1013,
+            fuzz1014,
+            fuzz1015,
+            fuzz1016,
+            fuzz1017,
+            fuzz1018,
+            fuzz1019,
+            fuzz1020,
+            fuzz1021,
+            fuzz1101,
+            fuzz1102,
+            fuzz1103,
+            fuzz1104,
+            fuzz1105,
+            fuzz1106,
+            fuzz1107,
+            fuzz1108,
+            fuzz1109,
+            fuzz1110,
+            fuzz1111,
+            fuzz1112,
+            fuzz1113,
+            fuzz1114,
+            fuzz1115,
+            fuzz1116,
+            fuzz1117,
+            fuzz1118,
+            fuzz2001,
+            fuzz2002,
+            fuzz2003,
+            fuzz2004,
+            fuzz2005,
+            fuzz2006,
+            fuzz2007,
+            fuzz2008,
+            fuzz2009,
+            fuzz2010,
+            fuzz2011,
+            fuzz2012,
+            fuzz2013,
+            fuzz2014,
+            fuzz2015,
+            fuzz2016,
+            fuzz2017,
+            fuzz2018,
+            fuzz2101,
+            fuzz2102,
+            fuzz2103,
+            fuzz2104,
+            fuzz2105,
+            fuzz2106,
+            fuzz2107,
+            fuzz2108,
+            fuzz2109,
+            fuzz2110,
+            fuzz2111,
+            fuzz2112,
+            fuzz2113,
+            fuzz2114,
+            fuzz2115,
+            fuzz2116,
+            fuzz2117,
+            fuzz2118,
+        })
     }
+}
 
+impl crate::AsComponents for AffixFuzzer1 {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.fuzz1001 as &dyn crate::ComponentBatch).into()),
@@ -394,6 +1421,11 @@ impl crate::Archetype for AffixFuzzer1 {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 
     #[inline]
@@ -1923,1035 +2955,6 @@ impl crate::Archetype for AffixFuzzer1 {
         .into_iter()
         .flatten()
         .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let fuzz1001 = {
-            let array = arrays_by_name
-                .get("fuzz1001")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?;
-            <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?
-        };
-        let fuzz1002 = {
-            let array = arrays_by_name
-                .get("fuzz1002")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?;
-            <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?
-        };
-        let fuzz1003 = {
-            let array = arrays_by_name
-                .get("fuzz1003")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?;
-            <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?
-        };
-        let fuzz1004 = {
-            let array = arrays_by_name
-                .get("fuzz1004")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?;
-            <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?
-        };
-        let fuzz1005 = {
-            let array = arrays_by_name
-                .get("fuzz1005")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?;
-            <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?
-        };
-        let fuzz1006 = {
-            let array = arrays_by_name
-                .get("fuzz1006")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?;
-            <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?
-        };
-        let fuzz1007 = {
-            let array = arrays_by_name
-                .get("fuzz1007")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?;
-            <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?
-        };
-        let fuzz1008 = {
-            let array = arrays_by_name
-                .get("fuzz1008")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?;
-            <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?
-        };
-        let fuzz1009 = {
-            let array = arrays_by_name
-                .get("fuzz1009")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?;
-            <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?
-        };
-        let fuzz1010 = {
-            let array = arrays_by_name
-                .get("fuzz1010")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?;
-            <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?
-        };
-        let fuzz1011 = {
-            let array = arrays_by_name
-                .get("fuzz1011")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?;
-            <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?
-        };
-        let fuzz1012 = {
-            let array = arrays_by_name
-                .get("fuzz1012")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?;
-            <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?
-        };
-        let fuzz1013 = {
-            let array = arrays_by_name
-                .get("fuzz1013")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?;
-            <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?
-        };
-        let fuzz1014 = {
-            let array = arrays_by_name
-                .get("fuzz1014")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?;
-            <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?
-        };
-        let fuzz1015 = {
-            let array = arrays_by_name
-                .get("fuzz1015")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?;
-            <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?
-        };
-        let fuzz1016 = {
-            let array = arrays_by_name
-                .get("fuzz1016")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?;
-            <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?
-        };
-        let fuzz1017 = {
-            let array = arrays_by_name
-                .get("fuzz1017")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?;
-            <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?
-        };
-        let fuzz1018 = {
-            let array = arrays_by_name
-                .get("fuzz1018")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?;
-            <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?
-        };
-        let fuzz1019 = {
-            let array = arrays_by_name
-                .get("fuzz1019")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?;
-            <crate::testing::components::AffixFuzzer19>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?
-        };
-        let fuzz1020 = {
-            let array = arrays_by_name
-                .get("fuzz1020")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?;
-            <crate::testing::components::AffixFuzzer20>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?
-        };
-        let fuzz1021 = {
-            let array = arrays_by_name
-                .get("fuzz1021")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?;
-            <crate::testing::components::AffixFuzzer21>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?
-        };
-        let fuzz1101 = {
-            let array = arrays_by_name
-                .get("fuzz1101")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1101")?;
-            <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1101")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1101")?
-        };
-        let fuzz1102 = {
-            let array = arrays_by_name
-                .get("fuzz1102")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1102")?;
-            <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1102")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1102")?
-        };
-        let fuzz1103 = {
-            let array = arrays_by_name
-                .get("fuzz1103")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1103")?;
-            <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1103")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1103")?
-        };
-        let fuzz1104 = {
-            let array = arrays_by_name
-                .get("fuzz1104")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1104")?;
-            <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1104")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1104")?
-        };
-        let fuzz1105 = {
-            let array = arrays_by_name
-                .get("fuzz1105")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1105")?;
-            <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1105")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1105")?
-        };
-        let fuzz1106 = {
-            let array = arrays_by_name
-                .get("fuzz1106")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1106")?;
-            <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1106")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1106")?
-        };
-        let fuzz1107 = {
-            let array = arrays_by_name
-                .get("fuzz1107")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1107")?;
-            <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1107")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1107")?
-        };
-        let fuzz1108 = {
-            let array = arrays_by_name
-                .get("fuzz1108")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1108")?;
-            <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1108")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1108")?
-        };
-        let fuzz1109 = {
-            let array = arrays_by_name
-                .get("fuzz1109")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1109")?;
-            <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1109")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1109")?
-        };
-        let fuzz1110 = {
-            let array = arrays_by_name
-                .get("fuzz1110")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1110")?;
-            <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1110")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1110")?
-        };
-        let fuzz1111 = {
-            let array = arrays_by_name
-                .get("fuzz1111")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1111")?;
-            <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1111")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1111")?
-        };
-        let fuzz1112 = {
-            let array = arrays_by_name
-                .get("fuzz1112")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1112")?;
-            <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1112")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1112")?
-        };
-        let fuzz1113 = {
-            let array = arrays_by_name
-                .get("fuzz1113")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1113")?;
-            <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1113")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1113")?
-        };
-        let fuzz1114 = {
-            let array = arrays_by_name
-                .get("fuzz1114")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1114")?;
-            <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1114")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1114")?
-        };
-        let fuzz1115 = {
-            let array = arrays_by_name
-                .get("fuzz1115")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1115")?;
-            <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1115")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1115")?
-        };
-        let fuzz1116 = {
-            let array = arrays_by_name
-                .get("fuzz1116")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1116")?;
-            <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1116")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1116")?
-        };
-        let fuzz1117 = {
-            let array = arrays_by_name
-                .get("fuzz1117")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1117")?;
-            <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1117")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1117")?
-        };
-        let fuzz1118 = {
-            let array = arrays_by_name
-                .get("fuzz1118")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1118")?;
-            <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1118")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1118")?
-        };
-        let fuzz2001 = if let Some(array) = arrays_by_name.get("fuzz2001") {
-            Some({
-                <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2001")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2001")?
-            })
-        } else {
-            None
-        };
-        let fuzz2002 = if let Some(array) = arrays_by_name.get("fuzz2002") {
-            Some({
-                <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2002")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2002")?
-            })
-        } else {
-            None
-        };
-        let fuzz2003 = if let Some(array) = arrays_by_name.get("fuzz2003") {
-            Some({
-                <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2003")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2003")?
-            })
-        } else {
-            None
-        };
-        let fuzz2004 = if let Some(array) = arrays_by_name.get("fuzz2004") {
-            Some({
-                <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2004")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2004")?
-            })
-        } else {
-            None
-        };
-        let fuzz2005 = if let Some(array) = arrays_by_name.get("fuzz2005") {
-            Some({
-                <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2005")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2005")?
-            })
-        } else {
-            None
-        };
-        let fuzz2006 = if let Some(array) = arrays_by_name.get("fuzz2006") {
-            Some({
-                <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2006")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2006")?
-            })
-        } else {
-            None
-        };
-        let fuzz2007 = if let Some(array) = arrays_by_name.get("fuzz2007") {
-            Some({
-                <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2007")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2007")?
-            })
-        } else {
-            None
-        };
-        let fuzz2008 = if let Some(array) = arrays_by_name.get("fuzz2008") {
-            Some({
-                <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2008")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2008")?
-            })
-        } else {
-            None
-        };
-        let fuzz2009 = if let Some(array) = arrays_by_name.get("fuzz2009") {
-            Some({
-                <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2009")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2009")?
-            })
-        } else {
-            None
-        };
-        let fuzz2010 = if let Some(array) = arrays_by_name.get("fuzz2010") {
-            Some({
-                <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2010")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2010")?
-            })
-        } else {
-            None
-        };
-        let fuzz2011 = if let Some(array) = arrays_by_name.get("fuzz2011") {
-            Some({
-                <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2011")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2011")?
-            })
-        } else {
-            None
-        };
-        let fuzz2012 = if let Some(array) = arrays_by_name.get("fuzz2012") {
-            Some({
-                <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2012")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2012")?
-            })
-        } else {
-            None
-        };
-        let fuzz2013 = if let Some(array) = arrays_by_name.get("fuzz2013") {
-            Some({
-                <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2013")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2013")?
-            })
-        } else {
-            None
-        };
-        let fuzz2014 = if let Some(array) = arrays_by_name.get("fuzz2014") {
-            Some({
-                <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2014")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2014")?
-            })
-        } else {
-            None
-        };
-        let fuzz2015 = if let Some(array) = arrays_by_name.get("fuzz2015") {
-            Some({
-                <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2015")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2015")?
-            })
-        } else {
-            None
-        };
-        let fuzz2016 = if let Some(array) = arrays_by_name.get("fuzz2016") {
-            Some({
-                <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2016")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2016")?
-            })
-        } else {
-            None
-        };
-        let fuzz2017 = if let Some(array) = arrays_by_name.get("fuzz2017") {
-            Some({
-                <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2017")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2017")?
-            })
-        } else {
-            None
-        };
-        let fuzz2018 = if let Some(array) = arrays_by_name.get("fuzz2018") {
-            Some({
-                <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2018")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2018")?
-            })
-        } else {
-            None
-        };
-        let fuzz2101 = if let Some(array) = arrays_by_name.get("fuzz2101") {
-            Some({
-                <crate::testing::components::AffixFuzzer1>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2101")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2101")?
-            })
-        } else {
-            None
-        };
-        let fuzz2102 = if let Some(array) = arrays_by_name.get("fuzz2102") {
-            Some({
-                <crate::testing::components::AffixFuzzer2>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2102")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2102")?
-            })
-        } else {
-            None
-        };
-        let fuzz2103 = if let Some(array) = arrays_by_name.get("fuzz2103") {
-            Some({
-                <crate::testing::components::AffixFuzzer3>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2103")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2103")?
-            })
-        } else {
-            None
-        };
-        let fuzz2104 = if let Some(array) = arrays_by_name.get("fuzz2104") {
-            Some({
-                <crate::testing::components::AffixFuzzer4>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2104")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2104")?
-            })
-        } else {
-            None
-        };
-        let fuzz2105 = if let Some(array) = arrays_by_name.get("fuzz2105") {
-            Some({
-                <crate::testing::components::AffixFuzzer5>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2105")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2105")?
-            })
-        } else {
-            None
-        };
-        let fuzz2106 = if let Some(array) = arrays_by_name.get("fuzz2106") {
-            Some({
-                <crate::testing::components::AffixFuzzer6>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2106")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2106")?
-            })
-        } else {
-            None
-        };
-        let fuzz2107 = if let Some(array) = arrays_by_name.get("fuzz2107") {
-            Some({
-                <crate::testing::components::AffixFuzzer7>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2107")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2107")?
-            })
-        } else {
-            None
-        };
-        let fuzz2108 = if let Some(array) = arrays_by_name.get("fuzz2108") {
-            Some({
-                <crate::testing::components::AffixFuzzer8>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2108")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2108")?
-            })
-        } else {
-            None
-        };
-        let fuzz2109 = if let Some(array) = arrays_by_name.get("fuzz2109") {
-            Some({
-                <crate::testing::components::AffixFuzzer9>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2109")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2109")?
-            })
-        } else {
-            None
-        };
-        let fuzz2110 = if let Some(array) = arrays_by_name.get("fuzz2110") {
-            Some({
-                <crate::testing::components::AffixFuzzer10>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2110")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2110")?
-            })
-        } else {
-            None
-        };
-        let fuzz2111 = if let Some(array) = arrays_by_name.get("fuzz2111") {
-            Some({
-                <crate::testing::components::AffixFuzzer11>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2111")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2111")?
-            })
-        } else {
-            None
-        };
-        let fuzz2112 = if let Some(array) = arrays_by_name.get("fuzz2112") {
-            Some({
-                <crate::testing::components::AffixFuzzer12>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2112")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2112")?
-            })
-        } else {
-            None
-        };
-        let fuzz2113 = if let Some(array) = arrays_by_name.get("fuzz2113") {
-            Some({
-                <crate::testing::components::AffixFuzzer13>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2113")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2113")?
-            })
-        } else {
-            None
-        };
-        let fuzz2114 = if let Some(array) = arrays_by_name.get("fuzz2114") {
-            Some({
-                <crate::testing::components::AffixFuzzer14>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2114")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2114")?
-            })
-        } else {
-            None
-        };
-        let fuzz2115 = if let Some(array) = arrays_by_name.get("fuzz2115") {
-            Some({
-                <crate::testing::components::AffixFuzzer15>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2115")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2115")?
-            })
-        } else {
-            None
-        };
-        let fuzz2116 = if let Some(array) = arrays_by_name.get("fuzz2116") {
-            Some({
-                <crate::testing::components::AffixFuzzer16>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2116")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2116")?
-            })
-        } else {
-            None
-        };
-        let fuzz2117 = if let Some(array) = arrays_by_name.get("fuzz2117") {
-            Some({
-                <crate::testing::components::AffixFuzzer17>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2117")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2117")?
-            })
-        } else {
-            None
-        };
-        let fuzz2118 = if let Some(array) = arrays_by_name.get("fuzz2118") {
-            Some({
-                <crate::testing::components::AffixFuzzer18>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2118")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz2118")?
-            })
-        } else {
-            None
-        };
-        Ok(Self {
-            fuzz1001,
-            fuzz1002,
-            fuzz1003,
-            fuzz1004,
-            fuzz1005,
-            fuzz1006,
-            fuzz1007,
-            fuzz1008,
-            fuzz1009,
-            fuzz1010,
-            fuzz1011,
-            fuzz1012,
-            fuzz1013,
-            fuzz1014,
-            fuzz1015,
-            fuzz1016,
-            fuzz1017,
-            fuzz1018,
-            fuzz1019,
-            fuzz1020,
-            fuzz1021,
-            fuzz1101,
-            fuzz1102,
-            fuzz1103,
-            fuzz1104,
-            fuzz1105,
-            fuzz1106,
-            fuzz1107,
-            fuzz1108,
-            fuzz1109,
-            fuzz1110,
-            fuzz1111,
-            fuzz1112,
-            fuzz1113,
-            fuzz1114,
-            fuzz1115,
-            fuzz1116,
-            fuzz1117,
-            fuzz1118,
-            fuzz2001,
-            fuzz2002,
-            fuzz2003,
-            fuzz2004,
-            fuzz2005,
-            fuzz2006,
-            fuzz2007,
-            fuzz2008,
-            fuzz2009,
-            fuzz2010,
-            fuzz2011,
-            fuzz2012,
-            fuzz2013,
-            fuzz2014,
-            fuzz2015,
-            fuzz2016,
-            fuzz2017,
-            fuzz2018,
-            fuzz2101,
-            fuzz2102,
-            fuzz2103,
-            fuzz2104,
-            fuzz2105,
-            fuzz2106,
-            fuzz2107,
-            fuzz2108,
-            fuzz2109,
-            fuzz2110,
-            fuzz2111,
-            fuzz2112,
-            fuzz2113,
-            fuzz2114,
-            fuzz2115,
-            fuzz2116,
-            fuzz2117,
-            fuzz2118,
-        })
     }
 }
 

@@ -4,7 +4,7 @@ use re_types::{
     archetypes::Tensor,
     datatypes::{TensorBuffer, TensorData, TensorDimension},
     tensor_data::TensorCastError,
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 mod util;

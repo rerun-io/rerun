@@ -4,7 +4,7 @@ use re_types::{
     archetypes::AnnotationContext,
     components,
     datatypes::{ClassDescription, Color, KeypointPair},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
