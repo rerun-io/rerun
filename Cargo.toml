@@ -182,5 +182,5 @@ epaint = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754
 egui_commonmark = { git = "https://github.com/lampsitter/egui_commonmark.git", rev = "d42d340d2d617f19e3d52697faa9cfcfa3eafa27" }
 
 # Temporary patch until next egui_tiles release
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "66e8abfd755db92a386764dcdafa3fb272a936e7" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f093f065c048a69be1ea125e9706ef3db302d255" }
 # egui_tiles = { path = "../egui_tiles" }
