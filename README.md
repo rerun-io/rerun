@@ -12,7 +12,7 @@
   <a href="https://discord.gg/Gcm8BbTaAj">                                <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
 </h1>
 
-# An SDK for building time aware visualizations of multimodal data
+# Build time aware visualizations of multimodal data
 
 Use the Rerun SDK (available in Python, Rust, and soon C++) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
