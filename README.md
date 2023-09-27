@@ -29,7 +29,7 @@ rr.connect()  # Connect to a remote viewer
 rr.set_time_sequence("frame", 42))
 
 # Log colored 3D points to the entity at `path/to/points`
-rr.log("path/to/points", rr.Points3D(positions, colors=colors)
+rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 …
 ```
 ![rerun-github-hero](https://github.com/rerun-io/rerun/assets/2624717/c4900538-fc3a-43b8-841a-8d226e7b5a2e)
