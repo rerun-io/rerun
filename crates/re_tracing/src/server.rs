@@ -57,7 +57,7 @@ fn start_puffin_viewer() {
         rfd::MessageDialog::new()
             .set_level(rfd::MessageLevel::Info)
             .set_title("puffin_viewer required")
-            .set_description(&format!("To view the profiling data, run the following command:\n\n{cmd}\n\n(it has been copied to your clipboard)"))
+            .set_description(format!("To view the profiling data, run the following command:\n\n{cmd}\n\n(it has been copied to your clipboard)"))
             .show();
     }
 }

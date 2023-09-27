@@ -53,7 +53,6 @@ skip = [
   { name = "nix" },                  # difficult to avoid :(
   { name = "prettyplease" },         # Old version being used by prost
   { name = "time" },                 # Too popular
-  { name = "windows" },              # wgpu and rfd are sometimes on different versions
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool

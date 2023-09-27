@@ -140,7 +140,7 @@ impl ViewPartSystem for Mesh3DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Mesh3D::indicator().as_ref().name()).collect()
+        std::iter::once(Mesh3D::indicator().name()).collect()
     }
 
     fn execute(

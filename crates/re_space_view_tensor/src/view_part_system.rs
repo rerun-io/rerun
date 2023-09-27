@@ -32,7 +32,7 @@ impl ViewPartSystem for TensorSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Tensor::indicator().as_ref().name()).collect()
+        std::iter::once(Tensor::indicator().name()).collect()
     }
 
     /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]

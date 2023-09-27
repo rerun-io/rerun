@@ -92,10 +92,10 @@ egui = { version = "0.22.0", features = [
 ] }
 egui_commonmark = { version = "0.7", default-features = false }
 egui_extras = { version = "0.22.0", features = ["http", "image", "puffin"] }
-egui_plot = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" } # egui_plot is not yet published on crates.io
+egui_plot = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" } # egui_plot is not yet published on crates.io
 egui_tiles = "0.2"
 egui-wgpu = "0.22.0"
-ehttp = "0.3"
+ehttp = "0.3.1"
 emath = "0.22.0"
 enumset = "1.0.12"
 epaint = "0.22.0"
@@ -122,9 +122,7 @@ puffin_http = "0.13"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
-rfd = { version = "0.11.3", default_features = false, features = [
-  "xdg-portal",
-] }
+rfd = { version = "0.12", default_features = false, features = ["xdg-portal"] }
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 thiserror = "1.0"
@@ -168,14 +166,14 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # Temporary patch until next egui release
-ecolor = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
-eframe = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
-egui = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
-emath = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
-epaint = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
+eframe = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
+egui = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
+emath = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
+epaint = { git = "https://github.com/emilk/egui", rev = "a9272e0e55cda2aa60d22f342d0d2280628ca354" }
 
 # Temporary patch until next egui_commonmark release
 egui_commonmark = { git = "https://github.com/lampsitter/egui_commonmark.git", rev = "d42d340d2d617f19e3d52697faa9cfcfa3eafa27" }
