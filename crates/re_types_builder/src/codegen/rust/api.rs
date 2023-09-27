@@ -521,6 +521,14 @@ fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
             lines.push(" ```ignore".into());
             lines.extend(example.content.into_iter().map(|line| format!(" {line}")));
             lines.push(" ```".into());
+            if let Some(image) = &example.base.image {
+                lines.extend(
+                    image
+                        .image_stack()
+                        .into_iter()
+                        .map(|line| format!(" {line}")),
+                );
+            }
             if examples.peek().is_some() {
                 // blank line between examples
                 lines.push(" ".into());

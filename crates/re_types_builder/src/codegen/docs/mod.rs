@@ -11,7 +11,6 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 
 use super::common::get_documentation;
-use super::common::ImageUrl;
 
 macro_rules! putln {
     ($o:ident) => {let _ = writeln!($o);};
@@ -162,24 +161,10 @@ fn example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o, "code-example: {name}");
         if let Some(image_url) = image {
             putln!(o);
-            image_url_stack(o, title, image_url);
-        }
-        putln!(o);
-    }
-}
-
-fn image_url_stack(o: &mut String, title: &str, image_url: &ImageUrl<'_>) {
-    match image_url {
-        ImageUrl::Rerun(rerun) => {
-            for line in rerun.image_stack(title) {
+            for line in image_url.image_stack() {
                 putln!(o, "{line}");
             }
         }
-        ImageUrl::Other(url) => {
-            putln!(
-                o,
-                r#"<img src="{url}" alt="screenshot of {title} example">"#
-            );
-        }
+        putln!(o);
     }
 }

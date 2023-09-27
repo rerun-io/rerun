@@ -125,6 +125,15 @@ impl ImageUrl<'_> {
     pub fn parse(s: &str) -> ImageUrl<'_> {
         RerunImageUrl::parse(s).map_or(ImageUrl::Other(s), ImageUrl::Rerun)
     }
+
+    pub fn image_stack(&self) -> Vec<String> {
+        match self {
+            ImageUrl::Rerun(rerun) => rerun.image_stack(),
+            ImageUrl::Other(url) => {
+                vec![format!(r#"<img src="{url}">"#)]
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -159,7 +168,7 @@ impl RerunImageUrl<'_> {
         })
     }
 
-    pub fn image_stack(&self, title: &str) -> Vec<String> {
+    pub fn image_stack(&self) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
 
         let RerunImageUrl {
@@ -181,7 +190,7 @@ impl RerunImageUrl<'_> {
             }
         }
         stack.push(format!(
-            r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" alt="screenshot of {title} example">"#
+            r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
         ));
         stack.push("</picture>".into());
 
