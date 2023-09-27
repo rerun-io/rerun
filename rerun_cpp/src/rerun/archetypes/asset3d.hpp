@@ -51,8 +51,8 @@ namespace rerun {
         ///     auto rec = rr::RecordingStream("rerun_example_asset3d_simple");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     // TODO(#2816): some viewcoords would be nice here
-        ///     rec.log("asset", rr::Asset3D::from_file(path));
+        ///     rec.log("world", rr::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+        ///     rec.log("world/asset", rr::Asset3D::from_file(path));
         /// }
         /// ```
         ///

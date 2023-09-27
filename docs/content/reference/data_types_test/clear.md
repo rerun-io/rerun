@@ -8,7 +8,7 @@ Empties all the components of an entity.
 ## Components and APIs
 
 Required:
-* clear_settings
+* clear_is_recursive
 
 ## Examples
 
