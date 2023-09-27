@@ -22,14 +22,7 @@ pub const VIEWPORT_PATH: &str = "viewport";
 #[arrow_field(transparent)]
 pub struct AutoSpaceViews(pub bool);
 
-impl LegacyComponent for AutoSpaceViews {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "rerun.blueprint.auto_space_views".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(AutoSpaceViews);
+re_log_types::arrow2convert_component_shim!(AutoSpaceViews as "rerun.blueprint.AutoSpaceViews");
 
 /// Whether a space view is maximized
 ///
@@ -49,14 +42,7 @@ pub struct SpaceViewMaximized(
     #[arrow_field(type = "SerdeField<Option<SpaceViewId>>")] pub Option<SpaceViewId>,
 );
 
-impl LegacyComponent for SpaceViewMaximized {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "rerun.blueprint.maximized".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(SpaceViewMaximized);
+re_log_types::arrow2convert_component_shim!(SpaceViewMaximized as "rerun.blueprint.Maximized");
 
 /// The layout of a `Viewport`
 ///
@@ -92,7 +78,7 @@ impl LegacyComponent for ViewportLayout {
     }
 }
 
-re_log_types::component_legacy_shim!(ViewportLayout);
+re_log_types::arrow2convert_component_shim!(ViewportLayout as "rerun.blueprint.ViewportLayout");
 
 #[test]
 fn test_maximized_roundtrip() {
