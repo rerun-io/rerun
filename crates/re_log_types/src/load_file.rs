@@ -1,5 +1,7 @@
 use crate::DataCell;
 
+use re_types::Archetype as _;
+
 /// Errors from [`data_cells_from_file_path`].
 #[derive(thiserror::Error, Debug)]
 pub enum FromFileError {
@@ -10,15 +12,8 @@ pub enum FromFileError {
     #[error(transparent)]
     DataCellError(#[from] crate::DataCellError),
 
-    #[cfg(feature = "image")]
     #[error(transparent)]
     TensorImageLoad(#[from] re_types::tensor_data::TensorImageLoadError),
-
-    #[error("Unsupported file extension '{extension}' for file {path:?}. To load image files, make sure you compile with the 'image' feature")]
-    UnknownExtension {
-        extension: String,
-        path: std::path::PathBuf,
-    },
 
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -63,14 +58,11 @@ pub fn data_cells_from_file_path(
             cells
         }
 
-        #[cfg(feature = "image")]
+        // Assume an image (there are so many image formats)
         _ => {
-            use re_types::Archetype;
-            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
-            let indicator_cell = DataCell::from_arrow(
-                re_types::archetypes::Image::indicator().as_ref().name(),
-                indicator.to_arrow(),
-            );
+            let indicator = re_types::archetypes::Image::indicator();
+            let indicator_cell =
+                DataCell::from_arrow(indicator.as_ref().name(), indicator.as_ref().to_arrow());
 
             // Assume an image (there are so many image extensions):
             let tensor = re_types::components::TensorData(
@@ -81,12 +73,6 @@ pub fn data_cells_from_file_path(
                 DataCell::try_from_native(std::iter::once(&tensor))?,
             ])
         }
-
-        #[cfg(not(feature = "image"))]
-        _ => Err(FromFileError::UnknownExtension {
-            extension,
-            path: file_path.to_owned(),
-        }),
     }
 }
 
@@ -123,7 +109,7 @@ pub fn data_cells_from_file_contents(
             cells
         }
 
-        #[cfg(feature = "image")]
+        // Assume an image (there are so many image formats)
         _ => {
             let format = if let Some(format) = image::ImageFormat::from_extension(extension) {
                 format
@@ -132,12 +118,9 @@ pub fn data_cells_from_file_contents(
                     .map_err(re_types::tensor_data::TensorImageLoadError::from)?
             };
 
-            use re_types::Archetype;
-            let indicator = <re_types::archetypes::Image as Archetype>::Indicator::batch(1);
-            let indicator_cell = DataCell::from_arrow(
-                re_types::archetypes::Image::indicator().as_ref().name(),
-                indicator.to_arrow(),
-            );
+            let indicator = re_types::archetypes::Image::indicator();
+            let indicator_cell =
+                DataCell::from_arrow(indicator.as_ref().name(), indicator.as_ref().to_arrow());
 
             // Assume an image (there are so many image extensions):
             let tensor = re_types::components::TensorData(
@@ -148,11 +131,5 @@ pub fn data_cells_from_file_contents(
                 DataCell::try_from_native(std::iter::once(&tensor))?,
             ])
         }
-
-        #[cfg(not(feature = "image"))]
-        _ => Err(FromFileError::UnknownExtension {
-            extension,
-            path: file_name.to_owned().into(),
-        }),
     }
 }
