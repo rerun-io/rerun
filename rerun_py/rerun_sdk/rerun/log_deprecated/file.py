@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
 from rerun._log import log
 from rerun.archetypes import Asset3D
 from rerun.components import MediaType, OutOfTreeTransform3DBatch
@@ -15,9 +13,10 @@ from rerun.datatypes import TranslationAndMat3x3
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
+from .._image import ImageEncoded, ImageFormat
+
 __all__ = [
     "MeshFormat",
-    "ImageFormat",
     "log_mesh_file",
     "log_image_file",
 ]
@@ -36,17 +35,6 @@ class MeshFormat(Enum):
     # viewer.
     OBJ = "OBJ"
     """Wavefront .obj format."""
-
-
-@dataclass
-class ImageFormat(Enum):
-    """Image file format."""
-
-    JPEG = "jpeg"
-    """JPEG format."""
-
-    PNG = "png"
-    """PNG format."""
 
 
 @log_decorator
@@ -164,14 +152,13 @@ def log_image_file(
 
     recording = RecordingStream.to_native(recording)
 
-    img_format = getattr(img_format, "value", None)
-
-    # Image file arrow handling happens inside the python bridge
-    bindings.log_image_file(
+    log(
         entity_path,
-        img_bytes=img_bytes,
-        img_path=img_path,
-        img_format=img_format,
+        ImageEncoded(
+            path=img_path,
+            contents=img_bytes,
+            format=img_format,
+        ),
         timeless=timeless,
         recording=recording,
     )

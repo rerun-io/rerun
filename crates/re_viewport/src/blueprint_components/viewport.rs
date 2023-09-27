@@ -70,7 +70,7 @@ re_log_types::component_legacy_shim!(SpaceViewMaximized);
 ///     DataType::Struct(vec![
 ///         Field::new("space_view_keys", DataType::Binary, false),
 ///         Field::new("tree", DataType::Binary, false),
-///         Field::new("has_been_user_edited", DataType::Boolean, false),
+///         Field::new("auto_layout", DataType::Boolean, false),
 ///     ])
 /// );
 /// ```
@@ -82,7 +82,7 @@ pub struct ViewportLayout {
     #[arrow_field(type = "SerdeField<egui_tiles::Tree<SpaceViewId>>")]
     pub tree: egui_tiles::Tree<SpaceViewId>,
 
-    pub has_been_user_edited: bool,
+    pub auto_layout: bool,
 }
 
 impl LegacyComponent for ViewportLayout {

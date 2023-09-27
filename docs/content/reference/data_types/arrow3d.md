@@ -24,9 +24,9 @@ Rust API: [Arrow3D](https://docs.rs/rerun/latest/rerun/components/struct.Arrow3D
 code-example: arrow3d_simple
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/b1ccd4e1fd2f1fba53ee81de89b02186dd8f76ad_arrow3d_simple_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ef88127921ab6019465c866dfa562036d6d0325c_arrow3d_simple_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/1489a02534f9b0afedb6abb6ee222932cfdb2be5_arrow3d_simple_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/23342496350bd104617afdb4782cd95db21cab06_arrow3d_simple_1200w.png">
-  <img src="https://static.rerun.io/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40_arrow3d_simple_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1200w.png">
+  <img src="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/full.png" alt="">
 </picture>

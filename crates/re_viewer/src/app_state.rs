@@ -198,11 +198,6 @@ impl AppState {
                             viewport.viewport_ui(ui, &mut ctx);
                         }
                     });
-
-                // If the viewport was user-edited, then disable auto space views
-                if viewport.blueprint.has_been_user_edited {
-                    viewport.blueprint.auto_space_views = false;
-                }
             });
 
         viewport.sync_blueprint_changes(command_sender);

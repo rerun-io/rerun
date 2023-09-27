@@ -20,20 +20,20 @@ image.save(file_path)
 rr.init("rerun_example_images_adv", spawn=True)
 
 # Log the image from the file.
-rr.log_image_file("from_file", img_path=Path(file_path))
+rr.log("from_file", rr.ImageEncoded(path=Path(file_path)))
 
 # Read with Pillow and NumPy, and log the image.
 image = np.array(Image.open(file_path))
-rr.log_image("from_pillow_rgba", image)
+rr.log("from_pillow_rgba", rr.Image(image))
 
 # Convert to RGB, fill transparent pixels with a color, and log the image.
 image_rgb = image[..., :3]
 image_rgb[image[:, :, 3] == 0] = (45, 15, 15)
-rr.log_image("from_pillow_rgb", image_rgb)
+rr.log("from_pillow_rgb", rr.Image(image_rgb))
 
 # Read with OpenCV
 image = cv2.imread(file_path)
 
 # OpenCV uses BGR ordering, so we need to convert to RGB.
 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-rr.log_image("from_opencv", image)
+rr.log("from_opencv", rr.Image(image))
