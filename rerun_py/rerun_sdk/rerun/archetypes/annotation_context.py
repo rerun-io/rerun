@@ -46,7 +46,6 @@ class AnnotationContext(Archetype):
     ```python
     import numpy as np
     import rerun as rr
-    import rerun.experimental as rr2
 
     rr.init("rerun_example_annotation_context_segmentation", spawn=True)
 
@@ -56,7 +55,7 @@ class AnnotationContext(Archetype):
     image[4:8, 6:12] = 2
 
     # Log an annotation context to assign a label and color to each class
-    rr2.log("segmentation", rr2.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
+    rr.log("segmentation", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
 
     rr.log_segmentation_image("segmentation/image", np.array(image))
     ```
@@ -64,16 +63,15 @@ class AnnotationContext(Archetype):
     Connections:
     ```python
     import rerun as rr
-    import rerun.experimental as rr2
-    from rerun.experimental import dt as rrd
+    from rerun.datatypes import ClassDescription
 
     rr.init("rerun_example_annotation_context_connections", spawn=True)
 
-    rr2.log(
+    rr.log(
         "/",
-        rr2.AnnotationContext(
+        rr.AnnotationContext(
             [
-                rrd.ClassDescription(
+                ClassDescription(
                     info=0,
                     keypoint_annotations=[
                         (0, "zero", (255, 0, 0)),
@@ -87,9 +85,9 @@ class AnnotationContext(Archetype):
         ),
     )
 
-    rr2.log(
+    rr.log(
         "points",
-        rr2.Points3D(
+        rr.Points3D(
             [
                 (0, 0, 0),
                 (50, 0, 20),
