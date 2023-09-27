@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use re_log_types::{serde_field::SerdeField, ComponentName, LegacyComponent};
+use re_log_types::serde_field::SerdeField;
 
 pub use re_viewer_context::SpaceViewId;
 
@@ -69,13 +69,6 @@ pub struct ViewportLayout {
     pub tree: egui_tiles::Tree<SpaceViewId>,
 
     pub auto_layout: bool,
-}
-
-impl LegacyComponent for ViewportLayout {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "rerun.blueprint.viewport_layout".into()
-    }
 }
 
 re_log_types::arrow2convert_component_shim!(ViewportLayout as "rerun.blueprint.ViewportLayout");
