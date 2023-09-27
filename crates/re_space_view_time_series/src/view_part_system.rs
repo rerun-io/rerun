@@ -79,7 +79,7 @@ impl ViewPartSystem for TimeSeriesSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TimeSeriesScalar::indicator_component()).collect()
+        std::iter::once(TimeSeriesScalar::indicator().as_ref().name()).collect()
     }
 
     fn execute(

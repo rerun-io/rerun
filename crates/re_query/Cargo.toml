@@ -65,12 +65,6 @@ rand = { workspace = true, features = ["std", "std_rng"] }
 bench = false
 
 
-[[example]]
-name = "range"
-path = "examples/range.rs"
-required-features = ["polars"]
-
-
 [[bench]]
 name = "query_benchmark"
 harness = false

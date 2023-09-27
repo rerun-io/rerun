@@ -231,8 +231,8 @@ impl EntityTree {
 
         fn filter_out_clear_components(comp_name: &ComponentName) -> bool {
             let is_clear_component = [
-                Clear::indicator_component(), //
-                ClearIsRecursive::name(),     //
+                Clear::indicator().as_ref().name(), //
+                ClearIsRecursive::name(),           //
             ]
             .contains(comp_name);
             !is_clear_component

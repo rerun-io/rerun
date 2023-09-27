@@ -229,6 +229,11 @@ namespace rerun {
                 return positions.size();
             }
 
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
+
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any
             /// data. Adding any new components to this archetype will invalidate the returned

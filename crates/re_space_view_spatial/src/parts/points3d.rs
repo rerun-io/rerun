@@ -199,7 +199,7 @@ impl ViewPartSystem for Points3DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points3D::indicator_component()).collect()
+        std::iter::once(Points3D::indicator().as_ref().name()).collect()
     }
 
     fn execute(

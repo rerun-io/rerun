@@ -141,6 +141,12 @@ impl crate::Archetype for Points3D {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: Points3DIndicator = Points3DIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -167,7 +173,7 @@ impl crate::Archetype for Points3D {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator()),
             Some((&self.positions as &dyn crate::ComponentBatch).into()),
             self.radii
                 .as_ref()

@@ -10,6 +10,14 @@ namespace rerun {
         const char TimeSeriesScalar::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.TimeSeriesScalarIndicator";
 
+        AnonymousComponentBatch TimeSeriesScalar::indicator() {
+            return ComponentBatch<
+                components::IndicatorComponent<TimeSeriesScalar::INDICATOR_COMPONENT_NAME>>(
+                nullptr,
+                1
+            );
+        }
+
         std::vector<AnonymousComponentBatch> TimeSeriesScalar::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(5);
@@ -27,13 +35,7 @@ namespace rerun {
             if (scattered.has_value()) {
                 comp_batches.emplace_back(scattered.value());
             }
-            comp_batches.emplace_back(
-                ComponentBatch<
-                    components::IndicatorComponent<TimeSeriesScalar::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(TimeSeriesScalar::indicator());
 
             return comp_batches;
         }

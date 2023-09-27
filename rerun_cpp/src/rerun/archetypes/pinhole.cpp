@@ -9,6 +9,11 @@ namespace rerun {
     namespace archetypes {
         const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
 
+        AnonymousComponentBatch Pinhole::indicator() {
+            return ComponentBatch<
+                components::IndicatorComponent<Pinhole::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+        }
+
         std::vector<AnonymousComponentBatch> Pinhole::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(3);
@@ -20,12 +25,7 @@ namespace rerun {
             if (camera_xyz.has_value()) {
                 comp_batches.emplace_back(camera_xyz.value());
             }
-            comp_batches.emplace_back(
-                ComponentBatch<components::IndicatorComponent<Pinhole::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(Pinhole::indicator());
 
             return comp_batches;
         }

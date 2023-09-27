@@ -15,9 +15,9 @@ namespace rerun {
 
             /// Creates a Rerun DataCell from an array of IndicatorComponent components.
             static Result<rerun::DataCell> to_data_cell(
-                const IndicatorComponent<Name>*, size_t num_instances
+                const IndicatorComponent<Name>*, size_t _num_instances
             ) {
-                return rerun::create_indicator_component(Name, num_instances);
+                return rerun::create_indicator_component(Name);
             }
         };
     } // namespace components

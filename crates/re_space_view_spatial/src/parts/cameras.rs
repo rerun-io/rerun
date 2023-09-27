@@ -183,7 +183,7 @@ impl ViewPartSystem for CamerasPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(re_types::archetypes::Pinhole::indicator_component()).collect()
+        std::iter::once(re_types::archetypes::Pinhole::indicator().as_ref().name()).collect()
     }
 
     fn execute(

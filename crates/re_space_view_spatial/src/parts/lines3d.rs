@@ -177,7 +177,7 @@ impl ViewPartSystem for Lines3DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(LineStrips3D::indicator_component()).collect()
+        std::iter::once(LineStrips3D::indicator().as_ref().name()).collect()
     }
 
     fn execute(

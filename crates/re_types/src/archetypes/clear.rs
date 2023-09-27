@@ -135,6 +135,12 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: ClearIndicator = ClearIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -161,7 +167,7 @@ impl crate::Archetype for Clear {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator()),
             Some((&self.recursive as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
