@@ -17,21 +17,6 @@ use crate::{Component, Loggable, LoggableBatch};
 ///
 /// E.g. consider the [`crate::archetypes::Points3D`] archetype, which represents the set of
 /// components to consider when working with a 3D point cloud within Rerun.
-///
-/// ## Custom Archetypes
-///
-/// While, in most cases, archetypes are code generated from our [IDL definitions], it is possible to
-/// manually extend existing archetypes, or even implement fully custom ones.
-///
-/// Most [`Archetype`] methods are optional to implement.
-/// The most important method to implement is [`Archetype::as_component_batches`], which describes how
-/// the archetype can be interpreted as a [`ComponentBatch`]: a set of components that are ready to
-/// be serialized.
-///
-/// Have a look at our [Custom Data] example to learn more about handwritten archetypes.
-///
-/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/re_types/definitions/rerun
-/// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
 pub trait Archetype {
     /// The associated indicator component, whose presence indicates that the high-level
     /// archetype-based APIs were used to log the data.

@@ -110,6 +110,20 @@
 // ---
 
 /// Describes the interface for interpreting an object as a bundle of [`Component`]s.
+///
+/// ## Custom bundles
+///
+/// While, in most cases, component bundles are code generated from our [IDL definitions],
+/// it is possible to manually extend existing bundles, or even implement fully custom ones.
+///
+/// All [`AsComponents`] methods are optional to implement, with the exception of
+/// [`AsComponents::as_component_batches`], which describes how the bundle can be interpreted
+/// as a set of [`ComponentBatch`]es: arrays of components that are ready to be serialized.
+///
+/// Have a look at our [Custom Data] example to learn more about handwritten bundles.
+///
+/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/re_types/definitions/rerun
+/// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
 pub trait AsComponents {
     /// Exposes the object's contents as a set of [`ComponentBatch`]s.
     ///
