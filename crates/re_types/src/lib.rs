@@ -133,8 +133,10 @@ pub trait AsComponents {
     #[inline]
     fn num_instances(&self) -> usize {
         self.as_component_batches()
-            .first()
-            .map_or(0, |comp_batch| comp_batch.as_ref().num_instances())
+            .into_iter()
+            .map(|comp_batch| comp_batch.as_ref().num_instances())
+            .max()
+            .unwrap_or(0)
     }
 
     // ---
