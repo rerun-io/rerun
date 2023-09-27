@@ -1,6 +1,4 @@
-use crate::{
-    Component, ComponentName, Datatype, DatatypeName, Loggable, ResultExt as _, SerializationResult,
-};
+use crate::{Component, ComponentName, Datatype, DatatypeName, Loggable, SerializationResult};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::Archetype;
@@ -33,20 +31,7 @@ pub trait LoggableBatch {
     fn arrow_field(&self) -> arrow2::datatypes::Field;
 
     /// Serializes the batch into an Arrow array.
-    ///
-    /// This will _never_ fail for Rerun's built-in [`LoggableBatch`].
-    /// For the non-fallible version, see [`LoggableBatch::to_arrow`].
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
-
-    /// Serializes the batch into an Arrow array.
-    ///
-    /// Panics on failure.
-    /// This will _never_ fail for Rerun's built-in [`LoggableBatch`]s.
-    ///
-    /// For the fallible version, see [`LoggableBatch::try_to_arrow`].
-    fn to_arrow(&self) -> Box<dyn ::arrow2::array::Array> {
-        self.try_to_arrow().detailed_unwrap()
-    }
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 }
 
 /// A [`DatatypeBatch`] represents an array's worth of [`Datatype`] instances.
@@ -114,8 +99,8 @@ impl<L: Clone + Loggable> LoggableBatch for L {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow([std::borrow::Cow::Borrowed(self)])
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow([std::borrow::Cow::Borrowed(self)])
     }
 }
 
@@ -144,8 +129,8 @@ impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
@@ -174,8 +159,8 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow_opt(
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow_opt(
             self.iter()
                 .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
         )
@@ -207,8 +192,8 @@ impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
@@ -237,8 +222,8 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow_opt(
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow_opt(
             self.iter()
                 .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
         )
@@ -270,8 +255,8 @@ impl<'a, L: Loggable> LoggableBatch for &'a [L] {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
@@ -300,8 +285,8 @@ impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow_opt(
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow_opt(
             self.iter()
                 .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
         )
@@ -333,8 +318,8 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [L; N] {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
@@ -363,8 +348,8 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::try_to_arrow_opt(
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow_opt(
             self.iter()
                 .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
         )

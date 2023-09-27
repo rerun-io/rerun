@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Pinhole, components, Archetype as _};
+use re_types::{archetypes::Pinhole, components, Archetype as _, AsComponents as _};
 
 mod util;
 
@@ -26,7 +26,7 @@ fn roundtrip() {
     .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -43,7 +43,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Pinhole::try_from_arrow(serialized).unwrap();
+    let deserialized = Pinhole::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

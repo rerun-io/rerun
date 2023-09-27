@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::LineStrips3D,
     components::{ClassId, Color, InstanceKey, LineStrip3D, Radius},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -62,7 +62,7 @@ fn roundtrip() {
     .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -79,7 +79,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = LineStrips3D::try_from_arrow(serialized).unwrap();
+    let deserialized = LineStrips3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

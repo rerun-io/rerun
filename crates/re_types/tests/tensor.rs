@@ -4,7 +4,7 @@ use re_types::{
     archetypes::Tensor,
     datatypes::{TensorBuffer, TensorData, TensorDimension},
     tensor_data::TensorCastError,
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 mod util;
@@ -30,7 +30,8 @@ fn tensor_roundtrip() {
 
     let all_arch_serialized = [Tensor::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
         .unwrap()
-        .to_arrow()];
+        .to_arrow()
+        .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
@@ -51,7 +52,7 @@ fn tensor_roundtrip() {
             }
         }
 
-        let deserialized = Tensor::try_from_arrow(serialized).unwrap();
+        let deserialized = Tensor::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

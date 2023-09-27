@@ -693,13 +693,13 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
-            let quoted_try_from_arrow = if optimize_for_buffer_slice {
+            let quoted_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn try_from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
@@ -740,7 +740,7 @@ fn quote_trait_impls_from_obj(
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_to_arrow_opt<'a>(
+                    fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
                     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
                     where
@@ -753,7 +753,7 @@ fn quote_trait_impls_from_obj(
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
+                    fn from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized
                     {
@@ -762,7 +762,7 @@ fn quote_trait_impls_from_obj(
                         Ok(#quoted_deserializer)
                     }
 
-                    #quoted_try_from_arrow
+                    #quoted_from_arrow
                 }
             }
         }
@@ -855,75 +855,6 @@ fn quote_trait_impls_from_obj(
                 }))
             };
 
-            let all_serializers = {
-                obj.fields.iter().map(|obj_field| {
-                    let obj_field_fqname = obj_field.fqname.as_str();
-                    let field_name_str = &obj_field.name;
-                    let field_name = format_ident!("{}", obj_field.name);
-
-                    let is_plural = obj_field.typ.is_plural();
-                    let is_nullable = obj_field.is_nullable;
-
-                    // NOTE: unwrapping is safe since the field must point to a component.
-                    let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
-
-                    let fqname = obj_field.typ.fqname().unwrap();
-
-                    let extract_datatype_and_return = quote! {
-                        array.map(|array| {
-                            // NOTE: Temporarily injecting the extension metadata as well as the
-                            // legacy fully-qualified name into the `Field` object so we can work
-                            // around `arrow2-convert` limitations and map to old names while we're
-                            // migrating.
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                #fqname.into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
-                        })
-                    };
-
-                    // NOTE: Archetypes are AoS (arrays of structs), thus the nullability we're
-                    // dealing with here is the nullability of an entire array of components, not
-                    // the nullability of individual elements (i.e. instances)!
-                    match (is_plural, is_nullable) {
-                        (true, true) => quote! {
-                             self.#field_name.as_ref().map(|many| {
-                                let array = <#component>::try_to_arrow(many.iter());
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (true, false) => quote! {
-                            Some({
-                                let array = <#component>::try_to_arrow(self.#field_name.iter());
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (false, true) => quote! {
-                             self.#field_name.as_ref().map(|single| {
-                                let array = <#component>::try_to_arrow([single]);
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (false, false) => quote! {
-                            Some({
-                                let array = <#component>::try_to_arrow([&self.#field_name]);
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                    }
-                })
-            };
-
             let all_deserializers = {
                 obj.fields.iter().map(|obj_field| {
                     let obj_field_fqname = obj_field.fqname.as_str();
@@ -957,7 +888,7 @@ fn quote_trait_impls_from_obj(
                         quote! {
                             if let Some(array) = arrays_by_name.get(#field_name_str) {
                                 Some({
-                                    <#component>::try_from_arrow_opt(&**array)
+                                    <#component>::from_arrow_opt(&**array)
                                         .with_context(#obj_field_fqname)?
                                         #quoted_collection
                                 })
@@ -972,7 +903,7 @@ fn quote_trait_impls_from_obj(
                                 .ok_or_else(crate::DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?;
 
-                            <#component>::try_from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
+                            <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
                         }}
                     };
 
@@ -1036,24 +967,7 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn num_instances(&self) -> usize {
-                        #num_instances
-                    }
-
-                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-                        [#(#all_component_batches,)*].into_iter().flatten().collect()
-                    }
-
-                    #[inline]
-                    fn try_to_arrow(
-                        &self,
-                    ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::{Loggable as _, ResultExt as _};
-                        Ok([ #({ #all_serializers }),*, ].into_iter().flatten().collect())
-                    }
-
-                    #[inline]
-                    fn try_from_arrow(
+                    fn from_arrow(
                         arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
                         use crate::{Loggable as _, ResultExt as _};
@@ -1068,6 +982,18 @@ fn quote_trait_impls_from_obj(
                         Ok(Self {
                             #(#quoted_field_names,)*
                         })
+                    }
+                }
+
+                impl crate::AsComponents for #name {
+                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+                        use crate::Archetype as _;
+                        [#(#all_component_batches,)*].into_iter().flatten().collect()
+                    }
+
+                    #[inline]
+                    fn num_instances(&self) -> usize {
+                        #num_instances
                     }
                 }
             }
