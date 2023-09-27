@@ -210,8 +210,8 @@ impl Examples {
                 let contents = match std::fs::read_to_string(&path) {
                     Ok(contents) => contents,
                     Err(_) if !required => continue,
-                    Err(e) => {
-                        return Err(e)
+                    Err(err) => {
+                        return Err(err)
                             .with_context(|| format!("couldn't open code example {path:?}"))
                     }
                 };
