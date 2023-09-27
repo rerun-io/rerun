@@ -575,27 +575,21 @@ fn code_for_struct(
         ));
     }
 
+    if !obj.is_delegating_component() {
+        let define_args = if *kind == ObjectKind::Archetype {
+            "str=False, repr=False, init=False"
+        } else {
+            "init=False"
+        };
+        code.push_unindented_text(format!("@define({define_args})"), 1);
+    }
+
     let superclass_decl = if superclasses.is_empty() {
         String::new()
     } else {
         format!("({})", superclasses.join(","))
     };
-
-    let define_args = if *kind == ObjectKind::Archetype {
-        "str=False, repr=False, init=False"
-    } else {
-        "init=False"
-    };
-
-    code.push_unindented_text(
-        format!(
-            r#"
-                @define({define_args})
-                class {name}{superclass_decl}:
-                "#
-        ),
-        0,
-    );
+    code.push_unindented_text(format!("class {name}{superclass_decl}:"), 1);
 
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
@@ -605,10 +599,10 @@ fn code_for_struct(
             2,
             4,
         );
-    } else {
+    } else if !obj.is_delegating_component() {
         // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
         // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
-        code.push_text(quote_init_method(obj, &ext_class, objects), 2, 4);
+        code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
     }
 
     if obj.is_delegating_component() {
@@ -622,10 +616,7 @@ fn code_for_struct(
             4,
         );
 
-        // If extension class had the init method, this class is now empty!
-        if ext_class.has_init {
-            code.push_text("pass", 2, 4);
-        }
+        code.push_text("pass", 2, 4);
     } else {
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
         // complains.
@@ -1140,7 +1131,7 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases...
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
-    fqname.map(|fqname| quote_import_clauses_from_fqname(&fqname))
+    fqname.map(|fqname| quote_import_clauses_from_fqname(fqname))
 }
 
 fn quote_import_clauses_from_fqname(fqname: &str) -> String {
@@ -1541,44 +1532,35 @@ fn quote_init_argument_from_field(
 }
 
 fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects) -> String {
-    let obj_or_delegate = if let Some(delegate) = obj.delegate_datatype(objects) {
-        delegate
-    } else {
-        obj
-    };
-
     // If the type is fully transparent (single non-nullable field and not an archetype),
     // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
     // -> Whatever type aliases there are for this type, we need to pick them up.
-    let arguments: Vec<_> = if obj.kind != ObjectKind::Archetype
-        && obj_or_delegate.fields.len() == 1
-        && !obj_or_delegate.fields[0].is_nullable
-    {
-        vec![format!(
-            "{}: {}",
-            obj_or_delegate.fields[0].name,
-            quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
-        )]
-    } else if obj_or_delegate.is_union() {
-        vec![format!(
-            "inner: {} | None = None",
-            quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
-        )]
-    } else {
-        obj_or_delegate
-            .fields
-            .iter()
-            .sorted_by_key(|field| field.is_nullable)
-            .map(|field| quote_init_argument_from_field(field, objects, &obj.fqname))
-            .collect()
-    };
+    let arguments: Vec<_> =
+        if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable
+        {
+            vec![format!(
+                "{}: {}",
+                obj.fields[0].name,
+                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+            )]
+        } else if obj.is_union() {
+            vec![format!(
+                "inner: {} | None = None",
+                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+            )]
+        } else {
+            obj.fields
+                .iter()
+                .sorted_by_key(|field| field.is_nullable)
+                .map(|field| quote_init_argument_from_field(field, objects, &obj.fqname))
+                .collect()
+        };
     let head = format!("def __init__(self: Any, {}):", arguments.join(", "));
 
-    let argument_docs = if obj_or_delegate.is_union() {
+    let argument_docs = if obj.is_union() {
         Vec::new()
     } else {
-        obj_or_delegate
-            .fields
+        obj.fields
             .iter()
             .filter_map(|field| {
                 if field.docs.doc.is_empty() {
@@ -1620,10 +1602,10 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
         ext_class.name, ext_class.file_name
     );
 
-    let forwarding_call = if obj_or_delegate.is_union() {
+    let forwarding_call = if obj.is_union() {
         "self.inner = inner".to_owned()
     } else {
-        let attribute_init = obj_or_delegate
+        let attribute_init = obj
             .fields
             .iter()
             .map(|field| format!("{}={}", field.name, field.name))
