@@ -28,9 +28,9 @@ TENSOR_DATA_INPUTS: list[TensorDataLike] = [
     # Explicit construction from array
     TensorData(array=RANDOM_TENSOR_SOURCE),
     # Explicit construction from array
-    TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
+    TensorData(array=RANDOM_TENSOR_SOURCE, dim_names=["a", "b", "c", "d"]),
     # Explicit construction from array
-    TensorData(array=RANDOM_TENSOR_SOURCE, names=["a", "b", "c", "d"]),
+    TensorData(array=RANDOM_TENSOR_SOURCE, dim_names=["a", "b", "c", "d"]),
 ]
 
 # 0 = shape
@@ -101,7 +101,7 @@ def test_bad_tensors() -> None:
     # Wrong number of names
     with pytest.raises(TypeError):
         TensorData(
-            names=["a", "b", "c"],
+            dim_names=["a", "b", "c"],
             array=RANDOM_TENSOR_SOURCE,
         ),
 
