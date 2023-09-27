@@ -161,7 +161,7 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -176,7 +176,7 @@ impl crate::Archetype for Clear {
                 .get("recursive")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Clear#recursive")?;
-            <crate::components::ClearIsRecursive>::try_from_arrow_opt(&**array)
+            <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Clear#recursive")?
                 .into_iter()
                 .next()

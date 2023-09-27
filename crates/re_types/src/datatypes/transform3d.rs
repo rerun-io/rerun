@@ -193,7 +193,7 @@ impl crate::Loggable for Transform3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -252,7 +252,7 @@ impl crate::Loggable for Transform3D {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[1usize];
-                    crate::datatypes::TranslationAndMat3x3::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::TranslationAndMat3x3::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.Transform3D#TranslationAndMat3x3")?
                         .into_iter()
                         .collect::<Vec<_>>()
@@ -262,7 +262,7 @@ impl crate::Loggable for Transform3D {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[2usize];
-                    crate::datatypes::TranslationRotationScale3D::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::TranslationRotationScale3D::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.Transform3D#TranslationRotationScale")?
                         .into_iter()
                         .collect::<Vec<_>>()

@@ -255,7 +255,7 @@ impl crate::Loggable for TranslationRotationScale3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -405,7 +405,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["rotation"];
-                    crate::datatypes::Rotation3D::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::Rotation3D::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.TranslationRotationScale3D#rotation")?
                         .into_iter()
                 };
@@ -418,7 +418,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["scale"];
-                    crate::datatypes::Scale3D::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::Scale3D::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.TranslationRotationScale3D#scale")?
                         .into_iter()
                 };

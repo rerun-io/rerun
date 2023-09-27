@@ -164,7 +164,7 @@ impl crate::Archetype for Arrows3D {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -179,7 +179,7 @@ impl crate::Archetype for Arrows3D {
                 .get("vectors")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Arrows3D#vectors")?;
-            <crate::components::Vector3D>::try_from_arrow_opt(&**array)
+            <crate::components::Vector3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Arrows3D#vectors")?
                 .into_iter()
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -188,7 +188,7 @@ impl crate::Archetype for Arrows3D {
         };
         let origins = if let Some(array) = arrays_by_name.get("origins") {
             Some({
-                <crate::components::Origin3D>::try_from_arrow_opt(&**array)
+                <crate::components::Origin3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#origins")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -200,7 +200,7 @@ impl crate::Archetype for Arrows3D {
         };
         let radii = if let Some(array) = arrays_by_name.get("radii") {
             Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -212,7 +212,7 @@ impl crate::Archetype for Arrows3D {
         };
         let colors = if let Some(array) = arrays_by_name.get("colors") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -224,7 +224,7 @@ impl crate::Archetype for Arrows3D {
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
             Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -236,7 +236,7 @@ impl crate::Archetype for Arrows3D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
             Some({
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -248,7 +248,7 @@ impl crate::Archetype for Arrows3D {
         };
         let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
             Some({
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
+                <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#instance_keys")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))

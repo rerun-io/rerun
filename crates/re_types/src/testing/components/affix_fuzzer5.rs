@@ -172,7 +172,7 @@ impl crate::Loggable for AffixFuzzer5 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -181,7 +181,7 @@ impl crate::Loggable for AffixFuzzer5 {
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::try_from_arrow_opt(arrow_data)
+            crate::testing::datatypes::AffixFuzzer1::from_arrow_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer5#single_optional")?
                 .into_iter()
                 .map(Ok)

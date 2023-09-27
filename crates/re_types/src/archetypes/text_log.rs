@@ -87,7 +87,7 @@ impl crate::Archetype for TextLog {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -102,7 +102,7 @@ impl crate::Archetype for TextLog {
                 .get("body")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextLog#body")?;
-            <crate::components::Text>::try_from_arrow_opt(&**array)
+            <crate::components::Text>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.TextLog#body")?
                 .into_iter()
                 .next()
@@ -112,7 +112,7 @@ impl crate::Archetype for TextLog {
         };
         let level = if let Some(array) = arrays_by_name.get("level") {
             Some({
-                <crate::components::TextLogLevel>::try_from_arrow_opt(&**array)
+                <crate::components::TextLogLevel>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextLog#level")?
                     .into_iter()
                     .next()
@@ -125,7 +125,7 @@ impl crate::Archetype for TextLog {
         };
         let color = if let Some(array) = arrays_by_name.get("color") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextLog#color")?
                     .into_iter()
                     .next()

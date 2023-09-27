@@ -289,7 +289,7 @@ impl crate::Loggable for AffixFuzzer4 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -355,7 +355,7 @@ impl crate::Loggable for AffixFuzzer4 {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[1usize];
-                    crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(arrow_data)
+                    crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(arrow_data)
                         .with_context("rerun.testing.datatypes.AffixFuzzer4#single_required")?
                         .into_iter()
                         .collect::<Vec<_>>()
@@ -388,7 +388,7 @@ impl crate::Loggable for AffixFuzzer4 {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(
+                                crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(
                                         arrow_data_inner,
                                     )
                                     .with_context(
@@ -463,7 +463,7 @@ impl crate::Loggable for AffixFuzzer4 {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(
+                                crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(
                                         arrow_data_inner,
                                     )
                                     .with_context(

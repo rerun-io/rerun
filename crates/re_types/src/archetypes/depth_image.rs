@@ -125,7 +125,7 @@ impl crate::Archetype for DepthImage {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -140,7 +140,7 @@ impl crate::Archetype for DepthImage {
                 .get("data")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#data")?;
-            <crate::components::TensorData>::try_from_arrow_opt(&**array)
+            <crate::components::TensorData>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#data")?
                 .into_iter()
                 .next()
@@ -150,7 +150,7 @@ impl crate::Archetype for DepthImage {
         };
         let meter = if let Some(array) = arrays_by_name.get("meter") {
             Some({
-                <crate::components::DepthMeter>::try_from_arrow_opt(&**array)
+                <crate::components::DepthMeter>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.DepthImage#meter")?
                     .into_iter()
                     .next()
@@ -163,7 +163,7 @@ impl crate::Archetype for DepthImage {
         };
         let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
             Some({
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
+                <crate::components::DrawOrder>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.DepthImage#draw_order")?
                     .into_iter()
                     .next()

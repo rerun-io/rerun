@@ -63,7 +63,7 @@ fn roundtrip() {
         // );
     }
 
-    let deserialized = Asset3D::try_from_arrow(serialized).unwrap();
+    let deserialized = Asset3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

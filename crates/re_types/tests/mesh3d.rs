@@ -80,7 +80,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Mesh3D::try_from_arrow(serialized).unwrap();
+    let deserialized = Mesh3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

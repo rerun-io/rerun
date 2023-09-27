@@ -134,7 +134,7 @@ impl crate::Loggable for AffixFuzzer5 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -177,7 +177,7 @@ impl crate::Loggable for AffixFuzzer5 {
                         .with_context("rerun.testing.datatypes.AffixFuzzer5");
                     }
                     let arrow_data = &**arrays_by_name["single_optional_union"];
-                    crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(arrow_data)
+                    crate::testing::datatypes::AffixFuzzer4::from_arrow_opt(arrow_data)
                         .with_context("rerun.testing.datatypes.AffixFuzzer5#single_optional_union")?
                         .into_iter()
                 };

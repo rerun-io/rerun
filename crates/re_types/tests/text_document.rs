@@ -39,7 +39,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = TextDocument::try_from_arrow(serialized).unwrap();
+    let deserialized = TextDocument::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

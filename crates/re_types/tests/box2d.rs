@@ -76,7 +76,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Boxes2D::try_from_arrow(serialized).unwrap();
+    let deserialized = Boxes2D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

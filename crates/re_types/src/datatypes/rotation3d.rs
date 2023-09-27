@@ -224,7 +224,7 @@ impl crate::Loggable for Rotation3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -374,7 +374,7 @@ impl crate::Loggable for Rotation3D {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[2usize];
-                    crate::datatypes::RotationAxisAngle::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::RotationAxisAngle::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.Rotation3D#AxisAngle")?
                         .into_iter()
                         .collect::<Vec<_>>()

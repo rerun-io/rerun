@@ -94,7 +94,7 @@ impl crate::Archetype for TextDocument {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -109,7 +109,7 @@ impl crate::Archetype for TextDocument {
                 .get("body")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextDocument#body")?;
-            <crate::components::Text>::try_from_arrow_opt(&**array)
+            <crate::components::Text>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.TextDocument#body")?
                 .into_iter()
                 .next()
@@ -119,7 +119,7 @@ impl crate::Archetype for TextDocument {
         };
         let media_type = if let Some(array) = arrays_by_name.get("media_type") {
             Some({
-                <crate::components::MediaType>::try_from_arrow_opt(&**array)
+                <crate::components::MediaType>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextDocument#media_type")?
                     .into_iter()
                     .next()

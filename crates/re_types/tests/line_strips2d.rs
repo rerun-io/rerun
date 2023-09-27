@@ -81,7 +81,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = LineStrips2D::try_from_arrow(serialized).unwrap();
+    let deserialized = LineStrips2D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

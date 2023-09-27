@@ -464,7 +464,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
+            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
             where
                 Self: Sized
             {

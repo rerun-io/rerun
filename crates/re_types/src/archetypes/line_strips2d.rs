@@ -181,7 +181,7 @@ impl crate::Archetype for LineStrips2D {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -196,7 +196,7 @@ impl crate::Archetype for LineStrips2D {
                 .get("strips")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.LineStrips2D#strips")?;
-            <crate::components::LineStrip2D>::try_from_arrow_opt(&**array)
+            <crate::components::LineStrip2D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.LineStrips2D#strips")?
                 .into_iter()
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -205,7 +205,7 @@ impl crate::Archetype for LineStrips2D {
         };
         let radii = if let Some(array) = arrays_by_name.get("radii") {
             Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -217,7 +217,7 @@ impl crate::Archetype for LineStrips2D {
         };
         let colors = if let Some(array) = arrays_by_name.get("colors") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -229,7 +229,7 @@ impl crate::Archetype for LineStrips2D {
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
             Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -241,7 +241,7 @@ impl crate::Archetype for LineStrips2D {
         };
         let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
             Some({
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
+                <crate::components::DrawOrder>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#draw_order")?
                     .into_iter()
                     .next()
@@ -254,7 +254,7 @@ impl crate::Archetype for LineStrips2D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
             Some({
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -266,7 +266,7 @@ impl crate::Archetype for LineStrips2D {
         };
         let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
             Some({
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
+                <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#instance_keys")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))

@@ -150,7 +150,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -224,7 +224,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
                     }
                     let arrow_data = &**arrays_by_name["class_description"];
-                    crate::datatypes::ClassDescription::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::ClassDescription::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_description")?
                         .into_iter()
                 };

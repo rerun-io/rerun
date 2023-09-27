@@ -114,7 +114,7 @@ pub trait Archetype {
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
     /// logged to stderr.
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> DeserializationResult<Self>
     where

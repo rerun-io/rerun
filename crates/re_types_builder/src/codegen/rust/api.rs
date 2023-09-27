@@ -693,13 +693,13 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
-            let quoted_try_from_arrow = if optimize_for_buffer_slice {
+            let quoted_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn try_from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
@@ -753,7 +753,7 @@ fn quote_trait_impls_from_obj(
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
+                    fn from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized
                     {
@@ -762,7 +762,7 @@ fn quote_trait_impls_from_obj(
                         Ok(#quoted_deserializer)
                     }
 
-                    #quoted_try_from_arrow
+                    #quoted_from_arrow
                 }
             }
         }
@@ -888,7 +888,7 @@ fn quote_trait_impls_from_obj(
                         quote! {
                             if let Some(array) = arrays_by_name.get(#field_name_str) {
                                 Some({
-                                    <#component>::try_from_arrow_opt(&**array)
+                                    <#component>::from_arrow_opt(&**array)
                                         .with_context(#obj_field_fqname)?
                                         #quoted_collection
                                 })
@@ -903,7 +903,7 @@ fn quote_trait_impls_from_obj(
                                 .ok_or_else(crate::DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?;
 
-                            <#component>::try_from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
+                            <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
                         }}
                     };
 
@@ -967,7 +967,7 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn try_from_arrow(
+                    fn from_arrow(
                         arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
                         use crate::{Loggable as _, ResultExt as _};

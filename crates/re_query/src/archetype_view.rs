@@ -70,7 +70,7 @@ impl ComponentWithInstances {
             .lookup_arrow(instance_key)
             .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
 
-        let mut iter = C::try_from_arrow(arr.as_ref())?.into_iter();
+        let mut iter = C::from_arrow(arr.as_ref())?.into_iter();
 
         let val = iter
             .next()
@@ -363,7 +363,7 @@ impl<A: Archetype> ArchetypeView<A> {
                 // deserialization path.
                 let component_value_iter = {
                     re_tracing::profile_scope!("try_from_arrow", C::name());
-                    C::try_from_arrow(component.values.as_arrow_ref())?
+                    C::from_arrow(component.values.as_arrow_ref())?
                         .into_iter()
                         .map(Some)
                 };
@@ -375,7 +375,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
             let component_value_iter = {
                 re_tracing::profile_scope!("try_from_arrow_opt", C::name());
-                C::try_from_arrow_opt(component.values.as_arrow_ref())?.into_iter()
+                C::from_arrow_opt(component.values.as_arrow_ref())?.into_iter()
             };
 
             let primary_instance_key_iter = self.iter_instance_keys();
@@ -428,7 +428,7 @@ impl<A: Archetype> ArchetypeView<A> {
         if let Some(component) = component {
             re_tracing::profile_scope!("try_from_arrow", C::name());
             return Ok(Some(
-                C::try_from_arrow(component.values.as_arrow_ref())?.into_iter(),
+                C::from_arrow(component.values.as_arrow_ref())?.into_iter(),
             ));
         }
 

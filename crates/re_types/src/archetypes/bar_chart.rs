@@ -102,7 +102,7 @@ impl crate::Archetype for BarChart {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -117,7 +117,7 @@ impl crate::Archetype for BarChart {
                 .get("values")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.BarChart#values")?;
-            <crate::components::TensorData>::try_from_arrow_opt(&**array)
+            <crate::components::TensorData>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.BarChart#values")?
                 .into_iter()
                 .next()

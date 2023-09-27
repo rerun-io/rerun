@@ -51,7 +51,7 @@ fn tensor_roundtrip() {
             }
         }
 
-        let deserialized = Tensor::try_from_arrow(serialized).unwrap();
+        let deserialized = Tensor::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

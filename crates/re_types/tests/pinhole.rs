@@ -43,7 +43,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Pinhole::try_from_arrow(serialized).unwrap();
+    let deserialized = Pinhole::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

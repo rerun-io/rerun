@@ -577,7 +577,7 @@ impl crate::Loggable for AffixFuzzer1 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -1159,7 +1159,7 @@ impl crate::Loggable for AffixFuzzer1 {
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
                     }
                     let arrow_data = &**arrays_by_name["almost_flattened_scalar"];
-                    crate::testing::datatypes::FlattenedScalar::try_from_arrow_opt(arrow_data)
+                    crate::testing::datatypes::FlattenedScalar::from_arrow_opt(arrow_data)
                         .with_context(
                             "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar",
                         )?

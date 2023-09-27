@@ -112,7 +112,7 @@ impl crate::Archetype for ViewCoordinates {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -127,7 +127,7 @@ impl crate::Archetype for ViewCoordinates {
                 .get("xyz")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.ViewCoordinates#xyz")?;
-            <crate::components::ViewCoordinates>::try_from_arrow_opt(&**array)
+            <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.ViewCoordinates#xyz")?
                 .into_iter()
                 .next()

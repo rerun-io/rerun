@@ -369,7 +369,7 @@ impl DataCell {
     #[inline]
     pub fn try_to_native<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<C>> {
         re_tracing::profile_function!(C::name().as_str());
-        Ok(C::try_from_arrow(self.inner.values.as_ref())?)
+        Ok(C::from_arrow(self.inner.values.as_ref())?)
     }
 
     /// Returns the contents of an expected mono-component as an `Option<C>`.
@@ -379,7 +379,7 @@ impl DataCell {
     pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
         re_tracing::profile_function!(C::name().as_str());
 
-        let mut instances = C::try_from_arrow_opt(self.inner.values.as_ref())?.into_iter();
+        let mut instances = C::from_arrow_opt(self.inner.values.as_ref())?.into_iter();
 
         let result = match instances.next() {
             // It's ok to have no result from the iteration: this is what we
@@ -417,7 +417,7 @@ impl DataCell {
     #[inline]
     pub fn try_to_native_opt<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<Option<C>>> {
         re_tracing::profile_function!(C::name().as_str());
-        Ok(C::try_from_arrow_opt(self.inner.values.as_ref())?)
+        Ok(C::from_arrow_opt(self.inner.values.as_ref())?)
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.

@@ -159,7 +159,7 @@ impl crate::Archetype for Pinhole {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -174,7 +174,7 @@ impl crate::Archetype for Pinhole {
                 .get("image_from_camera")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?;
-            <crate::components::PinholeProjection>::try_from_arrow_opt(&**array)
+            <crate::components::PinholeProjection>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?
                 .into_iter()
                 .next()
@@ -184,7 +184,7 @@ impl crate::Archetype for Pinhole {
         };
         let resolution = if let Some(array) = arrays_by_name.get("resolution") {
             Some({
-                <crate::components::Resolution>::try_from_arrow_opt(&**array)
+                <crate::components::Resolution>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Pinhole#resolution")?
                     .into_iter()
                     .next()
@@ -197,7 +197,7 @@ impl crate::Archetype for Pinhole {
         };
         let camera_xyz = if let Some(array) = arrays_by_name.get("camera_xyz") {
             Some({
-                <crate::components::ViewCoordinates>::try_from_arrow_opt(&**array)
+                <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Pinhole#camera_xyz")?
                     .into_iter()
                     .next()

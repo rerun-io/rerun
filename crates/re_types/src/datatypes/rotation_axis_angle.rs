@@ -184,7 +184,7 @@ impl crate::Loggable for RotationAxisAngle {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -319,7 +319,7 @@ impl crate::Loggable for RotationAxisAngle {
                         .with_context("rerun.datatypes.RotationAxisAngle");
                     }
                     let arrow_data = &**arrays_by_name["angle"];
-                    crate::datatypes::Angle::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::Angle::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.RotationAxisAngle#angle")?
                         .into_iter()
                 };

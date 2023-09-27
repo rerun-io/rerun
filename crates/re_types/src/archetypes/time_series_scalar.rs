@@ -204,7 +204,7 @@ impl crate::Archetype for TimeSeriesScalar {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -219,7 +219,7 @@ impl crate::Archetype for TimeSeriesScalar {
                 .get("scalar")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?;
-            <crate::components::Scalar>::try_from_arrow_opt(&**array)
+            <crate::components::Scalar>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
                 .into_iter()
                 .next()
@@ -229,7 +229,7 @@ impl crate::Archetype for TimeSeriesScalar {
         };
         let radius = if let Some(array) = arrays_by_name.get("radius") {
             Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
                     .into_iter()
                     .next()
@@ -242,7 +242,7 @@ impl crate::Archetype for TimeSeriesScalar {
         };
         let color = if let Some(array) = arrays_by_name.get("color") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TimeSeriesScalar#color")?
                     .into_iter()
                     .next()
@@ -255,7 +255,7 @@ impl crate::Archetype for TimeSeriesScalar {
         };
         let label = if let Some(array) = arrays_by_name.get("label") {
             Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TimeSeriesScalar#label")?
                     .into_iter()
                     .next()
@@ -268,7 +268,7 @@ impl crate::Archetype for TimeSeriesScalar {
         };
         let scattered = if let Some(array) = arrays_by_name.get("scattered") {
             Some({
-                <crate::components::ScalarScattering>::try_from_arrow_opt(&**array)
+                <crate::components::ScalarScattering>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
                     .into_iter()
                     .next()

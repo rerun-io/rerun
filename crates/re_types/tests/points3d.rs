@@ -73,7 +73,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Points3D::try_from_arrow(serialized).unwrap();
+    let deserialized = Points3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

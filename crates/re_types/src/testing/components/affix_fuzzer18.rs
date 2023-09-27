@@ -117,7 +117,7 @@ impl crate::Loggable for AffixFuzzer18 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -146,7 +146,7 @@ impl crate::Loggable for AffixFuzzer18 {
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    crate::testing::datatypes::AffixFuzzer4::try_from_arrow_opt(arrow_data_inner)
+                    crate::testing::datatypes::AffixFuzzer4::from_arrow_opt(arrow_data_inner)
                         .with_context(
                             "rerun.testing.components.AffixFuzzer18#many_optional_unions",
                         )?

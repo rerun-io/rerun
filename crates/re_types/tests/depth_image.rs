@@ -56,7 +56,7 @@ fn depth_image_roundtrip() {
             }
         }
 
-        let deserialized = DepthImage::try_from_arrow(serialized).unwrap();
+        let deserialized = DepthImage::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

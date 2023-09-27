@@ -184,7 +184,7 @@ impl crate::Archetype for Asset3D {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -199,7 +199,7 @@ impl crate::Archetype for Asset3D {
                 .get("data")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#data")?;
-            <crate::components::Blob>::try_from_arrow_opt(&**array)
+            <crate::components::Blob>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Asset3D#data")?
                 .into_iter()
                 .next()
@@ -209,7 +209,7 @@ impl crate::Archetype for Asset3D {
         };
         let media_type = if let Some(array) = arrays_by_name.get("media_type") {
             Some({
-                <crate::components::MediaType>::try_from_arrow_opt(&**array)
+                <crate::components::MediaType>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Asset3D#media_type")?
                     .into_iter()
                     .next()
@@ -222,7 +222,7 @@ impl crate::Archetype for Asset3D {
         };
         let transform = if let Some(array) = arrays_by_name.get("transform") {
             Some({
-                <crate::components::OutOfTreeTransform3D>::try_from_arrow_opt(&**array)
+                <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Asset3D#transform")?
                     .into_iter()
                     .next()

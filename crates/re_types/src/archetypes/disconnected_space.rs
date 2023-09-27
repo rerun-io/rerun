@@ -111,7 +111,7 @@ impl crate::Archetype for DisconnectedSpace {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -126,7 +126,7 @@ impl crate::Archetype for DisconnectedSpace {
                 .get("disconnected_space")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?;
-            <crate::components::DisconnectedSpace>::try_from_arrow_opt(&**array)
+            <crate::components::DisconnectedSpace>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
                 .into_iter()
                 .next()

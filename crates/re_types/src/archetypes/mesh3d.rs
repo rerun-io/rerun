@@ -190,7 +190,7 @@ impl crate::Archetype for Mesh3D {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -205,7 +205,7 @@ impl crate::Archetype for Mesh3D {
                 .get("vertex_positions")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?;
-            <crate::components::Position3D>::try_from_arrow_opt(&**array)
+            <crate::components::Position3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
                 .into_iter()
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -214,7 +214,7 @@ impl crate::Archetype for Mesh3D {
         };
         let mesh_properties = if let Some(array) = arrays_by_name.get("mesh_properties") {
             Some({
-                <crate::components::MeshProperties>::try_from_arrow_opt(&**array)
+                <crate::components::MeshProperties>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
                     .into_iter()
                     .next()
@@ -227,7 +227,7 @@ impl crate::Archetype for Mesh3D {
         };
         let vertex_normals = if let Some(array) = arrays_by_name.get("vertex_normals") {
             Some({
-                <crate::components::Vector3D>::try_from_arrow_opt(&**array)
+                <crate::components::Vector3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_normals")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -239,7 +239,7 @@ impl crate::Archetype for Mesh3D {
         };
         let vertex_colors = if let Some(array) = arrays_by_name.get("vertex_colors") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -251,7 +251,7 @@ impl crate::Archetype for Mesh3D {
         };
         let mesh_material = if let Some(array) = arrays_by_name.get("mesh_material") {
             Some({
-                <crate::components::Material>::try_from_arrow_opt(&**array)
+                <crate::components::Material>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#mesh_material")?
                     .into_iter()
                     .next()
@@ -264,7 +264,7 @@ impl crate::Archetype for Mesh3D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
             Some({
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -276,7 +276,7 @@ impl crate::Archetype for Mesh3D {
         };
         let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
             Some({
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
+                <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#instance_keys")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))

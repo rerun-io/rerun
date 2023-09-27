@@ -178,7 +178,7 @@ impl crate::Loggable for TensorData {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -257,12 +257,10 @@ impl crate::Loggable for TensorData {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::TensorDimension::try_from_arrow_opt(
-                                    arrow_data_inner,
-                                )
-                                .with_context("rerun.datatypes.TensorData#shape")?
-                                .into_iter()
-                                .collect::<Vec<_>>()
+                                crate::datatypes::TensorDimension::from_arrow_opt(arrow_data_inner)
+                                    .with_context("rerun.datatypes.TensorData#shape")?
+                                    .into_iter()
+                                    .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -307,7 +305,7 @@ impl crate::Loggable for TensorData {
                         .with_context("rerun.datatypes.TensorData");
                     }
                     let arrow_data = &**arrays_by_name["buffer"];
-                    crate::datatypes::TensorBuffer::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::TensorBuffer::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.TensorData#buffer")?
                         .into_iter()
                 };

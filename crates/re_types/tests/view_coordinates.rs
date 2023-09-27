@@ -36,7 +36,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = ViewCoordinates::try_from_arrow(serialized).unwrap();
+    let deserialized = ViewCoordinates::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

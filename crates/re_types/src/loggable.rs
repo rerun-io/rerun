@@ -94,8 +94,8 @@ pub trait Loggable: Clone + Sized {
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::arrow_field`].
     #[inline]
-    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        Self::try_from_arrow_opt(data)?
+    fn from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
+        Self::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| {
                 opt.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -110,7 +110,7 @@ pub trait Loggable: Clone + Sized {
     ///
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::arrow_field`].
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets

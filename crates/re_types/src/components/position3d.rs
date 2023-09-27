@@ -145,7 +145,7 @@ impl crate::Loggable for Position3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -233,7 +233,7 @@ impl crate::Loggable for Position3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Self>>
     where

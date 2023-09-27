@@ -154,7 +154,7 @@ impl crate::Archetype for Points2D {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -169,7 +169,7 @@ impl crate::Archetype for Points2D {
                 .get("positions")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Points2D#positions")?;
-            <crate::components::Position2D>::try_from_arrow_opt(&**array)
+            <crate::components::Position2D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Points2D#positions")?
                 .into_iter()
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -178,7 +178,7 @@ impl crate::Archetype for Points2D {
         };
         let radii = if let Some(array) = arrays_by_name.get("radii") {
             Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -190,7 +190,7 @@ impl crate::Archetype for Points2D {
         };
         let colors = if let Some(array) = arrays_by_name.get("colors") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -202,7 +202,7 @@ impl crate::Archetype for Points2D {
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
             Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -214,7 +214,7 @@ impl crate::Archetype for Points2D {
         };
         let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
             Some({
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
+                <crate::components::DrawOrder>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#draw_order")?
                     .into_iter()
                     .next()
@@ -227,7 +227,7 @@ impl crate::Archetype for Points2D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
             Some({
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -239,7 +239,7 @@ impl crate::Archetype for Points2D {
         };
         let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
             Some({
-                <crate::components::KeypointId>::try_from_arrow_opt(&**array)
+                <crate::components::KeypointId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#keypoint_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -251,7 +251,7 @@ impl crate::Archetype for Points2D {
         };
         let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
             Some({
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
+                <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#instance_keys")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))

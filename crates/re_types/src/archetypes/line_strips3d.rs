@@ -174,7 +174,7 @@ impl crate::Archetype for LineStrips3D {
     }
 
     #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -189,7 +189,7 @@ impl crate::Archetype for LineStrips3D {
                 .get("strips")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.LineStrips3D#strips")?;
-            <crate::components::LineStrip3D>::try_from_arrow_opt(&**array)
+            <crate::components::LineStrip3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.LineStrips3D#strips")?
                 .into_iter()
                 .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -198,7 +198,7 @@ impl crate::Archetype for LineStrips3D {
         };
         let radii = if let Some(array) = arrays_by_name.get("radii") {
             Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
+                <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -210,7 +210,7 @@ impl crate::Archetype for LineStrips3D {
         };
         let colors = if let Some(array) = arrays_by_name.get("colors") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -222,7 +222,7 @@ impl crate::Archetype for LineStrips3D {
         };
         let labels = if let Some(array) = arrays_by_name.get("labels") {
             Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -234,7 +234,7 @@ impl crate::Archetype for LineStrips3D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
             Some({
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -246,7 +246,7 @@ impl crate::Archetype for LineStrips3D {
         };
         let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
             Some({
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
+                <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#instance_keys")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
