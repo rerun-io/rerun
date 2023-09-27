@@ -4,7 +4,7 @@ use re_types::{
     archetypes::Arrows3D,
     components::{ClassId, Color, InstanceKey, Origin3D, Radius, Vector3D},
     datatypes::Vec3D,
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -60,7 +60,7 @@ fn roundtrip() {
     .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -77,7 +77,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Arrows3D::try_from_arrow(serialized).unwrap();
+    let deserialized = Arrows3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

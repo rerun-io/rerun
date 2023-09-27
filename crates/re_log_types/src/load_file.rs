@@ -1,7 +1,5 @@
 use crate::DataCell;
 
-use re_types::Archetype as _;
-
 /// Errors from [`data_cells_from_file_path`].
 #[derive(thiserror::Error, Debug)]
 pub enum FromFileError {
@@ -40,7 +38,7 @@ pub fn data_cells_from_file_path(
 
     match extension.as_str() {
         "glb" | "gltf" | "obj" => {
-            use re_types::{archetypes::Asset3D, Archetype};
+            use re_types::{archetypes::Asset3D, AsComponents as _};
             let cells: Result<Vec<_>, _> = Asset3D::from_file(file_path)?
                 // TODO(#3414): this should be a method of `Archetype`
                 .as_component_batches()
@@ -50,7 +48,7 @@ pub fn data_cells_from_file_path(
                     Ok(DataCell::from_arrow(
                         comp_batch.name(),
                         comp_batch
-                            .try_to_arrow()
+                            .to_arrow()
                             .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
                     ))
                 })
@@ -60,20 +58,30 @@ pub fn data_cells_from_file_path(
 
         // Assume an image (there are so many image formats)
         _ => {
-            let indicator = re_types::archetypes::Image::indicator();
-            let indicator_cell =
-                DataCell::from_arrow(indicator.as_ref().name(), indicator.as_ref().to_arrow());
-
             // Assume an image (there are so many image extensions):
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_file(file_path)?,
             );
             Ok(vec![
-                indicator_cell,
+                image_indicator_cell(),
                 DataCell::try_from_native(std::iter::once(&tensor))?,
             ])
         }
     }
+}
+
+fn image_indicator_cell() -> DataCell {
+    use re_types::Archetype as _;
+
+    let indicator = re_types::archetypes::Image::indicator();
+    let indicator_cell = DataCell::from_arrow(
+        indicator.as_ref().name(),
+        indicator
+            .as_ref()
+            .to_arrow()
+            .expect("Serializing an indicator component should always work"),
+    );
+    indicator_cell
 }
 
 pub fn data_cells_from_file_contents(
@@ -91,7 +99,7 @@ pub fn data_cells_from_file_contents(
 
     match extension.as_str() {
         "glb" | "gltf" | "obj" => {
-            use re_types::{archetypes::Asset3D, components::MediaType, Archetype};
+            use re_types::{archetypes::Asset3D, components::MediaType, AsComponents as _};
             let cells: Result<Vec<_>, _> =
                 Asset3D::from_bytes(bytes, MediaType::guess_from_path(file_name))
                     .as_component_batches()
@@ -101,7 +109,7 @@ pub fn data_cells_from_file_contents(
                         Ok(DataCell::from_arrow(
                             comp_batch.name(),
                             comp_batch
-                                .try_to_arrow()
+                                .to_arrow()
                                 .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
                         ))
                     })
@@ -118,16 +126,12 @@ pub fn data_cells_from_file_contents(
                     .map_err(re_types::tensor_data::TensorImageLoadError::from)?
             };
 
-            let indicator = re_types::archetypes::Image::indicator();
-            let indicator_cell =
-                DataCell::from_arrow(indicator.as_ref().name(), indicator.as_ref().to_arrow());
-
             // Assume an image (there are so many image extensions):
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_bytes(bytes, format)?,
             );
             Ok(vec![
-                indicator_cell,
+                image_indicator_cell(),
                 DataCell::try_from_native(std::iter::once(&tensor))?,
             ])
         }

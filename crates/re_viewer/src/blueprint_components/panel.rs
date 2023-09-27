@@ -29,11 +29,4 @@ impl PanelState {
     pub const TIMELINE_VIEW_PATH: &str = "timeline_view";
 }
 
-impl re_log_types::LegacyComponent for PanelState {
-    #[inline]
-    fn legacy_name() -> re_log_types::ComponentName {
-        "rerun.blueprint.panel_view".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(PanelState);
+re_log_types::arrow2convert_component_shim!(PanelState as "rerun.blueprint.PanelView");

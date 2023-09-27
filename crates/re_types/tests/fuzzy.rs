@@ -5,7 +5,7 @@ use std::{collections::HashMap, f32::consts::PI};
 use arrow2::types::f16;
 use re_types::{
     testing::{archetypes::AffixFuzzer1, components, datatypes},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -308,7 +308,7 @@ fn roundtrip() {
     .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -331,7 +331,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = AffixFuzzer1::try_from_arrow(serialized).unwrap();
+    let deserialized = AffixFuzzer1::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(arch, deserialized);
 }
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::SegmentationImage,
     datatypes::{TensorBuffer, TensorData, TensorDimension},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 mod util;
@@ -33,7 +33,8 @@ fn segmentation_image_roundtrip() {
         [4, 5, 6]
     ])
     .unwrap()
-    .to_arrow()];
+    .to_arrow()
+    .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
@@ -54,7 +55,7 @@ fn segmentation_image_roundtrip() {
             }
         }
 
-        let deserialized = SegmentationImage::try_from_arrow(serialized).unwrap();
+        let deserialized = SegmentationImage::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

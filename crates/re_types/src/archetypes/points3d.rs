@@ -142,11 +142,115 @@ impl crate::Archetype for Points3D {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        self.positions.len()
+    fn from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let positions = {
+            let array = arrays_by_name
+                .get("positions")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Points3D#positions")?;
+            <crate::components::Position3D>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Points3D#positions")?
+                .into_iter()
+                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .with_context("rerun.archetypes.Points3D#positions")?
+        };
+        let radii = if let Some(array) = arrays_by_name.get("radii") {
+            Some({
+                <crate::components::Radius>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#radii")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#radii")?
+            })
+        } else {
+            None
+        };
+        let colors = if let Some(array) = arrays_by_name.get("colors") {
+            Some({
+                <crate::components::Color>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#colors")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#colors")?
+            })
+        } else {
+            None
+        };
+        let labels = if let Some(array) = arrays_by_name.get("labels") {
+            Some({
+                <crate::components::Text>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#labels")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#labels")?
+            })
+        } else {
+            None
+        };
+        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
+            Some({
+                <crate::components::ClassId>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#class_ids")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#class_ids")?
+            })
+        } else {
+            None
+        };
+        let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
+            Some({
+                <crate::components::KeypointId>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#keypoint_ids")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#keypoint_ids")?
+            })
+        } else {
+            None
+        };
+        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
+            Some({
+                <crate::components::InstanceKey>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#instance_keys")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#instance_keys")?
+            })
+        } else {
+            None
+        };
+        Ok(Self {
+            positions,
+            radii,
+            colors,
+            labels,
+            class_ids,
+            keypoint_ids,
+            instance_keys,
+        })
     }
+}
 
+impl crate::AsComponents for Points3D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.positions as &dyn crate::ComponentBatch).into()),
@@ -175,262 +279,8 @@ impl crate::Archetype for Points3D {
     }
 
     #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array =
-                        <crate::components::Position3D>::try_to_arrow(self.positions.iter());
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Position3D".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("positions", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.Points3D#positions")?
-            },
-            {
-                self.radii
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::Radius>::try_to_arrow(many.iter());
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Radius".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("radii", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Points3D#radii")?
-            },
-            {
-                self.colors
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::Color>::try_to_arrow(many.iter());
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Color".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("colors", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Points3D#colors")?
-            },
-            {
-                self.labels
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::Text>::try_to_arrow(many.iter());
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Text".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("labels", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Points3D#labels")?
-            },
-            {
-                self.class_ids
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::ClassId>::try_to_arrow(many.iter());
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.ClassId".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("class_ids", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Points3D#class_ids")?
-            },
-            {
-                self.keypoint_ids
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::KeypointId>::try_to_arrow(many.iter());
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.KeypointId".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("keypoint_ids", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Points3D#keypoint_ids")?
-            },
-            {
-                self.instance_keys
-                    .as_ref()
-                    .map(|many| {
-                        let array = <crate::components::InstanceKey>::try_to_arrow(many.iter());
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.InstanceKey".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("instance_keys", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Points3D#instance_keys")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let positions = {
-            let array = arrays_by_name
-                .get("positions")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Points3D#positions")?;
-            <crate::components::Position3D>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Points3D#positions")?
-                .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Points3D#positions")?
-        };
-        let radii = if let Some(array) = arrays_by_name.get("radii") {
-            Some({
-                <crate::components::Radius>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#radii")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_name.get("colors") {
-            Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#colors")?
-            })
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_name.get("labels") {
-            Some({
-                <crate::components::Text>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#labels")?
-            })
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
-            Some({
-                <crate::components::ClassId>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#class_ids")?
-            })
-        } else {
-            None
-        };
-        let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
-            Some({
-                <crate::components::KeypointId>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#keypoint_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#keypoint_ids")?
-            })
-        } else {
-            None
-        };
-        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
-            Some({
-                <crate::components::InstanceKey>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#instance_keys")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#instance_keys")?
-            })
-        } else {
-            None
-        };
-        Ok(Self {
-            positions,
-            radii,
-            colors,
-            labels,
-            class_ids,
-            keypoint_ids,
-            instance_keys,
-        })
+    fn num_instances(&self) -> usize {
+        self.positions.len()
     }
 }
 

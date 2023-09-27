@@ -9,7 +9,7 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::{components::InstanceKey, Archetype, ComponentBatch, SerializationError};
+use re_types::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -591,7 +591,7 @@ impl RecordingStream {
     pub fn log(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         self.log_with_timeless(ent_path, false, arch)
     }
@@ -611,7 +611,7 @@ impl RecordingStream {
     pub fn log_timeless(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         self.log_with_timeless(ent_path, true, arch)
     }
@@ -637,7 +637,7 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         self.log_component_batches(
             ent_path,
@@ -686,7 +686,7 @@ impl RecordingStream {
             .map(|comp_batch| {
                 num_instances = usize::max(num_instances, comp_batch.num_instances());
                 comp_batch
-                    .try_to_arrow()
+                    .to_arrow()
                     .map(|array| (comp_batch.arrow_field(), array))
             })
             .collect();

@@ -159,11 +159,66 @@ impl crate::Archetype for Pinhole {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let image_from_camera = {
+            let array = arrays_by_name
+                .get("image_from_camera")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Pinhole#image_from_camera")?;
+            <crate::components::PinholeProjection>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Pinhole#image_from_camera")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Pinhole#image_from_camera")?
+        };
+        let resolution = if let Some(array) = arrays_by_name.get("resolution") {
+            Some({
+                <crate::components::Resolution>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Pinhole#resolution")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.Pinhole#resolution")?
+            })
+        } else {
+            None
+        };
+        let camera_xyz = if let Some(array) = arrays_by_name.get("camera_xyz") {
+            Some({
+                <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Pinhole#camera_xyz")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.Pinhole#camera_xyz")?
+            })
+        } else {
+            None
+        };
+        Ok(Self {
+            image_from_camera,
+            resolution,
+            camera_xyz,
+        })
     }
+}
 
+impl crate::AsComponents for Pinhole {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
             Some(Self::indicator()),
             Some((&self.image_from_camera as &dyn crate::ComponentBatch).into()),
@@ -180,134 +235,8 @@ impl crate::Archetype for Pinhole {
     }
 
     #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::PinholeProjection>::try_to_arrow([
-                        &self.image_from_camera
-                    ]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.PinholeProjection".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("image_from_camera", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.Pinhole#image_from_camera")?
-            },
-            {
-                self.resolution
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::Resolution>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Resolution".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("resolution", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Pinhole#resolution")?
-            },
-            {
-                self.camera_xyz
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::ViewCoordinates>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.ViewCoordinates".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("camera_xyz", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Pinhole#camera_xyz")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let image_from_camera = {
-            let array = arrays_by_name
-                .get("image_from_camera")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Pinhole#image_from_camera")?;
-            <crate::components::PinholeProjection>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Pinhole#image_from_camera")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Pinhole#image_from_camera")?
-        };
-        let resolution = if let Some(array) = arrays_by_name.get("resolution") {
-            Some({
-                <crate::components::Resolution>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Pinhole#resolution")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Pinhole#resolution")?
-            })
-        } else {
-            None
-        };
-        let camera_xyz = if let Some(array) = arrays_by_name.get("camera_xyz") {
-            Some({
-                <crate::components::ViewCoordinates>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Pinhole#camera_xyz")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Pinhole#camera_xyz")?
-            })
-        } else {
-            None
-        };
-        Ok(Self {
-            image_from_camera,
-            resolution,
-            camera_xyz,
-        })
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 
