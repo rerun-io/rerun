@@ -18,7 +18,7 @@ from .draw_order_ext import DrawOrderExt
 __all__ = ["DrawOrder", "DrawOrderArrayLike", "DrawOrderBatch", "DrawOrderLike", "DrawOrderType"]
 
 
-@define
+@define(init=False)
 class DrawOrder(DrawOrderExt):
     """
     Draw order used for the display order of 2D elements.
@@ -30,7 +30,11 @@ class DrawOrder(DrawOrderExt):
     Draw order for entities with the same draw order is generally undefined.
     """
 
-    # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
+    def __init__(self: Any, value: DrawOrderLike):
+        """Create a new instance of the DrawOrder component."""
+
+        # You can define your own __init__ function as a member of DrawOrderExt in draw_order_ext.py
+        self.__attrs_init__(value=value)
 
     value: float = field(converter=float)
 

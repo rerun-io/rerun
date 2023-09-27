@@ -91,11 +91,11 @@ def test_line_strips3d() -> None:
         print(
             f"rr.LineStrips3D(\n"
             f"    {strips}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.LineStrips3D(

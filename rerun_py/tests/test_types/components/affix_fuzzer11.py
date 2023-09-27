@@ -19,9 +19,13 @@ from rerun._converters import (
 __all__ = ["AffixFuzzer11", "AffixFuzzer11ArrayLike", "AffixFuzzer11Batch", "AffixFuzzer11Like", "AffixFuzzer11Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer11:
-    # You can define your own __init__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
+    def __init__(self: Any, many_floats_optional: npt.ArrayLike | None = None):
+        """Create a new instance of the AffixFuzzer11 component."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
+        self.__attrs_init__(many_floats_optional=many_floats_optional)
 
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
 

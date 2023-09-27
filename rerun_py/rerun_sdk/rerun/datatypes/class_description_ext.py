@@ -38,6 +38,19 @@ class ClassDescriptionExt:
         keypoint_annotations: Sequence[AnnotationInfoLike] | None = [],
         keypoint_connections: Sequence[KeypointPairLike] | None = [],
     ) -> None:
+        """
+        Create a new instance of the ClassDescription datatype.
+
+        Parameters
+        ----------
+        info:
+            The `AnnotationInfo` for the class.
+        keypoint_annotations:
+            The `AnnotationInfo` for all of the keypoints.
+        keypoint_connections:
+            The connections between keypoints.
+        """
+
         # Always convert None to empty list
         if keypoint_annotations is None:
             keypoint_annotations = []

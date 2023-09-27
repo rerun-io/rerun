@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import rerun as rr
 from rerun.components import (
-    DrawOrderArrayLike,
+    DrawOrderLike,
     InstanceKeyArrayLike,
     LineStrip2DArrayLike,
     LineStrip2DBatch,
@@ -89,19 +89,19 @@ def test_line_strips2d() -> None:
         radii = cast(Optional[RadiusArrayLike], radii)
         colors = cast(Optional[ColorArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[DrawOrderArrayLike], draw_order)
+        draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
             f"rr.LineStrips2D(\n"
             f"    {strips}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    draw_order={draw_order}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    draw_order={draw_order!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.LineStrips2D(

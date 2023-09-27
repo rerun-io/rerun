@@ -411,12 +411,13 @@ pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
     class: &SpaceViewClassName,
     ent_path: &EntityPath,
+    query: &LatestAtQuery,
 ) -> bool {
     let parts = ctx
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
-    is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path)
+    is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path, query)
 }
 
 /// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
@@ -424,6 +425,7 @@ fn is_entity_processed_by_part_collection(
     store: &re_arrow_store::DataStore,
     parts: &ViewPartCollection,
     ent_path: &EntityPath,
+    query: &LatestAtQuery,
 ) -> bool {
     let timeline = Timeline::log_time();
     let components = store
@@ -432,7 +434,7 @@ fn is_entity_processed_by_part_collection(
         .into_iter()
         .collect();
     for part in parts.iter() {
-        if part.heuristic_filter(store, ent_path, &components) {
+        if part.heuristic_filter(store, ent_path, query, &components) {
             return true;
         }
     }
@@ -512,7 +514,12 @@ pub fn identify_entities_per_system_per_class(
 
                 for system in systems {
                     if let Ok(view_part_system) = part_collection.get_by_name(*system) {
-                        if !view_part_system.heuristic_filter(store, ent_path, &all_components) {
+                        if !view_part_system.heuristic_filter(
+                            store,
+                            ent_path,
+                            &ctx.current_query(),
+                            &all_components,
+                        ) {
                             continue;
                         }
                     }

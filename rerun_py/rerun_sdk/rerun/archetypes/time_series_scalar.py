@@ -5,15 +5,17 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["TimeSeriesScalar"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class TimeSeriesScalar(Archetype):
     """
     Log a double-precision scalar that will be visualized as a timeseries plot.
@@ -58,7 +60,63 @@ class TimeSeriesScalar(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
+    def __init__(
+        self: Any,
+        scalar: components.ScalarLike,
+        radius: components.RadiusLike | None = None,
+        color: datatypes.ColorLike | None = None,
+        label: datatypes.Utf8Like | None = None,
+        scattered: components.ScalarScatteringLike | None = None,
+    ):
+        """
+        Create a new instance of the TimeSeriesScalar archetype.
+
+        Parameters
+        ----------
+        scalar:
+             The scalar value to log.
+        radius:
+             An optional radius for the point.
+
+             Points within a single line do not have to share the same radius, the line
+             will have differently sized segments as appropriate.
+
+             If all points within a single entity path (i.e. a line) share the same
+             radius, then this radius will be used as the line width too. Otherwise, the
+             line will use the default width of `1.0`.
+        color:
+             Optional color for the scalar entry.
+
+             If left unspecified, a pseudo-random color will be used instead. That
+             same color will apply to all points residing in the same entity path
+             that don't have a color specified.
+
+             Points within a single line do not have to share the same color, the line
+             will have differently colored segments as appropriate.
+             If all points within a single entity path (i.e. a line) share the same
+             color, then this color will be used as the line color in the plot legend.
+             Otherwise, the line will appear gray in the legend.
+        label:
+             An optional label for the point.
+
+             TODO(#1289): This won't show up on points at the moment, as our plots don't yet
+             support displaying labels for individual points.
+             If all points within a single entity path (i.e. a line) share the same label, then
+             this label will be used as the label for the line itself. Otherwise, the
+             line will be named after the entity path. The plot itself is named after
+             the space it's in.
+        scattered:
+             Specifies whether a point in a scatter plot should form a continuous line.
+
+             If set to true, this scalar will be drawn as a point, akin to a scatterplot.
+             Otherwise, it will form a continuous line with its neighbors.
+             Points within a single line do not have to all share the same scatteredness:
+             the line will switch between a scattered and a continuous representation as
+             required.
+        """
+
+        # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
+        self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
 
     scalar: components.ScalarBatch = field(
         metadata={"component": "required"},

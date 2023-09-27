@@ -10,7 +10,7 @@ from PIL import Image as PILImage
 
 from ._log import AsComponents, ComponentBatchLike
 from .archetypes import Image
-from .components import DrawOrderArrayLike, TensorData
+from .components import DrawOrderLike, TensorData
 from .datatypes import TensorBuffer, TensorDimension
 
 
@@ -43,7 +43,7 @@ class ImageEncoded(AsComponents):
         path: str | pathlib.Path | None = None,
         contents: bytes | IO[bytes] | None = None,
         format: ImageFormat | None = None,
-        draw_order: DrawOrderArrayLike | None = None,
+        draw_order: DrawOrderLike | None = None,
     ) -> None:
         """
         A monochrome or color image encoded with a common format (PNG, JPEG, etc).

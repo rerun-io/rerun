@@ -12,62 +12,6 @@ from ..datatypes.vec2d import Vec2D, Vec2DLike
 
 
 class PinholeExt:
-    """
-    Log a perspective camera model.
-
-    Parameters
-    ----------
-    image_from_camera:
-        Row-major intrinsics matrix for projecting from camera space to image space.
-        The first two axes are X=Right and Y=Down, respectively.
-        Projection is done along the positive third (Z=Forward) axis.
-        This can be specified _instead_ of `focal_length` and `principal_point`.
-    resolution:
-        Pixel resolution (usually integers) of child image space. Width and height.
-        `image_from_camera` projects onto the space spanned by `(0,0)` and `resolution - 1`.
-    camera_xyz:
-        Sets the view coordinates for the camera.
-
-        All common values are available as constants on the `components.ViewCoordinates` class.
-
-        The default is `ViewCoordinates.RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
-        This means that the camera frustum will point along the positive Z axis of the parent space,
-        and the cameras "up" direction will be along the negative Y axis of the parent space.
-
-        The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
-        When logging a depth image under this entity, this is the direction the point cloud will be projected.
-        With `RDF`, the default forward is +Z.
-
-        The frustum's "up" direction will be whichever axis is set to `U` (or the opposite of `D`).
-        This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
-        With `RDF`, the default is up is -Y.
-
-        The frustum's "right" direction will be whichever axis is set to `R` (or the opposite of `L`).
-        This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
-        With `RDF`, the default right is +x.
-
-        Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).
-
-        NOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,
-        and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
-
-        The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
-        but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
-    focal_length:
-        The focal length of the camera in pixels.
-        This is the diagonal of the projection matrix.
-        Set one value for symmetric cameras, or two values (X=Right, Y=Down) for anamorphic cameras.
-    principal_point:
-        The center of the camera in pixels.
-        The default is half the width and height.
-        This is the last column of the projection matrix.
-        Expects two values along the dimensions Right and Down
-    width:
-        Width of the image in pixels.
-    height:
-        Height of the image in pixels.
-    """
-
     def __init__(
         self: Any,
         image_from_camera: Mat3x3Like | None = None,
@@ -78,6 +22,62 @@ class PinholeExt:
         focal_length: float | npt.ArrayLike | None = None,
         principal_point: npt.ArrayLike | None = None,
     ) -> None:
+        """
+        Create a new instance of the Pinhole archetype.
+
+        Parameters
+        ----------
+        image_from_camera:
+            Row-major intrinsics matrix for projecting from camera space to image space.
+            The first two axes are X=Right and Y=Down, respectively.
+            Projection is done along the positive third (Z=Forward) axis.
+            This can be specified _instead_ of `focal_length` and `principal_point`.
+        resolution:
+            Pixel resolution (usually integers) of child image space. Width and height.
+            `image_from_camera` projects onto the space spanned by `(0,0)` and `resolution - 1`.
+        camera_xyz:
+            Sets the view coordinates for the camera.
+
+            All common values are available as constants on the `components.ViewCoordinates` class.
+
+            The default is `ViewCoordinates.RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
+            This means that the camera frustum will point along the positive Z axis of the parent space,
+            and the cameras "up" direction will be along the negative Y axis of the parent space.
+
+            The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
+            When logging a depth image under this entity, this is the direction the point cloud will be projected.
+            With `RDF`, the default forward is +Z.
+
+            The frustum's "up" direction will be whichever axis is set to `U` (or the opposite of `D`).
+            This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
+            With `RDF`, the default is up is -Y.
+
+            The frustum's "right" direction will be whichever axis is set to `R` (or the opposite of `L`).
+            This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
+            With `RDF`, the default right is +x.
+
+            Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).
+
+            NOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,
+            and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
+
+            The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
+            but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+        focal_length:
+            The focal length of the camera in pixels.
+            This is the diagonal of the projection matrix.
+            Set one value for symmetric cameras, or two values (X=Right, Y=Down) for anamorphic cameras.
+        principal_point:
+            The center of the camera in pixels.
+            The default is half the width and height.
+            This is the last column of the projection matrix.
+            Expects two values along the dimensions Right and Down
+        width:
+            Width of the image in pixels.
+        height:
+            Height of the image in pixels.
+        """
+
         if resolution is None and width is not None and height is not None:
             resolution = [width, height]
         elif resolution is not None and (width is not None or height is not None):

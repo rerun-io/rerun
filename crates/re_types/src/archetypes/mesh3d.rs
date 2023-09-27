@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -202,7 +203,7 @@ impl crate::Archetype for Mesh3D {
             .collect();
         let vertex_positions = {
             let array = arrays_by_name
-                .get("vertex_positions")
+                .get("rerun.components.Position3D")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?;
             <crate::components::Position3D>::from_arrow_opt(&**array)
@@ -212,20 +213,21 @@ impl crate::Archetype for Mesh3D {
                 .collect::<crate::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
         };
-        let mesh_properties = if let Some(array) = arrays_by_name.get("mesh_properties") {
-            Some({
-                <crate::components::MeshProperties>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
-            })
-        } else {
-            None
-        };
-        let vertex_normals = if let Some(array) = arrays_by_name.get("vertex_normals") {
+        let mesh_properties =
+            if let Some(array) = arrays_by_name.get("rerun.components.MeshProperties") {
+                Some({
+                    <crate::components::MeshProperties>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
+                        .into_iter()
+                        .next()
+                        .flatten()
+                        .ok_or_else(crate::DeserializationError::missing_data)
+                        .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
+                })
+            } else {
+                None
+            };
+        let vertex_normals = if let Some(array) = arrays_by_name.get("rerun.components.Vector3D") {
             Some({
                 <crate::components::Vector3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_normals")?
@@ -237,7 +239,7 @@ impl crate::Archetype for Mesh3D {
         } else {
             None
         };
-        let vertex_colors = if let Some(array) = arrays_by_name.get("vertex_colors") {
+        let vertex_colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_colors")?
@@ -249,7 +251,7 @@ impl crate::Archetype for Mesh3D {
         } else {
             None
         };
-        let mesh_material = if let Some(array) = arrays_by_name.get("mesh_material") {
+        let mesh_material = if let Some(array) = arrays_by_name.get("rerun.components.Material") {
             Some({
                 <crate::components::Material>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#mesh_material")?
@@ -262,7 +264,7 @@ impl crate::Archetype for Mesh3D {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
+        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#class_ids")?
@@ -274,7 +276,8 @@ impl crate::Archetype for Mesh3D {
         } else {
             None
         };
-        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
+        let instance_keys = if let Some(array) = arrays_by_name.get("rerun.components.InstanceKey")
+        {
             Some({
                 <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#instance_keys")?

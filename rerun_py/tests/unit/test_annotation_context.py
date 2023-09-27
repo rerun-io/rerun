@@ -9,6 +9,7 @@ from rerun.datatypes import (
     AnnotationInfo,
     AnnotationInfoLike,
     ClassDescription,
+    ClassDescriptionArrayLike,
     ClassDescriptionMapElem,
     Color,
     KeypointPair,
@@ -95,7 +96,7 @@ def test_class_description(
     )
 
 
-ANNOTATION_CONTEXT_INPUTS = [
+ANNOTATION_CONTEXT_INPUTS: list[ClassDescriptionArrayLike] = [
     [
         (1, "label1", [1, 2, 3]),
         (2, "label2", [4, 5, 6]),
@@ -156,7 +157,7 @@ def test_annotation_context_component(ctx: Sequence[ClassDescriptionMapElem]) ->
     assert_correct_annotation_context(AnnotationContext(ctx))
 
 
-ANNOTATION_ARCH_INPUTS = [
+ANNOTATION_ARCH_INPUTS: Sequence[ClassDescriptionArrayLike] = [
     ClassDescription(info=(1, "label1", [1, 2, 3])),
 ] + ANNOTATION_CONTEXT_INPUTS
 

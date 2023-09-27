@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -136,7 +137,7 @@ impl crate::Archetype for AnnotationContext {
             .collect();
         let context = {
             let array = arrays_by_name
-                .get("context")
+                .get("rerun.components.AnnotationContext")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AnnotationContext#context")?;
             <crate::components::AnnotationContext>::from_arrow_opt(&**array)

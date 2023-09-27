@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -16,6 +17,7 @@
 /// A text element intended to be displayed in its own text-box.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextDocument {
+    /// Contents of the text document.
     pub body: crate::components::Text,
 
     /// The Media Type of the text.
@@ -106,7 +108,7 @@ impl crate::Archetype for TextDocument {
             .collect();
         let body = {
             let array = arrays_by_name
-                .get("body")
+                .get("rerun.components.Text")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextDocument#body")?;
             <crate::components::Text>::from_arrow_opt(&**array)
@@ -117,7 +119,7 @@ impl crate::Archetype for TextDocument {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextDocument#body")?
         };
-        let media_type = if let Some(array) = arrays_by_name.get("media_type") {
+        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
             Some({
                 <crate::components::MediaType>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextDocument#media_type")?
