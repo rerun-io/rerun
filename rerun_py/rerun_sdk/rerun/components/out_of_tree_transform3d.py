@@ -18,6 +18,8 @@ class OutOfTreeTransform3D(datatypes.Transform3D):
     "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
     """
 
+    # You can define your own __init__ function as a member of OutOfTreeTransform3DExt in out_of_tree_transform3d_ext.py
+
     # Note: there are no fields here because OutOfTreeTransform3D delegates to datatypes.Transform3D
     pass
 

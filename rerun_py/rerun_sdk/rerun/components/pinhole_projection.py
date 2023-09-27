@@ -27,6 +27,8 @@ class PinholeProjection(datatypes.Mat3x3):
     ```
     """
 
+    # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
+
     # Note: there are no fields here because PinholeProjection delegates to datatypes.Mat3x3
     pass
 

@@ -25,6 +25,8 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     * `"TRACE"`
     """
 
+    # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
+
     # Note: there are no fields here because TextLogLevel delegates to datatypes.Utf8
     pass
 

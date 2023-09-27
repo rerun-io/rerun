@@ -13,6 +13,8 @@ __all__ = ["AffixFuzzer20", "AffixFuzzer20Batch", "AffixFuzzer20Type"]
 
 
 class AffixFuzzer20(datatypes.AffixFuzzer20):
+    # You can define your own __init__ function as a member of AffixFuzzer20Ext in affix_fuzzer20_ext.py
+
     # Note: there are no fields here because AffixFuzzer20 delegates to datatypes.AffixFuzzer20
     pass
 

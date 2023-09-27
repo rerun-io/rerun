@@ -14,6 +14,8 @@ __all__ = ["Vector3D", "Vector3DBatch", "Vector3DType"]
 class Vector3D(datatypes.Vec3D):
     """A vector in 3D space."""
 
+    # You can define your own __init__ function as a member of Vector3DExt in vector3d_ext.py
+
     # Note: there are no fields here because Vector3D delegates to datatypes.Vec3D
     pass
 

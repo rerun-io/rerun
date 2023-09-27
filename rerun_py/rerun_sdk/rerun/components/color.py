@@ -23,6 +23,8 @@ class Color(datatypes.Color):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
+    # You can define your own __init__ function as a member of ColorExt in color_ext.py
+
     # Note: there are no fields here because Color delegates to datatypes.Color
     pass
 

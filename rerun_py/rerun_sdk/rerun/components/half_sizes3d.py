@@ -19,6 +19,8 @@ class HalfSizes3D(datatypes.Vec3D):
     Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
     """
 
+    # You can define your own __init__ function as a member of HalfSizes3DExt in half_sizes3d_ext.py
+
     # Note: there are no fields here because HalfSizes3D delegates to datatypes.Vec3D
     pass
 

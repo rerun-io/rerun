@@ -14,6 +14,8 @@ __all__ = ["Position2D", "Position2DBatch", "Position2DType"]
 class Position2D(datatypes.Vec2D):
     """A position in 2D space."""
 
+    # You can define your own __init__ function as a member of Position2DExt in position2d_ext.py
+
     # Note: there are no fields here because Position2D delegates to datatypes.Vec2D
     pass
 
