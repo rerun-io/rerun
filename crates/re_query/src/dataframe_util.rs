@@ -6,7 +6,7 @@ use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_types::{components::InstanceKey, Archetype, Component, Loggable};
 
-use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
+use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 
 /// Make it so that our arrays can be deserialized again by arrow2-convert
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
@@ -130,46 +130,6 @@ impl ComponentWithInstances {
         let series1 = Series::try_from((C0::name().as_ref(), array1.as_ref().clean_for_polars()))?;
 
         Ok(DataFrame::new(vec![series0, series1])?)
-    }
-}
-
-impl<'a, Primary> EntityView<Primary>
-where
-    Primary: Component + 'a,
-    &'a Primary: Into<::std::borrow::Cow<'a, Primary>>,
-{
-    pub fn as_df1(&self) -> crate::Result<DataFrame> {
-        let array0 = self.primary.instance_keys.as_arrow_ref();
-        let array1 = self.primary.values.as_arrow_ref();
-
-        let series0 = Series::try_from((
-            InstanceKey::name().as_ref(),
-            array0.as_ref().clean_for_polars(),
-        ))?;
-        let series1 =
-            Series::try_from((Primary::name().as_ref(), array1.as_ref().clean_for_polars()))?;
-
-        Ok(DataFrame::new(vec![series0, series1])?)
-    }
-
-    pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
-    where
-        C1: Component + 'a,
-        C1: Into<::std::borrow::Cow<'a, C1>>,
-    {
-        let array0 = self.primary.instance_keys.as_arrow_ref();
-        let array1 = self.primary.values.as_arrow_ref();
-        let array2 = C1::try_to_arrow_opt(self.iter_component::<C1>()?)?;
-
-        let series0 = Series::try_from((
-            InstanceKey::name().as_ref(),
-            array0.as_ref().clean_for_polars(),
-        ))?;
-        let series1 =
-            Series::try_from((Primary::name().as_ref(), array1.as_ref().clean_for_polars()))?;
-        let series2 = Series::try_from((C1::name().as_ref(), array2.as_ref().clean_for_polars()))?;
-
-        Ok(DataFrame::new(vec![series0, series1, series2])?)
     }
 }
 
