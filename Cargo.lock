@@ -4721,14 +4721,12 @@ dependencies = [
  "arrow2_convert",
  "bytemuck",
  "cfg-if",
- "cocoa",
  "eframe",
  "egui",
  "egui-wgpu",
  "egui_plot",
  "image",
  "itertools 0.11.0",
- "objc",
  "once_cell",
  "poll-promise",
  "re_analytics",
@@ -4770,7 +4768,6 @@ dependencies = [
  "web-sys",
  "web-time",
  "wgpu",
- "winapi",
  "xshell",
 ]
 
