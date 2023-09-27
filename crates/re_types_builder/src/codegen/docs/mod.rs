@@ -43,10 +43,8 @@ impl CodeGenerator for DocsCodeGenerator {
 
         let components = objects.ordered_objects(Some(ObjectKind::Component));
         for object in objects.ordered_objects(Some(ObjectKind::Archetype)) {
-            let title = object.snake_case_name();
-
             // skip test-only archetypes
-            if title.starts_with("affix_fuzzer") {
+            if object.name.starts_with("AffixFuzzer") {
                 continue;
             }
 
@@ -64,7 +62,7 @@ impl CodeGenerator for DocsCodeGenerator {
 
             let mut o = String::new();
 
-            frontmatter(&mut o, &title, order);
+            frontmatter(&mut o, &object.name, order);
             putln!(o);
             for mut line in top_level_docs {
                 if line.starts_with(char::is_whitespace) {
@@ -77,7 +75,9 @@ impl CodeGenerator for DocsCodeGenerator {
             putln!(o);
             example_list(&mut o, &examples);
 
-            let path = self.docs_dir.join(format!("{title}.md"));
+            let path = self
+                .docs_dir
+                .join(format!("{}.md", object.snake_case_name()));
             super::common::write_file(&path, &o);
             filepaths.insert(path);
         }

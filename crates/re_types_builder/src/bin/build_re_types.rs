@@ -15,7 +15,7 @@ const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = "crates/re_types/.";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";
 const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "rerun_py/tests/test_types";
-const DOCS_CONTENT_DIR_PATH: &str = "docs/content/reference/data_types_test";
+const DOCS_CONTENT_DIR_PATH: &str = "docs/content/reference/data_types";
 
 macro_rules! join {
     ($($task:expr,)*) => {join!($($task),*)};
