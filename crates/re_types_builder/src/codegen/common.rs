@@ -50,20 +50,32 @@ pub struct Example<'a> {
     /// The human-readable name of the example.
     pub title: Option<&'a str>,
 
-    /// The URL for the fully-sized screenshot of the example.
-    pub image_url: Option<&'a str>,
+    /// A screenshot of the example.
+    pub image: Option<ImageUrl<'a>>,
 }
 
 impl<'a> Example<'a> {
     pub fn parse(tag_content: &'a str) -> Self {
         fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
-            let start = args.find(tag)? + tag.len();
-            if !args[start..].starts_with("=\"") {
-                return None;
+            let mut prev_end = 0;
+            loop {
+                if prev_end + tag.len() + "=\"\"".len() >= args.len() {
+                    return None;
+                }
+                let key_start = prev_end + args[prev_end..].find(tag)?;
+                let key_end = key_start + tag.len();
+                if !args[key_end..].starts_with("=\"") {
+                    prev_end = key_end;
+                    continue;
+                };
+                let value_start = key_end + "=\"".len();
+                let Some(mut value_end) = args[value_start..].find('"') else {
+                    prev_end = value_start;
+                    continue;
+                };
+                value_end += value_start;
+                return Some(&args[value_start..value_end]);
             }
-            let start = start + 2;
-            let end = start + args[start..].find('"')?;
-            Some(&args[start..end])
         }
 
         let tag_content = tag_content.trim();
@@ -71,23 +83,104 @@ impl<'a> Example<'a> {
             .split_once(' ')
             .map_or((tag_content, None), |(a, b)| (a, Some(b)));
 
-        let (mut title, mut image_url) = (None, None);
+        let (mut title, mut image) = (None, None);
 
         if let Some(args) = args {
             let args = args.trim();
             if args.starts_with('"') {
+                // \example example_name "Example Title"
                 title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
             } else {
+                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
                 title = find_keyed("title", args);
-                image_url = find_keyed("image", args);
+                image = find_keyed("image", args).map(ImageUrl::parse);
             }
         }
 
-        Example {
-            name,
-            title,
-            image_url,
+        Example { name, title, image }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum ImageUrl<'a> {
+    /// A URL with our specific format:
+    ///
+    /// ```text,ignore
+    /// https://static.rerun.io/{name}/{image_hash}/{size}.{ext}
+    /// ```
+    ///
+    /// The `https://static.rerun.io/` base is optional.
+    Rerun(RerunImageUrl<'a>),
+
+    /// Any other URL.
+    Other(&'a str),
+}
+
+impl ImageUrl<'_> {
+    pub fn parse(s: &str) -> ImageUrl<'_> {
+        RerunImageUrl::parse(s).map_or(ImageUrl::Other(s), ImageUrl::Rerun)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct RerunImageUrl<'a> {
+    pub name: &'a str,
+    pub hash: &'a str,
+    pub max_width: Option<u16>,
+    pub extension: &'a str,
+}
+
+impl RerunImageUrl<'_> {
+    pub fn parse(s: &str) -> Option<RerunImageUrl<'_>> {
+        let path = s.strip_prefix("https://static.rerun.io/")?;
+        // We're on a `static.rerun.io` URL, so we can make assumptions about the format:
+
+        let (rest, extension) = path.rsplit_once('.')?;
+        let mut parts = rest.split('/');
+        let name = parts.next()?;
+        let hash = parts.next()?;
+        // Note: failure to parse here means we fall back to showing only the `full` size.
+        let max_width = parts.next()?;
+        let max_width = max_width.strip_suffix('w').and_then(|v| v.parse().ok());
+        if parts.next().is_some() {
+            return None;
         }
+
+        Some(RerunImageUrl {
+            name,
+            hash,
+            max_width,
+            extension,
+        })
+    }
+
+    pub fn image_stack(&self, title: &str) -> Vec<String> {
+        const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
+
+        let RerunImageUrl {
+            name,
+            hash,
+            max_width,
+            extension,
+        } = *self;
+
+        let mut stack = vec!["<picture>".into()];
+        if let Some(max_width) = max_width {
+            for width in WIDTHS {
+                if width > max_width {
+                    break;
+                }
+                stack.push(format!(
+                    r#"  <source media="(max-width: {width}px)" srcset="https://static.rerun.io/{name}/{hash}/{width}w.{extension}">"#
+                ));
+            }
+        }
+        stack.push(format!(
+            r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" alt="screenshot of {title} example">"#
+        ));
+        stack.push("</picture>".into());
+
+        stack
     }
 }
 

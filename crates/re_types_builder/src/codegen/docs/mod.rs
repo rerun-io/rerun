@@ -11,6 +11,7 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 
 use super::common::get_documentation;
+use super::common::ImageUrl;
 
 macro_rules! putln {
     ($o:ident) => {let _ = writeln!($o);};
@@ -149,49 +150,32 @@ fn example_list(o: &mut String, examples: &[Example<'_>]) {
     putln!(o, "## Examples");
     putln!(o);
 
-    for Example { name, title, .. } in examples {
+    for Example { name, title, image } in examples {
         let title = title.unwrap_or(name);
         putln!(o, "### {title}");
         putln!(o);
         putln!(o, "code-example: {name}");
         putln!(o);
 
-        // NOTE: blocked by https://github.com/rerun-io/rerun/issues/2461
-        // image_url_stack(o, title, *image_url);
+        image_url_stack(o, title, image.as_ref());
         putln!(o);
     }
 }
 
-// fn image_url_stack(o: &mut String, title: &str, image_url: Option<&str>) {
-//     const SIZES: &[usize] = &[480, 768, 1024, 1200];
-//
-//     let Some(image_url) = image_url else { return };
-//
-//     // image_url looks like
-//     // https://static.rerun.io/2ff32dfd45d15f35f7d0947c26445d4113fe6d03_annotation_context_rects_1200w.png
-//     // https://static.rerun.io/9b446c36011ed30fce7dc6ed03d5fd9557460f70_annotation_context_rects_full.png
-//     // etc.
-//
-//     // assuming the file always has an extension, retrieve it
-//     let Some((url_base, ext)) = image_url.rsplit_once('.') else {
-//         return;
-//     };
-//     // trim content after the last `_`
-//     let Some((url_base, _)) = url_base.rsplit_once('_') else {
-//         return;
-//     };
-//
-//     putln!(o, "<picture>");
-//     // now we can generate the stack:
-//     for width in SIZES {
-//         putln!(
-//             o,
-//             r#"  <source media="(max-width: {width}px)" srcset="{url_base}_{width}w.{ext}">"#
-//         );
-//     }
-//     putln!(
-//         o,
-//         r#"  <img src="{url_base}_full.{ext}" alt="screenshot of {title} example">"#
-//     );
-//     putln!(o, "</picture>");
-// }
+fn image_url_stack(o: &mut String, title: &str, image_url: Option<&ImageUrl<'_>>) {
+    let Some(image_url) = image_url else { return };
+
+    match image_url {
+        ImageUrl::Rerun(rerun) => {
+            for line in rerun.image_stack(title) {
+                putln!(o, "{line}");
+            }
+        }
+        ImageUrl::Other(url) => {
+            putln!(
+                o,
+                r#"<img src="{url}" alt="screenshot of {title} example">"#
+            );
+        }
+    }
+}
