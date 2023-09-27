@@ -127,7 +127,7 @@ def log_point(
 
 @deprecated(
     """Please migrate to `Points3D` or `Points2D`.
-  See: https://www.rerun.io/docs/reference/migration-0.9 for more details."""
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
 )
 @log_decorator
 def log_points(
@@ -151,7 +151,7 @@ def log_points(
     !!! Warning "Deprecated"
         Please migrate to [rerun.Points3D][] or [rerun.Points2D][]
 
-        See [the migration guide](https://www.rerun.io/docs/reference/migration-0.9) for more details.
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Logging again to the same `entity_path` will replace all the previous points.
 
