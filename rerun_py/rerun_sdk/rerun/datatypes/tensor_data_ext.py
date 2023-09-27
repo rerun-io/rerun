@@ -60,7 +60,7 @@ class TensorDataExt:
 
         The `TensorData` object is internally represented by three fields: `shape` and `buffer`.
 
-        This constructor provides additional arguments 'array', and 'names'. When passing in a
+        This constructor provides additional arguments 'array', and 'dim_names'. When passing in a
         multi-dimensional array such as a `np.ndarray`, the `shape` and `buffer` fields will be
         populated automagically.
 
