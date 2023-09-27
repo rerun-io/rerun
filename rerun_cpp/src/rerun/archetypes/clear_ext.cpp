@@ -8,24 +8,22 @@ namespace rerun {
 
 #ifdef EDIT_EXTENSION
         struct ClearExt {
-            rerun::components::ClearSettings clear;
+            rerun::components::ClearIsRecursive clear;
 
             // [CODEGEN COPY TO HEADER START]
 
-            static Clear flat() {
-                return Clear(false);
-            }
+            static const Clear FLAT;
 
-            static Clear recursive() {
-                return Clear(true);
-            }
+            static const Clear RECURSIVE;
 
-            Clear(bool recursive = false) : Clear(components::ClearSettings(recursive)) {}
+            Clear(bool is_recursive = false) : Clear(components::ClearIsRecursive(is_recursive)) {}
 
             // [CODEGEN COPY TO HEADER END]
         };
-
 #endif
 
+        const Clear Clear::FLAT = Clear(false);
+
+        const Clear Clear::RECURSIVE = Clear(true);
     } // namespace archetypes
 } // namespace rerun

@@ -6,11 +6,11 @@ import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import ClearSettingsArrayLike
+    from . import ClearIsRecursiveArrayLike
 
 
-class ClearSettingsExt:
+class ClearIsRecursiveExt:
     @staticmethod
-    def native_to_pa_array_override(data: ClearSettingsArrayLike, data_type: pa.DataType) -> pa.Array:
+    def native_to_pa_array_override(data: ClearIsRecursiveArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()
         return pa.array(array, type=data_type)

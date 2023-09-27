@@ -10,14 +10,13 @@
 
 use std::path::PathBuf;
 
-use anyhow::anyhow;
 use bytes::Bytes;
 use rerun::{
-    archetypes::Mesh3D,
-    components::{Color, MeshProperties, Transform3D, ViewCoordinates},
+    archetypes::{Mesh3D, ViewCoordinates},
+    components::{Color, MeshProperties, Transform3D},
     external::{ecolor, re_log, re_memory::AccountingAllocator},
     transform::TranslationRotationScale3D,
-    EntityPath, RecordingStream,
+    RecordingStream,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -89,7 +88,7 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
     // Convert glTF objects into Rerun components.
     for (i, primitive) in node.primitives.into_iter().enumerate() {
         let mesh: Mesh3D = primitive.into();
-        rec.log(format!("{}/#{}", node.name, i), &mesh)?;
+        rec.log(format!("{}/{}", node.name, i), &mesh)?;
     }
 
     // Recurse through all of the node's children!
@@ -99,20 +98,6 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-fn log_coordinate_space(
-    rec: &RecordingStream,
-    ent_path: impl Into<EntityPath>,
-    axes: &str,
-) -> anyhow::Result<()> {
-    // TODO(#2816): ViewCoordinates archetype
-    let view_coords: ViewCoordinates = axes
-        .parse()
-        .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
-
-    rec.log_component_batches(ent_path, true, 1, [&view_coords as _])
-        .map_err(Into::into)
 }
 
 // --- Init ---
@@ -184,7 +169,7 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        log_coordinate_space(rec, root.name.as_str(), "RUB")?;
+        rec.log_timeless(root.name.as_str(), &ViewCoordinates::RIGHT_HAND_Y_UP)?;
         log_node(rec, root)?;
     }
 
@@ -257,7 +242,7 @@ impl GltfNode {
 
 fn node_name(node: &gltf::Node<'_>) -> String {
     node.name()
-        .map_or_else(|| format!("node_#{}", node.index()), ToOwned::to_owned)
+        .map_or_else(|| format!("node_{}", node.index()), ToOwned::to_owned)
 }
 
 fn node_primitives<'data>(
@@ -315,7 +300,7 @@ fn load_gltf<'data>(
     doc.scenes().map(move |scene| {
         let name = scene
             .name()
-            .map_or_else(|| format!("scene_#{}", scene.index()), ToOwned::to_owned);
+            .map_or_else(|| format!("scene_{}", scene.index()), ToOwned::to_owned);
 
         re_log::info!(scene = name, "parsing glTF scene");
 

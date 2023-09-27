@@ -5,7 +5,7 @@ use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
-    SpaceViewClassRegistry, StoreContext, ViewerContext,
+    SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
 use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
 
@@ -198,11 +198,6 @@ impl AppState {
                             viewport.viewport_ui(ui, &mut ctx);
                         }
                     });
-
-                // If the viewport was user-edited, then disable auto space views
-                if viewport.blueprint.has_been_user_edited {
-                    viewport.blueprint.auto_space_views = false;
-                }
             });
 
         viewport.sync_blueprint_changes(command_sender);
@@ -232,6 +227,9 @@ impl AppState {
         if WATERMARK {
             re_ui.paint_watermark();
         }
+
+        // This must run after any ui code, or other code that tells egui to open an url:
+        check_for_clicked_hyperlinks(&re_ui.egui_ctx, &mut rec_cfg.selection_state);
     }
 
     pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
@@ -281,4 +279,36 @@ fn recording_config_entry<'cfgs>(
     configs
         .entry(id)
         .or_insert_with(|| new_recording_config(store_db))
+}
+
+/// We allow linking to entities and components via hyperlinks,
+/// e.g. in embedded markdown.
+///
+/// Detect and handle that here.
+///
+/// Must run after any ui code, or other code that tells egui to open an url.
+fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, selection_state: &mut SelectionState) {
+    let recording_scheme = "recording://";
+
+    let mut path = None;
+
+    egui_ctx.output_mut(|o| {
+        if let Some(open_url) = &o.open_url {
+            if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
+                path = Some(path_str.to_owned());
+                o.open_url = None;
+            }
+        }
+    });
+
+    if let Some(path) = path {
+        match path.parse() {
+            Ok(item) => {
+                selection_state.set_single_selection(item);
+            }
+            Err(err) => {
+                re_log::warn!("Failed to parse entity path {path:?}: {err}");
+            }
+        }
+    }
 }

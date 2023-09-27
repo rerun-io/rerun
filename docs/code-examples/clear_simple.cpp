@@ -41,6 +41,6 @@ int main() {
     // Now clear them, one by one on each tick.
     for (int i = 0; i < vectors.size(); ++i) {
         auto entity_path = "arrows/" + std::to_string(i);
-        rec.log(entity_path.c_str(), rr::Clear::flat());
+        rec.log(entity_path.c_str(), rr::Clear::FLAT);
     }
 }

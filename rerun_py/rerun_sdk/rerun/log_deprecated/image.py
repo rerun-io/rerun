@@ -5,6 +5,9 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
+from rerun._log import log
+from rerun.archetypes import DepthImage, Image, SegmentationImage
+from rerun.datatypes import TensorData
 from rerun.datatypes.tensor_data import TensorDataLike
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -70,9 +73,7 @@ def log_image(
 
     """
 
-    from rerun.experimental import Image, dt, log
-
-    tensor_data = dt.TensorData(array=image, jpeg_quality=jpeg_quality)
+    tensor_data = TensorData(array=image, jpeg_quality=jpeg_quality)
 
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
@@ -122,9 +123,7 @@ def log_depth_image(
 
     """
 
-    from rerun.experimental import DepthImage, dt, log
-
-    tensor_data = dt.TensorData(array=image)
+    tensor_data = TensorData(array=image)
 
     log(
         entity_path,
@@ -177,13 +176,12 @@ def log_segmentation_image(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import SegmentationImage, dt, log
 
     image = np.asarray(image)
     if image.dtype not in (np.dtype("uint8"), np.dtype("uint16")):
         image = np.require(image, np.uint16)
 
-    tensor_data = dt.TensorData(array=image)
+    tensor_data = TensorData(array=image)
 
     log(
         entity_path,

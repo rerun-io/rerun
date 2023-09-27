@@ -27,23 +27,3 @@ fn test_format() {
     // Now we do:
     assert_eq!(format(&err), "outer_context -> inner_context -> root_cause");
 }
-
-pub trait ResultExt<T> {
-    fn warn_on_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
-}
-
-impl<T, E: std::fmt::Display> ResultExt<T> for Result<T, E> {
-    /// Log a warning if there is an `Err`, but only log the exact same message once.
-    #[track_caller]
-    fn warn_on_err_once(self, msg: impl std::fmt::Display) -> Option<T> {
-        match self {
-            Ok(value) => Some(value),
-            Err(err) => {
-                let loc = std::panic::Location::caller();
-                let (file, line) = (loc.file(), loc.line());
-                re_log::warn_once!("{file}:{line} {msg}: {err}");
-                None
-            }
-        }
-    }
-}

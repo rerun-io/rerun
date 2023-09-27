@@ -94,7 +94,7 @@ jobs:
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               run_tests="true"
-              container="{'image': 'rerunio/ci_docker:0.9.1'}"
+              container="{'image': 'rerunio/ci_docker:0.10.0'}"
               lib_name="librerun_c.a"
               ;;
             windows)

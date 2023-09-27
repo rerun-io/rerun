@@ -55,6 +55,11 @@ impl EntityDb {
         self.entity_path_from_hash.get(entity_path_hash)
     }
 
+    #[inline]
+    pub fn knows_of_entity(&self, entity_path: &EntityPath) -> bool {
+        self.entity_path_from_hash.contains_key(&entity_path.hash())
+    }
+
     fn register_entity_path(&mut self, entity_path: &EntityPath) {
         self.entity_path_from_hash
             .entry(entity_path.hash())
@@ -63,9 +68,6 @@ impl EntityDb {
 
     fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         re_tracing::profile_function!();
-
-        #[cfg(debug_assertions)]
-        check_known_component_schemas(msg);
 
         // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
         let mut table = DataTable::from_arrow_msg(msg)?;
@@ -79,12 +81,12 @@ impl EntityDb {
 
             self.try_add_data_row(&row)?;
 
-            // Look for a `ClearSettings` component, and if it's there, go through the clear path
+            // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
             // instead.
-            use re_types::components::ClearSettings;
-            if let Some(idx) = row.find_cell(&ClearSettings::name()) {
+            use re_types::components::ClearIsRecursive;
+            if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
                 let cell = &row.cells()[idx];
-                let settings = cell.try_to_native_mono::<ClearSettings>().unwrap();
+                let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
                 let path_op = if settings.map_or(false, |s| s.0) {
                     PathOp::ClearRecursive(row.entity_path.clone())
                 } else {
@@ -208,50 +210,6 @@ impl EntityDb {
                         time_set.remove(&time);
                     }
                 }
-            }
-        }
-    }
-}
-
-/// Check that known (`rerun.`) components have the expected schemas.
-#[cfg(debug_assertions)]
-fn check_known_component_schemas(msg: &ArrowMsg) {
-    // Check that we have the expected schemas
-    let known_fields: ahash::HashMap<&str, &arrow2::datatypes::Field> =
-        re_components::iter_registered_field_types()
-            .map(|field| (field.name.as_str(), field))
-            .collect();
-
-    for actual in &msg.schema.fields {
-        if let Some(expected) = known_fields.get(actual.name.as_str()) {
-            if let arrow2::datatypes::DataType::List(actual_field) = &actual.data_type {
-                // NOTE: Don't care about extensions until the migration is over (arrow2-convert
-                // issues).
-                let actual_datatype = actual_field.data_type.to_logical_type();
-                let expected_datatype = expected.data_type.to_logical_type();
-                if actual_datatype != expected_datatype {
-                    re_log::warn_once!(
-                        "The incoming component {:?} had the type:\n{:#?}\nExpected type:\n{:#?}",
-                        actual.name,
-                        actual_field.data_type,
-                        expected.data_type,
-                    );
-                }
-                if actual.is_nullable != expected.is_nullable {
-                    re_log::warn_once!(
-                        "The incoming component {:?} has is_nullable={}, expected is_nullable={}",
-                        actual.name,
-                        actual.is_nullable,
-                        expected.is_nullable,
-                    );
-                }
-            } else {
-                re_log::warn_once!(
-                    "The incoming component {:?} was:\n{:#?}\nExpected:\n{:#?}",
-                    actual.name,
-                    actual.data_type,
-                    expected.data_type,
-                );
             }
         }
     }

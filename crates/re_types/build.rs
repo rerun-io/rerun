@@ -1,10 +1,11 @@
 //! Generates Rust & Python code from flatbuffers definitions.
 
+use std::path::Path;
+
 use re_build_tools::{
-    compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
-    is_tracked_env_var_set, iter_dir, read_versioning_hash, rerun_if_changed,
-    rerun_if_changed_or_doesnt_exist, write_versioning_hash,
+    is_tracked_env_var_set, iter_dir, read_versioning_hash, rerun_if_changed, write_versioning_hash,
 };
+use re_types_builder::{compute_re_types_hash, SourceLocations};
 
 // ---
 
@@ -44,7 +45,12 @@ fn main() {
         return;
     }
 
-    rerun_if_changed_or_doesnt_exist(SOURCE_HASH_PATH);
+    // Only re-build if source-hash exists
+    if !Path::new(SOURCE_HASH_PATH).exists() {
+        return;
+    }
+
+    rerun_if_changed(SOURCE_HASH_PATH);
     for path in iter_dir(DEFINITIONS_DIR_PATH, Some(&["fbs"])) {
         rerun_if_changed(&path);
     }
@@ -52,35 +58,14 @@ fn main() {
     // NOTE: We need to hash both the flatbuffers definitions as well as the source code of the
     // code generator itself!
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
-    let re_types_builder_hash = compute_crate_hash("re_types_builder");
-    let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&["fbs"]));
-    let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py", "cpp"]));
-    let doc_content_hash = compute_dir_hash(DOC_CONTENT_DIR_PATH, Some(&["md"]));
-    let python_extensions_hash = compute_dir_filtered_hash(PYTHON_OUTPUT_DIR_PATH, |path| {
-        path.to_str().unwrap().ends_with("_ext.py")
-    });
-    let cpp_extensions_hash = compute_dir_filtered_hash(CPP_OUTPUT_DIR_PATH, |path| {
-        path.to_str().unwrap().ends_with("_ext.cpp")
-    });
-
-    let new_hash = compute_strings_hash(&[
-        &re_types_builder_hash,
-        &definitions_hash,
-        &doc_examples_hash,
-        &doc_content_hash,
-        &python_extensions_hash,
-        &cpp_extensions_hash,
-    ]);
-
-    // Leave these be please, very useful when debugging.
-    eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
-    eprintln!("definitions_hash: {definitions_hash:?}");
-    eprintln!("doc_examples_hash: {doc_examples_hash:?}");
-    eprintln!("doc_content_hash: {doc_content_hash:?}");
-    eprintln!("python_extensions_hash: {python_extensions_hash:?}");
-    eprintln!("cpp_extensions_hash: {cpp_extensions_hash:?}");
-    eprintln!("new_hash: {new_hash:?}");
     eprintln!("cur_hash: {cur_hash:?}");
+
+    let new_hash = compute_re_types_hash(&SourceLocations {
+        definitions_dir: DEFINITIONS_DIR_PATH,
+        doc_examples_dir: DOC_EXAMPLES_DIR_PATH,
+        python_output_dir: PYTHON_OUTPUT_DIR_PATH,
+        cpp_output_dir: CPP_OUTPUT_DIR_PATH,
+    });
 
     if let Some(cur_hash) = cur_hash {
         if cur_hash == new_hash {

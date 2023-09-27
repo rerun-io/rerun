@@ -5,6 +5,9 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
+from rerun._log import log
+from rerun.archetypes import Mesh3D
+from rerun.components import Material, MeshProperties
 from rerun.log_deprecated import Colors, _normalize_colors
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -80,7 +83,6 @@ def log_mesh(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import Mesh3D, cmp, log
 
     recording = RecordingStream.to_native(recording)
 
@@ -99,8 +101,8 @@ def log_mesh(
         vertex_positions=positions,
         vertex_normals=normals,
         vertex_colors=vertex_colors,
-        mesh_properties=cmp.MeshProperties(vertex_indices=indices),
-        mesh_material=cmp.Material(albedo_factor=albedo_factor),
+        mesh_properties=MeshProperties(vertex_indices=indices),
+        mesh_material=Material(albedo_factor=albedo_factor),
     )
     return log(entity_path, mesh3d, timeless=timeless, recording=recording)
 

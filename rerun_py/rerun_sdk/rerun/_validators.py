@@ -23,7 +23,6 @@ def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
     # Grow to a min-size of 2.
     # (1x1x3x1) -> 3x1 mono rather than 1x1x3 RGB
     while max - min < 1 and max + 1 < len(shape):
-        print(f"{max} {min} {len(shape)}")
         max += 1
 
     target_len = 2

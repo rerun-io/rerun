@@ -8,7 +8,7 @@ impl Clear {
     #[inline]
     pub fn flat() -> Self {
         Self {
-            settings: crate::components::ClearSettings(false),
+            recursive: crate::components::ClearIsRecursive(false),
         }
     }
 
@@ -18,7 +18,7 @@ impl Clear {
     /// all components of all its recursive children.
     pub fn recursive() -> Self {
         Self {
-            settings: crate::components::ClearSettings(true),
+            recursive: crate::components::ClearIsRecursive(true),
         }
     }
 }

@@ -16,9 +16,9 @@ from typing import cast
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-import rerun.experimental as rr2
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
+from rerun.components import Material, MeshProperties
 
 
 def load_scene(path: Path) -> trimesh.Scene:
@@ -41,9 +41,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
         if parent:
             # TODO(andreas): We should support 4x4 matrices directly
             world_from_mesh = node_data[0]
-            rr2.log(
+            rr.log(
                 path,
-                rr2.dt.TranslationAndMat3x3(
+                rr.datatypes.TranslationAndMat3x3(
                     trimesh.transformations.translation_from_matrix(world_from_mesh), world_from_mesh[0:3, 0:3]
                 ),
             )
@@ -58,19 +58,19 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                 if len(colors) == 4:
                     # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
                     # as an albedo factor for the whole primitive.
-                    mesh_material = rr2.cmp.Material(albedo_factor=np.array(colors))
+                    mesh_material = Material(albedo_factor=np.array(colors))
                 else:
                     vertex_colors = colors
             except Exception:
                 pass
 
-            rr2.log(
+            rr.log(
                 path,
-                rr2.Mesh3D(
+                rr.Mesh3D(
                     mesh.vertices,
                     vertex_colors=vertex_colors,
                     vertex_normals=mesh.vertex_normals,
-                    mesh_properties=rr2.cmp.MeshProperties(vertex_indices=mesh.faces),
+                    mesh_properties=MeshProperties(vertex_indices=mesh.faces),
                     mesh_material=mesh_material,
                 ),
             )

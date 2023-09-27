@@ -593,7 +593,27 @@ impl RecordingStream {
         ent_path: impl Into<EntityPath>,
         arch: &impl Archetype,
     ) -> RecordingStreamResult<()> {
-        self.log_timeless(ent_path, false, arch)
+        self.log_with_timeless(ent_path, false, arch)
+    }
+
+    /// Logs the contents of an [`Archetype`] into Rerun as timeless data.
+    ///
+    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
+    /// into the past.
+    /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    #[inline]
+    pub fn log_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl Archetype,
+    ) -> RecordingStreamResult<()> {
+        self.log_with_timeless(ent_path, true, arch)
     }
 
     /// Logs the contents of an [`Archetype`] into Rerun.
@@ -613,7 +633,7 @@ impl RecordingStream {
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     #[inline]
-    pub fn log_timeless(
+    pub fn log_with_timeless(
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
@@ -1337,8 +1357,7 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_components::datagen::data_table_example;
-    use re_log_types::RowId;
+    use re_log_types::{DataTable, RowId};
 
     use super::*;
 
@@ -1358,7 +1377,7 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
@@ -1425,7 +1444,7 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
@@ -1505,7 +1524,7 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);
@@ -1559,7 +1578,7 @@ mod tests {
             .memory()
             .unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec.record_row(row.unwrap(), false);

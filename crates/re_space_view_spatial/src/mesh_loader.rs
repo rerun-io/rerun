@@ -180,7 +180,7 @@ impl LoadedMesh {
         &self.name
     }
 
-    pub fn bbox(&self) -> &macaw::BoundingBox {
-        &self.bbox
+    pub fn bbox(&self) -> macaw::BoundingBox {
+        self.bbox
     }
 }

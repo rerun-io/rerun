@@ -8,8 +8,10 @@ use re_arrow_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
     RangeQuery, TimeInt, TimeRange,
 };
-use re_components::datagen::{build_frame_nr, build_some_instances};
-use re_log_types::{DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimeType, Timeline};
+use re_log_types::{
+    build_frame_nr, DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimeType, Timeline,
+};
+use re_types::datagen::build_some_instances;
 use re_types::{
     components::InstanceKey,
     testing::{build_some_large_structs, LargeStruct},

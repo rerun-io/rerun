@@ -1,29 +1,17 @@
 from __future__ import annotations
 
-import itertools
-
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rr_cmp
+import rerun as rr
+from rerun.components import ClearIsRecursiveBatch
 
 
 def test_clear() -> None:
-    all_settings: list[rr_cmp.ClearSettingsLike] = [
-        # ClearLike: bool
-        True,
-        # ClearLike: Clear
-        rr_cmp.ClearSettings(True),
-    ]
+    recursive = True
 
-    all_arrays = itertools.zip_longest(
-        all_settings,
-    )
+    print(f"rr.Clear(\n" f"recursive={recursive}\n" f")")
+    arch = rr.Clear(recursive=recursive)
+    print(f"{arch}\n")
 
-    for settings in all_arrays:
-        print(f"rr2.Clear(\n" f"settings={settings}\n" f")")
-        arch = rr2.Clear(settings)
-        print(f"{arch}\n")
-
-        assert arch.settings == rr_cmp.ClearSettingsBatch([True])
+    assert arch.recursive == ClearIsRecursiveBatch([True])
 
 
 if __name__ == "__main__":

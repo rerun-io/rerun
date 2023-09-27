@@ -1,5 +1,4 @@
-use re_log_types::DataCell;
-use re_types::external::anyhow;
+use crate::DataCell;
 
 /// Errors from [`data_cells_from_file_path`].
 #[derive(thiserror::Error, Debug)]
@@ -9,7 +8,7 @@ pub enum FromFileError {
     FileRead(#[from] std::io::Error),
 
     #[error(transparent)]
-    DataCellError(#[from] re_log_types::DataCellError),
+    DataCellError(#[from] crate::DataCellError),
 
     #[cfg(feature = "image")]
     #[error(transparent)]

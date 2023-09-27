@@ -220,7 +220,7 @@ impl EntityTree {
         time_point: &TimePoint,
         path_op: &PathOp,
     ) -> Vec<ComponentPath> {
-        use re_types::{archetypes::Clear, components::ClearSettings, Archetype as _};
+        use re_types::{archetypes::Clear, components::ClearIsRecursive, Archetype as _};
 
         re_tracing::profile_function!();
 
@@ -232,7 +232,7 @@ impl EntityTree {
         fn filter_out_clear_components(comp_name: &ComponentName) -> bool {
             let is_clear_component = [
                 Clear::indicator_component(), //
-                ClearSettings::name(),        //
+                ClearIsRecursive::name(),     //
             ]
             .contains(comp_name);
             !is_clear_component

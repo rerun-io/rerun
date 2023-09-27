@@ -8,8 +8,8 @@ use polars_core::prelude::*;
 
 use re_arrow_store::polars_util::latest_components;
 use re_arrow_store::{test_row, DataStore, LatestAtQuery, TimeType, Timeline};
-use re_components::datagen::{build_frame_nr, build_some_positions2d};
-use re_log_types::EntityPath;
+use re_log_types::{build_frame_nr, EntityPath};
+use re_types::datagen::build_some_positions2d;
 use re_types::{
     components::{InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},

@@ -5,6 +5,8 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 
+from rerun._log import log
+from rerun.archetypes import Points2D, Points3D
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated import (
     Color,
@@ -85,7 +87,6 @@ def log_point(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
-    from rerun.experimental import Points2D, Points3D, log
 
     if position is None:
         raise ValueError("`position` argument must be set")
@@ -195,7 +196,6 @@ def log_points(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from rerun.experimental import Points2D, Points3D, log
 
     if positions is None:
         raise ValueError("`positions` argument must be set")

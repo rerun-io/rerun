@@ -114,6 +114,9 @@
 mod reflection;
 
 use anyhow::Context as _;
+use re_build_tools::{
+    compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
+};
 
 pub use self::reflection::reflection::{
     root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
@@ -287,6 +290,49 @@ pub fn generate_gitattributes_for_generated_files(
     );
 
     codegen::write_file(&path, &content);
+}
+
+pub fn compute_re_types_builder_hash() -> String {
+    compute_crate_hash("re_types_builder")
+}
+
+pub struct SourceLocations<'a> {
+    pub definitions_dir: &'a str,
+    pub doc_examples_dir: &'a str,
+    pub python_output_dir: &'a str,
+    pub cpp_output_dir: &'a str,
+}
+
+pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
+    // NOTE: We need to hash both the flatbuffers definitions as well as the source code of the
+    // code generator itself!
+    let re_types_builder_hash = compute_re_types_builder_hash();
+    let definitions_hash = compute_dir_hash(locations.definitions_dir, Some(&["fbs"]));
+    let doc_examples_hash =
+        compute_dir_hash(locations.doc_examples_dir, Some(&["rs", "py", "cpp"]));
+    let python_extensions_hash = compute_dir_filtered_hash(locations.python_output_dir, |path| {
+        path.to_str().unwrap().ends_with("_ext.py")
+    });
+    let cpp_extensions_hash = compute_dir_filtered_hash(locations.cpp_output_dir, |path| {
+        path.to_str().unwrap().ends_with("_ext.cpp")
+    });
+
+    let new_hash = compute_strings_hash(&[
+        &re_types_builder_hash,
+        &definitions_hash,
+        &doc_examples_hash,
+        &python_extensions_hash,
+        &cpp_extensions_hash,
+    ]);
+
+    eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
+    eprintln!("definitions_hash: {definitions_hash:?}");
+    eprintln!("doc_examples_hash: {doc_examples_hash:?}");
+    eprintln!("python_extensions_hash: {python_extensions_hash:?}");
+    eprintln!("cpp_extensions_hash: {cpp_extensions_hash:?}");
+    eprintln!("new_hash: {new_hash:?}");
+
+    new_hash
 }
 
 /// Generates C++ code.
