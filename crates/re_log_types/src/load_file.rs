@@ -55,7 +55,7 @@ pub fn data_cells_from_file_path(
                     Ok(DataCell::from_arrow(
                         comp_batch.name(),
                         comp_batch
-                            .try_to_arrow()
+                            .to_arrow()
                             .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
                     ))
                 })
@@ -117,7 +117,7 @@ pub fn data_cells_from_file_contents(
                         Ok(DataCell::from_arrow(
                             comp_batch.name(),
                             comp_batch
-                                .try_to_arrow()
+                                .to_arrow()
                                 .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
                         ))
                     })

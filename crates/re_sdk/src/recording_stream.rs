@@ -686,7 +686,7 @@ impl RecordingStream {
             .map(|comp_batch| {
                 num_instances = usize::max(num_instances, comp_batch.num_instances());
                 comp_batch
-                    .try_to_arrow()
+                    .to_arrow()
                     .map(|array| (comp_batch.arrow_field(), array))
             })
             .collect();

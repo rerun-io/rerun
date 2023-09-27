@@ -128,9 +128,8 @@ pub trait AsComponents {
     /// If not implemented, the number of instances will be determined by the longest
     /// batch in the bundle.
     ///
-    /// Each batch returned by `as_component_batches` should have this number of
-    /// elements, or 1 in the case it is a splat, or 0 in the case that
-    /// component is being cleared.
+    /// Each batch returned by `as_component_batches` should have this number of elements,
+    /// or 1 in the case it is a splat, or 0 in the case that component is being cleared.
     #[inline]
     fn num_instances(&self) -> usize {
         self.as_component_batches()
@@ -154,7 +153,7 @@ pub trait AsComponents {
             .map(|comp_batch| {
                 comp_batch
                     .as_ref()
-                    .try_to_arrow()
+                    .to_arrow()
                     .map(|array| (comp_batch.as_ref().arrow_field(), array))
                     .with_context(comp_batch.as_ref().name())
             })

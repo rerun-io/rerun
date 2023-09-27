@@ -221,7 +221,7 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         Ok(
             arrow2::array::NullArray::new(arrow2::datatypes::DataType::Null, self.num_instances())
                 .boxed(),
@@ -279,7 +279,7 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
     }
 
     #[inline]
-    fn try_to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         Ok(
             arrow2::array::NullArray::new(arrow2::datatypes::DataType::Null, self.num_instances())
                 .boxed(),
