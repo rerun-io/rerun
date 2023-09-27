@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 import rerun as rr
-from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
+from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch, ViewCoordinatesLike
 from rerun.datatypes.mat3x3 import Mat3x3Like
 from rerun.datatypes.vec2d import Vec2DLike
 
@@ -16,7 +16,12 @@ def test_pinhole() -> None:
         np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
     ]
     resolutions: list[Vec2DLike] = [[1, 2], (1, 2), np.array([1, 2])]
-    camera_xyzs = [None, rr.archetypes.ViewCoordinates.RDF, rr.components.ViewCoordinates.RDF, [3, 2, 5]]
+    camera_xyzs: list[ViewCoordinatesLike | None] = [
+        None,
+        rr.archetypes.ViewCoordinates.RDF,
+        rr.components.ViewCoordinates.RDF,
+        [3, 2, 5],
+    ]
 
     all_arrays = itertools.zip_longest(image_from_cameras, resolutions, camera_xyzs)
 

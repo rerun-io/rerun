@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ..components import ViewCoordinates as Component
 
 if TYPE_CHECKING:
-    from . import ViewCoordinates
+    from ..components import ViewCoordinates
 
 
 class ViewCoordinatesExt:
