@@ -26,7 +26,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// Simple indexed 3D mesh:
+        /// ### Simple indexed 3D mesh
         /// ```cpp,ignore
         /// // Log a simple colored triangle.
         ///
@@ -64,7 +64,6 @@ namespace rerun {
         ///     );
         /// }
         /// ```
-        ///
         struct Mesh3D {
             /// The positions of each vertex.
             ///

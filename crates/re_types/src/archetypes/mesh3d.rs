@@ -17,7 +17,7 @@
 ///
 /// ## Examples
 ///
-/// Simple indexed 3D mesh:
+/// ### Simple indexed 3D mesh
 /// ```ignore
 /// //! Log a simple colored triangle with indexed drawing.
 ///
@@ -44,7 +44,7 @@
 /// }
 /// ```
 ///
-/// 3D mesh with partial updates:
+/// ### 3D mesh with partial updates
 /// ```ignore
 /// //! Log a simple colored triangle, then update its vertices' positions each frame.
 ///

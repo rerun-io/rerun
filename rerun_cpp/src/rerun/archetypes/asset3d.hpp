@@ -25,7 +25,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// Simple 3D asset:
+        /// ### Simple 3D asset
         /// ```cpp,ignore
         /// // Log a batch of 3D arrows.
         ///
@@ -55,7 +55,6 @@ namespace rerun {
         ///     rec.log("world/asset", rr::Asset3D::from_file(path));
         /// }
         /// ```
-        ///
         struct Asset3D {
             /// The asset's bytes.
             rerun::components::Blob data;

@@ -20,7 +20,7 @@
 ///
 /// ## Examples
 ///
-/// Simple example:
+/// ### Simple example
 /// ```ignore
 /// //! Create and log a depth image.
 ///
@@ -43,7 +43,7 @@
 /// }
 /// ```
 ///
-/// Depth to 3D example:
+/// ### Depth to 3D example
 /// ```ignore
 /// //! Create and log a depth image.
 /// use ndarray::{s, Array, ShapeBuilder};

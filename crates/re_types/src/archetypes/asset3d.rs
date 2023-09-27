@@ -17,7 +17,7 @@
 ///
 /// ## Examples
 ///
-/// Simple 3D asset:
+/// ### Simple 3D asset
 /// ```ignore
 /// //! Log a simple 3D asset.
 ///
@@ -43,7 +43,7 @@
 /// }
 /// ```
 ///
-/// 3D asset with out-of-tree transform:
+/// ### 3D asset with out-of-tree transform
 /// ```ignore
 /// //! Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 ///

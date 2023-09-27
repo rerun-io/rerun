@@ -25,7 +25,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// Rectangles:
+        /// ### Rectangles
         /// ```cpp,ignore
         /// // Log an annotation context to assign a label and color to each class
         ///
@@ -59,7 +59,6 @@ namespace rerun {
         ///     rec.log("bounds", rr::Boxes2D::from_half_sizes({{2.5f, 2.5f}}));
         /// }
         /// ```
-        ///
         struct AnnotationContext {
             rerun::components::AnnotationContext context;
 

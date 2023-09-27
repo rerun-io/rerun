@@ -23,7 +23,7 @@
 ///
 /// ## Examples
 ///
-/// Rectangles:
+/// ### Rectangles
 /// ```ignore
 /// //! Log rectangles with different colors and labels using annotation context
 ///
@@ -61,7 +61,7 @@
 /// }
 /// ```
 ///
-/// Segmentation:
+/// ### Segmentation
 /// ```ignore
 /// //! Log a segmentation image with annotations.
 ///
@@ -97,7 +97,7 @@
 /// }
 /// ```
 ///
-/// Connections:
+/// ### Connections
 /// ```ignore
 /// //! Log some very simple points.
 ///

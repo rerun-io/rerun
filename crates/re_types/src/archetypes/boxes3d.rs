@@ -17,7 +17,7 @@
 ///
 /// ## Examples
 ///
-/// Simple 3D boxes:
+/// ### Simple 3D boxes
 /// ```ignore
 /// //! Log a single 3D box.
 /// use rerun::archetypes::Boxes3D;
@@ -33,7 +33,7 @@
 /// }
 /// ```
 ///
-/// Batch of 3D boxes:
+/// ### Batch of 3D boxes
 /// ```ignore
 /// //! Log a batch of oriented bounding boxes.
 /// use rerun::{
