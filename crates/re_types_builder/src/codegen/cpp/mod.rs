@@ -412,7 +412,9 @@ impl QuotedObject {
                     .collect_vec();
 
                 // Constructors with all required components.
-                if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
+                if !required_component_fields.is_empty()
+                    && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
+                {
                     let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
                         .iter()
                         .map(|obj_field| {

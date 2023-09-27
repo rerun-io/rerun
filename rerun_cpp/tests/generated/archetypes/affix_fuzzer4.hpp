@@ -77,8 +77,6 @@ namespace rerun {
           public:
             AffixFuzzer4() = default;
 
-            AffixFuzzer4() : {}
-
             AffixFuzzer4& with_fuzz2101(std::vector<rerun::components::AffixFuzzer1> _fuzz2101) {
                 fuzz2101 = std::move(_fuzz2101);
                 return *this;
