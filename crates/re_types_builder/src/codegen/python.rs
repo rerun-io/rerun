@@ -603,6 +603,15 @@ fn code_for_struct(
         // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
         // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
         code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
+    } else {
+        code.push_text(
+            format!(
+                "# You can define your own __init__ function as a member of {} in {}",
+                ext_class.name, ext_class.file_name
+            ),
+            2,
+            4,
+        );
     }
 
     if obj.is_delegating_component() {
