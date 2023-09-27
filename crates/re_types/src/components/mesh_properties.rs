@@ -65,7 +65,7 @@ impl crate::Loggable for MeshProperties {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
-            name: "vertex_indices".to_owned(),
+            name: "indices".to_owned(),
             data_type: DataType::List(Box::new(Field {
                 name: "item".to_owned(),
                 data_type: DataType::UInt32,

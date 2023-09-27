@@ -16,7 +16,7 @@ fn roundtrip() {
         ],
         mesh_properties: Some(
             MeshProperties {
-                vertex_indices: Some([1, 2, 3, 4, 5, 6].to_vec().into()),
+                indices: Some([1, 2, 3, 4, 5, 6].to_vec().into()),
             }
             .into(),
         ),

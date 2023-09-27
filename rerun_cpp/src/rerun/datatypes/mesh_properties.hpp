@@ -20,18 +20,18 @@ namespace arrow {
 namespace rerun {
     namespace datatypes {
         struct MeshProperties {
-            /// If specified, a flattened array of indices that describe the mesh's triangles,
-            /// i.e. its length must be divisible by 3.
-            std::optional<std::vector<uint32_t>> vertex_indices;
+            /// If specified, a flattened array of vertex indices that describe the mesh's
+            /// triangles, i.e. its length must be divisible by 3.
+            std::optional<std::vector<uint32_t>> indices;
 
           public:
             MeshProperties() = default;
 
-            MeshProperties(std::optional<std::vector<uint32_t>> _vertex_indices)
-                : vertex_indices(std::move(_vertex_indices)) {}
+            MeshProperties(std::optional<std::vector<uint32_t>> _indices)
+                : indices(std::move(_indices)) {}
 
-            MeshProperties& operator=(std::optional<std::vector<uint32_t>> _vertex_indices) {
-                vertex_indices = std::move(_vertex_indices);
+            MeshProperties& operator=(std::optional<std::vector<uint32_t>> _indices) {
+                indices = std::move(_indices);
                 return *this;
             }
 
