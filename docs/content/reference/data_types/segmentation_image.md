@@ -1,22 +1,27 @@
 ---
 title: SegmentationImage
-order: 22
+order: 100
 ---
 
-Segmentation images are 2D images containing segmentation information. They are 2D tensors with a single channel of type `uint8` or `uint16` containing the class ID for each pixel. A corresponding color and/or label can be mapped to class IDs using an [annotation context](annotation_context.md).
+An image made up of integer class-ids
 
+The shape of the `TensorData` must be mappable to an `HxW` tensor.
+Each pixel corresponds to a depth value in units specified by meter.
+
+Leading and trailing unit-dimensions are ignored, so that
+`1x640x480x1` is treated as a `640x480` image.
 
 ## Components and APIs
-Primary component: `tensor`
 
-Secondary components: `draw_order`
+Required:
+* `tensor_data`
 
-Python APIs: [log_segmentation_image](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_segmentation_image**)
+Optional:
+* `draw_order`
 
-Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html)
+## Examples
 
-
-## Simple example
+### segmentation_image_simple
 
 code-example: segmentation_image_simple
 
@@ -25,7 +30,6 @@ code-example: segmentation_image_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png">
-  <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png" alt="">
+  <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png" alt="screenshot of segmentation_image_simple example">
 </picture>
-
 
