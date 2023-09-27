@@ -8,16 +8,16 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 ## Components and APIs
 
 Required:
-* line_strip3d
+* `line_strip3d`
 
 Recommended:
-* radius
-* color
+* `radius`
+* `color`
 
 Optional:
-* text
-* class_id
-* instance_key
+* `text`
+* `class_id`
+* `instance_key`
 
 ## Examples
 

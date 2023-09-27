@@ -8,13 +8,13 @@ A prepacked 3D asset (.gltf, .glb, .obj, etc).
 ## Components and APIs
 
 Required:
-* blob
+* `blob`
 
 Recommended:
-* media_type
+* `media_type`
 
 Optional:
-* out_of_tree_transform3d
+* `out_of_tree_transform3d`
 
 ## Examples
 

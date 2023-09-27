@@ -8,8 +8,8 @@ A log entry in a text log, comprised of a text body and its log level.
 ## Components and APIs
 
 Required:
-* text
+* `text`
 
 Recommended:
-* text_log_level
+* `text_log_level`
 

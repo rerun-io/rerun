@@ -14,7 +14,7 @@ path.
 ## Components and APIs
 
 Required:
-* annotation_context
+* `annotation_context`
 
 ## Examples
 

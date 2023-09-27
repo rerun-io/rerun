@@ -8,18 +8,18 @@ A batch of 3d boxes with half-extents and optional center, rotations, rotations,
 ## Components and APIs
 
 Required:
-* half_sizes3d
+* `half_sizes3d`
 
 Recommended:
-* position3d
-* rotation3d
-* color
+* `position3d`
+* `rotation3d`
+* `color`
 
 Optional:
-* radius
-* text
-* class_id
-* instance_key
+* `radius`
+* `text`
+* `class_id`
+* `instance_key`
 
 ## Examples
 

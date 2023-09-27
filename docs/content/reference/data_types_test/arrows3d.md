@@ -8,17 +8,17 @@ A batch of 3D arrows with optional colors, radii, labels, etc.
 ## Components and APIs
 
 Required:
-* vector3d
+* `vector3d`
 
 Recommended:
-* origin3d
+* `origin3d`
 
 Optional:
-* radius
-* color
-* text
-* class_id
-* instance_key
+* `radius`
+* `color`
+* `text`
+* `class_id`
+* `instance_key`
 
 ## Examples
 

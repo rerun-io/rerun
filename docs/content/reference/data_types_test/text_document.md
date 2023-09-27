@@ -8,8 +8,8 @@ A text element intended to be displayed in its own text-box.
 ## Components and APIs
 
 Required:
-* text
+* `text`
 
 Optional:
-* media_type
+* `media_type`
 

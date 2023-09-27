@@ -8,7 +8,7 @@ A generic n-dimensional Tensor.
 ## Components and APIs
 
 Required:
-* tensor_data
+* `tensor_data`
 
 ## Examples
 

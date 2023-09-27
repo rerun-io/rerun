@@ -109,7 +109,7 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
         putln!(o);
         putln!(o, "Required:");
         for v in required {
-            putln!(o, "* {}", v.snake_case_name());
+            putln!(o, "* `{}`", v.snake_case_name());
         }
     }
 
@@ -122,7 +122,7 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
         putln!(o);
         putln!(o, "Recommended:");
         for v in recommended {
-            putln!(o, "* {}", v.snake_case_name());
+            putln!(o, "* `{}`", v.snake_case_name());
         }
     }
 
@@ -135,7 +135,7 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
         putln!(o);
         putln!(o, "Optional:");
         for v in optional {
-            putln!(o, "* {}", v.snake_case_name());
+            putln!(o, "* `{}`", v.snake_case_name());
         }
     }
 }

@@ -11,15 +11,15 @@ cannot be timeless!
 ## Components and APIs
 
 Required:
-* scalar
+* `scalar`
 
 Recommended:
-* radius
-* color
+* `radius`
+* `color`
 
 Optional:
-* text
-* scalar_scattering
+* `text`
+* `scalar_scattering`
 
 ## Examples
 

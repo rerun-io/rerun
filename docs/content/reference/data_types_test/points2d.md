@@ -8,18 +8,18 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 ## Components and APIs
 
 Required:
-* position2d
+* `position2d`
 
 Recommended:
-* radius
-* color
+* `radius`
+* `color`
 
 Optional:
-* text
-* draw_order
-* class_id
-* keypoint_id
-* instance_key
+* `text`
+* `draw_order`
+* `class_id`
+* `keypoint_id`
+* `instance_key`
 
 ## Examples
 

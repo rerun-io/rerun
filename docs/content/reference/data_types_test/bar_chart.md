@@ -10,7 +10,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 ## Components and APIs
 
 Required:
-* tensor_data
+* `tensor_data`
 
 ## Examples
 

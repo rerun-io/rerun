@@ -8,13 +8,13 @@ Camera perspective projection (a.k.a. intrinsics).
 ## Components and APIs
 
 Required:
-* pinhole_projection
+* `pinhole_projection`
 
 Recommended:
-* resolution
+* `resolution`
 
 Optional:
-* view_coordinates
+* `view_coordinates`
 
 ## Examples
 

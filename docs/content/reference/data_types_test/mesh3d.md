@@ -8,17 +8,17 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ## Components and APIs
 
 Required:
-* position3d
+* `position3d`
 
 Recommended:
-* mesh_properties
-* vector3d
+* `mesh_properties`
+* `vector3d`
 
 Optional:
-* color
-* material
-* class_id
-* instance_key
+* `color`
+* `material`
+* `class_id`
+* `instance_key`
 
 ## Examples
 

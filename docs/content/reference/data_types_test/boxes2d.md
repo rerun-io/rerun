@@ -8,18 +8,18 @@ A batch of 2d boxes with half-extents and optional center, rotations, rotations,
 ## Components and APIs
 
 Required:
-* half_sizes2d
+* `half_sizes2d`
 
 Recommended:
-* position2d
-* color
+* `position2d`
+* `color`
 
 Optional:
-* radius
-* text
-* draw_order
-* class_id
-* instance_key
+* `radius`
+* `text`
+* `draw_order`
+* `class_id`
+* `instance_key`
 
 ## Examples
 

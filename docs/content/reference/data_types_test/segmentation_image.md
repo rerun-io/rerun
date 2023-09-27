@@ -14,10 +14,10 @@ Leading and trailing unit-dimensions are ignored, so that
 ## Components and APIs
 
 Required:
-* tensor_data
+* `tensor_data`
 
 Optional:
-* draw_order
+* `draw_order`
 
 ## Examples
 

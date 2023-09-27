@@ -8,17 +8,17 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 ## Components and APIs
 
 Required:
-* line_strip2d
+* `line_strip2d`
 
 Recommended:
-* radius
-* color
+* `radius`
+* `color`
 
 Optional:
-* text
-* draw_order
-* class_id
-* instance_key
+* `text`
+* `draw_order`
+* `class_id`
+* `instance_key`
 
 ## Examples
 
