@@ -9,12 +9,13 @@ from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
+from .mesh3d_ext import Mesh3DExt
 
 __all__ = ["Mesh3D"]
 
 
-@define(str=False, repr=False)
-class Mesh3D(Archetype):
+@define(str=False, repr=False, init=False)
+class Mesh3D(Mesh3DExt, Archetype):
     """
     A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
@@ -68,7 +69,7 @@ class Mesh3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
+    # __init__ can be found in mesh3d_ext.py
 
     vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},
@@ -140,3 +141,7 @@ class Mesh3D(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(Mesh3DExt, "deferred_patch_class"):
+    Mesh3DExt.deferred_patch_class(Mesh3D)

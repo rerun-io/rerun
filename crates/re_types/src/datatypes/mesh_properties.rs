@@ -15,7 +15,7 @@
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MeshProperties {
-    /// If specified, is a flattened array of indices that describe the mesh's triangles,
+    /// If specified, a flattened array of indices that describe the mesh's triangles,
     /// i.e. its length must be divisible by 3.
     pub vertex_indices: Option<crate::ArrowBuffer<u32>>,
 }
