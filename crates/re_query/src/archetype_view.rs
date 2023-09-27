@@ -5,7 +5,7 @@ use re_format::arrow;
 use re_log_types::{DataCell, RowId};
 use re_types::{
     components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
-    DeserializationResult, Loggable,
+    DeserializationResult, Loggable, SerializationResult,
 };
 
 use crate::QueryError;
@@ -107,14 +107,14 @@ impl ComponentWithInstances {
     pub fn from_native<'a, C: Component + Clone + 'a>(
         instance_keys: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, InstanceKey>>>,
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
-    ) -> ComponentWithInstances {
+    ) -> SerializationResult<ComponentWithInstances> {
         // Unwrap: If the data is valid for the native types, it's valid in serialized form.
-        let instance_keys = InstanceKey::to_arrow(instance_keys).unwrap();
-        let values = C::to_arrow(values).unwrap();
-        ComponentWithInstances {
+        let instance_keys = InstanceKey::to_arrow(instance_keys)?;
+        let values = C::to_arrow(values)?;
+        Ok(ComponentWithInstances {
             instance_keys: DataCell::from_arrow(InstanceKey::name(), instance_keys),
             values: DataCell::from_arrow(C::name(), values),
-        }
+        })
     }
 }
 
@@ -487,7 +487,7 @@ fn lookup_value() {
         Position2D::new(9.0, 10.0),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, points);
+    let component = ComponentWithInstances::from_native(instance_keys, points).unwrap();
 
     let missing_value = component.lookup_arrow(&InstanceKey(5));
     assert_eq!(missing_value, None);
@@ -507,7 +507,7 @@ fn lookup_value() {
         InstanceKey(472),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, points);
+    let component = ComponentWithInstances::from_native(instance_keys, points).unwrap();
 
     let missing_value = component.lookup_arrow(&InstanceKey(46));
     assert_eq!(missing_value, None);
@@ -547,7 +547,7 @@ fn lookup_splat() {
         Position2D::new(1.0, 2.0), //
     ];
 
-    let component = ComponentWithInstances::from_native(instances, points);
+    let component = ComponentWithInstances::from_native(instances, points).unwrap();
 
     // Any instance we look up will return the slatted value
     let value = component.lookup::<Position2D>(&InstanceKey(1)).unwrap();
