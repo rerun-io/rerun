@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
 from .. import components
@@ -14,7 +16,7 @@ from .view_coordinates_ext import ViewCoordinatesExt
 __all__ = ["ViewCoordinates"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """
     How we interpret the coordinate system of an entity/space.
@@ -45,7 +47,11 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
+    def __init__(self: Any, xyz: components.ViewCoordinatesLike):
+        """Create a new instance of the ViewCoordinates archetype."""
+
+        # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
+        self.__attrs_init__(xyz=xyz)
 
     xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},

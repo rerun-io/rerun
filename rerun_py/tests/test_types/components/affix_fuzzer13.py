@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -14,9 +14,13 @@ from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 __all__ = ["AffixFuzzer13", "AffixFuzzer13ArrayLike", "AffixFuzzer13Batch", "AffixFuzzer13Like", "AffixFuzzer13Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer13:
-    # You can define your own __init__ function as a member of AffixFuzzer13Ext in affix_fuzzer13_ext.py
+    def __init__(self: Any, many_strings_optional: list[str] | None = None):
+        """Create a new instance of the AffixFuzzer13 component."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer13Ext in affix_fuzzer13_ext.py
+        self.__attrs_init__(many_strings_optional=many_strings_optional)
 
     many_strings_optional: list[str] | None = field(default=None)
 

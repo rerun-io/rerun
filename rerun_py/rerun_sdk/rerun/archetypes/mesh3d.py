@@ -5,15 +5,17 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["Mesh3D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Mesh3D(Archetype):
     """
     A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
@@ -68,7 +70,53 @@ class Mesh3D(Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
+    def __init__(
+        self: Any,
+        vertex_positions: datatypes.Vec3DArrayLike,
+        mesh_properties: datatypes.MeshPropertiesLike | None = None,
+        vertex_normals: datatypes.Vec3DArrayLike | None = None,
+        vertex_colors: datatypes.ColorArrayLike | None = None,
+        mesh_material: datatypes.MaterialLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
+    ):
+        """
+        Create a new instance of the Mesh3D archetype.
+
+        Parameters
+        ----------
+        vertex_positions:
+             The positions of each vertex.
+
+             If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
+        mesh_properties:
+             Optional properties for the mesh as a whole (including indexed drawing).
+        vertex_normals:
+             An optional normal for each vertex.
+
+             If specified, this must have as many elements as `vertex_positions`.
+        vertex_colors:
+             An optional color for each vertex.
+        mesh_material:
+             Optional material properties for the mesh as a whole.
+        class_ids:
+             Optional class Ids for the vertices.
+
+             The class ID provides colors and labels if not specified explicitly.
+        instance_keys:
+             Unique identifiers for each individual vertex in the mesh.
+        """
+
+        # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
+        self.__attrs_init__(
+            vertex_positions=vertex_positions,
+            mesh_properties=mesh_properties,
+            vertex_normals=vertex_normals,
+            vertex_colors=vertex_colors,
+            mesh_material=mesh_material,
+            class_ids=class_ids,
+            instance_keys=instance_keys,
+        )
 
     vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},

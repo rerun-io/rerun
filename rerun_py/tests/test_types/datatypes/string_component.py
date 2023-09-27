@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -20,9 +20,13 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class StringComponent:
-    # You can define your own __init__ function as a member of StringComponentExt in string_component_ext.py
+    def __init__(self: Any, value: StringComponentLike):
+        """Create a new instance of the StringComponent datatype."""
+
+        # You can define your own __init__ function as a member of StringComponentExt in string_component_ext.py
+        self.__attrs_init__(value=value)
 
     value: str = field(converter=str)
 

@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 from .bar_chart_ext import BarChartExt
 
 __all__ = ["BarChart"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class BarChart(BarChartExt, Archetype):
     """
     A Barchart.
@@ -32,7 +34,18 @@ class BarChart(BarChartExt, Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
+    def __init__(self: Any, values: datatypes.TensorDataLike):
+        """
+        Create a new instance of the BarChart archetype.
+
+        Parameters
+        ----------
+        values:
+             The values. Should always be a rank-1 tensor.
+        """
+
+        # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
+        self.__attrs_init__(values=values)
 
     values: components.TensorDataBatch = field(
         metadata={"component": "required"},

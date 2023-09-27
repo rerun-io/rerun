@@ -19,9 +19,13 @@ from rerun._converters import (
 __all__ = ["AffixFuzzer8", "AffixFuzzer8ArrayLike", "AffixFuzzer8Batch", "AffixFuzzer8Like", "AffixFuzzer8Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer8:
-    # You can define your own __init__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py
+    def __init__(self: Any, single_float_optional: float | None = None):
+        """Create a new instance of the AffixFuzzer8 component."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py
+        self.__attrs_init__(single_float_optional=single_float_optional)
 
     single_float_optional: float | None = field(default=None, converter=float_or_none)
 
