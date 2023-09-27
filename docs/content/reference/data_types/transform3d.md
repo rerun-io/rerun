@@ -7,7 +7,7 @@ A 3D transform.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `transform3d`
 
 ## Examples

@@ -7,14 +7,14 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `position2d`
 
-Recommended:
+Recommended components:
 * `radius`
 * `color`
 
-Optional:
+Optional components:
 * `text`
 * `draw_order`
 * `class_id`

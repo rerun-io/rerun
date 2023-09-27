@@ -12,7 +12,7 @@ will be ignored.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `disconnected_space`
 
 ## Examples

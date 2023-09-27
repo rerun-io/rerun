@@ -14,7 +14,7 @@ down, and the Z axis points forward.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `view_coordinates`
 
 ## Examples

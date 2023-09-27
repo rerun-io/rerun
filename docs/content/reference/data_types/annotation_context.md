@@ -13,7 +13,7 @@ path.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `annotation_context`
 
 ## Examples

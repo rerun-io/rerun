@@ -7,14 +7,14 @@ A 3D point cloud with positions and optional colors, radii, labels, etc.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `position3d`
 
-Recommended:
+Recommended components:
 * `radius`
 * `color`
 
-Optional:
+Optional components:
 * `text`
 * `class_id`
 * `keypoint_id`

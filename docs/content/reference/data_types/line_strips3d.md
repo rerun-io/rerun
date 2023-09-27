@@ -7,14 +7,14 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `line_strip3d`
 
-Recommended:
+Recommended components:
 * `radius`
 * `color`
 
-Optional:
+Optional components:
 * `text`
 * `class_id`
 * `instance_key`

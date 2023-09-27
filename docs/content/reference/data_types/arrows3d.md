@@ -7,13 +7,13 @@ A batch of 3D arrows with optional colors, radii, labels, etc.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `vector3d`
 
-Recommended:
+Recommended components:
 * `origin3d`
 
-Optional:
+Optional components:
 * `radius`
 * `color`
 * `text`

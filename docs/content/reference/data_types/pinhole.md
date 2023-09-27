@@ -7,13 +7,13 @@ Camera perspective projection (a.k.a. intrinsics).
 
 ## Components and APIs
 
-Required:
+Required components:
 * `pinhole_projection`
 
-Recommended:
+Recommended components:
 * `resolution`
 
-Optional:
+Optional components:
 * `view_coordinates`
 
 ## Examples

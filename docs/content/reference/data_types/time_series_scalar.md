@@ -10,14 +10,14 @@ cannot be timeless!
 
 ## Components and APIs
 
-Required:
+Required components:
 * `scalar`
 
-Recommended:
+Recommended components:
 * `radius`
 * `color`
 
-Optional:
+Optional components:
 * `text`
 * `scalar_scattering`
 

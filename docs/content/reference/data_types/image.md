@@ -15,10 +15,10 @@ Leading and trailing unit-dimensions are ignored, so that
 
 ## Components and APIs
 
-Required:
+Required components:
 * `tensor_data`
 
-Optional:
+Optional components:
 * `draw_order`
 
 ## Examples

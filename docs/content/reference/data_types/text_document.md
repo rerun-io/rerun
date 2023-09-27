@@ -7,9 +7,9 @@ A text element intended to be displayed in its own text-box.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `text`
 
-Optional:
+Optional components:
 * `media_type`
 

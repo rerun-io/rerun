@@ -10,10 +10,10 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `tensor_data`
 
-Optional:
+Optional components:
 * `depth_meter`
 * `draw_order`
 

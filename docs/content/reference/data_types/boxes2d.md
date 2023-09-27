@@ -7,14 +7,14 @@ A batch of 2d boxes with half-extents and optional center, rotations, rotations,
 
 ## Components and APIs
 
-Required:
+Required components:
 * `half_sizes2d`
 
-Recommended:
+Recommended components:
 * `position2d`
 * `color`
 
-Optional:
+Optional components:
 * `radius`
 * `text`
 * `draw_order`

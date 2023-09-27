@@ -7,14 +7,14 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 ## Components and APIs
 
-Required:
+Required components:
 * `position3d`
 
-Recommended:
+Recommended components:
 * `mesh_properties`
 * `vector3d`
 
-Optional:
+Optional components:
 * `color`
 * `material`
 * `class_id`

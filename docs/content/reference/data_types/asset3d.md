@@ -7,13 +7,13 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 
 ## Components and APIs
 
-Required:
+Required components:
 * `blob`
 
-Recommended:
+Recommended components:
 * `media_type`
 
-Optional:
+Optional components:
 * `out_of_tree_transform3d`
 
 ## Examples
