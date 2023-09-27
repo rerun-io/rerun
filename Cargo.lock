@@ -4508,6 +4508,7 @@ version = "0.9.0-alpha.4"
 dependencies = [
  "egui",
  "egui_extras",
+ "itertools 0.11.0",
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
