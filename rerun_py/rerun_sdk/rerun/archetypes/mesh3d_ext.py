@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy.typing as npt
+
 from .. import components, datatypes
 
 
@@ -9,7 +11,7 @@ class Mesh3DExt:
     def __init__(
         self: Any,
         vertex_positions: datatypes.Vec3DArrayLike,
-        indices: datatypes.IndexArrayLike | None = None,
+        indices: npt.ArrayLike | None = None,
         mesh_properties: datatypes.MeshPropertiesLike | None = None,
         vertex_normals: datatypes.Vec3DArrayLike | None = None,
         vertex_colors: datatypes.ColorArrayLike | None = None,
