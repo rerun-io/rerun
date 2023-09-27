@@ -152,5 +152,11 @@ def test_nullable_vertex_indices() -> None:
     )
 
 
+def test_indices_parameter() -> None:
+    assert rr.Mesh3D(vertex_positions=[(0, 0, 0)] * 3, indices=[0, 1, 2]) == rr.Mesh3D(
+        vertex_positions=[(0, 0, 0)] * 3, mesh_properties=MeshProperties(vertex_indices=[0, 1, 2])
+    )
+
+
 if __name__ == "__main__":
     test_mesh3d()

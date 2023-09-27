@@ -33,7 +33,7 @@ class MeshProperties(MeshPropertiesExt):
 
     vertex_indices: npt.NDArray[np.uint32] | None = field(default=None, converter=to_np_uint32)
     """
-    If specified, is a flattened array of indices that describe the mesh's triangles,
+    If specified, a flattened array of indices that describe the mesh's triangles,
     i.e. its length must be divisible by 3.
     """
 
