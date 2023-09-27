@@ -1,10 +1,12 @@
 use crate::ComponentName;
 
+// ---
+
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
 // attempt to use nightly features.
 pub type _Backtrace = backtrace::Backtrace;
 
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Clone)]
 pub enum SerializationError {
     #[error("Failed to serialize {location:?}")]
     Context {
@@ -20,6 +22,22 @@ pub enum SerializationError {
 
     #[error("arrow2-convert serialization Failed: {0}")]
     ArrowConvertFailure(String),
+}
+
+impl std::fmt::Debug for SerializationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let bt = self.backtrace().map(|mut bt| {
+            bt.resolve();
+            bt
+        });
+
+        let err = Box::new(self.clone()) as Box<dyn std::error::Error>;
+        if let Some(bt) = bt {
+            f.write_fmt(format_args!("{}:\n{:#?}", re_error::format(&err), bt))
+        } else {
+            f.write_fmt(format_args!("{}", re_error::format(&err)))
+        }
+    }
 }
 
 impl SerializationError {
@@ -44,7 +62,9 @@ impl SerializationError {
 
 pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
 
-#[derive(thiserror::Error, Debug, Clone)]
+// ---
+
+#[derive(thiserror::Error, Clone)]
 pub enum DeserializationError {
     #[error("Failed to deserialize {location:?}")]
     Context {
@@ -115,6 +135,22 @@ pub enum DeserializationError {
 
     #[error("Validation Error: {0}")]
     ValidationError(String),
+}
+
+impl std::fmt::Debug for DeserializationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let bt = self.backtrace().map(|mut bt| {
+            bt.resolve();
+            bt
+        });
+
+        let err = Box::new(self.clone()) as Box<dyn std::error::Error>;
+        if let Some(bt) = bt {
+            f.write_fmt(format_args!("{}:\n{:#?}", re_error::format(&err), bt))
+        } else {
+            f.write_fmt(format_args!("{}", re_error::format(&err)))
+        }
+    }
 }
 
 impl DeserializationError {
@@ -213,7 +249,6 @@ pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationErro
 
 pub trait ResultExt<T> {
     fn with_context(self, location: impl AsRef<str>) -> Self;
-    fn detailed_unwrap(self) -> T;
 }
 
 impl<T> ResultExt<T> for SerializationResult<T> {
@@ -224,26 +259,6 @@ impl<T> ResultExt<T> for SerializationResult<T> {
             source: Box::new(err),
         })
     }
-
-    #[track_caller]
-    fn detailed_unwrap(self) -> T {
-        match self {
-            Ok(v) => v,
-            Err(err) => {
-                let bt = err.backtrace().map(|mut bt| {
-                    bt.resolve();
-                    bt
-                });
-
-                let err = Box::new(err) as Box<dyn std::error::Error>;
-                if let Some(bt) = bt {
-                    panic!("{}:\n{:#?}", re_error::format(&err), bt)
-                } else {
-                    panic!("{}", re_error::format(&err))
-                }
-            }
-        }
-    }
 }
 
 impl<T> ResultExt<T> for DeserializationResult<T> {
@@ -253,25 +268,5 @@ impl<T> ResultExt<T> for DeserializationResult<T> {
             location: location.as_ref().into(),
             source: Box::new(err),
         })
-    }
-
-    #[track_caller]
-    fn detailed_unwrap(self) -> T {
-        match self {
-            Ok(v) => v,
-            Err(err) => {
-                let bt = err.backtrace().map(|mut bt| {
-                    bt.resolve();
-                    bt
-                });
-
-                let err = Box::new(err) as Box<dyn std::error::Error>;
-                if let Some(bt) = bt {
-                    panic!("{}:\n{:#?}", re_error::format(&err), bt)
-                } else {
-                    panic!("{}", re_error::format(&err))
-                }
-            }
-        }
     }
 }

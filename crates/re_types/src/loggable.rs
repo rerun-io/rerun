@@ -89,7 +89,7 @@ pub trait Loggable: Clone + Sized {
     where
         Self: 'a,
     {
-        Self::try_to_arrow_opt(data.into_iter().map(Some)).detailed_unwrap()
+        Self::try_to_arrow_opt(data.into_iter().map(Some)).unwrap()
     }
 
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
@@ -128,7 +128,7 @@ pub trait Loggable: Clone + Sized {
     where
         Self: 'a,
     {
-        Self::try_to_arrow_opt(data).detailed_unwrap()
+        Self::try_to_arrow_opt(data).unwrap()
     }
 
     // --- Optional deserialization methods ---
