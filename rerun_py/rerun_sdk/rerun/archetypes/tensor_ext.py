@@ -12,7 +12,7 @@ class TensorExt:
         self: Any,
         data: TensorDataLike | TensorLike | None = None,
         *,
-        names: Sequence[str | None] | None = None,
+        dim_names: Sequence[str | None] | None = None,
     ):
         """
         Construct a `Tensor` archetype.
@@ -31,14 +31,14 @@ class TensorExt:
             The TensorData object to construct.
         data: TensorDataLike | None
             A TensorData object, or type that can be converted to a numpy array.
-        names: Sequence[str] | None
+        dim_names: Sequence[str] | None
             The names of the tensor dimensions when generating the shape from an array.
         """
         from ..datatypes import TensorData
 
         if not isinstance(data, TensorData):
-            data = TensorData(array=data, names=names)
-        elif names is not None:
-            data = TensorData(buffer=data.buffer, names=names)
+            data = TensorData(array=data, dim_names=dim_names)
+        elif dim_names is not None:
+            data = TensorData(buffer=data.buffer, dim_names=dim_names)
 
         self.__attrs_init__(data=data)

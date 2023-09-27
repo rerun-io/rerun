@@ -52,7 +52,7 @@ class TensorDataExt:
         shape: Sequence[TensorDimensionLike] | None = None,
         buffer: TensorBufferLike | None = None,
         array: TensorLike | None = None,
-        names: Sequence[str | None] | None = None,
+        dim_names: Sequence[str | None] | None = None,
         jpeg_quality: int | None = None,
     ) -> None:
         """
@@ -76,7 +76,7 @@ class TensorDataExt:
             from the array.
         array: Tensor | None
             A numpy array (or The array of the tensor. If None, the array will be inferred from the buffer.
-        names: Sequence[str] | None
+        dim_names: Sequence[str] | None
             The names of the tensor dimensions when generating the shape from an array.
         jpeg_quality:
             If set, encode the image as a JPEG to save storage space.
@@ -93,7 +93,7 @@ class TensorDataExt:
             raise ValueError("Can only provide one of 'array' or 'buffer'")
         if buffer is not None and shape is None:
             raise ValueError("If 'buffer' is provided, 'shape' is also required")
-        if shape is not None and names is not None:
+        if shape is not None and dim_names is not None:
             raise ValueError("Can only provide one of 'shape' or 'names'")
 
         from . import TensorBuffer, TensorDimension
@@ -122,16 +122,16 @@ class TensorDataExt:
                 resolved_shape = None
 
             if resolved_shape is None:
-                if names:
-                    if len(array.shape) != len(names):
+                if dim_names:
+                    if len(array.shape) != len(dim_names):
                         _send_warning(
                             (
                                 f"len(array.shape) = {len(array.shape)} != "
-                                + f"len(names) = {len(names)}. Dropping tensor dimension names."
+                                + f"len(dim_names) = {len(dim_names)}. Dropping tensor dimension names."
                             ),
                             2,
                         )
-                    resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, names)]  # type: ignore[arg-type]
+                    resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, dim_names)]  # type: ignore[arg-type]
                 else:
                     resolved_shape = [TensorDimension(size) for size in array.shape]
 

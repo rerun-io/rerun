@@ -102,7 +102,7 @@ def test_bad_tensors() -> None:
     # Wrong number of names
     with pytest.raises(TypeError):
         TensorData(
-            names=["a", "b", "c"],
+            dim_names=["a", "b", "c"],
             array=RANDOM_TENSOR_SOURCE,
         ),
 
