@@ -34,7 +34,7 @@ class Tensor(TensorExt, Archetype):
     rr.init("rerun_example_tensors", spawn=True)
 
     # Log the tensor, assigning names to each dimension
-    rr.log("tensor", rr.Tensor(tensor, names=("width", "height", "channel", "batch")))
+    rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "channel", "batch")))
     ```
     """
 
