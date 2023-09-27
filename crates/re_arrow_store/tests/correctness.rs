@@ -245,9 +245,10 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     .collect::<Vec<_>>();
 
     let df_expected = {
-        let instances = InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]);
-        let positions = Position2D::to_arrow(positions);
-        let colors = Color::to_arrow(colors);
+        let instances =
+            InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]).unwrap();
+        let positions = Position2D::to_arrow(positions).unwrap();
+        let colors = Color::to_arrow(colors).unwrap();
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),

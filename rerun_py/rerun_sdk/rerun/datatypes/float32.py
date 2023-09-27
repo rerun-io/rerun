@@ -17,9 +17,13 @@ from .._baseclasses import BaseBatch, BaseExtensionType
 __all__ = ["Float32", "Float32ArrayLike", "Float32Batch", "Float32Like", "Float32Type"]
 
 
-@define
+@define(init=False)
 class Float32:
-    # You can define your own __init__ function as a member of Float32Ext in float32_ext.py
+    def __init__(self: Any, value: Float32Like):
+        """Create a new instance of the Float32 datatype."""
+
+        # You can define your own __init__ function as a member of Float32Ext in float32_ext.py
+        self.__attrs_init__(value=value)
 
     value: float = field(converter=float)
 

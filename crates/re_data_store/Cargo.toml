@@ -34,8 +34,6 @@ re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
 
-ahash.workspace = true
-arrow2.workspace = true
 document-features = "0.2"
 itertools = { workspace = true }
 nohash-hasher = "0.2"

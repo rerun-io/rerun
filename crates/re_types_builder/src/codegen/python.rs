@@ -364,6 +364,13 @@ impl PythonCodeGenerator {
                 .fields
                 .iter()
                 .filter_map(quote_import_clauses_from_field)
+                .chain(obj.fields.iter().filter_map(|field| {
+                    field.typ.fqname().and_then(|fqname| {
+                        objects[fqname]
+                            .delegate_datatype(objects)
+                            .map(|delegate| quote_import_clauses_from_fqname(&delegate.fqname))
+                    })
+                }))
                 .collect();
             for clause in import_clauses {
                 code.push_text(&clause, 1, 0);
@@ -552,15 +559,6 @@ fn code_for_struct(
         }
     }
 
-    // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
-    // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
-    // take precedence over the `ExtensionClass`.
-    let init_define_arg = if ext_class.has_init {
-        "init=False".to_owned()
-    } else {
-        String::new()
-    };
-
     let mut superclasses = vec![];
 
     // Extension class needs to come first, so its __init__ method is called if there is one.
@@ -581,42 +579,21 @@ fn code_for_struct(
         ));
     }
 
+    if !obj.is_delegating_component() {
+        let define_args = if *kind == ObjectKind::Archetype {
+            "str=False, repr=False, init=False"
+        } else {
+            "init=False"
+        };
+        code.push_unindented_text(format!("@define({define_args})"), 1);
+    }
+
     let superclass_decl = if superclasses.is_empty() {
         String::new()
     } else {
         format!("({})", superclasses.join(","))
     };
-
-    let define_args = if *kind == ObjectKind::Archetype {
-        format!(
-            "str=False, repr=False{}{init_define_arg}",
-            if init_define_arg.is_empty() { "" } else { ", " }
-        )
-    } else {
-        init_define_arg
-    };
-
-    let define_args = if define_args.is_empty() {
-        define_args
-    } else {
-        format!("({define_args})")
-    };
-
-    let define_decorator = if obj.is_delegating_component() {
-        String::new()
-    } else {
-        format!("@define{define_args}")
-    };
-
-    code.push_unindented_text(
-        format!(
-            r#"
-                {define_decorator}
-                class {name}{superclass_decl}:
-                "#
-        ),
-        0,
-    );
+    code.push_unindented_text(format!("class {name}{superclass_decl}:"), 1);
 
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
@@ -626,6 +603,10 @@ fn code_for_struct(
             2,
             4,
         );
+    } else if !obj.is_delegating_component() {
+        // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
+        // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
+        code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
     } else {
         code.push_text(
             format!(
@@ -647,6 +628,7 @@ fn code_for_struct(
             1,
             4,
         );
+
         code.push_text("pass", 2, 4);
     } else {
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
@@ -1181,23 +1163,29 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases...
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
-    fqname.map(|fqname| {
-        let fqname = fqname.replace(".testing", "");
-        let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-        if from.starts_with("rerun.datatypes") {
-            "from .. import datatypes".to_owned()
-        } else if from.starts_with("rerun.components") {
-            "from .. import components".to_owned()
-        } else if from.starts_with("rerun.archetypes") {
-            // NOTE: This is assuming importing other archetypes is legal… which whether it is or
-            // isn't for this code generator to say.
-            "from .. import archetypes".to_owned()
-        } else if from.is_empty() {
-            format!("from . import {class}")
-        } else {
-            format!("from {from} import {class}")
-        }
-    })
+    fqname.map(|fqname| quote_import_clauses_from_fqname(fqname))
+}
+
+fn quote_import_clauses_from_fqname(fqname: &str) -> String {
+    // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
+    // nasty lazy circular dependencies in weird edge cases...
+    // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
+
+    let fqname = fqname.replace(".testing", "");
+    let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
+    if from.starts_with("rerun.datatypes") {
+        "from .. import datatypes".to_owned()
+    } else if from.starts_with("rerun.components") {
+        "from .. import components".to_owned()
+    } else if from.starts_with("rerun.archetypes") {
+        // NOTE: This is assuming importing other archetypes is legal… which whether it is or
+        // isn't for this code generator to say.
+        "from .. import archetypes".to_owned()
+    } else if from.is_empty() {
+        format!("from . import {class}")
+    } else {
+        format!("from {from} import {class}")
+    }
 }
 
 /// Returns type name as string and whether it was force unwrapped.
@@ -1376,37 +1364,49 @@ fn quote_field_converter_from_field(
     (converter, function)
 }
 
-fn quote_type_from_element_type(typ: &ElementType) -> String {
+fn fqname_to_type(fqname: &str) -> String {
+    let fqname = fqname.replace(".testing", "");
+    let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
+    if from.starts_with("rerun.datatypes") {
+        format!("datatypes.{class}")
+    } else if from.starts_with("rerun.components") {
+        format!("components.{class}")
+    } else if from.starts_with("rerun.archetypes") {
+        // NOTE: This is assuming importing other archetypes is legal… which whether it is or
+        // isn't for this code generator to say.
+        format!("archetypes.{class}")
+    } else if from.is_empty() {
+        format!("from . import {class}")
+    } else {
+        format!("from {from} import {class}")
+    }
+}
+
+fn quote_type_from_type(typ: &Type) -> String {
     match typ {
-        ElementType::UInt8
-        | ElementType::UInt16
-        | ElementType::UInt32
-        | ElementType::UInt64
-        | ElementType::Int8
-        | ElementType::Int16
-        | ElementType::Int32
-        | ElementType::Int64 => "int".to_owned(),
-        ElementType::Bool => "bool".to_owned(),
-        ElementType::Float16 | ElementType::Float32 | ElementType::Float64 => "float".to_owned(),
-        ElementType::String => "str".to_owned(),
-        ElementType::Object(fqname) => {
-            let fqname = fqname.replace(".testing", "");
-            let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-            if from.starts_with("rerun.datatypes") {
-                format!("datatypes.{class}")
-            } else if from.starts_with("rerun.components") {
-                format!("components.{class}")
-            } else if from.starts_with("rerun.archetypes") {
-                // NOTE: This is assuming importing other archetypes is legal… which whether it is or
-                // isn't for this code generator to say.
-                format!("archetypes.{class}")
-            } else if from.is_empty() {
-                format!("from . import {class}")
-            } else {
-                format!("from {from} import {class}")
-            }
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64 => "int".to_owned(),
+        Type::Bool => "bool".to_owned(),
+        Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::String => "str".to_owned(),
+        Type::Object(fqname) => fqname_to_type(fqname),
+        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+            format!(
+                "list[{}]",
+                quote_type_from_type(&Type::from(elem_type.clone()))
+            )
         }
     }
+}
+
+fn quote_type_from_element_type(typ: &ElementType) -> String {
+    quote_type_from_type(&Type::from(typ.clone()))
 }
 
 /// Arrow support objects
@@ -1512,6 +1512,147 @@ fn quote_arrow_support_from_obj(
             "#
         ))
     }
+}
+
+fn quote_argument_type_alias(
+    arg_type_fqname: &str,
+    class_fqname: &str,
+    objects: &Objects,
+    array: bool,
+) -> String {
+    let obj = &objects[arg_type_fqname];
+
+    let base = if let Some(delegate) = obj.delegate_datatype(objects) {
+        fqname_to_type(&delegate.fqname)
+    } else if arg_type_fqname == class_fqname {
+        // We're in the same namespace, so we can use the object name directly.
+        // (in fact we have to since we don't import ourselves)
+        obj.name.clone()
+    } else {
+        fqname_to_type(arg_type_fqname)
+    };
+
+    if array {
+        format!("{base}ArrayLike")
+    } else {
+        format!("{base}Like")
+    }
+}
+
+fn quote_init_argument_from_field(
+    field: &ObjectField,
+    objects: &Objects,
+    current_obj_fqname: &str,
+) -> String {
+    let type_annotation = if let Some(fqname) = field.typ.fqname() {
+        quote_argument_type_alias(fqname, current_obj_fqname, objects, field.typ.is_plural())
+    } else {
+        let type_annotation = quote_field_type_from_field(objects, field, false).0;
+        // Relax type annotation for numpy arrays.
+        if type_annotation.starts_with("npt.NDArray") {
+            "npt.ArrayLike".to_owned()
+        } else {
+            type_annotation
+        }
+    };
+
+    if field.is_nullable {
+        format!("{}: {} | None = None", field.name, type_annotation)
+    } else {
+        format!("{}: {}", field.name, type_annotation)
+    }
+}
+
+fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects) -> String {
+    // If the type is fully transparent (single non-nullable field and not an archetype),
+    // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
+    // -> Whatever type aliases there are for this type, we need to pick them up.
+    let arguments: Vec<_> =
+        if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable
+        {
+            vec![format!(
+                "{}: {}",
+                obj.fields[0].name,
+                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+            )]
+        } else if obj.is_union() {
+            vec![format!(
+                "inner: {} | None = None",
+                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+            )]
+        } else {
+            obj.fields
+                .iter()
+                .sorted_by_key(|field| field.is_nullable)
+                .map(|field| quote_init_argument_from_field(field, objects, &obj.fqname))
+                .collect()
+        };
+    let head = format!("def __init__(self: Any, {}):", arguments.join(", "));
+
+    let argument_docs = if obj.is_union() {
+        Vec::new()
+    } else {
+        obj.fields
+            .iter()
+            .filter_map(|field| {
+                if field.docs.doc.is_empty() {
+                    None
+                } else {
+                    let doc_content =
+                        crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+                    Some(format!(
+                        "{}:\n    {}",
+                        field.name,
+                        doc_content.join("\n    ")
+                    ))
+                }
+            })
+            .collect::<Vec<_>>()
+    };
+    let doc_typedesc = match obj.kind {
+        ObjectKind::Datatype => "datatype",
+        ObjectKind::Component => "component",
+        ObjectKind::Archetype => "archetype",
+    };
+    let mut doc_string_lines = vec![
+        r#"""""#.to_owned(),
+        format!("Create a new instance of the {} {doc_typedesc}.", obj.name),
+    ];
+    if !argument_docs.is_empty() {
+        doc_string_lines.push("\n".to_owned());
+        doc_string_lines.push("Parameters".to_owned());
+        doc_string_lines.push("----------".to_owned());
+        for doc in argument_docs {
+            doc_string_lines.push(doc);
+        }
+    };
+    doc_string_lines.push(r#"""""#.to_owned());
+    let doc_block = doc_string_lines.join("\n");
+
+    let custom_init_hint = format!(
+        "# You can define your own __init__ function as a member of {} in {}",
+        ext_class.name, ext_class.file_name
+    );
+
+    let forwarding_call = if obj.is_union() {
+        "self.inner = inner".to_owned()
+    } else {
+        let attribute_init = obj
+            .fields
+            .iter()
+            .map(|field| format!("{}={}", field.name, field.name))
+            .collect::<Vec<_>>();
+
+        format!("self.__attrs_init__({})", attribute_init.join(", "))
+    };
+
+    format!(
+        "{head}\n{}",
+        indent::indent_all_by(
+            4,
+            format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),
+        )
+    )
 }
 
 // --- Arrow registry code generators ---

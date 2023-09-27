@@ -41,7 +41,7 @@ def _annotation_info__color__special_field_converter_override(x: datatypes.Color
         return datatypes.Color(x)
 
 
-@define
+@define(init=False)
 class AnnotationInfo(AnnotationInfoExt):
     """
     Annotation info annotating a class id or key-point id.
@@ -50,7 +50,22 @@ class AnnotationInfo(AnnotationInfoExt):
     The id refers either to a class or key-point id
     """
 
-    # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py
+    def __init__(self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.ColorLike | None = None):
+        """
+        Create a new instance of the AnnotationInfo datatype.
+
+        Parameters
+        ----------
+        id:
+             `ClassId` or `KeypointId` to which this annotation info belongs.
+        label:
+             The label that will be shown in the UI.
+        color:
+             The color that will be applied to the annotated entity.
+        """
+
+        # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py
+        self.__attrs_init__(id=id, label=label, color=color)
 
     id: int = field(converter=int)
     """

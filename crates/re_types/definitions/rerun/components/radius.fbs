@@ -12,7 +12,7 @@ namespace rerun.components;
 /// A Radius component.
 struct Radius (
   "attr.python.aliases": "float",
-  "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
+  "attr.python.array_aliases": "float, npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   order: 100
 ) {

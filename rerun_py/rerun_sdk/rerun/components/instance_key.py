@@ -18,11 +18,15 @@ from .instance_key_ext import InstanceKeyExt
 __all__ = ["InstanceKey", "InstanceKeyArrayLike", "InstanceKeyBatch", "InstanceKeyLike", "InstanceKeyType"]
 
 
-@define
+@define(init=False)
 class InstanceKey(InstanceKeyExt):
     """A unique numeric identifier for each individual instance within a batch."""
 
-    # You can define your own __init__ function as a member of InstanceKeyExt in instance_key_ext.py
+    def __init__(self: Any, value: InstanceKeyLike):
+        """Create a new instance of the InstanceKey component."""
+
+        # You can define your own __init__ function as a member of InstanceKeyExt in instance_key_ext.py
+        self.__attrs_init__(value=value)
 
     value: int = field(converter=int)
 

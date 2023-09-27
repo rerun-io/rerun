@@ -22,9 +22,13 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class FlattenedScalar:
-    # You can define your own __init__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
+    def __init__(self: Any, value: FlattenedScalarLike):
+        """Create a new instance of the FlattenedScalar datatype."""
+
+        # You can define your own __init__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
+        self.__attrs_init__(value=value)
 
     value: float = field(converter=float)
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class AnnotationContext(AnnotationContextExt):
     """
     The `AnnotationContext` provides additional information on how to display entities.
@@ -35,20 +35,27 @@ class AnnotationContext(AnnotationContextExt):
     path.
     """
 
-    # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
+    def __init__(self: Any, class_map: AnnotationContextLike):
+        """Create a new instance of the AnnotationContext component."""
+
+        # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
+        self.__attrs_init__(class_map=class_map)
 
     class_map: list[datatypes.ClassDescriptionMapElem] = field(
         converter=AnnotationContextExt.class_map__field_converter_override,  # type: ignore[misc]
     )
 
 
-AnnotationContextLike = AnnotationContext
+if TYPE_CHECKING:
+    AnnotationContextLike = Union[
+        AnnotationContext, datatypes.ClassDescriptionArrayLike, Sequence[datatypes.ClassDescriptionMapElemLike]
+    ]
+else:
+    AnnotationContextLike = Any
+
 AnnotationContextArrayLike = Union[
     AnnotationContext,
     Sequence[AnnotationContextLike],
-    datatypes.ClassDescriptionLike,
-    datatypes.ClassDescriptionArrayLike,
-    Sequence[datatypes.ClassDescriptionMapElemLike],
 ]
 
 

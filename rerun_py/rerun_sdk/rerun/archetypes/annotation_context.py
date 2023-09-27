@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
 from .. import components
@@ -13,7 +15,7 @@ from .._baseclasses import Archetype
 __all__ = ["AnnotationContext"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class AnnotationContext(Archetype):
     """
     The `AnnotationContext` provides additional information on how to display entities.
@@ -122,7 +124,11 @@ class AnnotationContext(Archetype):
     </picture>
     """
 
-    # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
+    def __init__(self: Any, context: components.AnnotationContextLike):
+        """Create a new instance of the AnnotationContext archetype."""
+
+        # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
+        self.__attrs_init__(context=context)
 
     context: components.AnnotationContextBatch = field(
         metadata={"component": "required"},

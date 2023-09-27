@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
-use re_log_types::{EntityPathHash, TimeInt, Timeline};
+use re_log_types::EntityPathHash;
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -219,7 +219,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &Image::indicator().as_ref().name(),
+            &Image::indicator().name(),
         ) {
             return Ok(());
         }
@@ -307,7 +307,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &DepthImage::indicator().as_ref().name(),
+            &DepthImage::indicator().name(),
         ) {
             return Ok(());
         }
@@ -428,7 +428,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &SegmentationImage::indicator().as_ref().name(),
+            &SegmentationImage::indicator().name(),
         ) {
             return Ok(());
         }
@@ -631,9 +631,9 @@ impl ViewPartSystem for ImagesPart {
 
     fn indicator_components(&self) -> ComponentNameSet {
         [
-            Image::indicator().as_ref().name(),
-            DepthImage::indicator().as_ref().name(),
-            SegmentationImage::indicator().as_ref().name(),
+            Image::indicator().name(),
+            DepthImage::indicator().name(),
+            SegmentationImage::indicator().name(),
         ]
         .into_iter()
         .collect()
@@ -643,16 +643,17 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 
-        if let Some(tensor) = store.query_latest_component::<TensorData>(
-            ent_path,
-            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
-        ) {
+        // NOTE: We want to make sure we query at the right time, otherwise we might take into
+        // account a `Clear()` that actually only applies into the future, and then
+        // `is_shaped_like_an_image` will righfully fail because of the empty tensor.
+        if let Some(tensor) = store.query_latest_component::<TensorData>(ent_path, query) {
             tensor.is_shaped_like_an_image()
         } else {
             false

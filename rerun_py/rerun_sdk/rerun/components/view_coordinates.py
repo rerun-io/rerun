@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class ViewCoordinates(ViewCoordinatesExt):
     """
     How we interpret the coordinate system of an entity/space.
@@ -45,7 +45,18 @@ class ViewCoordinates(ViewCoordinatesExt):
      Back = 6
     """
 
-    # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
+    def __init__(self: Any, coordinates: ViewCoordinatesLike):
+        """
+        Create a new instance of the ViewCoordinates component.
+
+        Parameters
+        ----------
+        coordinates:
+             The directions of the [x, y, z] axes.
+        """
+
+        # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
+        self.__attrs_init__(coordinates=coordinates)
 
     coordinates: npt.NDArray[np.uint8] = field(
         converter=ViewCoordinatesExt.coordinates__field_converter_override,  # type: ignore[misc]

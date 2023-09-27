@@ -5,15 +5,17 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["LineStrips2D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class LineStrips2D(Archetype):
     """
     A batch of line strips with positions and optional colors, radii, labels, etc.
@@ -93,7 +95,50 @@ class LineStrips2D(Archetype):
     </picture>
     """
 
-    # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py
+    def __init__(
+        self: Any,
+        strips: components.LineStrip2DArrayLike,
+        radii: components.RadiusArrayLike | None = None,
+        colors: datatypes.ColorArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        draw_order: components.DrawOrderLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
+    ):
+        """
+        Create a new instance of the LineStrips2D archetype.
+
+        Parameters
+        ----------
+        strips:
+             All the actual 2D line strips that make up the batch.
+        radii:
+             Optional radii for the line strips.
+        colors:
+             Optional colors for the line strips.
+        labels:
+             Optional text labels for the line strips.
+        draw_order:
+             An optional floating point value that specifies the 2D drawing order of each line strip.
+             Objects with higher values are drawn on top of those with lower values.
+        class_ids:
+             Optional `ClassId`s for the lines.
+
+             The class ID provides colors and labels if not specified explicitly.
+        instance_keys:
+             Unique identifiers for each individual line strip in the batch.
+        """
+
+        # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py
+        self.__attrs_init__(
+            strips=strips,
+            radii=radii,
+            colors=colors,
+            labels=labels,
+            draw_order=draw_order,
+            class_ids=class_ids,
+            instance_keys=instance_keys,
+        )
 
     strips: components.LineStrip2DBatch = field(
         metadata={"component": "required"},

@@ -18,7 +18,7 @@ from .scalar_ext import ScalarExt
 __all__ = ["Scalar", "ScalarArrayLike", "ScalarBatch", "ScalarLike", "ScalarType"]
 
 
-@define
+@define(init=False)
 class Scalar(ScalarExt):
     """
     A double-precision scalar.
@@ -26,7 +26,11 @@ class Scalar(ScalarExt):
     Used for time series plots.
     """
 
-    # You can define your own __init__ function as a member of ScalarExt in scalar_ext.py
+    def __init__(self: Any, value: ScalarLike):
+        """Create a new instance of the Scalar component."""
+
+        # You can define your own __init__ function as a member of ScalarExt in scalar_ext.py
+        self.__attrs_init__(value=value)
 
     value: float = field(converter=float)
 

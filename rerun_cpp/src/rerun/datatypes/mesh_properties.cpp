@@ -11,7 +11,7 @@ namespace rerun {
         const std::shared_ptr<arrow::DataType> &MeshProperties::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
-                    "vertex_indices",
+                    "indices",
                     arrow::list(arrow::field("item", arrow::uint32(), false)),
                     true
                 ),
@@ -60,11 +60,11 @@ namespace rerun {
 
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
-                    if (element.vertex_indices.has_value()) {
+                    if (element.indices.has_value()) {
                         ARROW_RETURN_NOT_OK(field_builder->Append());
                         ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            element.vertex_indices.value().data(),
-                            static_cast<int64_t>(element.vertex_indices.value().size()),
+                            element.indices.value().data(),
+                            static_cast<int64_t>(element.indices.value().size()),
                             nullptr
                         ));
                     } else {

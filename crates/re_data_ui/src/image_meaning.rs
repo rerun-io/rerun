@@ -12,16 +12,12 @@ pub fn image_meaning_for_entity(
 ) -> TensorDataMeaning {
     let store = &ctx.store_db.entity_db.data_store;
     let timeline = &ctx.current_query().timeline;
-    if store.entity_has_component(
-        timeline,
-        entity_path,
-        &DepthImage::indicator().as_ref().name(),
-    ) {
+    if store.entity_has_component(timeline, entity_path, &DepthImage::indicator().name()) {
         TensorDataMeaning::Depth
     } else if store.entity_has_component(
         timeline,
         entity_path,
-        &SegmentationImage::indicator().as_ref().name(),
+        &SegmentationImage::indicator().name(),
     ) {
         TensorDataMeaning::ClassId
     } else {

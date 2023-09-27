@@ -53,12 +53,12 @@ def test_arrows3d() -> None:
         print(
             f"E: rr.Arrows3D(\n"
             f"    vectors={vectors}\n"
-            f"    origins={origins}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    origins={origins!r}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.Arrows3D(

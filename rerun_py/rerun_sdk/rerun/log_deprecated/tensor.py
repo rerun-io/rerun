@@ -80,7 +80,7 @@ def _log_tensor(
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
 
-    tensor_data = TensorData(array=tensor, names=names)
+    tensor_data = TensorData(array=tensor, dim_names=names)
 
     # Our legacy documentation is that 1D tensors were interpreted as barcharts
     if len(tensor_data.shape) == 1:

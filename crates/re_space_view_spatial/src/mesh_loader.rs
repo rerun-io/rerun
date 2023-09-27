@@ -99,12 +99,12 @@ impl LoadedMesh {
         let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
         let num_positions = vertex_positions.len();
 
-        let triangle_indices = if let Some(vertex_indices) = mesh_properties
+        let triangle_indices = if let Some(indices) = mesh_properties
             .as_ref()
-            .and_then(|props| props.vertex_indices.as_ref())
+            .and_then(|props| props.indices.as_ref())
         {
-            anyhow::ensure!(vertex_indices.len() % 3 == 0);
-            let indices: &[glam::UVec3] = bytemuck::cast_slice(vertex_indices);
+            anyhow::ensure!(indices.len() % 3 == 0);
+            let indices: &[glam::UVec3] = bytemuck::cast_slice(indices);
             indices.to_vec()
         } else {
             anyhow::ensure!(num_positions % 3 == 0);

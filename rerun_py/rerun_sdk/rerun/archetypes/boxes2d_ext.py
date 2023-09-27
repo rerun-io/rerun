@@ -6,19 +6,58 @@ import numpy as np
 
 from rerun.error_utils import _send_warning
 
-from ..datatypes import Vec2DArrayLike
+from .. import components, datatypes
 
 
 class Boxes2DExt:
     def __init__(
         self: Any,
         *,
-        sizes: Vec2DArrayLike | None = None,
-        mins: Vec2DArrayLike | None = None,
-        centers: Vec2DArrayLike | None = None,
-        half_sizes: Vec2DArrayLike | None = None,
-        **kwargs: Any,
+        sizes: datatypes.Vec2DArrayLike | None = None,
+        mins: datatypes.Vec2DArrayLike | None = None,
+        half_sizes: datatypes.Vec2DArrayLike | None = None,
+        centers: datatypes.Vec2DArrayLike | None = None,
+        radii: components.RadiusArrayLike | None = None,
+        colors: datatypes.ColorArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        draw_order: components.DrawOrderLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
     ) -> None:
+        """
+        Create a new instance of the Boxes2D archetype.
+
+        Parameters
+        ----------
+        sizes:
+            Full extents in x/y. Specify this instead of `half_sizes`
+        half_sizes:
+            All half-extents that make up the batch of boxes. Specify this instead of `sizes`
+        mins:
+            Minimum coordinates of the boxes. Specify this instead of `centers`.
+
+            Only valid when used together with either `sizes` or `half_sizes`.
+        centers:
+            Optional center positions of the boxes.
+        colors:
+            Optional colors for the boxes.
+        radii:
+            Optional radii for the lines that make up the boxes.
+        labels:
+            Optional text labels for the boxes.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+            Objects with higher values are drawn on top of those with lower values.
+
+            The default for 2D boxes is 10.0.
+        class_ids:
+            Optional `ClassId`s for the boxes.
+
+            The class ID provides colors and labels if not specified explicitly.
+        instance_keys:
+            Unique identifiers for each individual boxes in the batch.
+        """
+
         if sizes is not None:
             if half_sizes is not None:
                 _send_warning("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
@@ -39,4 +78,13 @@ class Boxes2DExt:
             half_sizes = np.asarray(half_sizes, dtype=np.float32)
             centers = mins + half_sizes
 
-        self.__attrs_init__(half_sizes=half_sizes, centers=centers, **kwargs)
+        self.__attrs_init__(
+            half_sizes=half_sizes,
+            centers=centers,
+            radii=radii,
+            colors=colors,
+            labels=labels,
+            draw_order=draw_order,
+            class_ids=class_ids,
+            instance_keys=instance_keys,
+        )

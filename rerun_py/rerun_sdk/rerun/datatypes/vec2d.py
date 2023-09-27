@@ -21,11 +21,15 @@ from .vec2d_ext import Vec2DExt
 __all__ = ["Vec2D", "Vec2DArrayLike", "Vec2DBatch", "Vec2DLike", "Vec2DType"]
 
 
-@define
+@define(init=False)
 class Vec2D(Vec2DExt):
     """A vector in 2D space."""
 
-    # You can define your own __init__ function as a member of Vec2DExt in vec2d_ext.py
+    def __init__(self: Any, xy: Vec2DLike):
+        """Create a new instance of the Vec2D datatype."""
+
+        # You can define your own __init__ function as a member of Vec2DExt in vec2d_ext.py
+        self.__attrs_init__(xy=xy)
 
     xy: npt.NDArray[np.float32] = field(converter=to_np_float32)
 

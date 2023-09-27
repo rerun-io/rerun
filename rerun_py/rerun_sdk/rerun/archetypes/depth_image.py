@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 from .depth_image_ext import DepthImageExt
 
 __all__ = ["DepthImage"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class DepthImage(DepthImageExt, Archetype):
     """
     A depth image.
@@ -85,7 +87,31 @@ class DepthImage(DepthImageExt, Archetype):
     </picture>
     """
 
-    # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
+    def __init__(
+        self: Any,
+        data: datatypes.TensorDataLike,
+        meter: components.DepthMeterLike | None = None,
+        draw_order: components.DrawOrderLike | None = None,
+    ):
+        """
+        Create a new instance of the DepthImage archetype.
+
+        Parameters
+        ----------
+        data:
+             The depth-image data. Should always be a rank-2 tensor.
+        meter:
+             An optional floating point value that specifies how long a meter is in the native depth units.
+
+             For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+             and a range of up to ~65 meters (2^16 / 1000).
+        draw_order:
+             An optional floating point value that specifies the 2D drawing order.
+             Objects with higher values are drawn on top of those with lower values.
+        """
+
+        # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
+        self.__attrs_init__(data=data, meter=meter, draw_order=draw_order)
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

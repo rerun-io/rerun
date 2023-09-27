@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -32,9 +32,13 @@ def _affix_fuzzer20__s__special_field_converter_override(x: datatypes.StringComp
         return datatypes.StringComponent(x)
 
 
-@define
+@define(init=False)
 class AffixFuzzer20:
-    # You can define your own __init__ function as a member of AffixFuzzer20Ext in affix_fuzzer20_ext.py
+    def __init__(self: Any, p: datatypes.PrimitiveComponentLike, s: datatypes.StringComponentLike):
+        """Create a new instance of the AffixFuzzer20 datatype."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer20Ext in affix_fuzzer20_ext.py
+        self.__attrs_init__(p=p, s=s)
 
     p: datatypes.PrimitiveComponent = field(converter=_affix_fuzzer20__p__special_field_converter_override)
     s: datatypes.StringComponent = field(converter=_affix_fuzzer20__s__special_field_converter_override)

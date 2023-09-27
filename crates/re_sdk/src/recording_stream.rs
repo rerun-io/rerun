@@ -9,7 +9,7 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::{components::InstanceKey, Archetype, ComponentBatch, SerializationError};
+use re_types::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -577,7 +577,7 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Logs the contents of an [`Archetype`] into Rerun.
+    /// Logs the contents of a [component bundle] into Rerun.
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
     /// See `RecordingStream::set_time_*` family of methods for more information.
@@ -587,16 +587,17 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         self.log_with_timeless(ent_path, false, arch)
     }
 
-    /// Logs the contents of an [`Archetype`] into Rerun as timeless data.
+    /// Logs the contents of a [component bundle] into Rerun as timeless data.
     ///
     /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
     /// into the past.
@@ -607,16 +608,17 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_timeless(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         self.log_with_timeless(ent_path, true, arch)
     }
 
-    /// Logs the contents of an [`Archetype`] into Rerun.
+    /// Logs the contents of a [component bundle] into Rerun.
     ///
     /// If `timeless` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
@@ -632,12 +634,13 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_with_timeless(
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         self.log_component_batches(
             ent_path,
@@ -686,7 +689,7 @@ impl RecordingStream {
             .map(|comp_batch| {
                 num_instances = usize::max(num_instances, comp_batch.num_instances());
                 comp_batch
-                    .try_to_arrow()
+                    .to_arrow()
                     .map(|array| (comp_batch.arrow_field(), array))
             })
             .collect();

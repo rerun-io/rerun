@@ -21,9 +21,13 @@ from .blob_ext import BlobExt
 __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 
 
-@define
+@define(init=False)
 class Blob(BlobExt):
-    # You can define your own __init__ function as a member of BlobExt in blob_ext.py
+    def __init__(self: Any, data: BlobLike):
+        """Create a new instance of the Blob component."""
+
+        # You can define your own __init__ function as a member of BlobExt in blob_ext.py
+        self.__attrs_init__(data=data)
 
     data: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
 

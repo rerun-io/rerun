@@ -5,24 +5,49 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 
 __all__ = ["TextDocument"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class TextDocument(Archetype):
     """A text element intended to be displayed in its own text-box."""
 
-    # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
+    def __init__(self: Any, body: datatypes.Utf8Like, media_type: datatypes.Utf8Like | None = None):
+        """
+        Create a new instance of the TextDocument archetype.
+
+        Parameters
+        ----------
+        body:
+             Contents of the text document.
+        media_type:
+             The Media Type of the text.
+
+             For instance:
+             * `text/plain`
+             * `text/markdown`
+
+             If omitted, `text/plain` is assumed.
+        """
+
+        # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
+        self.__attrs_init__(body=body, media_type=media_type)
 
     body: components.TextBatch = field(
         metadata={"component": "required"},
         converter=components.TextBatch,  # type: ignore[misc]
     )
+    """
+    Contents of the text document.
+    """
+
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,

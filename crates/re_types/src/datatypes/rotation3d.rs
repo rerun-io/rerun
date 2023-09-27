@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -76,7 +77,7 @@ impl crate::Loggable for Rotation3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -190,7 +191,7 @@ impl crate::Loggable for Rotation3D {
                         };
                         {
                             _ = axis_angle_bitmap;
-                            crate::datatypes::RotationAxisAngle::try_to_arrow_opt(axis_angle)?
+                            crate::datatypes::RotationAxisAngle::to_arrow_opt(axis_angle)?
                         }
                     },
                 ],
@@ -224,7 +225,7 @@ impl crate::Loggable for Rotation3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -374,7 +375,7 @@ impl crate::Loggable for Rotation3D {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[2usize];
-                    crate::datatypes::RotationAxisAngle::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::RotationAxisAngle::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.Rotation3D#AxisAngle")?
                         .into_iter()
                         .collect::<Vec<_>>()

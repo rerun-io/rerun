@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -161,52 +162,7 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::indicator()),
-            Some((&self.recursive as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::ClearIsRecursive>::try_to_arrow([&self.recursive]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.ClearIsRecursive".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("recursive", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.Clear#recursive")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -218,10 +174,10 @@ impl crate::Archetype for Clear {
             .collect();
         let recursive = {
             let array = arrays_by_name
-                .get("recursive")
+                .get("rerun.components.ClearIsRecursive")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Clear#recursive")?;
-            <crate::components::ClearIsRecursive>::try_from_arrow_opt(&**array)
+            <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Clear#recursive")?
                 .into_iter()
                 .next()
@@ -230,6 +186,24 @@ impl crate::Archetype for Clear {
                 .with_context("rerun.archetypes.Clear#recursive")?
         };
         Ok(Self { recursive })
+    }
+}
+
+impl crate::AsComponents for Clear {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.recursive as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 
