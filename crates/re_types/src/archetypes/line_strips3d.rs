@@ -17,6 +17,58 @@
 ///
 /// ## Examples
 ///
+/// Simple example:
+/// ```ignore
+/// //! Log a simple line strip.
+///
+/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
+///
+///     let points = [
+///         [0., 0., 0.],
+///         [0., 0., 1.],
+///         [1., 0., 0.],
+///         [1., 0., 1.],
+///         [1., 1., 0.],
+///         [1., 1., 1.],
+///         [0., 1., 0.],
+///         [0., 1., 1.],
+///     ];
+///     rec.log("strip", &LineStrips3D::new([points]))?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+///
+/// Many individual segments:
+/// ```ignore
+/// //! Log a simple set of line segments.
+///
+/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
+///
+///     let points = [
+///         [0., 0., 0.],
+///         [0., 0., 1.],
+///         [1., 0., 0.],
+///         [1., 0., 1.],
+///         [1., 1., 0.],
+///         [1., 1., 1.],
+///         [0., 1., 0.],
+///         [0., 1., 1.],
+///     ];
+///     rec.log("segments", &LineStrips3D::new(points.chunks(2)))?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+///
 /// Many strips:
 /// ```ignore
 /// //! Log a batch of 2d line strips.
@@ -44,32 +96,6 @@
 ///             .with_radii([0.025, 0.005])
 ///             .with_labels(["one strip here", "and one strip there"]),
 ///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-///
-/// Many individual segments:
-/// ```ignore
-/// //! Log a simple set of line segments.
-///
-/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
-///
-///     let points = [
-///         [0., 0., 0.],
-///         [0., 0., 1.],
-///         [1., 0., 0.],
-///         [1., 0., 1.],
-///         [1., 1., 0.],
-///         [1., 1., 1.],
-///         [0., 1., 0.],
-///         [0., 1., 1.],
-///     ];
-///     rec.log("segments", &LineStrips3D::new(points.chunks(2)))?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())

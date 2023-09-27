@@ -20,6 +20,49 @@ class LineStrips3D(Archetype):
 
     Examples
     --------
+    Simple example:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_line_strip3d", spawn=True)
+
+    points = [
+        [0, 0, 0],
+        [0, 0, 1],
+        [1, 0, 0],
+        [1, 0, 1],
+        [1, 1, 0],
+        [1, 1, 1],
+        [0, 1, 0],
+        [0, 1, 1],
+    ]
+
+    rr.log("strip", rr.LineStrips3D([points]))
+    ```
+
+    Many individual segments:
+    ```python
+    #!/usr/bin/env python3
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_line_segments3d", spawn=True)
+
+    rr.log(
+        "segments",
+        rr.LineStrips3D(
+            np.array(
+                [
+                    [[0, 0, 0], [0, 0, 1]],
+                    [[1, 0, 0], [1, 0, 1]],
+                    [[1, 1, 0], [1, 1, 1]],
+                    [[0, 1, 0], [0, 1, 1]],
+                ],
+            )
+        ),
+    )
+    ```
+
     Many strips:
     ```python
     import rerun as rr
@@ -50,29 +93,6 @@ class LineStrips3D(Archetype):
             colors=[[255, 0, 0], [0, 255, 0]],
             radii=[0.025, 0.005],
             labels=["one strip here", "and one strip there"],
-        ),
-    )
-    ```
-
-    Many individual segments:
-    ```python
-    #!/usr/bin/env python3
-    import numpy as np
-    import rerun as rr
-
-    rr.init("rerun_example_line_segments3d", spawn=True)
-
-    rr.log(
-        "segments",
-        rr.LineStrips3D(
-            np.array(
-                [
-                    [[0, 0, 0], [0, 0, 1]],
-                    [[1, 0, 0], [1, 0, 1]],
-                    [[1, 1, 0], [1, 1, 1]],
-                    [[0, 1, 0], [0, 1, 1]],
-                ],
-            )
         ),
     )
     ```

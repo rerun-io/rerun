@@ -20,7 +20,35 @@ class LineStrips2D(Archetype):
 
     Examples
     --------
-    Many strips:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_line_strip2d", spawn=True)
+
+    rr.log(
+        "strip",
+        rr.LineStrips2D([[[0, 0], [2, 1], [4, -1], [6, 0]]]),
+    )
+
+    # Log an extra rect to set the view bounds
+    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
+    ```
+
+    ```python
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_line_segments2d", spawn=True)
+
+    rr.log(
+        "segments",
+        rr.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
+    )
+
+    # Log an extra rect to set the view bounds
+    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
+    ```
+
     ```python
     import rerun as rr
 
@@ -41,22 +69,6 @@ class LineStrips2D(Archetype):
 
     # Log an extra rect to set the view bounds
     rr.log("bounds", rr.Boxes2D(centers=[3, 1.5], half_sizes=[4.0, 4.5]))
-    ```
-
-    Many individual segments:
-    ```python
-    import numpy as np
-    import rerun as rr
-
-    rr.init("rerun_example_line_segments2d", spawn=True)
-
-    rr.log(
-        "segments",
-        rr.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
-    )
-
-    # Log an extra rect to set the view bounds
-    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
     ```
     """
 
