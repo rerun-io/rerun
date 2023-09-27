@@ -22,9 +22,7 @@ Optional:
 
 code-example: asset3d_simple
 
-
 ### 3D asset with out-of-tree transform
 
 code-example: asset3d_out_of_tree
-
 

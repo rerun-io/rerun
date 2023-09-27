@@ -161,16 +161,15 @@ fn example_list(o: &mut String, examples: &[Example<'_>]) {
         putln!(o, "### {title}");
         putln!(o);
         putln!(o, "code-example: {name}");
-        putln!(o);
-
-        image_url_stack(o, title, image.as_ref());
+        if let Some(image_url) = image {
+            putln!(o);
+            image_url_stack(o, title, image_url);
+        }
         putln!(o);
     }
 }
 
-fn image_url_stack(o: &mut String, title: &str, image_url: Option<&ImageUrl<'_>>) {
-    let Some(image_url) = image_url else { return };
-
+fn image_url_stack(o: &mut String, title: &str, image_url: &ImageUrl<'_>) {
     match image_url {
         ImageUrl::Rerun(rerun) => {
             for line in rerun.image_stack(title) {

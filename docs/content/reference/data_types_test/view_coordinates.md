@@ -23,4 +23,3 @@ Required:
 
 code-example: view_coordinates_simple
 
-

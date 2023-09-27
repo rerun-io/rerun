@@ -18,4 +18,3 @@ Required:
 
 code-example: bar_chart
 
-

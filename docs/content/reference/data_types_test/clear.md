@@ -16,9 +16,7 @@ Required:
 
 code-example: clear_simple
 
-
 ### Recursive
 
 code-example: clear_recursive
-
 

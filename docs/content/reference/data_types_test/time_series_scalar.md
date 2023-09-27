@@ -27,9 +27,7 @@ Optional:
 
 code-example: scalar_simple
 
-
 ### scalar_multiple_plots
 
 code-example: scalar_multiple_plots
-
 

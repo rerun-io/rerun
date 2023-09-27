@@ -26,9 +26,7 @@ Optional:
 
 code-example: mesh3d_indexed
 
-
 ### 3D mesh with partial updates
 
 code-example: mesh3d_partial_updates
-
 
