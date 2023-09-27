@@ -210,6 +210,12 @@ impl crate::Archetype for AffixFuzzer1 {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: AffixFuzzer1Indicator = AffixFuzzer1Indicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -236,7 +242,7 @@ impl crate::Archetype for AffixFuzzer1 {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator()),
             Some((&self.fuzz1001 as &dyn crate::ComponentBatch).into()),
             Some((&self.fuzz1002 as &dyn crate::ComponentBatch).into()),
             Some((&self.fuzz1003 as &dyn crate::ComponentBatch).into()),

@@ -124,6 +124,12 @@ impl crate::Archetype for Boxes2D {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: Boxes2DIndicator = Boxes2DIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -150,7 +156,7 @@ impl crate::Archetype for Boxes2D {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator()),
             Some((&self.half_sizes as &dyn crate::ComponentBatch).into()),
             self.centers
                 .as_ref()

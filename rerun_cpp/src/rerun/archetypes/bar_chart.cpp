@@ -9,17 +9,17 @@ namespace rerun {
     namespace archetypes {
         const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
 
+        AnonymousComponentBatch BarChart::indicator() {
+            return ComponentBatch<
+                components::IndicatorComponent<BarChart::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+        }
+
         std::vector<AnonymousComponentBatch> BarChart::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(1);
 
             comp_batches.emplace_back(values);
-            comp_batches.emplace_back(
-                ComponentBatch<components::IndicatorComponent<BarChart::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(BarChart::indicator());
 
             return comp_batches;
         }

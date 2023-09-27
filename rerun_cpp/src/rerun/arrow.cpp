@@ -20,12 +20,10 @@ namespace rerun {
         }
     }
 
-    Result<rerun::DataCell> create_indicator_component(
-        const char* indicator_fqname, size_t num_instances
-    ) {
+    Result<rerun::DataCell> create_indicator_component(const char* indicator_fqname) {
         arrow::MemoryPool* pool = arrow::default_memory_pool();
         auto builder = std::make_shared<arrow::NullBuilder>(pool);
-        ARROW_RETURN_NOT_OK(builder->AppendNulls(static_cast<int64_t>(num_instances)));
+        ARROW_RETURN_NOT_OK(builder->AppendNulls(1));
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 

@@ -96,6 +96,10 @@ name = "line_strip3d_batch"
 path = "line_strip3d_batch.rs"
 
 [[bin]]
+name = "manual_indicator"
+path = "manual_indicator.rs"
+
+[[bin]]
 name = "mesh3d_simple"
 path = "mesh3d_simple.rs"
 

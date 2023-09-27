@@ -133,6 +133,12 @@ impl crate::Archetype for Pinhole {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: PinholeIndicator = PinholeIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -159,7 +165,7 @@ impl crate::Archetype for Pinhole {
 
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
+            Some(Self::indicator()),
             Some((&self.image_from_camera as &dyn crate::ComponentBatch).into()),
             self.resolution
                 .as_ref()

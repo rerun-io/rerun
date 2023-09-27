@@ -642,7 +642,6 @@ impl RecordingStream {
         self.log_component_batches(
             ent_path,
             timeless,
-            arch.num_instances() as u32,
             arch.as_component_batches()
                 .iter()
                 .map(|any_comp_batch| any_comp_batch.as_ref()),
@@ -660,11 +659,9 @@ impl RecordingStream {
     /// internal clock.
     /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
-    /// `num_instances` specify the expected number of component instances present in each list.
-    /// Each can have either:
-    /// - exactly `num_instances` instances,
-    /// - a single instance (splat),
-    /// - or zero instance (clear).
+    /// The number of instances will be determined by the longest batch in the bundle.
+    /// All of the batches should have the same number of instances, or length 1 if the component is
+    /// a splat, or 0 if the component is being cleared.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -675,7 +672,6 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
-        num_instances: u32,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
@@ -684,9 +680,11 @@ impl RecordingStream {
 
         let ent_path = ent_path.into();
 
+        let mut num_instances = 0;
         let comp_batches: Result<Vec<_>, _> = comp_batches
             .into_iter()
             .map(|comp_batch| {
+                num_instances = usize::max(num_instances, comp_batch.num_instances());
                 comp_batch
                     .try_to_arrow()
                     .map(|array| (comp_batch.arrow_field(), array))
@@ -731,7 +729,7 @@ impl RecordingStream {
                 RowId::random(),
                 timepoint.clone(),
                 ent_path.clone(),
-                num_instances,
+                num_instances as _,
                 instanced,
             )?)
         };
