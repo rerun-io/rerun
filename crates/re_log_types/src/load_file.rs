@@ -44,7 +44,6 @@ pub fn data_cells_from_file_path(
                 .as_component_batches()
                 .into_iter()
                 .map(|comp_batch| {
-                    let comp_batch = comp_batch.as_ref();
                     Ok(DataCell::from_arrow(
                         comp_batch.name(),
                         comp_batch
@@ -75,9 +74,8 @@ fn image_indicator_cell() -> DataCell {
 
     let indicator = re_types::archetypes::Image::indicator();
     let indicator_cell = DataCell::from_arrow(
-        indicator.as_ref().name(),
+        indicator.name(),
         indicator
-            .as_ref()
             .to_arrow()
             .expect("Serializing an indicator component should always work"),
     );
@@ -105,7 +103,6 @@ pub fn data_cells_from_file_contents(
                     .as_component_batches()
                     .into_iter()
                     .map(|comp_batch| {
-                        let comp_batch = comp_batch.as_ref();
                         Ok(DataCell::from_arrow(
                             comp_batch.name(),
                             comp_batch

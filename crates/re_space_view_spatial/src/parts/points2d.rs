@@ -196,7 +196,7 @@ impl ViewPartSystem for Points2DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points2D::indicator().as_ref().name()).collect()
+        std::iter::once(Points2D::indicator().name()).collect()
     }
 
     fn execute(
