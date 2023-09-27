@@ -29,18 +29,19 @@ class IndicatorComponentBatch:
     where multiple archetypes would otherwise be overlapping.
 
     This implements the `ComponentBatchLike` interface.
-
-    Parameters
-    ----------
-    archetype_name:
-        The fully qualified name of the Archetype.
-    num_instances:
-        The number of instances of the in this batch.
     """
 
     data: pa.Array
 
     def __init__(self, archetype_name: str) -> None:
+        """
+        Creates a new indicator component based on a given `archetype_name`.
+
+        Parameters
+        ----------
+        archetype_name:
+            The fully qualified name of the Archetype.
+        """
         self.data = pa.nulls(1, type=pa.null())
         self._archetype_name = archetype_name
 

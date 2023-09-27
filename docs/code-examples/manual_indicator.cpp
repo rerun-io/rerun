@@ -1,4 +1,4 @@
-// Log some very simple points.
+// Shows how to manually associate one or more indicator components with arbitrary data.
 
 #include <rerun.hpp>
 
