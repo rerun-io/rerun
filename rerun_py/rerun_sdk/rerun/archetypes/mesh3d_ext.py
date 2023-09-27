@@ -48,7 +48,7 @@ class Mesh3DExt:
         if indices is not None:
             if mesh_properties is not None:
                 raise ValueError("indices and mesh_properties are mutually exclusive")
-            mesh_properties = datatypes.MeshProperties(vertex_indices=indices)
+            mesh_properties = datatypes.MeshProperties(indices=indices)
 
         # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
         self.__attrs_init__(
