@@ -173,7 +173,7 @@ impl crate::Archetype for Clear {
             .collect();
         let recursive = {
             let array = arrays_by_name
-                .get("recursive")
+                .get("rerun.components.ClearIsRecursive")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Clear#recursive")?;
             <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)

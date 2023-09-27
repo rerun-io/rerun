@@ -143,7 +143,7 @@ impl crate::Archetype for Transform3D {
             .collect();
         let transform = {
             let array = arrays_by_name
-                .get("transform")
+                .get("rerun.components.Transform3D")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Transform3D#transform")?;
             <crate::components::Transform3D>::from_arrow_opt(&**array)

@@ -196,7 +196,7 @@ impl crate::Archetype for Asset3D {
             .collect();
         let data = {
             let array = arrays_by_name
-                .get("data")
+                .get("rerun.components.Blob")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#data")?;
             <crate::components::Blob>::from_arrow_opt(&**array)
@@ -207,7 +207,7 @@ impl crate::Archetype for Asset3D {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#data")?
         };
-        let media_type = if let Some(array) = arrays_by_name.get("media_type") {
+        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
             Some({
                 <crate::components::MediaType>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Asset3D#media_type")?
@@ -220,19 +220,20 @@ impl crate::Archetype for Asset3D {
         } else {
             None
         };
-        let transform = if let Some(array) = arrays_by_name.get("transform") {
-            Some({
-                <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-            })
-        } else {
-            None
-        };
+        let transform =
+            if let Some(array) = arrays_by_name.get("rerun.components.OutOfTreeTransform3D") {
+                Some({
+                    <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Asset3D#transform")?
+                        .into_iter()
+                        .next()
+                        .flatten()
+                        .ok_or_else(crate::DeserializationError::missing_data)
+                        .with_context("rerun.archetypes.Asset3D#transform")?
+                })
+            } else {
+                None
+            };
         Ok(Self {
             data,
             media_type,

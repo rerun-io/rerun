@@ -99,7 +99,7 @@ impl crate::Archetype for TextLog {
             .collect();
         let body = {
             let array = arrays_by_name
-                .get("body")
+                .get("rerun.components.Text")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextLog#body")?;
             <crate::components::Text>::from_arrow_opt(&**array)
@@ -110,7 +110,7 @@ impl crate::Archetype for TextLog {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextLog#body")?
         };
-        let level = if let Some(array) = arrays_by_name.get("level") {
+        let level = if let Some(array) = arrays_by_name.get("rerun.components.TextLogLevel") {
             Some({
                 <crate::components::TextLogLevel>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextLog#level")?
@@ -123,7 +123,7 @@ impl crate::Archetype for TextLog {
         } else {
             None
         };
-        let color = if let Some(array) = arrays_by_name.get("color") {
+        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextLog#color")?

@@ -106,7 +106,7 @@ impl crate::Archetype for TextDocument {
             .collect();
         let body = {
             let array = arrays_by_name
-                .get("body")
+                .get("rerun.components.Text")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextDocument#body")?;
             <crate::components::Text>::from_arrow_opt(&**array)
@@ -117,7 +117,7 @@ impl crate::Archetype for TextDocument {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextDocument#body")?
         };
-        let media_type = if let Some(array) = arrays_by_name.get("media_type") {
+        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
             Some({
                 <crate::components::MediaType>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextDocument#media_type")?

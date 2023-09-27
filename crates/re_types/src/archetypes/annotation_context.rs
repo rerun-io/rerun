@@ -136,7 +136,7 @@ impl crate::Archetype for AnnotationContext {
             .collect();
         let context = {
             let array = arrays_by_name
-                .get("context")
+                .get("rerun.components.AnnotationContext")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AnnotationContext#context")?;
             <crate::components::AnnotationContext>::from_arrow_opt(&**array)

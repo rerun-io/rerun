@@ -114,7 +114,7 @@ impl crate::Archetype for BarChart {
             .collect();
         let values = {
             let array = arrays_by_name
-                .get("values")
+                .get("rerun.components.TensorData")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.BarChart#values")?;
             <crate::components::TensorData>::from_arrow_opt(&**array)

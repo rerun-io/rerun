@@ -154,7 +154,7 @@ impl crate::Archetype for Points3D {
             .collect();
         let positions = {
             let array = arrays_by_name
-                .get("positions")
+                .get("rerun.components.Position3D")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Points3D#positions")?;
             <crate::components::Position3D>::from_arrow_opt(&**array)
@@ -164,7 +164,7 @@ impl crate::Archetype for Points3D {
                 .collect::<crate::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Points3D#positions")?
         };
-        let radii = if let Some(array) = arrays_by_name.get("radii") {
+        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points3D#radii")?
@@ -176,7 +176,7 @@ impl crate::Archetype for Points3D {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("colors") {
+        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points3D#colors")?
@@ -188,7 +188,7 @@ impl crate::Archetype for Points3D {
         } else {
             None
         };
-        let labels = if let Some(array) = arrays_by_name.get("labels") {
+        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points3D#labels")?
@@ -200,7 +200,7 @@ impl crate::Archetype for Points3D {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
+        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points3D#class_ids")?
@@ -212,7 +212,7 @@ impl crate::Archetype for Points3D {
         } else {
             None
         };
-        let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
+        let keypoint_ids = if let Some(array) = arrays_by_name.get("rerun.components.KeypointId") {
             Some({
                 <crate::components::KeypointId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points3D#keypoint_ids")?
@@ -224,7 +224,8 @@ impl crate::Archetype for Points3D {
         } else {
             None
         };
-        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
+        let instance_keys = if let Some(array) = arrays_by_name.get("rerun.components.InstanceKey")
+        {
             Some({
                 <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points3D#instance_keys")?

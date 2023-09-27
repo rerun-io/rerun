@@ -124,7 +124,7 @@ impl crate::Archetype for ViewCoordinates {
             .collect();
         let xyz = {
             let array = arrays_by_name
-                .get("xyz")
+                .get("rerun.components.ViewCoordinates")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.ViewCoordinates#xyz")?;
             <crate::components::ViewCoordinates>::from_arrow_opt(&**array)

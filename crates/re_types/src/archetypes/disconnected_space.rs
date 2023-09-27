@@ -123,7 +123,7 @@ impl crate::Archetype for DisconnectedSpace {
             .collect();
         let disconnected_space = {
             let array = arrays_by_name
-                .get("disconnected_space")
+                .get("rerun.components.DisconnectedSpace")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?;
             <crate::components::DisconnectedSpace>::from_arrow_opt(&**array)

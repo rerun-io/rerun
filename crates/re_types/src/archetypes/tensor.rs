@@ -114,7 +114,7 @@ impl crate::Archetype for Tensor {
             .collect();
         let data = {
             let array = arrays_by_name
-                .get("data")
+                .get("rerun.components.TensorData")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?;
             <crate::components::TensorData>::from_arrow_opt(&**array)

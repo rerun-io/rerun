@@ -858,7 +858,7 @@ fn quote_trait_impls_from_obj(
             let all_deserializers = {
                 obj.fields.iter().map(|obj_field| {
                     let obj_field_fqname = obj_field.fqname.as_str();
-                    let field_name_str = &obj_field.name;
+                    let field_typ_fqname_str = obj_field.typ.fqname().unwrap();
                     let field_name = format_ident!("{}", obj_field.name);
 
                     let is_plural = obj_field.typ.is_plural();
@@ -884,9 +884,11 @@ fn quote_trait_impls_from_obj(
                         }
                     };
 
+                    // NOTE: An archetype cannot have overlapped component types by definition, so use the
+                    // component's fqname to do the mapping.
                     let quoted_deser = if is_nullable {
                         quote! {
-                            if let Some(array) = arrays_by_name.get(#field_name_str) {
+                            if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
                                 Some({
                                     <#component>::from_arrow_opt(&**array)
                                         .with_context(#obj_field_fqname)?
@@ -899,7 +901,7 @@ fn quote_trait_impls_from_obj(
                     } else {
                         quote! {{
                             let array = arrays_by_name
-                                .get(#field_name_str)
+                                .get(#field_typ_fqname_str)
                                 .ok_or_else(crate::DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?;
 
@@ -974,8 +976,7 @@ fn quote_trait_impls_from_obj(
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
                             .into_iter()
-                            .map(|(field, array)| (field.name, array))
-                            .collect();
+                            .map(|(field, array)| (field.name, array)).collect();
 
                         #(#all_deserializers;)*
 

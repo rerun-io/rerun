@@ -137,7 +137,7 @@ impl crate::Archetype for DepthImage {
             .collect();
         let data = {
             let array = arrays_by_name
-                .get("data")
+                .get("rerun.components.TensorData")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#data")?;
             <crate::components::TensorData>::from_arrow_opt(&**array)
@@ -148,7 +148,7 @@ impl crate::Archetype for DepthImage {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#data")?
         };
-        let meter = if let Some(array) = arrays_by_name.get("meter") {
+        let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
             Some({
                 <crate::components::DepthMeter>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.DepthImage#meter")?
@@ -161,7 +161,7 @@ impl crate::Archetype for DepthImage {
         } else {
             None
         };
-        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
+        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
             Some({
                 <crate::components::DrawOrder>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.DepthImage#draw_order")?
