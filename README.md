@@ -32,8 +32,10 @@ rr.set_time_sequence("frame", 42))
 rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 …
 ```
-![rerun-github-hero](https://github.com/rerun-io/rerun/assets/2624717/c4900538-fc3a-43b8-841a-8d226e7b5a2e)
 
+<p align="center">
+  <img width="800" alt="Rerun Viewer" src="https://github.com/rerun-io/rerun/assets/2624717/c4900538-fc3a-43b8-841a-8d226e7b5a2e">
+</p>
 
 ## Getting started
 * **Python**: `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
