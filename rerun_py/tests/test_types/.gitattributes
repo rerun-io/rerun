@@ -3,6 +3,9 @@
 .gitattributes linguist-generated=true
 archetypes/__init__.py linguist-generated=true
 archetypes/affix_fuzzer1.py linguist-generated=true
+archetypes/affix_fuzzer2.py linguist-generated=true
+archetypes/affix_fuzzer3.py linguist-generated=true
+archetypes/affix_fuzzer4.py linguist-generated=true
 components/__init__.py linguist-generated=true
 components/affix_fuzzer1.py linguist-generated=true
 components/affix_fuzzer10.py linguist-generated=true

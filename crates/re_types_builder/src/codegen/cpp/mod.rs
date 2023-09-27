@@ -518,12 +518,16 @@ impl QuotedObject {
 
                 // Num instances gives the number of primary instances.
                 {
-                    let first_required_field = required_component_fields.first().unwrap();
-                    let first_required_field_name = &format_ident!("{}", first_required_field.name);
-                    let definition_body = if first_required_field.typ.is_plural() {
-                        quote!(return #first_required_field_name.size();)
+                    let first_required_field = required_component_fields.first();
+                    let definition_body = if let Some(field) = first_required_field {
+                        let first_required_field_name = &format_ident!("{}", field.name);
+                        if field.typ.is_plural() {
+                            quote!(return #first_required_field_name.size();)
+                        } else {
+                            quote!(return 1;)
+                        }
                     } else {
-                        quote!(return 1;)
+                        quote!(return 0;)
                     };
                     methods.push(Method {
                         docs: "Returns the number of primary instances of this archetype.".into(),

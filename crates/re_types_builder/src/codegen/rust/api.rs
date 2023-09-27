@@ -156,6 +156,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::map_flatten)]\n");
     code.push_str("#![allow(clippy::match_wildcard_for_single_variants)]\n");
     code.push_str("#![allow(clippy::needless_question_mark)]\n");
+    code.push_str("#![allow(clippy::new_without_default)]\n");
     code.push_str("#![allow(clippy::redundant_closure)]\n");
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
@@ -783,22 +784,21 @@ fn quote_trait_impls_from_obj(
                 (num_components, quoted_components)
             }
 
-            let first_required_comp = obj
-                .fields
-                .iter()
-                .find(|field| {
-                    field
-                        .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
-                        .is_some()
-                })
-                // NOTE: must have at least one required component.
-                .unwrap();
+            let first_required_comp = obj.fields.iter().find(|field| {
+                field
+                    .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
+                    .is_some()
+            });
 
-            let num_instances = if first_required_comp.typ.is_plural() {
-                let name = format_ident!("{}", first_required_comp.name);
-                quote!(self.#name.len())
+            let num_instances = if let Some(comp) = first_required_comp {
+                if comp.typ.is_plural() {
+                    let name = format_ident!("{}", comp.name);
+                    quote!(self.#name.len())
+                } else {
+                    quote!(1)
+                }
             } else {
-                quote!(1)
+                quote!(0)
             };
 
             let indicator_name = format!("{}Indicator", obj.name);

@@ -36,7 +36,12 @@ table AffixFuzzer1 (
   fuzz1019: rerun.testing.components.AffixFuzzer19 ("attr.rerun.component_required", order: 1019);
   fuzz1020: rerun.testing.components.AffixFuzzer20 ("attr.rerun.component_required", order: 1020);
   fuzz1021: rerun.testing.components.AffixFuzzer21 ("attr.rerun.component_required", order: 1021);
+}
 
+table AffixFuzzer2 (
+  "attr.rust.derive": "PartialEq",
+  order: 200
+) {
   fuzz1101: [rerun.testing.components.AffixFuzzer1] ("attr.rerun.component_required", order: 1101);
   fuzz1102: [rerun.testing.components.AffixFuzzer2] ("attr.rerun.component_required", order: 1102);
   fuzz1103: [rerun.testing.components.AffixFuzzer3] ("attr.rerun.component_required", order: 1103);
@@ -55,7 +60,12 @@ table AffixFuzzer1 (
   fuzz1116: [rerun.testing.components.AffixFuzzer16] ("attr.rerun.component_required", order: 1116);
   fuzz1117: [rerun.testing.components.AffixFuzzer17] ("attr.rerun.component_required", order: 1117);
   fuzz1118: [rerun.testing.components.AffixFuzzer18] ("attr.rerun.component_required", order: 1118);
+}
 
+table AffixFuzzer3 (
+  "attr.rust.derive": "PartialEq",
+  order: 300
+) {
   fuzz2001: rerun.testing.components.AffixFuzzer1 ("attr.rerun.component_optional", nullable, order: 2001);
   fuzz2002: rerun.testing.components.AffixFuzzer2 ("attr.rerun.component_optional", nullable, order: 2002);
   fuzz2003: rerun.testing.components.AffixFuzzer3 ("attr.rerun.component_optional", nullable, order: 2003);
@@ -75,6 +85,12 @@ table AffixFuzzer1 (
   fuzz2017: rerun.testing.components.AffixFuzzer17 ("attr.rerun.component_optional", nullable, order: 2017);
   fuzz2018: rerun.testing.components.AffixFuzzer18 ("attr.rerun.component_optional", nullable, order: 2018);
 
+}
+
+table AffixFuzzer4 (
+  "attr.rust.derive": "PartialEq",
+  order: 400
+) {
   fuzz2101: [rerun.testing.components.AffixFuzzer1] ("attr.rerun.component_optional", nullable, order: 2101);
   fuzz2102: [rerun.testing.components.AffixFuzzer2] ("attr.rerun.component_optional", nullable, order: 2102);
   fuzz2103: [rerun.testing.components.AffixFuzzer3] ("attr.rerun.component_optional", nullable, order: 2103);
