@@ -175,7 +175,7 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
-        Ok(Self::from_arrow(C::name(), C::try_to_arrow(values)?))
+        Ok(Self::from_arrow(C::name(), C::to_arrow(values)?))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.
@@ -189,7 +189,7 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
-        Ok(Self::from_arrow(C::name(), C::try_to_arrow_opt(values)?))
+        Ok(Self::from_arrow(C::name(), C::to_arrow_opt(values)?))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.

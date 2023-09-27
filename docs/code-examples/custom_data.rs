@@ -63,13 +63,13 @@ impl Loggable for Confidence {
         Float32::arrow_datatype()
     }
 
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: 'a,
     {
-        Float32::try_to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
+        Float32::to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
     }
 }
 

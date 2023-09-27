@@ -10,7 +10,7 @@ fn validity_checks() {
         components::Position2D::new(3.0, 4.0), //
     ];
 
-    let serialized = Position2D::try_to_arrow(good_non_nullable).unwrap();
+    let serialized = Position2D::to_arrow(good_non_nullable).unwrap();
     let deserialized = Position2D::try_from_arrow(serialized.as_ref());
     assert!(deserialized.is_ok());
 
@@ -19,7 +19,7 @@ fn validity_checks() {
         Some(components::Position2D::new(3.0, 4.0)), //
     ];
 
-    let serialized = Position2D::try_to_arrow_opt(good_nullable).unwrap();
+    let serialized = Position2D::to_arrow_opt(good_nullable).unwrap();
     let deserialized = Position2D::try_from_arrow(serialized.as_ref());
     assert!(deserialized.is_ok());
 
@@ -28,7 +28,7 @@ fn validity_checks() {
         None,
     ];
 
-    let serialized = Position2D::try_to_arrow_opt(bad).unwrap();
+    let serialized = Position2D::to_arrow_opt(bad).unwrap();
     let deserialized = Position2D::try_from_arrow(serialized.as_ref());
     assert!(deserialized.is_err());
     assert!(matches!(

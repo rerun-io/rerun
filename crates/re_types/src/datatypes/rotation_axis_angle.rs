@@ -70,7 +70,7 @@ impl crate::Loggable for RotationAxisAngle {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -173,7 +173,7 @@ impl crate::Loggable for RotationAxisAngle {
                         };
                         {
                             _ = angle_bitmap;
-                            crate::datatypes::Angle::try_to_arrow_opt(angle)?
+                            crate::datatypes::Angle::to_arrow_opt(angle)?
                         }
                     },
                 ],

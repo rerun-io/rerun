@@ -97,7 +97,7 @@ impl crate::Loggable for OutOfTreeTransform3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -123,7 +123,7 @@ impl crate::Loggable for OutOfTreeTransform3D {
             };
             {
                 _ = data0_bitmap;
-                crate::datatypes::Transform3D::try_to_arrow_opt(data0)?
+                crate::datatypes::Transform3D::to_arrow_opt(data0)?
             }
         })
     }

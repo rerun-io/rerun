@@ -87,7 +87,7 @@ impl crate::Loggable for TranslationRotationScale3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -196,7 +196,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         };
                         {
                             _ = rotation_bitmap;
-                            crate::datatypes::Rotation3D::try_to_arrow_opt(rotation)?
+                            crate::datatypes::Rotation3D::to_arrow_opt(rotation)?
                         }
                     },
                     {
@@ -219,7 +219,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         };
                         {
                             _ = scale_bitmap;
-                            crate::datatypes::Scale3D::try_to_arrow_opt(scale)?
+                            crate::datatypes::Scale3D::to_arrow_opt(scale)?
                         }
                     },
                     {

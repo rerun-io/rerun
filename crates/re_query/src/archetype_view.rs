@@ -108,8 +108,9 @@ impl ComponentWithInstances {
         instance_keys: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, InstanceKey>>>,
         values: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, C>>>,
     ) -> ComponentWithInstances {
-        let instance_keys = InstanceKey::to_arrow(instance_keys);
-        let values = C::to_arrow(values);
+        // Unwrap: If the data is valid for the native types, it's valid in serialized form.
+        let instance_keys = InstanceKey::to_arrow(instance_keys).unwrap();
+        let values = C::to_arrow(values).unwrap();
         ComponentWithInstances {
             instance_keys: DataCell::from_arrow(InstanceKey::name(), instance_keys),
             values: DataCell::from_arrow(C::name(), values),
@@ -494,7 +495,7 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
     let expected_point = [points[2]];
-    let expected_arrow = Position2D::to_arrow(expected_point);
+    let expected_arrow = Position2D::to_arrow(expected_point).unwrap();
 
     assert_eq!(expected_arrow, value);
 
@@ -514,7 +515,7 @@ fn lookup_value() {
     let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
     let expected_point = [points[3]];
-    let expected_arrow = Position2D::to_arrow(expected_point);
+    let expected_arrow = Position2D::to_arrow(expected_point).unwrap();
 
     assert_eq!(expected_arrow, value);
 

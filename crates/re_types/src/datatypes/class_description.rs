@@ -98,7 +98,7 @@ impl crate::Loggable for ClassDescription {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -138,7 +138,7 @@ impl crate::Loggable for ClassDescription {
                         };
                         {
                             _ = info_bitmap;
-                            crate::datatypes::AnnotationInfo::try_to_arrow_opt(info)?
+                            crate::datatypes::AnnotationInfo::to_arrow_opt(info)?
                         }
                     },
                     {
@@ -188,7 +188,7 @@ impl crate::Loggable for ClassDescription {
                                 offsets,
                                 {
                                     _ = keypoint_annotations_inner_bitmap;
-                                    crate::datatypes::AnnotationInfo::try_to_arrow_opt(
+                                    crate::datatypes::AnnotationInfo::to_arrow_opt(
                                         keypoint_annotations_inner_data,
                                     )?
                                 },
@@ -244,7 +244,7 @@ impl crate::Loggable for ClassDescription {
                                 offsets,
                                 {
                                     _ = keypoint_connections_inner_bitmap;
-                                    crate::datatypes::KeypointPair::try_to_arrow_opt(
+                                    crate::datatypes::KeypointPair::to_arrow_opt(
                                         keypoint_connections_inner_data,
                                     )?
                                 },

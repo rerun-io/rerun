@@ -33,9 +33,7 @@ pub trait Loggable: Clone + Sized {
     /// When using Rerun's builtin components & datatypes, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
     /// 2^63 for large arrays).
-    ///
-    /// For the non-fallible version, see [`Loggable::to_arrow_opt`].
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -76,59 +74,17 @@ pub trait Loggable: Clone + Sized {
     /// them into an Arrow array.
     /// The Arrow array's datatype will match [`Loggable::arrow_field`].
     ///
-    /// Panics on failure.
     /// When using Rerun's builtin components & datatypes, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
     /// 2^63 for large arrays).
-    ///
-    /// For the fallible version, see [`Loggable::try_to_arrow`].
     #[inline]
     fn to_arrow<'a>(
-        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
-    ) -> Box<dyn ::arrow2::array::Array>
-    where
-        Self: 'a,
-    {
-        Self::try_to_arrow_opt(data.into_iter().map(Some)).unwrap()
-    }
-
-    /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
-    /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::arrow_field`].
-    ///
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
-    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
-    /// 2^63 for large arrays).
-    ///
-    /// For the non-fallible version, see [`Loggable::to_arrow`].
-    #[inline]
-    fn try_to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a,
     {
-        Self::try_to_arrow_opt(data.into_iter().map(Some))
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Loggable`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::arrow_field`].
-    ///
-    /// Panics on failure.
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
-    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
-    /// 2^63 for large arrays).
-    ///
-    /// For the fallible version, see [`Loggable::try_to_arrow_opt`].
-    #[inline]
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> Box<dyn ::arrow2::array::Array>
-    where
-        Self: 'a,
-    {
-        Self::try_to_arrow_opt(data).unwrap()
+        Self::to_arrow_opt(data.into_iter().map(Some))
     }
 
     // --- Optional deserialization methods ---

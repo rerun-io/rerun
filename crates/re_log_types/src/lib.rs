@@ -442,7 +442,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn try_to_arrow_opt<'a>(
+            fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
             ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
             where

@@ -740,7 +740,7 @@ fn quote_trait_impls_from_obj(
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_to_arrow_opt<'a>(
+                    fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
                     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
                     where

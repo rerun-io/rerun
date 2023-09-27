@@ -77,7 +77,7 @@ impl crate::Loggable for AffixFuzzer5 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -122,7 +122,7 @@ impl crate::Loggable for AffixFuzzer5 {
                     };
                     {
                         _ = single_optional_union_bitmap;
-                        crate::testing::datatypes::AffixFuzzer4::try_to_arrow_opt(
+                        crate::testing::datatypes::AffixFuzzer4::to_arrow_opt(
                             single_optional_union,
                         )?
                     }
