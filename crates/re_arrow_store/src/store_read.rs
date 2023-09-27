@@ -212,7 +212,7 @@ impl DataStore {
     ///         .map(|cell| {
     ///             Series::try_from((
     ///                 cell.component_name().as_str(),
-    ///                 cell.to_arrow(),
+    ///                 cell.to_arrow()?,
     ///             ))
     ///         })
     ///         .collect();
@@ -370,7 +370,7 @@ impl DataStore {
     /// #         .map(|cell| {
     /// #             Series::try_from((
     /// #                 cell.component_name().as_ref(),
-    /// #                 cell.to_arrow(),
+    /// #                 cell.to_arrow()?,
     /// #             ))
     /// #         })
     /// #         .collect();

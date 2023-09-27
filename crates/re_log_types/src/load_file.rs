@@ -65,11 +65,13 @@ pub fn data_cells_from_file_path(
 
         #[cfg(feature = "image")]
         _ => {
-            use re_types::{Archetype, AsComponents as _};
+            use re_types::{Archetype, AsComponents as _, ResultExt as _};
             let indicator = <re_types::archetypes::Image as Archetype>::indicator().as_ref();
             let indicator_cell = DataCell::from_arrow(
                 re_types::archetypes::Image::indicator().name(),
-                indicator.to_arrow(),
+                indicator
+                    .try_to_arrow()
+                    .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
             );
 
             // Assume an image (there are so many image extensions):
@@ -132,11 +134,13 @@ pub fn data_cells_from_file_contents(
                     .map_err(re_types::tensor_data::TensorImageLoadError::from)?
             };
 
-            use re_types::{Archetype, AsComponents as _};
+            use re_types::{Archetype, AsComponents as _, ResultExt as _};
             let indicator = <re_types::archetypes::Image as Archetype>::indicator().as_ref();
             let indicator_cell = DataCell::from_arrow(
                 re_types::archetypes::Image::indicator().as_ref().name(),
-                indicator.to_arrow(),
+                indicator
+                    .try_to_arrow()
+                    .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
             );
 
             // Assume an image (there are so many image extensions):

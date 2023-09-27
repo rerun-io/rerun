@@ -59,7 +59,7 @@ fn roundtrip() {
     .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");

@@ -144,10 +144,8 @@ pub trait AsComponents {
     ///
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
     /// as-is, which is what you want in 99.9% of cases.
-    ///
-    /// For the non-fallible version, see [`Archetype::to_arrow`].
     #[inline]
-    fn try_to_arrow(
+    fn to_arrow(
         &self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
     {
@@ -161,16 +159,6 @@ pub trait AsComponents {
                     .with_context(comp_batch.as_ref().name())
             })
             .collect()
-    }
-
-    /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
-    ///
-    /// Panics on failure.
-    ///
-    /// For the fallible version, see [`Archetype::try_to_arrow`].
-    #[inline]
-    fn to_arrow(&self) -> Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)> {
-        self.try_to_arrow().detailed_unwrap()
     }
 }
 
