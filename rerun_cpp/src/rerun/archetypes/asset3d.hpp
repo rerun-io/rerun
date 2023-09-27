@@ -21,7 +21,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A prepacked 3D asset (.gltf, .glb, .obj, etc).
+        /// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
         ///
         /// ## Example
         ///

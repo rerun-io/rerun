@@ -16,7 +16,7 @@ __all__ = ["TimeSeriesScalar"]
 @define(str=False, repr=False)
 class TimeSeriesScalar(Archetype):
     """
-    Log a double-precision scalar that will be visualized as a timeseries plot.
+    Log a double-precision scalar that will be visualized as a time-series plot.
 
     The current simulation time will be used for the time/X-axis, hence scalars
     cannot be timeless!

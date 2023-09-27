@@ -17,7 +17,7 @@ __all__ = ["BarChart"]
 @define(str=False, repr=False)
 class BarChart(BarChartExt, Archetype):
     """
-    A Barchart.
+    A bar chart.
 
     The x values will be the indices of the array, and the bar heights will be the provided values.
 

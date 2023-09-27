@@ -17,7 +17,7 @@ __all__ = ["Asset3D"]
 @define(str=False, repr=False)
 class Asset3D(Asset3DExt, Archetype):
     """
-    A prepacked 3D asset (.gltf, .glb, .obj, etc).
+    A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 
     Examples
     --------

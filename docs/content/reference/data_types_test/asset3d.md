@@ -3,7 +3,7 @@ title: asset3d
 order: 100
 ---
 
-A prepacked 3D asset (.gltf, .glb, .obj, etc).
+A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 
 ## Components and APIs
 

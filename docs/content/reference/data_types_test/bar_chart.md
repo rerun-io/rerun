@@ -3,7 +3,7 @@ title: bar_chart
 order: 100
 ---
 
-A Barchart.
+A bar chart.
 
 The x values will be the indices of the array, and the bar heights will be the provided values.
 

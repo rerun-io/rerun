@@ -7,7 +7,7 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A prepacked 3D asset (.gltf, .glb, .obj, etc).
+/// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 ///
 /// \example asset3d_simple "Simple 3D asset"
 /// \example asset3d_out_of_tree "3D asset with out-of-tree transform"
