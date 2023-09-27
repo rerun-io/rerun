@@ -6,7 +6,7 @@ use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_types::{components::InstanceKey, Archetype, Component, Loggable};
 
-use crate::{ArchetypeView, ComponentWithInstances, EntityView, QueryError};
+use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 
 /// Make it so that our arrays can be deserialized again by arrow2-convert
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
@@ -49,7 +49,7 @@ pub fn iter_column<'a, C: Component + 'a>(
     let res = match df.column(C::name().as_ref()) {
         Ok(col) => itertools::Either::Left(col.chunks().iter().flat_map(|array| {
             let fixed_array = fix_polars_nulls::<C>(array.as_ref());
-            C::try_from_arrow_opt(fixed_array.as_ref()).unwrap()
+            C::from_arrow_opt(fixed_array.as_ref()).unwrap()
         })),
         Err(_) => itertools::Either::Right(std::iter::repeat_with(|| None).take(df.height())),
     };
@@ -61,7 +61,7 @@ where
     C0: re_types::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
 {
-    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
+    let array0 = C0::to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
 
@@ -78,8 +78,8 @@ where
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
 {
-    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
-    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()))?;
+    let array0 = C0::to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
+    let array1 = C1::to_arrow_opt(c1.iter().map(|c| c.as_ref()))?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
     let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -100,9 +100,9 @@ where
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
     &'a C2: Into<::std::borrow::Cow<'a, C2>>,
 {
-    let array0 = C0::try_to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
-    let array1 = C1::try_to_arrow_opt(c1.iter().map(|c| c.as_ref()))?;
-    let array2 = C2::try_to_arrow_opt(c2.iter().map(|c| c.as_ref()))?;
+    let array0 = C0::to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
+    let array1 = C1::to_arrow_opt(c1.iter().map(|c| c.as_ref()))?;
+    let array2 = C2::to_arrow_opt(c2.iter().map(|c| c.as_ref()))?;
 
     let series0 = Series::try_from((C0::name().as_ref(), array0.as_ref().clean_for_polars()))?;
     let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -133,52 +133,12 @@ impl ComponentWithInstances {
     }
 }
 
-impl<'a, Primary> EntityView<Primary>
-where
-    Primary: Component + 'a,
-    &'a Primary: Into<::std::borrow::Cow<'a, Primary>>,
-{
-    pub fn as_df1(&self) -> crate::Result<DataFrame> {
-        let array0 = self.primary.instance_keys.as_arrow_ref();
-        let array1 = self.primary.values.as_arrow_ref();
-
-        let series0 = Series::try_from((
-            InstanceKey::name().as_ref(),
-            array0.as_ref().clean_for_polars(),
-        ))?;
-        let series1 =
-            Series::try_from((Primary::name().as_ref(), array1.as_ref().clean_for_polars()))?;
-
-        Ok(DataFrame::new(vec![series0, series1])?)
-    }
-
-    pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
-    where
-        C1: Component + 'a,
-        C1: Into<::std::borrow::Cow<'a, C1>>,
-    {
-        let array0 = self.primary.instance_keys.as_arrow_ref();
-        let array1 = self.primary.values.as_arrow_ref();
-        let array2 = C1::try_to_arrow_opt(self.iter_component::<C1>()?)?;
-
-        let series0 = Series::try_from((
-            InstanceKey::name().as_ref(),
-            array0.as_ref().clean_for_polars(),
-        ))?;
-        let series1 =
-            Series::try_from((Primary::name().as_ref(), array1.as_ref().clean_for_polars()))?;
-        let series2 = Series::try_from((C1::name().as_ref(), array2.as_ref().clean_for_polars()))?;
-
-        Ok(DataFrame::new(vec![series0, series1, series2])?)
-    }
-}
-
 impl<A: Archetype> ArchetypeView<A> {
     pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
         &self,
     ) -> crate::Result<DataFrame> {
-        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys())?;
-        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?)?;
+        let array0 = InstanceKey::to_arrow(self.iter_instance_keys())?;
+        let array1 = C1::to_arrow_opt(self.iter_optional_component::<C1>()?)?;
 
         let series0 = Series::try_from((
             re_types::components::InstanceKey::name().as_ref(),
@@ -196,9 +156,9 @@ impl<A: Archetype> ArchetypeView<A> {
     >(
         &self,
     ) -> crate::Result<DataFrame> {
-        let array0 = InstanceKey::try_to_arrow(self.iter_instance_keys())?;
-        let array1 = C1::try_to_arrow_opt(self.iter_optional_component::<C1>()?)?;
-        let array2 = C2::try_to_arrow_opt(self.iter_optional_component::<C2>()?)?;
+        let array0 = InstanceKey::to_arrow(self.iter_instance_keys())?;
+        let array1 = C1::to_arrow_opt(self.iter_optional_component::<C1>()?)?;
+        let array2 = C2::to_arrow_opt(self.iter_optional_component::<C2>()?)?;
 
         let series0 = Series::try_from((
             re_types::components::InstanceKey::name().as_ref(),

@@ -111,55 +111,7 @@ impl crate::Archetype for DisconnectedSpace {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::indicator()),
-            Some((&self.disconnected_space as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array =
-                    <crate::components::DisconnectedSpace>::try_to_arrow(
-                        [&self.disconnected_space],
-                    );
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.DisconnectedSpace".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("disconnected_space", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -174,7 +126,7 @@ impl crate::Archetype for DisconnectedSpace {
                 .get("disconnected_space")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?;
-            <crate::components::DisconnectedSpace>::try_from_arrow_opt(&**array)
+            <crate::components::DisconnectedSpace>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
                 .into_iter()
                 .next()
@@ -183,6 +135,24 @@ impl crate::Archetype for DisconnectedSpace {
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
         };
         Ok(Self { disconnected_space })
+    }
+}
+
+impl crate::AsComponents for DisconnectedSpace {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.disconnected_space as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

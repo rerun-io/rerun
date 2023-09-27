@@ -112,52 +112,7 @@ impl crate::Archetype for ViewCoordinates {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::indicator()),
-            Some((&self.xyz as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::ViewCoordinates>::try_to_arrow([&self.xyz]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.ViewCoordinates".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("xyz", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.ViewCoordinates#xyz")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -172,7 +127,7 @@ impl crate::Archetype for ViewCoordinates {
                 .get("xyz")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.ViewCoordinates#xyz")?;
-            <crate::components::ViewCoordinates>::try_from_arrow_opt(&**array)
+            <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.ViewCoordinates#xyz")?
                 .into_iter()
                 .next()
@@ -181,6 +136,24 @@ impl crate::Archetype for ViewCoordinates {
                 .with_context("rerun.archetypes.ViewCoordinates#xyz")?
         };
         Ok(Self { xyz })
+    }
+}
+
+impl crate::AsComponents for ViewCoordinates {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.xyz as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

@@ -59,7 +59,7 @@ impl crate::Loggable for AffixFuzzer17 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -107,7 +107,7 @@ impl crate::Loggable for AffixFuzzer17 {
                     offsets,
                     {
                         _ = data0_inner_bitmap;
-                        crate::testing::datatypes::AffixFuzzer3::try_to_arrow_opt(data0_inner_data)?
+                        crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(data0_inner_data)?
                     },
                     data0_bitmap,
                 )
@@ -117,7 +117,7 @@ impl crate::Loggable for AffixFuzzer17 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -146,7 +146,7 @@ impl crate::Loggable for AffixFuzzer17 {
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    crate::testing::datatypes::AffixFuzzer3::try_from_arrow_opt(arrow_data_inner)
+                    crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(arrow_data_inner)
                         .with_context(
                             "rerun.testing.components.AffixFuzzer17#many_optional_unions",
                         )?

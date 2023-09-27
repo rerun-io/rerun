@@ -18,7 +18,6 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
-mod component;
 mod data_cell;
 mod data_row;
 mod data_table;
@@ -40,7 +39,6 @@ pub mod serde_field;
 use std::sync::Arc;
 
 pub use self::arrow_msg::ArrowMsg;
-pub use self::component::LegacyComponent;
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{
     DataCellRow, DataCellVec, DataReadError, DataReadResult, DataRow, DataRowError, DataRowResult,
@@ -421,28 +419,27 @@ impl PathOp {
 
 // ---------------------------------------------------------------------------
 
+/// Implements [`re_types::Component`] for `T: arrow2_convert::{Serialize, Deserialize}`.
 #[doc(hidden)]
 #[macro_export]
-macro_rules! component_legacy_shim {
-    ($entity:ident) => {
+macro_rules! arrow2convert_component_shim {
+    ($entity:ident as $fqname:expr) => {
 
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;
 
             #[inline]
             fn name() -> Self::Name {
-                <Self as re_log_types::LegacyComponent>::legacy_name()
-                    .as_str()
-                    .into()
+                $fqname.into()
             }
 
             #[inline]
             fn arrow_datatype() -> arrow2::datatypes::DataType {
-                <Self as re_log_types::LegacyComponent>::field().data_type
+                <Self as ::arrow2_convert::field::ArrowField>::data_type()
             }
 
             #[inline]
-            fn try_to_arrow_opt<'a>(
+            fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
             ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
             where
@@ -464,7 +461,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
+            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
             where
                 Self: Sized
             {
