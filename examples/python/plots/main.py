@@ -22,6 +22,7 @@ def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
 
 
 def log_bar_chart() -> None:
+    rr.set_time_sequence("frame_nr", 0)
     # Log a gauss bell as a bar chart
     mean = 0
     std = 1
@@ -88,10 +89,10 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_plot")
 
+    log_bar_chart()
     log_parabola()
     log_trig()
     log_segmentation()
-    log_bar_chart()
 
     rr.script_teardown(args)
 

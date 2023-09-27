@@ -6,19 +6,55 @@ import numpy as np
 
 from rerun.error_utils import _send_warning
 
-from ..datatypes import Vec3DArrayLike
+from .. import components, datatypes
 
 
 class Boxes3DExt:
     def __init__(
         self: Any,
         *,
-        sizes: Vec3DArrayLike | None = None,
-        mins: Vec3DArrayLike | None = None,
-        centers: Vec3DArrayLike | None = None,
-        half_sizes: Vec3DArrayLike | None = None,
-        **kwargs: Any,
+        sizes: datatypes.Vec3DArrayLike | None = None,
+        mins: datatypes.Vec3DArrayLike | None = None,
+        half_sizes: datatypes.Vec3DArrayLike | None = None,
+        centers: datatypes.Vec3DArrayLike | None = None,
+        rotations: datatypes.Rotation3DArrayLike | None = None,
+        colors: datatypes.ColorArrayLike | None = None,
+        radii: components.RadiusArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
     ) -> None:
+        """
+        Create a new instance of the Boxes3D archetype.
+
+        Parameters
+        ----------
+        sizes:
+            Full extents in x/y/z. Specify this instead of `half_sizes`
+        half_sizes:
+            All half-extents that make up the batch of boxes. Specify this instead of `sizes`
+        mins:
+            Minimum coordinates of the boxes. Specify this instead of `centers`.
+
+            Only valid when used together with either `sizes` or `half_sizes`.
+        centers:
+            Optional center positions of the boxes.
+        rotations:
+            Optional rotations of the boxes.
+        colors:
+            Optional colors for the boxes.
+        radii:
+            Optional radii for the lines that make up the boxes.
+        labels:
+            Optional text labels for the boxes.
+        class_ids:
+            Optional `ClassId`s for the boxes.
+
+            The class ID provides colors and labels if not specified explicitly.
+        instance_keys:
+            Unique identifiers for each individual boxes in the batch.
+        """
+
         if sizes is not None:
             if half_sizes is not None:
                 _send_warning("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
@@ -39,4 +75,13 @@ class Boxes3DExt:
             half_sizes = np.asarray(half_sizes, dtype=np.float32)
             centers = mins + half_sizes
 
-        self.__attrs_init__(half_sizes=half_sizes, centers=centers, **kwargs)
+        self.__attrs_init__(
+            half_sizes=half_sizes,
+            centers=centers,
+            rotations=rotations,
+            colors=colors,
+            radii=radii,
+            labels=labels,
+            class_ids=class_ids,
+            instance_keys=instance_keys,
+        )

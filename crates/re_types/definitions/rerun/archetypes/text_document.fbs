@@ -12,6 +12,7 @@ table TextDocument (
   "attr.rust.derive": "PartialEq, Eq",
   order: 100
 ) {
+  /// Contents of the text document.
   body: rerun.components.Text ("attr.rerun.component_required", order: 100);
 
   /// The Media Type of the text.

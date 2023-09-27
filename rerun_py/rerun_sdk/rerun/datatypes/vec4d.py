@@ -21,11 +21,15 @@ from .vec4d_ext import Vec4DExt
 __all__ = ["Vec4D", "Vec4DArrayLike", "Vec4DBatch", "Vec4DLike", "Vec4DType"]
 
 
-@define
+@define(init=False)
 class Vec4D(Vec4DExt):
     """A vector in 4D space."""
 
-    # You can define your own __init__ function as a member of Vec4DExt in vec4d_ext.py
+    def __init__(self: Any, xyzw: Vec4DLike):
+        """Create a new instance of the Vec4D datatype."""
+
+        # You can define your own __init__ function as a member of Vec4DExt in vec4d_ext.py
+        self.__attrs_init__(xyzw=xyzw)
 
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
 

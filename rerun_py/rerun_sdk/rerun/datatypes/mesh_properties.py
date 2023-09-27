@@ -27,9 +27,21 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class MeshProperties(MeshPropertiesExt):
-    # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
+    def __init__(self: Any, indices: npt.ArrayLike | None = None):
+        """
+        Create a new instance of the MeshProperties datatype.
+
+        Parameters
+        ----------
+        indices:
+             If specified, a flattened array of vertex indices that describe the mesh's triangles,
+             i.e. its length must be divisible by 3.
+        """
+
+        # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
+        self.__attrs_init__(indices=indices)
 
     indices: npt.NDArray[np.uint32] | None = field(default=None, converter=to_np_uint32)
     """

@@ -18,11 +18,15 @@ from .radius_ext import RadiusExt
 __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType"]
 
 
-@define
+@define(init=False)
 class Radius(RadiusExt):
     """A Radius component."""
 
-    # You can define your own __init__ function as a member of RadiusExt in radius_ext.py
+    def __init__(self: Any, value: RadiusLike):
+        """Create a new instance of the Radius component."""
+
+        # You can define your own __init__ function as a member of RadiusExt in radius_ext.py
+        self.__attrs_init__(value=value)
 
     value: float = field(converter=float)
 
@@ -39,7 +43,7 @@ if TYPE_CHECKING:
 else:
     RadiusLike = Any
 
-RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.NDArray[np.float32]]
+RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.ArrayLike]
 
 
 class RadiusType(BaseExtensionType):

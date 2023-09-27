@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
-use re_log_types::{TimeInt, Timeline};
 use re_types::{archetypes::BarChart, datatypes::TensorData, Archetype, ComponentNameSet};
 use re_viewer_context::{
     default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError,
@@ -30,23 +29,26 @@ impl ViewPartSystem for BarChartViewPartSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(BarChart::indicator().as_ref().name()).collect()
+        std::iter::once(BarChart::indicator().name()).collect()
     }
 
     fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 
-        if let Some(tensor) = store.query_latest_component::<re_types::components::TensorData>(
-            ent_path,
-            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
-        ) {
+        // NOTE: We want to make sure we query at the right time, otherwise we might take into
+        // account a `Clear()` that actually only applies into the future, and then
+        // `is_vector` will righfully fail because of the empty tensor.
+        if let Some(tensor) =
+            store.query_latest_component::<re_types::components::TensorData>(ent_path, query)
+        {
             tensor.is_vector()
         } else {
             false

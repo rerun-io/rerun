@@ -131,13 +131,8 @@ impl ViewPartSystem for Boxes3DPart {
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
-        components: &std::collections::BTreeSet<re_types::ComponentName>,
-    ) -> bool {
-        components.contains(&Boxes3D::indicator().as_ref().name())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Boxes3D::indicator().as_ref().name()).collect()
     }
 
     fn execute(

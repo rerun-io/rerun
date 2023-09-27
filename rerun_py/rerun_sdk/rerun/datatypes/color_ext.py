@@ -83,13 +83,13 @@ class ColorExt:
             data_list = list(data)
 
             try:
-                data_list = [Color(data_list)]
+                data_list = [Color(data_list)]  # type: ignore[arg-type]
             except (IndexError, ValueError):
                 pass
 
             # Handle heterogeneous sequence of Color-like object, such as Color instances, ints, sub-sequence, etc.
             # Note how this is simplified by the flexible implementation of `Color`, thanks to its converter function and
             # the auto-generated `__int__()` method.
-            array = np.array([Color(datum) for datum in data_list], np.uint32)
+            array = np.array([Color(datum) for datum in data_list], np.uint32)  # type: ignore[arg-type]
 
         return pa.array(array, type=data_type)

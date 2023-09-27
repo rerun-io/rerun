@@ -18,7 +18,7 @@ from .keypoint_id_ext import KeypointIdExt
 __all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLike", "KeypointIdType"]
 
 
-@define
+@define(init=False)
 class KeypointId(KeypointIdExt):
     """
     A 16-bit ID representing a type of semantic keypoint within a class.
@@ -29,7 +29,11 @@ class KeypointId(KeypointIdExt):
     [`rerun.components.AnnotationContext`].
     """
 
-    # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
+    def __init__(self: Any, id: KeypointIdLike):
+        """Create a new instance of the KeypointId datatype."""
+
+        # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
+        self.__attrs_init__(id=id)
 
     id: int = field(converter=int)
 
@@ -46,15 +50,7 @@ if TYPE_CHECKING:
 else:
     KeypointIdLike = Any
 
-KeypointIdArrayLike = Union[
-    KeypointId,
-    Sequence[KeypointIdLike],
-    int,
-    npt.NDArray[np.uint8],
-    npt.NDArray[np.uint16],
-    npt.NDArray[np.uint32],
-    npt.NDArray[np.uint64],
-]
+KeypointIdArrayLike = Union[KeypointId, Sequence[KeypointIdLike], int, npt.ArrayLike]
 
 
 class KeypointIdType(BaseExtensionType):

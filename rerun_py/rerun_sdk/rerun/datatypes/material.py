@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -26,9 +26,20 @@ def _material__albedo_factor__special_field_converter_override(x: datatypes.Colo
         return datatypes.Color(x)
 
 
-@define
+@define(init=False)
 class Material(MaterialExt):
-    # You can define your own __init__ function as a member of MaterialExt in material_ext.py
+    def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
+        """
+        Create a new instance of the Material datatype.
+
+        Parameters
+        ----------
+        albedo_factor:
+             Optional color multiplier.
+        """
+
+        # You can define your own __init__ function as a member of MaterialExt in material_ext.py
+        self.__attrs_init__(albedo_factor=albedo_factor)
 
     albedo_factor: datatypes.Color | None = field(
         default=None, converter=_material__albedo_factor__special_field_converter_override

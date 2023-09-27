@@ -257,8 +257,12 @@ impl SpaceViewBlueprint {
 
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
-            if is_entity_processed_by_class(ctx, &self.class_name, entity_path)
-                && !self.contents.contains_entity(entity_path)
+            if is_entity_processed_by_class(
+                ctx,
+                &self.class_name,
+                entity_path,
+                &ctx.current_query(),
+            ) && !self.contents.contains_entity(entity_path)
                 && spaces_info
                     .is_reachable_by_transform(entity_path, &self.space_origin)
                     .is_ok()

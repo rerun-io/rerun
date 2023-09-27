@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -16,9 +16,13 @@ from .. import datatypes
 __all__ = ["AffixFuzzer18", "AffixFuzzer18ArrayLike", "AffixFuzzer18Batch", "AffixFuzzer18Like", "AffixFuzzer18Type"]
 
 
-@define
+@define(init=False)
 class AffixFuzzer18:
-    # You can define your own __init__ function as a member of AffixFuzzer18Ext in affix_fuzzer18_ext.py
+    def __init__(self: Any, many_optional_unions: datatypes.AffixFuzzer4ArrayLike | None = None):
+        """Create a new instance of the AffixFuzzer18 component."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer18Ext in affix_fuzzer18_ext.py
+        self.__attrs_init__(many_optional_unions=many_optional_unions)
 
     many_optional_unions: list[datatypes.AffixFuzzer4] | None = field(default=None)
 
