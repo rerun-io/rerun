@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
-use re_log_types::{RowId, TimeInt, Timeline};
+use re_log_types::RowId;
 use re_types::{
     archetypes::Tensor,
     components::{InstanceKey, TensorData},
@@ -40,16 +40,17 @@ impl ViewPartSystem for TensorSystem {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 
-        if let Some(tensor) = store.query_latest_component::<TensorData>(
-            ent_path,
-            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
-        ) {
+        // NOTE: We want to make sure we query at the right time, otherwise we might take into
+        // account a `Clear()` that actually only applies into the future, and then
+        // `is_shaped_like_an_image` will righfully fail because of the empty tensor.
+        if let Some(tensor) = store.query_latest_component::<TensorData>(ent_path, query) {
             !tensor.is_shaped_like_an_image() && !tensor.is_vector()
         } else {
             false
