@@ -18,7 +18,7 @@ import numpy as np
 import rerun as rr  # pip install rerun-sdk
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
-from rerun.components import Material, MeshProperties
+from rerun.components import Material
 
 
 def load_scene(path: Path) -> trimesh.Scene:
