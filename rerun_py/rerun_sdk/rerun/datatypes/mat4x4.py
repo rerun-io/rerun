@@ -73,7 +73,7 @@ class Mat4x4(Mat4x4Ext):
 
 
 if TYPE_CHECKING:
-    Mat4x4Like = Union[Mat4x4, Sequence[float], Sequence[Sequence[float]], npt.ArrayLike]
+    Mat4x4Like = Union[Mat4x4, npt.ArrayLike]
 else:
     Mat4x4Like = Any
 
