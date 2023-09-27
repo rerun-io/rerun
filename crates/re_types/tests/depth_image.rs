@@ -34,7 +34,8 @@ fn depth_image_roundtrip() {
         DepthImage::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
             .unwrap()
             .with_meter(1000.0)
-            .to_arrow().unwrap(),
+            .to_arrow()
+            .unwrap(),
     ];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
