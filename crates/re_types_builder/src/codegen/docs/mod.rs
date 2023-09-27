@@ -44,6 +44,12 @@ impl CodeGenerator for DocsCodeGenerator {
         let components = objects.ordered_objects(Some(ObjectKind::Component));
         for object in objects.ordered_objects(Some(ObjectKind::Archetype)) {
             let title = object.snake_case_name();
+
+            // skip test-only archetypes
+            if title.starts_with("affix_fuzzer") {
+                continue;
+            }
+
             let order = object.order;
             let top_level_docs = get_documentation(&object.docs, &[]);
             let examples = object
