@@ -6,6 +6,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from .._validators import validate_vector_shape
+
 if TYPE_CHECKING:
     from . import Quaternion, QuaternionArrayLike
 
@@ -30,5 +32,7 @@ class QuaternionExt:
         if isinstance(data, Quaternion):
             data = [data]
 
-        quaternions = np.asarray([q.xyzw for q in data], dtype=np.float32).reshape((-1,))
+        quaternions = np.asarray([q.xyzw for q in data], dtype=np.float32)
+        validate_vector_shape(quaternions.shape, 4)
+        quaternions = quaternions.reshape((-1,))
         return pa.FixedSizeListArray.from_arrays(quaternions, type=data_type)

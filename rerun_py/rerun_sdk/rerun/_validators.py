@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy.typing as npt
+
 
 # This code is a straight port from Rust.
 def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
@@ -37,6 +39,22 @@ def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
         min -= 1
 
     return list(range(min, max + 1))
+
+
+def validate_vector_shape(shape: npt._Shape, dimension: int) -> None:
+    valid = True
+    if len(shape) == 1:
+        valid = (shape[0] % dimension) == 0
+    elif len(shape) >= 2:
+        valid = shape[1] == dimension
+
+        # Don't care about trailing dimensions if they're all 1.
+        valid = valid and all(d == 1 for d in shape[2:])
+
+    if not valid:
+        raise ValueError(
+            f"Expected either flat array with a multiple of {dimension} elements or array with shape (`num_elements`, {dimension}). Got instead {shape}",
+        )
 
 
 if __name__ == "__main__":
