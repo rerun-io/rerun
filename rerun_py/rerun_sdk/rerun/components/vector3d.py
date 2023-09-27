@@ -5,27 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Vector3D", "Vector3DBatch", "Vector3DType"]
 
 
-@define(init=False)
 class Vector3D(datatypes.Vec3D):
     """A vector in 3D space."""
 
-    def __init__(self: Any, xyz: datatypes.Vec3DLike):
-        """Create a new instance of the Vector3D component."""
-
-        # You can define your own __init__ function as a member of Vector3DExt in vector3d_ext.py
-        self.__attrs_init__(xyz=xyz)
-
     # Note: there are no fields here because Vector3D delegates to datatypes.Vec3D
+    pass
 
 
 class Vector3DType(datatypes.Vec3DType):

@@ -5,10 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 from .media_type_ext import MediaTypeExt
@@ -16,7 +12,6 @@ from .media_type_ext import MediaTypeExt
 __all__ = ["MediaType", "MediaTypeBatch", "MediaTypeType"]
 
 
-@define(init=False)
 class MediaType(MediaTypeExt, datatypes.Utf8):
     """
     A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
@@ -25,13 +20,8 @@ class MediaType(MediaTypeExt, datatypes.Utf8):
     consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
     """
 
-    def __init__(self: Any, value: datatypes.Utf8Like):
-        """Create a new instance of the MediaType component."""
-
-        # You can define your own __init__ function as a member of MediaTypeExt in media_type_ext.py
-        self.__attrs_init__(value=value)
-
     # Note: there are no fields here because MediaType delegates to datatypes.Utf8
+    pass
 
 
 class MediaTypeType(datatypes.Utf8Type):

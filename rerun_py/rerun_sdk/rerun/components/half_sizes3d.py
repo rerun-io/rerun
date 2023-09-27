@@ -5,17 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["HalfSizes3D", "HalfSizes3DBatch", "HalfSizes3DType"]
 
 
-@define(init=False)
 class HalfSizes3D(datatypes.Vec3D):
     """
     Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
@@ -24,13 +19,8 @@ class HalfSizes3D(datatypes.Vec3D):
     Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
     """
 
-    def __init__(self: Any, xyz: datatypes.Vec3DLike):
-        """Create a new instance of the HalfSizes3D component."""
-
-        # You can define your own __init__ function as a member of HalfSizes3DExt in half_sizes3d_ext.py
-        self.__attrs_init__(xyz=xyz)
-
     # Note: there are no fields here because HalfSizes3D delegates to datatypes.Vec3D
+    pass
 
 
 class HalfSizes3DType(datatypes.Vec3DType):

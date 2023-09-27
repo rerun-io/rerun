@@ -5,9 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
 from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
@@ -15,15 +12,9 @@ from .. import datatypes
 __all__ = ["AffixFuzzer20", "AffixFuzzer20Batch", "AffixFuzzer20Type"]
 
 
-@define(init=False)
 class AffixFuzzer20(datatypes.AffixFuzzer20):
-    def __init__(self: Any, p: datatypes.PrimitiveComponentLike, s: datatypes.StringComponentLike):
-        """Create a new instance of the AffixFuzzer20 component."""
-
-        # You can define your own __init__ function as a member of AffixFuzzer20Ext in affix_fuzzer20_ext.py
-        self.__attrs_init__(p=p, s=s)
-
     # Note: there are no fields here because AffixFuzzer20 delegates to datatypes.AffixFuzzer20
+    pass
 
 
 class AffixFuzzer20Type(datatypes.AffixFuzzer20Type):

@@ -5,10 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-import numpy.typing as npt
-from attrs import define
 from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
@@ -16,15 +12,9 @@ from .. import datatypes
 __all__ = ["AffixFuzzer21", "AffixFuzzer21Batch", "AffixFuzzer21Type"]
 
 
-@define(init=False)
 class AffixFuzzer21(datatypes.AffixFuzzer21):
-    def __init__(self: Any, single_half: float, many_halves: npt.ArrayLike):
-        """Create a new instance of the AffixFuzzer21 component."""
-
-        # You can define your own __init__ function as a member of AffixFuzzer21Ext in affix_fuzzer21_ext.py
-        self.__attrs_init__(single_half=single_half, many_halves=many_halves)
-
     # Note: there are no fields here because AffixFuzzer21 delegates to datatypes.AffixFuzzer21
+    pass
 
 
 class AffixFuzzer21Type(datatypes.AffixFuzzer21Type):

@@ -5,27 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Text", "TextBatch", "TextType"]
 
 
-@define(init=False)
 class Text(datatypes.Utf8):
     """A string of text, e.g. for labels and text documents."""
 
-    def __init__(self: Any, value: datatypes.Utf8Like):
-        """Create a new instance of the Text component."""
-
-        # You can define your own __init__ function as a member of TextExt in text_ext.py
-        self.__attrs_init__(value=value)
-
     # Note: there are no fields here because Text delegates to datatypes.Utf8
+    pass
 
 
 class TextType(datatypes.Utf8Type):

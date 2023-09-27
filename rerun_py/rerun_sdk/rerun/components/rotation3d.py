@@ -5,27 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Rotation3D", "Rotation3DBatch", "Rotation3DType"]
 
 
-@define(init=False)
 class Rotation3D(datatypes.Rotation3D):
     """A 3D rotation, represented either by a quaternion or a rotation around axis."""
 
-    def __init__(self: Any, inner: datatypes.Rotation3DLike | None = None):
-        """Create a new instance of the Rotation3D component."""
-
-        # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
-        self.inner = inner
-
     # Note: there are no fields here because Rotation3D delegates to datatypes.Rotation3D
+    pass
 
 
 class Rotation3DType(datatypes.Rotation3DType):

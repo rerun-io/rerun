@@ -5,27 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Origin2D", "Origin2DBatch", "Origin2DType"]
 
 
-@define(init=False)
 class Origin2D(datatypes.Vec2D):
     """A point of origin in 2D space."""
 
-    def __init__(self: Any, xy: datatypes.Vec2DLike):
-        """Create a new instance of the Origin2D component."""
-
-        # You can define your own __init__ function as a member of Origin2DExt in origin2d_ext.py
-        self.__attrs_init__(xy=xy)
-
     # Note: there are no fields here because Origin2D delegates to datatypes.Vec2D
+    pass
 
 
 class Origin2DType(datatypes.Vec2DType):

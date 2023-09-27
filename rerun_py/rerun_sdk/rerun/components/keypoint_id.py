@@ -5,17 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["KeypointId", "KeypointIdBatch", "KeypointIdType"]
 
 
-@define(init=False)
 class KeypointId(datatypes.KeypointId):
     """
     A 16-bit ID representing a type of semantic keypoint within a class.
@@ -26,13 +21,8 @@ class KeypointId(datatypes.KeypointId):
     [`rerun.components.AnnotationContext`].
     """
 
-    def __init__(self: Any, id: datatypes.KeypointIdLike):
-        """Create a new instance of the KeypointId component."""
-
-        # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
-        self.__attrs_init__(id=id)
-
     # Note: there are no fields here because KeypointId delegates to datatypes.KeypointId
+    pass
 
 
 class KeypointIdType(datatypes.KeypointIdType):

@@ -5,10 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-import numpy.typing as npt
-from attrs import define
 from rerun._baseclasses import ComponentBatchMixin
 
 from .. import datatypes
@@ -16,36 +12,9 @@ from .. import datatypes
 __all__ = ["AffixFuzzer2", "AffixFuzzer2Batch", "AffixFuzzer2Type"]
 
 
-@define(init=False)
 class AffixFuzzer2(datatypes.AffixFuzzer1):
-    def __init__(
-        self: Any,
-        single_string_required: str,
-        many_strings_required: list[str],
-        flattened_scalar: float,
-        almost_flattened_scalar: datatypes.FlattenedScalarLike,
-        single_float_optional: float | None = None,
-        single_string_optional: str | None = None,
-        many_floats_optional: npt.ArrayLike | None = None,
-        many_strings_optional: list[str] | None = None,
-        from_parent: bool | None = None,
-    ):
-        """Create a new instance of the AffixFuzzer2 component."""
-
-        # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
-        self.__attrs_init__(
-            single_float_optional=single_float_optional,
-            single_string_required=single_string_required,
-            single_string_optional=single_string_optional,
-            many_floats_optional=many_floats_optional,
-            many_strings_required=many_strings_required,
-            many_strings_optional=many_strings_optional,
-            flattened_scalar=flattened_scalar,
-            almost_flattened_scalar=almost_flattened_scalar,
-            from_parent=from_parent,
-        )
-
     # Note: there are no fields here because AffixFuzzer2 delegates to datatypes.AffixFuzzer1
+    pass
 
 
 class AffixFuzzer2Type(datatypes.AffixFuzzer1Type):

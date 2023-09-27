@@ -5,34 +5,15 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-import numpy.typing as npt
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["MeshProperties", "MeshPropertiesBatch", "MeshPropertiesType"]
 
 
-@define(init=False)
 class MeshProperties(datatypes.MeshProperties):
-    def __init__(self: Any, vertex_indices: npt.ArrayLike | None = None):
-        """
-        Create a new instance of the MeshProperties component.
-
-        Parameters
-        ----------
-        vertex_indices:
-             If specified, is a flattened array of indices that describe the mesh's triangles,
-             i.e. its length must be divisible by 3.
-        """
-
-        # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
-        self.__attrs_init__(vertex_indices=vertex_indices)
-
     # Note: there are no fields here because MeshProperties delegates to datatypes.MeshProperties
+    pass
 
 
 class MeshPropertiesType(datatypes.MeshPropertiesType):

@@ -5,27 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Position3D", "Position3DBatch", "Position3DType"]
 
 
-@define(init=False)
 class Position3D(datatypes.Vec3D):
     """A position in 3D space."""
 
-    def __init__(self: Any, xyz: datatypes.Vec3DLike):
-        """Create a new instance of the Position3D component."""
-
-        # You can define your own __init__ function as a member of Position3DExt in position3d_ext.py
-        self.__attrs_init__(xyz=xyz)
-
     # Note: there are no fields here because Position3D delegates to datatypes.Vec3D
+    pass
 
 
 class Position3DType(datatypes.Vec3DType):

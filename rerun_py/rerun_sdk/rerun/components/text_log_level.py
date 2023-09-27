@@ -5,10 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 from .text_log_level_ext import TextLogLevelExt
@@ -16,7 +12,6 @@ from .text_log_level_ext import TextLogLevelExt
 __all__ = ["TextLogLevel", "TextLogLevelBatch", "TextLogLevelType"]
 
 
-@define(init=False)
 class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     """
     The severity level of a text log message.
@@ -30,13 +25,8 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     * `"TRACE"`
     """
 
-    def __init__(self: Any, value: datatypes.Utf8Like):
-        """Create a new instance of the TextLogLevel component."""
-
-        # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
-        self.__attrs_init__(value=value)
-
     # Note: there are no fields here because TextLogLevel delegates to datatypes.Utf8
+    pass
 
 
 class TextLogLevelType(datatypes.Utf8Type):

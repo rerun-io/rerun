@@ -5,32 +5,15 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 
-@define(init=False)
 class Material(datatypes.Material):
-    def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
-        """
-        Create a new instance of the Material component.
-
-        Parameters
-        ----------
-        albedo_factor:
-             Optional color multiplier.
-        """
-
-        # You can define your own __init__ function as a member of MaterialExt in material_ext.py
-        self.__attrs_init__(albedo_factor=albedo_factor)
-
     # Note: there are no fields here because Material delegates to datatypes.Material
+    pass
 
 
 class MaterialType(datatypes.MaterialType):

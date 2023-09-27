@@ -5,17 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["Color", "ColorBatch", "ColorType"]
 
 
-@define(init=False)
 class Color(datatypes.Color):
     """
     An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
@@ -28,13 +23,8 @@ class Color(datatypes.Color):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    def __init__(self: Any, rgba: datatypes.ColorLike):
-        """Create a new instance of the Color component."""
-
-        # You can define your own __init__ function as a member of ColorExt in color_ext.py
-        self.__attrs_init__(rgba=rgba)
-
     # Note: there are no fields here because Color delegates to datatypes.Color
+    pass
 
 
 class ColorType(datatypes.ColorType):

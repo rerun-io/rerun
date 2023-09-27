@@ -5,17 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from attrs import define
-
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["PinholeProjection", "PinholeProjectionBatch", "PinholeProjectionType"]
 
 
-@define(init=False)
 class PinholeProjection(datatypes.Mat3x3):
     """
     Camera projection, from image coordinates to view coordinates.
@@ -32,13 +27,8 @@ class PinholeProjection(datatypes.Mat3x3):
     ```
     """
 
-    def __init__(self: Any, flat_columns: datatypes.Mat3x3Like):
-        """Create a new instance of the PinholeProjection component."""
-
-        # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
-        self.__attrs_init__(flat_columns=flat_columns)
-
     # Note: there are no fields here because PinholeProjection delegates to datatypes.Mat3x3
+    pass
 
 
 class PinholeProjectionType(datatypes.Mat3x3Type):
