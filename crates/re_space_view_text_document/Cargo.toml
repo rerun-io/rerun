@@ -38,5 +38,5 @@ vec1.workspace = true
 
 # egui_commonmark is a 3rd party crate.
 # By making it an optional dependency we can easily drop it if we need to,
-# .e.g if isn't release a new version quickly enough after an egui release.
+# e.g. if a new version isn't released quickly enough after an egui release.
 egui_commonmark = { workspace = true, optional = true, default-features = false }
