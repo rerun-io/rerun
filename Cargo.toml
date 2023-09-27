@@ -95,7 +95,7 @@ egui_extras = { version = "0.22.0", features = ["http", "image", "puffin"] }
 egui_plot = { git = "https://github.com/emilk/egui", rev = "e8986b1e59e60fa97349754b160dd68a34ab2093" } # egui_plot is not yet published on crates.io
 egui_tiles = "0.2"
 egui-wgpu = "0.22.0"
-ehttp = "0.3"
+ehttp = "0.3.1"
 emath = "0.22.0"
 enumset = "1.0.12"
 epaint = "0.22.0"
