@@ -66,7 +66,7 @@ impl crate::Loggable for AnnotationContext {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -112,9 +112,7 @@ impl crate::Loggable for AnnotationContext {
                     offsets,
                     {
                         _ = data0_inner_bitmap;
-                        crate::datatypes::ClassDescriptionMapElem::try_to_arrow_opt(
-                            data0_inner_data,
-                        )?
+                        crate::datatypes::ClassDescriptionMapElem::to_arrow_opt(data0_inner_data)?
                     },
                     data0_bitmap,
                 )
@@ -124,7 +122,7 @@ impl crate::Loggable for AnnotationContext {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -154,7 +152,7 @@ impl crate::Loggable for AnnotationContext {
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    crate::datatypes::ClassDescriptionMapElem::try_from_arrow_opt(arrow_data_inner)
+                    crate::datatypes::ClassDescriptionMapElem::from_arrow_opt(arrow_data_inner)
                         .with_context("rerun.components.AnnotationContext#class_map")?
                         .into_iter()
                         .collect::<Vec<_>>()

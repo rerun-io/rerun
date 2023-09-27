@@ -5,18 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import Archetype
+from .tensor_ext import TensorExt
 
 __all__ = ["Tensor"]
 
 
 @define(str=False, repr=False, init=False)
-class Tensor(Archetype):
+class Tensor(TensorExt, Archetype):
     """
     A generic n-dimensional Tensor.
 
@@ -35,22 +34,11 @@ class Tensor(Archetype):
     rr.init("rerun_example_tensors", spawn=True)
 
     # Log the tensor, assigning names to each dimension
-    rr.log_tensor("tensor", tensor, names=("width", "height", "channel", "batch"))
+    rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "channel", "batch")))
     ```
     """
 
-    def __init__(self: Any, data: datatypes.TensorDataLike):
-        """
-        Create a new instance of the Tensor archetype.
-
-        Parameters
-        ----------
-        data:
-             The tensor data
-        """
-
-        # You can define your own __init__ function as a member of TensorExt in tensor_ext.py
-        self.__attrs_init__(data=data)
+    # __init__ can be found in tensor_ext.py
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},
@@ -62,3 +50,7 @@ class Tensor(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(TensorExt, "deferred_patch_class"):
+    TensorExt.deferred_patch_class(Tensor)

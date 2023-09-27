@@ -65,7 +65,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -139,7 +139,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         };
                         {
                             _ = class_description_bitmap;
-                            crate::datatypes::ClassDescription::try_to_arrow_opt(class_description)?
+                            crate::datatypes::ClassDescription::to_arrow_opt(class_description)?
                         }
                     },
                 ],
@@ -150,7 +150,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -224,7 +224,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
                     }
                     let arrow_data = &**arrays_by_name["class_description"];
-                    crate::datatypes::ClassDescription::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::ClassDescription::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_description")?
                         .into_iter()
                 };

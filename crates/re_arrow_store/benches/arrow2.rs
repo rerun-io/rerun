@@ -104,7 +104,9 @@ fn erased_clone(c: &mut Criterion) {
     ) where
         &'a T: Into<::std::borrow::Cow<'a, T>>,
     {
-        let arrays: Vec<Box<dyn Array>> = (0..NUM_ROWS).map(|_| T::to_arrow(data)).collect_vec();
+        let arrays: Vec<Box<dyn Array>> = (0..NUM_ROWS)
+            .map(|_| T::to_arrow(data).unwrap())
+            .collect_vec();
 
         let total_size_bytes = arrays
             .iter()

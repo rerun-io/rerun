@@ -4,7 +4,7 @@ use re_types::{
     archetypes::AnnotationContext,
     components,
     datatypes::{ClassDescription, Color, KeypointPair},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -24,7 +24,7 @@ fn roundtrip() {
         [("context", vec!["rerun.components.AnnotationContext"])].into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -41,7 +41,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = AnnotationContext::try_from_arrow(serialized).unwrap();
+    let deserialized = AnnotationContext::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(arch, deserialized);
 }
 

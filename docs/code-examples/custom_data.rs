@@ -5,56 +5,30 @@ use rerun::{
     datatypes::Float32,
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    Archetype, ArchetypeName, ComponentBatch, ComponentName, GenericIndicatorComponent, Loggable,
-    MaybeOwnedComponentBatch, RecordingStreamBuilder,
+    AsComponents, ComponentBatch, ComponentName, Loggable, MaybeOwnedComponentBatch,
+    NamedIndicatorComponent, RecordingStreamBuilder,
 };
 
 // ---
 
-type CustomPoints3DIndicator = GenericIndicatorComponent<CustomPoints3D>;
-
-/// A custom [`Archetype`] that extends Rerun's builtin [`Points3D`] archetype with extra
+/// A custom [component bundle] that extends Rerun's builtin [`Points3D`] archetype with extra
 /// [`rerun::Component`]s.
+///
+/// [component bundle]: [`AsComponents`]
 struct CustomPoints3D {
     points3d: Points3D,
     confidences: Option<Vec<Confidence>>,
 }
 
-impl Archetype for CustomPoints3D {
-    type Indicator = CustomPoints3DIndicator;
-
-    fn name() -> ArchetypeName {
-        "user.CustomPoints3D".into()
-    }
-
-    fn required_components() -> std::borrow::Cow<'static, [rerun::ComponentName]> {
-        Points3D::required_components()
-    }
-
-    fn recommended_components() -> std::borrow::Cow<'static, [rerun::ComponentName]> {
-        Points3D::recommended_components()
-            .iter()
-            .copied()
-            .chain([Confidence::name()])
-            .collect::<Vec<_>>()
-            .into()
-    }
-
-    fn optional_components() -> std::borrow::Cow<'static, [rerun::ComponentName]> {
-        Points3D::optional_components()
-    }
-
-    fn num_instances(&self) -> usize {
-        self.points3d.num_instances()
-    }
-
+impl AsComponents for CustomPoints3D {
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        let indicator = NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
         self.points3d
             .as_component_batches()
             .into_iter()
             .chain(
                 [
-                    Some(Self::Indicator::batch(self.num_instances()).into()),
+                    Some(indicator.to_batch()),
                     self.confidences
                         .as_ref()
                         .map(|v| (v as &dyn ComponentBatch).into()),
@@ -89,13 +63,13 @@ impl Loggable for Confidence {
         Float32::arrow_datatype()
     }
 
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: 'a,
     {
-        Float32::try_to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
+        Float32::to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
     }
 }
 

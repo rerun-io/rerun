@@ -107,6 +107,12 @@ impl crate::Archetype for SegmentationImage {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: SegmentationImageIndicator = SegmentationImageIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -127,77 +133,7 @@ impl crate::Archetype for SegmentationImage {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.data as &dyn crate::ComponentBatch).into()),
-            self.draw_order
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::TensorData>::try_to_arrow([&self.data]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.TensorData".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("data", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.SegmentationImage#data")?
-            },
-            {
-                self.draw_order
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::DrawOrder>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.DrawOrder".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("draw_order", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.SegmentationImage#draw_order")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -212,7 +148,7 @@ impl crate::Archetype for SegmentationImage {
                 .get("data")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.SegmentationImage#data")?;
-            <crate::components::TensorData>::try_from_arrow_opt(&**array)
+            <crate::components::TensorData>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SegmentationImage#data")?
                 .into_iter()
                 .next()
@@ -222,7 +158,7 @@ impl crate::Archetype for SegmentationImage {
         };
         let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
             Some({
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
+                <crate::components::DrawOrder>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.SegmentationImage#draw_order")?
                     .into_iter()
                     .next()
@@ -234,6 +170,27 @@ impl crate::Archetype for SegmentationImage {
             None
         };
         Ok(Self { data, draw_order })
+    }
+}
+
+impl crate::AsComponents for SegmentationImage {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
+            self.draw_order
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

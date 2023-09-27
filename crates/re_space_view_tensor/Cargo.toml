@@ -36,5 +36,4 @@ egui.workspace = true
 half.workspace = true
 ndarray.workspace = true
 thiserror.workspace = true
-vec1.workspace = true
 wgpu.workspace = true

@@ -9,6 +9,11 @@ namespace rerun {
     namespace archetypes {
         const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
 
+        AnonymousComponentBatch Asset3D::indicator() {
+            return ComponentBatch<
+                components::IndicatorComponent<Asset3D::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+        }
+
         std::vector<AnonymousComponentBatch> Asset3D::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(3);
@@ -20,12 +25,7 @@ namespace rerun {
             if (transform.has_value()) {
                 comp_batches.emplace_back(transform.value());
             }
-            comp_batches.emplace_back(
-                ComponentBatch<components::IndicatorComponent<Asset3D::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(Asset3D::indicator());
 
             return comp_batches;
         }

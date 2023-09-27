@@ -71,8 +71,21 @@ class Archetype:
 
         return s
 
-    def archetype_name(self) -> str:
-        return "rerun.archetypes." + type(self).__name__
+    @classmethod
+    def archetype_name(cls) -> str:
+        return "rerun.archetypes." + cls.__name__
+
+    @classmethod
+    def indicator(cls) -> ComponentBatchLike:
+        """
+        Creates a `ComponentBatchLike` out of the associated indicator component.
+
+        This allows for associating arbitrary indicator components with arbitrary data.
+        Check out the `manual_indicator` API example to see what's possible.
+        """
+        from ._log import IndicatorComponentBatch
+
+        return IndicatorComponentBatch(cls.archetype_name())
 
     def num_instances(self) -> int:
         """
@@ -92,9 +105,7 @@ class Archetype:
 
         Part of the `AsComponents` logging interface.
         """
-        from ._log import IndicatorComponentBatch
-
-        yield IndicatorComponentBatch(self.archetype_name(), self.num_instances())
+        yield self.indicator()
 
         for fld in fields(type(self)):
             if "component" in fld.metadata:

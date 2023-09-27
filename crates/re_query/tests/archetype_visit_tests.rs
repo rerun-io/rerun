@@ -12,7 +12,7 @@ fn basic_single_iter() {
         Position2D::new(3.0, 4.0),
     ];
 
-    let component = ComponentWithInstances::from_native(instance_keys, positions);
+    let component = ComponentWithInstances::from_native(instance_keys, positions).unwrap();
 
     let results = itertools::izip!(
         positions.into_iter(),
@@ -41,8 +41,9 @@ fn directly_joined_iter() {
         Color::from(2),
     ];
 
-    let positions_comp = ComponentWithInstances::from_native(instance_keys.clone(), positions);
-    let colors_comp = ComponentWithInstances::from_native(instance_keys, colors);
+    let positions_comp =
+        ComponentWithInstances::from_native(instance_keys.clone(), positions).unwrap();
+    let colors_comp = ComponentWithInstances::from_native(instance_keys, colors).unwrap();
 
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
@@ -83,8 +84,8 @@ fn joined_iter_dense_primary() {
         Color::from(2),
     ];
 
-    let positions_comp = ComponentWithInstances::from_native(point_ids, positions);
-    let colors_comp = ComponentWithInstances::from_native(color_ids, colors);
+    let positions_comp = ComponentWithInstances::from_native(point_ids, positions).unwrap();
+    let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
@@ -125,8 +126,8 @@ fn joined_iter_dense_secondary() {
         Color::from(4),
     ];
 
-    let positions_comp = ComponentWithInstances::from_native(point_ids, positions);
-    let colors_comp = ComponentWithInstances::from_native(color_ids, colors);
+    let positions_comp = ComponentWithInstances::from_native(point_ids, positions).unwrap();
+    let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
@@ -179,8 +180,8 @@ fn complex_joined_iter() {
         Color::from(254),
     ];
 
-    let positions_comp = ComponentWithInstances::from_native(point_ids, positions);
-    let colors_comp = ComponentWithInstances::from_native(color_ids, colors);
+    let positions_comp = ComponentWithInstances::from_native(point_ids, positions).unwrap();
+    let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
@@ -212,7 +213,8 @@ fn single_visit() {
         Position2D::new(7.0, 8.0),
     ];
 
-    let positions_comp = ComponentWithInstances::from_native(instance_keys.clone(), positions);
+    let positions_comp =
+        ComponentWithInstances::from_native(instance_keys.clone(), positions).unwrap();
 
     let arch_view = ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp]);
 
@@ -254,8 +256,8 @@ fn joint_visit() {
         InstanceKey(4),
     ];
 
-    let positions_comp = ComponentWithInstances::from_native(point_ids, positions.clone());
-    let colors_comp = ComponentWithInstances::from_native(color_ids, colors);
+    let positions_comp = ComponentWithInstances::from_native(point_ids, positions.clone()).unwrap();
+    let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
     let arch_view =
         ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);

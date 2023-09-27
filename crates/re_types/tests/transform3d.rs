@@ -7,7 +7,7 @@ use re_types::{
         self, Angle, Mat3x3, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
         TranslationRotationScale3D, Vec3D,
     },
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -135,7 +135,7 @@ fn roundtrip() {
         similar_asserts::assert_eq!(expected, arch);
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow();
+        let serialized = arch.to_arrow().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -152,7 +152,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = Transform3D::try_from_arrow(serialized).unwrap();
+        let deserialized = Transform3D::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

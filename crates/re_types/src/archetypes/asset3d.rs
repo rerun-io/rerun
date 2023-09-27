@@ -83,7 +83,6 @@
 ///         rec.log_component_batches(
 ///             "world/asset",
 ///             false,
-///             1,
 ///             [&OutOfTreeTransform3D::from(translation) as _],
 ///         )?;
 ///     }
@@ -159,6 +158,12 @@ impl crate::Archetype for Asset3D {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: Asset3DIndicator = Asset3DIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -179,101 +184,7 @@ impl crate::Archetype for Asset3D {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.data as &dyn crate::ComponentBatch).into()),
-            self.media_type
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-            self.transform
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::Blob>::try_to_arrow([&self.data]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Blob".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("data", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.Asset3D#data")?
-            },
-            {
-                self.media_type
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::MediaType>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.MediaType".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("media_type", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-            },
-            {
-                self.transform
-                    .as_ref()
-                    .map(|single| {
-                        let array =
-                            <crate::components::OutOfTreeTransform3D>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.OutOfTreeTransform3D".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("transform", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -288,7 +199,7 @@ impl crate::Archetype for Asset3D {
                 .get("data")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#data")?;
-            <crate::components::Blob>::try_from_arrow_opt(&**array)
+            <crate::components::Blob>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Asset3D#data")?
                 .into_iter()
                 .next()
@@ -298,7 +209,7 @@ impl crate::Archetype for Asset3D {
         };
         let media_type = if let Some(array) = arrays_by_name.get("media_type") {
             Some({
-                <crate::components::MediaType>::try_from_arrow_opt(&**array)
+                <crate::components::MediaType>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Asset3D#media_type")?
                     .into_iter()
                     .next()
@@ -311,7 +222,7 @@ impl crate::Archetype for Asset3D {
         };
         let transform = if let Some(array) = arrays_by_name.get("transform") {
             Some({
-                <crate::components::OutOfTreeTransform3D>::try_from_arrow_opt(&**array)
+                <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Asset3D#transform")?
                     .into_iter()
                     .next()
@@ -327,6 +238,30 @@ impl crate::Archetype for Asset3D {
             media_type,
             transform,
         })
+    }
+}
+
+impl crate::AsComponents for Asset3D {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
+            self.media_type
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+            self.transform
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

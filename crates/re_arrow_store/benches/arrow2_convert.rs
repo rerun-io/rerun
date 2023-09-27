@@ -98,7 +98,7 @@ fn deserialize(c: &mut Criterion) {
     {
         group.bench_function("arrow2_convert", |b| {
             b.iter(|| {
-                let keys: Vec<InstanceKey> = InstanceKey::try_from_arrow(data.as_ref()).unwrap();
+                let keys: Vec<InstanceKey> = InstanceKey::from_arrow(data.as_ref()).unwrap();
                 assert_eq!(NUM_INSTANCES, keys.len());
                 assert_eq!(
                     InstanceKey(NUM_INSTANCES as u64 / 2),

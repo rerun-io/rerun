@@ -69,6 +69,12 @@ impl crate::Archetype for TextDocument {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: TextDocumentIndicator = TextDocumentIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -89,77 +95,7 @@ impl crate::Archetype for TextDocument {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.body as &dyn crate::ComponentBatch).into()),
-            self.media_type
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::Text>::try_to_arrow([&self.body]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Text".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("body", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.TextDocument#body")?
-            },
-            {
-                self.media_type
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::MediaType>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.MediaType".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("media_type", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.TextDocument#media_type")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -174,7 +110,7 @@ impl crate::Archetype for TextDocument {
                 .get("body")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextDocument#body")?;
-            <crate::components::Text>::try_from_arrow_opt(&**array)
+            <crate::components::Text>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.TextDocument#body")?
                 .into_iter()
                 .next()
@@ -184,7 +120,7 @@ impl crate::Archetype for TextDocument {
         };
         let media_type = if let Some(array) = arrays_by_name.get("media_type") {
             Some({
-                <crate::components::MediaType>::try_from_arrow_opt(&**array)
+                <crate::components::MediaType>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextDocument#media_type")?
                     .into_iter()
                     .next()
@@ -196,6 +132,27 @@ impl crate::Archetype for TextDocument {
             None
         };
         Ok(Self { body, media_type })
+    }
+}
+
+impl crate::AsComponents for TextDocument {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.body as &dyn crate::ComponentBatch).into()),
+            self.media_type
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

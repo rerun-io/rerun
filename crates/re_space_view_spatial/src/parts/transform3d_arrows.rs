@@ -40,7 +40,12 @@ impl ViewPartSystem for Transform3DArrowsPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(re_types::archetypes::Transform3D::indicator_component()).collect()
+        std::iter::once(
+            re_types::archetypes::Transform3D::indicator()
+                .as_ref()
+                .name(),
+        )
+        .collect()
     }
 
     fn execute(

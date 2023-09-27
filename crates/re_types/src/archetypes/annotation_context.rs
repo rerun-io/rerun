@@ -98,6 +98,12 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: AnnotationContextIndicator = AnnotationContextIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -118,52 +124,7 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.context as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::AnnotationContext>::try_to_arrow([&self.context]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.AnnotationContext".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("context", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.AnnotationContext#context")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -178,7 +139,7 @@ impl crate::Archetype for AnnotationContext {
                 .get("context")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AnnotationContext#context")?;
-            <crate::components::AnnotationContext>::try_from_arrow_opt(&**array)
+            <crate::components::AnnotationContext>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.AnnotationContext#context")?
                 .into_iter()
                 .next()
@@ -187,6 +148,24 @@ impl crate::Archetype for AnnotationContext {
                 .with_context("rerun.archetypes.AnnotationContext#context")?
         };
         Ok(Self { context })
+    }
+}
+
+impl crate::AsComponents for AnnotationContext {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.context as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

@@ -539,6 +539,12 @@ impl QuotedObject {
                     });
                 }
 
+                methods.push(archetype_indicator(
+                    &type_ident,
+                    &mut hpp_includes,
+                    &mut cpp_includes,
+                ));
+
                 methods.push(archetype_as_component_batches(
                     &type_ident,
                     obj,
@@ -1226,6 +1232,33 @@ fn component_to_data_cell_method(
     }
 }
 
+fn archetype_indicator(
+    type_ident: &Ident,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+) -> Method {
+    hpp_includes.insert_rerun("data_cell.hpp");
+    hpp_includes.insert_rerun("arrow.hpp");
+    hpp_includes.insert_rerun("component_batch.hpp");
+    cpp_includes.insert_rerun("indicator_component.hpp");
+
+    Method {
+        docs: "Creates an `AnonymousComponentBatch` out of the associated indicator component. \
+        This allows for associating arbitrary indicator components with arbitrary data. \
+        Check out the `manual_indicator` API example to see what's possible."
+            .into(),
+        declaration: MethodDeclaration {
+            is_static: true,
+            return_type: quote!(AnonymousComponentBatch),
+            name_and_parameters: quote!(indicator()),
+        },
+        definition_body: quote! {
+            return ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+        },
+        inline: false,
+    }
+}
+
 fn archetype_as_component_batches(
     type_ident: &Ident,
     obj: &Object,
@@ -1269,7 +1302,7 @@ fn archetype_as_component_batches(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_batches)*
-            comp_batches.emplace_back(ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
+            comp_batches.emplace_back(#type_ident::indicator());
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return comp_batches;

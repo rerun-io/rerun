@@ -61,6 +61,12 @@ impl crate::Archetype for TextLog {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: TextLogIndicator = TextLogIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -81,100 +87,7 @@ impl crate::Archetype for TextLog {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.body as &dyn crate::ComponentBatch).into()),
-            self.level
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-            self.color
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::Text>::try_to_arrow([&self.body]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Text".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("body", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.TextLog#body")?
-            },
-            {
-                self.level
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::TextLogLevel>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.TextLogLevel".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("level", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.TextLog#level")?
-            },
-            {
-                self.color
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::Color>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.Color".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("color", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.TextLog#color")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -189,7 +102,7 @@ impl crate::Archetype for TextLog {
                 .get("body")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextLog#body")?;
-            <crate::components::Text>::try_from_arrow_opt(&**array)
+            <crate::components::Text>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.TextLog#body")?
                 .into_iter()
                 .next()
@@ -199,7 +112,7 @@ impl crate::Archetype for TextLog {
         };
         let level = if let Some(array) = arrays_by_name.get("level") {
             Some({
-                <crate::components::TextLogLevel>::try_from_arrow_opt(&**array)
+                <crate::components::TextLogLevel>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextLog#level")?
                     .into_iter()
                     .next()
@@ -212,7 +125,7 @@ impl crate::Archetype for TextLog {
         };
         let color = if let Some(array) = arrays_by_name.get("color") {
             Some({
-                <crate::components::Color>::try_from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.TextLog#color")?
                     .into_iter()
                     .next()
@@ -224,6 +137,30 @@ impl crate::Archetype for TextLog {
             None
         };
         Ok(Self { body, level, color })
+    }
+}
+
+impl crate::AsComponents for TextLog {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.body as &dyn crate::ComponentBatch).into()),
+            self.level
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+            self.color
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 
