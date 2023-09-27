@@ -4,7 +4,10 @@ use std::{collections::HashMap, f32::consts::PI};
 
 use arrow2::types::f16;
 use re_types::{
-    testing::{archetypes::AffixFuzzer1, components, datatypes},
+    testing::{
+        archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4},
+        components, datatypes,
+    },
     Archetype as _, AsComponents as _,
 };
 
@@ -210,72 +213,32 @@ fn roundtrip() {
         many_halves: vec![f16::from_f32(123.4), f16::from_f32(567.8)].into(),
     });
 
-    let arch = AffixFuzzer1::new(
-        fuzzy1.clone(), //
-        fuzzy2.clone(),
-        fuzzy3.clone(),
-        fuzzy4.clone(),
-        fuzzy5.clone(),
-        fuzzy6.clone(),
-        fuzzy7_1.clone(),
-        fuzzy8_1.clone(),
-        fuzzy9_1.clone(),
-        fuzzy10_1.clone(),
-        fuzzy11_1.clone(),
-        fuzzy12_1.clone(),
-        fuzzy13_1.clone(),
-        fuzzy14_2.clone(),
-        fuzzy15_1.clone(),
-        fuzzy16_2.clone(),
-        fuzzy17_2.clone(),
-        fuzzy18_2.clone(),
-        fuzzy19_1.clone(),
-        fuzzy20.clone(),
-        fuzzy21.clone(),
-        [fuzzy1.clone(), fuzzy1.clone(), fuzzy1.clone()],
-        [fuzzy2.clone(), fuzzy2.clone(), fuzzy2.clone()],
-        [fuzzy3.clone(), fuzzy3.clone(), fuzzy3.clone()],
-        [fuzzy4.clone(), fuzzy4.clone(), fuzzy4.clone()],
-        [fuzzy5.clone(), fuzzy5.clone(), fuzzy5.clone()],
-        [fuzzy6.clone(), fuzzy6.clone(), fuzzy6.clone()],
-        [fuzzy7_1.clone(), fuzzy7_2.clone(), fuzzy7_1.clone()],
-        [fuzzy8_1.clone(), fuzzy8_2.clone(), fuzzy8_1.clone()],
-        [fuzzy9_1.clone(), fuzzy9_2.clone(), fuzzy9_1.clone()],
-        [fuzzy10_1.clone(), fuzzy10_2.clone(), fuzzy10_1.clone()],
-        [fuzzy11_1.clone(), fuzzy11_2.clone(), fuzzy11_1.clone()],
-        [fuzzy12_1.clone(), fuzzy12_2.clone(), fuzzy12_1.clone()],
-        [fuzzy13_1.clone(), fuzzy13_2.clone(), fuzzy13_1.clone()],
-        [fuzzy14_1.clone(), fuzzy14_2.clone(), fuzzy14_3.clone()],
-        [fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()],
-        [fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()],
-        [fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()],
-        [fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()],
-    )
-    .with_fuzz2001(fuzzy1.clone())
-    .with_fuzz2003(fuzzy3.clone())
-    .with_fuzz2005(fuzzy5.clone())
-    .with_fuzz2007(fuzzy7_1.clone())
-    .with_fuzz2009(fuzzy9_1.clone())
-    .with_fuzz2011(fuzzy11_1.clone())
-    .with_fuzz2013(fuzzy13_1.clone())
-    .with_fuzz2014(fuzzy14_3.clone())
-    .with_fuzz2015(fuzzy15_1.clone())
-    .with_fuzz2016(fuzzy16_1.clone())
-    .with_fuzz2017(fuzzy17_1.clone())
-    .with_fuzz2018(fuzzy18_1.clone())
-    .with_fuzz2102([fuzzy2.clone(), fuzzy2.clone(), fuzzy2.clone()])
-    .with_fuzz2104([fuzzy4.clone(), fuzzy4.clone(), fuzzy4.clone()])
-    .with_fuzz2106([fuzzy6.clone(), fuzzy6.clone(), fuzzy6.clone()])
-    .with_fuzz2108([fuzzy8_1.clone(), fuzzy8_2.clone(), fuzzy8_1.clone()])
-    .with_fuzz2110([fuzzy10_1.clone(), fuzzy10_2.clone(), fuzzy10_1.clone()])
-    .with_fuzz2112([fuzzy12_1.clone(), fuzzy12_2.clone(), fuzzy12_1.clone()])
-    .with_fuzz2114([fuzzy14_1.clone(), fuzzy14_2.clone(), fuzzy14_3.clone()])
-    .with_fuzz2115([fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()])
-    .with_fuzz2116([fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()])
-    .with_fuzz2117([fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()])
-    .with_fuzz2118([fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()]);
+    {
+        let arch = AffixFuzzer1::new(
+            fuzzy1.clone(), //
+            fuzzy2.clone(),
+            fuzzy3.clone(),
+            fuzzy4.clone(),
+            fuzzy5.clone(),
+            fuzzy6.clone(),
+            fuzzy7_1.clone(),
+            fuzzy8_1.clone(),
+            fuzzy9_1.clone(),
+            fuzzy10_1.clone(),
+            fuzzy11_1.clone(),
+            fuzzy12_1.clone(),
+            fuzzy13_1.clone(),
+            fuzzy14_2.clone(),
+            fuzzy15_1.clone(),
+            fuzzy16_2.clone(),
+            fuzzy17_2.clone(),
+            fuzzy18_2.clone(),
+            fuzzy19_1.clone(),
+            fuzzy20.clone(),
+            fuzzy21.clone(),
+        );
 
-    #[rustfmt::skip]
+        #[rustfmt::skip]
     let expected_extensions: HashMap<_, _> = [
         ("fuzz1001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
@@ -283,21 +246,168 @@ fn roundtrip() {
         ("fuzz1004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+    ]
+    .into();
 
+        eprintln!("arch = {arch:#?}");
+        let serialized = arch.to_arrow().unwrap();
+        for (field, array) in &serialized {
+            // NOTE: Keep those around please, very useful when debugging.
+            // eprintln!("field = {field:#?}");
+            // eprintln!("array = {array:#?}");
+            if field.name == "rerun.testing.components.AffixFuzzer21" {
+                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                eprintln!("{} = Can't be printed (float16 not supported)", field.name);
+            } else {
+                eprintln!("{} = {array:#?}", field.name);
+            }
+
+            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // has been fully replaced.
+            if false {
+                util::assert_extensions(
+                    &**array,
+                    expected_extensions[field.name.as_str()].as_slice(),
+                );
+            }
+        }
+
+        let deserialized = AffixFuzzer1::from_arrow(serialized).unwrap();
+        similar_asserts::assert_eq!(arch, deserialized);
+    }
+
+    {
+        let arch = AffixFuzzer2::new(
+            [fuzzy1.clone(), fuzzy1.clone(), fuzzy1.clone()],
+            [fuzzy2.clone(), fuzzy2.clone(), fuzzy2.clone()],
+            [fuzzy3.clone(), fuzzy3.clone(), fuzzy3.clone()],
+            [fuzzy4.clone(), fuzzy4.clone(), fuzzy4.clone()],
+            [fuzzy5.clone(), fuzzy5.clone(), fuzzy5.clone()],
+            [fuzzy6.clone(), fuzzy6.clone(), fuzzy6.clone()],
+            [fuzzy7_1.clone(), fuzzy7_2.clone(), fuzzy7_1.clone()],
+            [fuzzy8_1.clone(), fuzzy8_2.clone(), fuzzy8_1.clone()],
+            [fuzzy9_1.clone(), fuzzy9_2.clone(), fuzzy9_1.clone()],
+            [fuzzy10_1.clone(), fuzzy10_2.clone(), fuzzy10_1.clone()],
+            [fuzzy11_1.clone(), fuzzy11_2.clone(), fuzzy11_1.clone()],
+            [fuzzy12_1.clone(), fuzzy12_2.clone(), fuzzy12_1.clone()],
+            [fuzzy13_1.clone(), fuzzy13_2.clone(), fuzzy13_1.clone()],
+            [fuzzy14_1.clone(), fuzzy14_2.clone(), fuzzy14_3.clone()],
+            [fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()],
+            [fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()],
+            [fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()],
+            [fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()],
+        );
+
+        #[rustfmt::skip]
+    let expected_extensions: HashMap<_, _> = [
         ("fuzz1101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz1106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+    ]
+    .into();
 
+        eprintln!("arch = {arch:#?}");
+        let serialized = arch.to_arrow().unwrap();
+        for (field, array) in &serialized {
+            // NOTE: Keep those around please, very useful when debugging.
+            // eprintln!("field = {field:#?}");
+            // eprintln!("array = {array:#?}");
+            if field.name == "rerun.testing.components.AffixFuzzer21" {
+                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                eprintln!("{} = Can't be printed (float16 not supported)", field.name);
+            } else {
+                eprintln!("{} = {array:#?}", field.name);
+            }
+
+            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // has been fully replaced.
+            if false {
+                util::assert_extensions(
+                    &**array,
+                    expected_extensions[field.name.as_str()].as_slice(),
+                );
+            }
+        }
+
+        let deserialized = AffixFuzzer2::from_arrow(serialized).unwrap();
+        similar_asserts::assert_eq!(arch, deserialized);
+    }
+
+    {
+        let arch = AffixFuzzer3::new()
+            .with_fuzz2001(fuzzy1.clone())
+            .with_fuzz2003(fuzzy3.clone())
+            .with_fuzz2005(fuzzy5.clone())
+            .with_fuzz2007(fuzzy7_1.clone())
+            .with_fuzz2009(fuzzy9_1.clone())
+            .with_fuzz2011(fuzzy11_1.clone())
+            .with_fuzz2013(fuzzy13_1.clone())
+            .with_fuzz2014(fuzzy14_3.clone())
+            .with_fuzz2015(fuzzy15_1.clone())
+            .with_fuzz2016(fuzzy16_1.clone())
+            .with_fuzz2017(fuzzy17_1.clone())
+            .with_fuzz2018(fuzzy18_1.clone());
+
+        #[rustfmt::skip]
+    let expected_extensions: HashMap<_, _> = [
         ("fuzz2001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz2002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz2003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz2004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz2005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz2006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+    ]
+    .into();
 
+        eprintln!("arch = {arch:#?}");
+        let serialized = arch.to_arrow().unwrap();
+        for (field, array) in &serialized {
+            // NOTE: Keep those around please, very useful when debugging.
+            // eprintln!("field = {field:#?}");
+            // eprintln!("array = {array:#?}");
+            if field.name == "rerun.testing.components.AffixFuzzer21" {
+                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                eprintln!("{} = Can't be printed (float16 not supported)", field.name);
+            } else {
+                eprintln!("{} = {array:#?}", field.name);
+            }
+
+            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // has been fully replaced.
+            if false {
+                util::assert_extensions(
+                    &**array,
+                    expected_extensions[field.name.as_str()].as_slice(),
+                );
+            }
+        }
+
+        let deserialized = AffixFuzzer3::from_arrow(serialized).unwrap();
+        similar_asserts::assert_eq!(arch, deserialized);
+    }
+
+    {
+        let arch = AffixFuzzer4::new()
+            .with_fuzz2102([fuzzy2.clone(), fuzzy2.clone(), fuzzy2.clone()])
+            .with_fuzz2104([fuzzy4.clone(), fuzzy4.clone(), fuzzy4.clone()])
+            .with_fuzz2106([fuzzy6.clone(), fuzzy6.clone(), fuzzy6.clone()])
+            .with_fuzz2108([fuzzy8_1.clone(), fuzzy8_2.clone(), fuzzy8_1.clone()])
+            .with_fuzz2110([fuzzy10_1.clone(), fuzzy10_2.clone(), fuzzy10_1.clone()])
+            .with_fuzz2112([fuzzy12_1.clone(), fuzzy12_2.clone(), fuzzy12_1.clone()])
+            .with_fuzz2114([fuzzy14_1.clone(), fuzzy14_2.clone(), fuzzy14_3.clone()])
+            .with_fuzz2115([fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()])
+            .with_fuzz2116([fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()])
+            .with_fuzz2117([fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()])
+            .with_fuzz2118([fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()]);
+
+        #[rustfmt::skip]
+    let expected_extensions: HashMap<_, _> = [
         ("fuzz2101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz2102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
         ("fuzz2103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
@@ -307,32 +417,33 @@ fn roundtrip() {
     ]
     .into();
 
-    eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow().unwrap();
-    for (field, array) in &serialized {
-        // NOTE: Keep those around please, very useful when debugging.
-        // eprintln!("field = {field:#?}");
-        // eprintln!("array = {array:#?}");
-        if field.name == "fuzz1021" {
-            // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
-            // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
-            eprintln!("{} = Can't be printed (float16 not supported)", field.name);
-        } else {
-            eprintln!("{} = {array:#?}", field.name);
+        eprintln!("arch = {arch:#?}");
+        let serialized = arch.to_arrow().unwrap();
+        for (field, array) in &serialized {
+            // NOTE: Keep those around please, very useful when debugging.
+            // eprintln!("field = {field:#?}");
+            // eprintln!("array = {array:#?}");
+            if field.name == "rerun.testing.components.AffixFuzzer21" {
+                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                eprintln!("{} = Can't be printed (float16 not supported)", field.name);
+            } else {
+                eprintln!("{} = {array:#?}", field.name);
+            }
+
+            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // has been fully replaced.
+            if false {
+                util::assert_extensions(
+                    &**array,
+                    expected_extensions[field.name.as_str()].as_slice(),
+                );
+            }
         }
 
-        // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-        // has been fully replaced.
-        if false {
-            util::assert_extensions(
-                &**array,
-                expected_extensions[field.name.as_str()].as_slice(),
-            );
-        }
+        let deserialized = AffixFuzzer4::from_arrow(serialized).unwrap();
+        similar_asserts::assert_eq!(arch, deserialized);
     }
-
-    let deserialized = AffixFuzzer1::from_arrow(serialized).unwrap();
-    similar_asserts::assert_eq!(arch, deserialized);
 }
 
 mod util;
