@@ -41,7 +41,8 @@ pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
     lines
 }
 
-pub struct Example<'a> {
+#[derive(Clone)]
+pub struct ExampleInfo<'a> {
     /// The snake_case name of the example.
     ///
     /// Used with `code-example:`, `std::fs::read_to_string`, etc.
@@ -54,50 +55,54 @@ pub struct Example<'a> {
     pub image: Option<ImageUrl<'a>>,
 }
 
-impl<'a> Example<'a> {
-    pub fn parse(tag_content: &'a str) -> Self {
-        fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
-            let mut prev_end = 0;
-            loop {
-                if prev_end + tag.len() + "=\"\"".len() >= args.len() {
-                    return None;
+impl<'a> ExampleInfo<'a> {
+    pub fn parse(tag_content: &'a impl AsRef<str>) -> Self {
+        fn mono(tag_content: &str) -> ExampleInfo<'_> {
+            fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
+                let mut prev_end = 0;
+                loop {
+                    if prev_end + tag.len() + "=\"\"".len() >= args.len() {
+                        return None;
+                    }
+                    let key_start = prev_end + args[prev_end..].find(tag)?;
+                    let key_end = key_start + tag.len();
+                    if !args[key_end..].starts_with("=\"") {
+                        prev_end = key_end;
+                        continue;
+                    };
+                    let value_start = key_end + "=\"".len();
+                    let Some(mut value_end) = args[value_start..].find('"') else {
+                        prev_end = value_start;
+                        continue;
+                    };
+                    value_end += value_start;
+                    return Some(&args[value_start..value_end]);
                 }
-                let key_start = prev_end + args[prev_end..].find(tag)?;
-                let key_end = key_start + tag.len();
-                if !args[key_end..].starts_with("=\"") {
-                    prev_end = key_end;
-                    continue;
-                };
-                let value_start = key_end + "=\"".len();
-                let Some(mut value_end) = args[value_start..].find('"') else {
-                    prev_end = value_start;
-                    continue;
-                };
-                value_end += value_start;
-                return Some(&args[value_start..value_end]);
             }
+
+            let tag_content = tag_content.trim();
+            let (name, args) = tag_content
+                .split_once(' ')
+                .map_or((tag_content, None), |(a, b)| (a, Some(b)));
+
+            let (mut title, mut image) = (None, None);
+
+            if let Some(args) = args {
+                let args = args.trim();
+                if args.starts_with('"') {
+                    // \example example_name "Example Title"
+                    title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
+                } else {
+                    // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
+                    title = find_keyed("title", args);
+                    image = find_keyed("image", args).map(ImageUrl::parse);
+                }
+            }
+
+            ExampleInfo { name, title, image }
         }
 
-        let tag_content = tag_content.trim();
-        let (name, args) = tag_content
-            .split_once(' ')
-            .map_or((tag_content, None), |(a, b)| (a, Some(b)));
-
-        let (mut title, mut image) = (None, None);
-
-        if let Some(args) = args {
-            let args = args.trim();
-            if args.starts_with('"') {
-                // \example example_name "Example Title"
-                title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
-            } else {
-                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
-                title = find_keyed("title", args);
-                image = find_keyed("image", args).map(ImageUrl::parse);
-            }
-        }
-
-        Example { name, title, image }
+        mono(tag_content.as_ref())
     }
 }
 
@@ -184,65 +189,41 @@ impl RerunImageUrl<'_> {
     }
 }
 
-#[derive(Default)]
-pub struct Examples {
-    pub lines: Vec<String>,
-    pub count: usize,
+pub struct Example<'a> {
+    pub base: ExampleInfo<'a>,
+    pub content: Vec<String>,
 }
 
-impl Examples {
-    pub fn collect(
-        docs: &Docs,
-        extension: &str,
-        prefix: &[&str],
-        suffix: &[&str],
-        required: bool,
-    ) -> anyhow::Result<Self> {
-        let mut lines = Vec::new();
-        let mut count = 0;
+pub fn collect_examples<'a>(
+    docs: &'a Docs,
+    extension: &str,
+    required: bool,
+) -> anyhow::Result<Vec<Example<'a>>> {
+    let mut out = Vec::new();
 
-        if let Some(examples) = docs.tagged_docs.get("example") {
-            let base_path = crate::rerun_workspace_path().join("docs/code-examples");
+    if let Some(examples) = docs.tagged_docs.get("example") {
+        let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
-            let mut examples = examples.iter().map(String::as_str).peekable();
-            while let Some(Example { name, title, .. }) = examples.next().map(Example::parse) {
-                let path = base_path.join(format!("{name}.{extension}"));
-                let contents = match std::fs::read_to_string(&path) {
-                    Ok(contents) => contents,
-                    Err(_) if !required => continue,
-                    Err(err) => {
-                        return Err(err)
-                            .with_context(|| format!("couldn't open code example {path:?}"))
-                    }
-                };
-                let mut contents = contents.split('\n').collect_vec();
-                // trim trailing blank lines
-                while contents.last().is_some_and(is_blank) {
-                    contents.pop();
+        for base @ ExampleInfo { name, .. } in examples.iter().map(ExampleInfo::parse) {
+            let path = base_path.join(format!("{name}.{extension}"));
+            let content = match std::fs::read_to_string(&path) {
+                Ok(content) => content,
+                Err(_) if !required => continue,
+                Err(err) => {
+                    return Err(err).with_context(|| format!("couldn't open code example {path:?}"))
                 }
-
-                // prepend title if available
-                lines.extend(title.into_iter().map(|title| format!("{title}:")));
-                // surround content in prefix + suffix lines
-                lines.extend(prefix.iter().copied().map(String::from));
-                lines.extend(contents.into_iter().map(String::from));
-                lines.extend(suffix.iter().copied().map(String::from));
-
-                if examples.peek().is_some() {
-                    // blank line between examples
-                    lines.push(String::new());
-                }
-
-                count += 1;
+            };
+            let mut content = content.split('\n').map(String::from).collect_vec();
+            // trim trailing blank lines
+            while content.last().is_some_and(is_blank) {
+                content.pop();
             }
+
+            out.push(Example { base, content });
         }
-
-        Ok(Self { lines, count })
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.count == 0
-    }
+    Ok(out)
 }
 
 pub trait StringExt {

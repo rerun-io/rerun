@@ -8,7 +8,11 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, Examples, StringExt as _},
+    codegen::{
+        autogen_warning,
+        common::{collect_examples, Example},
+        StringExt as _,
+    },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
@@ -895,9 +899,9 @@ fn code_for_union(
 
 // --- Code generators ---
 
-fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
-    Examples::collect(docs, "py", &["```python"], &["```"], true)
-}
+/* fn collect_examples(docs: &Docs) -> anyhow::Result<Vec<Example<'_>>> {
+    super::common::collect(docs, "py", &["```python"], &["```"], true)
+} */
 
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     let mut quoted_names: Vec<_> = names
@@ -909,6 +913,22 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     quoted_names.join(", ")
 }
 
+fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
+    let mut examples = examples.into_iter().peekable();
+    while let Some(example) = examples.next() {
+        if let Some(title) = example.base.title {
+            lines.push(format!("{title}:"));
+        }
+        lines.push("```python".into());
+        lines.extend(example.content.into_iter());
+        lines.push("```".into());
+        if examples.peek().is_some() {
+            // blank line between examples
+            lines.push(String::new());
+        }
+    }
+}
+
 fn quote_doc_from_docs(docs: &Docs) -> String {
     let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
     for line in &mut lines {
@@ -917,17 +937,17 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
         }
     }
 
-    let examples = collect_examples(docs).unwrap();
+    let examples = collect_examples(docs, "py", true).unwrap();
     if !examples.is_empty() {
         lines.push(String::new());
-        let (section_title, divider) = if examples.count == 1 {
+        let (section_title, divider) = if examples.len() == 1 {
             ("Example", "-------")
         } else {
             ("Examples", "--------")
         };
         lines.push(section_title.into());
         lines.push(divider.into());
-        lines.extend(examples.lines);
+        quote_examples(examples, &mut lines);
     }
 
     if lines.is_empty() {
@@ -955,10 +975,10 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             }
         }
 
-        let examples = collect_examples(&field.docs).unwrap();
+        let examples = collect_examples(&field.docs, "py", true).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples
-            content.extend(examples.lines);
+            quote_examples(examples, &mut lines);
         }
         lines.push(format!(
             "{} ({}):",

@@ -1,4 +1,4 @@
-use crate::codegen::common::Example;
+use crate::codegen::common::ExampleInfo;
 use crate::objects::FieldKind;
 use crate::CodeGenerator;
 use crate::Object;
@@ -56,8 +56,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 .get("example")
                 .iter()
                 .flat_map(|v| v.iter())
-                .map(String::as_str)
-                .map(Example::parse)
+                .map(ExampleInfo::parse)
                 .collect::<Vec<_>>();
 
             let mut o = String::new();
@@ -107,7 +106,7 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
         .collect::<Vec<_>>();
     if !required.is_empty() {
         putln!(o);
-        putln!(o, "Required:");
+        putln!(o, "Required components:");
         for v in required {
             putln!(o, "* `{}`", v.snake_case_name());
         }
@@ -120,7 +119,7 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
         .collect::<Vec<_>>();
     if !recommended.is_empty() {
         putln!(o);
-        putln!(o, "Recommended:");
+        putln!(o, "Recommended components:");
         for v in recommended {
             putln!(o, "* `{}`", v.snake_case_name());
         }
@@ -133,7 +132,7 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
         .collect::<Vec<_>>();
     if !optional.is_empty() {
         putln!(o);
-        putln!(o, "Optional:");
+        putln!(o, "Optional components:");
         for v in optional {
             putln!(o, "* `{}`", v.snake_case_name());
         }
@@ -148,7 +147,7 @@ fn find_component<'a>(field: &ObjectField, components: &[&'a Object]) -> Option<
         .copied()
 }
 
-fn example_list(o: &mut String, examples: &[Example<'_>]) {
+fn example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
     if examples.is_empty() {
         return;
     }
@@ -156,7 +155,7 @@ fn example_list(o: &mut String, examples: &[Example<'_>]) {
     putln!(o, "## Examples");
     putln!(o);
 
-    for Example { name, title, image } in examples {
+    for ExampleInfo { name, title, image } in examples {
         let title = title.unwrap_or(name);
         putln!(o, "### {title}");
         putln!(o);
