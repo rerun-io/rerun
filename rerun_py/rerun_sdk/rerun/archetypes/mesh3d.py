@@ -24,7 +24,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     Simple indexed 3D mesh:
     ```python
     import rerun as rr
-    from rerun.components import Material, MeshProperties
+    from rerun.components import Material
 
     rr.init("rerun_example_mesh3d_indexed", spawn=True)
 
