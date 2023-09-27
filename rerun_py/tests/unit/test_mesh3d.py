@@ -29,12 +29,12 @@ from .common_arrays import (
 
 mesh_properties_objects: list[MeshPropertiesLike | None] = [
     None,
-    MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
+    MeshProperties(indices=[1, 2, 3, 4, 5, 6]),
 ]
 
 
 def mesh_properties_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]))
+    expected = none_empty_or_value(obj, MeshProperties(indices=[1, 2, 3, 4, 5, 6]))
 
     return MeshPropertiesBatch._optional(expected)
 
@@ -132,18 +132,24 @@ def test_nullable_albedo_factor() -> None:
     )
 
 
-def test_nullable_vertex_indices() -> None:
+def test_nullable_indices() -> None:
     # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
     assert (
         len(
             MeshPropertiesBatch(
                 [
-                    MeshProperties(vertex_indices=[1, 2, 3, 4, 5, 6]),
+                    MeshProperties(indices=[1, 2, 3, 4, 5, 6]),
                     MeshProperties(),
                 ]
             )
         )
         == 2
+    )
+
+
+def test_indices_parameter() -> None:
+    assert rr.Mesh3D(vertex_positions=[(0, 0, 0)] * 3, indices=[0, 1, 2]) == rr.Mesh3D(
+        vertex_positions=[(0, 0, 0)] * 3, mesh_properties=MeshProperties(indices=[0, 1, 2])
     )
 
 

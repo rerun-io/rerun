@@ -101,7 +101,7 @@ def log_mesh(
         vertex_positions=positions,
         vertex_normals=normals,
         vertex_colors=vertex_colors,
-        mesh_properties=MeshProperties(vertex_indices=indices),
+        mesh_properties=MeshProperties(indices=indices),
         mesh_material=Material(albedo_factor=albedo_factor),
     )
     return log(entity_path, mesh3d, timeless=timeless, recording=recording)

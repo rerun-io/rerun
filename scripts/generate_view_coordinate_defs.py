@@ -124,7 +124,7 @@ def gen_py_arch_decl() -> list[str]:
 
 
 def py_arch_def(coords: ViewCoordinates) -> str:
-    return f"cls.{coords.name} = cls(Component.{coords.name})\n"
+    return f"cls.{coords.name} = Component.{coords.name}\n"
 
 
 def gen_py_arch_def() -> list[str]:

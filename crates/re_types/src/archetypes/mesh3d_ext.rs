@@ -22,16 +22,16 @@ impl Mesh3D {
     pub fn sanity_check(&self) -> Result<(), Mesh3DError> {
         let num_vertices = self.num_vertices();
 
-        if let Some(vertex_indices) = self
+        if let Some(indices) = self
             .mesh_properties
             .as_ref()
-            .and_then(|props| props.vertex_indices.as_ref())
+            .and_then(|props| props.indices.as_ref())
         {
-            if vertex_indices.len() % 3 != 0 {
-                return Err(Mesh3DError::IndicesNotDivisibleBy3(vertex_indices.len()));
+            if indices.len() % 3 != 0 {
+                return Err(Mesh3DError::IndicesNotDivisibleBy3(indices.len()));
             }
 
-            for &index in vertex_indices.iter() {
+            for &index in indices.iter() {
                 if num_vertices <= index as usize {
                     return Err(Mesh3DError::IndexOutOfBounds {
                         index,
@@ -64,12 +64,12 @@ impl Mesh3D {
 
     #[inline]
     pub fn num_triangles(&self) -> usize {
-        if let Some(vertex_indices) = self
+        if let Some(indices) = self
             .mesh_properties
             .as_ref()
-            .and_then(|props| props.vertex_indices.as_ref())
+            .and_then(|props| props.indices.as_ref())
         {
-            vertex_indices.len() / 3
+            indices.len() / 3
         } else {
             self.num_vertices() / 3
         }

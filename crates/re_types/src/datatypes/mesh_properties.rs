@@ -16,22 +16,22 @@
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MeshProperties {
-    /// If specified, is a flattened array of indices that describe the mesh's triangles,
+    /// If specified, a flattened array of vertex indices that describe the mesh's triangles,
     /// i.e. its length must be divisible by 3.
-    pub vertex_indices: Option<crate::ArrowBuffer<u32>>,
+    pub indices: Option<crate::ArrowBuffer<u32>>,
 }
 
 impl From<Option<crate::ArrowBuffer<u32>>> for MeshProperties {
     #[inline]
-    fn from(vertex_indices: Option<crate::ArrowBuffer<u32>>) -> Self {
-        Self { vertex_indices }
+    fn from(indices: Option<crate::ArrowBuffer<u32>>) -> Self {
+        Self { indices }
     }
 }
 
 impl From<MeshProperties> for Option<crate::ArrowBuffer<u32>> {
     #[inline]
     fn from(value: MeshProperties) -> Self {
-        value.vertex_indices
+        value.indices
     }
 }
 
@@ -62,7 +62,7 @@ impl crate::Loggable for MeshProperties {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
-            name: "vertex_indices".to_owned(),
+            name: "indices".to_owned(),
             data_type: DataType::List(Box::new(Field {
                 name: "item".to_owned(),
                 data_type: DataType::UInt32,
@@ -98,35 +98,35 @@ impl crate::Loggable for MeshProperties {
             StructArray::new(
                 <crate::datatypes::MeshProperties>::arrow_datatype(),
                 vec![{
-                    let (somes, vertex_indices): (Vec<_>, Vec<_>) = data
+                    let (somes, indices): (Vec<_>, Vec<_>) = data
                         .iter()
                         .map(|datum| {
                             let datum = datum
                                 .as_ref()
                                 .map(|datum| {
-                                    let Self { vertex_indices, .. } = &**datum;
-                                    vertex_indices.clone()
+                                    let Self { indices, .. } = &**datum;
+                                    indices.clone()
                                 })
                                 .flatten();
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let vertex_indices_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                    let indices_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                         let any_nones = somes.iter().any(|some| !*some);
                         any_nones.then(|| somes.into())
                     };
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let vertex_indices_inner_data: Buffer<_> = vertex_indices
+                        let indices_inner_data: Buffer<_> = indices
                             .iter()
                             .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
-                        let vertex_indices_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                        let indices_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
                         let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            vertex_indices.iter().map(|opt| {
+                            indices.iter().map(|opt| {
                                 opt.as_ref()
                                     .map(|datum| datum.num_instances())
                                     .unwrap_or_default()
@@ -144,11 +144,11 @@ impl crate::Loggable for MeshProperties {
                             offsets,
                             PrimitiveArray::new(
                                 DataType::UInt32,
-                                vertex_indices_inner_data,
-                                vertex_indices_inner_bitmap,
+                                indices_inner_data,
+                                indices_inner_bitmap,
                             )
                             .boxed(),
-                            vertex_indices_bitmap,
+                            indices_bitmap,
                         )
                         .boxed()
                     }
@@ -175,7 +175,7 @@ impl crate::Loggable for MeshProperties {
                 .ok_or_else(|| {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
-                            name: "vertex_indices".to_owned(),
+                            name: "indices".to_owned(),
                             data_type: DataType::List(Box::new(Field {
                                 name: "item".to_owned(),
                                 data_type: DataType::UInt32,
@@ -199,15 +199,15 @@ impl crate::Loggable for MeshProperties {
                     .map(|field| field.name.as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let vertex_indices = {
-                    if !arrays_by_name.contains_key("vertex_indices") {
+                let indices = {
+                    if !arrays_by_name.contains_key("indices") {
                         return Err(crate::DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "vertex_indices",
+                            "indices",
                         ))
                         .with_context("rerun.datatypes.MeshProperties");
                     }
-                    let arrow_data = &**arrays_by_name["vertex_indices"];
+                    let arrow_data = &**arrays_by_name["indices"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -223,7 +223,7 @@ impl crate::Loggable for MeshProperties {
                                     arrow_data.data_type().clone(),
                                 )
                             })
-                            .with_context("rerun.datatypes.MeshProperties#vertex_indices")?;
+                            .with_context("rerun.datatypes.MeshProperties#indices")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -238,7 +238,7 @@ impl crate::Loggable for MeshProperties {
                                             arrow_data_inner.data_type().clone(),
                                         )
                                     })
-                                    .with_context("rerun.datatypes.MeshProperties#vertex_indices")?
+                                    .with_context("rerun.datatypes.MeshProperties#indices")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
@@ -274,13 +274,10 @@ impl crate::Loggable for MeshProperties {
                     }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(vertex_indices),
+                    ::itertools::izip!(indices),
                     arrow_data.validity(),
                 )
-                .map(|opt| {
-                    opt.map(|(vertex_indices)| Ok(Self { vertex_indices }))
-                        .transpose()
-                })
+                .map(|opt| opt.map(|(indices)| Ok(Self { indices })).transpose())
                 .collect::<crate::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.MeshProperties")?
             }

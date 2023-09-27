@@ -5,18 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import Archetype
+from .mesh3d_ext import Mesh3DExt
 
 __all__ = ["Mesh3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Mesh3D(Archetype):
+class Mesh3D(Mesh3DExt, Archetype):
     """
     A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
@@ -25,7 +24,7 @@ class Mesh3D(Archetype):
     Simple indexed 3D mesh:
     ```python
     import rerun as rr
-    from rerun.components import Material, MeshProperties
+    from rerun.components import Material
 
     rr.init("rerun_example_mesh3d_indexed", spawn=True)
 
@@ -35,7 +34,7 @@ class Mesh3D(Archetype):
             [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             vertex_normals=[0.0, 0.0, 1.0],
             vertex_colors=[[0, 0, 255], [0, 255, 0], [255, 0, 0]],
-            mesh_properties=MeshProperties(vertex_indices=[2, 1, 0]),
+            indices=[2, 1, 0],
             mesh_material=Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
         ),
     )
@@ -70,53 +69,7 @@ class Mesh3D(Archetype):
     ```
     """
 
-    def __init__(
-        self: Any,
-        vertex_positions: datatypes.Vec3DArrayLike,
-        mesh_properties: datatypes.MeshPropertiesLike | None = None,
-        vertex_normals: datatypes.Vec3DArrayLike | None = None,
-        vertex_colors: datatypes.ColorArrayLike | None = None,
-        mesh_material: datatypes.MaterialLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
-        instance_keys: components.InstanceKeyArrayLike | None = None,
-    ):
-        """
-        Create a new instance of the Mesh3D archetype.
-
-        Parameters
-        ----------
-        vertex_positions:
-             The positions of each vertex.
-
-             If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
-        mesh_properties:
-             Optional properties for the mesh as a whole (including indexed drawing).
-        vertex_normals:
-             An optional normal for each vertex.
-
-             If specified, this must have as many elements as `vertex_positions`.
-        vertex_colors:
-             An optional color for each vertex.
-        mesh_material:
-             Optional material properties for the mesh as a whole.
-        class_ids:
-             Optional class Ids for the vertices.
-
-             The class ID provides colors and labels if not specified explicitly.
-        instance_keys:
-             Unique identifiers for each individual vertex in the mesh.
-        """
-
-        # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
-        self.__attrs_init__(
-            vertex_positions=vertex_positions,
-            mesh_properties=mesh_properties,
-            vertex_normals=vertex_normals,
-            vertex_colors=vertex_colors,
-            mesh_material=mesh_material,
-            class_ids=class_ids,
-            instance_keys=instance_keys,
-        )
+    # __init__ can be found in mesh3d_ext.py
 
     vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},
@@ -188,3 +141,7 @@ class Mesh3D(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(Mesh3DExt, "deferred_patch_class"):
+    Mesh3DExt.deferred_patch_class(Mesh3D)

@@ -23,7 +23,7 @@ SCENARIO(
                 .with_instance_keys({123ull, 124ull});
 
         rerun::datatypes::MeshProperties mesh_properties_inner_manual;
-        mesh_properties_inner_manual.vertex_indices = {1, 2, 3, 4, 5, 6};
+        mesh_properties_inner_manual.indices = {1, 2, 3, 4, 5, 6};
 
         MeshProperties mesh_properties_manual;
         mesh_properties_manual.props = mesh_properties_inner_manual;

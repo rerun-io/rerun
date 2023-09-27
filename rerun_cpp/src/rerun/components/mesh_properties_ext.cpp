@@ -12,8 +12,8 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            static MeshProperties from_triangle_indices(std::vector<uint32_t> vertex_indices) {
-                return MeshProperties(vertex_indices);
+            static MeshProperties from_triangle_indices(std::vector<uint32_t> indices) {
+                return MeshProperties(indices);
             }
 
             // [CODEGEN COPY TO HEADER END]
