@@ -54,14 +54,7 @@ if TYPE_CHECKING:
 else:
     ColorLike = Any
 
-ColorArrayLike = Union[
-    Color,
-    Sequence[ColorLike],
-    int,
-    Sequence[Union[int, float]],
-    Sequence[Sequence[Union[int, float]]],
-    npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]],
-]
+ColorArrayLike = Union[Color, Sequence[ColorLike], int, npt.ArrayLike]
 
 
 class ColorType(BaseExtensionType):
