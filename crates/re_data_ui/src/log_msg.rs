@@ -49,7 +49,7 @@ impl DataUi for SetStoreInfo {
             ui.end_row();
 
             ui.monospace("started:");
-            ui.label(started.format());
+            ui.label(started.format(_ctx.app_options.show_timestamps_in_local_timezone));
             ui.end_row();
 
             ui.monospace("store_source:");

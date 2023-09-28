@@ -63,7 +63,7 @@ num-traits = "0.2"
 similar-asserts = "1.4.2"
 smallvec.workspace = true
 thiserror.workspace = true
-time = { workspace = true, features = ["formatting", "macros"] }
+time = { workspace = true, features = ["formatting", "macros", "local-offset"] }
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 web-time.workspace = true

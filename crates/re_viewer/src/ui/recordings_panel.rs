@@ -4,7 +4,9 @@ use time::macros::format_description;
 
 use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender, ViewerContext};
+use re_viewer_context::{
+    AppOptions, CommandSender, SystemCommand, SystemCommandSender, ViewerContext,
+};
 
 static TIME_FORMAT_DESCRIPTION: once_cell::sync::Lazy<
     &'static [time::format_description::FormatItem<'static>],
@@ -138,6 +140,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         if store_dbs.len() == 1 {
             let store_db = store_dbs[0];
             if recording_ui(
+                ctx.app_options,
                 ctx.re_ui,
                 ui,
                 store_db,
@@ -158,6 +161,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                 |_, ui| {
                     for store_db in store_dbs {
                         if recording_ui(
+                            ctx.app_options,
                             ctx.re_ui,
                             ui,
                             store_db,
@@ -184,6 +188,7 @@ fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
 ///
 /// If an `app_id_label` is provided, it will be shown in front of the recording time.
 fn recording_ui(
+    app_options: &AppOptions,
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     store_db: &re_data_store::StoreDb,
@@ -202,6 +207,7 @@ fn recording_ui(
         .and_then(|info| {
             info.started
                 .to_datetime()
+                // TODO(paris): Update this formatting based on whether in UTC or not.
                 .and_then(|dt| dt.format(&TIME_FORMAT_DESCRIPTION).ok())
         })
         .unwrap_or("<unknown time>".to_owned());
@@ -231,11 +237,16 @@ fn recording_ui(
         .show(ui);
 
     response.on_hover_ui(|ui| {
-        recording_hover_ui(re_ui, ui, store_db);
+        recording_hover_ui(app_options, re_ui, ui, store_db);
     })
 }
 
-fn recording_hover_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
+fn recording_hover_ui(
+    app_options: &AppOptions,
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    store_db: &re_data_store::StoreDb,
+) {
     egui::Grid::new("recording_hover_ui")
         .num_columns(2)
         .show(ui, |ui| {
@@ -264,7 +275,7 @@ fn recording_hover_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, store_db: &re_data
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Recording started");
-                ui.label(started.format());
+                ui.label(started.format(app_options.show_timestamps_in_local_timezone));
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Source");

@@ -124,6 +124,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
+        let show_timestamps_in_local_timezone = ctx.app_options.show_timestamps_in_local_timezone;
         let mut plot = Plot::new(plot_id_src)
             .allow_zoom(egui_plot::AxisBools {
                 x: true,
@@ -133,14 +134,23 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 position: egui_plot::Corner::RightBottom,
                 ..Default::default()
             })
-            .x_axis_formatter(move |time, _, _| format_time(time_type, time as i64 + time_offset))
+            .x_axis_formatter(move |time, _, _| {
+                format_time(
+                    time_type,
+                    time as i64 + time_offset,
+                    show_timestamps_in_local_timezone,
+                )
+            })
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let is_integer = value.y.round() == value.y;
                 let decimals = if is_integer { 0 } else { 5 };
                 format!(
                     "{timeline_name}: {}\n{name}: {:.*}",
-                    time_type.format((value.x as i64 + time_offset).into()),
+                    time_type.format(
+                        (value.x as i64 + time_offset).into(),
+                        show_timestamps_in_local_timezone
+                    ),
                     decimals,
                     value.y,
                 )
@@ -231,12 +241,19 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 }
 
-fn format_time(time_type: TimeType, time_int: i64) -> String {
+fn format_time(
+    time_type: TimeType,
+    time_int: i64,
+    show_timestamps_in_local_timezone: bool,
+) -> String {
     if time_type == TimeType::Time {
         let time = re_log_types::Time::from_ns_since_epoch(time_int);
-        time.format_time_compact()
+        time.format_time_compact(show_timestamps_in_local_timezone)
     } else {
-        time_type.format(re_log_types::TimeInt::from(time_int))
+        time_type.format(
+            re_log_types::TimeInt::from(time_int),
+            show_timestamps_in_local_timezone,
+        )
     }
 }
 

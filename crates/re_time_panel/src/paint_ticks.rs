@@ -13,6 +13,7 @@ pub fn paint_time_ranges_and_ticks(
     time_area_painter: &egui::Painter,
     line_y_range: RangeInclusive<f32>,
     time_type: TimeType,
+    show_timestamps_in_local_timezone: bool,
 ) {
     let clip_rect = ui.clip_rect();
     let clip_left = clip_rect.left() as f64;
@@ -46,7 +47,13 @@ pub fn paint_time_ranges_and_ticks(
         let rect = Rect::from_x_y_ranges(x_range, line_y_range.clone());
         time_area_painter
             .with_clip_rect(rect)
-            .extend(paint_time_range_ticks(ui, &rect, time_type, &time_range));
+            .extend(paint_time_range_ticks(
+                ui,
+                &rect,
+                time_type,
+                &time_range,
+                show_timestamps_in_local_timezone,
+            ));
     }
 }
 
@@ -55,6 +62,7 @@ fn paint_time_range_ticks(
     rect: &Rect,
     time_type: TimeType,
     time_range: &TimeRangeF,
+    _show_timestamps_in_local_timezone: bool,
 ) -> Vec<Shape> {
     let font_id = egui::TextStyle::Small.resolve(ui.style());
 
@@ -68,7 +76,8 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range, // ns
                 next_grid_tick_magnitude_ns,
-                |ns| Time::from_ns_since_epoch(ns).format_time_compact(),
+                // TODO(paris): Fix 'closures can only be coerced to `fn` types if they do not capture any variables' error.
+                |ns| Time::from_ns_since_epoch(ns).format_time_compact(false),
             )
         }
         TimeType::Sequence => {

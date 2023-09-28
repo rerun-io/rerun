@@ -128,24 +128,28 @@ impl TimeType {
         }
     }
 
-    pub fn format(&self, time_int: TimeInt) -> String {
+    pub fn format(&self, time_int: TimeInt, show_timestamps_in_local_timezone: bool) -> String {
         if time_int <= TimeInt::BEGINNING {
             "-∞".into()
         } else if time_int >= TimeInt::MAX {
             "+∞".into()
         } else {
             match self {
-                Self::Time => Time::from(time_int).format(),
+                Self::Time => Time::from(time_int).format(show_timestamps_in_local_timezone),
                 Self::Sequence => format!("#{}", time_int.0),
             }
         }
     }
 
-    pub fn format_range(&self, time_range: TimeRange) -> String {
+    pub fn format_range(
+        &self,
+        time_range: TimeRange,
+        show_timestamps_in_local_timezone: bool,
+    ) -> String {
         format!(
             "{}..={}",
-            self.format(time_range.min),
-            self.format(time_range.max)
+            self.format(time_range.min, show_timestamps_in_local_timezone),
+            self.format(time_range.max, show_timestamps_in_local_timezone)
         )
     }
 }

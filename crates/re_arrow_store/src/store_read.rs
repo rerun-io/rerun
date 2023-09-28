@@ -23,7 +23,7 @@ impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<latest at {} on {:?} (including timeless)>",
-            self.timeline.typ().format(self.at),
+            self.timeline.typ().format(self.at, false),
             self.timeline.name(),
         ))
     }
@@ -58,8 +58,8 @@ impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
-            self.timeline.typ().format(self.range.min),
-            self.timeline.typ().format(self.range.max),
+            self.timeline.typ().format(self.range.min, false),
+            self.timeline.typ().format(self.range.max, false),
             self.timeline.name(),
             if self.range.min == TimeInt::MIN {
                 "including"
@@ -513,11 +513,11 @@ impl IndexedTable {
             trace!(
                 kind = "latest_at",
                 timeline = %timeline.name(),
-                time = timeline.typ().format(time),
+                time = timeline.typ().format(time, false),
                 %primary,
                 ?components,
                 attempt,
-                bucket_time_range = timeline.typ().format_range(bucket.inner.read().time_range),
+                bucket_time_range = timeline.typ().format_range(bucket.inner.read().time_range, false),
                 "found candidate bucket"
             );
             if let cells @ Some(_) = bucket.latest_at(time, primary, components) {
@@ -560,7 +560,7 @@ impl IndexedTable {
                     kind = "range",
                     bucket_nr,
                     bucket_time_range =
-                        timeline.typ().format_range(bucket.inner.read().time_range),
+                        timeline.typ().format_range(bucket.inner.read().time_range, false),
                     timeline = %timeline.name(),
                     ?time_range,
                     ?components,
@@ -715,7 +715,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time),
+            time = self.timeline.typ().format(time, false),
             "searching for primary & secondary cells…"
         );
 
@@ -736,7 +736,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time),
+            time = self.timeline.typ().format(time, false),
             %primary_row_nr,
             "found primary row number",
         );
@@ -750,7 +750,7 @@ impl IndexedBucket {
                     %primary,
                     ?components,
                     timeline = %self.timeline.name(),
-                    time = self.timeline.typ().format(time),
+                    time = self.timeline.typ().format(time, false),
                     %primary_row_nr,
                     "no secondary row number found",
                 );
@@ -764,7 +764,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time),
+            time = self.timeline.typ().format(time, false),
             %primary_row_nr, %secondary_row_nr,
             "found secondary row number",
         );
@@ -779,7 +779,7 @@ impl IndexedBucket {
                         %primary,
                         %component,
                         timeline = %self.timeline.name(),
-                        time = self.timeline.typ().format(time),
+                        time = self.timeline.typ().format(time, false),
                         %primary_row_nr, %secondary_row_nr,
                         "found cell",
                     );
@@ -836,10 +836,10 @@ impl IndexedBucket {
 
         trace!(
             kind = "range",
-            bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+            bucket_time_range = self.timeline.typ().format_range(bucket_time_range, false),
             ?components,
             timeline = %self.timeline.name(),
-            time_range = self.timeline.typ().format_range(time_range),
+            time_range = self.timeline.typ().format_range(time_range, false),
             "searching for time & component cell numbers…"
         );
 
@@ -847,10 +847,10 @@ impl IndexedBucket {
 
         trace!(
             kind = "range",
-            bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+            bucket_time_range = self.timeline.typ().format_range(bucket_time_range, false),
             ?components,
             timeline = %self.timeline.name(),
-            time_range = self.timeline.typ().format_range(time_range),
+            time_range = self.timeline.typ().format_range(time_range, false),
             %time_row_nr,
             "found time row number",
         );
@@ -896,10 +896,10 @@ impl IndexedBucket {
                 trace!(
                     kind = "range",
                     bucket_time_range =
-                        self.timeline.typ().format_range(bucket_time_range),
+                        self.timeline.typ().format_range(bucket_time_range, false),
                     ?components,
                     timeline = %self.timeline.name(),
-                    time_range = self.timeline.typ().format_range(time_range),
+                    time_range = self.timeline.typ().format_range(time_range, false),
                     %row_nr,
                     %row_id,
                     ?cells,

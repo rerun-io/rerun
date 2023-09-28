@@ -128,7 +128,7 @@ impl DataStore {
             id = self.insert_id,
             cluster_key = %self.cluster_key,
             timelines = ?timepoint.iter()
-                .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
+                .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time, false)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
             components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
@@ -303,11 +303,11 @@ impl IndexedTable {
                 trace!(
                     kind = "insert",
                     timeline = %timeline.name(),
-                    time = timeline.typ().format(time),
+                    time = timeline.typ().format(time, false),
                     entity = %ent_path,
                     len_limit = config.indexed_bucket_num_rows,
                     len, len_overflow,
-                    new_time_bound = timeline.typ().format(min),
+                    new_time_bound = timeline.typ().format(min, false),
                     "splitting off indexed bucket following overflow"
                 );
 
@@ -353,11 +353,11 @@ impl IndexedTable {
                     debug!(
                         kind = "insert",
                         timeline = %timeline.name(),
-                        time = timeline.typ().format(time),
+                        time = timeline.typ().format(time, false),
                         entity = %ent_path,
                         len_limit = config.indexed_bucket_num_rows,
                         len, len_overflow,
-                        new_time_bound = timeline.typ().format(new_time_bound.into()),
+                        new_time_bound = timeline.typ().format(new_time_bound.into(), false),
                         "creating brand new indexed bucket following overflow"
                     );
 
@@ -388,7 +388,7 @@ impl IndexedTable {
 
                 re_log::debug_once!(
                     "Failed to split bucket on timeline {}",
-                    bucket.timeline.format_time_range(&bucket_time_range)
+                    bucket.timeline.format_time_range(&bucket_time_range, false)
                 );
 
                 if 1 < config.indexed_bucket_num_rows
@@ -398,7 +398,7 @@ impl IndexedTable {
                         "Found over {} rows with the same timepoint {:?}={} - perhaps you forgot to update or remove the timeline?",
                         config.indexed_bucket_num_rows,
                         bucket.timeline.name(),
-                        bucket.timeline.typ().format(bucket_time_range.min)
+                        bucket.timeline.typ().format(bucket_time_range.min, false)
                     );
                 }
             }
@@ -407,7 +407,7 @@ impl IndexedTable {
         trace!(
             kind = "insert",
             timeline = %timeline.name(),
-            time = timeline.typ().format(time),
+            time = timeline.typ().format(time, false),
             entity = %ent_path,
             ?components,
             "inserted into indexed tables"

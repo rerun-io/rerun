@@ -546,7 +546,15 @@ impl std::fmt::Display for DataRow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Row #{} @ '{}'", self.row_id, self.entity_path)?;
         for (timeline, time) in &self.timepoint {
-            writeln!(f, "- {}: {}", timeline.name(), timeline.typ().format(*time))?;
+            // TODO(paris): Figure how to pass show_timestamps_in_local_timezone in to fmt(). We get:
+            // "method `fmt` has 3 parameters but the declaration in trait `std::fmt::Display::fmt` has 2"
+            // If we should be passing it, there are also a few other places to do so.
+            writeln!(
+                f,
+                "- {}: {}",
+                timeline.name(),
+                timeline.typ().format(*time, false)
+            )?;
         }
 
         re_format::arrow::format_table(

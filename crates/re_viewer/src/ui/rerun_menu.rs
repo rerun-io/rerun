@@ -164,6 +164,19 @@ impl App {
             ui.close_menu();
         }
 
+        if self
+            .re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.show_timestamps_in_local_timezone,
+                "Show timestamps in local timezone",
+            )
+            .on_hover_text("Convert timestamps from UTC to the local timezone")
+            .clicked()
+        {
+            ui.close_menu();
+        }
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             if self.re_ui

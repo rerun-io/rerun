@@ -65,7 +65,7 @@ fn main() {
             "Found data at time {} from {}'s PoV (outer-joining):\n{}",
             time.map_or_else(
                 || "<timeless>".into(),
-                |time| TimeType::Sequence.format(time)
+                |time| TimeType::Sequence.format(time, false)
             ),
             LargeStruct::name(),
             df,
@@ -87,7 +87,7 @@ fn main() {
             "Found data at time {} from {}'s PoV (outer-joining):\n{}",
             time.map_or_else(
                 || "<timeless>".into(),
-                |time| TimeType::Sequence.format(time)
+                |time| TimeType::Sequence.format(time, false)
             ),
             Position2D::name(),
             df,

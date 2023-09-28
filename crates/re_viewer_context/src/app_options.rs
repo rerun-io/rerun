@@ -23,6 +23,9 @@ pub struct AppOptions {
 
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
+
+    /// If true, show timestamps in the local timezone.
+    pub show_timestamps_in_local_timezone: bool,
 }
 
 impl Default for AppOptions {
@@ -40,6 +43,8 @@ impl Default for AppOptions {
             experimental_space_view_screenshots: false,
 
             show_picking_debug_overlay: false,
+
+            show_timestamps_in_local_timezone: false,
         }
     }
 }
