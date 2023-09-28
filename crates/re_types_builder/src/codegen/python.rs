@@ -248,8 +248,8 @@ impl PythonCodeGenerator {
         let test_kind_path = self.testing_pkg_path.join(object_kind.plural_snake_case());
 
         // (module_name, [object_name])
-        let mut mods = HashMap::<String, Vec<String>>::new();
-        let mut test_mods = HashMap::<String, Vec<String>>::new();
+        let mut mods = BTreeMap::<String, Vec<String>>::new();
+        let mut test_mods = BTreeMap::<String, Vec<String>>::new();
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
@@ -460,7 +460,7 @@ impl PythonCodeGenerator {
 
 fn write_init_file(
     kind_path: &Utf8PathBuf,
-    mods: &HashMap<String, Vec<String>>,
+    mods: &BTreeMap<String, Vec<String>>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
     let path = kind_path.join("__init__.py");
