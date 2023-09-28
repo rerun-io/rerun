@@ -32,7 +32,7 @@ class MemoryRecording:
 
         Note: counting the messages will flush the batcher in order to get a deterministic count.
         """
-        return self.storage.num_msgs()
+        return self.storage.num_msgs()  # type: ignore[no-any-return]
 
     def as_html(
         self,
