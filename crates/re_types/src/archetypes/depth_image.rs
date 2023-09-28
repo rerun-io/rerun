@@ -19,8 +19,9 @@
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.
 ///
-/// ## Example
+/// ## Examples
 ///
+/// ### Simple example
 /// ```ignore
 /// //! Create and log a depth image.
 ///
@@ -42,6 +43,55 @@
 ///     Ok(())
 /// }
 /// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1200w.png">
+///   <img src="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/full.png">
+/// </picture>
+///
+/// ### Depth to 3D example
+/// ```ignore
+/// //! Create and log a depth image.
+/// use ndarray::{s, Array, ShapeBuilder};
+/// use rerun::{
+///     archetypes::{DepthImage, Pinhole},
+///     RecordingStreamBuilder,
+/// };
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
+///
+///     // Create a dummy depth image
+///     let mut image = Array::<u16, _>::from_elem((8, 12).f(), 65535);
+///     image.slice_mut(s![0..4, 0..6]).fill(20000);
+///     image.slice_mut(s![4..8, 6..12]).fill(45000);
+///
+///     let depth_image = DepthImage::try_from(image.clone())?.with_meter(10000.0);
+///
+///     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
+///     rec.log(
+///         "world/camera",
+///         &Pinhole::from_focal_length_and_resolution(
+///             [20.0, 20.0],
+///             [image.shape()[1] as f32, image.shape()[0] as f32],
+///         ),
+///     )?;
+///
+///     rec.log("world/camera/depth", &depth_image)?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1200w.png">
+///   <img src="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png">
+/// </picture>
 #[derive(Clone, Debug, PartialEq)]
 pub struct DepthImage {
     /// The depth-image data. Should always be a rank-2 tensor.

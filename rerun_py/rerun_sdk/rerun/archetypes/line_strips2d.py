@@ -22,7 +22,49 @@ class LineStrips2D(Archetype):
 
     Examples
     --------
-    Many strips:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_line_strip2d", spawn=True)
+
+    rr.log(
+        "strip",
+        rr.LineStrips2D([[[0, 0], [2, 1], [4, -1], [6, 0]]]),
+    )
+
+    # Log an extra rect to set the view bounds
+    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
+    ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png">
+      <img src="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/full.png">
+    </picture>
+
+    ```python
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_line_segments2d", spawn=True)
+
+    rr.log(
+        "segments",
+        rr.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
+    )
+
+    # Log an extra rect to set the view bounds
+    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
+    ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png">
+      <img src="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/full.png">
+    </picture>
+
     ```python
     import rerun as rr
 
@@ -44,22 +86,13 @@ class LineStrips2D(Archetype):
     # Log an extra rect to set the view bounds
     rr.log("bounds", rr.Boxes2D(centers=[3, 1.5], half_sizes=[4.0, 4.5]))
     ```
-
-    Many individual segments:
-    ```python
-    import numpy as np
-    import rerun as rr
-
-    rr.init("rerun_example_line_segments2d", spawn=True)
-
-    rr.log(
-        "segments",
-        rr.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
-    )
-
-    # Log an extra rect to set the view bounds
-    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
-    ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/1200w.png">
+      <img src="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png">
+    </picture>
     """
 
     def __init__(

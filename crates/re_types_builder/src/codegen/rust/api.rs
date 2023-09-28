@@ -10,6 +10,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{
         autogen_warning,
+        common::collect_examples,
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -19,7 +20,7 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components},
         },
-        Examples, StringExt as _,
+        StringExt as _,
     },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
@@ -490,10 +491,6 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     }
 }
 
-fn collect_examples(docs: &Docs) -> anyhow::Result<Examples> {
-    Examples::collect(docs, "rs", &["```ignore"], &["```"])
-}
-
 fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
     struct DocCommentTokenizer<'a>(&'a [String]);
 
@@ -505,19 +502,39 @@ fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
 
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
-    let examples = collect_examples(docs)
+    let examples = collect_examples(docs, "rs", true)
         .map_err(|err| reporter.error(err))
         .unwrap_or_default();
     if !examples.is_empty() {
         lines.push(" ".into());
-        let section_title = if examples.count == 1 {
+        let section_title = if examples.len() == 1 {
             "Example"
         } else {
             "Examples"
         };
         lines.push(format!(" ## {section_title}"));
         lines.push(" ".into());
-        lines.extend(examples.lines.into_iter().map(|line| format!(" {line}")));
+        let mut examples = examples.into_iter().peekable();
+        while let Some(example) = examples.next() {
+            if let Some(title) = example.base.title {
+                lines.push(format!(" ### {title}"));
+            }
+            lines.push(" ```ignore".into());
+            lines.extend(example.lines.into_iter().map(|line| format!(" {line}")));
+            lines.push(" ```".into());
+            if let Some(image) = &example.base.image {
+                lines.extend(
+                    image
+                        .image_stack()
+                        .into_iter()
+                        .map(|line| format!(" {line}")),
+                );
+            }
+            if examples.peek().is_some() {
+                // blank line between examples
+                lines.push(" ".into());
+            }
+        }
     }
 
     let lines = DocCommentTokenizer(&lines);

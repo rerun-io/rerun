@@ -22,6 +22,63 @@ class LineStrips3D(Archetype):
 
     Examples
     --------
+    Simple example:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_line_strip3d", spawn=True)
+
+    points = [
+        [0, 0, 0],
+        [0, 0, 1],
+        [1, 0, 0],
+        [1, 0, 1],
+        [1, 1, 0],
+        [1, 1, 1],
+        [0, 1, 0],
+        [0, 1, 1],
+    ]
+
+    rr.log("strip", rr.LineStrips3D([points]))
+    ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1200w.png">
+      <img src="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/full.png">
+    </picture>
+
+    Many individual segments:
+    ```python
+    #!/usr/bin/env python3
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_line_segments3d", spawn=True)
+
+    rr.log(
+        "segments",
+        rr.LineStrips3D(
+            np.array(
+                [
+                    [[0, 0, 0], [0, 0, 1]],
+                    [[1, 0, 0], [1, 0, 1]],
+                    [[1, 1, 0], [1, 1, 1]],
+                    [[0, 1, 0], [0, 1, 1]],
+                ],
+            )
+        ),
+    )
+    ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1200w.png">
+      <img src="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/full.png">
+    </picture>
+
     Many strips:
     ```python
     import rerun as rr
@@ -55,29 +112,13 @@ class LineStrips3D(Archetype):
         ),
     )
     ```
-
-    Many individual segments:
-    ```python
-    #!/usr/bin/env python3
-    import numpy as np
-    import rerun as rr
-
-    rr.init("rerun_example_line_segments3d", spawn=True)
-
-    rr.log(
-        "segments",
-        rr.LineStrips3D(
-            np.array(
-                [
-                    [[0, 0, 0], [0, 0, 1]],
-                    [[1, 0, 0], [1, 0, 1]],
-                    [[1, 1, 0], [1, 1, 1]],
-                    [[0, 1, 0], [0, 1, 1]],
-                ],
-            )
-        ),
-    )
-    ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1200w.png">
+      <img src="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png">
+    </picture>
     """
 
     def __init__(

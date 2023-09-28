@@ -829,6 +829,10 @@ impl ObjectField {
         self.attrs.try_get(self.fqname.as_str(), name)
     }
 
+    pub fn has_attr(&self, name: impl AsRef<str>) -> bool {
+        self.attrs.has(name)
+    }
+
     /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
@@ -838,6 +842,25 @@ impl ObjectField {
     pub fn pascal_case_name(&self) -> String {
         crate::to_pascal_case(&self.name)
     }
+
+    pub fn kind(&self) -> Option<FieldKind> {
+        if self.has_attr(crate::ATTR_RERUN_COMPONENT_REQUIRED) {
+            Some(FieldKind::Required)
+        } else if self.has_attr(crate::ATTR_RERUN_COMPONENT_RECOMMENDED) {
+            Some(FieldKind::Recommended)
+        } else if self.has_attr(crate::ATTR_RERUN_COMPONENT_OPTIONAL) {
+            Some(FieldKind::Optional)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldKind {
+    Required,
+    Recommended,
+    Optional,
 }
 
 /// The underlying type of an [`ObjectField`].

@@ -1,24 +1,17 @@
 ---
-title: Tensor
-order: 23
+title: "Tensor"
+order: 100
 ---
 
-Tensors are N-dimensional data matrix with homogeneous type. Supported types are:
+A generic n-dimensional Tensor.
 
-- Unsigned integers: `uint8`, `uint16`, `uint32`, `uint64`
-- Signed integers: `uint8`, `uint16`, `uint32`, `uint64`
-- Floating point numbers: `float16`, `float32`, `float64`
+## Components
 
-Note: 1-D tensors are visualized as bar charts.
+**Required**: `TensorData`
 
-## Components and APIs
-Primary component: `tensor`
+## Examples
 
-Python APIs: [log_tensor](https://ref.rerun.io/docs/python/latest/common/tensors/#rerun.log_tensor),
-
-Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html)
-
-## Simple Example
+### tensor_simple
 
 code-example: tensor_simple
 
@@ -27,10 +20,10 @@ code-example: tensor_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png">
-  <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png" alt="">
+  <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png">
 </picture>
 
-## 1-D Tensor Example
+### tensor_one_dim
 
 code-example: tensor_one_dim
 
@@ -39,5 +32,6 @@ code-example: tensor_one_dim
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1200w.png">
-  <img src="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/full.png" alt="">
+  <img src="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/full.png">
 </picture>
+

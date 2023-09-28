@@ -14,11 +14,11 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A prepacked 3D asset (.gltf, .glb, .obj, etc).
+/// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 ///
 /// ## Examples
 ///
-/// Simple 3D asset:
+/// ### Simple 3D asset
 /// ```ignore
 /// //! Log a simple 3D asset.
 ///
@@ -44,7 +44,7 @@
 /// }
 /// ```
 ///
-/// 3D asset with out-of-tree transform:
+/// ### 3D asset with out-of-tree transform
 /// ```ignore
 /// //! Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 ///

@@ -20,8 +20,8 @@ class Points2D(Archetype):
     """
     A 2D point cloud with positions and optional colors, radii, labels, etc.
 
-    Example
-    -------
+    Examples
+    --------
     ```python
     import rerun as rr
 
@@ -32,6 +32,37 @@ class Points2D(Archetype):
     # Log an extra rect to set the view bounds
     rr.log("bounds", rr.Boxes2D(half_sizes=[2, 1.5]))
     ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1200w.png">
+      <img src="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/full.png">
+    </picture>
+
+    ```python
+    import rerun as rr
+    from numpy.random import default_rng
+
+    rr.init("rerun_example_points2d", spawn=True)
+    rng = default_rng(12345)
+
+    positions = rng.uniform(-3, 3, size=[10, 2])
+    colors = rng.uniform(0, 255, size=[10, 4])
+    radii = rng.uniform(0, 1, size=[10])
+
+    rr.log("random", rr.Points2D(positions, colors=colors, radii=radii))
+
+    # Log an extra rect to set the view bounds
+    rr.log("bounds", rr.Boxes2D(half_sizes=[4, 3]))
+    ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png">
+      <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png">
+    </picture>
     """
 
     def __init__(

@@ -25,6 +25,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// ### Rectangles
         /// ```cpp,ignore
         /// // Log an annotation context to assign a label and color to each class
         ///

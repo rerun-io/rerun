@@ -58,6 +58,8 @@ import tqdm
 from google.cloud import storage
 from PIL.Image import Image, Resampling
 
+# NOTE: We depend on the stack using the exact sizes they do right now in:
+#       - docs codegen (`image_url_stack`)
 SIZES = [
     480,
     768,
@@ -268,6 +270,8 @@ class Uploader:
                 image.save(buffer, output_format, optimize=True, quality=80, compress_level=9)
                 image_data = buffer.getvalue()
 
+            # NOTE: We depend on the filenames using the exact format they have right now in:
+            #       - docs codegen (`image_url_stack`)
             if width is None:
                 object_name = f"{name}/{digest}/full{file_ext}"
             else:

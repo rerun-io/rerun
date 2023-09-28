@@ -9,7 +9,8 @@ namespace rerun.archetypes;
 
 /// A 3D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// \example point3d_simple
+/// \example point3d_simple image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
+/// \example point3d_random image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"
 table Points3D (
   "attr.rust.derive": "PartialEq",
   order: 100
