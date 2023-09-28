@@ -18,8 +18,7 @@ namespace rerun.archetypes;
 /// \example annotation_context_segmentation title="Segmentation" image="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/1200w.png"
 /// \example annotation_context_connections title="Connections" image="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1200w.png"
 table AnnotationContext (
-  "attr.rust.derive": "Eq, PartialEq",
-  order: 100
+  "attr.rust.derive": "Eq, PartialEq"
 ) {
   context: rerun.components.AnnotationContext ("attr.rerun.component_required", order: 1000);
 }

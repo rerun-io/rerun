@@ -1,6 +1,5 @@
 ---
 title: "BarChart"
-order: 100
 ---
 
 A bar chart.

@@ -1,6 +1,5 @@
 ---
 title: "AnnotationContext"
-order: 100
 ---
 
 The `AnnotationContext` provides additional information on how to display entities.

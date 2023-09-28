@@ -1,6 +1,5 @@
 ---
 title: "LineStrips3D"
-order: 100
 ---
 
 A batch of line strips with positions and optional colors, radii, labels, etc.

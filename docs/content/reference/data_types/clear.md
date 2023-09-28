@@ -1,6 +1,5 @@
 ---
 title: "Clear"
-order: 100
 ---
 
 Empties all the components of an entity.

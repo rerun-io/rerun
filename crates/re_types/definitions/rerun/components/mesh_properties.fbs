@@ -11,8 +11,7 @@ namespace rerun.components;
 
 // Global properties of a mesh.
 table MeshProperties (
-  "attr.rust.derive": "PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
   props: rerun.datatypes.MeshProperties (order: 100);
 }

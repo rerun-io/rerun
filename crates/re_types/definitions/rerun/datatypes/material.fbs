@@ -10,8 +10,7 @@ namespace rerun.datatypes;
 
 // Material properties of a mesh.
 struct Material (
-  "attr.rust.derive": "Copy, PartialEq, Eq, Hash",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, Eq, Hash"
 ) {
   /// Optional color multiplier.
   albedo_factor: rerun.datatypes.Color (nullable, order: 100);

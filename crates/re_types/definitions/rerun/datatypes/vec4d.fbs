@@ -14,8 +14,7 @@ struct Vec4D (
   "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]",
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.tuple_struct",
-  "attr.rust.repr": "C",
-  order: 100
+  "attr.rust.repr": "C"
 ) {
   xyzw: [float: 4] (order: 100);
 }

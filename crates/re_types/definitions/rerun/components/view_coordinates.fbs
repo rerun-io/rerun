@@ -38,8 +38,7 @@ enum ViewDir: byte {
 struct ViewCoordinates (
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
-  "attr.rust.derive": "Copy, PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
   /// The directions of the [x, y, z] axes.
   coordinates: [ubyte: 3] (order: 100);

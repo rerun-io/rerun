@@ -18,8 +18,7 @@ table ClassId (
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.repr": "transparent",
   "attr.rust.custom_clause":
-    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))',
-  order: 100
+    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {
   id: rerun.datatypes.ClassId (order: 100);
 }

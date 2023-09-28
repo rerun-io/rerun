@@ -13,8 +13,7 @@ struct PrimitiveComponent (
   "attr.arrow.transparent",
   "attr.rust.derive": "Default, Eq, PartialEq",
   "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
-  order: 001
+  "attr.rust.tuple_struct"
 ) {
   value: uint (order: 100);
 }
@@ -23,8 +22,7 @@ table StringComponent (
   "attr.arrow.transparent",
   "attr.rust.derive": "Default, Eq, PartialEq",
   "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
-  order: 002
+  "attr.rust.tuple_struct"
 ) {
   value: string (order: 100);
 }

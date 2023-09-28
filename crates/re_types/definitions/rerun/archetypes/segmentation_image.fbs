@@ -16,8 +16,7 @@ namespace rerun.archetypes;
 ///
 /// \example segmentation_image_simple image="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png"
 table SegmentationImage (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

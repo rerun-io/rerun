@@ -47,7 +47,6 @@ impl CodeGenerator for DocsCodeGenerator {
                 continue;
             }
 
-            let order = object.order;
             let top_level_docs = get_documentation(&object.docs, &[]);
             let examples = object
                 .docs
@@ -60,7 +59,7 @@ impl CodeGenerator for DocsCodeGenerator {
 
             let mut o = String::new();
 
-            frontmatter(&mut o, &object.name, order);
+            frontmatter(&mut o, &object.name);
             putln!(o);
             for mut line in top_level_docs {
                 if line.starts_with(char::is_whitespace) {
@@ -84,10 +83,9 @@ impl CodeGenerator for DocsCodeGenerator {
     }
 }
 
-fn frontmatter(o: &mut String, title: &str, order: u32) {
+fn frontmatter(o: &mut String, title: &str) {
     putln!(o, "---");
     putln!(o, "title: {title:?}");
-    putln!(o, "order: {order}");
     putln!(o, "---");
 }
 

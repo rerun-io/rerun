@@ -17,8 +17,7 @@ namespace rerun.components;
 struct DisconnectedSpace (
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",
-  "attr.rust.derive": "Copy, PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
   is_disconnected: bool (order: 100);
 }

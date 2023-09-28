@@ -10,8 +10,7 @@ namespace rerun.components;
 ///
 /// "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
 table OutOfTreeTransform3D (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   /// Representation of the transform.
   repr: rerun.datatypes.Transform3D (order: 100);

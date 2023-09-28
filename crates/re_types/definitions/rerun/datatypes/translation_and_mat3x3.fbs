@@ -11,8 +11,7 @@ namespace rerun.datatypes;
 ///
 /// First applies the matrix, then the translation.
 table TranslationAndMat3x3 (
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 500
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// 3D translation, applied after the matrix.
   //

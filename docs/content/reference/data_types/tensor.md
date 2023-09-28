@@ -1,6 +1,5 @@
 ---
 title: "Tensor"
-order: 100
 ---
 
 A generic n-dimensional Tensor.

@@ -17,8 +17,7 @@ namespace rerun.archetypes;
 ///
 /// \example view_coordinates_simple
 table ViewCoordinates (
-  "attr.rust.derive": "Copy, PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
   xyz: rerun.components.ViewCoordinates ("attr.rerun.component_required", required, order: 1000);
 }

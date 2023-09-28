@@ -10,8 +10,7 @@ namespace rerun.datatypes;
 
 /// 3D rotation represented by a rotation around a given axis.
 table RotationAxisAngle (
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 300
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// Axis to rotate around.
   ///

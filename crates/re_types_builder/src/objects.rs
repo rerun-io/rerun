@@ -146,29 +146,19 @@ impl Objects {
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
-        let objs = self
-            .objects
+        self.objects
             .values_mut()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
-
-        let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order);
-
-        objs
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
+            .collect()
     }
 
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects(&self, kind: Option<ObjectKind>) -> Vec<&Object> {
-        let objs = self
-            .objects
+        self.objects
             .values()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
-
-        let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order);
-
-        objs
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
+            .collect()
     }
 }
 
@@ -383,9 +373,6 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
-    /// The object's `order` attribute's value, which is always mandatory.
-    pub order: u32,
-
     /// The object's inner fields, which can be either struct members or union values.
     ///
     /// These are pre-sorted, in ascending order, using their `order` attribute.
@@ -435,7 +422,6 @@ impl Object {
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
@@ -469,7 +455,6 @@ impl Object {
             docs,
             kind,
             attrs,
-            order,
             fields,
             specifics: ObjectSpecifics::Struct {},
             datatype: None,
@@ -518,7 +503,6 @@ impl Object {
                 ))
             }
         };
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = enm
             .values()
@@ -549,7 +533,6 @@ impl Object {
             docs,
             kind,
             attrs,
-            order,
             fields,
             specifics: ObjectSpecifics::Union { utype },
             datatype: None,
