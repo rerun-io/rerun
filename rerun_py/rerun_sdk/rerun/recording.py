@@ -26,6 +26,14 @@ class MemoryRecording:
         """Reset the blueprint in the MemoryRecording."""
         self.storage.reset_blueprint(add_to_app_default_blueprint)
 
+    def num_msgs(self) -> int:
+        """
+        The number of pending messages in the MemoryRecording.
+
+        Note: counting the messages will flush the batcher in order to get a deterministic count.
+        """
+        return self.storage.num_msgs()
+
     def as_html(
         self,
         *,
