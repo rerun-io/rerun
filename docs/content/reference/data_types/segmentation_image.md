@@ -1,5 +1,5 @@
 ---
-title: SegmentationImage
+title: "SegmentationImage"
 order: 100
 ---
 

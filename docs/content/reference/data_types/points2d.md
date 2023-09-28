@@ -1,5 +1,5 @@
 ---
-title: Points2D
+title: "Points2D"
 order: 100
 ---
 

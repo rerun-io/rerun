@@ -1,5 +1,5 @@
 ---
-title: Pinhole
+title: "Pinhole"
 order: 100
 ---
 

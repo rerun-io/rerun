@@ -1,5 +1,5 @@
 ---
-title: TimeSeriesScalar
+title: "TimeSeriesScalar"
 order: 100
 ---
 

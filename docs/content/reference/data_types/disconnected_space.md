@@ -1,5 +1,5 @@
 ---
-title: DisconnectedSpace
+title: "DisconnectedSpace"
 order: 100
 ---
 

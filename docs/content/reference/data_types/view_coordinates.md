@@ -1,5 +1,5 @@
 ---
-title: ViewCoordinates
+title: "ViewCoordinates"
 order: 100
 ---
 

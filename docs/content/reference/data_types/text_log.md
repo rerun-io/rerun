@@ -1,5 +1,5 @@
 ---
-title: TextLog
+title: "TextLog"
 order: 100
 ---
 

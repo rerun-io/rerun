@@ -1,5 +1,5 @@
 ---
-title: DepthImage
+title: "DepthImage"
 order: 100
 ---
 

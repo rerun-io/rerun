@@ -1,5 +1,5 @@
 ---
-title: LineStrips2D
+title: "LineStrips2D"
 order: 100
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Arrows3D
+title: "Arrows3D"
 order: 100
 ---
 

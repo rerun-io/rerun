@@ -1,5 +1,5 @@
 ---
-title: Boxes3D
+title: "Boxes3D"
 order: 100
 ---
 

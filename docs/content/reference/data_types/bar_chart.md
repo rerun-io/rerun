@@ -1,5 +1,5 @@
 ---
-title: BarChart
+title: "BarChart"
 order: 100
 ---
 

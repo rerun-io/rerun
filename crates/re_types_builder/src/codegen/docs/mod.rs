@@ -86,7 +86,7 @@ impl CodeGenerator for DocsCodeGenerator {
 
 fn frontmatter(o: &mut String, title: &str, order: u32) {
     putln!(o, "---");
-    putln!(o, "title: {title}");
+    putln!(o, "title: \"{title}\"");
     putln!(o, "order: {order}");
     putln!(o, "---");
 }

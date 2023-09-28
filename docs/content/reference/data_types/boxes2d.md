@@ -1,5 +1,5 @@
 ---
-title: Boxes2D
+title: "Boxes2D"
 order: 100
 ---
 
