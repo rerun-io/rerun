@@ -108,8 +108,8 @@ fn to_textured_rect(
                     .world_from_entity
                     .transform_vector3(glam::Vec3::X * width as f32),
                 extent_v: ent_context
-                    .world_from_entity
-                    .transform_vector3(glam::Vec3::Y * height as f32),
+                    .world_from_obj
+                    .transform_vector3(glam::Vec3::Y * (height as f32) * 1.5), // TODO(zrezke): Make this based on encoding
                 colormapped_texture,
                 options: RectangleOptions {
                     texture_filter_magnification,

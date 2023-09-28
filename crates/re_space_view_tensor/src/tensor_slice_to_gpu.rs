@@ -1,6 +1,7 @@
+use re_components::{DecodedTensor, TensorCastError, TensorData, TensorDataType};
 use re_data_store::VersionedInstancePathHash;
 use re_renderer::{
-    renderer::ColormappedTexture,
+    renderer::{ColormappedTexture, TextureEncoding},
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
 use re_types::tensor_data::{DecodedTensor, TensorCastError, TensorDataType};
@@ -47,6 +48,10 @@ pub fn colormapped_texture(
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(
             color_mapping.map,
         )),
+        encoding: match &tensor.data {
+            &TensorData::NV12(_) => Some(TextureEncoding::Nv12),
+            _ => None,
+        },
     })
 }
 

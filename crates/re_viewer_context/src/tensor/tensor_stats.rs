@@ -16,7 +16,7 @@ impl TensorStats {
         use re_types::tensor_data::TensorDataType;
 
         macro_rules! declare_tensor_range_int {
-            ($name: ident, $typ: ty) => {
+            ($name:ident, $typ:ty) => {
                 fn $name(tensor: ndarray::ArrayViewD<'_, $typ>) -> (f64, f64) {
                     re_tracing::profile_function!();
                     let (min, max) = tensor
@@ -29,7 +29,7 @@ impl TensorStats {
         }
 
         macro_rules! declare_tensor_range_float {
-            ($name: ident, $typ: ty) => {
+            ($name:ident, $typ:ty) => {
                 fn $name(tensor: ndarray::ArrayViewD<'_, $typ>) -> (f64, f64) {
                     re_tracing::profile_function!();
                     let (min, max) = tensor.fold(
@@ -59,15 +59,14 @@ impl TensorStats {
         #[allow(clippy::needless_pass_by_value)]
         fn tensor_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
-            let (min, max) = tensor
-                .fold((f16::INFINITY, f16::NEG_INFINITY), |(min, max), &value| {
-                    (min.min(value), max.max(value))
-                });
+            let (min, max) = tensor.fold((f16::INFINITY, f16::NEG_INFINITY), |(min, max), &value| {
+                (min.min(value), max.max(value))
+            });
             (min.to_f64(), max.to_f64())
         }
 
         macro_rules! declare_tensor_finite_range_float {
-            ($name: ident, $typ: ty) => {
+            ($name:ident, $typ:ty) => {
                 fn $name(tensor: ndarray::ArrayViewD<'_, $typ>) -> (f64, f64) {
                     re_tracing::profile_function!();
                     let (min, max) = tensor.fold(
@@ -93,14 +92,9 @@ impl TensorStats {
         #[allow(clippy::needless_pass_by_value)]
         fn tensor_finite_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
-            let (min, max) =
-                tensor.fold((f16::INFINITY, f16::NEG_INFINITY), |(min, max), &value| {
-                    if value.is_finite() {
-                        (min.min(value), max.max(value))
-                    } else {
-                        (min, max)
-                    }
-                });
+            let (min, max) = tensor.fold((f16::INFINITY, f16::NEG_INFINITY), |(min, max), &value| {
+                if value.is_finite() { (min.min(value), max.max(value)) } else { (min, max) }
+            });
             (min.to_f64(), max.to_f64())
         }
 
@@ -119,15 +113,18 @@ impl TensorStats {
             TensorDataType::F64 => ArrayViewD::<f64>::try_from(tensor).map(tensor_range_f64),
         };
 
-        let finite_range = if range
-            .as_ref()
-            .ok()
-            .map_or(true, |r| r.0.is_finite() && r.1.is_finite())
+        println!("range: {:?} for tensor: {:?}", range, tensor.data);
+
+        let finite_range = if
+            range
+                .as_ref()
+                .ok()
+                .map_or(true, |r| r.0.is_finite() && r.1.is_finite())
         {
             range.clone().ok()
         } else {
             let finite_range = match tensor.dtype() {
-                TensorDataType::U8
+                | TensorDataType::U8
                 | TensorDataType::U16
                 | TensorDataType::U32
                 | TensorDataType::U64
@@ -149,11 +146,7 @@ impl TensorStats {
 
             // If we didn't find a finite range, set it to None.
             finite_range.ok().and_then(|r| {
-                if r.0.is_finite() && r.1.is_finite() {
-                    Some(r)
-                } else {
-                    None
-                }
+                if r.0.is_finite() && r.1.is_finite() { Some(r) } else { None }
             })
         };
 

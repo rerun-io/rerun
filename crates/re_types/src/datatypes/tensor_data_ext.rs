@@ -46,28 +46,36 @@ impl TensorData {
     /// If the tensor can be interpreted as an image, return the height, width, and channels/depth of it.
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
         let shape_short = self.shape_short();
-
-        match shape_short.len() {
-            1 => {
-                // Special case: Nx1(x1x1x …) tensors are treated as Nx1 gray images.
-                // Special case: Nx1(x1x1x …) tensors are treated as Nx1 gray images.
-                if self.shape.len() >= 2 {
-                    Some([shape_short[0].size, 1, 1])
-                } else {
-                    None
+        match &self.buffer {
+            TensorBuffer::Nv12(_) => {
+                // NV12 encodes a color image in 1.5 "channels" -> 1 luma (per pixel) + (1U+1V) / 4 pixels.
+                // Return the logical RGB size.
+                Some([((y.size as f64) / 1.5) as u64, x.size, 3])
+            }
+            _ => {
+                match shape_short.len() {
+                    1 => {
+                        // Special case: Nx1(x1x1x …) tensors are treated as Nx1 gray images.
+                        // Special case: Nx1(x1x1x …) tensors are treated as Nx1 gray images.
+                        if self.shape.len() >= 2 {
+                            Some([shape_short[0].size, 1, 1])
+                        } else {
+                            None
+                        }
+                    }
+                    2 => Some([shape_short[0].size, shape_short[1].size, 1]),
+                    3 => {
+                        let channels = shape_short[2].size;
+                        if matches!(channels, 3 | 4) {
+                            // rgb, rgba
+                            Some([shape_short[0].size, shape_short[1].size, channels])
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
                 }
             }
-            2 => Some([shape_short[0].size, shape_short[1].size, 1]),
-            3 => {
-                let channels = shape_short[2].size;
-                if matches!(channels, 3 | 4) {
-                    // rgb, rgba
-                    Some([shape_short[0].size, shape_short[1].size, channels])
-                } else {
-                    None
-                }
-            }
-            _ => None,
         }
     }
 
@@ -154,6 +162,52 @@ impl TensorData {
             TensorBuffer::F32(buf) => Some(TensorElement::F32(buf[offset])),
             TensorBuffer::F64(buf) => Some(TensorElement::F64(buf[offset])),
             TensorBuffer::Jpeg(_) => None, // Too expensive to unpack here.
+            TensorBuffer::Nv12(_) => {
+                {
+                    // Returns the U32 packed RGBA value of the pixel at index [y, x] if it is valid.
+                    let [y, x] = index else {
+                        return None;
+                    };
+                    if let Some(
+                        [TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)],
+                    ) = self.get_nv12_pixel(*x, *y)
+                    {
+                        let mut rgba = 0;
+                        rgba |= (r as u32) << 24;
+                        rgba |= (g as u32) << 16;
+                        rgba |= (b as u32) << 8;
+                        rgba |= 0xff;
+                        Some(TensorElement::U32(rgba))
+                    } else {
+                        None
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
+        let TensorBuffer::Nv12(buf) = &self.buffer else {
+            return None;
+        };
+        match self.image_height_width_channels() {
+            Some([h, w, _]) => {
+                let uv_offset = (w * h) as u64;
+                let luma = ((buf[(y * w + x) as usize] as f64) - 16.0) / 216.0;
+                let u = ((buf[(uv_offset + (y / 2) * w + x) as usize] as f64) - 128.0) / 224.0;
+                let v =
+                    ((buf[((uv_offset + (y / 2) * w + x) as usize) + 1] as f64) - 128.0) / 224.0;
+                let r = luma + 1.402 * v;
+                let g = luma - 0.344 * u + 0.714 * v;
+                let b = luma + 1.772 * u;
+
+                Some([
+                    TensorElement::U8(f64::clamp(r * 255.0, 0.0, 255.0) as u8),
+                    TensorElement::U8(f64::clamp(g * 255.0, 0.0, 255.0) as u8),
+                    TensorElement::U8(f64::clamp(b * 255.0, 0.0, 255.0) as u8),
+                ])
+            }
+            _ => None,
         }
     }
 
@@ -251,7 +305,6 @@ macro_rules! tensor_type {
     };
 }
 
-tensor_type!(u8, U8);
 tensor_type!(u16, U16);
 tensor_type!(u32, U32);
 tensor_type!(u64, U64);
@@ -265,6 +318,22 @@ tensor_type!(arrow2::types::f16, F16);
 
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
+
+// Manual expension of tensor_type! macro for `half::u8` types. We need to do this, because u8 can store bytes that carry encoded data
+impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, u8> {
+    type Error = TensorCastError;
+
+    fn try_from(value: &'a Tensor) -> Result<Self, Self::Error> {
+        match &value.data {
+            TensorBuffer::U8(data) | TensorBuffer::Nv12(data) => {
+                let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
+                ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
+                    .map_err(|err| TensorCastError::BadTensorShape { source: err })
+            }
+            _ => Err(TensorCastError::TypeMismatch),
+        }
+    }
+}
 
 // Manual expansion of tensor_type! macro for `half::f16` types. We need to do this
 // because arrow uses its own half type. The two use the same underlying representation

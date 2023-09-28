@@ -48,6 +48,12 @@ pub enum TextureFilterMin {
     // TODO(andreas): Offer mipmapping here?
 }
 
+/// Describes how the color information is encoded in the texture.
+#[derive(Clone, Debug, PartialEq)]
+pub enum TextureEncoding {
+    Nv12,
+}
+
 /// Describes a texture and how to map it to a color.
 #[derive(Clone)]
 pub struct ColormappedTexture {
@@ -83,6 +89,9 @@ pub struct ColormappedTexture {
     /// Setting a color mapper for a four-component texture is an error.
     /// Failure to set a color mapper for a one-component texture is an error.
     pub color_mapper: Option<ColorMapper>,
+
+    /// For textures that don't store color information in conventional RGB color space, you need to supply a TextureEncoding.
+    pub encoding: Option<TextureEncoding>,
 }
 
 /// How to map the normalized `.r` component to a color.
@@ -113,6 +122,17 @@ impl ColormappedTexture {
             gamma: 1.0,
             multiply_rgb_with_alpha: true,
             color_mapper: None,
+            encoding: None,
+        }
+    }
+
+    pub fn image_width_height(&self) -> [u32; 2] {
+        match self.encoding {
+            Some(TextureEncoding::Nv12) => {
+                let [width, height] = self.texture.width_height();
+                [width, (height as f64 / 1.5) as u32]
+            }
+            _ => self.texture.width_height(),
         }
     }
 }
@@ -132,6 +152,16 @@ pub struct TexturedRect {
     pub colormapped_texture: ColormappedTexture,
 
     pub options: RectangleOptions,
+}
+
+impl TexturedRect {
+    /// The uv extent of the image, taking into account the texture encoding.
+    pub fn image_extent_uv(&self) -> [glam::Vec3; 2] {
+        match self.colormapped_texture.encoding {
+            Some(TextureEncoding::Nv12) => [self.extent_u, self.extent_v / 1.5],
+            _ => [self.extent_u, self.extent_v],
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -188,7 +218,9 @@ pub enum RectangleError {
 }
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
+    use gltf::json::extensions::texture;
+
+    use crate::{texture_info, wgpu_buffer_types};
 
     use super::{ColorMapper, RectangleError, TexturedRect};
 
@@ -198,6 +230,7 @@ mod gpu_data {
     const SAMPLE_TYPE_FLOAT: u32 = 1;
     const SAMPLE_TYPE_SINT: u32 = 2;
     const SAMPLE_TYPE_UINT: u32 = 3;
+    const SAMPLE_TYPE_NV12: u32 = 4;
 
     // How do we do colormapping?
     const COLOR_MAPPER_OFF: u32 = 1;
@@ -261,6 +294,7 @@ mod gpu_data {
                 gamma,
                 color_mapper,
                 multiply_rgb_with_alpha,
+                encoding: texture_encoding,
             } = colormapped_texture;
 
             let super::RectangleOptions {
@@ -274,7 +308,13 @@ mod gpu_data {
             let sample_type = match texture_format.sample_type(None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => SAMPLE_TYPE_FLOAT,
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
-                Some(wgpu::TextureSampleType::Uint) => SAMPLE_TYPE_UINT,
+                Some(wgpu::TextureSampleType::Uint) => {
+                    if texture_encoding == &Some(super::TextureEncoding::Nv12) {
+                        SAMPLE_TYPE_NV12
+                    } else {
+                        SAMPLE_TYPE_UINT
+                    }
+                }
                 _ => {
                     return Err(RectangleError::TextureFormatNotSupported(texture_format));
                 }
@@ -292,9 +332,10 @@ mod gpu_data {
                     Some(ColorMapper::Texture(_)) => {
                         color_mapper_int = COLOR_MAPPER_TEXTURE;
                     }
-                    None => {
-                        return Err(RectangleError::MissingColorMapper);
-                    }
+                    None => match texture_encoding {
+                        Some(super::TextureEncoding::Nv12) => color_mapper_int = COLOR_MAPPER_OFF,
+                        _ => return Err(RectangleError::MissingColorMapper),
+                    },
                 },
                 4 => {
                     if color_mapper.is_some() {
@@ -304,7 +345,7 @@ mod gpu_data {
                     }
                 }
                 num_components => {
-                    return Err(RectangleError::UnsupportedComponentCount(num_components))
+                    return Err(RectangleError::UnsupportedComponentCount(num_components));
                 }
             }
 
@@ -316,6 +357,15 @@ mod gpu_data {
                 super::TextureFilterMag::Linear => FILTER_BILINEAR,
                 super::TextureFilterMag::Nearest => FILTER_NEAREST,
             };
+
+            println!(
+                "ENCODING: {:?} MIN: {:?} MAG: {:?} GAMMA: {:?}, color mapper: {:?}",
+                rectangle.colormapped_texture.encoding,
+                minification_filter,
+                magnification_filter,
+                gamma,
+                color_mapper_int
+            );
 
             Ok(Self {
                 top_left_corner_position: (*top_left_corner_position).into(),
@@ -435,17 +485,17 @@ impl RectangleDrawData {
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
-                    &BindGroupDesc {
+                    &(BindGroupDesc {
                         label: "RectangleInstance::bind_group".into(),
                         entries: smallvec![
                             uniform_buffer,
                             BindGroupEntry::DefaultTextureView(texture_float),
                             BindGroupEntry::DefaultTextureView(texture_sint),
                             BindGroupEntry::DefaultTextureView(texture_uint),
-                            BindGroupEntry::DefaultTextureView(colormap_texture),
+                            BindGroupEntry::DefaultTextureView(colormap_texture)
                         ],
                         layout: rectangle_renderer.bind_group_layout,
-                    },
+                    }),
                 ),
                 draw_outline_mask: rectangle.options.outline_mask.is_some(),
             });
@@ -475,7 +525,7 @@ impl Renderer for RectangleRenderer {
 
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
-            &BindGroupLayoutDesc {
+            &(BindGroupLayoutDesc {
                 label: "RectangleRenderer::bind_group_layout".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
@@ -538,15 +588,15 @@ impl Renderer for RectangleRenderer {
                         count: None,
                     },
                 ],
-            },
+            }),
         );
 
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
-            &PipelineLayoutDesc {
+            &(PipelineLayoutDesc {
                 label: "RectangleRenderer::pipeline_layout".into(),
                 entries: vec![shared_data.global_bindings.layout, bind_group_layout],
-            },
+            }),
             &pools.bind_group_layouts,
         );
 
@@ -591,20 +641,20 @@ impl Renderer for RectangleRenderer {
         );
         let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
             device,
-            &RenderPipelineDesc {
+            &(RenderPipelineDesc {
                 label: "RectangleRenderer::render_pipeline_picking_layer".into(),
                 fragment_entrypoint: "fs_main_picking_layer".into(),
                 render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
                 depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
                 ..render_pipeline_desc_color.clone()
-            },
+            }),
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
         let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
-            &RenderPipelineDesc {
+            &(RenderPipelineDesc {
                 label: "RectangleRenderer::render_pipeline_outline_mask".into(),
                 fragment_entrypoint: "fs_main_outline_mask".into(),
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
@@ -613,7 +663,7 @@ impl Renderer for RectangleRenderer {
                     &shared_data.config.device_caps,
                 ),
                 ..render_pipeline_desc_color
-            },
+            }),
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );

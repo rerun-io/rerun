@@ -16,7 +16,7 @@ use wgpu::TextureFormat;
 
 use re_renderer::{
     pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture},
+    renderer::{ColorMapper, ColormappedTexture, TextureEncoding},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
@@ -89,7 +89,10 @@ pub fn color_tensor_to_gpu(
     let [height, width, depth] = height_width_depth(tensor)?;
 
     let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
-        let (data, format) = match (depth, &tensor.buffer) {
+        let (data, format) = match (depth, &tensor.data) {
+            (3, TensorData::NV12(buf)) => {
+                (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint)
+            }
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
             // Why? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
@@ -121,6 +124,10 @@ pub fn color_tensor_to_gpu(
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
         || super::tensor_decode_srgb_gamma_heuristic(tensor_stats, tensor.dtype(), depth)?;
 
+    let encoding = match &tensor.data {
+        &TensorData::NV12(_) => Some(TextureEncoding::Nv12),
+        _ => None,
+    };
     // Special casing for normalized textures used above:
     let range = if matches!(
         texture_format,
@@ -134,7 +141,8 @@ pub fn color_tensor_to_gpu(
         super::tensor_data_range_heuristic(tensor_stats, tensor.dtype())?
     };
 
-    let color_mapper = if texture_format.components() == 1 {
+    println!("texture components: {}", texture_format.components());
+    let color_mapper = if encoding.is_none() && texture_format.components() == 1 {
         // Single-channel images = luminance = grayscale
         Some(ColorMapper::Function(re_renderer::Colormap::Grayscale))
     } else {
@@ -145,13 +153,20 @@ pub fn color_tensor_to_gpu(
     // Assume that the texture is not pre-multiplied if it has an alpha channel.
     let multiply_rgb_with_alpha = depth == 4;
 
+    let gamma = if encoding == Some(TextureEncoding::Nv12) {
+        2.2
+    } else {
+        1.0
+    };
+
     Ok(ColormappedTexture {
         texture: texture_handle,
         range,
         decode_srgb,
         multiply_rgb_with_alpha,
-        gamma: 1.0,
+        gamma,
         color_mapper,
+        encoding,
     })
 }
 
@@ -224,6 +239,7 @@ pub fn class_id_tensor_to_gpu(
         multiply_rgb_with_alpha: false, // already premultiplied!
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
+        encoding: None,
     })
 }
 
@@ -257,6 +273,7 @@ pub fn depth_tensor_to_gpu(
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Function(re_renderer::Colormap::Turbo)),
+        encoding: None,
     })
 }
 
@@ -319,6 +336,10 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
                 }
+
+                TensorData::NV12(_) => {
+                    unreachable!("An NV12 tensor can only contain a 3 channel image.")
+                }
             }
         }
         2 => {
@@ -340,6 +361,9 @@ fn general_texture_creation_desc_from_tensor<'a>(
 
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
+                }
+                TensorData::NV12(_) => {
+                    unreachable!("An NV12 tensor can only contain a 3 channel image.")
                 }
             }
         }
@@ -384,6 +408,9 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
                 }
+                TensorData::NV12(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm)
+                }
             }
         }
         4 => {
@@ -405,6 +432,9 @@ fn general_texture_creation_desc_from_tensor<'a>(
 
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
+                }
+                TensorData::NV12(_) => {
+                    unreachable!("An NV12 tensor can only contain a 3 channel image.")
                 }
             }
         }
@@ -483,8 +513,12 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
 fn height_width_depth(tensor: &TensorData) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
 
-    let Some([height, width, channel]) = tensor.image_height_width_channels() else {
+    let Some([mut height, width, channel]) = tensor.image_height_width_channels() else {
         anyhow::bail!("Tensor is not an image");
+    };
+    height = match tensor.data {
+        TensorData::NV12(_) => height * 3 / 2,
+        _ => height,
     };
 
     let [height, width] = [

@@ -258,6 +258,7 @@ pub fn view_2d(
         .map_or(scene_rect_accum, |res| {
             Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(res.x, res.y))
         });
+    println!("Pinhole resolution: {:?}", pinhole);
 
     let (desired_size, offset) = state
         .state_2d

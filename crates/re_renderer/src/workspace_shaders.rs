@@ -38,6 +38,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/decodings.wgsl");
+        let content = include_str!("../shader/decodings.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/depth_cloud.wgsl");
         let content = include_str!("../shader/depth_cloud.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

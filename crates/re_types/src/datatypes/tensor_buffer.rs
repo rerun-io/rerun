@@ -31,6 +31,7 @@ pub enum TensorBuffer {
     F32(crate::ArrowBuffer<f32>),
     F64(crate::ArrowBuffer<f64>),
     Jpeg(crate::ArrowBuffer<u8>),
+    Nv12(crate::ArrowBuffer<u8>),
 }
 
 impl<'a> From<TensorBuffer> for ::std::borrow::Cow<'a, TensorBuffer> {
@@ -199,9 +200,21 @@ impl crate::Loggable for TensorBuffer {
                     is_nullable: false,
                     metadata: [].into(),
                 },
+                Field {
+                    name: "NV12".to_owned(),
+                    data_type: DataType::List(Box::new(Field {
+                        name: "item".to_owned(),
+                        data_type: DataType::UInt8,
+                        is_nullable: false,
+                        metadata: [].into(),
+                    })),
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
             ],
             Some(vec![
                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32, 12i32,
+                13i32,
             ]),
             UnionMode::Dense,
         )
@@ -241,6 +254,7 @@ impl crate::Loggable for TensorBuffer {
                         Some(TensorBuffer::F32(_)) => 10i8,
                         Some(TensorBuffer::F64(_)) => 11i8,
                         Some(TensorBuffer::Jpeg(_)) => 12i8,
+                        Some(TensorBuffer::Nv12(_)) => 13i8,
                     })
                     .collect(),
                 vec![
@@ -890,6 +904,60 @@ impl crate::Loggable for TensorBuffer {
                             .boxed()
                         }
                     },
+                    {
+                        let (somes, nv12): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::Nv12(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::Nv12(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let nv12_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let nv12_inner_data: Buffer<_> = nv12
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let nv12_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                nv12.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt8,
+                                    nv12_inner_data,
+                                    nv12_inner_bitmap,
+                                )
+                                .boxed(),
+                                u8_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
                 ],
                 Some({
                     let mut u8_offset = 0;
@@ -904,6 +972,7 @@ impl crate::Loggable for TensorBuffer {
                     let mut f32_offset = 0;
                     let mut f64_offset = 0;
                     let mut jpeg_offset = 0;
+                    let mut nv12_offset = 0;
                     let mut nulls_offset = 0;
                     data.iter()
                         .map(|v| match v.as_deref() {
@@ -970,6 +1039,11 @@ impl crate::Loggable for TensorBuffer {
                             Some(TensorBuffer::Jpeg(_)) => {
                                 let offset = jpeg_offset;
                                 jpeg_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::Nv12(_)) => {
+                                let offset = nv12_offset;
+                                nv12_offset += 1;
                                 offset
                             }
                         })
@@ -1135,10 +1209,21 @@ impl crate::Loggable for TensorBuffer {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
+                                Filed {
+                                    name: "NV12".to_owned(),
+                                    data_type: DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::UInt8,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    })),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                },
                             ],
                             Some(vec![
                                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
-                                11i32, 12i32,
+                                11i32, 12i32, 13i32,
                             ]),
                             UnionMode::Dense,
                         ),
@@ -1984,6 +2069,77 @@ impl crate::Loggable for TensorBuffer {
                                         )
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#JPEG")?
+                                    .values()
+                            };
+                            let offsets = arrow_data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(crate::DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = crate::ArrowBuffer::from(data);
+                                    Ok(data)
+                                })
+                                .transpose()
+                            })
+                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                    .collect::<Vec<_>>()
+                };
+                let nv12 = {
+                    if 1usize >= arrow_data_arrays.len() {
+                        return Ok(Vec::new());
+                    }
+                    let arrow_data = &*arrow_data_arrays[1usize];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                crate::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::UInt8,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
+                            .with_context("rerun.datatypes.TensorBuffer#U8")?;
+                        if arrow_data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
+                                    .as_any()
+                                    .downcast_ref::<UInt8Array>()
+                                    .ok_or_else(|| {
+                                        crate::DeserializationError::datatype_mismatch(
+                                            DataType::UInt8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
+                                    .with_context("rerun.datatypes.TensorBuffer#U8")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
