@@ -1,5 +1,8 @@
 use std::fmt;
-use std::{path::PathBuf, sync::mpsc::Sender};
+use std::{
+    path::PathBuf,
+    sync::mpsc::{Receiver, Sender, SyncSender},
+};
 
 use parking_lot::Mutex;
 
@@ -21,10 +24,22 @@ pub enum FileSinkError {
     LogMsgEncode(#[from] crate::encoder::EncodeError),
 }
 
+enum Command {
+    Send(LogMsg),
+    Flush(SyncSender<()>),
+}
+
+impl Command {
+    fn flush() -> (Self, Receiver<()>) {
+        let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
+        (Self::Flush(tx), rx)
+    }
+}
+
 /// Stream log messages to an `.rrd` file.
 pub struct FileSink {
     // None = quit
-    tx: Mutex<Sender<Option<LogMsg>>>,
+    tx: Mutex<Sender<Option<Command>>>,
     join_handle: Option<std::thread::JoinHandle<()>>,
 
     /// Only used for diagnostics, not for access after `new()`.
@@ -65,10 +80,22 @@ impl FileSink {
             .spawn({
                 let path = path.clone();
                 move || {
-                    while let Ok(Some(log_msg)) = rx.recv() {
-                        if let Err(err) = encoder.append(&log_msg) {
-                            re_log::error!("Failed to save log stream to {path:?}: {err}");
-                            return;
+                    while let Ok(Some(cmd)) = rx.recv() {
+                        match cmd {
+                            Command::Send(log_msg) => {
+                                if let Err(err) = encoder.append(&log_msg) {
+                                    re_log::error!("Failed to save log stream to {path:?}: {err}");
+                                    return;
+                                }
+                            }
+                            Command::Flush(oneshot) => {
+                                re_log::trace!("Flushing…");
+                                if let Err(err) = encoder.flush_blocking() {
+                                    re_log::error!("Failed to flush log stream to {path:?}: {err}");
+                                    return;
+                                }
+                                drop(oneshot); // signals the oneshot
+                            }
                         }
                     }
                     re_log::debug!("Log stream saved to {path:?}");
@@ -83,8 +110,16 @@ impl FileSink {
         })
     }
 
+    #[inline]
+    pub fn flush_blocking(&self) {
+        let (cmd, oneshot) = Command::flush();
+        self.tx.lock().send(Some(cmd)).ok();
+        oneshot.recv().ok();
+    }
+
+    #[inline]
     pub fn send(&self, log_msg: LogMsg) {
-        self.tx.lock().send(Some(log_msg)).ok();
+        self.tx.lock().send(Some(Command::Send(log_msg))).ok();
     }
 }
 
