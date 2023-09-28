@@ -5,7 +5,7 @@ use crate::RecordingStream;
 
 // ---
 
-/// Implements a [`log::Logger`] that forwards all events to the Rerun SDK.
+/// Implements a [`log::Log`] that forwards all events to the Rerun SDK.
 #[derive(Debug)]
 pub struct Logger {
     rec: RecordingStream,
