@@ -5,11 +5,12 @@ import traceback
 import warnings
 from typing import Any, Callable, TypeVar, cast
 
-import rerun
 from rerun import bindings
 from rerun._log import log
 from rerun.archetypes import TextLog
 from rerun.recording_stream import RecordingStream
+
+from ..error_utils import check_strict_mode
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
@@ -44,7 +45,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
             )
             return
 
-        if rerun.strict_mode():
+        if check_strict_mode():
             # Pass on any exceptions to the caller
             return func(*args, **kwargs)
         else:
