@@ -20,7 +20,7 @@ class LoggingHandler(logging.Handler):
         logging.DEBUG: TextLogLevel.DEBUG,
     }
 
-    def __init__(self, *, path_prefix: str | None = None):
+    def __init__(self, path_prefix: str | None = None):
         """
         Initializes the logging handler with an optional path prefix.
 
@@ -45,7 +45,7 @@ class LoggingHandler(logging.Handler):
 
         level = self.LVL2NAME.get(record.levelno)
         if level is None:  # user-defined level
-            level = record.levelname
+            level = TextLogLevel(record.levelname)
 
         # NOTE: will go to the most appropriate recording!
         return log(ent_path, TextLog(record.getMessage(), level=level))

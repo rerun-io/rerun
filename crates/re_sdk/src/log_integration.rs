@@ -94,8 +94,6 @@ impl log::Log for Logger {
 
         let body = format!("{}", record.args());
 
-        let now = std::time::Instant::now();
-        println!("{now:?} => {body}");
         self.rec
             .log(ent_path, &TextLog::new(body).with_level(level))
             .ok(); // ignore error

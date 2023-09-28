@@ -22,22 +22,28 @@ class TextLog(Archetype):
 
     Example
     -------
-    Text log integration" image="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png:
     ```python
     import logging
 
     import rerun as rr
 
-    rr.init("rerun_example_text_entry", spawn=True)
+    rr.init("rerun_example_text_log_integration", spawn=True)
 
-    # Log a direct entry directly
-    rr.log_text_entry("logs", "this entry has loglevel TRACE", level="TRACE")
+    # Log a text entry directly
+    rr.log("logs", rr.TextLog("this entry has loglevel TRACE", level=rr.TextLogLevel.TRACE))
 
     # Or log via a logging handler
     logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))
     logging.getLogger().setLevel(-1)
-    logging.info("This log got added through a `LoggingHandler`")
+    logging.info("This INFO log got added through the standard logging interface")
     ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png">
+      <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png">
+    </picture>
     """
 
     def __init__(
