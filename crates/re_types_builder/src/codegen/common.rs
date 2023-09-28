@@ -146,6 +146,7 @@ pub struct RerunImageUrl<'a> {
 }
 
 impl RerunImageUrl<'_> {
+    /// Parses e.g. `https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png`
     pub fn parse(s: &str) -> Option<RerunImageUrl<'_>> {
         let path = s.strip_prefix("https://static.rerun.io/")?;
         // We're on a `static.rerun.io` URL, so we can make assumptions about the format:
