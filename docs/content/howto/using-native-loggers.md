@@ -1,11 +1,10 @@
 ---
-title: Integration with native loggers
+title: Using native loggers
 order: 5
 description: How to use the Rerun SDK as a native logger for the host language
 ---
 
-The Rerun SDK implements the native logging interfaces of its host languages, allowing you to transparently stream text logs
-logged with the native APIs into the Rerun Viewer.
+The Rerun SDK implements the native logging interfaces of its supported host languages, allowing you to transparently stream text logs logged with the native APIs into the Rerun Viewer.
 
 The details of how to achieve that vary language by language, see the snippets below.
 
