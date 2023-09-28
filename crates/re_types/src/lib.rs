@@ -105,7 +105,7 @@
 //!
 //! ### Language-specific documentation
 //!
-//! You can prefix any doc comment with `\{tag}`, where `{tag}` is one of `py`, `cpp`, `rs`,
+//! You can prefix any doc comment line with `\{tag}`, where `{tag}` is one of `py`, `cpp`, `rs`,
 //! and that part of the docs will only be present in the files generated for that specific
 //! language.
 //!
