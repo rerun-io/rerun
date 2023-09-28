@@ -520,7 +520,7 @@ fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
                 lines.push(format!(" ### {title}"));
             }
             lines.push(" ```ignore".into());
-            lines.extend(example.content.into_iter().map(|line| format!(" {line}")));
+            lines.extend(example.lines.into_iter().map(|line| format!(" {line}")));
             lines.push(" ```".into());
             if let Some(image) = &example.base.image {
                 lines.extend(

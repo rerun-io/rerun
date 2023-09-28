@@ -902,7 +902,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             lines.push(format!("{title}:"));
         }
         lines.push("```python".into());
-        lines.extend(example.content.into_iter());
+        lines.extend(example.lines.into_iter());
         lines.push("```".into());
         if let Some(image) = &example.base.image {
             lines.extend(image.image_stack());

@@ -202,7 +202,7 @@ impl RerunImageUrl<'_> {
 
 pub struct Example<'a> {
     pub base: ExampleInfo<'a>,
-    pub content: Vec<String>,
+    pub lines: Vec<String>,
 }
 
 pub fn collect_examples<'a>(
@@ -230,7 +230,10 @@ pub fn collect_examples<'a>(
                 content.pop();
             }
 
-            out.push(Example { base, content });
+            out.push(Example {
+                base,
+                lines: content,
+            });
         }
     }
 

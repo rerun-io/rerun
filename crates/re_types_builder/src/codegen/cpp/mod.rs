@@ -1951,7 +1951,7 @@ fn quote_docstrings(docs: &Docs) -> TokenStream {
                 lines.push(format!(" ### {title}"));
             }
             lines.push(" ```cpp,ignore".into());
-            lines.extend(example.content.iter().map(|line| format!(" {line}")));
+            lines.extend(example.lines.iter().map(|line| format!(" {line}")));
             lines.push(" ```".into());
             if examples.peek().is_some() {
                 // blank line between examples
