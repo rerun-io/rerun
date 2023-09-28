@@ -60,7 +60,7 @@ re_log_types::arrow2convert_component_shim!(SpaceViewMaximized as "rerun.bluepri
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ViewportLayout {
     #[arrow_field(type = "SerdeField<std::collections::BTreeSet<SpaceViewId>>")]
     pub space_view_keys: std::collections::BTreeSet<SpaceViewId>,
@@ -69,6 +69,16 @@ pub struct ViewportLayout {
     pub tree: egui_tiles::Tree<SpaceViewId>,
 
     pub auto_layout: bool,
+}
+
+impl Default for ViewportLayout {
+    fn default() -> Self {
+        Self {
+            space_view_keys: Default::default(),
+            tree: Default::default(),
+            auto_layout: true,
+        }
+    }
 }
 
 re_log_types::arrow2convert_component_shim!(ViewportLayout as "rerun.blueprint.ViewportLayout");
