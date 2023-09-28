@@ -14,6 +14,7 @@ from ..datatypes.vec2d import Vec2D, Vec2DLike
 class PinholeExt:
     def __init__(
         self: Any,
+        *,
         image_from_camera: Mat3x3Like | None = None,
         resolution: Vec2DLike | None = None,
         camera_xyz: ViewCoordinatesLike | None = None,

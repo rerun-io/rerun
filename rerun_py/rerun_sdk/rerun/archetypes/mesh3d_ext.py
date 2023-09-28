@@ -10,6 +10,7 @@ from .. import components, datatypes
 class Mesh3DExt:
     def __init__(
         self: Any,
+        *,
         vertex_positions: datatypes.Vec3DArrayLike,
         indices: npt.ArrayLike | None = None,
         mesh_properties: datatypes.MeshPropertiesLike | None = None,
