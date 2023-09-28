@@ -4,7 +4,29 @@ from fractions import Fraction
 
 import numpy as np
 import pytest
-from rerun.datatypes import Vec2D, Vec2DLike, Vec3D, Vec3DLike, Vec4D, Vec4DLike
+from rerun.datatypes import (
+    Vec2D,
+    Vec2DArrayLike,
+    Vec2DBatch,
+    Vec2DLike,
+    Vec3D,
+    Vec3DArrayLike,
+    Vec3DBatch,
+    Vec3DLike,
+    Vec4D,
+    Vec4DArrayLike,
+    Vec4DBatch,
+    Vec4DLike,
+)
+
+from .common_arrays import (
+    vec2ds_arrays,
+    vec2ds_expected,
+    vec3ds_arrays,
+    vec3ds_expected,
+    vec4ds_arrays,
+    vec4ds_expected,
+)
 
 VEC_2D_INPUT = [
     [1, 2],
@@ -70,3 +92,77 @@ def test_vec3d(data: Vec3DLike) -> None:
 def test_vec4d(data: Vec4DLike) -> None:
     vec = Vec4D(data)
     assert_correct_vec4d(vec)
+
+
+@pytest.mark.parametrize("data", vec2ds_arrays)
+def test_vec2d_array_valid(data: Vec2DArrayLike) -> None:
+    assert Vec2DBatch(data) == vec2ds_expected(data)
+
+
+@pytest.mark.parametrize("data", vec3ds_arrays)
+def test_vec3d_array_valid(data: Vec3DArrayLike) -> None:
+    assert Vec3DBatch(data) == vec3ds_expected(data)
+
+
+@pytest.mark.parametrize("data", vec4ds_arrays)
+def test_vec4d_array_valid(data: Vec4DArrayLike) -> None:
+    assert Vec4DBatch(data) == vec4ds_expected(data)
+
+
+VEC_2D_INVALID_ARRAYS_INPUT = [
+    [1],
+    [1, 2, 3],
+    [1, 2, 3, 4, 5],
+    [[1], [2]],
+    [[1, 2, 3], [4, 5]],
+    [[1, 2, 3], [4, 5, 6]],
+]
+
+
+@pytest.mark.parametrize("data", VEC_2D_INVALID_ARRAYS_INPUT)
+def test_vec2d_array_invalid(data: Vec2DArrayLike) -> None:
+    with pytest.raises(ValueError):
+        Vec2DBatch(data)
+    with pytest.raises(ValueError):
+        Vec2DBatch(np.array(data))
+
+
+VEC_3D_INVALID_ARRAYS_INPUT = [
+    [1],
+    [1, 2],
+    [1, 2, 3, 4],
+    [1, 2, 3, 4, 5],
+    [[1], [2], [3]],
+    [[1, 2, 3], [4, 5]],
+    [[1, 2, 3], [4, 5, 6, 7]],
+    [[1, 2, 3, 4], [4, 5, 6]],
+]
+
+
+@pytest.mark.parametrize("data", VEC_3D_INVALID_ARRAYS_INPUT)
+def test_vec3d_array_invalid(data: Vec3DArrayLike) -> None:
+    with pytest.raises(ValueError):
+        Vec3DBatch(data)
+    with pytest.raises(ValueError):
+        Vec3DBatch(np.array(data))
+
+
+VEC_4D_INVALID_ARRAYS_INPUT = [
+    [1],
+    [1, 2],
+    [1, 2, 3],
+    [1, 2, 3, 4, 5],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [[1], [2], [3], [4]],
+    [[1, 2, 3, 4], [4, 5]],
+    [[1, 2, 3, 4], [4, 5, 6, 7, 8]],
+    [[1, 2, 3, 4, 5], [4, 5, 6, 7]],
+]
+
+
+@pytest.mark.parametrize("data", VEC_4D_INVALID_ARRAYS_INPUT)
+def test_vec4d_array_invalid(data: Vec4DArrayLike) -> None:
+    with pytest.raises(ValueError):
+        Vec4DBatch(data)
+    with pytest.raises(ValueError):
+        Vec4DBatch(np.array(data))

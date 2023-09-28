@@ -62,6 +62,7 @@ class Points3D(Archetype):
     def __init__(
         self: Any,
         positions: datatypes.Vec3DArrayLike,
+        *,
         radii: components.RadiusArrayLike | None = None,
         colors: datatypes.ColorArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,

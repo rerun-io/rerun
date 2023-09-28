@@ -22,11 +22,11 @@ namespace rerun {
             if (centers.has_value()) {
                 comp_batches.emplace_back(centers.value());
             }
-            if (radii.has_value()) {
-                comp_batches.emplace_back(radii.value());
-            }
             if (colors.has_value()) {
                 comp_batches.emplace_back(colors.value());
+            }
+            if (radii.has_value()) {
+                comp_batches.emplace_back(radii.value());
             }
             if (labels.has_value()) {
                 comp_batches.emplace_back(labels.value());

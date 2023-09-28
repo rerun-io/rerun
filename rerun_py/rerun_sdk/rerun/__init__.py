@@ -31,6 +31,7 @@ __all__ = [
     "LineStrips2D",
     "LineStrips3D",
     "LoggingHandler",
+    "MediaType",
     "Mesh3D",
     "MeshFormat",
     "Pinhole",
@@ -54,7 +55,9 @@ __all__ = [
     "TranslationRotationScale3D",
     "ViewCoordinates",
     "bindings",
+    "components",
     "connect",
+    "datatypes",
     "disconnect",
     "experimental",
     "get_application_id",
@@ -63,6 +66,7 @@ __all__ = [
     "get_recording_id",
     "get_thread_local_data_recording",
     "is_enabled",
+    "log",
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
@@ -70,14 +74,14 @@ __all__ = [
     "log_depth_image",
     "log_disconnected_space",
     "log_extension_components",
-    "log_image_file",
     "log_image",
+    "log_image_file",
     "log_line_segments",
     "log_line_strip",
     "log_line_strips_2d",
     "log_line_strips_3d",
-    "log_mesh_file",
     "log_mesh",
+    "log_mesh_file",
     "log_meshes",
     "log_obb",
     "log_obbs",
@@ -92,7 +96,6 @@ __all__ = [
     "log_text_entry",
     "log_transform3d",
     "log_view_coordinates",
-    "log",
     "memory_recording",
     "reset_time",
     "save",
@@ -137,6 +140,7 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
+from .components import MediaType
 from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
@@ -223,6 +227,7 @@ _strict_mode = False
 
 def init(
     application_id: str,
+    *,
     recording_id: str | None = None,
     spawn: bool = False,
     init_logging: bool = True,
@@ -298,7 +303,7 @@ def init(
 
     if init_logging:
         new_recording(
-            application_id,
+            application_id=application_id,
             recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
@@ -323,6 +328,7 @@ def init(
 
 
 def new_recording(
+    *,
     application_id: str,
     recording_id: str | None = None,
     make_default: bool = False,

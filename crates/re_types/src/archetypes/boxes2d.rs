@@ -47,11 +47,11 @@ pub struct Boxes2D {
     /// Optional center positions of the boxes.
     pub centers: Option<Vec<crate::components::Position2D>>,
 
-    /// Optional radii for the lines that make up the boxes.
-    pub radii: Option<Vec<crate::components::Radius>>,
-
     /// Optional colors for the boxes.
     pub colors: Option<Vec<crate::components::Color>>,
+
+    /// Optional radii for the lines that make up the boxes.
+    pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional text labels for the boxes.
     pub labels: Option<Vec<crate::components::Text>>,
@@ -185,18 +185,6 @@ impl crate::Archetype for Boxes2D {
         } else {
             None
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes2D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes2D#radii")?
-            })
-        } else {
-            None
-        };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
@@ -205,6 +193,18 @@ impl crate::Archetype for Boxes2D {
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#colors")?
+            })
+        } else {
+            None
+        };
+        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+            Some({
+                <crate::components::Radius>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Boxes2D#radii")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Boxes2D#radii")?
             })
         } else {
             None
@@ -262,8 +262,8 @@ impl crate::Archetype for Boxes2D {
         Ok(Self {
             half_sizes,
             centers,
-            radii,
             colors,
+            radii,
             labels,
             draw_order,
             class_ids,
@@ -281,10 +281,10 @@ impl crate::AsComponents for Boxes2D {
             self.centers
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
-            self.radii
+            self.colors
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
-            self.colors
+            self.radii
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.labels
@@ -318,8 +318,8 @@ impl Boxes2D {
         Self {
             half_sizes: half_sizes.into_iter().map(Into::into).collect(),
             centers: None,
-            radii: None,
             colors: None,
+            radii: None,
             labels: None,
             draw_order: None,
             class_ids: None,
@@ -335,19 +335,19 @@ impl Boxes2D {
         self
     }
 
-    pub fn with_radii(
-        mut self,
-        radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
-    ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
-        self
-    }
-
     pub fn with_colors(
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
         self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_radii(
+        mut self,
+        radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
+    ) -> Self {
+        self.radii = Some(radii.into_iter().map(Into::into).collect());
         self
     }
 

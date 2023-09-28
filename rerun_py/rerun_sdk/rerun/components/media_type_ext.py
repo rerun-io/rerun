@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from . import MediaType
@@ -8,61 +8,41 @@ if TYPE_CHECKING:
 
 # TODO(#2388): constants in fbs
 class MediaTypeExt:
-    TEXT: Final = "text/plain"
-    MARKDOWN: Final = "text/markdown"
-    GLB: Final = "model/gltf-binary"
-    GLTF: Final = "model/gltf+json"
-    OBJ: Final = "model/obj"
+    TEXT: MediaType = None  # type: ignore[assignment]
+    """Plain text: `text/plain`."""
 
-    # TODO(cmc): these should just be constants, but circular import hell...
+    MARKDOWN: MediaType = None  # type: ignore[assignment]
+    """
+    Markdown: `text/markdown`.
 
-    @staticmethod
-    def plain_text() -> MediaType:
-        """Plain text: `text/plain`."""
-        from . import MediaType
+    <https://www.iana.org/assignments/media-types/text/markdown>
+    """
 
-        return MediaType(MediaTypeExt.TEXT)
+    GLB: MediaType = None  # type: ignore[assignment]
+    """
+    Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
 
-    @staticmethod
-    def markdown() -> MediaType:
-        """
-        Markdown: `text/markdown`.
+    <https://www.iana.org/assignments/media-types/model/gltf-binary>
+    """
 
-        <https://www.iana.org/assignments/media-types/text/markdown>
-        """
-        from . import MediaType
+    GLTF: MediaType = None  # type: ignore[assignment]
+    """
+    [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
 
-        return MediaType(MediaTypeExt.MARKDOWN)
+    <https://www.iana.org/assignments/media-types/model/gltf+json>
+    """
 
-    @staticmethod
-    def glb() -> MediaType:
-        """
-        Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
+    OBJ: MediaType = None  # type: ignore[assignment]
+    """
+    [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
 
-        <https://www.iana.org/assignments/media-types/model/gltf-binary>
-        """
-        from . import MediaType
-
-        return MediaType(MediaTypeExt.GLB)
+    <https://www.iana.org/assignments/media-types/model/obj>
+    """
 
     @staticmethod
-    def gltf() -> MediaType:
-        """
-        [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
-
-        <https://www.iana.org/assignments/media-types/model/gltf+json>
-        """
-        from . import MediaType
-
-        return MediaType(MediaTypeExt.GLTF)
-
-    @staticmethod
-    def obj() -> MediaType:
-        """
-        [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
-
-        <https://www.iana.org/assignments/media-types/model/obj>
-        """
-        from . import MediaType
-
-        return MediaType(MediaTypeExt.OBJ)
+    def deferred_patch_class(cls: Any) -> None:
+        cls.TEXT = cls("text/plain")
+        cls.MARKDOWN = cls("text/markdown")
+        cls.GLB = cls("model/gltf-binary")
+        cls.GLTF = cls("model/gltf+json")
+        cls.OBJ = cls("model/obj")

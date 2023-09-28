@@ -13,6 +13,7 @@ class TranslationAndMat3x3Ext:
         self: Any,
         translation: Vec3DLike | None = None,
         matrix: Mat3x3Like | None = None,
+        *,
         from_parent: bool = False,
     ) -> None:
         """

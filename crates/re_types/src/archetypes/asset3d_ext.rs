@@ -31,7 +31,7 @@ impl Asset3D {
         let bytes = bytes.as_ref();
         let media_type = media_type.map(Into::into);
         Self {
-            data: bytes.to_vec().into(),
+            blob: bytes.to_vec().into(),
             media_type: MediaType::or_guess_from_data(media_type, bytes),
             transform: None,
         }

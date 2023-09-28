@@ -18,7 +18,7 @@ namespace rerun {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(3);
 
-            comp_batches.emplace_back(body);
+            comp_batches.emplace_back(text);
             if (level.has_value()) {
                 comp_batches.emplace_back(level.value());
             }

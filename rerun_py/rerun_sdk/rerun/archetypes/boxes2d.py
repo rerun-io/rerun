@@ -53,15 +53,6 @@ class Boxes2D(Boxes2DExt, Archetype):
     Optional center positions of the boxes.
     """
 
-    radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
-    )
-    """
-    Optional radii for the lines that make up the boxes.
-    """
-
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
@@ -69,6 +60,15 @@ class Boxes2D(Boxes2DExt, Archetype):
     )
     """
     Optional colors for the boxes.
+    """
+
+    radii: components.RadiusBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+    )
+    """
+    Optional radii for the lines that make up the boxes.
     """
 
     labels: components.TextBatch | None = field(
