@@ -17,14 +17,14 @@ assembling the required components.
 ## Spatial **Archetypes**
 The spatial archetypes represent 2d and 3d spatial data. These types have some notion of a coordinate system and
 generally support spatial transformations. All of these types can be visualized by the `Spatial` space view.
-* [Arrow3D](data_types/arrow3d.md)
-* [Rect2D](data_types/rect2d.md)
-* [Box3D](data_types/box3d.md)
-* [Linestrip2D](data_types/linestrip2d.md)
-* [Linestrip3D](data_types/linestrip3d.md)
-* [Mesh](data_types/mesh.md)
-* [Point2D](data_types/point2d.md)
-* [Position3D](data_types/point3d.md)
+* [Arrow3D](data_types/arrows3d.md)
+* [Box2D](data_types/boxes2d.md)
+* [Box3D](data_types/boxes3d.md)
+* [LineStrip2D](data_types/line_strips2d.md)
+* [LineStrip3D](data_types/line_strips3d.md)
+* [Mesh](data_types/mesh3d.md)
+* [Point2D](data_types/points2d.md)
+* [Point3D](data_types/points3d.md)
 * [Transform3D](data_types/transform3d.md)
 * [Pinhole](data_types/pinhole.md)
 
@@ -38,5 +38,4 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 * [Tensor](data_types/tensor.md)
 
 ## Other **Archetypes**
-* [Scalar](data_types/scalar.md): a single scalar / metric value. Can be viewed in the `TimeSeries` space view.
 * [AnnotationContext](data_types/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
