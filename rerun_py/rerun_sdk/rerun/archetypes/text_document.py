@@ -19,13 +19,13 @@ __all__ = ["TextDocument"]
 class TextDocument(Archetype):
     """A text element intended to be displayed in its own text-box."""
 
-    def __init__(self: Any, body: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
+    def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
         """
         Create a new instance of the TextDocument archetype.
 
         Parameters
         ----------
-        body:
+        text:
              Contents of the text document.
         media_type:
              The Media Type of the text.
@@ -38,9 +38,9 @@ class TextDocument(Archetype):
         """
 
         # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
-        self.__attrs_init__(body=body, media_type=media_type)
+        self.__attrs_init__(text=text, media_type=media_type)
 
-    body: components.TextBatch = field(
+    text: components.TextBatch = field(
         metadata={"component": "required"},
         converter=components.TextBatch,  # type: ignore[misc]
     )

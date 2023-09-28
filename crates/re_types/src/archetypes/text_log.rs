@@ -17,7 +17,7 @@
 /// A log entry in a text log, comprised of a text body and its log level.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextLog {
-    pub body: crate::components::Text,
+    pub text: crate::components::Text,
     pub level: Option<crate::components::TextLogLevel>,
     pub color: Option<crate::components::Color>,
 }
@@ -98,18 +98,18 @@ impl crate::Archetype for TextLog {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let body = {
+        let text = {
             let array = arrays_by_name
                 .get("rerun.components.Text")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#body")?;
+                .with_context("rerun.archetypes.TextLog#text")?;
             <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#body")?
+                .with_context("rerun.archetypes.TextLog#text")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#body")?
+                .with_context("rerun.archetypes.TextLog#text")?
         };
         let level = if let Some(array) = arrays_by_name.get("rerun.components.TextLogLevel") {
             Some({
@@ -137,7 +137,7 @@ impl crate::Archetype for TextLog {
         } else {
             None
         };
-        Ok(Self { body, level, color })
+        Ok(Self { text, level, color })
     }
 }
 
@@ -146,7 +146,7 @@ impl crate::AsComponents for TextLog {
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.body as &dyn crate::ComponentBatch).into()),
+            Some((&self.text as &dyn crate::ComponentBatch).into()),
             self.level
                 .as_ref()
                 .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
@@ -166,9 +166,9 @@ impl crate::AsComponents for TextLog {
 }
 
 impl TextLog {
-    pub fn new(body: impl Into<crate::components::Text>) -> Self {
+    pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
-            body: body.into(),
+            text: text.into(),
             level: None,
             color: None,
         }

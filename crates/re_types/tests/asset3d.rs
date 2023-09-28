@@ -14,7 +14,7 @@ fn roundtrip() {
     const BYTES: &[u8] = &[1, 2, 3, 4, 5, 6];
 
     let expected = Asset3D {
-        data: Blob(BYTES.to_vec().into()),
+        blob: Blob(BYTES.to_vec().into()),
         media_type: Some(MediaType(Utf8(MediaType::GLTF.into()))),
         transform: Some(OutOfTreeTransform3D(
             re_types::datatypes::Transform3D::TranslationRotationScale(

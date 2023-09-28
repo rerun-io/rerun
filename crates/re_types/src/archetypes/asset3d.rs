@@ -95,7 +95,7 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset3D {
     /// The asset's bytes.
-    pub data: crate::components::Blob,
+    pub blob: crate::components::Blob,
 
     /// The Media Type of the asset.
     ///
@@ -103,7 +103,7 @@ pub struct Asset3D {
     /// * `model/gltf-binary`
     /// * `model/obj`
     ///
-    /// If omitted, the viewer will try to guess from the data.
+    /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.
     pub media_type: Option<crate::components::MediaType>,
 
@@ -195,18 +195,18 @@ impl crate::Archetype for Asset3D {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let data = {
+        let blob = {
             let array = arrays_by_name
                 .get("rerun.components.Blob")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#data")?;
+                .with_context("rerun.archetypes.Asset3D#blob")?;
             <crate::components::Blob>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Asset3D#data")?
+                .with_context("rerun.archetypes.Asset3D#blob")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#data")?
+                .with_context("rerun.archetypes.Asset3D#blob")?
         };
         let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
             Some({
@@ -236,7 +236,7 @@ impl crate::Archetype for Asset3D {
                 None
             };
         Ok(Self {
-            data,
+            blob,
             media_type,
             transform,
         })
@@ -248,7 +248,7 @@ impl crate::AsComponents for Asset3D {
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.data as &dyn crate::ComponentBatch).into()),
+            Some((&self.blob as &dyn crate::ComponentBatch).into()),
             self.media_type
                 .as_ref()
                 .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
@@ -268,9 +268,9 @@ impl crate::AsComponents for Asset3D {
 }
 
 impl Asset3D {
-    pub fn new(data: impl Into<crate::components::Blob>) -> Self {
+    pub fn new(blob: impl Into<crate::components::Blob>) -> Self {
         Self {
-            data: data.into(),
+            blob: blob.into(),
             media_type: None,
             transform: None,
         }

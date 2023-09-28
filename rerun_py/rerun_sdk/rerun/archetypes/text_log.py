@@ -21,7 +21,7 @@ class TextLog(Archetype):
 
     def __init__(
         self: Any,
-        body: datatypes.Utf8Like,
+        text: datatypes.Utf8Like,
         *,
         level: datatypes.Utf8Like | None = None,
         color: datatypes.ColorLike | None = None,
@@ -29,9 +29,9 @@ class TextLog(Archetype):
         """Create a new instance of the TextLog archetype."""
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
-        self.__attrs_init__(body=body, level=level, color=color)
+        self.__attrs_init__(text=text, level=level, color=color)
 
-    body: components.TextBatch = field(
+    text: components.TextBatch = field(
         metadata={"component": "required"},
         converter=components.TextBatch,  # type: ignore[misc]
     )

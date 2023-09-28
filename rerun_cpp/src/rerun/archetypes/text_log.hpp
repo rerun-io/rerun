@@ -20,7 +20,7 @@ namespace rerun {
     namespace archetypes {
         /// A log entry in a text log, comprised of a text body and its log level.
         struct TextLog {
-            rerun::components::Text body;
+            rerun::components::Text text;
 
             std::optional<rerun::components::TextLogLevel> level;
 
@@ -33,7 +33,7 @@ namespace rerun {
           public:
             TextLog() = default;
 
-            TextLog(rerun::components::Text _body) : body(std::move(_body)) {}
+            TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
 
             TextLog& with_level(rerun::components::TextLogLevel _level) {
                 level = std::move(_level);

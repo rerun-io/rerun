@@ -75,7 +75,7 @@ class Asset3D(Asset3DExt, Archetype):
 
     def __init__(
         self: Any,
-        data: components.BlobLike,
+        blob: components.BlobLike,
         *,
         media_type: datatypes.Utf8Like | None = None,
         transform: datatypes.Transform3DLike | None = None,
@@ -85,7 +85,7 @@ class Asset3D(Asset3DExt, Archetype):
 
         Parameters
         ----------
-        data:
+        blob:
              The asset's bytes.
         media_type:
              The Media Type of the asset.
@@ -94,7 +94,7 @@ class Asset3D(Asset3DExt, Archetype):
              * `model/gltf-binary`
              * `model/obj`
 
-             If omitted, the viewer will try to guess from the data.
+             If omitted, the viewer will try to guess from the data blob.
              If it cannot guess, it won't be able to render the asset.
         transform:
              An out-of-tree transform.
@@ -103,9 +103,9 @@ class Asset3D(Asset3DExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
-        self.__attrs_init__(data=data, media_type=media_type, transform=transform)
+        self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
 
-    data: components.BlobBatch = field(
+    blob: components.BlobBatch = field(
         metadata={"component": "required"},
         converter=components.BlobBatch,  # type: ignore[misc]
     )
@@ -125,7 +125,7 @@ class Asset3D(Asset3DExt, Archetype):
     * `model/gltf-binary`
     * `model/obj`
 
-    If omitted, the viewer will try to guess from the data.
+    If omitted, the viewer will try to guess from the data blob.
     If it cannot guess, it won't be able to render the asset.
     """
 
