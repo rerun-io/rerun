@@ -90,6 +90,7 @@ class DepthImage(DepthImageExt, Archetype):
     def __init__(
         self: Any,
         data: datatypes.TensorDataLike,
+        *,
         meter: components.DepthMeterLike | None = None,
         draw_order: components.DrawOrderLike | None = None,
     ):

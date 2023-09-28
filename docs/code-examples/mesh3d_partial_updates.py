@@ -12,7 +12,7 @@ rr.set_time_sequence("frame", 0)
 rr.log(
     "triangle",
     rr.Mesh3D(
-        vertex_positions,
+        vertex_positions=vertex_positions,
         vertex_normals=[0.0, 0.0, 1.0],
         vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
     ),

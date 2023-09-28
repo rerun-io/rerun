@@ -88,7 +88,7 @@ def test_mesh3d() -> None:
 
         print(
             f"E: rr.Mesh3D(\n"
-            f"    {vertex_positions}\n"
+            f"    vertex_normals={vertex_positions}\n"
             f"    vertex_normals={vertex_normals}\n"
             f"    vertex_colors={vertex_colors}\n"
             f"    mesh_properties={mesh_properties_objects}\n"
@@ -98,7 +98,7 @@ def test_mesh3d() -> None:
             f")"
         )
         arch = rr.Mesh3D(
-            vertex_positions,
+            vertex_positions=vertex_positions,
             vertex_normals=vertex_normals,
             vertex_colors=vertex_colors,
             mesh_properties=mesh_properties,

@@ -248,8 +248,8 @@ impl PythonCodeGenerator {
         let test_kind_path = self.testing_pkg_path.join(object_kind.plural_snake_case());
 
         // (module_name, [object_name])
-        let mut mods = HashMap::<String, Vec<String>>::new();
-        let mut test_mods = HashMap::<String, Vec<String>>::new();
+        let mut mods = BTreeMap::<String, Vec<String>>::new();
+        let mut test_mods = BTreeMap::<String, Vec<String>>::new();
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
@@ -460,7 +460,7 @@ impl PythonCodeGenerator {
 
 fn write_init_file(
     kind_path: &Utf8PathBuf,
-    mods: &HashMap<String, Vec<String>>,
+    mods: &BTreeMap<String, Vec<String>>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
     let path = kind_path.join("__init__.py");
@@ -644,18 +644,10 @@ fn code_for_struct(
             .chain(fields.iter().filter(|field| field.is_nullable));
         for field in fields_in_order {
             let ObjectField {
-                virtpath: _,
-                filepath: _,
-                fqname: _,
-                pkg_name: _,
                 name,
                 docs,
-                typ: _,
-                attrs: _,
-                order: _,
                 is_nullable,
-                is_deprecated: _,
-                datatype: _,
+                ..
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
@@ -1577,12 +1569,34 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
                 quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
             )]
         } else {
-            obj.fields
+            let required = obj
+                .fields
                 .iter()
-                .sorted_by_key(|field| field.is_nullable)
+                .filter(|field| !field.is_nullable)
                 .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
-                .collect()
+                .collect_vec();
+
+            let optional = obj
+                .fields
+                .iter()
+                .filter(|field| field.is_nullable)
+                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+                .collect_vec();
+
+            if optional.is_empty() {
+                required
+            } else if obj.kind == ObjectKind::Archetype {
+                // Force kw-args for all optional arguments:
+                required
+                    .into_iter()
+                    .chain(std::iter::once("*".to_owned()))
+                    .chain(optional)
+                    .collect()
+            } else {
+                required.into_iter().chain(optional).collect()
+            }
         };
+
     let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
 
     let parameter_docs = if obj.is_union() {

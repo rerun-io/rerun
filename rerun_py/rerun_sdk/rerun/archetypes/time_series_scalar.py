@@ -63,6 +63,7 @@ class TimeSeriesScalar(Archetype):
     def __init__(
         self: Any,
         scalar: components.ScalarLike,
+        *,
         radius: components.RadiusLike | None = None,
         color: datatypes.ColorLike | None = None,
         label: datatypes.Utf8Like | None = None,

@@ -19,7 +19,7 @@ __all__ = ["TextDocument"]
 class TextDocument(Archetype):
     """A text element intended to be displayed in its own text-box."""
 
-    def __init__(self: Any, text: datatypes.Utf8Like, media_type: datatypes.Utf8Like | None = None):
+    def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
         """
         Create a new instance of the TextDocument archetype.
 

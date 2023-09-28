@@ -22,6 +22,7 @@ class TextLog(Archetype):
     def __init__(
         self: Any,
         text: datatypes.Utf8Like,
+        *,
         level: datatypes.Utf8Like | None = None,
         color: datatypes.ColorLike | None = None,
     ):
