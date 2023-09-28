@@ -31,6 +31,7 @@ __all__ = [
     "LineStrips2D",
     "LineStrips3D",
     "LoggingHandler",
+    "MediaType",
     "Mesh3D",
     "MeshFormat",
     "Pinhole",
@@ -137,6 +138,7 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
+from .components import MediaType
 from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
