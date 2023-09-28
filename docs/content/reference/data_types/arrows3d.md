@@ -1,6 +1,5 @@
 ---
 title: "Arrows3D"
-order: 100
 ---
 
 A batch of 3D arrows with optional colors, radii, labels, etc.

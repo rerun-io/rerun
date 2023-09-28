@@ -12,8 +12,7 @@ namespace rerun.archetypes;
 /// \example clear_simple "Flat"
 /// \example clear_recursive "Recursive"
 table Clear (
-  "attr.rust.derive": "PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
   recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
 }

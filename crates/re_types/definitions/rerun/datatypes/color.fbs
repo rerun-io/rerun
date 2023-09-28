@@ -22,8 +22,7 @@ struct Color (
   "attr.python.array_aliases": "int, npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
-  order: 100
+  "attr.rust.tuple_struct"
 ) {
   rgba: uint (order: 100);
 }

@@ -1,6 +1,5 @@
 ---
 title: "Boxes3D"
-order: 100
 ---
 
 A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.

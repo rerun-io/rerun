@@ -1,6 +1,5 @@
 ---
 title: "Pinhole"
-order: 100
 ---
 
 Camera perspective projection (a.k.a. intrinsics).

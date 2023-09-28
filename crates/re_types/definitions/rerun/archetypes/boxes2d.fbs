@@ -15,8 +15,7 @@ namespace rerun.archetypes;
 table Boxes2D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
-  "attr.cpp.no_field_ctors",
-  order: 100
+  "attr.cpp.no_field_ctors"
 ) {
   // --- Required ---
 

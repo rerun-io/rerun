@@ -177,6 +177,10 @@ impl<'a> ViewportBlueprint<'a> {
     }
 
     pub fn mark_user_interaction(&mut self) {
+        if self.auto_layout {
+            re_log::trace!("User edits - will no longer auto-layout");
+        }
+
         self.auto_layout = false;
         self.auto_space_views = false;
     }
@@ -205,7 +209,7 @@ impl<'a> ViewportBlueprint<'a> {
 
         if self.auto_layout {
             // Re-run the auto-layout next frame:
-            re_log::trace!("No user edits yet - will re-run auto-layout");
+            re_log::trace!("Added a space view with no user edits yet - will re-run auto-layout");
             self.tree = Default::default();
         } else {
             // Try to insert it in the tree, in the top level:
@@ -214,11 +218,14 @@ impl<'a> ViewportBlueprint<'a> {
                 if let Some(egui_tiles::Tile::Container(container)) =
                     self.tree.tiles.get_mut(root_id)
                 {
+                    re_log::trace!("Inserting new space view into root container");
                     container.add_child(tile_id);
                 } else {
                     re_log::trace!("Root was not a container - will re-run auto-layout");
-                    self.tree = Default::default(); // we'll just re-initialize later instead
+                    self.tree = Default::default();
                 }
+            } else {
+                re_log::trace!("No root found - will re-run auto-layout");
             }
         }
 

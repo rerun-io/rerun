@@ -23,8 +23,7 @@ table TextLogLevel (
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.repr": "transparent",
-  order: 100
+  "attr.rust.repr": "transparent"
 ) {
   value: rerun.datatypes.Utf8 (order: 100);
 }

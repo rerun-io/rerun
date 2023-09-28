@@ -1,6 +1,5 @@
 ---
 title: "ViewCoordinates"
-order: 100
 ---
 
 How we interpret the coordinate system of an entity/space.

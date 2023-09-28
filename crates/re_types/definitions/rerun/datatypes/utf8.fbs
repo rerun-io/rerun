@@ -16,8 +16,7 @@ table Utf8 (
   "attr.python.array_aliases": "str, Sequence[str]",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
-  order: 100
+  "attr.rust.tuple_struct"
 ) {
   value: string (order: 100);
 }

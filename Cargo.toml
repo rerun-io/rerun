@@ -164,3 +164,6 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+
+
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles.git", rev = "b34432b2ff68eb2e087a41b241d70ec367a09334" }

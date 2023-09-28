@@ -12,8 +12,7 @@ namespace rerun.archetypes;
 /// \example asset3d_simple "Simple 3D asset"
 /// \example asset3d_out_of_tree "3D asset with out-of-tree transform"
 table Asset3D (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

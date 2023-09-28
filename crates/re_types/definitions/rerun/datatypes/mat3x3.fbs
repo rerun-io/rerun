@@ -43,8 +43,7 @@ struct Mat3x3 (
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.rust.tuple_struct",
-  order: 500
+  "attr.rust.tuple_struct"
 ) {
   /// \py Flat list of matrix coefficients in column-major order.
   /// \cpp Flat list of matrix coefficients in column-major order.

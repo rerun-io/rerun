@@ -13,8 +13,7 @@ namespace rerun.components;
 struct Radius (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd"
 ) {
   value: float (order: 100);
 }

@@ -1,6 +1,5 @@
 ---
 title: "DisconnectedSpace"
-order: 100
 ---
 
 Specifies that the entity path at which this is logged is disconnected from its parent.

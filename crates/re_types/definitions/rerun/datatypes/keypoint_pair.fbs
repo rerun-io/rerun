@@ -10,8 +10,7 @@ namespace rerun.datatypes;
 /// A connection between two `Keypoints`.
 table KeypointPair (
   "attr.python.aliases": "Sequence[datatypes.KeypointIdLike]",
-  "attr.rust.derive": "Default, Eq, PartialEq",
-  order: 100
+  "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
   keypoint0: rerun.datatypes.KeypointId (order: 100);
   keypoint1: rerun.datatypes.KeypointId (order: 200);

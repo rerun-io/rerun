@@ -1,6 +1,5 @@
 ---
 title: "SegmentationImage"
-order: 100
 ---
 
 An image made up of integer class-ids

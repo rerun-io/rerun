@@ -655,18 +655,7 @@ fn quote_trait_impls_from_obj(
     obj: &Object,
 ) -> TokenStream {
     let Object {
-        virtpath: _,
-        filepath: _,
-        fqname,
-        pkg_name: _,
-        name,
-        docs: _,
-        kind,
-        attrs: _,
-        order: _,
-        fields: _,
-        specifics: _,
-        datatype: _,
+        fqname, name, kind, ..
     } = obj;
 
     let name = format_ident!("{name}");
@@ -1140,20 +1129,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         return TokenStream::new();
     }
 
-    let Object {
-        virtpath: _,
-        filepath: _,
-        fqname: _,
-        pkg_name: _,
-        name,
-        docs: _,
-        kind: _,
-        attrs: _,
-        order: _,
-        fields,
-        specifics: _,
-        datatype: _,
-    } = obj;
+    let Object { name, fields, .. } = obj;
 
     let name = format_ident!("{name}");
 

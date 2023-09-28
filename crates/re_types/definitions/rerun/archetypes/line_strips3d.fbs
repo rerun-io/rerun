@@ -13,8 +13,7 @@ namespace rerun.archetypes;
 /// \example line_segments3d_simple title="Many individual segments" image="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1200w.png"
 /// \example line_strip3d_batch title="Many strips" image="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1200w.png"
 table LineStrips3D (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

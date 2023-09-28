@@ -1514,8 +1514,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e518e35195aa95b52de6bac44f53b649efd2caa4a65d066a6bd3a704ad62799a"
+source = "git+https://github.com/rerun-io/egui_tiles.git?rev=b34432b2ff68eb2e087a41b241d70ec367a09334#b34432b2ff68eb2e087a41b241d70ec367a09334"
 dependencies = [
  "ahash 0.8.3",
  "egui",

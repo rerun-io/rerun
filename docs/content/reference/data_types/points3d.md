@@ -1,6 +1,5 @@
 ---
 title: "Points3D"
-order: 100
 ---
 
 A 3D point cloud with positions and optional colors, radii, labels, etc.

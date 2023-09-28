@@ -10,8 +10,7 @@ namespace rerun.datatypes;
 /// \rs Rarely used directly, prefer using the underlying representation classes and pass them
 /// \rs directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`.
 union Transform3D (
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 700
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   TranslationAndMat3x3: TranslationAndMat3x3 (order: 100),
   TranslationRotationScale: TranslationRotationScale3D (order: 200),

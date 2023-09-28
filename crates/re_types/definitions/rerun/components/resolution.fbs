@@ -10,8 +10,7 @@ namespace rerun.components;
 ///
 /// Typically in integer units, but for some usecases floating point may be used.
 struct Resolution (
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   resolution: rerun.datatypes.Vec2D (order: 100);
 }
