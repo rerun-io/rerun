@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["Transform3D"]
 
@@ -53,6 +54,7 @@ class Transform3D(Archetype):
     </picture>
     """
 
+    @catch_and_log_exceptions()
     def __init__(self: Any, transform: datatypes.Transform3DLike):
         """
         Create a new instance of the Transform3D archetype.

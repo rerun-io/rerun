@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates"]
@@ -47,6 +48,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     ```
     """
 
+    @catch_and_log_exceptions()
     def __init__(self: Any, xyz: components.ViewCoordinatesLike):
         """Create a new instance of the ViewCoordinates archetype."""
 

@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .bar_chart_ext import BarChartExt
 
 __all__ = ["BarChart"]
@@ -34,6 +35,7 @@ class BarChart(BarChartExt, Archetype):
     ```
     """
 
+    @catch_and_log_exceptions()
     def __init__(self: Any, values: datatypes.TensorDataLike):
         """
         Create a new instance of the BarChart archetype.

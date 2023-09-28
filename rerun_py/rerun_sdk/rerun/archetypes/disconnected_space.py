@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["DisconnectedSpace"]
 
@@ -42,6 +43,7 @@ class DisconnectedSpace(Archetype):
     ```
     """
 
+    @catch_and_log_exceptions()
     def __init__(self: Any, disconnected_space: components.DisconnectedSpaceLike):
         """Create a new instance of the DisconnectedSpace archetype."""
 

@@ -323,6 +323,7 @@ impl PythonCodeGenerator {
             import numpy.typing as npt
             import pyarrow as pa
             import uuid
+            from ..error_utils import catch_and_log_exceptions
 
             from {rerun_path}_baseclasses import (
                 Archetype,
@@ -1656,8 +1657,15 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
         format!("self.__attrs_init__({})", attribute_init.join(", "))
     };
 
+    // Make sure Archetypes catch and log exceptions as a fallback
+    let decorator = if obj.kind == ObjectKind::Archetype {
+        "@catch_and_log_exceptions()\n"
+    } else {
+        ""
+    };
+
     format!(
-        "{head}\n{}",
+        "{decorator}{head}\n{}",
         indent::indent_all_by(
             4,
             format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),

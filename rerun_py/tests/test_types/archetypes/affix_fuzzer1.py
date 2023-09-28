@@ -11,12 +11,14 @@ from attrs import define, field
 from rerun._baseclasses import Archetype
 
 from .. import components, datatypes
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["AffixFuzzer1"]
 
 
 @define(str=False, repr=False, init=False)
 class AffixFuzzer1(Archetype):
+    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         fuzz1001: datatypes.AffixFuzzer1Like,

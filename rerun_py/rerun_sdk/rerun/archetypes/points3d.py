@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["Points3D"]
 
@@ -59,6 +60,7 @@ class Points3D(Archetype):
     </picture>
     """
 
+    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         positions: datatypes.Vec3DArrayLike,

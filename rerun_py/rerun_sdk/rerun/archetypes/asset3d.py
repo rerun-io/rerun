@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .asset3d_ext import Asset3DExt
 
 __all__ = ["Asset3D"]
@@ -73,6 +74,7 @@ class Asset3D(Asset3DExt, Archetype):
     ```
     """
 
+    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         blob: components.BlobLike,

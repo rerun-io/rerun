@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .segmentation_image_ext import SegmentationImageExt
 
 __all__ = ["SegmentationImage"]
@@ -55,6 +56,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     </picture>
     """
 
+    @catch_and_log_exceptions()
     def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
         """
         Create a new instance of the SegmentationImage archetype.

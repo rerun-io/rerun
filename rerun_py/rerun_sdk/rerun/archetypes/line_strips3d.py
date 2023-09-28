@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["LineStrips3D"]
 
@@ -121,6 +122,7 @@ class LineStrips3D(Archetype):
     </picture>
     """
 
+    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         strips: components.LineStrip3DArrayLike,

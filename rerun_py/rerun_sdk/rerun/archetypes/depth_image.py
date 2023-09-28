@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .depth_image_ext import DepthImageExt
 
 __all__ = ["DepthImage"]
@@ -87,6 +88,7 @@ class DepthImage(DepthImageExt, Archetype):
     </picture>
     """
 
+    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         data: datatypes.TensorDataLike,

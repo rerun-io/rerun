@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["AnnotationContext"]
 
@@ -124,6 +125,7 @@ class AnnotationContext(Archetype):
     </picture>
     """
 
+    @catch_and_log_exceptions()
     def __init__(self: Any, context: components.AnnotationContextLike):
         """Create a new instance of the AnnotationContext archetype."""
 
