@@ -5,16 +5,13 @@ order: 100
 
 A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 
-## Components and APIs
+## Components
 
-Required components:
-* `blob`
+**Required**: `blob`
 
-Recommended components:
-* `media_type`
+**Recommended**: `media_type`
 
-Optional components:
-* `out_of_tree_transform3d`
+**Optional**: `out_of_tree_transform3d`
 
 ## Examples
 

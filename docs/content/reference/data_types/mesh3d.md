@@ -5,20 +5,13 @@ order: 100
 
 A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
-## Components and APIs
+## Components
 
-Required components:
-* `position3d`
+**Required**: `position3d`
 
-Recommended components:
-* `mesh_properties`
-* `vector3d`
+**Recommended**: `mesh_properties`, `vector3d`
 
-Optional components:
-* `color`
-* `material`
-* `class_id`
-* `instance_key`
+**Optional**: `color`, `material`, `class_id`, `instance_key`
 
 ## Examples
 

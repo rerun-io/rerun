@@ -5,10 +5,9 @@ order: 100
 
 A 3D transform.
 
-## Components and APIs
+## Components
 
-Required components:
-* `transform3d`
+**Required**: `transform3d`
 
 ## Examples
 

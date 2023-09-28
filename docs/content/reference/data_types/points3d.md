@@ -5,20 +5,13 @@ order: 100
 
 A 3D point cloud with positions and optional colors, radii, labels, etc.
 
-## Components and APIs
+## Components
 
-Required components:
-* `position3d`
+**Required**: `position3d`
 
-Recommended components:
-* `radius`
-* `color`
+**Recommended**: `radius`, `color`
 
-Optional components:
-* `text`
-* `class_id`
-* `keypoint_id`
-* `instance_key`
+**Optional**: `text`, `class_id`, `keypoint_id`, `instance_key`
 
 ## Examples
 

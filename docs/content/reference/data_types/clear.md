@@ -5,10 +5,9 @@ order: 100
 
 Empties all the components of an entity.
 
-## Components and APIs
+## Components
 
-Required components:
-* `clear_is_recursive`
+**Required**: `clear_is_recursive`
 
 ## Examples
 

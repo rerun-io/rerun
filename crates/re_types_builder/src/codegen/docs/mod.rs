@@ -96,45 +96,32 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
         return;
     }
 
-    putln!(o, "## Components and APIs");
+    let (mut required, mut recommended, mut optional) = (Vec::new(), Vec::new(), Vec::new());
+    for field in fields {
+        let (target, component) = match field
+            .kind()
+            .and_then(|kind| Some((kind, find_component(field, components)?)))
+        {
+            Some((FieldKind::Required, component)) => (&mut required, component),
+            Some((FieldKind::Recommended, component)) => (&mut recommended, component),
+            Some((FieldKind::Optional, component)) => (&mut optional, component),
+            _ => continue,
+        };
+        target.push(format!("`{}`", component.snake_case_name()));
+    }
 
-    let required = fields
-        .iter()
-        .filter(|f| f.kind() == Some(FieldKind::Required))
-        .filter_map(|f| find_component(f, components))
-        .collect::<Vec<_>>();
+    putln!(o, "## Components");
     if !required.is_empty() {
         putln!(o);
-        putln!(o, "Required components:");
-        for v in required {
-            putln!(o, "* `{}`", v.snake_case_name());
-        }
+        putln!(o, "**Required**: {}", required.join(", "));
     }
-
-    let recommended = fields
-        .iter()
-        .filter(|f| f.kind() == Some(FieldKind::Recommended))
-        .filter_map(|f| find_component(f, components))
-        .collect::<Vec<_>>();
     if !recommended.is_empty() {
         putln!(o);
-        putln!(o, "Recommended components:");
-        for v in recommended {
-            putln!(o, "* `{}`", v.snake_case_name());
-        }
+        putln!(o, "**Recommended**: {}", recommended.join(", "));
     }
-
-    let optional = fields
-        .iter()
-        .filter(|f| f.kind() == Some(FieldKind::Optional))
-        .filter_map(|f| find_component(f, components))
-        .collect::<Vec<_>>();
     if !optional.is_empty() {
         putln!(o);
-        putln!(o, "Optional components:");
-        for v in optional {
-            putln!(o, "* `{}`", v.snake_case_name());
-        }
+        putln!(o, "**Optional**: {}", optional.join(", "));
     }
 }
 

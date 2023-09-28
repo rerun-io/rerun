@@ -5,11 +5,9 @@ order: 100
 
 A log entry in a text log, comprised of a text body and its log level.
 
-## Components and APIs
+## Components
 
-Required components:
-* `text`
+**Required**: `text`
 
-Recommended components:
-* `text_log_level`
+**Recommended**: `text_log_level`
 

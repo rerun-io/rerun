@@ -5,19 +5,13 @@ order: 100
 
 A batch of line strips with positions and optional colors, radii, labels, etc.
 
-## Components and APIs
+## Components
 
-Required components:
-* `line_strip3d`
+**Required**: `line_strip3d`
 
-Recommended components:
-* `radius`
-* `color`
+**Recommended**: `radius`, `color`
 
-Optional components:
-* `text`
-* `class_id`
-* `instance_key`
+**Optional**: `text`, `class_id`, `instance_key`
 
 ## Examples
 

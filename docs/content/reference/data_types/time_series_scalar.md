@@ -8,18 +8,13 @@ Log a double-precision scalar that will be visualized as a time-series plot.
 The current simulation time will be used for the time/X-axis, hence scalars
 cannot be timeless!
 
-## Components and APIs
+## Components
 
-Required components:
-* `scalar`
+**Required**: `scalar`
 
-Recommended components:
-* `radius`
-* `color`
+**Recommended**: `radius`, `color`
 
-Optional components:
-* `text`
-* `scalar_scattering`
+**Optional**: `text`, `scalar_scattering`
 
 ## Examples
 

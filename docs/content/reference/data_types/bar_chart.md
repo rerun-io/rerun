@@ -7,10 +7,9 @@ A bar chart.
 
 The x values will be the indices of the array, and the bar heights will be the provided values.
 
-## Components and APIs
+## Components
 
-Required components:
-* `tensor_data`
+**Required**: `tensor_data`
 
 ## Examples
 

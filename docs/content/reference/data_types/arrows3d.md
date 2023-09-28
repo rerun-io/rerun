@@ -5,20 +5,13 @@ order: 100
 
 A batch of 3D arrows with optional colors, radii, labels, etc.
 
-## Components and APIs
+## Components
 
-Required components:
-* `vector3d`
+**Required**: `vector3d`
 
-Recommended components:
-* `origin3d`
+**Recommended**: `origin3d`
 
-Optional components:
-* `radius`
-* `color`
-* `text`
-* `class_id`
-* `instance_key`
+**Optional**: `radius`, `color`, `text`, `class_id`, `instance_key`
 
 ## Examples
 

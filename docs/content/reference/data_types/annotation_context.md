@@ -11,10 +11,9 @@ the labels and colors will be looked up in the appropriate
 path-hierarchy when searching up through the ancestors of a given entity
 path.
 
-## Components and APIs
+## Components
 
-Required components:
-* `annotation_context`
+**Required**: `annotation_context`
 
 ## Examples
 

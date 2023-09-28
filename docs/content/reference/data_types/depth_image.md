@@ -8,14 +8,11 @@ A depth image.
 The shape of the `TensorData` must be mappable to an `HxW` tensor.
 Each pixel corresponds to a depth value in units specified by `meter`.
 
-## Components and APIs
+## Components
 
-Required components:
-* `tensor_data`
+**Required**: `tensor_data`
 
-Optional components:
-* `depth_meter`
-* `draw_order`
+**Optional**: `depth_meter`, `draw_order`
 
 ## Examples
 

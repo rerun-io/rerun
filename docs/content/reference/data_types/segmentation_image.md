@@ -11,13 +11,11 @@ Each pixel corresponds to a depth value in units specified by meter.
 Leading and trailing unit-dimensions are ignored, so that
 `1x640x480x1` is treated as a `640x480` image.
 
-## Components and APIs
+## Components
 
-Required components:
-* `tensor_data`
+**Required**: `tensor_data`
 
-Optional components:
-* `draw_order`
+**Optional**: `draw_order`
 
 ## Examples
 

@@ -5,16 +5,13 @@ order: 100
 
 Camera perspective projection (a.k.a. intrinsics).
 
-## Components and APIs
+## Components
 
-Required components:
-* `pinhole_projection`
+**Required**: `pinhole_projection`
 
-Recommended components:
-* `resolution`
+**Recommended**: `resolution`
 
-Optional components:
-* `view_coordinates`
+**Optional**: `view_coordinates`
 
 ## Examples
 

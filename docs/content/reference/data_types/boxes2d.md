@@ -5,21 +5,13 @@ order: 100
 
 A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
-## Components and APIs
+## Components
 
-Required components:
-* `half_sizes2d`
+**Required**: `half_sizes2d`
 
-Recommended components:
-* `position2d`
-* `color`
+**Recommended**: `position2d`, `color`
 
-Optional components:
-* `radius`
-* `text`
-* `draw_order`
-* `class_id`
-* `instance_key`
+**Optional**: `radius`, `text`, `draw_order`, `class_id`, `instance_key`
 
 ## Examples
 

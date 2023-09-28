@@ -5,21 +5,13 @@ order: 100
 
 A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
-## Components and APIs
+## Components
 
-Required components:
-* `half_sizes3d`
+**Required**: `half_sizes3d`
 
-Recommended components:
-* `position3d`
-* `rotation3d`
-* `color`
+**Recommended**: `position3d`, `rotation3d`, `color`
 
-Optional components:
-* `radius`
-* `text`
-* `class_id`
-* `instance_key`
+**Optional**: `radius`, `text`, `class_id`, `instance_key`
 
 ## Examples
 

@@ -13,13 +13,11 @@ The shape of the `TensorData` must be mappable to:
 Leading and trailing unit-dimensions are ignored, so that
 `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 
-## Components and APIs
+## Components
 
-Required components:
-* `tensor_data`
+**Required**: `tensor_data`
 
-Optional components:
-* `draw_order`
+**Optional**: `draw_order`
 
 ## Examples
 

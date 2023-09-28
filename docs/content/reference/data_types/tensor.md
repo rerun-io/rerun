@@ -5,10 +5,9 @@ order: 100
 
 A generic n-dimensional Tensor.
 
-## Components and APIs
+## Components
 
-Required components:
-* `tensor_data`
+**Required**: `tensor_data`
 
 ## Examples
 

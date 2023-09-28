@@ -5,21 +5,13 @@ order: 100
 
 A 2D point cloud with positions and optional colors, radii, labels, etc.
 
-## Components and APIs
+## Components
 
-Required components:
-* `position2d`
+**Required**: `position2d`
 
-Recommended components:
-* `radius`
-* `color`
+**Recommended**: `radius`, `color`
 
-Optional components:
-* `text`
-* `draw_order`
-* `class_id`
-* `keypoint_id`
-* `instance_key`
+**Optional**: `text`, `draw_order`, `class_id`, `keypoint_id`, `instance_key`
 
 ## Examples
 
