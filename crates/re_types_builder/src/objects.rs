@@ -460,6 +460,16 @@ impl Object {
                 })
                 .collect();
             fields.sort_by_key(|field| field.order);
+
+            for (a, b) in fields.iter().tuple_windows() {
+                assert!(
+                    a.order != b.order,
+                    "{name:?}: Fields {:?} and {:?} have the same order",
+                    a.name,
+                    b.name
+                );
+            }
+
             fields
         };
 
