@@ -69,7 +69,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 putln!(o, "{line}");
             }
             putln!(o);
-            components_and_apis(&mut o, &components, &object.fields);
+            write_archetype_fields(&mut o, &components, &object.fields);
             putln!(o);
             example_list(&mut o, &examples);
 
@@ -91,7 +91,7 @@ fn frontmatter(o: &mut String, title: &str, order: u32) {
     putln!(o, "---");
 }
 
-fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectField]) {
+fn write_archetype_fields(o: &mut String, all_components: &[&Object], fields: &[ObjectField]) {
     if fields.is_empty() {
         return;
     }
@@ -100,7 +100,7 @@ fn components_and_apis(o: &mut String, components: &[&Object], fields: &[ObjectF
     for field in fields {
         let (target, component) = match field
             .kind()
-            .and_then(|kind| Some((kind, find_component(field, components)?)))
+            .and_then(|kind| Some((kind, find_component(field, all_components)?)))
         {
             Some((FieldKind::Required, component)) => (&mut required, component),
             Some((FieldKind::Recommended, component)) => (&mut recommended, component),
