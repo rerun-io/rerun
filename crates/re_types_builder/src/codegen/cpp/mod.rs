@@ -1930,8 +1930,8 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
 fn quote_docstrings(docs: &Docs) -> TokenStream {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
-    // TODO(#2919): `cpp` examples are not required for now
-    let examples = collect_examples(docs, "cpp", false).unwrap_or_default();
+    let required = false; // TODO(#2919): `cpp` examples are not required for now
+    let examples = collect_examples(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
         let section_title = if examples.len() == 1 {
