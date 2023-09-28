@@ -30,7 +30,7 @@ table Boxes2D (
 
   // TODO(#3247): Add 2D rotation.
   // Optional rotations of the boxes.
-  //rotations: [rerun.components.Rotation2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  //rotations: [rerun.components.Rotation2D] ("attr.rerun.component_recommended", nullable, order: 2050);
 
   /// Optional colors for the boxes.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
@@ -38,7 +38,7 @@ table Boxes2D (
   // --- Optional ---
 
   /// Optional radii for the lines that make up the boxes.
-  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 2000);
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 2500);
 
   /// Optional text labels for the boxes.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);

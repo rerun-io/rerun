@@ -22,5 +22,5 @@ table TextDocument (
   /// * `text/markdown`
   ///
   /// If omitted, `text/plain` is assumed.
-  media_type: rerun.components.MediaType ("attr.rerun.component_optional", nullable, order: 100);
+  media_type: rerun.components.MediaType ("attr.rerun.component_optional", nullable, order: 200);
 }
