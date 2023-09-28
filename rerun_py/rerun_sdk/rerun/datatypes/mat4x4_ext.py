@@ -47,7 +47,7 @@ class Mat4x4Ext:
                 # Will raise ValueError if the wrong shape
                 matrices = [Mat4x4(data)]  # type: ignore[arg-type]
             except ValueError:
-                # Otherwise try to convert it to a single Mat4x4
+                # Otherwise try to convert it to a sequence of Mat4x4
                 # Let this value error propagate as the fallback
                 matrices = [Mat4x4(d) for d in data]
 

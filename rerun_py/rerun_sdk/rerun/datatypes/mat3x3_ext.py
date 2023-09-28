@@ -47,7 +47,7 @@ class Mat3x3Ext:
                 # Will raise ValueError if the wrong shape
                 matrices = [Mat3x3(data)]  # type: ignore[arg-type]
             except ValueError:
-                # Otherwise try to convert it to a single Mat3x3
+                # Otherwise try to convert it to a sequence of Mat3x3s
                 # Let this value error propagate as the fallback
                 matrices = [Mat3x3(d) for d in data]
 
