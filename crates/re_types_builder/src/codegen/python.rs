@@ -409,8 +409,8 @@ impl PythonCodeGenerator {
         }
 
         // rerun/{datatypes|components|archetypes}/__init__.py
-        write_init(&kind_path, &mods, files_to_write);
-        write_init(&test_kind_path, &test_mods, files_to_write);
+        write_init_file(&kind_path, &mods, files_to_write);
+        write_init_file(&test_kind_path, &test_mods, files_to_write);
     }
 
     fn write_files(&self, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
@@ -458,7 +458,7 @@ impl PythonCodeGenerator {
     }
 }
 
-fn write_init(
+fn write_init_file(
     kind_path: &Utf8PathBuf,
     mods: &HashMap<String, Vec<String>>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
@@ -603,11 +603,7 @@ fn code_for_struct(
             2,
             4,
         );
-    } else if !obj.is_delegating_component() {
-        // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
-        // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
-        code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
-    } else {
+    } else if obj.is_delegating_component() {
         code.push_text(
             format!(
                 "# You can define your own __init__ function as a member of {} in {}",
@@ -616,6 +612,10 @@ fn code_for_struct(
             2,
             4,
         );
+    } else {
+        // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
+        // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
+        code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
     }
 
     if obj.is_delegating_component() {
@@ -1510,7 +1510,7 @@ fn quote_arrow_support_from_obj(
     }
 }
 
-fn quote_argument_type_alias(
+fn quote_parameter_type_alias(
     arg_type_fqname: &str,
     class_fqname: &str,
     objects: &Objects,
@@ -1535,13 +1535,13 @@ fn quote_argument_type_alias(
     }
 }
 
-fn quote_init_argument_from_field(
+fn quote_init_parameter_from_field(
     field: &ObjectField,
     objects: &Objects,
     current_obj_fqname: &str,
 ) -> String {
     let type_annotation = if let Some(fqname) = field.typ.fqname() {
-        quote_argument_type_alias(fqname, current_obj_fqname, objects, field.typ.is_plural())
+        quote_parameter_type_alias(fqname, current_obj_fqname, objects, field.typ.is_plural())
     } else {
         let type_annotation = quote_field_type_from_field(objects, field, false).0;
         // Relax type annotation for numpy arrays.
@@ -1563,29 +1563,29 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
     // If the type is fully transparent (single non-nullable field and not an archetype),
     // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
     // -> Whatever type aliases there are for this type, we need to pick them up.
-    let arguments: Vec<_> =
+    let parameters: Vec<_> =
         if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable
         {
             vec![format!(
                 "{}: {}",
                 obj.fields[0].name,
-                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
             )]
         } else if obj.is_union() {
             vec![format!(
                 "inner: {} | None = None",
-                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
             )]
         } else {
             obj.fields
                 .iter()
                 .sorted_by_key(|field| field.is_nullable)
-                .map(|field| quote_init_argument_from_field(field, objects, &obj.fqname))
+                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
                 .collect()
         };
-    let head = format!("def __init__(self: Any, {}):", arguments.join(", "));
+    let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
 
-    let argument_docs = if obj.is_union() {
+    let parameter_docs = if obj.is_union() {
         Vec::new()
     } else {
         obj.fields
@@ -1614,11 +1614,11 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
         r#"""""#.to_owned(),
         format!("Create a new instance of the {} {doc_typedesc}.", obj.name),
     ];
-    if !argument_docs.is_empty() {
+    if !parameter_docs.is_empty() {
         doc_string_lines.push("\n".to_owned());
         doc_string_lines.push("Parameters".to_owned());
         doc_string_lines.push("----------".to_owned());
-        for doc in argument_docs {
+        for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
     };

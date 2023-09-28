@@ -105,6 +105,7 @@ def _splat() -> cmp.InstanceKeyBatch:
 def log(
     entity_path: str,
     entity: AsComponents | Iterable[ComponentBatchLike],
+    *,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -158,6 +159,7 @@ def log(
 def log_components(
     entity_path: str,
     components: Iterable[ComponentBatchLike],
+    *,
     num_instances: int | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,

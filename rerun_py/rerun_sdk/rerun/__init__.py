@@ -227,6 +227,7 @@ _strict_mode = False
 
 def init(
     application_id: str,
+    *,
     recording_id: str | None = None,
     spawn: bool = False,
     init_logging: bool = True,
@@ -302,7 +303,7 @@ def init(
 
     if init_logging:
         new_recording(
-            application_id,
+            application_id=application_id,
             recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
@@ -327,6 +328,7 @@ def init(
 
 
 def new_recording(
+    *,
     application_id: str,
     recording_id: str | None = None,
     make_default: bool = False,
