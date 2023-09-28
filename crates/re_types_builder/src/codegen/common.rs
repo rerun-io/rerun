@@ -56,6 +56,7 @@ pub struct ExampleInfo<'a> {
 }
 
 impl<'a> ExampleInfo<'a> {
+    /// Parses e.g.  `// \example example_name title="Example Title" image="https://www.example.com/img.png"`
     pub fn parse(tag_content: &'a impl AsRef<str>) -> Self {
         fn mono(tag_content: &str) -> ExampleInfo<'_> {
             fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
