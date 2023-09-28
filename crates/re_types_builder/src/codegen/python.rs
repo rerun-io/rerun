@@ -881,10 +881,6 @@ fn code_for_union(
 
 // --- Code generators ---
 
-/* fn collect_examples(docs: &Docs) -> anyhow::Result<Vec<Example<'_>>> {
-    super::common::collect(docs, "py", &["```python"], &["```"], true)
-} */
-
 fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     let mut quoted_names: Vec<_> = names
         .into_iter()
