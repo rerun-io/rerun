@@ -15,7 +15,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A component indicating how long a meter is, expressed in native units.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct DepthMeter(pub f32);
 
 impl From<f32> for DepthMeter {

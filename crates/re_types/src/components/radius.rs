@@ -15,7 +15,8 @@
 #![allow(clippy::unnecessary_cast)]
 
 /// A Radius component.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct Radius(pub f32);
 
 impl From<f32> for Radius {

@@ -17,7 +17,8 @@
 /// A double-precision scalar.
 ///
 /// Used for time series plots.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct Scalar(pub f64);
 
 impl From<f64> for Scalar {

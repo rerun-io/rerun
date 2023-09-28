@@ -30,7 +30,8 @@
 ///  Left = 4
 ///  Forward = 5
 ///  Back = 6
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct ViewCoordinates(
     /// The directions of the [x, y, z] axes.
     pub [u8; 3usize],

@@ -48,7 +48,8 @@
 ///     Ok(())
 /// }
 /// ```
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct ViewCoordinates {
     pub xyz: crate::components::ViewCoordinates,
 }
