@@ -22,9 +22,13 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class PrimitiveComponent:
-    # You can define your own __init__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
+    def __init__(self: Any, value: PrimitiveComponentLike):
+        """Create a new instance of the PrimitiveComponent datatype."""
+
+        # You can define your own __init__ function as a member of PrimitiveComponentExt in primitive_component_ext.py
+        self.__attrs_init__(value=value)
 
     value: int = field(converter=int)
 

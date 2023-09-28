@@ -20,11 +20,15 @@ from .._converters import (
 __all__ = ["UVec2D", "UVec2DArrayLike", "UVec2DBatch", "UVec2DLike", "UVec2DType"]
 
 
-@define
+@define(init=False)
 class UVec2D:
     """A uint32 vector in 2D space."""
 
-    # You can define your own __init__ function as a member of UVec2DExt in uvec2d_ext.py
+    def __init__(self: Any, xy: UVec2DLike):
+        """Create a new instance of the UVec2D datatype."""
+
+        # You can define your own __init__ function as a member of UVec2DExt in uvec2d_ext.py
+        self.__attrs_init__(xy=xy)
 
     xy: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
 

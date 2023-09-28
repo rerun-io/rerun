@@ -27,19 +27,31 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class MeshProperties(MeshPropertiesExt):
-    # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
+    def __init__(self: Any, indices: npt.ArrayLike | None = None):
+        """
+        Create a new instance of the MeshProperties datatype.
 
-    vertex_indices: npt.NDArray[np.uint32] | None = field(default=None, converter=to_np_uint32)
+        Parameters
+        ----------
+        indices:
+             If specified, a flattened array of vertex indices that describe the mesh's triangles,
+             i.e. its length must be divisible by 3.
+        """
+
+        # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
+        self.__attrs_init__(indices=indices)
+
+    indices: npt.NDArray[np.uint32] | None = field(default=None, converter=to_np_uint32)
     """
-    If specified, is a flattened array of indices that describe the mesh's triangles,
+    If specified, a flattened array of vertex indices that describe the mesh's triangles,
     i.e. its length must be divisible by 3.
     """
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
-        return np.asarray(self.vertex_indices, dtype=dtype)
+        return np.asarray(self.indices, dtype=dtype)
 
 
 MeshPropertiesLike = MeshProperties
@@ -58,7 +70,7 @@ class MeshPropertiesType(BaseExtensionType):
             pa.struct(
                 [
                     pa.field(
-                        "vertex_indices",
+                        "indices",
                         pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
                         nullable=True,
                         metadata={},

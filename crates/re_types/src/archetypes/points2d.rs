@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -166,7 +167,7 @@ impl crate::Archetype for Points2D {
             .collect();
         let positions = {
             let array = arrays_by_name
-                .get("positions")
+                .get("rerun.components.Position2D")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Points2D#positions")?;
             <crate::components::Position2D>::from_arrow_opt(&**array)
@@ -176,7 +177,7 @@ impl crate::Archetype for Points2D {
                 .collect::<crate::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Points2D#positions")?
         };
-        let radii = if let Some(array) = arrays_by_name.get("radii") {
+        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#radii")?
@@ -188,7 +189,7 @@ impl crate::Archetype for Points2D {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("colors") {
+        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#colors")?
@@ -200,7 +201,7 @@ impl crate::Archetype for Points2D {
         } else {
             None
         };
-        let labels = if let Some(array) = arrays_by_name.get("labels") {
+        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#labels")?
@@ -212,7 +213,7 @@ impl crate::Archetype for Points2D {
         } else {
             None
         };
-        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
+        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
             Some({
                 <crate::components::DrawOrder>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#draw_order")?
@@ -225,7 +226,7 @@ impl crate::Archetype for Points2D {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
+        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#class_ids")?
@@ -237,7 +238,7 @@ impl crate::Archetype for Points2D {
         } else {
             None
         };
-        let keypoint_ids = if let Some(array) = arrays_by_name.get("keypoint_ids") {
+        let keypoint_ids = if let Some(array) = arrays_by_name.get("rerun.components.KeypointId") {
             Some({
                 <crate::components::KeypointId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#keypoint_ids")?
@@ -249,7 +250,8 @@ impl crate::Archetype for Points2D {
         } else {
             None
         };
-        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
+        let instance_keys = if let Some(array) = arrays_by_name.get("rerun.components.InstanceKey")
+        {
             Some({
                 <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Points2D#instance_keys")?

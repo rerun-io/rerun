@@ -10,15 +10,8 @@ pub enum FromFileError {
     #[error(transparent)]
     DataCellError(#[from] crate::DataCellError),
 
-    #[cfg(feature = "image")]
     #[error(transparent)]
     TensorImageLoad(#[from] re_types::tensor_data::TensorImageLoadError),
-
-    #[error("Unsupported file extension '{extension}' for file {path:?}. To load image files, make sure you compile with the 'image' feature")]
-    UnknownExtension {
-        extension: String,
-        path: std::path::PathBuf,
-    },
 
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -51,7 +44,6 @@ pub fn data_cells_from_file_path(
                 .as_component_batches()
                 .into_iter()
                 .map(|comp_batch| {
-                    let comp_batch = comp_batch.as_ref();
                     Ok(DataCell::from_arrow(
                         comp_batch.name(),
                         comp_batch
@@ -63,33 +55,31 @@ pub fn data_cells_from_file_path(
             cells
         }
 
-        #[cfg(feature = "image")]
+        // Assume an image (there are so many image formats)
         _ => {
-            use re_types::{Archetype, AsComponents as _, ResultExt as _};
-            let indicator = <re_types::archetypes::Image as Archetype>::indicator().as_ref();
-            let indicator_cell = DataCell::from_arrow(
-                re_types::archetypes::Image::indicator().name(),
-                indicator
-                    .try_to_arrow()
-                    .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
-            );
-
             // Assume an image (there are so many image extensions):
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_file(file_path)?,
             );
             Ok(vec![
-                indicator_cell,
+                image_indicator_cell(),
                 DataCell::try_from_native(std::iter::once(&tensor))?,
             ])
         }
-
-        #[cfg(not(feature = "image"))]
-        _ => Err(FromFileError::UnknownExtension {
-            extension,
-            path: file_path.to_owned(),
-        }),
     }
+}
+
+fn image_indicator_cell() -> DataCell {
+    use re_types::Archetype as _;
+
+    let indicator = re_types::archetypes::Image::indicator();
+    let indicator_cell = DataCell::from_arrow(
+        indicator.name(),
+        indicator
+            .to_arrow()
+            .expect("Serializing an indicator component should always work"),
+    );
+    indicator_cell
 }
 
 pub fn data_cells_from_file_contents(
@@ -113,7 +103,6 @@ pub fn data_cells_from_file_contents(
                     .as_component_batches()
                     .into_iter()
                     .map(|comp_batch| {
-                        let comp_batch = comp_batch.as_ref();
                         Ok(DataCell::from_arrow(
                             comp_batch.name(),
                             comp_batch
@@ -125,7 +114,7 @@ pub fn data_cells_from_file_contents(
             cells
         }
 
-        #[cfg(feature = "image")]
+        // Assume an image (there are so many image formats)
         _ => {
             let format = if let Some(format) = image::ImageFormat::from_extension(extension) {
                 format
@@ -134,29 +123,14 @@ pub fn data_cells_from_file_contents(
                     .map_err(re_types::tensor_data::TensorImageLoadError::from)?
             };
 
-            use re_types::{Archetype, AsComponents as _, ResultExt as _};
-            let indicator = <re_types::archetypes::Image as Archetype>::indicator().as_ref();
-            let indicator_cell = DataCell::from_arrow(
-                re_types::archetypes::Image::indicator().as_ref().name(),
-                indicator
-                    .try_to_arrow()
-                    .map_err(|err| anyhow::anyhow!("serialization failed: {err}"))?,
-            );
-
             // Assume an image (there are so many image extensions):
             let tensor = re_types::components::TensorData(
                 re_types::datatypes::TensorData::from_image_bytes(bytes, format)?,
             );
             Ok(vec![
-                indicator_cell,
+                image_indicator_cell(),
                 DataCell::try_from_native(std::iter::once(&tensor))?,
             ])
         }
-
-        #[cfg(not(feature = "image"))]
-        _ => Err(FromFileError::UnknownExtension {
-            extension,
-            path: file_name.to_owned().into(),
-        }),
     }
 }

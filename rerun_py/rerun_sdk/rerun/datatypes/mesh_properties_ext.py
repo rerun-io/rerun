@@ -17,13 +17,13 @@ class MeshPropertiesExt:
         if isinstance(data, MeshProperties):
             data = [data]
 
-        field_vertex_indices = data_type.field("vertex_indices")
-        vertex_indices = pa.array(
-            [np.array(datum.vertex_indices).flatten() for datum in data],
-            type=field_vertex_indices.type,
+        field_indices = data_type.field("indices")
+        indices = pa.array(
+            [np.array(datum.indices).flatten() for datum in data],
+            type=field_indices.type,
         )
 
         return pa.StructArray.from_arrays(
-            arrays=[vertex_indices],
-            fields=[field_vertex_indices],
+            arrays=[indices],
+            fields=[field_indices],
         )

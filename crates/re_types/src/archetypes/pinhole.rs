@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -171,7 +172,7 @@ impl crate::Archetype for Pinhole {
             .collect();
         let image_from_camera = {
             let array = arrays_by_name
-                .get("image_from_camera")
+                .get("rerun.components.PinholeProjection")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?;
             <crate::components::PinholeProjection>::from_arrow_opt(&**array)
@@ -182,7 +183,7 @@ impl crate::Archetype for Pinhole {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?
         };
-        let resolution = if let Some(array) = arrays_by_name.get("resolution") {
+        let resolution = if let Some(array) = arrays_by_name.get("rerun.components.Resolution") {
             Some({
                 <crate::components::Resolution>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Pinhole#resolution")?
@@ -195,7 +196,8 @@ impl crate::Archetype for Pinhole {
         } else {
             None
         };
-        let camera_xyz = if let Some(array) = arrays_by_name.get("camera_xyz") {
+        let camera_xyz = if let Some(array) = arrays_by_name.get("rerun.components.ViewCoordinates")
+        {
             Some({
                 <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Pinhole#camera_xyz")?

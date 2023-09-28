@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -176,7 +177,7 @@ impl crate::Archetype for Arrows3D {
             .collect();
         let vectors = {
             let array = arrays_by_name
-                .get("vectors")
+                .get("rerun.components.Vector3D")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Arrows3D#vectors")?;
             <crate::components::Vector3D>::from_arrow_opt(&**array)
@@ -186,7 +187,7 @@ impl crate::Archetype for Arrows3D {
                 .collect::<crate::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Arrows3D#vectors")?
         };
-        let origins = if let Some(array) = arrays_by_name.get("origins") {
+        let origins = if let Some(array) = arrays_by_name.get("rerun.components.Origin3D") {
             Some({
                 <crate::components::Origin3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#origins")?
@@ -198,7 +199,7 @@ impl crate::Archetype for Arrows3D {
         } else {
             None
         };
-        let radii = if let Some(array) = arrays_by_name.get("radii") {
+        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#radii")?
@@ -210,7 +211,7 @@ impl crate::Archetype for Arrows3D {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("colors") {
+        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#colors")?
@@ -222,7 +223,7 @@ impl crate::Archetype for Arrows3D {
         } else {
             None
         };
-        let labels = if let Some(array) = arrays_by_name.get("labels") {
+        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#labels")?
@@ -234,7 +235,7 @@ impl crate::Archetype for Arrows3D {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("class_ids") {
+        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#class_ids")?
@@ -246,7 +247,8 @@ impl crate::Archetype for Arrows3D {
         } else {
             None
         };
-        let instance_keys = if let Some(array) = arrays_by_name.get("instance_keys") {
+        let instance_keys = if let Some(array) = arrays_by_name.get("rerun.components.InstanceKey")
+        {
             Some({
                 <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#instance_keys")?

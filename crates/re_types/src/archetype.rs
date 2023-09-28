@@ -61,7 +61,7 @@ pub trait Archetype {
     /// this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentName]> {
-        std::borrow::Cow::Owned(vec![Self::indicator().as_ref().name()])
+        std::borrow::Cow::Owned(vec![Self::indicator().name()])
     }
 
     /// Returns the names of all components that _may_ be provided by the user when constructing

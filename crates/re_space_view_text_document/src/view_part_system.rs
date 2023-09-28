@@ -38,7 +38,7 @@ impl ViewPartSystem for TextDocumentSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TextDocument::indicator().as_ref().name()).collect()
+        std::iter::once(TextDocument::indicator().name()).collect()
     }
 
     fn execute(

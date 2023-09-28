@@ -16,11 +16,15 @@ from .utf8_ext import Utf8Ext
 __all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like", "Utf8Type"]
 
 
-@define
+@define(init=False)
 class Utf8(Utf8Ext):
     """A string of text, encoded as UTF-8."""
 
-    # You can define your own __init__ function as a member of Utf8Ext in utf8_ext.py
+    def __init__(self: Any, value: Utf8Like):
+        """Create a new instance of the Utf8 datatype."""
+
+        # You can define your own __init__ function as a member of Utf8Ext in utf8_ext.py
+        self.__attrs_init__(value=value)
 
     value: str = field(converter=str)
 

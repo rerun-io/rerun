@@ -156,6 +156,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::map_flatten)]\n");
     code.push_str("#![allow(clippy::match_wildcard_for_single_variants)]\n");
     code.push_str("#![allow(clippy::needless_question_mark)]\n");
+    code.push_str("#![allow(clippy::new_without_default)]\n");
     code.push_str("#![allow(clippy::redundant_closure)]\n");
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
@@ -783,22 +784,21 @@ fn quote_trait_impls_from_obj(
                 (num_components, quoted_components)
             }
 
-            let first_required_comp = obj
-                .fields
-                .iter()
-                .find(|field| {
-                    field
-                        .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
-                        .is_some()
-                })
-                // NOTE: must have at least one required component.
-                .unwrap();
+            let first_required_comp = obj.fields.iter().find(|field| {
+                field
+                    .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
+                    .is_some()
+            });
 
-            let num_instances = if first_required_comp.typ.is_plural() {
-                let name = format_ident!("{}", first_required_comp.name);
-                quote!(self.#name.len())
+            let num_instances = if let Some(comp) = first_required_comp {
+                if comp.typ.is_plural() {
+                    let name = format_ident!("{}", comp.name);
+                    quote!(self.#name.len())
+                } else {
+                    quote!(1)
+                }
             } else {
-                quote!(1)
+                quote!(0)
             };
 
             let indicator_name = format!("{}Indicator", obj.name);
@@ -858,7 +858,7 @@ fn quote_trait_impls_from_obj(
             let all_deserializers = {
                 obj.fields.iter().map(|obj_field| {
                     let obj_field_fqname = obj_field.fqname.as_str();
-                    let field_name_str = &obj_field.name;
+                    let field_typ_fqname_str = obj_field.typ.fqname().unwrap();
                     let field_name = format_ident!("{}", obj_field.name);
 
                     let is_plural = obj_field.typ.is_plural();
@@ -884,9 +884,11 @@ fn quote_trait_impls_from_obj(
                         }
                     };
 
+                    // NOTE: An archetype cannot have overlapped component types by definition, so use the
+                    // component's fqname to do the mapping.
                     let quoted_deser = if is_nullable {
                         quote! {
-                            if let Some(array) = arrays_by_name.get(#field_name_str) {
+                            if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
                                 Some({
                                     <#component>::from_arrow_opt(&**array)
                                         .with_context(#obj_field_fqname)?
@@ -899,7 +901,7 @@ fn quote_trait_impls_from_obj(
                     } else {
                         quote! {{
                             let array = arrays_by_name
-                                .get(#field_name_str)
+                                .get(#field_typ_fqname_str)
                                 .ok_or_else(crate::DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?;
 
@@ -974,8 +976,7 @@ fn quote_trait_impls_from_obj(
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
                             .into_iter()
-                            .map(|(field, array)| (field.name, array))
-                            .collect();
+                            .map(|(field, array)| (field.name, array)).collect();
 
                         #(#all_deserializers;)*
 

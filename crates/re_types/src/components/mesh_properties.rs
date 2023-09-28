@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -65,7 +66,7 @@ impl crate::Loggable for MeshProperties {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
-            name: "vertex_indices".to_owned(),
+            name: "indices".to_owned(),
             data_type: DataType::List(Box::new(Field {
                 name: "item".to_owned(),
                 data_type: DataType::UInt32,
