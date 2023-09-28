@@ -54,7 +54,7 @@ class Image(ImageExt, Archetype):
     </picture>
     """
 
-    def __init__(self: Any, data: datatypes.TensorDataLike, draw_order: components.DrawOrderLike | None = None):
+    def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
         """
         Create a new instance of the Image archetype.
 

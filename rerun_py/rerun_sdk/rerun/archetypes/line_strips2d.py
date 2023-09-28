@@ -98,6 +98,7 @@ class LineStrips2D(Archetype):
     def __init__(
         self: Any,
         strips: components.LineStrip2DArrayLike,
+        *,
         radii: components.RadiusArrayLike | None = None,
         colors: datatypes.ColorArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,

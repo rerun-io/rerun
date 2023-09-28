@@ -41,6 +41,7 @@ class AffixFuzzer1:
         many_strings_required: list[str],
         flattened_scalar: float,
         almost_flattened_scalar: datatypes.FlattenedScalarLike,
+        *,
         single_float_optional: float | None = None,
         single_string_optional: str | None = None,
         many_floats_optional: npt.ArrayLike | None = None,

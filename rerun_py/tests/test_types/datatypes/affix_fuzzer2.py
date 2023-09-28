@@ -21,7 +21,7 @@ __all__ = ["AffixFuzzer2", "AffixFuzzer2ArrayLike", "AffixFuzzer2Batch", "AffixF
 
 @define(init=False)
 class AffixFuzzer2:
-    def __init__(self: Any, single_float_optional: float | None = None):
+    def __init__(self: Any, *, single_float_optional: float | None = None):
         """Create a new instance of the AffixFuzzer2 datatype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py

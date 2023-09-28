@@ -1577,12 +1577,31 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
                 quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
             )]
         } else {
-            obj.fields
+            let required = obj
+                .fields
                 .iter()
-                .sorted_by_key(|field| field.is_nullable)
+                .filter(|field| !field.is_nullable)
                 .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
-                .collect()
+                .collect_vec();
+
+            let optional = obj
+                .fields
+                .iter()
+                .filter(|field| field.is_nullable)
+                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+                .collect_vec();
+
+            if optional.is_empty() {
+                required
+            } else {
+                required
+                    .into_iter()
+                    .chain(std::iter::once("*".to_owned())) // Force kw-args for all optional arguments
+                    .chain(optional)
+                    .collect()
+            }
         };
+
     let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
 
     let parameter_docs = if obj.is_union() {

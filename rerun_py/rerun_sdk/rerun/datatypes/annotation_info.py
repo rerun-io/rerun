@@ -50,7 +50,9 @@ class AnnotationInfo(AnnotationInfoExt):
     The id refers either to a class or key-point id
     """
 
-    def __init__(self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.ColorLike | None = None):
+    def __init__(
+        self: Any, id: int, *, label: datatypes.Utf8Like | None = None, color: datatypes.ColorLike | None = None
+    ):
         """
         Create a new instance of the AnnotationInfo datatype.
 
