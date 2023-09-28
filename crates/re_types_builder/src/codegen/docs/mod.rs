@@ -43,7 +43,7 @@ impl CodeGenerator for DocsCodeGenerator {
         let components = objects.ordered_objects(Some(ObjectKind::Component));
         for object in objects.ordered_objects(Some(ObjectKind::Archetype)) {
             // skip test-only archetypes
-            if object.name.starts_with("AffixFuzzer") {
+            if object.is_testing() {
                 continue;
             }
 
