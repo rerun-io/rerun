@@ -10,13 +10,10 @@ pub enum QueueableDrawDataError {
     FailedToRetrieveRenderer(&'static str),
 
     #[error(transparent)]
-    DrawRenderer(#[from] DrawError),
+    DrawError(#[from] DrawError),
 
     #[error("Mismatching draw data type, expected {0}")]
     UnexpectedDrawDataType(&'static str),
-
-    #[error(transparent)]
-    DrawError(#[from] anyhow::Error),
 }
 
 type DrawFn = dyn for<'a, 'b> Fn(
