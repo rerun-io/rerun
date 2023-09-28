@@ -18,7 +18,7 @@ table Asset3D (
   // --- Required ---
 
   /// The asset's bytes.
-  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 
@@ -28,7 +28,7 @@ table Asset3D (
   /// * `model/gltf-binary`
   /// * `model/obj`
   ///
-  /// If omitted, the viewer will try to guess from the data.
+  /// If omitted, the viewer will try to guess from the data blob.
   /// If it cannot guess, it won't be able to render the asset.
   media_type: rerun.components.MediaType  ("attr.rerun.component_recommended", nullable, order: 2000);
 

@@ -7,7 +7,7 @@ use re_types::{
 #[test]
 fn roundtrip() {
     let expected = TextDocument {
-        body: "This is the contents of the text document.".into(),
+        text: "This is the contents of the text document.".into(),
         media_type: Some(MediaType::markdown()),
     };
 
@@ -16,7 +16,7 @@ fn roundtrip() {
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
-        ("body", vec!["rerun.components.Text"]),
+        ("text", vec!["rerun.components.Text"]),
         ("media_type", vec!["rerun.components.MediaType"]),
     ]
     .into();

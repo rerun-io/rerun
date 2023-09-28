@@ -18,7 +18,7 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextDocument {
     /// Contents of the text document.
-    pub body: crate::components::Text,
+    pub text: crate::components::Text,
 
     /// The Media Type of the text.
     ///
@@ -106,18 +106,18 @@ impl crate::Archetype for TextDocument {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let body = {
+        let text = {
             let array = arrays_by_name
                 .get("rerun.components.Text")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextDocument#body")?;
+                .with_context("rerun.archetypes.TextDocument#text")?;
             <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextDocument#body")?
+                .with_context("rerun.archetypes.TextDocument#text")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextDocument#body")?
+                .with_context("rerun.archetypes.TextDocument#text")?
         };
         let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
             Some({
@@ -132,7 +132,7 @@ impl crate::Archetype for TextDocument {
         } else {
             None
         };
-        Ok(Self { body, media_type })
+        Ok(Self { text, media_type })
     }
 }
 
@@ -141,7 +141,7 @@ impl crate::AsComponents for TextDocument {
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.body as &dyn crate::ComponentBatch).into()),
+            Some((&self.text as &dyn crate::ComponentBatch).into()),
             self.media_type
                 .as_ref()
                 .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
@@ -158,9 +158,9 @@ impl crate::AsComponents for TextDocument {
 }
 
 impl TextDocument {
-    pub fn new(body: impl Into<crate::components::Text>) -> Self {
+    pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
-            body: body.into(),
+            text: text.into(),
             media_type: None,
         }
     }

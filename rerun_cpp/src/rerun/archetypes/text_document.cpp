@@ -19,7 +19,7 @@ namespace rerun {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(2);
 
-            comp_batches.emplace_back(body);
+            comp_batches.emplace_back(text);
             if (media_type.has_value()) {
                 comp_batches.emplace_back(media_type.value());
             }
