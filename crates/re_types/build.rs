@@ -19,6 +19,8 @@ const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun";
 const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "../../rerun_py/tests/test_types";
 
+/// This uses [`rayon::scope`] to spawn all closures as tasks
+/// running in parallel. It blocks until all tasks are done.
 macro_rules! join {
     ($($task:expr,)*) => {join!($($task),*)};
     ($($task:expr),*) => {{
