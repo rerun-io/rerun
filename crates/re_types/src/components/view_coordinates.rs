@@ -251,43 +251,46 @@ impl crate::Loggable for ViewCoordinates {
             }
         }
         Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::UInt8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
-                            3usize,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
-                })
-                .with_context("rerun.components.ViewCoordinates#coordinates")?;
-            let arrow_data_inner = &**arrow_data.values();
-            bytemuck::cast_slice::<_, [_; 3usize]>(
-                arrow_data_inner
+            let iterator = {
+                let arrow_data = arrow_data
                     .as_any()
-                    .downcast_ref::<UInt8Array>()
+                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            DataType::UInt8,
-                            arrow_data_inner.data_type().clone(),
+                            DataType::FixedSizeList(
+                                Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                3usize,
+                            ),
+                            arrow_data.data_type().clone(),
                         )
                     })
-                    .with_context("rerun.components.ViewCoordinates#coordinates")?
-                    .values()
-                    .as_slice(),
-            )
-            .iter()
-            .copied()
-        }
-        .map(|v| Self(v))
-        .collect::<Vec<_>>())
+                    .with_context("rerun.components.ViewCoordinates#coordinates")?;
+                let arrow_data_inner = &**arrow_data.values();
+                let slice = bytemuck::cast_slice::<_, [_; 3usize]>(
+                    arrow_data_inner
+                        .as_any()
+                        .downcast_ref::<UInt8Array>()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::UInt8,
+                                arrow_data_inner.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.components.ViewCoordinates#coordinates")?
+                        .values()
+                        .as_slice(),
+                );
+                slice.iter().copied()
+            };
+            {
+                re_tracing::profile_scope!("collect");
+                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
     }
 }

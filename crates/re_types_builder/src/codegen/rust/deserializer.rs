@@ -869,7 +869,7 @@ pub fn quote_arrow_deserializer_buffer_slice(
             }
         );
 
-        let quoted_deserializer = quote_arrow_field_deserializer_buffer_slice(
+        let deserizlized_as_iterator = quote_arrow_field_deserializer_buffer_slice(
             objects,
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
@@ -884,12 +884,16 @@ pub fn quote_arrow_deserializer_buffer_slice(
             quote!(.map(|#data_dst| Self { #data_dst }))
         };
 
-        quote! {
-            #quoted_deserializer
-            #quoted_remapping
-            // NOTE: implicit Vec<Result> to Result<Vec>
-            .collect::<Vec<_>>()
-        }
+        quote! {{
+            let iterator = #deserizlized_as_iterator;
+
+            {
+                re_tracing::profile_scope!("collect");
+                iterator
+                    #quoted_remapping
+                    .collect::<Vec<_>>()
+            }
+        }}
     } else {
         unimplemented!("{datatype:#?}")
     }
@@ -979,9 +983,9 @@ fn quote_arrow_field_deserializer_buffer_slice(
                 let #data_src = #quoted_downcast?;
 
                 let #data_src_inner = &**#data_src.values();
-                bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner)
-                .iter()
-                #quoted_iter_transparency
+                let slice = bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner);
+
+                slice.iter()#quoted_iter_transparency
             }}
         }
 

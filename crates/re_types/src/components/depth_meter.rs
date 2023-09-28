@@ -141,21 +141,25 @@ impl crate::Loggable for DepthMeter {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .ok_or_else(|| {
-                crate::DeserializationError::datatype_mismatch(
-                    DataType::Float32,
-                    arrow_data.data_type().clone(),
-                )
-            })
-            .with_context("rerun.components.DepthMeter#value")?
-            .values()
-            .as_slice()
-            .iter()
-            .copied()
-            .map(|v| Self(v))
-            .collect::<Vec<_>>())
+        Ok({
+            let iterator = arrow_data
+                .as_any()
+                .downcast_ref::<Float32Array>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Float32,
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.DepthMeter#value")?
+                .values()
+                .as_slice()
+                .iter()
+                .copied();
+            {
+                re_tracing::profile_scope!("collect");
+                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
     }
 }

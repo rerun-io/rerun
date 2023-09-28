@@ -164,22 +164,26 @@ impl crate::Loggable for Color {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt32Array>()
-            .ok_or_else(|| {
-                crate::DeserializationError::datatype_mismatch(
-                    DataType::UInt32,
-                    arrow_data.data_type().clone(),
-                )
-            })
-            .with_context("rerun.components.Color#rgba")?
-            .values()
-            .as_slice()
-            .iter()
-            .copied()
-            .map(|v| crate::datatypes::Color(v))
-            .map(|v| Self(v))
-            .collect::<Vec<_>>())
+        Ok({
+            let iterator = arrow_data
+                .as_any()
+                .downcast_ref::<UInt32Array>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::UInt32,
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.Color#rgba")?
+                .values()
+                .as_slice()
+                .iter()
+                .copied()
+                .map(|v| crate::datatypes::Color(v));
+            {
+                re_tracing::profile_scope!("collect");
+                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
     }
 }
