@@ -117,9 +117,10 @@ fn tensor_ui(
                         texture.clone(),
                         &debug_name,
                         preview_size,
+                        false,
                     )
                     .on_hover_ui(|ui| {
-                        // Show larger image on hover
+                        // Show larger image on hover.
                         let preview_size = Vec2::splat(400.0);
                         show_image_preview(
                             ctx.render_ctx,
@@ -128,6 +129,7 @@ fn tensor_ui(
                             texture.clone(),
                             &debug_name,
                             preview_size,
+                            true,
                         );
                     });
                 }
@@ -181,6 +183,7 @@ fn tensor_ui(
                         texture.clone(),
                         &debug_name,
                         preview_size,
+                        false,
                     );
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
@@ -231,9 +234,11 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
 
 /// Shows preview of an image at a given size.
 ///
-/// Allocates `desired_size` and displays the image in it.
+/// Displays the image in inside the desired size.
 /// This may both cause zoom in or zoom out of the image, but will never stretch it.
 /// For extremely thin images, this may cause only parts of the image to be seen.
+///
+/// If `shrink_to_texture_aspect_ratio` is set, the allocated size may shrink in one dimension to fit the aspect ratio of the image.
 fn show_image_preview(
     render_ctx: &mut re_renderer::RenderContext,
     re_ui: &ReUi,
@@ -241,9 +246,9 @@ fn show_image_preview(
     colormapped_texture: ColormappedTexture,
     debug_name: &str,
     desired_size: Vec2,
+    shrink_to_texture_aspect_ratio: bool,
 ) -> egui::Response {
-    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-    let available_space = response.rect.size();
+    let texture_size = texture_size(&colormapped_texture);
 
     // First we figure out how much we should scale (uniformly) the image.
     let texture_scale_factor = {
@@ -252,22 +257,39 @@ fn show_image_preview(
         let min_size = MIN_SIZE.at_most(desired_size.x).at_most(desired_size.x);
 
         // Ideally, we just scale down/up to fit into the available space.
-        let texture_size = texture_size(&colormapped_texture);
-        let zoom_x = available_space.x / texture_size.x;
-        let zoom_y = available_space.y / texture_size.y;
-        let zoom = zoom_x.min(zoom_y);
+        let zoom = (desired_size / texture_size).min_elem();
 
         // But it can happen that this makes one of the axis too small, so we need to zoom back in again.
         // Note that this causes the image to be cropped.
         zoom.at_least(min_size / texture_size.x.min(texture_size.y))
     };
 
+    let scaled_texture_size = texture_size * texture_scale_factor;
+
+    // Request the desired size, but shrink one dimension if the texture is too wide/narrow if so required.
+    let requested_rect = if shrink_to_texture_aspect_ratio {
+        let clipped_texture = scaled_texture_size.min(desired_size);
+        let aspect_ratio_texture = clipped_texture.x / clipped_texture.y;
+        let aspect_ratio_desired = desired_size.x / desired_size.y;
+
+        // Each of these factors would make the aspect ratio equal to the texture's aspect ratio.
+        let x_shrink = aspect_ratio_texture * aspect_ratio_desired;
+        let y_shrink = aspect_ratio_desired / aspect_ratio_texture;
+
+        if x_shrink < y_shrink {
+            egui::vec2(desired_size.x * x_shrink, desired_size.y)
+        } else {
+            egui::vec2(desired_size.x, desired_size.y * y_shrink)
+        }
+    } else {
+        desired_size
+    };
+    let (response, painter) = ui.allocate_painter(requested_rect, egui::Sense::hover());
+
     // Place the image with the determined zoom factor into the middle of the allocated rect.
     // If it doesn't fit, it will be cropped by the painter's clip rect.
-    let texture_on_screen = egui::Rect::from_center_size(
-        response.rect.center(),
-        texture_size(&colormapped_texture) * texture_scale_factor,
-    );
+    let texture_on_screen =
+        egui::Rect::from_center_size(response.rect.center(), scaled_texture_size);
 
     if let Err(err) = gpu_bridge::render_image(
         render_ctx,
