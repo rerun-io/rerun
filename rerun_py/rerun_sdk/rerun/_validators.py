@@ -62,7 +62,7 @@ def flat_np_float_array_from_array_like(data: Any, dimension: int) -> npt.NDArra
 
     if not valid:
         raise ValueError(
-            f"Expected either flat array with a multiple of {dimension} elements or array with shape (`num_elements`, {dimension}). Got instead {array.shape}",
+            f"Expected either a flat array with a length a of {dimension} elements, or an array with shape (`num_elements`, {dimension}). Shape of passed array was {array.shape}."
         )
 
     return array.reshape((-1,))
