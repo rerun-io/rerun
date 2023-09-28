@@ -42,7 +42,6 @@
 ///     log::info!("This INFO log got added through the standard logging interface");
 ///
 ///     rerun::native_viewer::show(storage.take())?;
-///     rec.disconnect(); // force-close the underlying sink to flush it
 ///     Ok(())
 /// }
 /// ```
