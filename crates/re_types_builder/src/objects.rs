@@ -62,17 +62,17 @@ impl Objects {
         // Validate fields types: Archetype consist of components, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
-                if let Some(target_fqname) = field.typ.fqname() {
-                    let target_obj = &this[target_fqname];
+                if let Some(field_type_fqname) = field.typ.fqname() {
+                    let field_obj = &this[field_type_fqname];
                     if obj.kind == ObjectKind::Archetype {
-                        assert!(target_obj.kind == ObjectKind::Component,
+                        assert!(field_obj.kind == ObjectKind::Component,
                             "Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
-                            field.fqname, target_fqname
+                            field.fqname, field_type_fqname
                         );
                     } else {
-                        assert!(target_obj.kind == ObjectKind::Datatype,
+                        assert!(field_obj.kind == ObjectKind::Datatype,
                             "Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
-                            field.fqname, target_fqname
+                            field.fqname, field_type_fqname
                         );
                     }
                 } else {
@@ -104,18 +104,11 @@ impl Objects {
                             );
 
                             let ObjectField {
-                                virtpath: _,
-                                filepath: _,
                                 fqname,
-                                pkg_name: _,
-                                name: _,
-                                docs: _,
                                 typ,
                                 attrs,
-                                order: _,
-                                is_nullable: _,
-                                is_deprecated: _,
                                 datatype,
+                                ..
                             } = target_obj.fields.pop().unwrap();
 
                             field.typ = typ;

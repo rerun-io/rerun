@@ -644,18 +644,10 @@ fn code_for_struct(
             .chain(fields.iter().filter(|field| field.is_nullable));
         for field in fields_in_order {
             let ObjectField {
-                virtpath: _,
-                filepath: _,
-                fqname: _,
-                pkg_name: _,
                 name,
                 docs,
-                typ: _,
-                attrs: _,
-                order: _,
                 is_nullable,
-                is_deprecated: _,
-                datatype: _,
+                ..
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
