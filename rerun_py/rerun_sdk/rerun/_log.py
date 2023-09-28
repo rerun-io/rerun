@@ -9,7 +9,7 @@ import rerun_bindings as bindings
 
 from . import components as cmp
 from ._baseclasses import AsComponents, ComponentBatchLike
-from .error_utils import _send_warning
+from .error_utils import _send_warning, catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
 __all__ = ["log", "IndicatorComponentBatch", "AsComponents"]
@@ -102,6 +102,7 @@ def _splat() -> cmp.InstanceKeyBatch:
     return pa.array([_MAX_U64], type=cmp.InstanceKeyType().storage_type)  # type: ignore[no-any-return]
 
 
+@catch_and_log_exceptions()
 def log(
     entity_path: str,
     entity: AsComponents | Iterable[ComponentBatchLike],
@@ -109,6 +110,7 @@ def log(
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
+    strict: bool | None = None,
 ) -> None:
     """
     Log an entity.
@@ -127,7 +129,10 @@ def log(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
+    strict:
+        If True, raise exceptions on non-loggable data.
+        If False, warn on non-loggable data.
+        if None, use the global default from `rerun.strict_mode()`
     """
     # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
     # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
@@ -156,6 +161,7 @@ def log(
     )
 
 
+@catch_and_log_exceptions()
 def log_components(
     entity_path: str,
     components: Iterable[ComponentBatchLike],
@@ -164,6 +170,7 @@ def log_components(
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
+    strict: bool | None = None,
 ) -> None:
     """
     Log an entity from a collection of `ComponentBatchLike` objects.
@@ -190,7 +197,10 @@ def log_components(
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
         defaults to the current active data recording, if there is one. See
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
+    strict:
+        If True, raise exceptions on non-loggable data.
+        If False, warn on non-loggable data.
+        if None, use the global default from `rerun.strict_mode()`
     """
     instanced: dict[str, pa.Array] = {}
     splats: dict[str, pa.Array] = {}
