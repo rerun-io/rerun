@@ -21,7 +21,7 @@ __all__ = ["AffixFuzzer8", "AffixFuzzer8ArrayLike", "AffixFuzzer8Batch", "AffixF
 
 @define(init=False)
 class AffixFuzzer8:
-    def __init__(self: Any, *, single_float_optional: float | None = None):
+    def __init__(self: Any, single_float_optional: float | None = None):
         """Create a new instance of the AffixFuzzer8 component."""
 
         # You can define your own __init__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py

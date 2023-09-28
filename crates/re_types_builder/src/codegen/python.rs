@@ -1593,12 +1593,15 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
 
             if optional.is_empty() {
                 required
-            } else {
+            } else if obj.kind == ObjectKind::Archetype {
+                // Force kw-args for all optional arguments:
                 required
                     .into_iter()
-                    .chain(std::iter::once("*".to_owned())) // Force kw-args for all optional arguments
+                    .chain(std::iter::once("*".to_owned()))
                     .chain(optional)
                     .collect()
+            } else {
+                required.into_iter().chain(optional).collect()
             }
         };
 
