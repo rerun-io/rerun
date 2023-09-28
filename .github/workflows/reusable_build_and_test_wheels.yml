@@ -259,7 +259,7 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache... even though this is the target anyhow...
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build --full-dump
+          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Run docs/code-examples/roundtrips.py
         if: ${{ (needs.set-config.outputs.RUN_TESTS == 'true') && (inputs.PLATFORM != 'windows') }}
@@ -268,7 +268,7 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache... even though this is the target anyhow...
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build --full-dump
+          RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Cache RRD dataset
         if: needs.set-config.outputs.RUN_TESTS == 'true'
