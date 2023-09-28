@@ -92,9 +92,9 @@ def log_mesh_file(
         asset3d = Asset3D.from_file(str(mesh_path))
     elif mesh_bytes is not None:
         if mesh_format == MeshFormat.GLB:
-            media_type = MediaType.glb()
+            media_type = MediaType.GLB
         else:
-            media_type = MediaType.obj()
+            media_type = MediaType.OBJ
         asset3d = Asset3D.from_bytes(mesh_bytes, media_type)
     else:
         raise ValueError("must specify either `mesh_path` or `mesh_bytes`")
