@@ -115,11 +115,11 @@ Feel free to move the views around until you are happy with the layout.
 The space views are where you can see the data that was actually logged. This scene has streams of data for 6 different
 primitives, also known as [entities](../concepts/entity-component.md):
 * [images](../reference/data_types/image.md) that were captured from a camera.
-* [2d keypoints](../reference/data_types/point2d.md) that were detected and tracked in those images.
+* [2d keypoints](../reference/data_types/points2d.md) that were detected and tracked in those images.
 * a [pinhole](../reference/data_types/pinhole.md) camera model that describes the relationship between 2D and 3D space.
-* [3d points](../reference/data_types/point3d.md) that were computed by the COLMAP slam pipeline.
+* [3d points](../reference/data_types/points3d.md) that were computed by the COLMAP slam pipeline.
 * A sequence of [transforms](../reference/data_types/transform3d.md) describing the 3D location of the camera in space.
-* A [scalar](../reference/data_types/scalar.md) error metric that was computed by the algorithm for each frame.
+* A [scalar](../reference/data_types/time_series_scalar.md) error metric that was computed by the algorithm for each frame.
 
 ### Hover and selection
 You can find out more about these entities by hovering over them in the different views. Hovering will bring up a

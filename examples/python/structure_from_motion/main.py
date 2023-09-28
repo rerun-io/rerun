@@ -42,7 +42,7 @@ The full source code for this example is available [on GitHub](https://github.co
 
 ### Colored 3D Points
 The colored 3D points were added to the scene by logging the
-[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/point3d)
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points3d)
 to the [points entity](recording://points):
 ```python
 rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})

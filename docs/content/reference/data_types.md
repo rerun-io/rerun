@@ -18,6 +18,7 @@ assembling the required components.
 The spatial archetypes represent 2d and 3d spatial data. These types have some notion of a coordinate system and
 generally support spatial transformations. All of these types can be visualized by the `Spatial` space view.
 * [Arrow3D](data_types/arrows3d.md)
+* [Asset](data_types/asset3d.md)
 * [Box2D](data_types/boxes2d.md)
 * [Box3D](data_types/boxes3d.md)
 * [LineStrip2D](data_types/line_strips2d.md)
@@ -39,3 +40,12 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 
 ## Other **Archetypes**
 * [AnnotationContext](data_types/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
+* [BarChart](data_types/bar_chart.md): data displayed in a `BarChart` space view.
+* [Clear](data_types/clear.md): clear all components of an entity.
+* [DisconnectedSpace](data_types/disconnected_space.md): disconnect an entity path from its parent.
+* [TextDocument](data_types/text_document.md): text displayed in a `TextDocument` space view.
+* [TextLog](data_types/text_log.md): a log entry in a `TextLog` space view.
+* [TimeSeriesScalar](data_types/time_series_scalar.md): a single scalar / metric value. Can be viewed in the `TimeSeries` space view.
+* [ViewCoordinates](data_types/view_coordinates.md): determines how we interpret the coordinate system of an entity/space.
+
+
