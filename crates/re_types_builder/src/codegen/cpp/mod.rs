@@ -1927,10 +1927,6 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
-/* fn collect_examples(docs: &Docs) -> Examples {
-    Examples::collect(docs, "cpp", &["```cpp,ignore"], &["```"], false).unwrap_or_default()
-} */
-
 fn quote_docstrings(docs: &Docs) -> TokenStream {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
