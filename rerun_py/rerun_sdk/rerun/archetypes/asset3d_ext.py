@@ -14,11 +14,11 @@ def guess_media_type(path: str) -> MediaType | None:
 
     ext = Path(path).suffix
     if ext == ".glb":
-        return MediaType.glb()
+        return MediaType.GLB
     elif ext == ".gltf":
-        return MediaType.gltf()
+        return MediaType.GLTF
     elif ext == ".obj":
-        return MediaType.obj()
+        return MediaType.OBJ
     else:
         return None
 

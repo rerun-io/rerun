@@ -21,7 +21,7 @@ def main() -> None:
         "markdown",
         rr.TextDocument(
             body="# Hello\nMarkdown with `code`!\n\nA random image:\n\n![A random image](https://picsum.photos/640/480)",
-            media_type="text/markdown",
+            media_type=rr.MediaType.MARKDOWN,
         ),
     )
 
