@@ -20,8 +20,6 @@ _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 _strict_mode = False
 
 _rerun_exception_ctx = threading.local()
-_rerun_exception_ctx.strict_mode = None
-_rerun_exception_ctx.depth = 0
 
 
 def check_strict_mode() -> bool:
@@ -35,7 +33,7 @@ def check_strict_mode() -> bool:
     The default is OFF.
     """
     # If strict was set explicitly, we are in struct mode
-    if _rerun_exception_ctx.strict_mode is not None:
+    if getattr(_rerun_exception_ctx, "strict_mode", None) is not None:
         return _rerun_exception_ctx.strict_mode  # type: ignore[no-any-return]
     else:
         return _strict_mode
@@ -88,48 +86,49 @@ def _send_warning(
 
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 1)
 
-    # TODO(jleibs): Context/stack should be its component.
+    # TODO(jleibs): Context/stack should be its own component.
     log("rerun", TextLog(body=f"{message}\n{context_descriptor}", level="WARN"), recording=recording)
     warnings.warn(message, category=RerunWarning, stacklevel=depth_to_user_code + 1)
 
 
 class catch_and_log_exceptions:
     """
-    A decorator we add to any function we want to catch exceptions if we're not in strict mode.
+    A hybrid decorator / context-manager.
 
-    This decorator checks for a strict kwarg and uses it to override the global strict mode
-    if provided. Additionally it tracks the depth of the call stack to the user code -- the
-    highest point in the stack where the user called a decorated function.
+    We can add this to any function or scope where we want to catch and log
+    exceptions.
 
-    This is important in order not to crash the users application
-    just because they misused the Rerun API (or because we have a bug!).
+    Warnings are attached to a thread-local context, and are sent out when
+    we leave the outer-most context object. This gives us a warning that
+    points to the user call-site rather than somewhere buried in Rerun code.
+
+    For functions, this decorator checks for a strict kwarg and uses it to
+    override the global strict mode if provided.
     """
 
-    def __init__(self, bare_context: bool = True) -> None:
-        self.bare_context = bare_context
+    def __init__(self, context: str = "", depth_to_user_code: int = 0) -> None:
+        self.depth_to_user_code = depth_to_user_code
+        self.context = context
 
     def __enter__(self) -> catch_and_log_exceptions:
         # Track the original strict_mode setting in case it's being
         # overridden locally in this stack
-        self.original_strict = _rerun_exception_ctx.strict_mode
-        self.added_depth = 0
-
-        # Functions add a depth of 2
-        # Bare context helpers don't add a depth
-        if not self.bare_context:
-            self.added_depth = 2
-            _rerun_exception_ctx.depth += self.added_depth
+        self.original_strict = getattr(_rerun_exception_ctx, "strict_mode", None)
+        if getattr(_rerun_exception_ctx, "depth", None) is None:
+            _rerun_exception_ctx.depth = 1
+        else:
+            _rerun_exception_ctx.depth += 1
 
         return self
 
-    @classmethod
-    def __call__(cls, func: _TFunc) -> _TFunc:
+    def __call__(self, func: _TFunc) -> _TFunc:
+        self.depth_to_user_code += 1
+
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            with cls(bare_context=False):
+            with self:
                 if "strict" in kwargs:
                     _rerun_exception_ctx.strict_mode = kwargs["strict"]
-
                 return func(*args, **kwargs)
 
         return cast(_TFunc, wrapper)
@@ -142,20 +141,24 @@ class catch_and_log_exceptions:
     ) -> bool:
         try:
             if exc_type is not None and not check_strict_mode():
-                warning = f"{exc_type.__name__}: {exc_val}"
-
-                # If the raise comes directly from a bare context, we need
-                # to add 1 extra layer of depth.
-                if self.bare_context:
-                    extra_depth = 2
-                else:
-                    extra_depth = 1
-                _send_warning(warning, depth_to_user_code=_rerun_exception_ctx.depth + extra_depth)
+                if getattr(_rerun_exception_ctx, "pending_warnings", None) is None:
+                    _rerun_exception_ctx.pending_warnings = []
+                _rerun_exception_ctx.pending_warnings.append(f"{self.context or exc_type.__name__}: {exc_val}")
                 return True
             else:
                 return False
         finally:
+            if getattr(_rerun_exception_ctx, "depth", None) is not None:
+                _rerun_exception_ctx.depth -= 1
+                if _rerun_exception_ctx.depth == 0:
+                    pending_warnings = getattr(_rerun_exception_ctx, "pending_warnings", [])
+                    _rerun_exception_ctx.pending_warnings = []
+                    _rerun_exception_ctx.depth = None
+
+                    for warning in pending_warnings:
+                        _send_warning(warning, depth_to_user_code=self.depth_to_user_code + 2)
+
+            # If we're back to the top of the stack, send out the pending warnings
+
             # Return the local context to the prior value
             _rerun_exception_ctx.strict_mode = self.original_strict
-            _rerun_exception_ctx.depth -= self.added_depth
-        return False

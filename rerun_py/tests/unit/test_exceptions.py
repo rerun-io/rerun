@@ -24,7 +24,7 @@ def two_calls(strict: bool | None = None) -> None:
     inner(3)
 
 
-@catch_and_log_exceptions()
+@catch_and_log_exceptions(context="function context")
 def inner(count: int) -> None:
     """Calls itself recursively but ultimately raises an error."""
     if count < 0:
@@ -35,7 +35,7 @@ def inner(count: int) -> None:
 @catch_and_log_exceptions()
 def uses_context(strict: bool | None = None) -> None:
     """Uses a context manager instead of a function."""
-    with catch_and_log_exceptions():
+    with catch_and_log_exceptions("inner context"):
         raise ValueError("some value error")
 
 
@@ -64,6 +64,7 @@ def test_stack_tracking() -> None:
         assert outer() == 42
 
         expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 2)
+        assert "function context" in str(warnings[0].message)
 
     with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
@@ -83,17 +84,19 @@ def test_stack_tracking() -> None:
         starting_msgs = mem.num_msgs()
 
         with catch_and_log_exceptions():
-            inner(count=2)
+            uses_context()
 
-        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 2)
+        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 3)
+        assert "inner context" in str(warnings[0].message)
 
     with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
 
-        with catch_and_log_exceptions():
+        with catch_and_log_exceptions("some context"):
             raise ValueError("some value error")
 
         expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 3)
+        assert "some context" in str(warnings[0].message)
 
 
 def test_strict_mode() -> None:
@@ -108,3 +111,17 @@ def test_strict_mode() -> None:
     rr.set_strict_mode(True)
     with pytest.raises(ValueError):
         outer()
+    # Clear the global strict mode again
+    rr.set_strict_mode(False)
+
+
+def test_bad_components() -> None:
+    with pytest.warns(RerunWarning) as warnings:
+        points = rr.Points3D(positions=[1, 2, 3], colors="RED")
+        assert len(warnings) == 1
+        assert len(points.positions) == 1
+        assert len(points.colors) == 0
+
+    rr.set_strict_mode(True)
+    with pytest.raises(ValueError):
+        points = rr.Points3D(positions=[1, 2, 3], colors="RED")
