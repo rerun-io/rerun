@@ -31,7 +31,9 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self) {
+        re_log_encoding::FileSink::flush_blocking(self);
+    }
 }
 
 // ---------------
