@@ -1,6 +1,5 @@
 ---
 title: "Image"
-order: 100
 ---
 
 A monochrome or color image.

@@ -11,8 +11,7 @@ namespace rerun.datatypes;
 
 /// Representation of an affine transform via separate translation, rotation & scale.
 table TranslationRotationScale3D (
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 600
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// 3D translation vector, applied last.
   //

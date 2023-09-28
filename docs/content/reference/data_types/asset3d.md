@@ -1,6 +1,5 @@
 ---
 title: "Asset3D"
-order: 100
 ---
 
 A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).

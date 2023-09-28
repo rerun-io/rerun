@@ -15,8 +15,7 @@ namespace rerun.archetypes;
 /// \example scalar_simple
 /// \example scalar_multiple_plots
 table TimeSeriesScalar (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

@@ -1,6 +1,5 @@
 ---
 title: "TimeSeriesScalar"
-order: 100
 ---
 
 Log a double-precision scalar that will be visualized as a time-series plot.

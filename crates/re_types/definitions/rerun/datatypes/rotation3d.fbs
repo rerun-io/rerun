@@ -9,8 +9,7 @@ namespace rerun.datatypes;
 /// A 3D rotation.
 union Rotation3D (
   "attr.rust.derive": "Copy, PartialEq",
-  "attr.python.aliases": "Sequence[SupportsFloat]",
-  order: 400
+  "attr.python.aliases": "Sequence[SupportsFloat]"
 ) {
   /// Rotation defined by a quaternion.
   Quaternion: Quaternion (order: 100),

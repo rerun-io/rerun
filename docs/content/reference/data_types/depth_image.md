@@ -1,6 +1,5 @@
 ---
 title: "DepthImage"
-order: 100
 ---
 
 A depth image.

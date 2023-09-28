@@ -17,7 +17,6 @@ namespace rerun.datatypes;
 /// These dimensions are combined with an index to look up values from the `buffer` field,
 /// which stores a contiguous array of typed values.
 table TensorData (
-  order: 100,
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
   "attr.rust.derive": "PartialEq,"

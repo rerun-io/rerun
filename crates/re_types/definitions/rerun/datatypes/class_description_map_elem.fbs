@@ -12,8 +12,7 @@ namespace rerun.datatypes;
 /// This is internal to the `AnnotationContext` structure.
 table ClassDescriptionMapElem (
   "attr.python.aliases": "datatypes.ClassDescriptionLike",
-  "attr.rust.derive": "Default, Eq, PartialEq",
-  order: 100
+  "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
   class_id: rerun.datatypes.ClassId (order: 100);
   class_description: rerun.datatypes.ClassDescription (order: 200);

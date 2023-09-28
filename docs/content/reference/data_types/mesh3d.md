@@ -1,6 +1,5 @@
 ---
 title: "Mesh3D"
-order: 100
 ---
 
 A 3D triangle mesh as specified by its per-mesh and per-vertex properties.

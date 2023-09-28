@@ -24,8 +24,7 @@ namespace rerun.datatypes;
 /// \py ```
 union Scale3D (
   "attr.python.aliases": "datatypes.Vec3DLike",
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// Individual scaling factors for each axis, distorting the original object.
   ThreeD: rerun.datatypes.Vec3D (order: 100),

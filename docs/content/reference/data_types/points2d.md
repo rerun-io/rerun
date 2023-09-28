@@ -1,6 +1,5 @@
 ---
 title: "Points2D"
-order: 100
 ---
 
 A 2D point cloud with positions and optional colors, radii, labels, etc.

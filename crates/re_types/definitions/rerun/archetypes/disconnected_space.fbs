@@ -14,8 +14,7 @@ namespace rerun.archetypes;
 ///
 /// \example disconnected_space
 table DisconnectedSpace (
-  "attr.rust.derive": "Copy, PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
   disconnected_space: rerun.components.DisconnectedSpace ("attr.rerun.component_required", order: 1000);
 }

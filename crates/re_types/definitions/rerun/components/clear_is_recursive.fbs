@@ -15,8 +15,7 @@ struct ClearIsRecursive (
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",
   "attr.rust.derive": "Copy, PartialEq, Eq",
-  "attr.rust.tuple_struct",
-  order: 100
+  "attr.rust.tuple_struct"
 ) {
   /// If true, also clears all recursive children entities.
   recursive: bool (order: 100);
