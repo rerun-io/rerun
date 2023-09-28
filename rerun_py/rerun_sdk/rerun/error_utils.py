@@ -130,7 +130,7 @@ class catch_and_log_exceptions:
                 if "strict" in kwargs:
                     _rerun_exception_ctx.strict_mode = kwargs["strict"]
 
-                func(*args, **kwargs)
+                return func(*args, **kwargs)
 
         return cast(_TFunc, wrapper)
 

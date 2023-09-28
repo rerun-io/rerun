@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import inspect
+import os
+from typing import Any
 
 import pytest
 import rerun as rr
@@ -8,8 +10,17 @@ from rerun.error_utils import RerunWarning, catch_and_log_exceptions
 
 
 @catch_and_log_exceptions()
-def outer(strict: bool | None = None) -> None:
+def outer(strict: bool | None = None) -> int:
     """Calls an inner decorated function."""
+    inner(3)
+
+    return 42
+
+
+@catch_and_log_exceptions()
+def two_calls(strict: bool | None = None) -> None:
+    """Calls an inner decorated function twice."""
+    inner(3)
     inner(3)
 
 
@@ -17,14 +28,15 @@ def outer(strict: bool | None = None) -> None:
 def inner(count: int) -> None:
     """Calls itself recursively but ultimately raises an error."""
     if count < 0:
-        raise ValueError("count must be positive")
+        raise ValueError("some value error")
     inner(count - 1)
 
 
 @catch_and_log_exceptions()
 def uses_context(strict: bool | None = None) -> None:
+    """Uses a context manager instead of a function."""
     with catch_and_log_exceptions():
-        raise ValueError
+        raise ValueError("some value error")
 
 
 def get_line_number() -> int:
@@ -33,44 +45,55 @@ def get_line_number() -> int:
     return frame.f_lineno  # type: ignore[union-attr]
 
 
+def expected_warnings(warnings: Any, mem: Any, starting_msgs: int, count: int, expected_line: int) -> None:
+    for w in warnings:
+        assert w.lineno == expected_line
+        assert w.filename == __file__
+        assert "some value error" in str(w.message)
+
+
 def test_stack_tracking() -> None:
+    # Force flushing so we can count the messages
+    os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
     rr.init("test_enable_strict_mode", spawn=False)
 
     mem = rr.memory_recording()
-    with pytest.warns(RerunWarning) as record:
+    with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
-        outer()
-        assert record[0].lineno == get_line_number() - 1
-        assert record[0].filename == __file__
-        assert "count must be positive" in str(record[0].message)
-        assert mem.num_msgs() == starting_msgs + 1
 
-    mem = rr.memory_recording()
-    with pytest.warns(RerunWarning) as record:
+        assert outer() == 42
+
+        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 2)
+
+    with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
+
+        two_calls()
+
+        expected_warnings(warnings, mem, starting_msgs, 2, get_line_number() - 2)
+
+    with pytest.warns(RerunWarning) as warnings:
+        starting_msgs = mem.num_msgs()
+
         uses_context()
-        assert record[0].lineno == get_line_number() - 1
-        assert record[0].filename == __file__
-        assert mem.num_msgs() == starting_msgs + 1
 
-    mem = rr.memory_recording()
-    with pytest.warns(RerunWarning) as record:
+        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 2)
+
+    with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
+
         with catch_and_log_exceptions():
             inner(count=2)
-        assert record[0].lineno == get_line_number() - 1
-        assert record[0].filename == __file__
-        assert "count must be positive" in str(record[0].message)
-        assert mem.num_msgs() == starting_msgs + 1
 
-    mem = rr.memory_recording()
-    with pytest.warns(RerunWarning) as record:
+        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 2)
+
+    with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
+
         with catch_and_log_exceptions():
-            raise ValueError
-        assert record[0].lineno == get_line_number() - 2
-        assert record[0].filename == __file__
-        assert mem.num_msgs() == starting_msgs + 1
+            raise ValueError("some value error")
+
+        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 3)
 
 
 def test_strict_mode() -> None:
