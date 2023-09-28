@@ -13,8 +13,8 @@ use std::fmt::Write;
 use super::common::get_documentation;
 
 macro_rules! putln {
-    ($o:ident) => {let _ = writeln!($o);};
-    ($o:ident, $($tt:tt)*) => {let _ = writeln!($o, $($tt)*);};
+    ($o:ident) => ( writeln!($o).ok() );
+    ($o:ident, $($tt:tt)*) => ( writeln!($o, $($tt)*).ok() );
 }
 
 pub struct DocsCodeGenerator {
