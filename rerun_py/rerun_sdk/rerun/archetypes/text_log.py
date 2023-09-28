@@ -17,7 +17,28 @@ __all__ = ["TextLog"]
 
 @define(str=False, repr=False, init=False)
 class TextLog(Archetype):
-    """A log entry in a text log, comprised of a text body and its log level."""
+    """
+    A log entry in a text log, comprised of a text body and its log level.
+
+    Example
+    -------
+    Text log integration" image="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png:
+    ```python
+    import logging
+
+    import rerun as rr
+
+    rr.init("rerun_example_text_log_integration", spawn=True)
+
+    # Log a text entry directly
+    rr.log("logs", rr.TextLog("this entry has loglevel TRACE", level=rr.TextLogLevel.TRACE))
+
+    # Or log via a logging handler
+    logging.getLogger().addHandler(rr.LoggingHandler(path_prefix="logs/handler"))
+    logging.getLogger().setLevel(-1)
+    logging.info("This INFO log got added through the standard logging interface")
+    ```
+    """
 
     def __init__(
         self: Any,

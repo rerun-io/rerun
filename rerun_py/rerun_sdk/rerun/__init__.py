@@ -47,6 +47,7 @@ __all__ = [
     "Tensor",
     "TextDocument",
     "TextLog",
+    "TextLogLevel",
     "TimeSeriesScalar",
     "Transform3D",
     "Translation3D",
@@ -140,7 +141,7 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
-from .components import MediaType
+from .components import MediaType, TextLogLevel
 from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
@@ -156,7 +157,7 @@ from .log_deprecated.points import log_point, log_points
 from .log_deprecated.rects import RectFormat, log_rect, log_rects
 from .log_deprecated.scalar import log_scalar
 from .log_deprecated.tensor import log_tensor
-from .log_deprecated.text import LoggingHandler, log_text_entry
+from .log_deprecated.text import log_text_entry
 from .log_deprecated.transform import (
     Rigid3D,
     Translation3D,
@@ -165,6 +166,7 @@ from .log_deprecated.transform import (
     log_transform3d,
     log_view_coordinates,
 )
+from .logging_handler import LoggingHandler
 from .recording_stream import (
     RecordingStream,
     get_application_id,
