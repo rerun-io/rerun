@@ -28,15 +28,15 @@ class TextLog(Archetype):
 
     import rerun as rr
 
-    rr.init("rerun_example_text_log_integration", spawn=True)
+    rr.init("rerun_example_text_entry", spawn=True)
 
-    # Log a text entry directly
-    rr.log("logs", rr.TextLog("this entry has loglevel TRACE", level=rr.TextLogLevel.TRACE))
+    # Log a direct entry directly
+    rr.log_text_entry("logs", "this entry has loglevel TRACE", level="TRACE")
 
     # Or log via a logging handler
-    logging.getLogger().addHandler(rr.LoggingHandler(path_prefix="logs/handler"))
+    logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))
     logging.getLogger().setLevel(-1)
-    logging.info("This INFO log got added through the standard logging interface")
+    logging.info("This log got added through a `LoggingHandler`")
     ```
     """
 
