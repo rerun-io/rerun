@@ -102,6 +102,9 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if any_todo_pattern.search(line) and not legal_todo_inner_pattern.search(line):
         return "TODOs should be formatted as either TODO(name), TODO(#42) or TODO(org/repo#42)"
 
+    if "rec_stream" in line or "rr_stream" in line:
+        return "Instantiated RecordingStreams should be named `rec`"
+
     return None
 
 
@@ -138,6 +141,7 @@ def test_lint_line() -> None:
         "instances_count",
         "let Some(foo) = bar else { return; };",
         "{foo:?}",
+        "rec",
     ]
 
     should_error = [
@@ -166,6 +170,8 @@ def test_lint_line() -> None:
         r'println!("Problem: \"{0}\"")',
         r'println!("Problem: \"{string}\"")',
         "trailing whitespace ",
+        "rr_stream",
+        "rec_stream",
     ]
 
     for line in should_pass:
