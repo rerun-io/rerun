@@ -29,24 +29,27 @@ class IndicatorComponentBatch:
     where multiple archetypes would otherwise be overlapping.
 
     This implements the `ComponentBatchLike` interface.
-
-    Parameters
-    ----------
-    archetype_name:
-        The fully qualified name of the Archetype.
-    num_instances:
-        The number of instances of the in this batch.
     """
 
-    def __init__(self, archetype_name: str, num_instances: int) -> None:
+    data: pa.Array
+
+    def __init__(self, archetype_name: str) -> None:
+        """
+        Creates a new indicator component based on a given `archetype_name`.
+
+        Parameters
+        ----------
+        archetype_name:
+            The fully qualified name of the Archetype.
+        """
+        self.data = pa.nulls(1, type=pa.null())
         self._archetype_name = archetype_name
-        self._num_instances = num_instances
 
     def component_name(self) -> str:
         return self._archetype_name.replace("archetypes", "components") + "Indicator"
 
     def as_arrow_array(self) -> pa.Array:
-        return pa.nulls(self._num_instances, type=pa.null())
+        return self.data
 
 
 # adapted from rerun.log_deprecated._add_extension_components
@@ -102,6 +105,7 @@ def _splat() -> cmp.InstanceKeyBatch:
 def log(
     entity_path: str,
     entity: AsComponents | Iterable[ComponentBatchLike],
+    *,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
@@ -155,6 +159,7 @@ def log(
 def log_components(
     entity_path: str,
     components: Iterable[ComponentBatchLike],
+    *,
     num_instances: int | None = None,
     ext: dict[str, Any] | None = None,
     timeless: bool = False,

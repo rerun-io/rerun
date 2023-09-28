@@ -29,6 +29,13 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     rr.log("simple", rr.Boxes3D(half_sizes=[2.0, 2.0, 1.0]))
     ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png">
+      <img src="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/full.png">
+    </picture>
 
     Batch of 3D boxes:
     ```python
@@ -53,6 +60,13 @@ class Boxes3D(Boxes3DExt, Archetype):
         ),
     )
     ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/1200w.png">
+      <img src="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/full.png">
+    </picture>
     """
 
     # __init__ can be found in boxes3d_ext.py

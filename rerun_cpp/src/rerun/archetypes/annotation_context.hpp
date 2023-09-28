@@ -25,6 +25,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// ### Rectangles
         /// ```cpp,ignore
         /// // Log an annotation context to assign a label and color to each class
         ///
@@ -75,6 +76,11 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

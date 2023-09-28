@@ -18,9 +18,9 @@ use crate::{
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
 ///
-/// There is a 1:1 relationship between `quote_arrow_deserializer` and `Loggable::try_from_arrow_opt`:
+/// There is a 1:1 relationship between `quote_arrow_deserializer` and `Loggable::from_arrow_opt`:
 /// ```ignore
-/// fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>> {
+/// fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>> {
 ///     Ok(#quoted_deserializer)
 /// }
 /// ```
@@ -362,7 +362,7 @@ enum InnerRepr {
 ///
 /// The `datatype` comes from our compile-time Arrow registry, not from the runtime payload!
 /// If the datatype happens to be a struct or union, this will merely inject a runtime call to
-/// `Loggable::try_from_arrow_opt` and call it a day, preventing code bloat.
+/// `Loggable::from_arrow_opt` and call it a day, preventing code bloat.
 ///
 /// `data_src` is the runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
 /// The returned `TokenStream` always instantiates a `Vec<Option<T>>`.
@@ -700,7 +700,7 @@ fn quote_arrow_field_deserializer(
                 unreachable!()
             };
             let fqname_use = quote_fqname_as_type_path(fqname);
-            quote!(#fqname_use::try_from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
+            quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }
 
         _ => unimplemented!("{datatype:#?}"),
@@ -832,9 +832,9 @@ fn quote_iterator_transparency(
 /// allowing us to map directly to slices rather than iterating. The ability to use this optimization is
 /// determined by [`should_optimize_buffer_slice_deserialize`].
 ///
-/// There is a 1:1 relationship between `quote_arrow_deserializer_buffer_slice` and `Loggable::try_from_arrow`:
+/// There is a 1:1 relationship between `quote_arrow_deserializer_buffer_slice` and `Loggable::from_arrow`:
 /// ```ignore
-/// fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
+/// fn from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
 ///     Ok(#quoted_deserializer_)
 /// }
 /// ```

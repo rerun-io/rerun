@@ -28,7 +28,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// Simple 2D boxes:
+        /// ### Simple 2D boxes
         /// ```cpp,ignore
         /// // Log some simple 2D boxes.
         ///
@@ -53,11 +53,11 @@ namespace rerun {
             /// Optional center positions of the boxes.
             std::optional<std::vector<rerun::components::Position2D>> centers;
 
-            /// Optional radii for the lines that make up the boxes.
-            std::optional<std::vector<rerun::components::Radius>> radii;
-
             /// Optional colors for the boxes.
             std::optional<std::vector<rerun::components::Color>> colors;
+
+            /// Optional radii for the lines that make up the boxes.
+            std::optional<std::vector<rerun::components::Radius>> radii;
 
             /// Optional text labels for the boxes.
             std::optional<std::vector<rerun::components::Text>> labels;
@@ -142,18 +142,6 @@ namespace rerun {
                 return *this;
             }
 
-            /// Optional radii for the lines that make up the boxes.
-            Boxes2D& with_radii(std::vector<rerun::components::Radius> _radii) {
-                radii = std::move(_radii);
-                return *this;
-            }
-
-            /// Optional radii for the lines that make up the boxes.
-            Boxes2D& with_radii(rerun::components::Radius _radii) {
-                radii = std::vector(1, std::move(_radii));
-                return *this;
-            }
-
             /// Optional colors for the boxes.
             Boxes2D& with_colors(std::vector<rerun::components::Color> _colors) {
                 colors = std::move(_colors);
@@ -163,6 +151,18 @@ namespace rerun {
             /// Optional colors for the boxes.
             Boxes2D& with_colors(rerun::components::Color _colors) {
                 colors = std::vector(1, std::move(_colors));
+                return *this;
+            }
+
+            /// Optional radii for the lines that make up the boxes.
+            Boxes2D& with_radii(std::vector<rerun::components::Radius> _radii) {
+                radii = std::move(_radii);
+                return *this;
+            }
+
+            /// Optional radii for the lines that make up the boxes.
+            Boxes2D& with_radii(rerun::components::Radius _radii) {
+                radii = std::vector(1, std::move(_radii));
                 return *this;
             }
 
@@ -220,6 +220,11 @@ namespace rerun {
             size_t num_instances() const {
                 return half_sizes.size();
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

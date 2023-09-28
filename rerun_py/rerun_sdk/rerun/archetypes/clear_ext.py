@@ -9,6 +9,15 @@ class ClearExt:
         *,
         recursive: bool,
     ) -> None:
+        """
+        Create a new instance of the Clear archetype.
+
+        Parameters
+        ----------
+        recursive:
+             Whether to recursively clear all children.
+        """
+
         # Enforce named parameter.
         self.__attrs_init__(recursive=recursive)
 

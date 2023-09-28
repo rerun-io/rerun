@@ -51,4 +51,4 @@ def log_text_entry_internal(
     if color is not None:
         color = _normalize_colors(color)
 
-    return log(entity_path, TextLog(body=text, level=level), timeless=timeless, recording=recording)
+    return log(entity_path, TextLog(text, level=level), timeless=timeless, recording=recording)

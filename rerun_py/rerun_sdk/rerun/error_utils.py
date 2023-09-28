@@ -38,5 +38,5 @@ def _send_warning(
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
 
-    log("rerun", TextLog(body=warning, level="WARN"), recording=recording)
+    log("rerun", TextLog(warning, level="WARN"), recording=recording)
     logging.warning(warning)

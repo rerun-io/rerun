@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 from .segmentation_image_ext import SegmentationImageExt
 
 __all__ = ["SegmentationImage"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class SegmentationImage(SegmentationImageExt, Archetype):
     """
     An image made up of integer class-ids.
@@ -44,9 +46,30 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
     rr.log("image", rr.SegmentationImage(image))
     ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png">
+      <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png">
+    </picture>
     """
 
-    # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
+    def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
+        """
+        Create a new instance of the SegmentationImage archetype.
+
+        Parameters
+        ----------
+        data:
+             The image data. Should always be a rank-2 tensor.
+        draw_order:
+             An optional floating point value that specifies the 2D drawing order.
+             Objects with higher values are drawn on top of those with lower values.
+        """
+
+        # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
+        self.__attrs_init__(data=data, draw_order=draw_order)
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

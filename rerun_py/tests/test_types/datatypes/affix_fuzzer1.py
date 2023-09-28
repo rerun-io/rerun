@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -33,9 +33,34 @@ def _affix_fuzzer1__almost_flattened_scalar__special_field_converter_override(
         return datatypes.FlattenedScalar(x)
 
 
-@define
+@define(init=False)
 class AffixFuzzer1:
-    # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py
+    def __init__(
+        self: Any,
+        single_string_required: str,
+        many_strings_required: list[str],
+        flattened_scalar: float,
+        almost_flattened_scalar: datatypes.FlattenedScalarLike,
+        single_float_optional: float | None = None,
+        single_string_optional: str | None = None,
+        many_floats_optional: npt.ArrayLike | None = None,
+        many_strings_optional: list[str] | None = None,
+        from_parent: bool | None = None,
+    ):
+        """Create a new instance of the AffixFuzzer1 datatype."""
+
+        # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py
+        self.__attrs_init__(
+            single_float_optional=single_float_optional,
+            single_string_required=single_string_required,
+            single_string_optional=single_string_optional,
+            many_floats_optional=many_floats_optional,
+            many_strings_required=many_strings_required,
+            many_strings_optional=many_strings_optional,
+            flattened_scalar=flattened_scalar,
+            almost_flattened_scalar=almost_flattened_scalar,
+            from_parent=from_parent,
+        )
 
     single_string_required: str = field(converter=str)
     many_strings_required: list[str] = field()

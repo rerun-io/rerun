@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
-use re_log_types::{EntityPathHash, TimeInt, Timeline};
+use re_log_types::EntityPathHash;
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -219,7 +219,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &Image::indicator_component(),
+            &Image::indicator().name(),
         ) {
             return Ok(());
         }
@@ -307,7 +307,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &DepthImage::indicator_component(),
+            &DepthImage::indicator().name(),
         ) {
             return Ok(());
         }
@@ -428,7 +428,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &SegmentationImage::indicator_component(),
+            &SegmentationImage::indicator().name(),
         ) {
             return Ok(());
         }
@@ -510,17 +510,20 @@ impl ImagesPart {
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
-        let store = &ctx.store_db.entity_db.data_store;
-
-        let Some(intrinsics) = query_pinhole(store, &ctx.current_query(), parent_pinhole_path)
-        else {
+        let Some(intrinsics) = query_pinhole(
+            ctx.store_db.store(),
+            &ctx.current_query(),
+            parent_pinhole_path,
+        ) else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 
-        // TODO(cmc): getting to those extrinsics is no easy task :|
-        let world_from_view = parent_pinhole_path
-            .parent()
-            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+        // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
+        let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
+            parent_pinhole_path,
+            ctx.store_db.store(),
+            &ctx.current_query(),
+        );
         let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };
@@ -631,9 +634,9 @@ impl ViewPartSystem for ImagesPart {
 
     fn indicator_components(&self) -> ComponentNameSet {
         [
-            Image::indicator_component(),
-            DepthImage::indicator_component(),
-            SegmentationImage::indicator_component(),
+            Image::indicator().name(),
+            DepthImage::indicator().name(),
+            SegmentationImage::indicator().name(),
         ]
         .into_iter()
         .collect()
@@ -643,16 +646,17 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 
-        if let Some(tensor) = store.query_latest_component::<TensorData>(
-            ent_path,
-            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
-        ) {
+        // NOTE: We want to make sure we query at the right time, otherwise we might take into
+        // account a `Clear()` that actually only applies into the future, and then
+        // `is_shaped_like_an_image` will righfully fail because of the empty tensor.
+        if let Some(tensor) = store.query_latest_component::<TensorData>(ent_path, query) {
             tensor.is_shaped_like_an_image()
         } else {
             false

@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-@define
+@define(init=False)
 class DisconnectedSpace(DisconnectedSpaceExt):
     """
     Specifies that the entity path at which this is logged is disconnected from its parent.
@@ -34,7 +34,11 @@ class DisconnectedSpace(DisconnectedSpaceExt):
     If a transform or pinhole is logged on the same path, this component will be ignored.
     """
 
-    # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
+    def __init__(self: Any, is_disconnected: DisconnectedSpaceLike):
+        """Create a new instance of the DisconnectedSpace component."""
+
+        # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
+        self.__attrs_init__(is_disconnected=is_disconnected)
 
     is_disconnected: bool = field(converter=bool)
 

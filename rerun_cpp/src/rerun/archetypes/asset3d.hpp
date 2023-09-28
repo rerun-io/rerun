@@ -21,10 +21,43 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A prepacked 3D asset (.gltf, .glb, .obj, etc).
+        /// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
+        ///
+        /// ## Example
+        ///
+        /// ### Simple 3D asset
+        /// ```cpp,ignore
+        /// // Log a batch of 3D arrows.
+        ///
+        /// #include <rerun.hpp>
+        ///
+        /// #include <filesystem>
+        /// #include <iostream>
+        /// #include <string>
+        /// #include <vector>
+        ///
+        /// namespace rr = rerun;
+        ///
+        /// int main(int argc, char* argv[]) {
+        ///     std::vector<std::string> args(argv, argv + argc);
+        ///
+        ///     if (args.size() <2) {
+        ///         std::cerr <<"Usage: " <<args[0] <<" <path_to_asset.[gltf|glb]>" <<std::endl;
+        ///         return 1;
+        ///     }
+        ///
+        ///     std::string path = args[1];
+        ///
+        ///     auto rec = rr::RecordingStream("rerun_example_asset3d_simple");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///
+        ///     rec.log("world", rr::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+        ///     rec.log("world/asset", rr::Asset3D::from_file(path));
+        /// }
+        /// ```
         struct Asset3D {
             /// The asset's bytes.
-            rerun::components::Blob data;
+            rerun::components::Blob blob;
 
             /// The Media Type of the asset.
             ///
@@ -32,7 +65,7 @@ namespace rerun {
             /// * `model/gltf-binary`
             /// * `model/obj`
             ///
-            /// If omitted, the viewer will try to guess from the data.
+            /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
             std::optional<rerun::components::MediaType> media_type;
 
@@ -104,7 +137,7 @@ namespace rerun {
           public:
             Asset3D() = default;
 
-            Asset3D(rerun::components::Blob _data) : data(std::move(_data)) {}
+            Asset3D(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
 
             /// The Media Type of the asset.
             ///
@@ -112,7 +145,7 @@ namespace rerun {
             /// * `model/gltf-binary`
             /// * `model/obj`
             ///
-            /// If omitted, the viewer will try to guess from the data.
+            /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
             Asset3D& with_media_type(rerun::components::MediaType _media_type) {
                 media_type = std::move(_media_type);
@@ -131,6 +164,11 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

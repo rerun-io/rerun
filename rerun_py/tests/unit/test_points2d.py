@@ -9,7 +9,7 @@ import rerun as rr
 from rerun.components import (
     Color,
     ColorBatch,
-    DrawOrderArrayLike,
+    DrawOrderLike,
     InstanceKeyArrayLike,
     Position2DBatch,
     RadiusArrayLike,
@@ -60,7 +60,7 @@ def test_points2d() -> None:
         radii = cast(Optional[RadiusArrayLike], radii)
         colors = cast(Optional[ColorArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[DrawOrderArrayLike], draw_order)
+        draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         keypoint_ids = cast(Optional[KeypointIdArrayLike], keypoint_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
@@ -68,13 +68,13 @@ def test_points2d() -> None:
         print(
             f"rr.Points2D(\n"
             f"    {positions}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    draw_order={draw_order}\n"
-            f"    class_ids={class_ids}\n"
-            f"    keypoint_ids={keypoint_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    draw_order={draw_order!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    keypoint_ids={keypoint_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.Points2D(

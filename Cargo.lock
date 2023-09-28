@@ -293,9 +293,9 @@ dependencies = [
 
 [[package]]
 name = "ashpd"
-version = "0.4.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31688b40eb5d739049f721d8405c33d3796b3f51f2bea84421a542dafe397e41"
+checksum = "f3affe251686bd936a0afb74b9693e8bf2f193d51da1b9a45d3f1303a9bd2cc7"
 dependencies = [
  "async-std",
  "enumflags2",
@@ -1366,8 +1366,9 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 
 [[package]]
 name = "ecolor"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfdf4e52dbbb615cfd30cf5a5265335c217b5fd8d669593cea74a517d9c605af"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1375,8 +1376,9 @@ dependencies = [
 
 [[package]]
 name = "eframe"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26d9efede6c8905d3fc51a5ec9a506d4da4011bbcae0253d0304580fe40af3f5"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1408,8 +1410,9 @@ dependencies = [
 
 [[package]]
 name = "egui"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bd69fed5fcf4fbb8225b24e80ea6193b61e17a625db105ef0c4d71dde6eb8b7"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
@@ -1423,8 +1426,9 @@ dependencies = [
 
 [[package]]
 name = "egui-wgpu"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62d4c9ab93d9528c184ef1d695c8c99b2e6d50833696ec3f513063efeee0fe77"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1438,8 +1442,9 @@ dependencies = [
 
 [[package]]
 name = "egui-winit"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c15479a96d9fadccf5dac690bdc6373b97b8e1c0dd28367058f25a5298da0195"
 dependencies = [
  "arboard",
  "egui",
@@ -1455,8 +1460,9 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.7.4"
-source = "git+https://github.com/lampsitter/egui_commonmark.git?rev=d42d340d2d617f19e3d52697faa9cfcfa3eafa27#d42d340d2d617f19e3d52697faa9cfcfa3eafa27"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ffd5501495ea79117103bcb0ed0480eacf96967837662516ecd629580596262"
 dependencies = [
  "egui",
  "egui_extras",
@@ -1465,8 +1471,9 @@ dependencies = [
 
 [[package]]
 name = "egui_extras"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68ffe3fe5c00295f91c2a61a74ee271c32f74049c94ba0b1cea8f26eb478bc07"
 dependencies = [
  "egui",
  "ehttp",
@@ -1480,8 +1487,9 @@ dependencies = [
 
 [[package]]
 name = "egui_glow"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce6726c08798822280038bbad2e32f4fc3cbed800cd51c6e34e99cd2d60cc1bc"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1496,16 +1504,18 @@ dependencies = [
 
 [[package]]
 name = "egui_plot"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7f33a00fe8eb1ba56535b3dbacdecc7a1365a328908a97c5f3c81bb466be72b"
 dependencies = [
  "egui",
 ]
 
 [[package]]
 name = "egui_tiles"
-version = "0.2.0"
-source = "git+https://github.com/rerun-io/egui_tiles?rev=f093f065c048a69be1ea125e9706ef3db302d255#f093f065c048a69be1ea125e9706ef3db302d255"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e518e35195aa95b52de6bac44f53b649efd2caa4a65d066a6bd3a704ad62799a"
 dependencies = [
  "ahash 0.8.3",
  "egui",
@@ -1516,9 +1526,9 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31e4525e883dd283d12b755ab3ad71d7c8dea2ee8e8a062b9f4c4f84637ed681"
+checksum = "f88f45662356f96afc7d9e2bc9910ad8352ee01417f7c69b8b16a53c8767a75d"
 dependencies = [
  "document-features",
  "futures-util",
@@ -1538,8 +1548,9 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 
 [[package]]
 name = "emath"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ef2b29de53074e575c18b694167ccbe6e5191f7b25fe65175a0d905a32eeec0"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1640,8 +1651,9 @@ dependencies = [
 
 [[package]]
 name = "epaint"
-version = "0.22.0"
-source = "git+https://github.com/emilk/egui?rev=e8986b1e59e60fa97349754b160dd68a34ab2093#e8986b1e59e60fa97349754b160dd68a34ab2093"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58067b840d009143934d91d8dcb8ded054d8301d7c11a517ace0a99bb1e1595e"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.3",
@@ -3227,22 +3239,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "numpy"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "437213adf41bbccf4aeae535fbfcdad0f6fed241e1ae182ebe97fa1f3ce19389"
-dependencies = [
- "half 2.3.1",
- "libc",
- "ndarray",
- "num-complex",
- "num-integer",
- "num-traits",
- "pyo3",
- "rustc-hash",
-]
-
-[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4110,8 +4106,6 @@ dependencies = [
 name = "re_data_store"
 version = "0.9.0-alpha.4"
 dependencies = [
- "ahash 0.8.3",
- "arrow2",
  "criterion",
  "document-features",
  "itertools 0.11.0",
@@ -4237,6 +4231,7 @@ dependencies = [
  "document-features",
  "fixed",
  "half 2.3.1",
+ "image",
  "itertools 0.11.0",
  "nohash-hasher",
  "num-derive",
@@ -4442,7 +4437,6 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
- "vec1",
 ]
 
 [[package]]
@@ -4457,7 +4451,6 @@ dependencies = [
  "glam",
  "itertools 0.11.0",
  "macaw",
- "mime",
  "nohash-hasher",
  "parking_lot 0.12.1",
  "rayon",
@@ -4477,7 +4470,6 @@ dependencies = [
  "re_viewer_context",
  "serde",
  "smallvec",
- "vec1",
 ]
 
 [[package]]
@@ -4503,7 +4495,6 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "thiserror",
- "vec1",
  "wgpu",
 ]
 
@@ -4522,7 +4513,6 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
- "vec1",
 ]
 
 [[package]]
@@ -4531,6 +4521,7 @@ version = "0.9.0-alpha.4"
 dependencies = [
  "egui",
  "egui_extras",
+ "itertools 0.11.0",
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
@@ -4542,7 +4533,6 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
- "vec1",
 ]
 
 [[package]]
@@ -4554,7 +4544,6 @@ dependencies = [
  "itertools 0.11.0",
  "re_arrow_store",
  "re_format",
- "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -4563,7 +4552,6 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
- "vec1",
 ]
 
 [[package]]
@@ -4646,7 +4634,6 @@ dependencies = [
  "image",
  "infer",
  "itertools 0.11.0",
- "mime",
  "mime_guess",
  "ndarray",
  "once_cell",
@@ -4702,7 +4689,6 @@ dependencies = [
  "egui_extras",
  "egui_tiles",
  "image",
- "parking_lot 0.12.1",
  "re_log",
  "serde",
  "serde_json",
@@ -4721,14 +4707,12 @@ dependencies = [
  "arrow2_convert",
  "bytemuck",
  "cfg-if",
- "cocoa",
  "eframe",
  "egui",
  "egui-wgpu",
  "egui_plot",
  "image",
  "itertools 0.11.0",
- "objc",
  "once_cell",
  "poll-promise",
  "re_analytics",
@@ -4770,7 +4754,6 @@ dependencies = [
  "web-sys",
  "web-time",
  "wgpu",
- "winapi",
  "xshell",
 ]
 
@@ -4807,7 +4790,6 @@ dependencies = [
  "slotmap",
  "thiserror",
  "uuid",
- "vec1",
  "wgpu",
 ]
 
@@ -5001,10 +4983,8 @@ version = "0.9.0-alpha.4"
 dependencies = [
  "arrow2",
  "document-features",
- "image",
  "itertools 0.11.0",
  "mimalloc",
- "numpy",
  "once_cell",
  "parking_lot 0.12.1",
  "pyo3",
@@ -5028,9 +5008,9 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.11.4"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fe664af397d2b6a13a8ba1d172a2b5c87c6c5149039edbf8fa122b98c9ed96f"
+checksum = "241a0deb168c88050d872294f7b3106c1dfa8740942bcc97bc91b98e97b5c501"
 dependencies = [
  "ashpd",
  "async-io",
@@ -5048,7 +5028,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "windows",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -5142,7 +5122,6 @@ dependencies = [
  "anyhow",
  "clap",
  "image",
- "ndarray",
  "rerun",
 ]
 
@@ -5219,7 +5198,6 @@ dependencies = [
  "anyhow",
  "clap",
  "image",
- "ndarray",
  "rerun",
 ]
 

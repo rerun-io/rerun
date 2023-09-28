@@ -6,7 +6,7 @@ use re_types::{
     datatypes::{
         Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationRotationScale3D, Utf8, Vec3D,
     },
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -14,7 +14,7 @@ fn roundtrip() {
     const BYTES: &[u8] = &[1, 2, 3, 4, 5, 6];
 
     let expected = Asset3D {
-        data: Blob(BYTES.to_vec().into()),
+        blob: Blob(BYTES.to_vec().into()),
         media_type: Some(MediaType(Utf8(MediaType::GLTF.into()))),
         transform: Some(OutOfTreeTransform3D(
             re_types::datatypes::Transform3D::TranslationRotationScale(
@@ -48,7 +48,7 @@ fn roundtrip() {
     // .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -63,7 +63,7 @@ fn roundtrip() {
         // );
     }
 
-    let deserialized = Asset3D::try_from_arrow(serialized).unwrap();
+    let deserialized = Asset3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

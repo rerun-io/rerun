@@ -28,7 +28,7 @@ namespace rerun {
         ///
         /// ## Examples
         ///
-        /// Simple 3D boxes:
+        /// ### Simple 3D boxes
         /// ```cpp,ignore
         /// // Log a single 3D box.
         ///
@@ -44,7 +44,7 @@ namespace rerun {
         /// }
         /// ```
         ///
-        /// Batch of 3D boxes:
+        /// ### Batch of 3D boxes
         /// ```cpp,ignore
         /// // Log a batch of oriented bounding boxes.
         ///
@@ -251,6 +251,11 @@ namespace rerun {
             size_t num_instances() const {
                 return half_sizes.size();
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

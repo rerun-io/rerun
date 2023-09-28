@@ -14,6 +14,7 @@ class TranslationRotationScale3DExt:
         translation: Vec3DLike | None = None,
         rotation: Rotation3DLike | None = None,
         scale: Scale3DLike | None = None,
+        *,
         from_parent: bool = False,
     ) -> None:
         self.__attrs_init__(  # pyright: ignore[reportGeneralTypeIssues]

@@ -9,23 +9,23 @@ namespace rerun {
     namespace archetypes {
         const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
 
+        AnonymousComponentBatch TextLog::indicator() {
+            return ComponentBatch<
+                components::IndicatorComponent<TextLog::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+        }
+
         std::vector<AnonymousComponentBatch> TextLog::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(3);
 
-            comp_batches.emplace_back(body);
+            comp_batches.emplace_back(text);
             if (level.has_value()) {
                 comp_batches.emplace_back(level.value());
             }
             if (color.has_value()) {
                 comp_batches.emplace_back(color.value());
             }
-            comp_batches.emplace_back(
-                ComponentBatch<components::IndicatorComponent<TextLog::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(TextLog::indicator());
 
             return comp_batches;
         }

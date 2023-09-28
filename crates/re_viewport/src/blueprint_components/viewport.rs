@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use re_log_types::{serde_field::SerdeField, ComponentName, LegacyComponent};
+use re_log_types::serde_field::SerdeField;
 
 pub use re_viewer_context::SpaceViewId;
 
@@ -22,14 +22,7 @@ pub const VIEWPORT_PATH: &str = "viewport";
 #[arrow_field(transparent)]
 pub struct AutoSpaceViews(pub bool);
 
-impl LegacyComponent for AutoSpaceViews {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "rerun.blueprint.auto_space_views".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(AutoSpaceViews);
+re_log_types::arrow2convert_component_shim!(AutoSpaceViews as "rerun.blueprint.AutoSpaceViews");
 
 /// Whether a space view is maximized
 ///
@@ -49,14 +42,7 @@ pub struct SpaceViewMaximized(
     #[arrow_field(type = "SerdeField<Option<SpaceViewId>>")] pub Option<SpaceViewId>,
 );
 
-impl LegacyComponent for SpaceViewMaximized {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "rerun.blueprint.maximized".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(SpaceViewMaximized);
+re_log_types::arrow2convert_component_shim!(SpaceViewMaximized as "rerun.blueprint.Maximized");
 
 /// The layout of a `Viewport`
 ///
@@ -70,7 +56,7 @@ re_log_types::component_legacy_shim!(SpaceViewMaximized);
 ///     DataType::Struct(vec![
 ///         Field::new("space_view_keys", DataType::Binary, false),
 ///         Field::new("tree", DataType::Binary, false),
-///         Field::new("has_been_user_edited", DataType::Boolean, false),
+///         Field::new("auto_layout", DataType::Boolean, false),
 ///     ])
 /// );
 /// ```
@@ -82,17 +68,10 @@ pub struct ViewportLayout {
     #[arrow_field(type = "SerdeField<egui_tiles::Tree<SpaceViewId>>")]
     pub tree: egui_tiles::Tree<SpaceViewId>,
 
-    pub has_been_user_edited: bool,
+    pub auto_layout: bool,
 }
 
-impl LegacyComponent for ViewportLayout {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "rerun.blueprint.viewport_layout".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(ViewportLayout);
+re_log_types::arrow2convert_component_shim!(ViewportLayout as "rerun.blueprint.ViewportLayout");
 
 #[test]
 fn test_maximized_roundtrip() {

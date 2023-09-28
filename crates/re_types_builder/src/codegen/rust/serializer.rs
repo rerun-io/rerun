@@ -664,7 +664,7 @@ fn quote_arrow_field_serializer(
             let fqname_use = quote_fqname_as_type_path(fqname);
             quote! {{
                 _ = #bitmap_src;
-                #fqname_use::try_to_arrow_opt(#data_src)?
+                #fqname_use::to_arrow_opt(#data_src)?
             }}
         }
 

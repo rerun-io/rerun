@@ -155,9 +155,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
             let tree_before = tree.clone();
             tree.ui(&mut tab_viewer, ui);
 
-            // Detect if the user has moved a tab or similar:
-            if !blueprint.has_been_user_edited && *tree != tree_before {
-                blueprint.has_been_user_edited = true;
+            // Detect if the user has moved a tab or similar.
+            // If so we can no longer automatically change the layout without discarding user edits.
+            if blueprint.auto_layout && *tree != tree_before {
+                blueprint.auto_layout = false;
             }
         });
     }

@@ -35,6 +35,9 @@ from rerun.datatypes import (
     Vec3D,
     Vec3DArrayLike,
     Vec3DBatch,
+    Vec4D,
+    Vec4DArrayLike,
+    Vec4DBatch,
 )
 
 U64_MAX_MINUS_1 = 2**64 - 2
@@ -78,10 +81,12 @@ vec2ds_arrays: list[Vec2DArrayLike] = [
     np.array([[1, 2], [3, 4]], dtype=np.float32),
     # Vec2DArrayLike: npt.NDArray[np.float32]
     np.array([1, 2, 3, 4], dtype=np.float32),
+    # Vec2DArrayLike: npt.NDArray[np.float32]
+    np.array([1, 2, 3, 4], dtype=np.float32).reshape((2, 2, 1, 1, 1)),
 ]
 
 
-def vec2ds_expected(obj: Any, type_: Any | None) -> Any:
+def vec2ds_expected(obj: Any, type_: Any | None = None) -> Any:
     if type_ is None:
         type_ = Vec2DBatch
 
@@ -111,14 +116,51 @@ vec3ds_arrays: list[Vec3DArrayLike] = [
     np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32),
     # Vec3DArrayLike: npt.NDArray[np.float32]
     np.array([1, 2, 3, 4, 5, 6], dtype=np.float32),
+    # Vec3DArrayLike: npt.NDArray[np.float32]
+    np.array([1, 2, 3, 4, 5, 6], dtype=np.float32).reshape((2, 3, 1, 1, 1)),
 ]
 
 
-def vec3ds_expected(obj: Any, type_: Any | None) -> Any:
+def vec3ds_expected(obj: Any, type_: Any | None = None) -> Any:
     if type_ is None:
         type_ = Vec3DBatch
 
     expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
+    return type_._optional(expected)
+
+
+vec4ds_arrays: list[Vec4DArrayLike] = [
+    [],
+    np.array([]),
+    # Vec4DArrayLike: Sequence[Position3DLike]: Position3D
+    [
+        Vec4D([1, 2, 3, 4]),
+        Vec4D([5, 6, 7, 8]),
+    ],
+    # Vec4DArrayLike: Sequence[Position3DLike]: npt.NDArray[np.float32]
+    [
+        np.array([1, 2, 3, 4], dtype=np.float32),
+        np.array([5, 6, 7, 8], dtype=np.float32),
+    ],
+    # Vec4DArrayLike: Sequence[Position3DLike]: Tuple[float, float]
+    [(1, 2, 3, 4), (5, 6, 7, 8)],
+    # Vec4DArrayLike: Sequence[Position3DLike]: Sequence[float]
+    [1, 2, 3, 4, 5, 6, 7, 8],
+    # Vec4DArrayLike: npt.NDArray[np.float32]
+    np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float32),
+    # Vec4DArrayLike: npt.NDArray[np.float32]
+    np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.float32),
+    # Vec4DArrayLike: npt.NDArray[np.float32]
+    np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.float32).reshape((2, 4, 1, 1, 1)),
+]
+
+
+def vec4ds_expected(obj: Any, type_: Any | None = None) -> Any:
+    if type_ is None:
+        type_ = Vec4DBatch
+
+    expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])
 
     return type_._optional(expected)
 

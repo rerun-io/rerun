@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union, cast
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -60,36 +60,46 @@ class ColorExt:
     def native_to_pa_array_override(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import Color
 
-        if isinstance(data, (Color, int)):
-            data = [data]
-
-        if isinstance(data, np.ndarray):
-            if data.dtype == np.uint32:
-                # these are already packed values
-                array = data.flatten()
-            else:
-                # these are component values
-                if len(data.shape) == 1:
-                    if data.size > 4:
-                        # multiple RGBA colors
-                        data = data.reshape((-1, 4))
-                    else:
-                        # a single color
-                        data = data.reshape((1, -1))
-                array = _numpy_array_to_u32(cast(npt.NDArray[Union[np.uint8, np.float32, np.float64]], data))
+        if isinstance(data, int) or isinstance(data, Color):
+            # A single packed int or Color (which implements __int__())
+            int_array = np.array([data])
+        elif isinstance(data, Sequence) and len(data) == 0:
+            # An empty array
+            int_array = np.array([])
         else:
-            # Finally try to build a single color with the arguments
-            # if we cannot, data must represent an array of colors
-            data_list = list(data)
-
+            # Try to coerce it to a numpy array
             try:
-                data_list = [Color(data_list)]
-            except (IndexError, ValueError):
-                pass
+                arr = np.asarray(data)
 
-            # Handle heterogeneous sequence of Color-like object, such as Color instances, ints, sub-sequence, etc.
-            # Note how this is simplified by the flexible implementation of `Color`, thanks to its converter function and
-            # the auto-generated `__int__()` method.
-            array = np.array([Color(datum) for datum in data_list], np.uint32)
+                if arr.dtype == np.uint32:
+                    # these are already packed values
+                    int_array = arr.flatten()
+                else:
+                    # these are component values
+                    if len(arr.shape) == 1:
+                        if arr.size > 4:
+                            # multiple RGBA colors
+                            arr = arr.reshape((-1, 4))
+                        else:
+                            # a single color
+                            arr = arr.reshape((1, -1))
+                    int_array = _numpy_array_to_u32(arr)
+            except (ValueError, TypeError, IndexError):
+                # Fallback support
+                data_list = list(data)  # type: ignore[arg-type]
 
-        return pa.array(array, type=data_type)
+                # First try to coerce it to a single Color instance
+                try:
+                    data_list = [Color(data_list)]  # type: ignore[arg-type]
+                except (IndexError, ValueError):
+                    pass
+
+                # Fially, handle heterogeneous sequence of Color-like object,
+                # such as Color instances, ints, sub-sequence, etc.
+                #
+                # Note how this is simplified by the flexible implementation of
+                # `Color`, thanks to its converter function and the
+                # auto-generated `__int__()` method.
+                int_array = np.array([Color(datum) for datum in data_list], np.uint32)  # type: ignore[arg-type]
+
+        return pa.array(int_array, type=data_type)

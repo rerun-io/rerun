@@ -14,11 +14,11 @@ def guess_media_type(path: str) -> MediaType | None:
 
     ext = Path(path).suffix
     if ext == ".glb":
-        return MediaType.glb()
+        return MediaType.GLB
     elif ext == ".gltf":
-        return MediaType.gltf()
+        return MediaType.GLTF
     elif ext == ".obj":
-        return MediaType.obj()
+        return MediaType.OBJ
     else:
         return None
 
@@ -40,7 +40,7 @@ class Asset3DExt:
             return Asset3D.from_bytes(file.read(), guess_media_type(path))
 
     @staticmethod
-    def from_bytes(data: bytes, media_type: MediaType | None) -> Asset3D:
+    def from_bytes(blob: bytes, media_type: MediaType | None) -> Asset3D:
         """
         Creates a new [`Asset3D`] from the given `bytes`.
 
@@ -50,4 +50,4 @@ class Asset3DExt:
         from . import Asset3D
 
         # TODO(cmc): we could try and guess using magic bytes here, like rust does.
-        return Asset3D(data=data, media_type=media_type)
+        return Asset3D(blob=blob, media_type=media_type)

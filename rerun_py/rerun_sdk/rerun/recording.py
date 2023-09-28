@@ -22,12 +22,13 @@ class MemoryRecording:
         """Reset the data in the MemoryRecording."""
         self.storage.reset_data()
 
-    def reset_blueprint(self, add_to_app_default_blueprint: bool = False) -> None:
+    def reset_blueprint(self, *, add_to_app_default_blueprint: bool = False) -> None:
         """Reset the blueprint in the MemoryRecording."""
         self.storage.reset_blueprint(add_to_app_default_blueprint)
 
     def as_html(
         self,
+        *,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
         app_url: str | None = None,
@@ -107,6 +108,7 @@ class MemoryRecording:
 
     def show(
         self,
+        *,
         other: MemoryRecording | None = None,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,

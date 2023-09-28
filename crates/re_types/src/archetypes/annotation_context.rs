@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -21,8 +22,9 @@
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// ## Example
+/// ## Examples
 ///
+/// ### Rectangles
 /// ```ignore
 /// //! Log rectangles with different colors and labels using annotation context
 ///
@@ -59,6 +61,110 @@
 ///     Ok(())
 /// }
 /// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png">
+///   <img src="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/full.png">
+/// </picture>
+///
+/// ### Segmentation
+/// ```ignore
+/// //! Log a segmentation image with annotations.
+///
+/// use ndarray::{s, Array, ShapeBuilder};
+/// use rerun::{
+///     archetypes::{AnnotationContext, SegmentationImage},
+///     datatypes::Color,
+///     RecordingStreamBuilder,
+/// };
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) =
+///         RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation").memory()?;
+///
+///     // create an annotation context to describe the classes
+///     rec.log(
+///         "segmentation",
+///         &AnnotationContext::new([
+///             (1, "red", Color::from(0xFF0000FF)),
+///             (2, "green", Color::from(0x00FF00FF)),
+///         ]),
+///     )?;
+///
+///     // create a segmentation image
+///     let mut data = Array::<u8, _>::zeros((8, 12).f());
+///     data.slice_mut(s![0..4, 0..6]).fill(1);
+///     data.slice_mut(s![4..8, 6..12]).fill(2);
+///
+///     rec.log("segmentation/image", &SegmentationImage::try_from(data)?)?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/1200w.png">
+///   <img src="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/full.png">
+/// </picture>
+///
+/// ### Connections
+/// ```ignore
+/// //! Log some very simple points.
+///
+/// use rerun::archetypes::{AnnotationContext, Points3D};
+/// use rerun::datatypes::{ClassDescription, Color, KeypointPair};
+/// use rerun::RecordingStreamBuilder;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) =
+///         RecordingStreamBuilder::new("rerun_example_annotation_context_connections").memory()?;
+///
+///     // Log an annotation context to assign a label and color to each class
+///     // Create a class description with labels and color for each keypoint ID as well as some
+///     // connections between keypoints.
+///     rec.log(
+///         "/",
+///         &AnnotationContext::new([ClassDescription {
+///             info: 0.into(),
+///             keypoint_annotations: vec![
+///                 (0, "zero", Color::from(0xFF0000FF)).into(),
+///                 (1, "one", Color::from(0x00FF00FF)).into(),
+///                 (2, "two", Color::from(0x0000FFFF)).into(),
+///                 (3, "three", Color::from(0xFFFF00FF)).into(),
+///             ],
+///             keypoint_connections: KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
+///         }]),
+///     )?;
+///
+///     // Log some points with different keypoint IDs
+///     rec.log(
+///         "points",
+///         &Points3D::new([
+///             [0., 0., 0.],
+///             [50., 0., 20.],
+///             [100., 100., 30.],
+///             [0., 50., 40.],
+///         ])
+///         .with_keypoint_ids([0, 1, 2, 3])
+///         .with_class_ids([0]),
+///     )?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1200w.png">
+///   <img src="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/full.png">
+/// </picture>
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AnnotationContext {
     pub context: crate::components::AnnotationContext,
@@ -98,6 +204,12 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: AnnotationContextIndicator = AnnotationContextIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -118,52 +230,7 @@ impl crate::Archetype for AnnotationContext {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.context as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::AnnotationContext>::try_to_arrow([&self.context]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.AnnotationContext".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("context", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.AnnotationContext#context")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
@@ -175,10 +242,10 @@ impl crate::Archetype for AnnotationContext {
             .collect();
         let context = {
             let array = arrays_by_name
-                .get("context")
+                .get("rerun.components.AnnotationContext")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AnnotationContext#context")?;
-            <crate::components::AnnotationContext>::try_from_arrow_opt(&**array)
+            <crate::components::AnnotationContext>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.AnnotationContext#context")?
                 .into_iter()
                 .next()
@@ -187,6 +254,24 @@ impl crate::Archetype for AnnotationContext {
                 .with_context("rerun.archetypes.AnnotationContext#context")?
         };
         Ok(Self { context })
+    }
+}
+
+impl crate::AsComponents for AnnotationContext {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.context as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

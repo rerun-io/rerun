@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::Image,
     datatypes::{TensorBuffer, TensorData, TensorDimension},
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 mod util;
@@ -30,7 +30,8 @@ fn image_roundtrip() {
 
     let all_arch_serialized = [Image::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
         .unwrap()
-        .to_arrow()];
+        .to_arrow()
+        .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
@@ -51,7 +52,7 @@ fn image_roundtrip() {
             }
         }
 
-        let deserialized = Image::try_from_arrow(serialized).unwrap();
+        let deserialized = Image::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
@@ -97,7 +98,7 @@ fn dynamic_image_roundtrip() {
         }
     }
 
-    let all_arch_serialized = [Image::try_from(img).unwrap().to_arrow()];
+    let all_arch_serialized = [Image::try_from(img).unwrap().to_arrow().unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
@@ -118,7 +119,7 @@ fn dynamic_image_roundtrip() {
             }
         }
 
-        let deserialized = Image::try_from_arrow(serialized).unwrap();
+        let deserialized = Image::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
@@ -127,9 +128,9 @@ macro_rules! check_image_array {
     ($img:ty, $typ:ty, $arr:expr, $color_dim:expr) => {{
         let arr = $arr;
 
-        let arrow = <$img>::try_from(arr.clone()).unwrap().to_arrow();
+        let arrow = <$img>::try_from(arr.clone()).unwrap().to_arrow().unwrap();
 
-        let img = <$img>::try_from_arrow(arrow).unwrap();
+        let img = <$img>::from_arrow(arrow).unwrap();
 
         let color_dim = img
             .data

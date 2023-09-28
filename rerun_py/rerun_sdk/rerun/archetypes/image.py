@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 from .image_ext import ImageExt
 
 __all__ = ["Image"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Image(ImageExt, Archetype):
     """
     A monochrome or color image.
@@ -43,9 +45,30 @@ class Image(ImageExt, Archetype):
 
     rr.log("image", rr.Image(image))
     ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
+      <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png">
+    </picture>
     """
 
-    # You can define your own __init__ function as a member of ImageExt in image_ext.py
+    def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
+        """
+        Create a new instance of the Image archetype.
+
+        Parameters
+        ----------
+        data:
+             The image data. Should always be a rank-2 or rank-3 tensor.
+        draw_order:
+             An optional floating point value that specifies the 2D drawing order.
+             Objects with higher values are drawn on top of those with lower values.
+        """
+
+        # You can define your own __init__ function as a member of ImageExt in image_ext.py
+        self.__attrs_init__(data=data, draw_order=draw_order)
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

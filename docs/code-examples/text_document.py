@@ -52,6 +52,6 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
 ## Image
 ![A random image](https://picsum.photos/640/480)
 """.strip(),
-        media_type="text/markdown",
+        media_type=rr.MediaType.MARKDOWN,
     ),
 )

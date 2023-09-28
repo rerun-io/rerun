@@ -30,7 +30,7 @@ class ViewCoordinatesExt:
 
     @staticmethod
     def native_to_pa_array_override(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import ViewCoordinates
+        from . import ViewCoordinates, ViewCoordinatesLike
 
         if isinstance(data, ViewCoordinates):
             # ViewCoordinates
@@ -39,6 +39,7 @@ class ViewCoordinatesExt:
             # [ViewCoordinates]
             data = [d.coordinates for d in data]  # type: ignore[union-attr]
         else:
+            data = cast(ViewCoordinatesLike, data)
             try:
                 # [x, y, z]
                 data = [ViewCoordinates(data).coordinates]

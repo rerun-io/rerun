@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
+
+from ._converters import to_np_float32
+
 
 # This code is a straight port from Rust.
 def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
@@ -37,6 +44,28 @@ def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
         min -= 1
 
     return list(range(min, max + 1))
+
+
+def flat_np_float_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.float32]:
+    """Converts to a flat float numpy array from an arbitrary vector, validating for an expected dimensionality."""
+
+    array = to_np_float32(data)
+
+    valid = True
+    if len(array.shape) == 1:
+        valid = (array.shape[0] % dimension) == 0
+    elif len(array.shape) >= 2:
+        valid = array.shape[1] == dimension
+
+        # Don't care about trailing dimensions if they're all 1.
+        valid = valid and all(d == 1 for d in array.shape[2:])
+
+    if not valid:
+        raise ValueError(
+            f"Expected either a flat array with a length a of {dimension} elements, or an array with shape (`num_elements`, {dimension}). Shape of passed array was {array.shape}."
+        )
+
+    return array.reshape((-1,))
 
 
 if __name__ == "__main__":

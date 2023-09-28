@@ -64,12 +64,13 @@ def test_boxes3d() -> None:
         print(
             f"rr.Boxes3D(\n"
             f"    half_sizes={half_sizes}\n"
+            f"    rotations={rotations}\n"
             f"    centers={centers}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.Boxes3D(

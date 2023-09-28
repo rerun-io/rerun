@@ -31,12 +31,19 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     lengths = np.log2(np.arange(0, 100) + 1)
     angles = np.arange(start=0, stop=tau, step=tau * 0.01)
-    origins = np.zeros((3, 100))
+    origins = np.zeros((100, 3))
     vectors = np.column_stack([np.sin(angles) * lengths, np.zeros(100), np.cos(angles) * lengths])
     colors = [[1.0 - c, c, 0.5, 0.5] for c in angles / tau]
 
     rr.log("arrows", rr.Arrows3D(origins=origins, vectors=vectors, colors=colors))
     ```
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1200w.png">
+      <img src="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/full.png">
+    </picture>
     """
 
     # __init__ can be found in arrows3d_ext.py

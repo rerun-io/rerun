@@ -1,23 +1,22 @@
 ---
-title: Point3D
-order: 8
+title: "Points3D"
+order: 100
 ---
-`Point3D` represents a singular point in three-dimensional space with optional color, radii, and label. `Point3D` entities will be drawn as part of the 3D Spatial SpaceView.
 
-It is compatible with [`AnnotationContext`](../../concepts/annotation-context.md). `class_id` can be used to provide
-colors and labels from the annotation context, and `keypoint_id` can be used to make connected edges between points. See
-examples in the `AnnotationContext` documentation.
+A 3D point cloud with positions and optional colors, radii, labels, etc.
 
-## Components and APIs
-Primary component: `point3d`
+## Components
 
-Secondary components: `colorrgba`, `radius`, `label`, `classid`, `keypointid`
+**Required**: `Position3D`
 
-Python APIs: [log_point](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_point), [log_points](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_points)
+**Recommended**: `Radius`, `Color`
 
-Rust API: [Point3D](https://docs.rs/rerun/latest/rerun/components/struct.Point3D.html)
+**Optional**: `Text`, `ClassId`, `KeypointId`, `InstanceKey`
 
-## Simple Example
+## Examples
+
+### point3d_simple
+
 code-example: point3d_simple
 
 <picture>
@@ -25,10 +24,10 @@ code-example: point3d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
-  <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png" alt="">
+  <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png">
 </picture>
 
-## Full Example
+### point3d_random
 
 code-example: point3d_random
 
@@ -37,5 +36,6 @@ code-example: point3d_random
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png">
-  <img src="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png" alt="">
+  <img src="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png">
 </picture>
+

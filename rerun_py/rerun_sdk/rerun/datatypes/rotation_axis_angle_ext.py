@@ -17,6 +17,25 @@ class RotationAxisAngleExt:
         radians: float | None = None,
         degrees: float | None = None,
     ) -> None:
+        """
+        Create a new instance of the RotationAxisAngle datatype.
+
+        Parameters
+        ----------
+        axis:
+             Axis to rotate around.
+
+             This is not required to be normalized.
+             If normalization fails (typically because the vector is length zero), the rotation is silently
+             ignored.
+        angle:
+             How much to rotate around the axis.
+        radians:
+            How much to rotate around the axis, in radians. Specify this instead of `degrees` or `angle`.
+        degrees:
+            How much to rotate around the axis, in radians. Specify this instead of `radians` or `angle`.
+        """
+
         from . import Angle
 
         if len([x for x in (angle, radians, degrees) if x is not None]) != 1:

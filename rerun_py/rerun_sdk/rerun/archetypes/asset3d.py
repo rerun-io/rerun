@@ -5,19 +5,21 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
 from .asset3d_ext import Asset3DExt
 
 __all__ = ["Asset3D"]
 
 
-@define(str=False, repr=False)
+@define(str=False, repr=False, init=False)
 class Asset3D(Asset3DExt, Archetype):
     """
-    A prepacked 3D asset (.gltf, .glb, .obj, etc).
+    A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 
     Examples
     --------
@@ -71,9 +73,39 @@ class Asset3D(Asset3DExt, Archetype):
     ```
     """
 
-    # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
+    def __init__(
+        self: Any,
+        blob: components.BlobLike,
+        *,
+        media_type: datatypes.Utf8Like | None = None,
+        transform: datatypes.Transform3DLike | None = None,
+    ):
+        """
+        Create a new instance of the Asset3D archetype.
 
-    data: components.BlobBatch = field(
+        Parameters
+        ----------
+        blob:
+             The asset's bytes.
+        media_type:
+             The Media Type of the asset.
+
+             For instance:
+             * `model/gltf-binary`
+             * `model/obj`
+
+             If omitted, the viewer will try to guess from the data blob.
+             If it cannot guess, it won't be able to render the asset.
+        transform:
+             An out-of-tree transform.
+
+             Applies a transformation to the asset itself without impacting its children.
+        """
+
+        # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
+        self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+
+    blob: components.BlobBatch = field(
         metadata={"component": "required"},
         converter=components.BlobBatch,  # type: ignore[misc]
     )
@@ -93,7 +125,7 @@ class Asset3D(Asset3DExt, Archetype):
     * `model/gltf-binary`
     * `model/obj`
 
-    If omitted, the viewer will try to guess from the data.
+    If omitted, the viewer will try to guess from the data blob.
     If it cannot guess, it won't be able to render the asset.
     """
 

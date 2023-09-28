@@ -42,7 +42,7 @@ The full source code for this example is available [on GitHub](https://github.co
 
 ### Colored 3D Points
 The colored 3D points were added to the scene by logging the
-[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/point3d)
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points3d)
 to the [points entity](recording://points):
 ```python
 rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})
@@ -109,7 +109,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type="text/markdown"), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
     rr.log_view_coordinates("/", up="-Y", timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.

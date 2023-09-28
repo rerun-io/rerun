@@ -21,7 +21,7 @@ namespace rerun.datatypes;
 struct KeypointId (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",
-  "attr.python.array_aliases": "int, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32], npt.NDArray[np.uint64]",
+  "attr.python.array_aliases": "int, npt.ArrayLike",
   "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",

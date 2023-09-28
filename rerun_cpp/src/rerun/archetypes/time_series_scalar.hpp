@@ -20,7 +20,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// Log a double-precision scalar that will be visualized as a timeseries plot.
+        /// Log a double-precision scalar that will be visualized as a time-series plot.
         ///
         /// The current simulation time will be used for the time/X-axis, hence scalars
         /// cannot be timeless!
@@ -137,6 +137,11 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

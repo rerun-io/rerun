@@ -6,6 +6,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from .._validators import flat_np_float_array_from_array_like
+
 if TYPE_CHECKING:
     from . import Quaternion, QuaternionArrayLike
 
@@ -30,5 +32,5 @@ class QuaternionExt:
         if isinstance(data, Quaternion):
             data = [data]
 
-        quaternions = np.asarray([q.xyzw for q in data], dtype=np.float32).reshape((-1,))
+        quaternions = flat_np_float_array_from_array_like([q.xyzw for q in data], 4)
         return pa.FixedSizeListArray.from_arrays(quaternions, type=data_type)

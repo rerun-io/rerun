@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::TextDocument, components::MediaType, Archetype as _};
+use re_types::{
+    archetypes::TextDocument, components::MediaType, Archetype as _, AsComponents as _,
+};
 
 #[test]
 fn roundtrip() {
     let expected = TextDocument {
-        body: "This is the contents of the text document.".into(),
+        text: "This is the contents of the text document.".into(),
         media_type: Some(MediaType::markdown()),
     };
 
@@ -14,13 +16,13 @@ fn roundtrip() {
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
-        ("body", vec!["rerun.components.Text"]),
+        ("text", vec!["rerun.components.Text"]),
         ("media_type", vec!["rerun.components.MediaType"]),
     ]
     .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -37,7 +39,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = TextDocument::try_from_arrow(serialized).unwrap();
+    let deserialized = TextDocument::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

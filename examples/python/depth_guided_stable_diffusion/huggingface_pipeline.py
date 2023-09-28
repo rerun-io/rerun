@@ -49,7 +49,7 @@ from diffusers.utils import deprecate
 from diffusers.utils import is_accelerate_available
 from diffusers.utils import logging
 from diffusers.utils import PIL_INTERPOLATION
-from diffusers.utils import randn_tensor
+from diffusers.utils.torch_utils import randn_tensor
 from packaging import version
 from transformers import CLIPTextModel
 from transformers import CLIPTokenizer

@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -98,7 +99,7 @@ impl crate::Loggable for ClassDescription {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -138,7 +139,7 @@ impl crate::Loggable for ClassDescription {
                         };
                         {
                             _ = info_bitmap;
-                            crate::datatypes::AnnotationInfo::try_to_arrow_opt(info)?
+                            crate::datatypes::AnnotationInfo::to_arrow_opt(info)?
                         }
                     },
                     {
@@ -188,7 +189,7 @@ impl crate::Loggable for ClassDescription {
                                 offsets,
                                 {
                                     _ = keypoint_annotations_inner_bitmap;
-                                    crate::datatypes::AnnotationInfo::try_to_arrow_opt(
+                                    crate::datatypes::AnnotationInfo::to_arrow_opt(
                                         keypoint_annotations_inner_data,
                                     )?
                                 },
@@ -244,7 +245,7 @@ impl crate::Loggable for ClassDescription {
                                 offsets,
                                 {
                                     _ = keypoint_connections_inner_bitmap;
-                                    crate::datatypes::KeypointPair::try_to_arrow_opt(
+                                    crate::datatypes::KeypointPair::to_arrow_opt(
                                         keypoint_connections_inner_data,
                                     )?
                                 },
@@ -261,7 +262,7 @@ impl crate::Loggable for ClassDescription {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
@@ -328,7 +329,7 @@ impl crate::Loggable for ClassDescription {
                         .with_context("rerun.datatypes.ClassDescription");
                     }
                     let arrow_data = &**arrays_by_name["info"];
-                    crate::datatypes::AnnotationInfo::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::AnnotationInfo::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.ClassDescription#info")?
                         .into_iter()
                 };
@@ -365,14 +366,12 @@ impl crate::Loggable for ClassDescription {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::AnnotationInfo::try_from_arrow_opt(
-                                    arrow_data_inner,
-                                )
-                                .with_context(
-                                    "rerun.datatypes.ClassDescription#keypoint_annotations",
-                                )?
-                                .into_iter()
-                                .collect::<Vec<_>>()
+                                crate::datatypes::AnnotationInfo::from_arrow_opt(arrow_data_inner)
+                                    .with_context(
+                                        "rerun.datatypes.ClassDescription#keypoint_annotations",
+                                    )?
+                                    .into_iter()
+                                    .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -441,7 +440,7 @@ impl crate::Loggable for ClassDescription {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::KeypointPair::try_from_arrow_opt(arrow_data_inner)
+                                crate::datatypes::KeypointPair::from_arrow_opt(arrow_data_inner)
                                     .with_context(
                                         "rerun.datatypes.ClassDescription#keypoint_connections",
                                     )?

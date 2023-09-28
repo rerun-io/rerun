@@ -4,6 +4,7 @@ from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Points2D, Points3D
@@ -124,6 +125,10 @@ def log_point(
         raise TypeError("Position must have a total size of 2 or 3")
 
 
+@deprecated(
+    """Please migrate to `Points3D` or `Points2D`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_points(
     entity_path: str,
@@ -142,6 +147,11 @@ def log_points(
 ) -> None:
     """
     Log 2D or 3D points, with positions and optional colors, radii, labels, etc.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.Points3D][] or [rerun.Points2D][]
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Logging again to the same `entity_path` will replace all the previous points.
 
@@ -194,7 +204,6 @@ def log_points(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
     """
 
     if positions is None:

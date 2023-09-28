@@ -1,5 +1,6 @@
 use ahash::HashMap;
 
+use re_arrow_store::LatestAtQuery;
 use re_log_types::EntityPath;
 use re_types::ComponentNameSet;
 
@@ -45,6 +46,7 @@ pub trait ViewPartSystem {
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
+        _query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         default_heuristic_filter(entity_components, &self.indicator_components())

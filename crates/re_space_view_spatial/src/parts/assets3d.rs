@@ -41,7 +41,7 @@ impl Asset3DPart {
         let media_type = arch_view.raw_optional_mono_component::<MediaType>()?;
 
         let mesh = Asset3D {
-            data: arch_view.required_mono_component::<Blob>()?,
+            blob: arch_view.required_mono_component::<Blob>()?,
             media_type: media_type.clone(),
             // NOTE: Don't even try to cache the transform!
             transform: None,
@@ -108,7 +108,7 @@ impl ViewPartSystem for Asset3DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Asset3D::indicator_component()).collect()
+        std::iter::once(Asset3D::indicator().name()).collect()
     }
 
     fn execute(

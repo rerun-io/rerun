@@ -36,7 +36,6 @@ fn main() -> Result<(), anyhow::Error> {
         rec.log_component_batches(
             "world/asset",
             false,
-            1,
             [&OutOfTreeTransform3D::from(translation) as _],
         )?;
     }

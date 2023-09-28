@@ -8,16 +8,17 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A prepacked 3D asset (.gltf, .glb, .obj, etc).
+/// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
 ///
 /// ## Examples
 ///
-/// Simple 3D asset:
+/// ### Simple 3D asset
 /// ```ignore
 /// //! Log a simple 3D asset.
 ///
@@ -43,7 +44,7 @@
 /// }
 /// ```
 ///
-/// 3D asset with out-of-tree transform:
+/// ### 3D asset with out-of-tree transform
 /// ```ignore
 /// //! Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 ///
@@ -83,7 +84,6 @@
 ///         rec.log_component_batches(
 ///             "world/asset",
 ///             false,
-///             1,
 ///             [&OutOfTreeTransform3D::from(translation) as _],
 ///         )?;
 ///     }
@@ -95,7 +95,7 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset3D {
     /// The asset's bytes.
-    pub data: crate::components::Blob,
+    pub blob: crate::components::Blob,
 
     /// The Media Type of the asset.
     ///
@@ -103,7 +103,7 @@ pub struct Asset3D {
     /// * `model/gltf-binary`
     /// * `model/obj`
     ///
-    /// If omitted, the viewer will try to guess from the data.
+    /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.
     pub media_type: Option<crate::components::MediaType>,
 
@@ -159,6 +159,12 @@ impl crate::Archetype for Asset3D {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: Asset3DIndicator = Asset3DIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -179,14 +185,70 @@ impl crate::Archetype for Asset3D {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let blob = {
+            let array = arrays_by_name
+                .get("rerun.components.Blob")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Asset3D#blob")?;
+            <crate::components::Blob>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Asset3D#blob")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Asset3D#blob")?
+        };
+        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
+            Some({
+                <crate::components::MediaType>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Asset3D#media_type")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.Asset3D#media_type")?
+            })
+        } else {
+            None
+        };
+        let transform =
+            if let Some(array) = arrays_by_name.get("rerun.components.OutOfTreeTransform3D") {
+                Some({
+                    <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Asset3D#transform")?
+                        .into_iter()
+                        .next()
+                        .flatten()
+                        .ok_or_else(crate::DeserializationError::missing_data)
+                        .with_context("rerun.archetypes.Asset3D#transform")?
+                })
+            } else {
+                None
+            };
+        Ok(Self {
+            blob,
+            media_type,
+            transform,
+        })
     }
+}
 
+impl crate::AsComponents for Asset3D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        use crate::Archetype as _;
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.data as &dyn crate::ComponentBatch).into()),
+            Some(Self::indicator()),
+            Some((&self.blob as &dyn crate::ComponentBatch).into()),
             self.media_type
                 .as_ref()
                 .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
@@ -200,140 +262,15 @@ impl crate::Archetype for Asset3D {
     }
 
     #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::Blob>::try_to_arrow([&self.data]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.Blob".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("data", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.Asset3D#data")?
-            },
-            {
-                self.media_type
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::MediaType>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.MediaType".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("media_type", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-            },
-            {
-                self.transform
-                    .as_ref()
-                    .map(|single| {
-                        let array =
-                            <crate::components::OutOfTreeTransform3D>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.OutOfTreeTransform3D".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("transform", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let data = {
-            let array = arrays_by_name
-                .get("data")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#data")?;
-            <crate::components::Blob>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Asset3D#data")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#data")?
-        };
-        let media_type = if let Some(array) = arrays_by_name.get("media_type") {
-            Some({
-                <crate::components::MediaType>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-            })
-        } else {
-            None
-        };
-        let transform = if let Some(array) = arrays_by_name.get("transform") {
-            Some({
-                <crate::components::OutOfTreeTransform3D>::try_from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-            })
-        } else {
-            None
-        };
-        Ok(Self {
-            data,
-            media_type,
-            transform,
-        })
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 
 impl Asset3D {
-    pub fn new(data: impl Into<crate::components::Blob>) -> Self {
+    pub fn new(blob: impl Into<crate::components::Blob>) -> Self {
         Self {
-            data: data.into(),
+            blob: blob.into(),
             media_type: None,
             transform: None,
         }

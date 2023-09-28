@@ -123,11 +123,12 @@ impl ViewportBlueprint<'_> {
             });
 
         if remove {
+            self.mark_user_interaction();
             self.deferred_tree_actions.remove.push(tile_id);
         }
 
         if visibility_changed {
-            self.has_been_user_edited = true;
+            self.auto_layout = false; // Keep `auto_space_views` enabled.
             self.tree.set_visible(tile_id, visible);
         }
     }
@@ -192,7 +193,7 @@ impl ViewportBlueprint<'_> {
         item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if visibility_changed {
-            self.has_been_user_edited = true;
+            self.auto_layout = false; // Keep `auto_space_views` enabled.
             self.tree.set_visible(tile_id, visible);
         }
     }
