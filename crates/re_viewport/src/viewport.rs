@@ -141,23 +141,35 @@ impl<'a, 'b> Viewport<'a, 'b> {
             &mut blueprint.tree
         };
 
-        let mut tab_viewer = TabViewer {
-            viewport_state: state,
-            ctx,
-            space_views: &mut blueprint.space_views,
-            maximized: &mut blueprint.maximized,
-        };
-
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
 
             re_tracing::profile_scope!("tree.ui");
-            let tree_before = tree.clone();
+
+            let mut tab_viewer = TabViewer {
+                viewport_state: state,
+                ctx,
+                space_views: &mut blueprint.space_views,
+                maximized: &mut blueprint.maximized,
+                edited: false,
+            };
+
+            // We simplify before we take the before-snapshot, because we
+            // don't want to detect automated simplifcation as user edits.
+            tree.simplify(&tab_viewer.simplification_options());
+
             tree.ui(&mut tab_viewer, ui);
 
             // Detect if the user has moved a tab or similar.
             // If so we can no longer automatically change the layout without discarding user edits.
-            if blueprint.auto_layout && *tree != tree_before {
+            let is_dragging_a_tile = tree.dragged_id(ui.ctx()).is_some();
+            if tab_viewer.edited || is_dragging_a_tile {
+                if blueprint.auto_layout {
+                    re_log::trace!(
+                        "The user is manipulating the egui_tiles tree - will no longer auto-layout"
+                    );
+                }
+
                 blueprint.auto_layout = false;
             }
         });
@@ -239,6 +251,9 @@ struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     space_views: &'a mut BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
+
+    /// The user edited the tree.
+    edited: bool,
 }
 
 impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
@@ -443,6 +458,12 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             all_panes_must_have_tabs: true,
             ..Default::default()
         }
+    }
+
+    // Callbacks:
+
+    fn on_edit(&mut self) {
+        self.edited = true;
     }
 }
 
