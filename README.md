@@ -12,23 +12,29 @@
   <a href="https://discord.gg/Gcm8BbTaAj">                                <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
 </h1>
 
-# Rerun: Visualization infrastructure for computer vision.
+# Build time aware visualizations of multimodal data
 
-Use one of our logging APIs (Python or Rust) to log rich data, such as images and point clouds, to the Rerun Viewer, where it is visualized live or after the fact.
+Use the Rerun SDK (available in Python, Rust, and soon C++) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
 ```py
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
-rr.init("rerun_example_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
+rr.init("rerun_example_app")
 
-rr.log_image("rgb_image", image)
-rr.log_points("points", positions)
-rr.log_rect("car", bbox)
+rr.connect()  # Connect to a remote viewer
+# rr.spawn()  # Spawn a child process with a viewer and connect
+# rr.save("recording.rrd")  # Stream all logs to disk
+
+# Associate subsequent data with 42 on the “frame” timeline
+rr.set_time_sequence("frame", 42))
+
+# Log colored 3D points to the entity at `path/to/points`
+rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 …
 ```
 
 <p align="center">
-  <img width="800" alt="Rerun Viewer" src="https://user-images.githubusercontent.com/1148717/218763490-f6261ecd-e19e-4520-9b25-446ce1ee6328.png">
+  <img width="800" alt="Rerun Viewer" src="https://github.com/rerun-io/rerun/assets/2624717/c4900538-fc3a-43b8-841a-8d226e7b5a2e">
 </p>
 
 ## Getting started
@@ -53,7 +59,7 @@ You should now be able to run `rerun --help` in any terminal.
 
 
 ## Status
-We are in early beta.
+We are in active development.
 There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
