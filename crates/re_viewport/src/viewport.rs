@@ -154,10 +154,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 edited: false,
             };
 
-            // We simplify before we take the before-snapshot, because we
-            // don't want to detect automated simplifcation as user edits.
-            tree.simplify(&tab_viewer.simplification_options());
-
             tree.ui(&mut tab_viewer, ui);
 
             // Detect if the user has moved a tab or similar.
