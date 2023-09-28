@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Sequence
 import numpy as np
 import pyarrow as pa
 
-from .._validators import validate_vector_shape
+from .._validators import flat_np_float_array_from_array_like
 
 if TYPE_CHECKING:
     from . import Vec2DArrayLike
@@ -26,7 +26,5 @@ class Vec2DExt:
             if isinstance(data, Sequence):
                 data = [np.array(p.xy) if isinstance(p, Vec2D) else p for p in data]
 
-        points = np.asarray(data, dtype=np.float32)
-        validate_vector_shape(points.shape, 2)
-        points = points.reshape((-1,))
+        points = flat_np_float_array_from_array_like(data, 2)
         return pa.FixedSizeListArray.from_arrays(points, type=data_type)
