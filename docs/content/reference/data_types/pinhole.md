@@ -13,7 +13,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 **Optional**: `ViewCoordinates`
 
-## Examples
+## Example
 
 ### pinhole_simple
 

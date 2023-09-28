@@ -19,7 +19,7 @@ Leading and trailing unit-dimensions are ignored, so that
 
 **Optional**: `DrawOrder`
 
-## Examples
+## Example
 
 ### image_simple
 

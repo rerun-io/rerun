@@ -16,7 +16,7 @@ down, and the Z axis points forward.
 
 **Required**: `ViewCoordinates`
 
-## Examples
+## Example
 
 ### view_coordinates_simple
 

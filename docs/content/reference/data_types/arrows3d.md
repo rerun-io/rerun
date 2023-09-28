@@ -13,7 +13,7 @@ A batch of 3D arrows with optional colors, radii, labels, etc.
 
 **Optional**: `Radius`, `Color`, `Text`, `ClassId`, `InstanceKey`
 
-## Examples
+## Example
 
 ### arrow3d_simple
 

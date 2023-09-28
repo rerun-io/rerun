@@ -13,7 +13,7 @@ A batch of 2d boxes with half-extents and optional center, rotations, rotations,
 
 **Optional**: `Radius`, `Text`, `DrawOrder`, `ClassId`, `InstanceKey`
 
-## Examples
+## Example
 
 ### Simple 2D boxes
 

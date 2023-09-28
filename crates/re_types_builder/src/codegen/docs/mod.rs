@@ -71,7 +71,7 @@ impl CodeGenerator for DocsCodeGenerator {
             putln!(o);
             write_archetype_fields(&mut o, &components, &object.fields);
             putln!(o);
-            example_list(&mut o, &examples);
+            write_example_list(&mut o, &examples);
 
             let path = self
                 .docs_dir
@@ -134,12 +134,16 @@ fn find_component<'a>(field: &ObjectField, components: &[&'a Object]) -> Option<
         .copied()
 }
 
-fn example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
+fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
     if examples.is_empty() {
         return;
     }
 
-    putln!(o, "## Examples");
+    if examples.len() > 1 {
+        putln!(o, "## Examples");
+    } else {
+        putln!(o, "## Example");
+    };
     putln!(o);
 
     for ExampleInfo { name, title, image } in examples {

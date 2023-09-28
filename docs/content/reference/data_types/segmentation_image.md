@@ -17,7 +17,7 @@ Leading and trailing unit-dimensions are ignored, so that
 
 **Optional**: `DrawOrder`
 
-## Examples
+## Example
 
 ### segmentation_image_simple
 

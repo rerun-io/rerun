@@ -14,7 +14,7 @@ will be ignored.
 
 **Required**: `DisconnectedSpace`
 
-## Examples
+## Example
 
 ### disconnected_space
 

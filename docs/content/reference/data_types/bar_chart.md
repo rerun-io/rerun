@@ -11,7 +11,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 **Required**: `TensorData`
 
-## Examples
+## Example
 
 ### bar_chart
 
