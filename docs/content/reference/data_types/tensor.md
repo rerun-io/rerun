@@ -7,7 +7,7 @@ A generic n-dimensional Tensor.
 
 ## Components
 
-**Required**: `tensor_data`
+**Required**: `TensorData`
 
 ## Examples
 

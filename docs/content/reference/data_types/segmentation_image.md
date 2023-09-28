@@ -13,9 +13,9 @@ Leading and trailing unit-dimensions are ignored, so that
 
 ## Components
 
-**Required**: `tensor_data`
+**Required**: `TensorData`
 
-**Optional**: `draw_order`
+**Optional**: `DrawOrder`
 
 ## Examples
 

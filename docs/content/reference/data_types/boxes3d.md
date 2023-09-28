@@ -7,11 +7,11 @@ A batch of 3d boxes with half-extents and optional center, rotations, rotations,
 
 ## Components
 
-**Required**: `half_sizes3d`
+**Required**: `HalfSizes3D`
 
-**Recommended**: `position3d`, `rotation3d`, `color`
+**Recommended**: `Position3D`, `Rotation3D`, `Color`
 
-**Optional**: `radius`, `text`, `class_id`, `instance_key`
+**Optional**: `Radius`, `Text`, `ClassId`, `InstanceKey`
 
 ## Examples
 

@@ -7,7 +7,7 @@ Empties all the components of an entity.
 
 ## Components
 
-**Required**: `clear_is_recursive`
+**Required**: `ClearIsRecursive`
 
 ## Examples
 

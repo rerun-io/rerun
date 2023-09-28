@@ -96,6 +96,7 @@ fn write_archetype_fields(o: &mut String, all_components: &[&Object], fields: &[
         return;
     }
 
+    // collect names of field _components_ by their `FieldKind`
     let (mut required, mut recommended, mut optional) = (Vec::new(), Vec::new(), Vec::new());
     for field in fields {
         let (target, component) = match field
@@ -107,7 +108,7 @@ fn write_archetype_fields(o: &mut String, all_components: &[&Object], fields: &[
             Some((FieldKind::Optional, component)) => (&mut optional, component),
             _ => continue,
         };
-        target.push(format!("`{}`", component.snake_case_name()));
+        target.push(format!("`{}`", component.name));
     }
 
     putln!(o, "## Components");

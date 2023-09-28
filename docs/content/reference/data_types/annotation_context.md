@@ -13,7 +13,7 @@ path.
 
 ## Components
 
-**Required**: `annotation_context`
+**Required**: `AnnotationContext`
 
 ## Examples
 

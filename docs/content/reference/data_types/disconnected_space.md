@@ -12,7 +12,7 @@ will be ignored.
 
 ## Components
 
-**Required**: `disconnected_space`
+**Required**: `DisconnectedSpace`
 
 ## Examples
 

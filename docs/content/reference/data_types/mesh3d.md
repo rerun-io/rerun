@@ -7,11 +7,11 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 ## Components
 
-**Required**: `position3d`
+**Required**: `Position3D`
 
-**Recommended**: `mesh_properties`, `vector3d`
+**Recommended**: `MeshProperties`, `Vector3D`
 
-**Optional**: `color`, `material`, `class_id`, `instance_key`
+**Optional**: `Color`, `Material`, `ClassId`, `InstanceKey`
 
 ## Examples
 

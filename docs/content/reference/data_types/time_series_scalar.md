@@ -10,11 +10,11 @@ cannot be timeless!
 
 ## Components
 
-**Required**: `scalar`
+**Required**: `Scalar`
 
-**Recommended**: `radius`, `color`
+**Recommended**: `Radius`, `Color`
 
-**Optional**: `text`, `scalar_scattering`
+**Optional**: `Text`, `ScalarScattering`
 
 ## Examples
 

@@ -7,11 +7,11 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 
 ## Components
 
-**Required**: `line_strip2d`
+**Required**: `LineStrip2D`
 
-**Recommended**: `radius`, `color`
+**Recommended**: `Radius`, `Color`
 
-**Optional**: `text`, `draw_order`, `class_id`, `instance_key`
+**Optional**: `Text`, `DrawOrder`, `ClassId`, `InstanceKey`
 
 ## Examples
 

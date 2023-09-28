@@ -7,11 +7,11 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 
 ## Components
 
-**Required**: `line_strip3d`
+**Required**: `LineStrip3D`
 
-**Recommended**: `radius`, `color`
+**Recommended**: `Radius`, `Color`
 
-**Optional**: `text`, `class_id`, `instance_key`
+**Optional**: `Text`, `ClassId`, `InstanceKey`
 
 ## Examples
 

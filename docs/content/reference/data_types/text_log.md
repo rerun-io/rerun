@@ -7,7 +7,7 @@ A log entry in a text log, comprised of a text body and its log level.
 
 ## Components
 
-**Required**: `text`
+**Required**: `Text`
 
-**Recommended**: `text_log_level`
+**Recommended**: `TextLogLevel`
 

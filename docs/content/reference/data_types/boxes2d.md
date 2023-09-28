@@ -7,11 +7,11 @@ A batch of 2d boxes with half-extents and optional center, rotations, rotations,
 
 ## Components
 
-**Required**: `half_sizes2d`
+**Required**: `HalfSizes2D`
 
-**Recommended**: `position2d`, `color`
+**Recommended**: `Position2D`, `Color`
 
-**Optional**: `radius`, `text`, `draw_order`, `class_id`, `instance_key`
+**Optional**: `Radius`, `Text`, `DrawOrder`, `ClassId`, `InstanceKey`
 
 ## Examples
 
