@@ -76,6 +76,7 @@ class Asset3D(Asset3DExt, Archetype):
     def __init__(
         self: Any,
         data: components.BlobLike,
+        *,
         media_type: datatypes.Utf8Like | None = None,
         transform: datatypes.Transform3DLike | None = None,
     ):
