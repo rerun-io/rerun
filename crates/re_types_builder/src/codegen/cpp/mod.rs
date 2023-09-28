@@ -1951,7 +1951,7 @@ fn quote_docstrings(docs: &Docs) -> TokenStream {
             lines.push(" ```".into());
             if examples.peek().is_some() {
                 // blank line between examples
-                lines.push(" ".into());
+                lines.push(String::new());
             }
         }
     }
