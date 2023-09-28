@@ -84,11 +84,22 @@ def _send_warning(
     if check_strict_mode():
         raise TypeError(message)
 
-    context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 1)
-
-    # TODO(jleibs): Context/stack should be its own component.
-    log("rerun", TextLog(body=f"{message}\n{context_descriptor}", level="WARN"), recording=recording)
+    # Send the warning to the user first
     warnings.warn(message, category=RerunWarning, stacklevel=depth_to_user_code + 1)
+
+    # Logging the warning to Rerun is a complex operation could produce another warning. Avoid recursion.
+    if not getattr(_rerun_exception_ctx, "sending_warning", False):
+        _rerun_exception_ctx.sending_warning = True
+
+        # TODO(jleibs): Context/stack should be its own component.
+        context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 1)
+
+        log("rerun", TextLog(body=f"{message}\n{context_descriptor}", level="WARN"), recording=recording)
+        _rerun_exception_ctx.sending_warning = False
+    else:
+        warnings.warn(
+            "Encountered Error while sending warning", category=RerunWarning, stacklevel=depth_to_user_code + 1
+        )
 
 
 class catch_and_log_exceptions:
@@ -106,7 +117,7 @@ class catch_and_log_exceptions:
     override the global strict mode if provided.
     """
 
-    def __init__(self, context: str = "", depth_to_user_code: int = 0) -> None:
+    def __init__(self, context: str | None = None, depth_to_user_code: int = 0) -> None:
         self.depth_to_user_code = depth_to_user_code
         self.context = context
 
@@ -123,6 +134,9 @@ class catch_and_log_exceptions:
 
     def __call__(self, func: _TFunc) -> _TFunc:
         self.depth_to_user_code += 1
+
+        if self.context is None:
+            self.context = func.__qualname__
 
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -143,7 +157,12 @@ class catch_and_log_exceptions:
             if exc_type is not None and not check_strict_mode():
                 if getattr(_rerun_exception_ctx, "pending_warnings", None) is None:
                     _rerun_exception_ctx.pending_warnings = []
-                _rerun_exception_ctx.pending_warnings.append(f"{self.context or exc_type.__name__}: {exc_val}")
+
+                context = f"{self.context}: " if self.context is not None else ""
+
+                warning_message = f"{context}{exc_type.__name__}({exc_val})"
+
+                _rerun_exception_ctx.pending_warnings.append(warning_message)
                 return True
             else:
                 return False
