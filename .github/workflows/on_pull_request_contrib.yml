@@ -5,7 +5,7 @@
 #   this is done using the following check, added to every job:
 #     if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
 
-name: Contrib
+name: Pull-Request (Contrib)
 
 on:
   pull_request:
@@ -34,7 +34,7 @@ jobs:
   checks:
     name: "Checks"
     if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
-    uses: ./.github/workflows/contrib/checks.yml
+    uses: ./.github/workflows/contrib_checks.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -42,7 +42,7 @@ jobs:
   python:
     name: "Python"
     if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
-    uses: ./.github/workflows/contrib/rerun_py.yml
+    uses: ./.github/workflows/contrib_rerun_py.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
