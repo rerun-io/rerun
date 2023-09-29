@@ -8,6 +8,21 @@ on:
 
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
+  temp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
   checks:
     name: Checks
     if: github.event.pull_request.head.repo.owner == 'rerun-io'
