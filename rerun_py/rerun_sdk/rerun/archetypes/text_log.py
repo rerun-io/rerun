@@ -30,7 +30,7 @@ class TextLog(Archetype):
         """Create a new instance of the TextLog archetype."""
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
-        with catch_and_log_exceptions("TextLog"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(text=text, level=level, color=color)
             return
         self.__attrs_init__()

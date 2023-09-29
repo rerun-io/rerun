@@ -52,7 +52,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         """Create a new instance of the ViewCoordinates archetype."""
 
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
-        with catch_and_log_exceptions("ViewCoordinates"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(xyz=xyz)
             return
         self.__attrs_init__()

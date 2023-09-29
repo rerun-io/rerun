@@ -45,7 +45,7 @@ class AffixFuzzer1(Archetype):
         """Create a new instance of the AffixFuzzer1 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer1Ext in affix_fuzzer1_ext.py
-        with catch_and_log_exceptions("AffixFuzzer1"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 fuzz1001=fuzz1001,
                 fuzz1002=fuzz1002,

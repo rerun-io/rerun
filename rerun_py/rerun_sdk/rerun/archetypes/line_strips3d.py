@@ -154,7 +154,7 @@ class LineStrips3D(Archetype):
         """
 
         # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
-        with catch_and_log_exceptions("LineStrips3D"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 strips=strips,
                 radii=radii,

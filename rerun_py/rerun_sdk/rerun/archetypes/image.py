@@ -69,7 +69,7 @@ class Image(ImageExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of ImageExt in image_ext.py
-        with catch_and_log_exceptions("Image"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(data=data, draw_order=draw_order)
             return
         self.__attrs_init__()

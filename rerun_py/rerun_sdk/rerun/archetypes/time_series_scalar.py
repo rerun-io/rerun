@@ -118,7 +118,7 @@ class TimeSeriesScalar(Archetype):
         """
 
         # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
-        with catch_and_log_exceptions("TimeSeriesScalar"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
             return
         self.__attrs_init__()

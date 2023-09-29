@@ -70,7 +70,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
-        with catch_and_log_exceptions("SegmentationImage"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(data=data, draw_order=draw_order)
             return
         self.__attrs_init__()

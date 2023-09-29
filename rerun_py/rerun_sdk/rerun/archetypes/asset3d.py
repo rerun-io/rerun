@@ -104,7 +104,7 @@ class Asset3D(Asset3DExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
-        with catch_and_log_exceptions("Asset3D"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
             return
         self.__attrs_init__()

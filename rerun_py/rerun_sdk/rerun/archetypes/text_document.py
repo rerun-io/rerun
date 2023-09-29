@@ -39,7 +39,7 @@ class TextDocument(Archetype):
         """
 
         # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
-        with catch_and_log_exceptions("TextDocument"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(text=text, media_type=media_type)
             return
         self.__attrs_init__()

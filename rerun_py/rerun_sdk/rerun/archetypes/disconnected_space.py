@@ -47,7 +47,7 @@ class DisconnectedSpace(Archetype):
         """Create a new instance of the DisconnectedSpace archetype."""
 
         # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
-        with catch_and_log_exceptions("DisconnectedSpace"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(disconnected_space=disconnected_space)
             return
         self.__attrs_init__()

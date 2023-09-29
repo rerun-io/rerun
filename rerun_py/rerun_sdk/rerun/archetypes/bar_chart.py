@@ -46,7 +46,7 @@ class BarChart(BarChartExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
-        with catch_and_log_exceptions("BarChart"):
+        with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(values=values)
             return
         self.__attrs_init__()
