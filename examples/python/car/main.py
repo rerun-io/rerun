@@ -17,7 +17,7 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged entities a timeline called `frame_nr`.
@@ -25,29 +25,30 @@ def log_car_data() -> None:
         rr.set_time_sequence("frame_nr", sample.frame_idx)
 
         # Log the camera pose:
-        rr.log_transform3d(
+        rr.log(
             "world/camera",
             rr.TranslationRotationScale3D(sample.camera.position, rr.Quaternion(xyzw=sample.camera.rotation_q)),
         )
-        rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
+        rr.log("world/camera", rr.ViewCoordinates.RDF)  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
-        rr.log_pinhole(
+        rr.log(
             "world/camera/image",
-            child_from_parent=sample.camera.intrinsics,
-            width=sample.camera.resolution[0],
-            height=sample.camera.resolution[1],
+            rr.Pinhole(image_from_camera=sample.camera.intrinsics, resolution=sample.camera.resolution),
         )
 
         # We log the rgb image to the image-space of the camera:
-        rr.log_image("world/camera/image/rgb", sample.rgb_image)
+        rr.log("world/camera/image/rgb", rr.Image(sample.rgb_image))
 
         # Same with the bounding box:
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rr.log_rect("world/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
+        rr.log(
+            "world/camera/image/bbox",
+            rr.Boxes2D(mins=[car_x, car_y], sizes=[car_w, car_h], labels="A car", colors=(0, 128, 255)),
+        )
 
         # The depth image is in millimeters, so we set meter=1000
-        rr.log_depth_image("world/camera/image/depth", sample.depth_image_mm, meter=1000)
+        rr.log("world/camera/image/depth", rr.DepthImage(sample.depth_image_mm, meter=1000))
 
 
 class DummyCar:

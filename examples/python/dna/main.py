@@ -23,11 +23,11 @@ def log_data() -> None:
     # points and colors are both np.array((NUM_POINTS, 3))
     points1, colors1 = build_color_spiral(NUM_POINTS)
     points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau * 0.5)
-    rr.log_points("helix/structure/left", points1, colors=colors1, radii=0.08)
-    rr.log_points("helix/structure/right", points2, colors=colors2, radii=0.08)
+    rr.log("helix/structure/left", rr.Points3D(points1, colors=colors1, radii=0.08))
+    rr.log("helix/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
 
     points = interleave(points1, points2)
-    rr.log_line_segments("helix/structure/scaffolding", points, color=[128, 128, 128])
+    rr.log("helix/structure/scaffolding", rr.LineStrips3D(points.reshape(-1, 3), colors=[128, 128, 128]))
 
     time_offsets = np.random.rand(NUM_POINTS)
     for i in range(400):
@@ -37,11 +37,13 @@ def log_data() -> None:
         times = np.repeat(time, NUM_POINTS) + time_offsets
         beads = [bounce_lerp(points1[n], points2[n], times[n]) for n in range(NUM_POINTS)]
         colors = [[int(bounce_lerp(80, 230, times[n] * 2))] for n in range(NUM_POINTS)]
-        rr.log_points("helix/structure/scaffolding/beads", beads, radii=0.06, colors=np.repeat(colors, 3, axis=-1))
+        rr.log(
+            "helix/structure/scaffolding/beads", rr.Points3D(beads, radii=0.06, colors=np.repeat(colors, 3, axis=-1))
+        )
 
-        rr.log_transform3d(
+        rr.log(
             "helix/structure",
-            rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau),
+            rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau)),
         )
 
 

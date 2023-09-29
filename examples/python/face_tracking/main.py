@@ -114,10 +114,12 @@ class FaceDetectorLogger:
         self._detector = vision.FaceDetector.create_from_options(self._options)
 
         # With this annotation, the viewer will connect the keypoints with some lines to improve visibility.
-        rr.log_annotation_context(
+        rr.log(
             "video/detector",
-            rr.ClassDescription(
-                info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
+            rr.AnnotationContext(
+                rr.ClassDescription(
+                    info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
+                )
             ),
         )
 
@@ -130,21 +132,24 @@ class FaceDetectorLogger:
             if self._video_mode
             else self._detector.detect(image)
         )
-        rr.log_cleared("video/detector/faces/", recursive=True)
+        rr.log("video/detector/faces", rr.Clear(recursive=True))
         for i, detection in enumerate(detection_result.detections):
             # log bounding box
             bbox = detection.bounding_box
             index, score = detection.categories[0].index, detection.categories[0].score
 
             # log bounding box
-            rr.log_rect(f"video/detector/faces/{i}/bbox", [bbox.origin_x, bbox.origin_y, bbox.width, bbox.height])
-            rr.log_extension_components(f"video/detector/faces/{i}/bbox", {"index": index, "score": score})
+            rr.log(
+                f"video/detector/faces/{i}/bbox",
+                rr.Boxes2D(array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height]),
+                ext={"index": index, "score": score},
+            )
 
             # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.
             pts = [
                 (math.floor(keypoint.x * width), math.floor(keypoint.y * height)) for keypoint in detection.keypoints
             ]
-            rr.log_points(f"video/detector/faces/{i}/keypoints", pts, radii=3, keypoint_ids=list(range(6)))
+            rr.log(f"video/detector/faces/{i}/keypoints", rr.Points2D(pts, radii=3, keypoint_ids=list(range(6))))
 
 
 class FaceLandmarkerLogger:
@@ -182,7 +187,7 @@ class FaceLandmarkerLogger:
         # 1) Log an annotation context with one class ID per facial feature. For each class ID, the class description
         #    contains the connections between corresponding keypoints (taken from the MediaPipe face mesh solution)
         # 2) A class ID array matching the class IDs in the annotation context to keypoint indices (to be passed as
-        #    the `class_ids` argument to `rr.log_points`).
+        #    the `class_ids` argument to `rr.log`).
 
         classes = [
             mp.solutions.face_mesh.FACEMESH_LIPS,
@@ -216,11 +221,11 @@ class FaceLandmarkerLogger:
                 )
             )
 
-        rr.log_annotation_context("video/landmarker", class_descriptions)
-        rr.log_annotation_context("reconstruction", class_descriptions)
+        rr.log("video/landmarker", rr.AnnotationContext(class_descriptions))
+        rr.log("reconstruction", rr.AnnotationContext(class_descriptions))
 
         # properly align the 3D face in the viewer
-        rr.log_view_coordinates("reconstruction", xyz="RDF", timeless=True)
+        rr.log("reconstruction", rr.ViewCoordinates.RDF, timeless=True)
 
     def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         height, width, _ = image.shape
@@ -231,9 +236,9 @@ class FaceLandmarkerLogger:
             if self._video_mode
             else self._detector.detect(image)
         )
-        rr.log_cleared("video/landmarker/faces", recursive=True)
-        rr.log_cleared("reconstruction/faces", recursive=True)
-        rr.log_cleared("blendshapes", recursive=True)
+        rr.log("video/landmarker/faces", rr.Clear(recursive=True))
+        rr.log("reconstruction/faces", rr.Clear(recursive=True))
+        rr.log("blendshapes", rr.Clear(recursive=True))
 
         for i, (landmark, blendshapes) in enumerate(
             zip(detection_result.face_landmarks, detection_result.face_blendshapes)
@@ -241,24 +246,23 @@ class FaceLandmarkerLogger:
             # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.
             pts = [(math.floor(lm.x * width), math.floor(lm.y * height)) for lm in landmark]
             keypoint_ids = list(range(len(landmark)))
-            rr.log_points(
+            rr.log(
                 f"video/landmarker/faces/{i}/landmarks",
-                pts,
-                radii=3,
-                keypoint_ids=keypoint_ids,
-                class_ids=self._class_ids,
+                rr.Points2D(pts, radii=3, keypoint_ids=keypoint_ids, class_ids=self._class_ids),
             )
 
-            rr.log_points(
+            rr.log(
                 f"reconstruction/faces/{i}",
-                [(lm.x, lm.y, lm.z) for lm in landmark],
-                keypoint_ids=keypoint_ids,
-                class_ids=self._class_ids,
+                rr.Points3D(
+                    [(lm.x, lm.y, lm.z) for lm in landmark],
+                    keypoint_ids=keypoint_ids,
+                    class_ids=self._class_ids,
+                ),
             )
 
             for blendshape in blendshapes:
                 if blendshape.category_name in BLENDSHAPES_CATEGORIES:
-                    rr.log_scalar(f"blendshapes/{i}/{blendshape.category_name}", blendshape.score)
+                    rr.log(f"blendshapes/{i}/{blendshape.category_name}", rr.TimeSeriesScalar(blendshape.score))
 
 
 # ========================================================================================
@@ -343,7 +347,7 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
             rr.set_time_nanos("frame_time", frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
             landmarker.detect_and_log(frame, frame_time_nano)
-            rr.log_image("video/image", frame)
+            rr.log("video/image", rr.Image(frame))
 
     except KeyboardInterrupt:
         pass
@@ -362,7 +366,7 @@ def run_from_sample_image(path: Path, max_dim: int | None, num_faces: int) -> No
     landmarker = FaceLandmarkerLogger(video_mode=False, num_faces=num_faces)
     logger.detect_and_log(image, 0)
     landmarker.detect_and_log(image, 0)
-    rr.log_image("video/image", image)
+    rr.log("video/image", rr.Image(image))
 
 
 def main() -> None:

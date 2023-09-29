@@ -105,7 +105,7 @@ class OPFProject:
     def log_point_cloud(self) -> None:
         """Log the project's point cloud."""
         pcl = self.project.point_cloud_objs[0]
-        rr.log_points("world/pcl", positions=pcl.nodes[0].position, colors=pcl.nodes[0].color, timeless=True)
+        rr.log("world/pcl", rr.Points3D(pcl.nodes[0].position, colors=pcl.nodes[0].color), timeless=True)
 
     def log_calibrated_cameras(self) -> None:
         """
@@ -161,24 +161,25 @@ class OPFProject:
                 )
             )
 
-            rr.log_transform3d(entity, rr.TranslationAndMat3(translation=calib_camera.position, matrix=rot))
+            rr.log(entity, rr.TranslationAndMat3(translation=calib_camera.position, matrix=rot))
 
             assert calib_sensor.internals.type == "perspective"
 
             # RUB coordinate system specified in https://pix4d.github.io/opf-spec/specification/projected_input_cameras.html#coordinate-system-specification
-            rr.log_pinhole(
+            rr.log(
                 entity + "/image",
-                focal_length_px=calib_sensor.internals.focal_length_px,
-                principal_point_px=calib_sensor.internals.principal_point_px,
-                width=sensor.image_size_px[0],
-                height=sensor.image_size_px[1],
-                camera_xyz="RUB",
+                rr.Pinhole(
+                    resolution=sensor.image_size_px,
+                    focal_length=calib_sensor.internals.focal_length_px,
+                    principal_point=calib_sensor.internals.principal_point_px,
+                    camera_xyz=rr.ViewCoordinates.RUB,
+                ),
             )
-            rr.log_image_file(entity + "/image/rgb", img_path=self.path.parent / camera.uri)
+            rr.log(entity + "/image/rgb", rr.ImageEncoded(path=self.path.parent / camera.uri))
 
 
 def main() -> None:
-    logging.getLogger().addHandler(logging.StreamHandler())
+    logging.getLogger().addHandler(rr.LoggingHandler())
     logging.getLogger().setLevel("INFO")
 
     parser = argparse.ArgumentParser(description="Uses the MediaPipe Face Detection to track a human pose in video.")
@@ -205,6 +206,7 @@ def main() -> None:
 
     # display everything in Rerun
     rr.script_setup(args, "rerun_example_open_photogrammetry_format")
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
     project.log_point_cloud()
     project.log_calibrated_cameras()
     rr.script_teardown(args)
