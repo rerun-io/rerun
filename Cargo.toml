@@ -133,6 +133,8 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
+tokio-tungstenite = { version = "0.17.1", default-features = false }
+tungstenite = { version = "0.17", default-features = false }
 unindent = "0.1"
 vec1 = "1.8"
 web-time = "0.2.0"
