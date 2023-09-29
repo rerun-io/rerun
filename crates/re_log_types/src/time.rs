@@ -178,7 +178,7 @@ impl Time {
         }
     }
 
-    // TODO(paris): I left the return type as Option<String> to match the existing calling code in recordings_panel.rs. Is this best?
+    // TODO(paris): I left the return type as Option<String> to match the existing calling code in recordings_panel.rs. Is this okay, or a bad pattern?
     // Human-readable formatting with a custom time_format.
     pub fn format_time_custom(
         &self,
