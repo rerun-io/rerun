@@ -374,6 +374,10 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
                 self.ctx
                     .set_single_selection(&Item::SpaceView(*space_view_id));
+            } else {
+                // Clicked a group tab - we don't support selecting that yet,
+                // so deselect whatever was selected to make it less confusing:
+                self.ctx.rec_cfg.selection_state.clear_current();
             }
         }
     }
