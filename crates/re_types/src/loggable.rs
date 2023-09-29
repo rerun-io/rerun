@@ -84,6 +84,7 @@ pub trait Loggable: Clone + Sized {
     where
         Self: 'a,
     {
+        re_tracing::profile_function!();
         Self::to_arrow_opt(data.into_iter().map(Some))
     }
 
@@ -95,6 +96,7 @@ pub trait Loggable: Clone + Sized {
     /// [`Loggable::arrow_field`].
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
+        re_tracing::profile_function!();
         Self::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| {

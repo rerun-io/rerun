@@ -22,7 +22,8 @@ struct KeypointId (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",
   "attr.python.array_aliases": "int, npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32], npt.NDArray[np.uint64]",
-  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent",
   "attr.rust.custom_clause":
     'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {

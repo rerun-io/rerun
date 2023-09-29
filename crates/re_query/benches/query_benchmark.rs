@@ -190,7 +190,7 @@ fn batch_strings(c: &mut Criterion) {
 
 // --- Helpers ---
 
-fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
+fn build_points_rows(paths: &[EntityPath], num_points: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_POINTS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
@@ -198,8 +198,11 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
                     RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
-                    pts as _,
-                    (build_some_point2d(pts), build_some_colors(pts)),
+                    num_points as _,
+                    (
+                        build_some_point2d(num_points),
+                        build_some_colors(num_points),
+                    ),
                 )
                 .unwrap();
                 // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,

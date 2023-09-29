@@ -94,6 +94,7 @@ impl crate::Loggable for TensorData {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -126,6 +127,7 @@ impl crate::Loggable for TensorData {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::TensorData::from_arrow_opt(arrow_data)

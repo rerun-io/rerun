@@ -75,6 +75,7 @@ impl crate::Loggable for DrawOrder {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -109,6 +110,7 @@ impl crate::Loggable for DrawOrder {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -138,6 +140,7 @@ impl crate::Loggable for DrawOrder {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
@@ -145,21 +148,25 @@ impl crate::Loggable for DrawOrder {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .ok_or_else(|| {
-                crate::DeserializationError::datatype_mismatch(
-                    DataType::Float32,
-                    arrow_data.data_type().clone(),
-                )
-            })
-            .with_context("rerun.components.DrawOrder#value")?
-            .values()
-            .as_slice()
-            .iter()
-            .copied()
-            .map(|v| Self(v))
-            .collect::<Vec<_>>())
+        Ok({
+            let iterator = arrow_data
+                .as_any()
+                .downcast_ref::<Float32Array>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Float32,
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.DrawOrder#value")?
+                .values()
+                .as_slice()
+                .iter()
+                .copied();
+            {
+                re_tracing::profile_scope!("collect");
+                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
     }
 }
