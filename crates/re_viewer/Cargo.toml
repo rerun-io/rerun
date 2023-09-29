@@ -87,7 +87,7 @@ egui.workspace = true
 egui-wgpu.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
-poll-promise = "0.2"
+poll-promise = "0.3"
 rfd.workspace = true
 ron = "0.8.0"
 serde = { version = "1", features = ["derive"] }
