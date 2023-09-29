@@ -243,7 +243,7 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
 ///
 /// Displays the image at the desired size, without overshooting it, and preserving aspect ration.
 ///
-/// Very extremely images will be stretched on their thin axis to make them visible.
+/// Extremely small images will be stretched on their thin axis to make them visible.
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
 fn show_image_preview(
     render_ctx: &mut re_renderer::RenderContext,
