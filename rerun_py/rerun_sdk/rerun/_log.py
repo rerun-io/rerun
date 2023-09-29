@@ -144,7 +144,7 @@ def log(
     if hasattr(entity, "as_component_batches"):
         components = entity.as_component_batches()
     else:
-        components = entity
+        components = list(entity)
 
     if hasattr(entity, "num_instances"):
         num_instances = entity.num_instances()

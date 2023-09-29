@@ -115,10 +115,23 @@ class catch_and_log_exceptions:
 
     For functions, this decorator checks for a strict kwarg and uses it to
     override the global strict mode if provided.
+
+    Parameters
+    ----------
+    context:
+        A string describing the context of the exception.
+        If not provided, the function name will be used.
+    depth_to_user_code:
+        The number of frames to skip when building the warning context.
+        This should be the number of frames between the user code and the
+        context manager.
+    exception_return_value:
+        If an exception is caught, this value will be returned instead of
+        the function's return value.
     """
 
     def __init__(
-        self, context: str | None = None, depth_to_user_code: int = 0, exception_return_value: Any = None
+        self, context: str | None = None, depth_to_user_code: int = 1, exception_return_value: Any = None
     ) -> None:
         self.depth_to_user_code = depth_to_user_code
         self.context = context
@@ -136,8 +149,6 @@ class catch_and_log_exceptions:
         return self
 
     def __call__(self, func: _TFunc) -> _TFunc:
-        self.depth_to_user_code += 1
-
         if self.context is None:
             self.context = func.__qualname__
 

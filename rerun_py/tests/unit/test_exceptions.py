@@ -83,7 +83,7 @@ def test_stack_tracking() -> None:
     with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
 
-        with catch_and_log_exceptions():
+        with catch_and_log_exceptions(depth_to_user_code=0):
             uses_context()
 
         expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 3)
@@ -92,7 +92,7 @@ def test_stack_tracking() -> None:
     with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
 
-        with catch_and_log_exceptions("some context"):
+        with catch_and_log_exceptions("some context", depth_to_user_code=0):
             raise ValueError("some value error")
 
         expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 3)
