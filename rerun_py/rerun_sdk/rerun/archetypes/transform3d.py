@@ -31,12 +31,12 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.log("base", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
-    rr.log("base/translated", rr.TranslationAndMat3x3(translation=[1, 0, 0]))
+    rr.log("base/translated", rr.Transform3D(translation=[1, 0, 0]))
     rr.log("base/translated", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
     rr.log(
         "base/rotated_scaled",
-        rr.TranslationRotationScale3D(
+        rr.Transform3D(
             rotation=RotationAxisAngle(axis=[0, 0, 1], angle=Angle(rad=pi / 4)),
             scale=2,
         ),

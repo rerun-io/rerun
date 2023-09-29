@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterable, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .._log import ComponentBatchLike
     from . import Rotation3DLike, Scale3DLike, Vec3D, Vec3DLike
 
 
