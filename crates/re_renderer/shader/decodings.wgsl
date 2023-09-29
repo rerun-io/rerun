@@ -8,15 +8,9 @@ fn decode_nv12(texture: texture_2d<u32>, coords: IVec2) -> Vec4 {
     let uv_row = u32(coords.y / 2);
     var uv_col = u32(coords.x / 2) * 2u;
 
-    let c = UVec2(coords);
-    let y = (f32(textureLoad(texture, c, 0).r) - 16.0) / 219.0;
+    let y = (f32(textureLoad(texture, UVec2(coords), 0).r) - 16.0) / 219.0;
     let u = (f32(textureLoad(texture, UVec2(u32(uv_col), uv_offset + uv_row), 0).r) - 128.0) / 224.0;
     let v = (f32(textureLoad(texture, UVec2((u32(uv_col) + 1u), uv_offset + uv_row), 0).r) - 128.0) / 224.0;
-
-    // Get RGB values and apply reverse gamma correction since we are rendering to sRGB framebuffer
-    // let r = pow(y + 1.402 * v, 2.2);
-    // let g = pow(y  - (0.344 * u + 0.714 * v), 2.2);
-    // let b = pow(y + 1.772 * u, 2.2);
 
     let r = y + 1.402 * v;
     let g = y  - (0.344 * u + 0.714 * v);
