@@ -252,7 +252,7 @@ impl crate::Loggable for ViewCoordinates {
             }
         }
         Ok({
-            let iterator = {
+            let slice = {
                 let arrow_data = arrow_data
                     .as_any()
                     .downcast_ref::<::arrow2::array::FixedSizeListArray>()
@@ -272,7 +272,7 @@ impl crate::Loggable for ViewCoordinates {
                     })
                     .with_context("rerun.components.ViewCoordinates#coordinates")?;
                 let arrow_data_inner = &**arrow_data.values();
-                let slice = bytemuck::cast_slice::<_, [_; 3usize]>(
+                bytemuck::cast_slice::<_, [_; 3usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<UInt8Array>()
@@ -285,12 +285,11 @@ impl crate::Loggable for ViewCoordinates {
                         .with_context("rerun.components.ViewCoordinates#coordinates")?
                         .values()
                         .as_slice(),
-                );
-                slice.iter().copied()
+                )
             };
             {
                 re_tracing::profile_scope!("collect");
-                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
             }
         })
     }
