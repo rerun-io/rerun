@@ -1416,6 +1416,7 @@ checksum = "8bd69fed5fcf4fbb8225b24e80ea6193b61e17a625db105ef0c4d71dde6eb8b7"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
+ "backtrace",
  "epaint",
  "log",
  "nohash-hasher",
