@@ -187,7 +187,6 @@ impl Time {
     ) -> Option<String> {
         if let Some(datetime) = self.to_datetime() {
             let parsed_format = time::format_description::parse(time_format).unwrap();
-            // return Some(datetime.format(&parsed_format).unwrap());
             return Some(Self::time_string(
                 datetime,
                 &parsed_format,
