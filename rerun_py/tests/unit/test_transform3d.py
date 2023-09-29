@@ -181,6 +181,16 @@ def test_transform3d_translation_and_mat3x3(trans: Vec3DLike | None, mat: Mat3x3
             )
         )
     )
+    if mat is None:
+        assert rr.Transform3D(TranslationRotationScale3D(translation=trans)) == rr.Transform3D(
+            translation=trans,
+            matrix=mat,
+        )
+    else:
+        assert tm == rr.Transform3D(
+            translation=trans,
+            matrix=mat,
+        )
 
     tm2 = rr.Transform3D(TranslationAndMat3x3(translation=trans, matrix=mat, from_parent=True))
 
@@ -193,6 +203,18 @@ def test_transform3d_translation_and_mat3x3(trans: Vec3DLike | None, mat: Mat3x3
             )
         )
     )
+    if mat is None:
+        assert rr.Transform3D(TranslationRotationScale3D(translation=trans, from_parent=True)) == rr.Transform3D(
+            translation=trans,
+            matrix=mat,
+            from_parent=True,
+        )
+    else:
+        assert tm2 == rr.Transform3D(
+            translation=expected_trans,
+            matrix=expected_mat,
+            from_parent=True,
+        )
 
     assert tm != tm2
 
@@ -202,12 +224,14 @@ def test_transform3d_translation_rotation_scale3d_translation(trans: Vec3DLike) 
     tm = rr.Transform3D(TranslationRotationScale3D(translation=trans))
 
     assert tm.transform == Transform3DBatch(Transform3D(TranslationRotationScale3D(translation=Vec3D([1, 2, 3]))))
+    assert tm == rr.Transform3D(translation=Vec3D([1, 2, 3]))
 
     tm2 = rr.Transform3D(TranslationRotationScale3D(translation=trans, from_parent=True))
 
     assert tm2.transform == Transform3DBatch(
         Transform3D(TranslationRotationScale3D(translation=Vec3D([1, 2, 3]), from_parent=True))
     )
+    assert tm2 == rr.Transform3D(translation=Vec3D([1, 2, 3]), from_parent=True)
 
     assert tm2 != tm
 
@@ -222,6 +246,10 @@ def test_transform3d_translation_rotation_scale3d_rotation(rot: Rotation3DLike) 
         Transform3D(TranslationRotationScale3D(rotation=Rotation3D(RotationAxisAngle(Vec3D([1, 2, 3]), Angle(rad=4)))))
     )
 
+    assert tm == rr.Transform3D(rotation=Rotation3D(Quaternion(xyzw=[1, 2, 3, 4]))) or tm == rr.Transform3D(
+        rotation=Rotation3D(RotationAxisAngle(Vec3D([1, 2, 3]), Angle(rad=4)))
+    )
+
 
 @pytest.mark.parametrize("scale", SCALE_3D_INPUT)
 def test_transform3d_translation_rotation_scale3d_scale(scale: Scale3DLike) -> None:
@@ -230,3 +258,4 @@ def test_transform3d_translation_rotation_scale3d_scale(scale: Scale3DLike) -> N
     assert tm.transform == Transform3DBatch(
         Transform3D(TranslationRotationScale3D(scale=Scale3D([1, 2, 3])))
     ) or tm.transform == Transform3DBatch(Transform3D(TranslationRotationScale3D(scale=Scale3D(4.0))))
+    assert tm == rr.Transform3D(scale=Scale3D([1, 2, 3])) or tm == rr.Transform3D(scale=Scale3D(4.0))
