@@ -2,7 +2,7 @@
 title: "ClearIsRecursive"
 ---
 
-Configures how a clear operation should behave - recurive or no?
+Configures how a clear operation should behave - recursive or not?
 
 
 
