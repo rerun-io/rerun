@@ -56,15 +56,18 @@ class Boxes2DExt:
         Parameters
         ----------
         sizes:
-            Full extents in x/y. Specify this instead of `half_sizes`
+            Full extents in x/y.
+            Incompatible with `array` and `half_sizes`.
         half_sizes:
             All half-extents that make up the batch of boxes. Specify this instead of `sizes`
+            Incompatible with `array` and `sizes`.
         mins:
             Minimum coordinates of the boxes. Specify this instead of `centers`.
-
+            Incompatible with `array`.
             Only valid when used together with either `sizes` or `half_sizes`.
         array:
             An array of boxes in the format specified by `array_format`.
+            Incompatible with `sizes`, `half_sizes`, `mins` and `centers`.
         array_format:
             How to interpret the data in `array`.
         centers:
@@ -97,13 +100,7 @@ class Boxes2DExt:
             if centers is not None:
                 _send_warning("Cannot specify both `array` and `centers` at the same time.", 1)
 
-            if np.any(array):
-                array = np.asarray(array, dtype="float32")
-                if array.ndim == 1:
-                    array = np.expand_dims(array, axis=0)
-            else:
-                array = np.zeros((0, 4), dtype="float32")
-            assert type(array) is np.ndarray
+            array = np.asarray(array, dtype="float32")
 
             if array_format == Box2DFormat.XYWH:
                 half_sizes = array[:, 2:4] / 2
@@ -149,8 +146,6 @@ class Boxes2DExt:
                 mins = np.asarray(mins, dtype=np.float32)
                 half_sizes = np.asarray(half_sizes, dtype=np.float32)
                 centers = mins + half_sizes
-
-        print(half_sizes, sizes, centers, mins)
 
         self.__attrs_init__(
             half_sizes=half_sizes,
