@@ -293,8 +293,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             space_view.display_name.clone().into()
         } else {
             // All panes are space views, so this shouldn't happen unless we have a bug
-            re_log::debug_once!("SpaceViewId missing during egui_tiles");
-            "internal_error".into()
+            re_log::warn_once!("SpaceViewId missing during egui_tiles");
+            self.ctx.re_ui.error_text("Internal error").into()
         }
     }
 
@@ -313,7 +313,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 }
             }
         } else {
-            "MISSING TILE".into() // this shouldn't happen
+            re_log::warn_once!("SpaceViewId missing during tab_title_for_tile");
+            self.ctx.re_ui.error_text("Internal error").into()
         }
     }
 
