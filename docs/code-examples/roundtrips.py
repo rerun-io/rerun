@@ -37,7 +37,7 @@ opt_out_entirely = {
     "segmentation_image_simple": ["cpp"],
     "tensor_one_dim": ["cpp"],
     "tensor_simple": ["cpp"],
-    "text_log_integration": ["cpp", "rust"], # Missing example for Rust
+    "text_log_integration": ["cpp"],
     "view_coordinates_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
 
     # This is this script, it's not an example.

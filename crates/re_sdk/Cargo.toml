@@ -19,7 +19,7 @@ all-features = true
 
 
 [features]
-default = ["demo", "glam", "image"]
+default = ["demo", "glam", "image", "log"]
 
 ## Enable the `demo` module (helpers for Rerun examples).
 demo = []
@@ -29,6 +29,9 @@ glam = ["re_types/glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
 image = ["re_types/image"]
+
+## Integration with the [`log`](https://crates.io/crates/log/) crate.
+log = ["dep:env_logger", "dep:log"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -75,6 +78,8 @@ re_ws_comms = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 anyhow = { workspace = true, optional = true }
+env_logger = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 
