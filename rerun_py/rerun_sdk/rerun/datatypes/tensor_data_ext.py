@@ -41,45 +41,6 @@ def _to_numpy(tensor: TensorLike) -> npt.NDArray[Any]:
         return np.array(tensor, copy=False)
 
 
-class ImageEncoding:
-    NV12: "NV12"
-    JPEG: "JPEG"
-
-    @property
-    def name(self) -> str:
-        raise NotImplementedError
-
-
-class NV12(ImageEncoding):
-    width: int | None
-    height: int | None
-
-    def __init__(self, width: int | None = None, height: int | None = None):
-        if width is None and height is None:
-            raise ValueError("ImageEncodingNv12 needs to carry at least one width or height.")
-        self.width = width
-        self.height = height
-
-    @property
-    def name(self) -> str:
-        return f"NV12"
-
-
-class JPEG(ImageEncoding):
-    quality: int
-
-    def __init__(self, quality: int):
-        self.quality = quality
-
-    @property
-    def name(self) -> str:
-        return f"JPEG"
-
-
-ImageEncoding.NV12 = NV12
-ImageEncoding.JPEG = JPEG
-
-
 class TensorDataExt:
     # TODO(jleibs): Should also provide custom converters for shape / buffer
     # assignment that prevent the user from putting the TensorData into an
@@ -92,7 +53,7 @@ class TensorDataExt:
         buffer: TensorBufferLike | None = None,
         array: TensorLike | None = None,
         dim_names: Sequence[str | None] | None = None,
-        encoding: ImageEncoding | None = None,
+        jpeg_quality: int | None = None,
     ) -> None:
         """
         Construct a `TensorData` object.
@@ -180,36 +141,31 @@ class TensorDataExt:
             # This shouldn't be possible but typing can't figure it out
             raise ValueError("No shape provided.")
 
-        if encoding is not None:
-            if isinstance(encoding, ImageEncoding.JPEG):
-                if array is None:
-                    _send_warning("Can only compress JPEG if an array is provided", 2)
-                else:
-                    if array.dtype not in ["uint8", "sint32", "float32"]:
-                        # Convert to a format supported by Image.fromarray
-                        array = array.astype("float32")
+        if jpeg_quality is not None:
+            if array is None:
+                _send_warning("Can only compress JPEG if an array is provided", 2)
+            else:
+                if array.dtype not in ["uint8", "sint32", "float32"]:
+                    # Convert to a format supported by Image.fromarray
+                    array = array.astype("float32")
 
-                    pil_image = Image.fromarray(array)
-                    output = BytesIO()
-                    pil_image.save(output, format="JPEG", quality=encoding.quality)
-                    jpeg_bytes = output.getvalue()
-                    output.close()
-                    jpeg_array = np.frombuffer(jpeg_bytes, dtype=np.uint8)
-                    # self.buffer = TensorBuffer(inner=jpeg_array, kind="jpeg") # TODO(emilk): something like this should work?
-                    self.buffer = TensorBuffer(jpeg_array)
-                    self.buffer.kind = "jpeg"
-                    return
-            elif isinstance(encoding, ImageEncoding.NV12):
-                if array is None:
-                    _send_warning("Can only compress NV12 if an array is provided", 2)
-                else:
-                    self.buffer = TensorBuffer(array, "nv12")
+                pil_image = Image.fromarray(array)
+                output = BytesIO()
+                pil_image.save(output, format="JPEG", quality=jpeg_quality)
+                jpeg_bytes = output.getvalue()
+                output.close()
+                jpeg_array = np.frombuffer(jpeg_bytes, dtype=np.uint8)
+                # self.buffer = TensorBuffer(inner=jpeg_array, kind="jpeg") # TODO(emilk): something like this should work?
+                self.buffer = TensorBuffer(jpeg_array)
+                self.buffer.kind = "jpeg"
+                return
+
         if buffer is not None:
             self.buffer = _tensor_data__buffer__special_field_converter_override(buffer)
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
-        if self.buffer.kind != "jpeg":
+        if self.buffer.kind != "jpeg" and self.buffer.kind != "nv12":
             expected_buffer_size = prod(d.size for d in self.shape)
 
             if len(self.buffer.inner) != expected_buffer_size:
@@ -305,9 +261,10 @@ def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
     buffer = buffer.flatten()
 
     data_inner = pa.ListArray.from_arrays(pa.array([0, len(buffer)]), buffer)
-
     if kind == "jpeg":
         discriminant = "JPEG"
+    elif kind == "nv12":
+        discriminant = "NV12"
     else:
         assert buffer.dtype.type in DTYPE_MAP, f"Failed to find {buffer.dtype.type} in f{DTYPE_MAP}"
         discriminant = DTYPE_MAP[buffer.dtype.type]

@@ -264,15 +264,13 @@ fn picking_textured_rects(context: &PickingContext, images: &[ViewerImage]) -> V
         let v = dir_from_rect_top_left.dot(rect.extent_v) / rect.extent_v.length_squared();
 
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
+            let [width, height] = rect.colormapped_texture.width_height();
             hits.push(PickingRayHit {
                 instance_path_hash: InstancePathHash {
                     entity_path_hash: image.ent_path.hash(),
                     instance_key: InstanceKey::from_2d_image_coordinate(
-                        [
-                            (u * rect.colormapped_texture.texture.width() as f32) as u32,
-                            (v * rect.colormapped_texture.texture.height() as f32) as u32,
-                        ],
-                        rect.colormapped_texture.texture.width() as u64,
+                        [(u * width as f32) as u32, (v * height as f32) as u32],
+                        width as u64,
                     ),
                 },
                 space_position: intersection_world,

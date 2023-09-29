@@ -335,7 +335,7 @@ fn paint_tensor_slice(
         &tensor_stats,
         state,
     )?;
-    let [width, height] = colormapped_texture.image_width_height();
+    let [width, height] = colormapped_texture.width_height();
 
     let img_size = egui::vec2(width as _, height as _);
     let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry

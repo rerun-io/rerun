@@ -126,7 +126,7 @@ impl ColormappedTexture {
         }
     }
 
-    pub fn image_width_height(&self) -> [u32; 2] {
+    pub fn width_height(&self) -> [u32; 2] {
         match self.encoding {
             Some(TextureEncoding::Nv12) => {
                 let [width, height] = self.texture.width_height();
@@ -152,16 +152,6 @@ pub struct TexturedRect {
     pub colormapped_texture: ColormappedTexture,
 
     pub options: RectangleOptions,
-}
-
-impl TexturedRect {
-    /// The uv extent of the image, taking into account the texture encoding.
-    pub fn image_extent_uv(&self) -> [glam::Vec3; 2] {
-        match self.colormapped_texture.encoding {
-            Some(TextureEncoding::Nv12) => [self.extent_u, self.extent_v / 1.5],
-            _ => [self.extent_u, self.extent_v],
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -218,9 +208,7 @@ pub enum RectangleError {
 }
 
 mod gpu_data {
-    use gltf::json::extensions::texture;
-
-    use crate::{texture_info, wgpu_buffer_types};
+    use crate::wgpu_buffer_types;
 
     use super::{ColorMapper, RectangleError, TexturedRect};
 
@@ -357,15 +345,6 @@ mod gpu_data {
                 super::TextureFilterMag::Linear => FILTER_BILINEAR,
                 super::TextureFilterMag::Nearest => FILTER_NEAREST,
             };
-
-            println!(
-                "ENCODING: {:?} MIN: {:?} MAG: {:?} GAMMA: {:?}, color mapper: {:?}",
-                rectangle.colormapped_texture.encoding,
-                minification_filter,
-                magnification_filter,
-                gamma,
-                color_mapper_int
-            );
 
             Ok(Self {
                 top_left_corner_position: (*top_left_corner_position).into(),

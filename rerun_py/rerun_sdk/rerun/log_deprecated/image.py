@@ -28,7 +28,7 @@ def log_image(
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
-    encoding: ImageEncoding | None = None,
+    jpeg_quality: int | None = None,
 ) -> None:
     """
     Log a gray or color image.
@@ -73,8 +73,7 @@ def log_image(
 
     """
 
-    tensor_data = TensorData(array=image, encoding=encoding)
-
+    tensor_data = TensorData(array=image, jpeg_quality=jpeg_quality)
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
 

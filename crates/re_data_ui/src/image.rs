@@ -122,7 +122,6 @@ fn tensor_ui(
                     .on_hover_ui(|ui| {
                         // Show larger image on hover
                         let max_size = Vec2::splat(400.0);
-                        println!("THIS IS HOVER:");
                         show_image_at_max_size(
                             ctx.render_ctx,
                             ctx.re_ui,
@@ -145,7 +144,7 @@ fn tensor_ui(
                 ui.label(format!(
                     "{} x {}{}",
                     tensor.dtype(),
-                    format_tensor_shape_single_line(tensor.shape()),
+                    format_tensor_shape_single_line(shape.as_slice()),
                     if original_tensor.buffer.is_compressed_image() {
                         " (compressed)"
                     } else {
@@ -238,7 +237,7 @@ fn tensor_ui(
 }
 
 fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
-    let [w, h] = colormapped_texture.image_width_height();
+    let [w, h] = colormapped_texture.width_height();
     egui::vec2(w as f32, h as f32)
 }
 
@@ -256,7 +255,6 @@ fn show_image_at_max_size(
         desired_size *= (max_size.y / desired_size.y).min(1.0);
         desired_size
     };
-    println!("Desired size: {:?}", desired_size);
 
     let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
     if let Err(err) = gpu_bridge::render_image(

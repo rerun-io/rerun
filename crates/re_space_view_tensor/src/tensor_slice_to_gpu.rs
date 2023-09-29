@@ -1,10 +1,12 @@
-use re_components::{DecodedTensor, TensorCastError, TensorData, TensorDataType};
 use re_data_store::VersionedInstancePathHash;
 use re_renderer::{
     renderer::{ColormappedTexture, TextureEncoding},
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
-use re_types::tensor_data::{DecodedTensor, TensorCastError, TensorDataType};
+use re_types::{
+    datatypes::TensorBuffer,
+    tensor_data::{DecodedTensor, TensorCastError, TensorDataType},
+};
 use re_viewer_context::{
     gpu_bridge::{self, tensor_data_range_heuristic, RangeError},
     TensorStats,
@@ -48,8 +50,8 @@ pub fn colormapped_texture(
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(
             color_mapping.map,
         )),
-        encoding: match &tensor.data {
-            &TensorData::NV12(_) => Some(TextureEncoding::Nv12),
+        encoding: match &tensor.buffer {
+            &TensorBuffer::Nv12(_) => Some(TextureEncoding::Nv12),
             _ => None,
         },
     })

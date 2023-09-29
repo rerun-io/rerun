@@ -49,8 +49,11 @@ impl TensorData {
         match &self.buffer {
             TensorBuffer::Nv12(_) => {
                 // NV12 encodes a color image in 1.5 "channels" -> 1 luma (per pixel) + (1U+1V) / 4 pixels.
-                // Return the logical RGB size.
-                Some([((y.size as f64) / 1.5) as u64, x.size, 3])
+                // Return the RGB size.
+                match shape_short {
+                    [h, w] => Some([(h.size as f64 / 1.5) as u64, w.size, 3]),
+                    _ => None,
+                }
             }
             _ => {
                 match shape_short.len() {
@@ -319,12 +322,12 @@ tensor_type!(arrow2::types::f16, F16);
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
-// Manual expension of tensor_type! macro for `half::u8` types. We need to do this, because u8 can store bytes that carry encoded data
-impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, u8> {
+// Manual expension of tensor_type! macro for `u8` types. We need to do this, because u8 can store encoded data
+impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, u8> {
     type Error = TensorCastError;
 
-    fn try_from(value: &'a Tensor) -> Result<Self, Self::Error> {
-        match &value.data {
+    fn try_from(value: &'a TensorData) -> Result<Self, Self::Error> {
+        match &value.buffer {
             TensorBuffer::U8(data) | TensorBuffer::Nv12(data) => {
                 let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
                 ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))

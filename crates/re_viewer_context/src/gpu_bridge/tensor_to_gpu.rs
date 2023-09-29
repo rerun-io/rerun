@@ -89,8 +89,8 @@ pub fn color_tensor_to_gpu(
     let [height, width, depth] = height_width_depth(tensor)?;
 
     let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
-        let (data, format) = match (depth, &tensor.data) {
-            (3, TensorData::NV12(buf)) => {
+        let (data, format) = match (depth, &tensor.buffer) {
+            (3, TensorBuffer::Nv12(buf)) => {
                 (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint)
             }
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
@@ -124,8 +124,8 @@ pub fn color_tensor_to_gpu(
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
         || super::tensor_decode_srgb_gamma_heuristic(tensor_stats, tensor.dtype(), depth)?;
 
-    let encoding = match &tensor.data {
-        &TensorData::NV12(_) => Some(TextureEncoding::Nv12),
+    let encoding = match &tensor.buffer {
+        &TensorBuffer::Nv12(_) => Some(TextureEncoding::Nv12),
         _ => None,
     };
     // Special casing for normalized textures used above:
@@ -136,12 +136,13 @@ pub fn color_tensor_to_gpu(
         [0.0, 1.0]
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
+    } else if encoding == Some(TextureEncoding::Nv12) {
+        [0.0, 1.0]
     } else {
         // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
         super::tensor_data_range_heuristic(tensor_stats, tensor.dtype())?
     };
 
-    println!("texture components: {}", texture_format.components());
     let color_mapper = if encoding.is_none() && texture_format.components() == 1 {
         // Single-channel images = luminance = grayscale
         Some(ColorMapper::Function(re_renderer::Colormap::Grayscale))
@@ -337,7 +338,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                     unreachable!("DecodedTensor cannot contain a JPEG")
                 }
 
-                TensorData::NV12(_) => {
+                TensorBuffer::Nv12(_) => {
                     unreachable!("An NV12 tensor can only contain a 3 channel image.")
                 }
             }
@@ -362,7 +363,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
                 }
-                TensorData::NV12(_) => {
+                TensorBuffer::Nv12(_) => {
                     unreachable!("An NV12 tensor can only contain a 3 channel image.")
                 }
             }
@@ -408,7 +409,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
                 }
-                TensorData::NV12(buf) => {
+                TensorBuffer::Nv12(buf) => {
                     (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm)
                 }
             }
@@ -433,7 +434,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
                 }
-                TensorData::NV12(_) => {
+                TensorBuffer::Nv12(_) => {
                     unreachable!("An NV12 tensor can only contain a 3 channel image.")
                 }
             }
@@ -516,8 +517,8 @@ fn height_width_depth(tensor: &TensorData) -> anyhow::Result<[u32; 3]> {
     let Some([mut height, width, channel]) = tensor.image_height_width_channels() else {
         anyhow::bail!("Tensor is not an image");
     };
-    height = match tensor.data {
-        TensorData::NV12(_) => height * 3 / 2,
+    height = match tensor.buffer {
+        TensorBuffer::Nv12(_) => height * 3 / 2,
         _ => height,
     };
 

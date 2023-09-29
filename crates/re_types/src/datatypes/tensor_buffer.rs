@@ -953,7 +953,7 @@ impl crate::Loggable for TensorBuffer {
                                     nv12_inner_bitmap,
                                 )
                                 .boxed(),
-                                u8_bitmap,
+                                nv12_bitmap,
                             )
                             .boxed()
                         }
@@ -1209,7 +1209,7 @@ impl crate::Loggable for TensorBuffer {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
-                                Filed {
+                                Field {
                                     name: "NV12".to_owned(),
                                     data_type: DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
@@ -2105,10 +2105,10 @@ impl crate::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let nv12 = {
-                    if 1usize >= arrow_data_arrays.len() {
+                    if 13usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[1usize];
+                    let arrow_data = &*arrow_data_arrays[13usize];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -2124,7 +2124,7 @@ impl crate::Loggable for TensorBuffer {
                                     arrow_data.data_type().clone(),
                                 )
                             })
-                            .with_context("rerun.datatypes.TensorBuffer#U8")?;
+                            .with_context("rerun.datatypes.TensorBuffer#NV12")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -2139,7 +2139,7 @@ impl crate::Loggable for TensorBuffer {
                                             arrow_data_inner.data_type().clone(),
                                         )
                                     })
-                                    .with_context("rerun.datatypes.TensorBuffer#U8")?
+                                    .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
@@ -2363,6 +2363,21 @@ impl crate::Loggable for TensorBuffer {
                                         .clone()
                                         .ok_or_else(crate::DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#JPEG")?
+                                }),
+                                13i8 => TensorBuffer::Nv12({
+                                    if offset as usize >= nv12.len() {
+                                        return Err(crate::DeserializationError::offset_oob(
+                                            offset as _,
+                                            nv12.len(),
+                                        ))
+                                        .with_context("rerun.datatypes.TensorBuffer#NV12");
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe { nv12.get_unchecked(offset as usize) }
+                                        .clone()
+                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                 }),
                                 _ => {
                                     return Err(crate::DeserializationError::missing_union_arm(

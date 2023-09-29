@@ -163,7 +163,7 @@ impl SpaceViewClass for BarChartSpaceView {
                                 );
                                 continue;
                             }
-                            TensorData::NV12(_) => {
+                            TensorBuffer::Nv12(_) => {
                                 re_log::warn_once!(
                                     "trying to display NV12 data as a bar chart ({:?})",
                                     ent_path

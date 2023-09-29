@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 import pathlib
-from enum import Enum
 from typing import IO, Iterable
 
 import numpy as np
@@ -14,26 +13,47 @@ from .components import DrawOrderLike, TensorData
 from .datatypes import TensorBuffer, TensorDimension
 
 
-class ImageFormat(Enum):
+class ImageFormat:
     """Image file format."""
 
-    BMP = "BMP"
-    """BMP format."""
+    name: str
 
-    GIF = "GIF"
-    """GIF format."""
+    BMP: ImageFormat
+    GIF: ImageFormat
+    JPEG: ImageFormat
+    PNG: ImageFormat
+    TIFF: ImageFormat
+    NV12: type[NV12]
 
-    JPEG = "JPEG"
-    """JPEG format."""
-
-    PNG = "PNG"
-    """PNG format."""
-
-    TIFF = "TIFF"
-    """TIFF format."""
+    def __init__(self, name: str):
+        self.name = name
 
     def __str__(self) -> str:
         return self.name
+
+
+class NV12(ImageFormat):
+    """NV12 format."""
+
+    name = "NV12"
+
+    def __init__(self, width: int | None = None, height: int | None = None) -> None:
+        if width is None and height is None:
+            raise ValueError("Must provide width or height")
+        self.width = width
+        self.height = height
+
+
+# Assign the variants
+# This allows for rust like enums, for example:
+# ImageFormat.NV12(width=1920, height=1080)
+# isinstance(ImageFormat.NV12, ImageFormat) == True and isinstance(ImageFormat.NV12, NV12) == True
+ImageFormat.BMP = ImageFormat("BMP")
+ImageFormat.GIF = ImageFormat("GIF")
+ImageFormat.JPEG = ImageFormat("JPEG")
+ImageFormat.PNG = ImageFormat("PNG")
+ImageFormat.TIFF = ImageFormat("TIFF")
+ImageFormat.NV12 = NV12
 
 
 class ImageEncoded(AsComponents):
@@ -70,11 +90,6 @@ class ImageEncoded(AsComponents):
         if len([x for x in (path, contents) if x is not None]) != 1:
             raise ValueError("Must provide exactly one of 'path' or 'contents'")
 
-        if format is not None:
-            formats = (str(format),)
-        else:
-            formats = None
-
         buffer: IO[bytes] | None = None
         if path is not None:
             buffer = open(path, "rb")
@@ -86,6 +101,31 @@ class ImageEncoded(AsComponents):
         if buffer is None:
             raise ValueError("Input data could not be coerced to IO[bytes]")
 
+        formats = None
+        if format is not None:
+            if isinstance(format, NV12):
+                np_buf = np.frombuffer(buffer.read(), dtype=np.uint8)
+                height = format.height
+                width = format.width
+                if height is None and width is None:
+                    raise ValueError("Must provide width or height")
+                elif height is None and width is not None:
+                    height = int(np_buf.size / (width * 1.5))
+                elif width is None and height is not None:
+                    width = int(np_buf.size / (height * 1.5))
+                assert height is not None and width is not None
+                np_buf = np_buf.reshape(int(height * 1.5), width, 1)
+                self.data = TensorData(
+                    buffer=TensorBuffer(np_buf, kind="nv12"),
+                    shape=[
+                        TensorDimension(np_buf.shape[0], "height"),
+                        TensorDimension(np_buf.shape[1], "width"),
+                        TensorDimension(1, "depth"),
+                    ],
+                )
+                self.draw_order = draw_order
+                return
+            formats = (str(format),)
         # Note that PIL loading is lazy. This will only identify the type of file
         # and not decode the whole jpeg.
         img_data = PILImage.open(buffer, formats=formats)
