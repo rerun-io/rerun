@@ -1,14 +1,10 @@
 name: Pull-Request
 
 on:
-  # This will run workflows from the PR branch, so is not safe to use on external contributor PRs!
   pull_request:
     types:
       - opened
       - synchronize
-
-# ⚠ Every job must use the following condition:
-#   if: github.event.pull_request.head.repo.owner == 'rerun-io'
 
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:

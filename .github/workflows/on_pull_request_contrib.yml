@@ -1,128 +1,25 @@
 name: Pull-Request (Contrib)
 
 on:
-  # This will run workflows from the _base_ branch, even if the PR contains changes to workflows.
-  # That makes this safe to run on PRs from forks.
-  # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - synchronize
 
-# ⚠ Every job must use the following condition:
-#   if: github.event.pull_request.head.repo.owner != 'rerun-io'
-
-# These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
   checks:
-    name: Checks
+    name: "Checks"
     if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    uses: ./.github/workflows/reusable_checks.yml
+    uses: ./.github/workflows/contrib/checks.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
-    secrets: inherit
 
-  min-test-wheel:
-    name: "Minimum Wheel"
+  python:
+    name: "Python"
     if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    uses: ./.github/workflows/contrib/rerun_py.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PLATFORM: linux
       MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
-      WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
-      RRD_ARTIFACT_NAME: linux-rrd-fast
-    secrets: inherit
-
-  build-rerun_c-and-upload:
-    name: "Build & Upload rerun_c (Linux x64)"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PLATFORM: linux
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-    secrets: inherit
-
-  build-web:
-    name: "Build Web"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    uses: ./.github/workflows/reusable_build_web.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-    secrets: inherit
-
-  upload-web:
-    name: "Upload Web"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    needs: [min-test-wheel, build-web]
-    uses: ./.github/workflows/reusable_upload_web.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      RRD_ARTIFACT_NAME: linux-rrd-fast
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-    secrets: inherit
-
-  build-web-demo:
-    name: "Build Web Demo"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    needs: [min-test-wheel, build-web]
-    uses: ./.github/workflows/reusable_build_web_demo.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      WHEEL_ARTIFACT_NAME: linux-wheel-fast
-      SOURCE_LINK_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-    secrets: inherit
-
-  track-sizes:
-    name: "Track Sizes"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    needs: [build-web-demo]
-    uses: ./.github/workflows/reusable_track_size.yml
-    with:
-      CONCURRENCY: push-${{ github.ref_name }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-    secrets: inherit
-
-  upload-web-demo:
-    name: "Upload Web Demo"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    needs: [build-web-demo]
-    uses: ./.github/workflows/reusable_upload_web_demo.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-    secrets: inherit
-
-  run-notebook:
-    name: "Run Notebook"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    needs: [min-test-wheel]
-    uses: ./.github/workflows/reusable_run_notebook.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      WHEEL_ARTIFACT_NAME: linux-wheel-fast
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-    secrets: inherit
-
-  save-pr-summary:
-    name: "Save PR Summary"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    needs: [upload-web, run-notebook, build-rerun_c-and-upload]
-    uses: ./.github/workflows/reusable_pr_summary.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-    secrets: inherit
-
-  update-pr-body:
-    name: "Update PR Body"
-    if: github.event.pull_request.head.repo.owner != 'rerun-io'
-    uses: ./.github/workflows/reusable_update_pr_body.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-    secrets: inherit
 
