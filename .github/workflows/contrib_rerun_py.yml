@@ -40,13 +40,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The pip-cache setup logic doesn't work in the ubuntu docker container
-      # That's probably fine since we bake these deps into the container already
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
       # These should already be in the docker container, but run for good measure. A no-op install
       # should be fast, and this way things don't break if we add new packages without rebuilding
       # docker
