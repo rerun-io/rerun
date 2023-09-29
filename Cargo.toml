@@ -86,6 +86,7 @@ eframe = { version = "0.23.0", default-features = false, features = [
   "x11",
 ] }
 egui = { version = "0.23.0", features = [
+  "callstack",
   "extra_debug_asserts",
   "log",
   "puffin",
