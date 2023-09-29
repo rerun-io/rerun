@@ -3,7 +3,7 @@
 name: Pull Request Checkboxes
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -14,17 +14,14 @@ concurrency:
   group: ${{ github.event.pull_request.number }}-pr-checkboxes
   cancel-in-progress: true
 
+permissions:
+  contents: "read"
+  pull-requests: "write"
+
 jobs:
   pr-checkboxes:
     name: Check PR checkboxes
-
-    permissions:
-      contents: "read"
-      id-token: "write"
-      pull-requests: "write"
-
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
