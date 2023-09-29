@@ -1,6 +1,6 @@
 use crate::{
     draw_phases::DrawPhase,
-    renderer::{DrawData, Renderer},
+    renderer::{DrawData, DrawError, Renderer},
     RenderContext,
 };
 
@@ -9,11 +9,11 @@ pub enum QueueableDrawDataError {
     #[error("Failed to retrieve renderer of type {0}")]
     FailedToRetrieveRenderer(&'static str),
 
+    #[error(transparent)]
+    DrawError(#[from] DrawError),
+
     #[error("Mismatching draw data type, expected {0}")]
     UnexpectedDrawDataType(&'static str),
-
-    #[error(transparent)]
-    DrawError(#[from] anyhow::Error),
 }
 
 type DrawFn = dyn for<'a, 'b> Fn(
