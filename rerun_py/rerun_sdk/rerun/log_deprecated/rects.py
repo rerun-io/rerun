@@ -125,7 +125,7 @@ def log_rects(
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
-    or one color per point in a Nx3 or Nx4 numpy array.
+    or one color per point in a Nx3 or Nx4 numpy rects.
 
     Supported `dtype`s for `colors`:
     --------------------------------
@@ -138,7 +138,7 @@ def log_rects(
     entity_path:
         Path to the rectangles in the space hierarchy.
     rects:
-        Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format` argument.
+        Nx4 numpy rects, where each row is [x, y, w, h], or some format you pick with the `rect_format` argument.
     rect_format:
         how to interpret the `rect` argument
     identifiers:
@@ -180,16 +180,16 @@ def log_rects(
         half_sizes = rects[:, 2:4] / 2
         centers = rects[:, 0:2] + half_sizes
     elif rect_format == RectFormat.YXHW:
-        half_sizes = rects[:, 4:2] / 2
-        centers = rects[:, 2:0] + half_sizes
+        half_sizes = np.flip(rects[:, 2:4]) / 2
+        centers = np.flip(rects[:, 0:2]) + half_sizes
     elif rect_format == RectFormat.XYXY:
         min = rects[:, 0:2]
         max = rects[:, 2:4]
         centers = (min + max) / 2
         half_sizes = max - centers
     elif rect_format == RectFormat.YXYX:
-        min = rects[:, 2:0]
-        max = rects[:, 4:2]
+        min = np.flip(rects[:, 0:2])
+        max = np.flip(rects[:, 2:4])
         centers = (min + max) / 2
         half_sizes = max - centers
     elif rect_format == RectFormat.XCYCWH:
