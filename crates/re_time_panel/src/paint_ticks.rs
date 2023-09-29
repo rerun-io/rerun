@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use egui::{lerp, pos2, remap_clamp, Align2, Color32, Rect, Rgba, Shape, Stroke};
 
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{Time, TimeRangeF, TimeReal, TimeType};
+use re_log_types::{Time, TimeRangeF, TimeReal, TimeType, TimeZone};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -13,7 +13,7 @@ pub fn paint_time_ranges_and_ticks(
     time_area_painter: &egui::Painter,
     line_y_range: RangeInclusive<f32>,
     time_type: TimeType,
-    show_timestamps_in_local_timezone: bool,
+    time_zone_for_timestamps: TimeZone,
 ) {
     let clip_rect = ui.clip_rect();
     let clip_left = clip_rect.left() as f64;
@@ -52,7 +52,7 @@ pub fn paint_time_ranges_and_ticks(
                 &rect,
                 time_type,
                 &time_range,
-                show_timestamps_in_local_timezone,
+                time_zone_for_timestamps,
             ));
     }
 }
@@ -62,7 +62,7 @@ fn paint_time_range_ticks(
     rect: &Rect,
     time_type: TimeType,
     time_range: &TimeRangeF,
-    _show_timestamps_in_local_timezone: bool,
+    time_zone_for_timestamps: TimeZone,
 ) -> Vec<Shape> {
     let font_id = egui::TextStyle::Small.resolve(ui.style());
 
@@ -76,8 +76,7 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range, // ns
                 next_grid_tick_magnitude_ns,
-                // TODO(paris): Fix 'closures can only be coerced to `fn` types if they do not capture any variables' error.
-                |ns| Time::from_ns_since_epoch(ns).format_time_compact(false),
+                |ns| Time::from_ns_since_epoch(ns).format_time_compact(time_zone_for_timestamps),
             )
         }
         TimeType::Sequence => {
@@ -107,7 +106,7 @@ fn paint_ticks(
     clip_rect: &Rect,
     time_range: &TimeRangeF,
     next_time_step: fn(i64) -> i64,
-    format_tick: fn(i64) -> String,
+    format_tick: impl Fn(i64) -> String,
 ) -> Vec<egui::Shape> {
     re_tracing::profile_function!();
 

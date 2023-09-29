@@ -243,7 +243,7 @@ pub fn time_button(
         is_selected,
         timeline
             .typ()
-            .format(value, ctx.app_options.show_timestamps_in_local_timezone),
+            .format(value, ctx.app_options.time_zone_for_timestamps),
     );
     if response.clicked() {
         ctx.rec_cfg

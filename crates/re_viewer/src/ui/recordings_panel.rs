@@ -1,16 +1,10 @@
 use std::collections::BTreeMap;
 
-use time::macros::format_description;
-
 use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_viewer_context::{
     AppOptions, CommandSender, SystemCommand, SystemCommandSender, ViewerContext,
 };
-
-static TIME_FORMAT_DESCRIPTION: once_cell::sync::Lazy<
-    &'static [time::format_description::FormatItem<'static>],
-> = once_cell::sync::Lazy::new(|| format_description!(version = 2, "[hour]:[minute]:[second]Z"));
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
@@ -205,10 +199,10 @@ fn recording_ui(
     let name = store_db
         .store_info()
         .and_then(|info| {
-            info.started
-                .to_datetime()
-                // TODO(paris): Update this formatting based on whether in UTC or not.
-                .and_then(|dt| dt.format(&TIME_FORMAT_DESCRIPTION).ok())
+            info.started.format_time_custom(
+                "[hour]:[minute]:[second]",
+                app_options.time_zone_for_timestamps,
+            )
         })
         .unwrap_or("<unknown time>".to_owned());
 
@@ -275,7 +269,7 @@ fn recording_hover_ui(
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Recording started");
-                ui.label(started.format(app_options.show_timestamps_in_local_timezone));
+                ui.label(started.format(app_options.time_zone_for_timestamps));
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Source");

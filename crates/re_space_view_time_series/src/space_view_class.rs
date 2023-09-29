@@ -2,7 +2,7 @@ use egui_plot::{Legend, Line, Plot, Points};
 
 use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
@@ -124,7 +124,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
-        let show_timestamps_in_local_timezone = ctx.app_options.show_timestamps_in_local_timezone;
+        let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
             .allow_zoom(egui_plot::AxisBools {
                 x: true,
@@ -138,7 +138,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 format_time(
                     time_type,
                     time as i64 + time_offset,
-                    show_timestamps_in_local_timezone,
+                    time_zone_for_timestamps,
                 )
             })
             .label_formatter(move |name, value| {
@@ -149,7 +149,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     "{timeline_name}: {}\n{name}: {:.*}",
                     time_type.format(
                         (value.x as i64 + time_offset).into(),
-                        show_timestamps_in_local_timezone
+                        time_zone_for_timestamps
                     ),
                     decimals,
                     value.y,
@@ -241,18 +241,14 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 }
 
-fn format_time(
-    time_type: TimeType,
-    time_int: i64,
-    show_timestamps_in_local_timezone: bool,
-) -> String {
+fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: TimeZone) -> String {
     if time_type == TimeType::Time {
         let time = re_log_types::Time::from_ns_since_epoch(time_int);
-        time.format_time_compact(show_timestamps_in_local_timezone)
+        time.format_time_compact(time_zone_for_timestamps)
     } else {
         time_type.format(
             re_log_types::TimeInt::from(time_int),
-            show_timestamps_in_local_timezone,
+            time_zone_for_timestamps,
         )
     }
 }

@@ -1,5 +1,5 @@
 use re_log_types::{
-    DataCellColumn, SizeBytes as _, TimeRange, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
+    DataCellColumn, SizeBytes as _, TimeRange, TimeZone, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
     COLUMN_TIMEPOINT,
 };
 use re_types::ComponentName;
@@ -100,9 +100,9 @@ impl IndexedTable {
                 if t1.max.as_i64() >= t2.min.as_i64() {
                     return Err(SanityError::OverlappingBuckets {
                         t1_max: t1.max.as_i64(),
-                        t1_max_formatted: self.timeline.typ().format(t1.max, false),
+                        t1_max_formatted: self.timeline.typ().format(t1.max, TimeZone::Utc),
                         t2_max: t2.max.as_i64(),
-                        t2_max_formatted: self.timeline.typ().format(t2.max, false),
+                        t2_max_formatted: self.timeline.typ().format(t2.max, TimeZone::Utc),
                     });
                 }
             }

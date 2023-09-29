@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use re_format::format_number;
-use re_log_types::Time;
+use re_log_types::{Time, TimeZone};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UICommand;
 use re_viewer_context::StoreContext;
@@ -207,8 +207,8 @@ fn paris_debug_ui(ui: &mut egui::Ui) {
     let color = visuals.weak_text_color();
 
     let t = Time::now();
-    let local = t.format(true);
-    let utc = t.format(false);
+    let local = t.format(TimeZone::Local);
+    let utc = t.format(TimeZone::Utc);
     let text = format!("Local Time: {local} - UTC Time: {utc}");
     ui.label(egui::RichText::new(text).monospace().color(color));
 }

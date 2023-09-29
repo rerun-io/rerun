@@ -7,6 +7,7 @@ use re_types::{ComponentName, ComponentNameSet};
 use smallvec::SmallVec;
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
+use re_log_types::TimeZone;
 
 // --- Queries ---
 
@@ -23,7 +24,7 @@ impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<latest at {} on {:?} (including timeless)>",
-            self.timeline.typ().format(self.at, false),
+            self.timeline.typ().format(self.at, TimeZone::Utc),
             self.timeline.name(),
         ))
     }
@@ -58,8 +59,8 @@ impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
-            self.timeline.typ().format(self.range.min, false),
-            self.timeline.typ().format(self.range.max, false),
+            self.timeline.typ().format(self.range.min, TimeZone::Utc),
+            self.timeline.typ().format(self.range.max, TimeZone::Utc),
             self.timeline.name(),
             if self.range.min == TimeInt::MIN {
                 "including"
@@ -513,11 +514,11 @@ impl IndexedTable {
             trace!(
                 kind = "latest_at",
                 timeline = %timeline.name(),
-                time = timeline.typ().format(time, false),
+                time = timeline.typ().format(time, TimeZone::Utc),
                 %primary,
                 ?components,
                 attempt,
-                bucket_time_range = timeline.typ().format_range(bucket.inner.read().time_range, false),
+                bucket_time_range = timeline.typ().format_range(bucket.inner.read().time_range, TimeZone::Utc),
                 "found candidate bucket"
             );
             if let cells @ Some(_) = bucket.latest_at(time, primary, components) {
@@ -560,7 +561,7 @@ impl IndexedTable {
                     kind = "range",
                     bucket_nr,
                     bucket_time_range =
-                        timeline.typ().format_range(bucket.inner.read().time_range, false),
+                        timeline.typ().format_range(bucket.inner.read().time_range, TimeZone::Utc),
                     timeline = %timeline.name(),
                     ?time_range,
                     ?components,
@@ -715,7 +716,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time, false),
+            time = self.timeline.typ().format(time, TimeZone::Utc),
             "searching for primary & secondary cells…"
         );
 
@@ -736,7 +737,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time, false),
+            time = self.timeline.typ().format(time, TimeZone::Utc),
             %primary_row_nr,
             "found primary row number",
         );
@@ -750,7 +751,7 @@ impl IndexedBucket {
                     %primary,
                     ?components,
                     timeline = %self.timeline.name(),
-                    time = self.timeline.typ().format(time, false),
+                    time = self.timeline.typ().format(time, TimeZone::Utc),
                     %primary_row_nr,
                     "no secondary row number found",
                 );
@@ -764,7 +765,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time, false),
+            time = self.timeline.typ().format(time, TimeZone::Utc),
             %primary_row_nr, %secondary_row_nr,
             "found secondary row number",
         );
@@ -779,7 +780,7 @@ impl IndexedBucket {
                         %primary,
                         %component,
                         timeline = %self.timeline.name(),
-                        time = self.timeline.typ().format(time, false),
+                        time = self.timeline.typ().format(time, TimeZone::Utc),
                         %primary_row_nr, %secondary_row_nr,
                         "found cell",
                     );
@@ -836,10 +837,10 @@ impl IndexedBucket {
 
         trace!(
             kind = "range",
-            bucket_time_range = self.timeline.typ().format_range(bucket_time_range, false),
+            bucket_time_range = self.timeline.typ().format_range(bucket_time_range, TimeZone::Utc),
             ?components,
             timeline = %self.timeline.name(),
-            time_range = self.timeline.typ().format_range(time_range, false),
+            time_range = self.timeline.typ().format_range(time_range, TimeZone::Utc),
             "searching for time & component cell numbers…"
         );
 
@@ -847,10 +848,10 @@ impl IndexedBucket {
 
         trace!(
             kind = "range",
-            bucket_time_range = self.timeline.typ().format_range(bucket_time_range, false),
+            bucket_time_range = self.timeline.typ().format_range(bucket_time_range, TimeZone::Utc),
             ?components,
             timeline = %self.timeline.name(),
-            time_range = self.timeline.typ().format_range(time_range, false),
+            time_range = self.timeline.typ().format_range(time_range, TimeZone::Utc),
             %time_row_nr,
             "found time row number",
         );
@@ -896,10 +897,10 @@ impl IndexedBucket {
                 trace!(
                     kind = "range",
                     bucket_time_range =
-                        self.timeline.typ().format_range(bucket_time_range, false),
+                        self.timeline.typ().format_range(bucket_time_range, TimeZone::Utc),
                     ?components,
                     timeline = %self.timeline.name(),
-                    time_range = self.timeline.typ().format_range(time_range, false),
+                    time_range = self.timeline.typ().format_range(time_range, TimeZone::Utc),
                     %row_nr,
                     %row_id,
                     ?cells,

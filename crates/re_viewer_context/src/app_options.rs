@@ -1,3 +1,5 @@
+use re_log_types::TimeZone;
+
 /// Global options for the viewer.
 #[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -24,8 +26,8 @@ pub struct AppOptions {
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
-    /// If true, show timestamps in the local timezone.
-    pub show_timestamps_in_local_timezone: bool,
+    /// What time zone to display timestamps in.
+    pub time_zone_for_timestamps: TimeZone,
 }
 
 impl Default for AppOptions {
@@ -44,7 +46,7 @@ impl Default for AppOptions {
 
             show_picking_debug_overlay: false,
 
-            show_timestamps_in_local_timezone: false,
+            time_zone_for_timestamps: TimeZone::Utc,
         }
     }
 }

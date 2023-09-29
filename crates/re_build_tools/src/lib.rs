@@ -85,7 +85,6 @@ pub fn export_env_vars() {
         );
     }
 
-    // TODO(paris): Determine if this needs to be updated if we're displaying in the local timezone.
     let time_format =
         time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z").unwrap();
     let date_time = time::OffsetDateTime::now_utc()
