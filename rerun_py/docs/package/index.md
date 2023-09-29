@@ -1,8 +1,8 @@
 # Full Package
 
 - [rerun][]: Top-level User-facing APIs. See also: [Common APIs](../common/)
-    - [rerun.log][]: APIs for logging data
-    - [rerun.color_conversion][]: Conversion utilities related to colors
-    - [rerun.components][]: Helpers for constructing arrow components
+    - [rerun.archetypes][]: Common objects for logging primitives understood by the viewer, e.g. Points and Lines.
+    - [rerun.components][]: Individual components of the archetypes, e.g. Positions and Colors.
+    - [rerun.datatypes][]: Data types used to represent the components, e.g. Vectors and Matrices.
 - [rerun_demo][]: Utilities related to running rerun demos
     - [rerun_demo.data][]: Specific helpers for generating data
