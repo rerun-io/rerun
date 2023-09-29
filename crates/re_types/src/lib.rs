@@ -256,8 +256,26 @@ pub trait AsComponents {
 /// Number of decimals shown for all vector display methods.
 pub const DISPLAY_PRECISION: usize = 3;
 
+/// Acrchetype are the high-level things you can log, like [`Image`][archetypes::Image], [`Points3D`][archetypes::Points3D], etc.
+///
+/// All archetypes implement the [`Archetype`] trait.
+///
+/// Each archetype is a collection of [`components`] and includes images, point clouds, and more.
+///
+/// Each entity can consist of many archetypes, but usually each entity will only have one archetype.
+///
+/// A special archetype is [`Clear`][archetypes::Clear] which resets all the components
+/// of an already logged entity.
 pub mod archetypes;
+
+/// Components are the basic building blocks of [`archetypes`].
+///
+/// They all implement the [`Component`] trait.
+///
+/// Each component is a wrapper around a [`datatype`][datatypes].
 pub mod components;
+
+/// The lowe-level datatypes that [`components`] are built from.
 pub mod datatypes;
 
 mod archetype;

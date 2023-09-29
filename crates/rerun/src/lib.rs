@@ -47,6 +47,8 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
+//! Too see what other things you can log, read the [`archetypes`] documentation.
+//!
 //! See [`RecordingStream`] for details.
 //!
 //! #### Streaming
@@ -88,7 +90,6 @@
 
 mod run;
 
-/// Module for integrating with the [`clap`](https://crates.io/crates/clap) command line argument parser.
 #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
 pub mod clap;
 

@@ -1,4 +1,4 @@
-//! This module provides integration with integration with [`clap`](https://github.com/clap-rs/clap).
+//! Integration with integration with the [`clap`](https://crates.io/crates/clap) command line argument parser.
 
 use std::{net::SocketAddr, path::PathBuf};
 
