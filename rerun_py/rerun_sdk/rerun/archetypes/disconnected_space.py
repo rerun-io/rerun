@@ -43,16 +43,18 @@ class DisconnectedSpace(Archetype):
     ```
     """
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, disconnected_space: components.DisconnectedSpaceLike):
         """Create a new instance of the DisconnectedSpace archetype."""
 
         # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
-        self.__attrs_init__(disconnected_space=disconnected_space)
+        with catch_and_log_exceptions("DisconnectedSpace"):
+            self.__attrs_init__(disconnected_space=disconnected_space)
+            return
+        self.__attrs_init__()
 
     disconnected_space: components.DisconnectedSpaceBatch = field(
         metadata={"component": "required"},
-        converter=components.DisconnectedSpaceBatch,  # type: ignore[misc]
+        converter=components.DisconnectedSpaceBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

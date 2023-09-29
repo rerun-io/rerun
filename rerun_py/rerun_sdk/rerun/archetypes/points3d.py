@@ -60,7 +60,6 @@ class Points3D(Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         positions: datatypes.Vec3DArrayLike,
@@ -106,19 +105,22 @@ class Points3D(Archetype):
         """
 
         # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
-        self.__attrs_init__(
-            positions=positions,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            class_ids=class_ids,
-            keypoint_ids=keypoint_ids,
-            instance_keys=instance_keys,
-        )
+        with catch_and_log_exceptions("Points3D"):
+            self.__attrs_init__(
+                positions=positions,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                class_ids=class_ids,
+                keypoint_ids=keypoint_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_init__()
 
     positions: components.Position3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position3DBatch,  # type: ignore[misc]
+        converter=components.Position3DBatch._required,  # type: ignore[misc]
     )
     """
     All the 3D positions at which the point cloud shows points.

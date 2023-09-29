@@ -61,7 +61,6 @@ class TimeSeriesScalar(Archetype):
     ```
     """
 
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         scalar: components.ScalarLike,
@@ -119,11 +118,14 @@ class TimeSeriesScalar(Archetype):
         """
 
         # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
-        self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
+        with catch_and_log_exceptions("TimeSeriesScalar"):
+            self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
+            return
+        self.__attrs_init__()
 
     scalar: components.ScalarBatch = field(
         metadata={"component": "required"},
-        converter=components.ScalarBatch,  # type: ignore[misc]
+        converter=components.ScalarBatch._required,  # type: ignore[misc]
     )
     """
     The scalar value to log.

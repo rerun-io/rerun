@@ -122,7 +122,6 @@ class LineStrips3D(Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         strips: components.LineStrip3DArrayLike,
@@ -155,13 +154,21 @@ class LineStrips3D(Archetype):
         """
 
         # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
-        self.__attrs_init__(
-            strips=strips, radii=radii, colors=colors, labels=labels, class_ids=class_ids, instance_keys=instance_keys
-        )
+        with catch_and_log_exceptions("LineStrips3D"):
+            self.__attrs_init__(
+                strips=strips,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                class_ids=class_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_init__()
 
     strips: components.LineStrip3DBatch = field(
         metadata={"component": "required"},
-        converter=components.LineStrip3DBatch,  # type: ignore[misc]
+        converter=components.LineStrip3DBatch._required,  # type: ignore[misc]
     )
     """
     All the actual 3D line strips that make up the batch.

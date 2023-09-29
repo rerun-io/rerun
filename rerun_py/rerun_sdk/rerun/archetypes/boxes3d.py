@@ -73,7 +73,7 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     half_sizes: components.HalfSizes3DBatch = field(
         metadata={"component": "required"},
-        converter=components.HalfSizes3DBatch,  # type: ignore[misc]
+        converter=components.HalfSizes3DBatch._required,  # type: ignore[misc]
     )
     """
     All half-extents that make up the batch of boxes.

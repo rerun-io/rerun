@@ -56,7 +56,6 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
         """
         Create a new instance of the SegmentationImage archetype.
@@ -71,7 +70,10 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
-        self.__attrs_init__(data=data, draw_order=draw_order)
+        with catch_and_log_exceptions("SegmentationImage"):
+            self.__attrs_init__(data=data, draw_order=draw_order)
+            return
+        self.__attrs_init__()
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

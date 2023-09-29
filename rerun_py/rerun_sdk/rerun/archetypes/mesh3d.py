@@ -73,7 +73,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position3DBatch,  # type: ignore[misc]
+        converter=components.Position3DBatch._required,  # type: ignore[misc]
     )
     """
     The positions of each vertex.

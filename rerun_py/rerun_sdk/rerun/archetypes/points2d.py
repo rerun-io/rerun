@@ -66,7 +66,6 @@ class Points2D(Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         positions: datatypes.Vec2DArrayLike,
@@ -116,20 +115,23 @@ class Points2D(Archetype):
         """
 
         # You can define your own __init__ function as a member of Points2DExt in points2d_ext.py
-        self.__attrs_init__(
-            positions=positions,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            draw_order=draw_order,
-            class_ids=class_ids,
-            keypoint_ids=keypoint_ids,
-            instance_keys=instance_keys,
-        )
+        with catch_and_log_exceptions("Points2D"):
+            self.__attrs_init__(
+                positions=positions,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+                keypoint_ids=keypoint_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_init__()
 
     positions: components.Position2DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position2DBatch,  # type: ignore[misc]
+        converter=components.Position2DBatch._required,  # type: ignore[misc]
     )
     """
     All the 2D positions at which the point cloud shows points.

@@ -96,7 +96,6 @@ class LineStrips2D(Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         strips: components.LineStrip2DArrayLike,
@@ -133,19 +132,22 @@ class LineStrips2D(Archetype):
         """
 
         # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py
-        self.__attrs_init__(
-            strips=strips,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            draw_order=draw_order,
-            class_ids=class_ids,
-            instance_keys=instance_keys,
-        )
+        with catch_and_log_exceptions("LineStrips2D"):
+            self.__attrs_init__(
+                strips=strips,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_init__()
 
     strips: components.LineStrip2DBatch = field(
         metadata={"component": "required"},
-        converter=components.LineStrip2DBatch,  # type: ignore[misc]
+        converter=components.LineStrip2DBatch._required,  # type: ignore[misc]
     )
     """
     All the actual 2D line strips that make up the batch.

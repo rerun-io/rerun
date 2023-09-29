@@ -74,7 +74,6 @@ class Asset3D(Asset3DExt, Archetype):
     ```
     """
 
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         blob: components.BlobLike,
@@ -105,11 +104,14 @@ class Asset3D(Asset3DExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
-        self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+        with catch_and_log_exceptions("Asset3D"):
+            self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+            return
+        self.__attrs_init__()
 
     blob: components.BlobBatch = field(
         metadata={"component": "required"},
-        converter=components.BlobBatch,  # type: ignore[misc]
+        converter=components.BlobBatch._required,  # type: ignore[misc]
     )
     """
     The asset's bytes.

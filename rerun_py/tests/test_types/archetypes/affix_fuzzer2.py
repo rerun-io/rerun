@@ -9,16 +9,15 @@ from typing import Any
 
 from attrs import define, field
 from rerun._baseclasses import Archetype
+from rerun.error_utils import catch_and_log_exceptions
 
 from .. import components, datatypes
-from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["AffixFuzzer2"]
 
 
 @define(str=False, repr=False, init=False)
 class AffixFuzzer2(Archetype):
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         fuzz1101: datatypes.AffixFuzzer1ArrayLike,
@@ -43,98 +42,101 @@ class AffixFuzzer2(Archetype):
         """Create a new instance of the AffixFuzzer2 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
-        self.__attrs_init__(
-            fuzz1101=fuzz1101,
-            fuzz1102=fuzz1102,
-            fuzz1103=fuzz1103,
-            fuzz1104=fuzz1104,
-            fuzz1105=fuzz1105,
-            fuzz1106=fuzz1106,
-            fuzz1107=fuzz1107,
-            fuzz1108=fuzz1108,
-            fuzz1109=fuzz1109,
-            fuzz1110=fuzz1110,
-            fuzz1111=fuzz1111,
-            fuzz1112=fuzz1112,
-            fuzz1113=fuzz1113,
-            fuzz1114=fuzz1114,
-            fuzz1115=fuzz1115,
-            fuzz1116=fuzz1116,
-            fuzz1117=fuzz1117,
-            fuzz1118=fuzz1118,
-        )
+        with catch_and_log_exceptions("AffixFuzzer2"):
+            self.__attrs_init__(
+                fuzz1101=fuzz1101,
+                fuzz1102=fuzz1102,
+                fuzz1103=fuzz1103,
+                fuzz1104=fuzz1104,
+                fuzz1105=fuzz1105,
+                fuzz1106=fuzz1106,
+                fuzz1107=fuzz1107,
+                fuzz1108=fuzz1108,
+                fuzz1109=fuzz1109,
+                fuzz1110=fuzz1110,
+                fuzz1111=fuzz1111,
+                fuzz1112=fuzz1112,
+                fuzz1113=fuzz1113,
+                fuzz1114=fuzz1114,
+                fuzz1115=fuzz1115,
+                fuzz1116=fuzz1116,
+                fuzz1117=fuzz1117,
+                fuzz1118=fuzz1118,
+            )
+            return
+        self.__attrs_init__()
 
     fuzz1101: components.AffixFuzzer1Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer1Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer1Batch._required,  # type: ignore[misc]
     )
     fuzz1102: components.AffixFuzzer2Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer2Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer2Batch._required,  # type: ignore[misc]
     )
     fuzz1103: components.AffixFuzzer3Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer3Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer3Batch._required,  # type: ignore[misc]
     )
     fuzz1104: components.AffixFuzzer4Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer4Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer4Batch._required,  # type: ignore[misc]
     )
     fuzz1105: components.AffixFuzzer5Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer5Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer5Batch._required,  # type: ignore[misc]
     )
     fuzz1106: components.AffixFuzzer6Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer6Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer6Batch._required,  # type: ignore[misc]
     )
     fuzz1107: components.AffixFuzzer7Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer7Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer7Batch._required,  # type: ignore[misc]
     )
     fuzz1108: components.AffixFuzzer8Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer8Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer8Batch._required,  # type: ignore[misc]
     )
     fuzz1109: components.AffixFuzzer9Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer9Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer9Batch._required,  # type: ignore[misc]
     )
     fuzz1110: components.AffixFuzzer10Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer10Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer10Batch._required,  # type: ignore[misc]
     )
     fuzz1111: components.AffixFuzzer11Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer11Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer11Batch._required,  # type: ignore[misc]
     )
     fuzz1112: components.AffixFuzzer12Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer12Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer12Batch._required,  # type: ignore[misc]
     )
     fuzz1113: components.AffixFuzzer13Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer13Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer13Batch._required,  # type: ignore[misc]
     )
     fuzz1114: components.AffixFuzzer14Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer14Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer14Batch._required,  # type: ignore[misc]
     )
     fuzz1115: components.AffixFuzzer15Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer15Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer15Batch._required,  # type: ignore[misc]
     )
     fuzz1116: components.AffixFuzzer16Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer16Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer16Batch._required,  # type: ignore[misc]
     )
     fuzz1117: components.AffixFuzzer17Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer17Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer17Batch._required,  # type: ignore[misc]
     )
     fuzz1118: components.AffixFuzzer18Batch = field(
         metadata={"component": "required"},
-        converter=components.AffixFuzzer18Batch,  # type: ignore[misc]
+        converter=components.AffixFuzzer18Batch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

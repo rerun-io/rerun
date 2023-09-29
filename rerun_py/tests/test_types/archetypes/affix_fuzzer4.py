@@ -9,16 +9,15 @@ from typing import Any
 
 from attrs import define, field
 from rerun._baseclasses import Archetype
+from rerun.error_utils import catch_and_log_exceptions
 
 from .. import components, datatypes
-from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["AffixFuzzer4"]
 
 
 @define(str=False, repr=False, init=False)
 class AffixFuzzer4(Archetype):
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         *,
@@ -44,26 +43,29 @@ class AffixFuzzer4(Archetype):
         """Create a new instance of the AffixFuzzer4 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py
-        self.__attrs_init__(
-            fuzz2101=fuzz2101,
-            fuzz2102=fuzz2102,
-            fuzz2103=fuzz2103,
-            fuzz2104=fuzz2104,
-            fuzz2105=fuzz2105,
-            fuzz2106=fuzz2106,
-            fuzz2107=fuzz2107,
-            fuzz2108=fuzz2108,
-            fuzz2109=fuzz2109,
-            fuzz2110=fuzz2110,
-            fuzz2111=fuzz2111,
-            fuzz2112=fuzz2112,
-            fuzz2113=fuzz2113,
-            fuzz2114=fuzz2114,
-            fuzz2115=fuzz2115,
-            fuzz2116=fuzz2116,
-            fuzz2117=fuzz2117,
-            fuzz2118=fuzz2118,
-        )
+        with catch_and_log_exceptions("AffixFuzzer4"):
+            self.__attrs_init__(
+                fuzz2101=fuzz2101,
+                fuzz2102=fuzz2102,
+                fuzz2103=fuzz2103,
+                fuzz2104=fuzz2104,
+                fuzz2105=fuzz2105,
+                fuzz2106=fuzz2106,
+                fuzz2107=fuzz2107,
+                fuzz2108=fuzz2108,
+                fuzz2109=fuzz2109,
+                fuzz2110=fuzz2110,
+                fuzz2111=fuzz2111,
+                fuzz2112=fuzz2112,
+                fuzz2113=fuzz2113,
+                fuzz2114=fuzz2114,
+                fuzz2115=fuzz2115,
+                fuzz2116=fuzz2116,
+                fuzz2117=fuzz2117,
+                fuzz2118=fuzz2118,
+            )
+            return
+        self.__attrs_init__()
 
     fuzz2101: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},

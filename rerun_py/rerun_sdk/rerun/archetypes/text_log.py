@@ -20,7 +20,6 @@ __all__ = ["TextLog"]
 class TextLog(Archetype):
     """A log entry in a text log, comprised of a text body and its log level."""
 
-    @catch_and_log_exceptions()
     def __init__(
         self: Any,
         text: datatypes.Utf8Like,
@@ -31,11 +30,14 @@ class TextLog(Archetype):
         """Create a new instance of the TextLog archetype."""
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
-        self.__attrs_init__(text=text, level=level, color=color)
+        with catch_and_log_exceptions("TextLog"):
+            self.__attrs_init__(text=text, level=level, color=color)
+            return
+        self.__attrs_init__()
 
     text: components.TextBatch = field(
         metadata={"component": "required"},
-        converter=components.TextBatch,  # type: ignore[misc]
+        converter=components.TextBatch._required,  # type: ignore[misc]
     )
     level: components.TextLogLevelBatch | None = field(
         metadata={"component": "optional"},

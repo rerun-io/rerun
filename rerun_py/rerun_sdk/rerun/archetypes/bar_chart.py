@@ -35,7 +35,6 @@ class BarChart(BarChartExt, Archetype):
     ```
     """
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, values: datatypes.TensorDataLike):
         """
         Create a new instance of the BarChart archetype.
@@ -47,7 +46,10 @@ class BarChart(BarChartExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
-        self.__attrs_init__(values=values)
+        with catch_and_log_exceptions("BarChart"):
+            self.__attrs_init__(values=values)
+            return
+        self.__attrs_init__()
 
     values: components.TensorDataBatch = field(
         metadata={"component": "required"},

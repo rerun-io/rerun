@@ -117,9 +117,12 @@ class catch_and_log_exceptions:
     override the global strict mode if provided.
     """
 
-    def __init__(self, context: str | None = None, depth_to_user_code: int = 0) -> None:
+    def __init__(
+        self, context: str | None = None, depth_to_user_code: int = 0, exception_return_value: Any = None
+    ) -> None:
         self.depth_to_user_code = depth_to_user_code
         self.context = context
+        self.exception_return_value = exception_return_value
 
     def __enter__(self) -> catch_and_log_exceptions:
         # Track the original strict_mode setting in case it's being
@@ -144,6 +147,9 @@ class catch_and_log_exceptions:
                 if "strict" in kwargs:
                     _rerun_exception_ctx.strict_mode = kwargs["strict"]
                 return func(*args, **kwargs)
+
+            # If there was an exception before returning from func
+            return self.exception_return_value
 
         return cast(_TFunc, wrapper)
 

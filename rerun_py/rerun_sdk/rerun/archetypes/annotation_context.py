@@ -125,16 +125,18 @@ class AnnotationContext(Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, context: components.AnnotationContextLike):
         """Create a new instance of the AnnotationContext archetype."""
 
         # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
-        self.__attrs_init__(context=context)
+        with catch_and_log_exceptions("AnnotationContext"):
+            self.__attrs_init__(context=context)
+            return
+        self.__attrs_init__()
 
     context: components.AnnotationContextBatch = field(
         metadata={"component": "required"},
-        converter=components.AnnotationContextBatch,  # type: ignore[misc]
+        converter=components.AnnotationContextBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

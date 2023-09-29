@@ -120,7 +120,7 @@ def test_bad_components() -> None:
         points = rr.Points3D(positions=[1, 2, 3], colors="RED")
         assert len(warnings) == 1
         assert len(points.positions) == 1
-        assert len(points.colors) == 0
+        assert len(points.colors) == 0  # type: ignore[arg-type]
 
     rr.set_strict_mode(True)
     with pytest.raises(ValueError):

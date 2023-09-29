@@ -20,7 +20,6 @@ __all__ = ["TextDocument"]
 class TextDocument(Archetype):
     """A text element intended to be displayed in its own text-box."""
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
         """
         Create a new instance of the TextDocument archetype.
@@ -40,11 +39,14 @@ class TextDocument(Archetype):
         """
 
         # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
-        self.__attrs_init__(text=text, media_type=media_type)
+        with catch_and_log_exceptions("TextDocument"):
+            self.__attrs_init__(text=text, media_type=media_type)
+            return
+        self.__attrs_init__()
 
     text: components.TextBatch = field(
         metadata={"component": "required"},
-        converter=components.TextBatch,  # type: ignore[misc]
+        converter=components.TextBatch._required,  # type: ignore[misc]
     )
     """
     Contents of the text document.

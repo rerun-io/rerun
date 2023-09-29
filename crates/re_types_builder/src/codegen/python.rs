@@ -323,8 +323,8 @@ impl PythonCodeGenerator {
             import numpy.typing as npt
             import pyarrow as pa
             import uuid
-            from ..error_utils import catch_and_log_exceptions
 
+            from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
                 BaseExtensionType,
@@ -548,7 +548,7 @@ fn code_for_struct(
                 if field.is_nullable {
                     format!("converter={typ_unwrapped}Batch._optional, # type: ignore[misc]\n")
                 } else {
-                    format!("converter={typ_unwrapped}Batch, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch._required, # type: ignore[misc]\n")
                 }
             } else if !default_converter.is_empty() {
                 code.push_text(&converter_function, 1, 0);
@@ -1658,14 +1658,20 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
     };
 
     // Make sure Archetypes catch and log exceptions as a fallback
-    let decorator = if obj.kind == ObjectKind::Archetype {
-        "@catch_and_log_exceptions()\n"
+    let forwarding_call = if obj.kind == ObjectKind::Archetype {
+        [
+            format!("with catch_and_log_exceptions(\"{}\"):", obj.name),
+            indent::indent_all_by(4, forwarding_call),
+            indent::indent_all_by(4, "return"),
+            "self.__attrs_init__()".to_owned(),
+        ]
+        .join("\n")
     } else {
-        ""
+        forwarding_call
     };
 
     format!(
-        "{decorator}{head}\n{}",
+        "{head}\n{}",
         indent::indent_all_by(
             4,
             format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),

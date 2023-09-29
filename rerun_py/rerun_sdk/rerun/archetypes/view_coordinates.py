@@ -48,16 +48,18 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     ```
     """
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, xyz: components.ViewCoordinatesLike):
         """Create a new instance of the ViewCoordinates archetype."""
 
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
-        self.__attrs_init__(xyz=xyz)
+        with catch_and_log_exceptions("ViewCoordinates"):
+            self.__attrs_init__(xyz=xyz)
+            return
+        self.__attrs_init__()
 
     xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},
-        converter=components.ViewCoordinatesBatch,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

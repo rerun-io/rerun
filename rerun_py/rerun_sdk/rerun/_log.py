@@ -214,6 +214,11 @@ def log_components(
         num_instances = max(len(arr) for arr in arrow_arrays)
 
     for name, array in zip(names, arrow_arrays):
+        # Array could be None if there was an error producing the empty array
+        # Nothing we can do at this point other than ignore it. Some form of error
+        # should have been logged.
+        if array is None:
+            pass
         # Strip off the ExtensionArray if it's present. We will always log via component_name.
         # TODO(jleibs): Maybe warn if there is a name mismatch here.
         if isinstance(array, pa.ExtensionArray):

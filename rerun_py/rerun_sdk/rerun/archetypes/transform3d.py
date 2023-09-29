@@ -54,7 +54,6 @@ class Transform3D(Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, transform: datatypes.Transform3DLike):
         """
         Create a new instance of the Transform3D archetype.
@@ -66,11 +65,14 @@ class Transform3D(Archetype):
         """
 
         # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
-        self.__attrs_init__(transform=transform)
+        with catch_and_log_exceptions("Transform3D"):
+            self.__attrs_init__(transform=transform)
+            return
+        self.__attrs_init__()
 
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Transform3DBatch,  # type: ignore[misc]
+        converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
     """
     The transform

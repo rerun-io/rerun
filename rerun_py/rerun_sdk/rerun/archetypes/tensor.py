@@ -72,7 +72,7 @@ class Tensor(TensorExt, Archetype):
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},
-        converter=components.TensorDataBatch,  # type: ignore[misc]
+        converter=components.TensorDataBatch._required,  # type: ignore[misc]
     )
     """
     The tensor data

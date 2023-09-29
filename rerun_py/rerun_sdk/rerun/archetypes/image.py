@@ -55,7 +55,6 @@ class Image(ImageExt, Archetype):
     </picture>
     """
 
-    @catch_and_log_exceptions()
     def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
         """
         Create a new instance of the Image archetype.
@@ -70,7 +69,10 @@ class Image(ImageExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of ImageExt in image_ext.py
-        self.__attrs_init__(data=data, draw_order=draw_order)
+        with catch_and_log_exceptions("Image"):
+            self.__attrs_init__(data=data, draw_order=draw_order)
+            return
+        self.__attrs_init__()
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

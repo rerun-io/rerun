@@ -50,7 +50,7 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     vectors: components.Vector3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Vector3DBatch,  # type: ignore[misc]
+        converter=components.Vector3DBatch._required,  # type: ignore[misc]
     )
     """
     All the vectors for each arrow in the batch.

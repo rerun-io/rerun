@@ -152,10 +152,9 @@ class BaseBatch(Generic[T]):
     _ARROW_TYPE: BaseExtensionType = None  # type: ignore[assignment]
     """The pyarrow type of this batch."""
 
-    @catch_and_log_exceptions()
     def __init__(self, data: T | None) -> None:
         """
-        Primary method for creating Arrow arrays for required components.
+        Construct a new batch.
 
         This method must flexibly accept native data (which comply with type `T`). Subclasses must provide a type
         parameter specifying the type of the native data (this is automatically handled by the code generator).
@@ -190,6 +189,15 @@ class BaseBatch(Generic[T]):
 
         # If we didn't return above, default to the empty array
         self.pa_array = _empty_pa_array(self._ARROW_TYPE)
+
+    @classmethod
+    def _required(cls, data: T | None) -> BaseBatch[T]:
+        """
+        Primary method for creating Arrow arrays for optional components.
+
+        Just calls through to __init__, but with clearer type annotations.
+        """
+        return cls(data)
 
     @classmethod
     def _optional(cls, data: T | None) -> BaseBatch[T] | None:
@@ -272,6 +280,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
 
 
+@catch_and_log_exceptions(context="creating empty array")
 def _empty_pa_array(type: pa.DataType) -> pa.Array:
     if isinstance(type, pa.ExtensionType):
         return type.wrap_array(_empty_pa_array(type.storage_type))
