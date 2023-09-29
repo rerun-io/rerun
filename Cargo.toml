@@ -171,3 +171,4 @@ debug = true
 
 
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles.git", rev = "b34432b2ff68eb2e087a41b241d70ec367a09334" }
+ewebsock = { git = "https://github.com/rerun-io/ewebsock.git", rev = "f5a554b67c84f53b9165fa6666e7255256960fa3" }
