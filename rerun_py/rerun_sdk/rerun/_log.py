@@ -15,11 +15,6 @@ from .recording_stream import RecordingStream
 __all__ = ["log", "IndicatorComponentBatch", "AsComponents"]
 
 
-EXT_PREFIX = "ext."
-
-ext_component_types: dict[str, Any] = {}
-
-
 class IndicatorComponentBatch:
     """
     A batch of Indicator Components that can be included in a Bundle.
@@ -52,49 +47,6 @@ class IndicatorComponentBatch:
         return self.data
 
 
-# adapted from rerun.log_deprecated._add_extension_components
-def _add_extension_components(
-    instanced: dict[str, pa.ExtensionArray],
-    splats: dict[str, pa.ExtensionArray],
-    ext: dict[str, Any],
-    identifiers: npt.NDArray[np.uint64] | None,
-) -> None:
-    global ext_component_types
-
-    for name, value in ext.items():
-        # Don't log empty components
-        if value is None:
-            continue
-
-        # Add the ext prefix, unless it's already there
-        if not name.startswith(EXT_PREFIX):
-            name = EXT_PREFIX + name
-
-        np_type, pa_type = ext_component_types.get(name, (None, None))
-
-        try:
-            if np_type is not None:
-                np_value = np.atleast_1d(np.array(value, copy=False, dtype=np_type))
-                pa_value = pa.array(np_value, type=pa_type)
-            else:
-                np_value = np.atleast_1d(np.array(value, copy=False))
-                pa_value = pa.array(np_value)
-                ext_component_types[name] = (np_value.dtype, pa_value.type)
-        except Exception as ex:
-            _send_warning(
-                f"Error converting extension data to arrow for component {name}. Dropping.\n{type(ex).__name__}: {ex}",
-                1,
-            )
-            continue
-
-        is_splat = (len(np_value) == 1) and (len(identifiers or []) != 1)
-
-        if is_splat:
-            splats[name] = pa_value  # noqa
-        else:
-            instanced[name] = pa_value  # noqa
-
-
 def _splat() -> cmp.InstanceKeyBatch:
     """Helper to generate a splat InstanceKeyArray."""
 
@@ -106,8 +58,7 @@ def _splat() -> cmp.InstanceKeyBatch:
 def log(
     entity_path: str,
     entity: AsComponents | Iterable[ComponentBatchLike],
-    *,
-    ext: dict[str, Any] | None = None,
+    *extra: AsComponents | Iterable[ComponentBatchLike],
     timeless: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
@@ -115,14 +66,29 @@ def log(
     """
     Log an entity.
 
+    This is the main entry point for logging data to rerun. It can be used to log anything
+    that implements the `AsComponents` interface, or a collection of `ComponentBatchLike`
+    objects.
+
+    The most common way to log is with one of the rerun archetypes, all of which implement
+    the `AsComponents` interface.
+
+    For example, to log a 3D point:
+    ```
+    rr.log("my_point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+    ```
+
+    The `log` function can flexibly accept an arbitrary number of additional objects which will
+    be merged into the first entity so long as they don't expose conflicting components.
+
     Parameters
     ----------
     entity_path:
         Path to the entity in the space hierarchy.
     entity:
         Anything that can be converted into a rerun Archetype.
-    ext:
-        Optional dictionary of extension components. See [rerun.log_extension_components][]
+    *extra:
+        An arbitrary number of additional component bundles.
     timeless:
         If true, the entity will be timeless (default: False).
     recording:
@@ -142,9 +108,15 @@ def log(
     # class. Consider using alternative idioms such as hasattr() calls for
     # structural checks in performance-sensitive code. hasattr is
     if hasattr(entity, "as_component_batches"):
-        components = entity.as_component_batches()
+        components = list(entity.as_component_batches())
     else:
         components = list(entity)
+
+    for ext in extra:
+        if hasattr(ext, "as_component_batches"):
+            components.extend(ext.as_component_batches())
+        else:
+            components.extend(ext)
 
     if hasattr(entity, "num_instances"):
         num_instances = entity.num_instances()
@@ -155,7 +127,6 @@ def log(
         entity_path=entity_path,
         components=components,
         num_instances=num_instances,
-        ext=ext,
         timeless=timeless,
         recording=recording,
     )
@@ -167,7 +138,6 @@ def log_components(
     components: Iterable[ComponentBatchLike],
     *,
     num_instances: int | None = None,
-    ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
@@ -188,9 +158,6 @@ def log_components(
     num_instances:
         Optional. The number of instances in each batch. If not provided, the max of all
         components will be used instead.
-    ext:
-        Optional dictionary of extension components. See
-        [rerun.log_extension_components][]
     timeless:
         If true, the entity will be timeless (default: False).
     recording:
@@ -213,12 +180,25 @@ def log_components(
     if num_instances is None:
         num_instances = max(len(arr) for arr in arrow_arrays)
 
+    added = set()
+
     for name, array in zip(names, arrow_arrays):
         # Array could be None if there was an error producing the empty array
         # Nothing we can do at this point other than ignore it. Some form of error
         # should have been logged.
         if array is None:
-            pass
+            continue
+
+        # Skip components which were logged multiple times.
+        if name in added:
+            _send_warning(
+                f"Component {name} was included multiple times. Only the first instance will be used.",
+                depth_to_user_code=1,
+            )
+            continue
+        else:
+            added.add(name)
+
         # Strip off the ExtensionArray if it's present. We will always log via component_name.
         # TODO(jleibs): Maybe warn if there is a name mismatch here.
         if isinstance(array, pa.ExtensionArray):
@@ -228,9 +208,6 @@ def log_components(
             splats[name] = array
         else:
             instanced[name] = array
-
-    if ext:
-        _add_extension_components(instanced, splats, ext, None)
 
     if splats:
         splats["rerun.components.InstanceKey"] = _splat()
