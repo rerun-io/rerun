@@ -4,11 +4,10 @@ from typing import Any, cast
 
 import numpy.typing as npt
 
-from rerun.error_utils import _send_warning
-
 from ..components import ViewCoordinatesLike
 from ..datatypes.mat3x3 import Mat3x3Like
 from ..datatypes.vec2d import Vec2D, Vec2DLike
+from ..error_utils import _send_warning, catch_and_log_exceptions
 
 
 class PinholeExt:
@@ -79,51 +78,55 @@ class PinholeExt:
             Height of the image in pixels.
         """
 
-        if resolution is None and width is not None and height is not None:
-            resolution = [width, height]
-        elif resolution is not None and (width is not None or height is not None):
-            _send_warning("Can't set both resolution and width/height", 1)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if resolution is None and width is not None and height is not None:
+                resolution = [width, height]
+            elif resolution is not None and (width is not None or height is not None):
+                _send_warning("Can't set both resolution and width/height", 1)
 
-        # TODO(andreas): Use a union type for the Pinhole component instead ~Zof converting to a matrix here
-        if image_from_camera is None:
-            # Resolution is needed for various fallbacks/error cases below.
-            if resolution is None:
-                resolution = [1.0, 1.0]
-            resolution = Vec2D(resolution)
-            width = cast(float, resolution.xy[0])
-            height = cast(float, resolution.xy[1])
+            # TODO(andreas): Use a union type for the Pinhole component instead ~Zof converting to a matrix here
+            if image_from_camera is None:
+                # Resolution is needed for various fallbacks/error cases below.
+                if resolution is None:
+                    resolution = [1.0, 1.0]
+                resolution = Vec2D(resolution)
+                width = cast(float, resolution.xy[0])
+                height = cast(float, resolution.xy[1])
 
-            if focal_length is None:
-                _send_warning("either image_from_camera or focal_length must be set", 1)
-                focal_length = (width * height) ** 0.5  # a reasonable default
-            if principal_point is None:
-                principal_point = [width / 2, height / 2]
-            if type(focal_length) in (int, float):
-                fl_x = focal_length
-                fl_y = focal_length
-            else:
+                if focal_length is None:
+                    _send_warning("either image_from_camera or focal_length must be set", 1)
+                    focal_length = (width * height) ** 0.5  # a reasonable default
+                if principal_point is None:
+                    principal_point = [width / 2, height / 2]
+                if type(focal_length) in (int, float):
+                    fl_x = focal_length
+                    fl_y = focal_length
+                else:
+                    try:
+                        # TODO(emilk): check that it is 2 elements long
+                        fl_x = focal_length[0]  # type: ignore[index]
+                        fl_y = focal_length[1]  # type: ignore[index]
+                    except Exception:
+                        _send_warning("Expected focal_length to be one or two floats", 1)
+                        fl_x = width / 2
+                        fl_y = fl_x
+
                 try:
-                    # TODO(emilk): check that it is 2 elements long
-                    fl_x = focal_length[0]  # type: ignore[index]
-                    fl_y = focal_length[1]  # type: ignore[index]
+                    u_cen = principal_point[0]  # type: ignore[index]
+                    v_cen = principal_point[1]  # type: ignore[index]
                 except Exception:
-                    _send_warning("Expected focal_length to be one or two floats", 1)
-                    fl_x = width / 2
-                    fl_y = fl_x
+                    _send_warning("Expected principal_point to be one or two floats", 1)
+                    u_cen = width / 2
+                    v_cen = height / 2
 
-            try:
-                u_cen = principal_point[0]  # type: ignore[index]
-                v_cen = principal_point[1]  # type: ignore[index]
-            except Exception:
-                _send_warning("Expected principal_point to be one or two floats", 1)
-                u_cen = width / 2
-                v_cen = height / 2
+                image_from_camera = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
+            else:
+                if focal_length is not None:
+                    _send_warning("Both image_from_camera and focal_length set", 1)
+                if principal_point is not None:
+                    _send_warning("Both image_from_camera and principal_point set", 1)
 
-            image_from_camera = [[fl_x, 0, u_cen], [0, fl_y, v_cen], [0, 0, 1]]  # type: ignore[assignment]
-        else:
-            if focal_length is not None:
-                _send_warning("Both image_from_camera and focal_length set", 1)
-            if principal_point is not None:
-                _send_warning("Both image_from_camera and principal_point set", 1)
+            self.__attrs_init__(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)
+            return
 
-        self.__attrs_init__(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)
+        self.__attrs_init__(image_from_camera=None, resolution=None, camera_xyz=None)

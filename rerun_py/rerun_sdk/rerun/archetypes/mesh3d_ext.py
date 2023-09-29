@@ -5,6 +5,7 @@ from typing import Any
 import numpy.typing as npt
 
 from .. import components, datatypes
+from ..error_utils import catch_and_log_exceptions
 
 
 class Mesh3DExt:
@@ -48,18 +49,30 @@ class Mesh3DExt:
         instance_keys:
             Unique identifiers for each individual vertex in the mesh.
         """
-        if indices is not None:
-            if mesh_properties is not None:
-                raise ValueError("indices and mesh_properties are mutually exclusive")
-            mesh_properties = datatypes.MeshProperties(indices=indices)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if indices is not None:
+                if mesh_properties is not None:
+                    raise ValueError("indices and mesh_properties are mutually exclusive")
+                mesh_properties = datatypes.MeshProperties(indices=indices)
 
-        # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
+            # You can define your own __init__ function as a member of Mesh3DExt in mesh3d_ext.py
+            self.__attrs_init__(
+                vertex_positions=vertex_positions,
+                mesh_properties=mesh_properties,
+                vertex_normals=vertex_normals,
+                vertex_colors=vertex_colors,
+                mesh_material=mesh_material,
+                class_ids=class_ids,
+                instance_keys=instance_keys,
+            )
+            return
+
         self.__attrs_init__(
-            vertex_positions=vertex_positions,
-            mesh_properties=mesh_properties,
-            vertex_normals=vertex_normals,
-            vertex_colors=vertex_colors,
-            mesh_material=mesh_material,
-            class_ids=class_ids,
-            instance_keys=instance_keys,
+            vertex_positions=None,
+            mesh_properties=None,
+            vertex_normals=None,
+            vertex_colors=None,
+            mesh_material=None,
+            class_ids=None,
+            instance_keys=None,
         )
