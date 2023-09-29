@@ -2,13 +2,14 @@ use crate::codegen::common::ExampleInfo;
 use crate::objects::FieldKind;
 use crate::CodeGenerator;
 use crate::Object;
-use crate::ObjectField;
 use crate::ObjectKind;
 use crate::Objects;
 use crate::Reporter;
 use camino::Utf8PathBuf;
 use std::collections::BTreeSet;
 use std::fmt::Write;
+
+type ObjectMap = std::collections::BTreeMap<String, Object>;
 
 use super::common::get_documentation;
 
@@ -40,8 +41,8 @@ impl CodeGenerator for DocsCodeGenerator {
 
         let mut filepaths = BTreeSet::new();
 
-        let components = objects.ordered_objects(Some(ObjectKind::Component));
-        for object in objects.ordered_objects(Some(ObjectKind::Archetype)) {
+        let object_map = &objects.objects;
+        for object in objects.ordered_objects(None) {
             // skip test-only archetypes
             if object.is_testing() {
                 continue;
@@ -68,13 +69,33 @@ impl CodeGenerator for DocsCodeGenerator {
                 putln!(o, "{line}");
             }
             putln!(o);
-            write_archetype_fields(&mut o, &components, &object.fields);
+
+            match object.kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    write_fields(&mut o, object, object_map);
+                }
+                ObjectKind::Archetype => write_archetype_fields(&mut o, object, object_map),
+            }
+
             putln!(o);
             write_example_list(&mut o, &examples);
 
+            match object.kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    putln!(o);
+                    write_used_by(&mut o, object, object_map);
+                }
+                ObjectKind::Archetype => {}
+            }
+
+            let kind_dir = match object.kind {
+                ObjectKind::Datatype => "datatypes",
+                ObjectKind::Component => "components",
+                ObjectKind::Archetype => "archetypes",
+            };
             let path = self
                 .docs_dir
-                .join(format!("{}.md", object.snake_case_name()));
+                .join(format!("{kind_dir}/{}.md", object.snake_case_name()));
             super::common::write_file(&path, &o);
             filepaths.insert(path);
         }
@@ -89,27 +110,92 @@ fn frontmatter(o: &mut String, title: &str) {
     putln!(o, "---");
 }
 
-fn write_archetype_fields(o: &mut String, all_components: &[&Object], fields: &[ObjectField]) {
-    if fields.is_empty() {
+fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
+    if object.fields.is_empty() {
+        return;
+    }
+
+    let mut fields = Vec::new();
+    for field in &object.fields {
+        let Some(fqname) = field.typ.fqname() else {
+            continue;
+        };
+        let Some(ty) = object_map.get(fqname) else {
+            continue;
+        };
+        fields.push(format!(
+            "* {}: [`{}`](../{}/{}.md)",
+            field.name,
+            ty.name,
+            ty.kind.dirname(),
+            ty.snake_case_name()
+        ));
+    }
+
+    if !fields.is_empty() {
+        putln!(o, "## Fields");
+        putln!(o);
+    }
+    for field in fields {
+        putln!(o, "{field}");
+    }
+}
+
+fn write_used_by(o: &mut String, object: &Object, object_map: &ObjectMap) {
+    let mut used_by = Vec::new();
+    for ty in object_map.values() {
+        for field in &ty.fields {
+            if field.typ.fqname() == Some(object.fqname.as_str()) {
+                used_by.push(format!(
+                    "* [`{}`](../{}/{}.md)",
+                    ty.name,
+                    ty.kind.dirname(),
+                    ty.snake_case_name()
+                ));
+            }
+        }
+    }
+
+    if !used_by.is_empty() {
+        putln!(o, "## Related");
+        putln!(o);
+    }
+    for ty in used_by {
+        putln!(o, "{ty}");
+    }
+}
+
+fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
+    if object.fields.is_empty() {
         return;
     }
 
     // collect names of field _components_ by their `FieldKind`
     let (mut required, mut recommended, mut optional) = (Vec::new(), Vec::new(), Vec::new());
-    for field in fields {
-        let (target, component) = match field
-            .kind()
-            .and_then(|kind| Some((kind, find_component(field, all_components)?)))
-        {
-            Some((FieldKind::Required, component)) => (&mut required, component),
-            Some((FieldKind::Recommended, component)) => (&mut recommended, component),
-            Some((FieldKind::Optional, component)) => (&mut optional, component),
+    for field in &object.fields {
+        let Some(fqname) = field.typ.fqname() else {
+            continue;
+        };
+        let Some(ty) = object_map.get(fqname) else {
+            continue;
+        };
+        let target = match field.kind() {
+            Some(FieldKind::Required) => &mut required,
+            Some(FieldKind::Recommended) => &mut recommended,
+            Some(FieldKind::Optional) => &mut optional,
             _ => continue,
         };
-        target.push(format!("`{}`", component.name));
+        target.push(format!(
+            "[`{}`](../{}/{}.md)",
+            ty.name,
+            ty.kind.dirname(),
+            ty.snake_case_name()
+        ));
     }
 
-    putln!(o, "## Components");
+    if !required.is_empty() || !recommended.is_empty() || !optional.is_empty() {
+        putln!(o, "## Components");
+    }
     if !required.is_empty() {
         putln!(o);
         putln!(o, "**Required**: {}", required.join(", "));
@@ -122,14 +208,6 @@ fn write_archetype_fields(o: &mut String, all_components: &[&Object], fields: &[
         putln!(o);
         putln!(o, "**Optional**: {}", optional.join(", "));
     }
-}
-
-fn find_component<'a>(field: &ObjectField, components: &[&'a Object]) -> Option<&'a Object> {
-    field
-        .typ
-        .fqname()
-        .and_then(|fqname| components.iter().find(|c| c.fqname == fqname))
-        .copied()
 }
 
 fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
@@ -156,5 +234,19 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
             }
         }
         putln!(o);
+    }
+}
+
+trait ObjectKindExt {
+    fn dirname(&self) -> &'static str;
+}
+
+impl ObjectKindExt for ObjectKind {
+    fn dirname(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "datatypes",
+            ObjectKind::Component => "components",
+            ObjectKind::Archetype => "archetypes",
+        }
     }
 }
