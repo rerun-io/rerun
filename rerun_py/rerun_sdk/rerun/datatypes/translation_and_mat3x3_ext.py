@@ -33,14 +33,3 @@ class TranslationAndMat3x3Ext:
         self.__attrs_init__(  # pyright: ignore[reportGeneralTypeIssues]
             translation=translation, matrix=matrix, from_parent=from_parent
         )
-
-    # Implement the AsComponents
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
-        from ..archetypes import Transform3D
-        from ..datatypes import TranslationAndMat3x3
-
-        return Transform3D(cast(TranslationAndMat3x3, self)).as_component_batches()
-
-    def num_instances(self) -> int:
-        # Always a mono-component
-        return 1
