@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import os
+import sys
 from typing import Any
 
 import pytest
@@ -83,19 +84,35 @@ def test_stack_tracking() -> None:
     with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
 
+        value = 0
         with catch_and_log_exceptions(depth_to_user_code=0):
             uses_context()
+            value = 42
 
-        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 3)
+        if sys.version_info < (3, 10):
+            expected_line = get_line_number() - 3  # the last line of the context block
+        else:
+            expected_line = get_line_number() - 7  # the first line of the context block
+        expected_warnings(warnings, mem, starting_msgs, 1, expected_line)
+        # value is changed because uses_context its own exception internally
+        assert value == 42
         assert "inner context" in str(warnings[0].message)
 
     with pytest.warns(RerunWarning) as warnings:
         starting_msgs = mem.num_msgs()
 
+        value = 0
         with catch_and_log_exceptions("some context", depth_to_user_code=0):
             raise ValueError("some value error")
+            value = 42
 
-        expected_warnings(warnings, mem, starting_msgs, 1, get_line_number() - 3)
+        if sys.version_info < (3, 10):
+            expected_line = get_line_number() - 3  # the last line of the context block
+        else:
+            expected_line = get_line_number() - 7  # the open of the context manager
+        expected_warnings(warnings, mem, starting_msgs, 1, expected_line)
+        # value wasn't changed because an exception was raised
+        assert value == 0
         assert "some context" in str(warnings[0].message)
 
 
