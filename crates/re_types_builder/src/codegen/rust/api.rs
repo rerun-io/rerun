@@ -703,12 +703,15 @@ fn quote_trait_impls_from_obj(
             let quoted_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
                     fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
+                        re_tracing::profile_function!();
+
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
 
@@ -753,8 +756,11 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Clone + 'a
                     {
+                        re_tracing::profile_function!();
+
                         use ::arrow2::{datatypes::*, array::*};
                         use crate::{Loggable as _, ResultExt as _};
+
                         Ok(#quoted_serializer)
                     }
 
@@ -764,8 +770,11 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized
                     {
+                        re_tracing::profile_function!();
+
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
+
                         Ok(#quoted_deserializer)
                     }
 
@@ -978,6 +987,8 @@ fn quote_trait_impls_from_obj(
                     fn from_arrow(
                         arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
+                        re_tracing::profile_function!();
+
                         use crate::{Loggable as _, ResultExt as _};
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
@@ -994,7 +1005,10 @@ fn quote_trait_impls_from_obj(
 
                 impl crate::AsComponents for #name {
                     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+                        re_tracing::profile_function!();
+
                         use crate::Archetype as _;
+
                         [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }
 

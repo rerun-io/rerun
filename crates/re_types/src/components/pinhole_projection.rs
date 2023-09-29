@@ -94,6 +94,7 @@ impl crate::Loggable for PinholeProjection {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -161,6 +162,7 @@ impl crate::Loggable for PinholeProjection {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -249,6 +251,7 @@ impl crate::Loggable for PinholeProjection {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
@@ -257,44 +260,46 @@ impl crate::Loggable for PinholeProjection {
             }
         }
         Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
-                            9usize,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
-                })
-                .with_context("rerun.components.PinholeProjection#image_from_camera")?;
-            let arrow_data_inner = &**arrow_data.values();
-            bytemuck::cast_slice::<_, [_; 9usize]>(
-                arrow_data_inner
+            let iterator = {
+                let arrow_data = arrow_data
                     .as_any()
-                    .downcast_ref::<Float32Array>()
+                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            DataType::Float32,
-                            arrow_data_inner.data_type().clone(),
+                            DataType::FixedSizeList(
+                                Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                9usize,
+                            ),
+                            arrow_data.data_type().clone(),
                         )
                     })
-                    .with_context("rerun.components.PinholeProjection#image_from_camera")?
-                    .values()
-                    .as_slice(),
-            )
-            .iter()
-            .copied()
-            .map(|v| crate::datatypes::Mat3x3(v))
-        }
-        .map(|v| Self(v))
-        .collect::<Vec<_>>())
+                    .with_context("rerun.components.PinholeProjection#image_from_camera")?;
+                let arrow_data_inner = &**arrow_data.values();
+                let slice = bytemuck::cast_slice::<_, [_; 9usize]>(
+                    arrow_data_inner
+                        .as_any()
+                        .downcast_ref::<Float32Array>()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                arrow_data_inner.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.components.PinholeProjection#image_from_camera")?
+                        .values()
+                        .as_slice(),
+                );
+                slice.iter().copied().map(|v| crate::datatypes::Mat3x3(v))
+            };
+            {
+                re_tracing::profile_scope!("collect");
+                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
     }
 }

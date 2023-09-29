@@ -11,7 +11,8 @@ namespace rerun.components;
 
 /// A point of origin in 2D space.
 struct Origin2D (
-  "attr.rust.derive": "Copy, PartialEq"
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
 ) {
   origin: rerun.datatypes.Vec2D (order: 100);
 }
