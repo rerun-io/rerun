@@ -260,7 +260,13 @@ pub const DISPLAY_PRECISION: usize = 3;
 ///
 /// All archetypes implement the [`Archetype`] trait.
 ///
-/// Each archetype is a collection of [`components`] and includes images, point clouds, and more.
+/// Each archetype is a collection of homogenous [`ComponentBatch`]es.
+/// For instance, the [`Points3D`][archetypes::Points3D] archetype contains a
+/// batch of positions, a batch of colors, etc.
+///
+/// These component batches are must all have the same length, or one of the special lengths:
+/// * 0 - an empty batch
+/// * 1 - a "splat" batch, e.g. using the same color for all positions.
 ///
 /// Each entity can consist of many archetypes, but usually each entity will only have one archetype.
 ///
