@@ -276,6 +276,8 @@ pub mod archetypes;
 pub mod components;
 
 /// The lowe-level datatypes that [`components`] are built from.
+///
+/// They all implement the [`Datatype`] trait.
 pub mod datatypes;
 
 mod archetype;

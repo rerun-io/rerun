@@ -26,60 +26,62 @@
 //! If you get stuck on anything, open an issue at <https://github.com/rerun-io/rerun/issues>.
 //! You can also ask questions on the [Rerun Discord](https://discord.gg/Gcm8BbTaAj).
 //!
+//!
+//! ## Using the `rerun` binary
+//! The `rerun` binary is required in order to stream log data
+//! over the networks, and to open our `.rrd` data files.
+//!
+//! The binary can act either as a server, a viewer, or both,
+//! depending on which options you use when you start it.
+//!
+//! Install it with `cargo install rerun-cli`.
+//!
+//!
 //! ## Using the `rerun` library
 //! #### Logging
+//!
+//! Use a [`RecordingStream`] to log some[`archetypes`]:
 //!
 //! ```
 //! # use rerun::external::image;
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Position3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::components::Color> { Default::default() }
-//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
+//! // Stream log data to an awaiting `rerun` process.
+//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app")
+//!     .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
 //!
 //! let points: Vec<rerun::components::Position3D> = positions();
 //! let colors: Vec<rerun::components::Color> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
-//! rec.log("points", &rerun::archetypes::Points3D::new(points).with_colors(colors))?;
-//!
-//! rec.log("image", &rerun::archetypes::Image::try_from(image)?)?;
+//! rec.set_time_sequence("frame", 42);
+//! rec.log("path/to/points", &rerun::archetypes::Points3D::new(points).with_colors(colors))?;
+//! rec.log("path/to/image", &rerun::archetypes::Image::try_from(image)?)?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
-//! Too see what other things you can log, read the [`archetypes`] documentation.
-//!
-//! See [`RecordingStream`] for details.
-//!
-//! #### Streaming
-//! To stream log data to an awaiting `rerun` process, you can do this:
-//! Start `rerun` in a terminal by just running `rerun`.
-//!
-//! Then do this:
+//! #### Streaming to disk
+//! Streaming data to a file on disk using the `.rrd` format:
 //!
 //! ```no_run
-//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app")
-//!     .connect(rerun::default_server_addr(), rerun::default_flush_timeout());
+//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").save("my_data.rrd")?;
 //! ```
 //!
 //! #### Buffering
+//! You can buffer the log messages in memory and then show them in an embeded viewer:
 //!
 //! ```no_run
-//! # fn log_using(rec: &rerun::RecordingStream) {}
-//!
+//! # fn log_to(rec: &rerun::RecordingStream) {}
 //! let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_app").memory()?;
-//! log_using(&rec);
+//! log_to(&rec);
+//!
+//! // Will block program execution!
 //! rerun::native_viewer::show(storage.take());
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//!
-//! ## Binary
-//! The `rerun` binary is required in order to stream log data
-//! over the networks, and to open our `.rrd` data files.
-//!
-//! The binary can act either as a server, a viewer, or both,
-//! depending on which options you use when you start it.
 //!
 //! ```ignore
 //! cargo install rerun
