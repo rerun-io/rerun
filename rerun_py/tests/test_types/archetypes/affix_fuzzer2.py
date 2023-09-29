@@ -64,7 +64,26 @@ class AffixFuzzer2(Archetype):
                 fuzz1118=fuzz1118,
             )
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            fuzz1101=None,
+            fuzz1102=None,
+            fuzz1103=None,
+            fuzz1104=None,
+            fuzz1105=None,
+            fuzz1106=None,
+            fuzz1107=None,
+            fuzz1108=None,
+            fuzz1109=None,
+            fuzz1110=None,
+            fuzz1111=None,
+            fuzz1112=None,
+            fuzz1113=None,
+            fuzz1114=None,
+            fuzz1115=None,
+            fuzz1116=None,
+            fuzz1117=None,
+            fuzz1118=None,
+        )
 
     fuzz1101: components.AffixFuzzer1Batch = field(
         metadata={"component": "required"},

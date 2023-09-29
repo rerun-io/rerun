@@ -116,7 +116,15 @@ class Points3D(Archetype):
                 instance_keys=instance_keys,
             )
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            positions=None,
+            radii=None,
+            colors=None,
+            labels=None,
+            class_ids=None,
+            keypoint_ids=None,
+            instance_keys=None,
+        )
 
     positions: components.Position3DBatch = field(
         metadata={"component": "required"},

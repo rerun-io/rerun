@@ -132,7 +132,9 @@ class AnnotationContext(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(context=context)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            context=None,
+        )
 
     context: components.AnnotationContextBatch = field(
         metadata={"component": "required"},

@@ -121,7 +121,13 @@ class TimeSeriesScalar(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            scalar=None,
+            radius=None,
+            color=None,
+            label=None,
+            scattered=None,
+        )
 
     scalar: components.ScalarBatch = field(
         metadata={"component": "required"},

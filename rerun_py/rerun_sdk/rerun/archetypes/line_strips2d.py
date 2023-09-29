@@ -143,7 +143,15 @@ class LineStrips2D(Archetype):
                 instance_keys=instance_keys,
             )
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            strips=None,
+            radii=None,
+            colors=None,
+            labels=None,
+            draw_order=None,
+            class_ids=None,
+            instance_keys=None,
+        )
 
     strips: components.LineStrip2DBatch = field(
         metadata={"component": "required"},

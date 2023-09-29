@@ -1659,11 +1659,16 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
 
     // Make sure Archetypes catch and log exceptions as a fallback
     let forwarding_call = if obj.kind == ObjectKind::Archetype {
+        let required_param_nones = obj
+            .fields
+            .iter()
+            .map(|field| format!("{} = None,", field.name))
+            .join("\n");
         [
             "with catch_and_log_exceptions(context=self.__class__.__name__):".to_owned(),
             indent::indent_all_by(4, forwarding_call),
             indent::indent_all_by(4, "return"),
-            "self.__attrs_init__()".to_owned(),
+            format!("self.__attrs_init__({required_param_nones})"),
         ]
         .join("\n")
     } else {

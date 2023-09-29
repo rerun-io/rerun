@@ -33,7 +33,11 @@ class TextLog(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(text=text, level=level, color=color)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            text=None,
+            level=None,
+            color=None,
+        )
 
     text: components.TextBatch = field(
         metadata={"component": "required"},

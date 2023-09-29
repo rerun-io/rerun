@@ -42,7 +42,10 @@ class TextDocument(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(text=text, media_type=media_type)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            text=None,
+            media_type=None,
+        )
 
     text: components.TextBatch = field(
         metadata={"component": "required"},

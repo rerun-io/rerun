@@ -50,7 +50,9 @@ class DisconnectedSpace(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(disconnected_space=disconnected_space)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            disconnected_space=None,
+        )
 
     disconnected_space: components.DisconnectedSpaceBatch = field(
         metadata={"component": "required"},

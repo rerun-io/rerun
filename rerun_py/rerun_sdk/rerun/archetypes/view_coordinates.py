@@ -55,7 +55,9 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(xyz=xyz)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            xyz=None,
+        )
 
     xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},

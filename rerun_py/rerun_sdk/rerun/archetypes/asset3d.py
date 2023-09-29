@@ -107,7 +107,11 @@ class Asset3D(Asset3DExt, Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            blob=None,
+            media_type=None,
+            transform=None,
+        )
 
     blob: components.BlobBatch = field(
         metadata={"component": "required"},

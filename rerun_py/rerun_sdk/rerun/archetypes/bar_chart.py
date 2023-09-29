@@ -49,7 +49,9 @@ class BarChart(BarChartExt, Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(values=values)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            values=None,
+        )
 
     values: components.TensorDataBatch = field(
         metadata={"component": "required"},

@@ -164,7 +164,14 @@ class LineStrips3D(Archetype):
                 instance_keys=instance_keys,
             )
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            strips=None,
+            radii=None,
+            colors=None,
+            labels=None,
+            class_ids=None,
+            instance_keys=None,
+        )
 
     strips: components.LineStrip3DBatch = field(
         metadata={"component": "required"},

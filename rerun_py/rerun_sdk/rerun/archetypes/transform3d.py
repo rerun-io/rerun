@@ -68,7 +68,9 @@ class Transform3D(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(transform=transform)
             return
-        self.__attrs_init__()
+        self.__attrs_init__(
+            transform=None,
+        )
 
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},
