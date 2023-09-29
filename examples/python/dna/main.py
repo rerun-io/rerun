@@ -27,7 +27,7 @@ def log_data() -> None:
     rr.log("helix/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
 
     points = interleave(points1, points2)
-    rr.log("helix/structure/scaffolding", rr.LineStrips3D(points.reshape(-1, 3), colors=[128, 128, 128]))
+    rr.log("helix/structure/scaffolding", rr.LineStrips3D(points.reshape(-1, 2, 3), colors=[128, 128, 128]))
 
     time_offsets = np.random.rand(NUM_POINTS)
     for i in range(400):
