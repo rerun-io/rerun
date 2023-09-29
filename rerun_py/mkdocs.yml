@@ -32,8 +32,7 @@ plugins:
             docstring_style: numpy
             members_order: source
             heading_level: 3
-            show_root_heading: true
-            merge_init_into_class: true
+            inherited_members: true
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_common_index.py
@@ -62,4 +61,3 @@ extra:
   version:
     provider: mike
     default: latest
-

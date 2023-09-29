@@ -37,6 +37,13 @@ class ImageFormat(Enum):
 
 
 class ImageEncoded(AsComponents):
+    """
+    A monochrome or color image encoded with a common format (PNG, JPEG, etc).
+
+    The encoded image can be loaded from either a a file using its `path` or
+    provided directly via `contents`.
+    """
+
     def __init__(
         self,
         *,
@@ -46,10 +53,7 @@ class ImageEncoded(AsComponents):
         draw_order: DrawOrderLike | None = None,
     ) -> None:
         """
-        A monochrome or color image encoded with a common format (PNG, JPEG, etc).
-
-        The encoded image can be loaded from either a a file using its `path` or
-        provided directly via `contents`.
+        Create a new image with a given format.
 
         Parameters
         ----------
