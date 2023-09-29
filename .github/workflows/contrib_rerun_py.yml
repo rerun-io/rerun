@@ -55,7 +55,7 @@ jobs:
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
         with:
-          maturin-version: "0.14.10"
+          maturin-version: "0.14.17"
           manylinux: manylinux_2_31
           container: off
           command: build
