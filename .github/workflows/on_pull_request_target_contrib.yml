@@ -15,14 +15,11 @@ permissions:
 jobs:
   update-pr-body:
     name: Update PR body
-
+    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v2
