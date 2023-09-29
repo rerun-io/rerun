@@ -112,6 +112,30 @@ def test_with_mins_and_sizes() -> None:
     assert rr.Boxes2D(mins=[-1, -1], sizes=[2, 4]) == rr.Boxes2D(centers=[0, 1], half_sizes=[1, 2])
 
 
+def test_with_array_xywh() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[3, 4]) == rr.Boxes2D(array=[1, 2, 3, 4], array_format=rr.Box2DFormat.XYWH)
+
+
+def test_with_array_yxhw() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[3, 4]) == rr.Boxes2D(array=[2, 1, 4, 3], array_format=rr.Box2DFormat.YXHW)
+
+
+def test_with_array_xyxy() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[2, 2]) == rr.Boxes2D(array=[1, 2, 3, 4], array_format=rr.Box2DFormat.XYXY)
+
+
+def test_with_array_yxyx() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[2, 2]) == rr.Boxes2D(array=[2, 1, 4, 3], array_format=rr.Box2DFormat.YXYX)
+
+
+def test_with_array_xcycwh() -> None:
+    assert rr.Boxes2D(mins=[1, 1], sizes=[2, 4]) == rr.Boxes2D(array=[2, 3, 2, 4], array_format=rr.Box2DFormat.XCYCWH)
+
+
+def test_with_array_xcycw2h2() -> None:
+    assert rr.Boxes2D(mins=[1, 1], sizes=[2, 4]) == rr.Boxes2D(array=[2, 3, 1, 2], array_format=rr.Box2DFormat.XCYCW2H2)
+
+
 if __name__ == "__main__":
     test_boxes2d()
     test_with_sizes()
