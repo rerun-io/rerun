@@ -14,6 +14,6 @@ def test_points_warnings() -> None:
 
         assert len(warnings) == 1
         assert (
-            "Expected either a flat array with a length multiple of 3 elements, or an array with shape (`num_elements`, 3). Shape of passed array was (5,).)"
+            "Expected either a flat array with a length multiple of 3 elements, or an array with shape (`num_elements`, 3). Shape of passed array was (5,)."
             in str(warnings[0].message)
         )
