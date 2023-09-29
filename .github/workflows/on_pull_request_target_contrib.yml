@@ -1,4 +1,6 @@
-name: Contrib
+# Jobs that only run for external contributors.
+# These have to be carefully sanitized, we don't want to leak secrets.
+name: Pull-Request-Target (Contrib)
 
 on:
   # This will run workflows triggered by a pull request from the _base_ branch.
