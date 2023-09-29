@@ -94,7 +94,7 @@ def _send_warning(
         # TODO(jleibs): Context/stack should be its own component.
         context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 1)
 
-        log("rerun", TextLog(body=f"{message}\n{context_descriptor}", level="WARN"), recording=recording)
+        log("rerun", TextLog(text=f"{message}\n{context_descriptor}", level="WARN"), recording=recording)
         _rerun_exception_ctx.sending_warning = False
     else:
         warnings.warn(
