@@ -29,7 +29,7 @@ def log_car_data() -> None:
             "world/camera",
             rr.TranslationRotationScale3D(sample.camera.position, rr.Quaternion(xyzw=sample.camera.rotation_q)),
         )
-        rr.log("world/camera", rr.ViewCoordinates.RDF)  # X=Right, Y=Down, Z=Forward
+        rr.log("world/camera", rr.ViewCoordinates.RDF, timeless=True)  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
         rr.log(
