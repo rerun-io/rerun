@@ -7,7 +7,7 @@ import rerun as rr
 def test_any_value() -> None:
     values = rr.AnyValues(foo=[1.0, 2.0, 3.0], bar="hello")
 
-    batches = values.as_component_batches()
+    batches = list(values.as_component_batches())
 
     foo_batch = batches[0]
     bar_batch = batches[1]
