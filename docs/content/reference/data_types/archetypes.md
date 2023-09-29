@@ -33,7 +33,7 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 * [AnnotationContext](archetypes/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
 * [BarChart](archetypes/bar_chart.md): data displayed in a `BarChart` space view.
 * [Clear](archetypes/clear.md): clear all components of an entity.
-* [DisconnectedSpace](darchetypes/isconnected_space.md): disconnect an entity path from its parent.
+* [DisconnectedSpace](archetypes/disconnected_space.md): disconnect an entity path from its parent.
 * [TextDocument](archetypes/text_document.md): text displayed in a `TextDocument` space view.
 * [TextLog](archetypes/text_log.md): a log entry in a `TextLog` space view.
 * [TimeSeriesScalar](archetypes/time_series_scalar.md): a single scalar / metric value. Can be viewed in the `TimeSeries` space view.
