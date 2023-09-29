@@ -14,6 +14,24 @@ on:
       - synchronize
 
 jobs:
+  show-context:
+    name: "Show Context"
+    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+          echo "MATRIX_CONTEXT": $MATRIX_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
   checks:
     name: "Checks"
     if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
