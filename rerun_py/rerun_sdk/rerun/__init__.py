@@ -13,6 +13,7 @@ import numpy as np
 __all__ = [
     "AnnotationContext",
     "AnnotationInfo",
+    "AnyValues",
     "Arrows3D",
     "AsComponents",
     "Asset3D",
@@ -117,6 +118,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from ._image import ImageEncoded, ImageFormat
 from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from .any_value import AnyValues
 from .archetypes import (
     AnnotationContext,
     Arrows3D,
