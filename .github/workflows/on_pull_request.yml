@@ -1,3 +1,8 @@
+# Jobs that only run for developers on the `rerun` team.
+# - We have to ensure that these jobs _only_ run for PRs inside the `rerun-io` organization
+#   this is done using the following check, added to every job:
+#     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+
 name: Pull-Request
 
 on:
