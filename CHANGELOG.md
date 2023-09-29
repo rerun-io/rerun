@@ -3,6 +3,9 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.8.3](https://github.com/rerun-io/rerun/compare/0.8.2...0.8.3) - Bug fixes - 2023-09-29
+ - Bump poll-promise version to 0.3
+
 ## [0.8.2](https://github.com/rerun-io/rerun/compare/0.8.1...0.8.2) - Bug fixes - 2023-09-04
 
 #### 🪳 Bug Fixes
