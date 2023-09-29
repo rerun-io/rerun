@@ -42,7 +42,7 @@
 //!
 //! rec.log("points", &rerun::archetypes::Points3D::new(points).with_colors(colors))?;
 //!
-//! rec.log("image", &rerun::archetypes::Image::try_from(rerun::datatypes::TensorData::from_image(image)?)?)?;
+//! rec.log("image", &rerun::archetypes::Image::try_from(image)?)?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
