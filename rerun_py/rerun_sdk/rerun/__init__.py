@@ -17,6 +17,7 @@ __all__ = [
     "AsComponents",
     "Asset3D",
     "BarChart",
+    "Box2DFormat",
     "Boxes2D",
     "Boxes3D",
     "ClassDescription",
@@ -141,6 +142,7 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
+from .archetypes.boxes2d_ext import Box2DFormat
 from .components import MediaType, TextLogLevel
 from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
