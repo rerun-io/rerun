@@ -1,4 +1,4 @@
-use egui::{Color32, NumExt, Vec2};
+use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
 use re_data_store::{InstancePathHash, VersionedInstancePathHash};
@@ -109,29 +109,37 @@ fn tensor_ui(
         UiVerbosity::Small => {
             ui.horizontal_centered(|ui| {
                 if let Some(texture) = &texture_result {
+                    // We want all preview images to take up the same amount of space,
+                    // no matter what the actual aspect ratio of the images are.
                     let preview_size = Vec2::splat(24.0);
-                    show_image_preview(
-                        ctx.render_ctx,
-                        ctx.re_ui,
-                        ui,
-                        texture.clone(),
-                        &debug_name,
+                    ui.allocate_ui_with_layout(
                         preview_size,
-                        PreviewSizeShrink::DontShrink,
-                    )
-                    .on_hover_ui(|ui| {
-                        // Show larger image on hover.
-                        let preview_size = Vec2::splat(400.0);
-                        show_image_preview(
-                            ctx.render_ctx,
-                            ctx.re_ui,
-                            ui,
-                            texture.clone(),
-                            &debug_name,
-                            preview_size,
-                            PreviewSizeShrink::ShrinkToTextureAspectRatio,
-                        );
-                    });
+                        egui::Layout::centered_and_justified(egui::Direction::TopDown),
+                        |ui| {
+                            ui.set_min_size(preview_size);
+
+                            show_image_preview(
+                                ctx.render_ctx,
+                                ctx.re_ui,
+                                ui,
+                                texture.clone(),
+                                &debug_name,
+                                preview_size,
+                            )
+                            .on_hover_ui(|ui| {
+                                // Show larger image on hover.
+                                let preview_size = Vec2::splat(400.0);
+                                show_image_preview(
+                                    ctx.render_ctx,
+                                    ctx.re_ui,
+                                    ui,
+                                    texture.clone(),
+                                    &debug_name,
+                                    preview_size,
+                                );
+                            });
+                        },
+                    );
                 }
 
                 ui.label(format!(
@@ -183,7 +191,6 @@ fn tensor_ui(
                         texture.clone(),
                         &debug_name,
                         preview_size,
-                        PreviewSizeShrink::DontShrink,
                     );
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
@@ -232,22 +239,12 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
     egui::vec2(w as f32, h as f32)
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum PreviewSizeShrink {
-    /// Stick to the desired size. May cause
-    DontShrink,
-
-    /// The allocated size may shrink in one dimension to fit the aspect ratio of the image.
-    ShrinkToTextureAspectRatio,
-}
-
 /// Shows preview of an image.
 ///
-/// Displays the image in inside the desired size.
-/// Image will be stretched in the dimensions it is below a certain threshold.
+/// Displays the image at the desired size, without overshooting it, and preserving aspect ration.
 ///
-/// TODO(andreas): Small images will be blown up to the desired size, this may not always be what we want.
-///                 Maybe add `PreviewSizeShrink::ShrinkToFitWithMin(egui::Vec2)`?
+/// Very extremely images will be stretched on their thin axis to make them visible.
+/// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
 fn show_image_preview(
     render_ctx: &mut re_renderer::RenderContext,
     re_ui: &ReUi,
@@ -255,54 +252,25 @@ fn show_image_preview(
     colormapped_texture: ColormappedTexture,
     debug_name: &str,
     desired_size: egui::Vec2,
-    image_fit: PreviewSizeShrink,
 ) -> egui::Response {
+    const MIN_SIZE: f32 = 2.0;
+
     let texture_size = texture_size(&colormapped_texture);
 
-    // First we figure out how much we should scale (uniformly) the image.
-    let texture_scale_factor = {
-        // Make the image at least this thick both x and y (unless desired_size explicitly asks for smaller)
-        const MIN_SIZE: f32 = 2.0;
-        let min_size = egui::Vec2::splat(MIN_SIZE).at_most(desired_size);
+    let scaled_size = largest_size_that_fits_in(texture_size.x / texture_size.y, desired_size);
 
-        // Ideally, we just scale down/up to fit into the available space.
-        let zoom = (desired_size / texture_size).min_elem();
+    // Don't allow images so thin that we cannot see them:
+    let scaled_size = scaled_size.max(Vec2::splat(MIN_SIZE));
 
-        // But it can happen that this makes one of the axis too small, so let's stretch it if needed.
-        egui::Vec2::splat(zoom).at_least(min_size / texture_size)
-    };
+    let (response, painter) = ui.allocate_painter(scaled_size, egui::Sense::hover());
 
-    let scaled_texture_size = texture_size * texture_scale_factor;
-
-    // Request the desired size, but shrink one dimension if the texture is too wide/narrow if so required.
-    let requested_rect = match image_fit {
-        PreviewSizeShrink::DontShrink => desired_size,
-        PreviewSizeShrink::ShrinkToTextureAspectRatio => {
-            let aspect_ratio_texture = scaled_texture_size.x / scaled_texture_size.y;
-            let aspect_ratio_desired = desired_size.x / desired_size.y;
-
-            // Each of these factors would make the aspect ratio equal to the texture's aspect ratio.
-            let x_shrink = aspect_ratio_texture * aspect_ratio_desired;
-            let y_shrink = aspect_ratio_desired / aspect_ratio_texture;
-
-            if x_shrink < y_shrink {
-                egui::vec2(desired_size.x * x_shrink, desired_size.y)
-            } else {
-                egui::vec2(desired_size.x, desired_size.y * y_shrink)
-            }
-        }
-    };
-    let (response, painter) = ui.allocate_painter(requested_rect, egui::Sense::hover());
-
-    // Place the image with the determined zoom factor into the middle of the allocated rect.
-    // If it doesn't fit, it will be cropped by the painter's clip rect.
-    let texture_on_screen =
-        egui::Rect::from_center_size(response.rect.center(), scaled_texture_size);
+    // Place it in the center:
+    let texture_rect_on_screen = egui::Rect::from_center_size(response.rect.center(), scaled_size);
 
     if let Err(err) = gpu_bridge::render_image(
         render_ctx,
         &painter,
-        texture_on_screen,
+        texture_rect_on_screen,
         colormapped_texture,
         egui::TextureOptions::LINEAR,
         debug_name,
@@ -311,6 +279,16 @@ fn show_image_preview(
         response.union(label_response)
     } else {
         response
+    }
+}
+
+fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
+    if aspect_ratio < max_size.x / max_size.y {
+        // A thin image in a landscape frame
+        egui::vec2(aspect_ratio * max_size.y, max_size.y)
+    } else {
+        // A wide image in a portrait frame
+        egui::vec2(max_size.x, max_size.x / aspect_ratio)
     }
 }
 
