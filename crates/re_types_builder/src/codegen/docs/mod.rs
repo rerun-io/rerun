@@ -41,6 +41,7 @@ impl CodeGenerator for DocsCodeGenerator {
 
         let mut filepaths = BTreeSet::new();
 
+        let (mut archetypes, mut components, mut datatypes) = (Vec::new(), Vec::new(), Vec::new());
         let object_map = &objects.objects;
         for object in objects.ordered_objects(None) {
             // skip test-only archetypes
@@ -48,55 +49,45 @@ impl CodeGenerator for DocsCodeGenerator {
                 continue;
             }
 
-            let top_level_docs = get_documentation(&object.docs, &[]);
-            let examples = object
-                .docs
-                .tagged_docs
-                .get("example")
-                .iter()
-                .flat_map(|v| v.iter())
-                .map(ExampleInfo::parse)
-                .collect::<Vec<_>>();
-
-            let mut o = String::new();
-
-            frontmatter(&mut o, &object.name);
-            putln!(o);
-            for mut line in top_level_docs {
-                if line.starts_with(char::is_whitespace) {
-                    line.remove(0);
-                }
-                putln!(o, "{line}");
-            }
-            putln!(o);
-
             match object.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
-                    write_fields(&mut o, object, object_map);
-                }
-                ObjectKind::Archetype => write_archetype_fields(&mut o, object, object_map),
+                ObjectKind::Datatype => datatypes.push(object),
+                ObjectKind::Component => components.push(object),
+                ObjectKind::Archetype => archetypes.push(object),
             }
 
-            putln!(o);
-            write_example_list(&mut o, &examples);
+            let page = object_page(object, object_map);
+            let path = self.docs_dir.join(format!(
+                "{}/{}.md",
+                object.kind.dirname(),
+                object.snake_case_name()
+            ));
+            super::common::write_file(&path, &page);
+            filepaths.insert(path);
+        }
 
-            match object.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
-                    putln!(o);
-                    write_used_by(&mut o, object, object_map);
-                }
-                ObjectKind::Archetype => {}
-            }
-
-            let kind_dir = match object.kind {
-                ObjectKind::Datatype => "datatypes",
-                ObjectKind::Component => "components",
-                ObjectKind::Archetype => "archetypes",
-            };
-            let path = self
-                .docs_dir
-                .join(format!("{kind_dir}/{}.md", object.snake_case_name()));
-            super::common::write_file(&path, &o);
+        for (kind, order, prelude, objects) in [
+            (
+                ObjectKind::Archetype,
+                1,
+                "Archetypes are bundles of components",
+                &archetypes,
+            ),
+            (
+                ObjectKind::Component,
+                2,
+                "Archetypes are bundles of components",
+                &components,
+            ),
+            (
+                ObjectKind::Datatype,
+                3,
+                "Data types are the lowest layer of the data model hierarchy",
+                &datatypes,
+            ),
+        ] {
+            let page = index_page(kind, order, prelude, objects);
+            let path = self.docs_dir.join(format!("{}.md", kind.dirname()));
+            super::common::write_file(&path, &page);
             filepaths.insert(path);
         }
 
@@ -104,9 +95,80 @@ impl CodeGenerator for DocsCodeGenerator {
     }
 }
 
-fn frontmatter(o: &mut String, title: &str) {
+fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) -> String {
+    let mut page = String::new();
+
+    write_frontmatter(&mut page, kind.title(), Some(order));
+    putln!(page);
+    putln!(page, "{prelude}");
+    putln!(page);
+    if !objects.is_empty() {
+        putln!(page, "## Available {}", kind.title().to_lowercase());
+        putln!(page);
+    }
+    for object in objects {
+        putln!(
+            page,
+            "* [`{}`]({}/{}.md)",
+            object.name,
+            object.kind.dirname(),
+            object.snake_case_name()
+        );
+    }
+
+    page
+}
+
+fn object_page(object: &Object, object_map: &ObjectMap) -> String {
+    let top_level_docs = get_documentation(&object.docs, &[]);
+    let examples = object
+        .docs
+        .tagged_docs
+        .get("example")
+        .iter()
+        .flat_map(|v| v.iter())
+        .map(ExampleInfo::parse)
+        .collect::<Vec<_>>();
+
+    let mut page = String::new();
+
+    write_frontmatter(&mut page, &object.name, None);
+    putln!(page);
+    for mut line in top_level_docs {
+        if line.starts_with(char::is_whitespace) {
+            line.remove(0);
+        }
+        putln!(page, "{line}");
+    }
+    putln!(page);
+
+    match object.kind {
+        ObjectKind::Datatype | ObjectKind::Component => {
+            write_fields(&mut page, object, object_map);
+        }
+        ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
+    }
+
+    putln!(page);
+    write_example_list(&mut page, &examples);
+
+    match object.kind {
+        ObjectKind::Datatype | ObjectKind::Component => {
+            putln!(page);
+            write_used_by(&mut page, object, object_map);
+        }
+        ObjectKind::Archetype => {}
+    }
+
+    page
+}
+
+fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
     putln!(o, "---");
     putln!(o, "title: {title:?}");
+    if let Some(order) = order {
+        putln!(o, "order: {order}");
+    }
     putln!(o, "---");
 }
 
@@ -239,6 +301,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
 
 trait ObjectKindExt {
     fn dirname(&self) -> &'static str;
+    fn title(&self) -> &'static str;
 }
 
 impl ObjectKindExt for ObjectKind {
@@ -247,6 +310,14 @@ impl ObjectKindExt for ObjectKind {
             ObjectKind::Datatype => "datatypes",
             ObjectKind::Component => "components",
             ObjectKind::Archetype => "archetypes",
+        }
+    }
+
+    fn title(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Data Types",
+            ObjectKind::Component => "Components",
+            ObjectKind::Archetype => "Archetypes",
         }
     }
 }
