@@ -15,7 +15,7 @@ struct ClassId (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",
   "attr.python.array_aliases": "int, npt.ArrayLike",
-  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",
   "attr.rust.custom_clause":

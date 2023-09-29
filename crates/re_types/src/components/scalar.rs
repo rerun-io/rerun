@@ -17,7 +17,8 @@
 /// A double-precision scalar.
 ///
 /// Used for time series plots.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct Scalar(pub f64);
 
 impl From<f64> for Scalar {
@@ -70,6 +71,7 @@ impl crate::Loggable for Scalar {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -104,6 +106,7 @@ impl crate::Loggable for Scalar {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -133,6 +136,7 @@ impl crate::Loggable for Scalar {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
@@ -140,21 +144,23 @@ impl crate::Loggable for Scalar {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Float64Array>()
-            .ok_or_else(|| {
-                crate::DeserializationError::datatype_mismatch(
-                    DataType::Float64,
-                    arrow_data.data_type().clone(),
-                )
-            })
-            .with_context("rerun.components.Scalar#value")?
-            .values()
-            .as_slice()
-            .iter()
-            .copied()
-            .map(|v| Self(v))
-            .collect::<Vec<_>>())
+        Ok({
+            let slice = arrow_data
+                .as_any()
+                .downcast_ref::<Float64Array>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Float64,
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.Scalar#value")?
+                .values()
+                .as_slice();
+            {
+                re_tracing::profile_scope!("collect");
+                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
     }
 }
