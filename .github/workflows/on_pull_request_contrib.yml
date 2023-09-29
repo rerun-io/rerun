@@ -1,4 +1,4 @@
-name: Pull-Request (Contrib)
+name: Contrib
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ on:
 jobs:
   checks:
     name: "Checks"
-    # if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
+    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
     uses: ./.github/workflows/contrib/checks.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -17,7 +17,7 @@ jobs:
 
   python:
     name: "Python"
-    # if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
+    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
     uses: ./.github/workflows/contrib/rerun_py.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
