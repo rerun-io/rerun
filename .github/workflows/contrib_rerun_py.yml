@@ -39,13 +39,10 @@ jobs:
       image: rerunio/ci_docker:0.10.0
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || github.sha }}
 
       # The pip-cache setup logic doesn't work in the ubuntu docker container
       # That's probably fine since we bake these deps into the container already
       - name: Setup python
-        if: ${{ inputs.PLATFORM != 'linux' }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}

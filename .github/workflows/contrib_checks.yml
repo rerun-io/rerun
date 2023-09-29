@@ -34,8 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - uses: extractions/setup-just@v1
         with:
@@ -64,8 +62,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -108,8 +104,6 @@ jobs:
       image: rerunio/ci_docker:0.10.0
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       # First do our check with --locked to make sure `Cargo.lock` is up to date
       - name: Check all features
@@ -181,8 +175,6 @@ jobs:
       image: rerunio/ci_docker:0.10.0
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: clippy check re_viewer wasm32
         run: ./scripts/clippy_wasm.sh
@@ -204,8 +196,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
@@ -221,8 +211,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -256,8 +244,6 @@ jobs:
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Check spelling of entire workspace
         uses: crate-ci/typos@master
@@ -269,8 +255,6 @@ jobs:
       image: rerunio/ci_docker:0.10.0
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Cargo Deny
         shell: bash
@@ -282,8 +266,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Run clang format on all relevant files
         uses: jidicula/clang-format-action@v4.11.0
@@ -299,8 +281,6 @@ jobs:
       image: rerunio/ci_docker:0.10.0
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
       - name: Build and run C++ minimal example
         shell: bash
