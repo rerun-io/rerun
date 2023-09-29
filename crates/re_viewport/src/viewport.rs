@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui_tiles::Behavior;
+use egui_tiles::Behavior as _;
 use nohash_hasher::IntMap;
 
 use re_ui::{Icon, ReUi};
@@ -242,6 +242,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
 // ----------------------------------------------------------------------------
 
+/// `egui_tiles` has _tiles_ which are either _containers_ or _panes_.
+///
+/// In our case, each pane is a space view,
+/// while containers are just groups of things.
 struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
     ctx: &'a mut ViewerContext<'b>,
@@ -285,13 +289,32 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
-        let Some(space_view) = self.space_views.get_mut(space_view_id) else {
-            // this shouldn't happen unless we have a bug
+        if let Some(space_view) = self.space_views.get_mut(space_view_id) {
+            space_view.display_name.clone().into()
+        } else {
+            // All panes are space views, so this shouldn't happen unless we have a bug
             re_log::debug_once!("SpaceViewId missing during egui_tiles");
-            return "internal_error".into();
-        };
+            "internal_error".into()
+        }
+    }
 
-        egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()))
+    fn tab_title_for_tile(
+        &mut self,
+        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        tile_id: egui_tiles::TileId,
+    ) -> egui::WidgetText {
+        if let Some(tile) = tiles.get(tile_id) {
+            match tile {
+                egui_tiles::Tile::Pane(pane) => self.tab_title_for_pane(pane),
+
+                // E.g. a tab with a grid of other tiles
+                egui_tiles::Tile::Container(container) => {
+                    format!("{:?} Container", container.kind()).into()
+                }
+            }
+        } else {
+            "MISSING TILE".into() // this shouldn't happen
+        }
     }
 
     #[allow(clippy::fn_params_excessive_bools)]
@@ -304,23 +327,13 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         active: bool,
         is_being_dragged: bool,
     ) -> egui::Response {
-        let Some(tab_widget) = TabWidget::new(self, ui, tiles, tile_id, active, 1.0) else {
-            return egui_tiles::Behavior::<SpaceViewId>::tab_ui(
-                self,
-                tiles,
-                ui,
-                id,
-                tile_id,
-                active,
-                is_being_dragged,
-            );
-        };
+        let tab_widget = TabWidget::new(self, ui, tiles, tile_id, active, 1.0);
 
         let response = ui.interact(tab_widget.rect, id, egui::Sense::click_and_drag());
 
         // Show a gap when dragged
         if ui.is_rect_visible(tab_widget.rect) && !is_being_dragged {
-            tab_widget.ui(ui);
+            tab_widget.paint(ui);
         }
 
         self.on_tab_button(tiles, tile_id, &response);
@@ -334,9 +347,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
     ) {
-        let Some(tab_widget) = TabWidget::new(self, ui, tiles, tile_id, true, 0.5) else {
-            return egui_tiles::Behavior::<SpaceViewId>::drag_ui(self, tiles, ui, tile_id);
-        };
+        let tab_widget = TabWidget::new(self, ui, tiles, tile_id, true, 0.5);
 
         let frame = egui::Frame {
             inner_margin: egui::Margin::same(0.),
@@ -348,7 +359,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         };
 
         frame.show(ui, |ui| {
-            tab_widget.ui(ui);
+            tab_widget.paint(ui);
         });
     }
 
@@ -480,6 +491,11 @@ fn space_view_ui(
     space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
 }
 
+/// A tab button for a tab in the viewport.
+///
+/// The tab can contain any `egui_tiles::Tile`,
+/// which is either a Pane with a Space View, or a Container,
+/// e.g. a grid of tiles.
 struct TabWidget {
     galley: egui::widget_text::WidgetTextGalley,
     rect: egui::Rect,
@@ -499,24 +515,28 @@ impl TabWidget {
         tile_id: egui_tiles::TileId,
         active: bool,
         gamma: f32,
-    ) -> Option<Self> {
-        // make sure we have a space view to work with
+    ) -> Self {
+        // Not all tabs are for tiles (space views) - some are for containers (e.g. a grid of space views).
         let space_view = if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
             tab_viewer.space_views.get(space_view_id)
         } else {
-            return None;
+            None
         };
-        let Some(space_view) = space_view else {
-            return None;
-        };
-        let space_view_id = space_view.id;
+        let selected = space_view.map_or(false, |space_view| {
+            tab_viewer
+                .ctx
+                .selection()
+                .contains(&Item::SpaceView(space_view.id))
+        });
 
         // tab icon
         let icon_size = ReUi::small_icon_size();
         let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
-        let icon = space_view
-            .class(tab_viewer.ctx.space_view_class_registry)
-            .icon();
+        let icon = space_view.map_or(&re_ui::icons::CONTAINER, |space_view| {
+            space_view
+                .class(tab_viewer.ctx.space_view_class_registry)
+                .icon()
+        });
 
         // tab title
         let text = tab_viewer.tab_title_for_tile(tiles, tile_id);
@@ -537,10 +557,6 @@ impl TabWidget {
             icon_size,
         );
 
-        let selected = tab_viewer
-            .ctx
-            .selection()
-            .contains(&Item::SpaceView(space_view_id));
         let bg_color = if selected {
             ui.visuals().selection.bg_fill
         } else {
@@ -551,7 +567,7 @@ impl TabWidget {
             .tab_text_color(ui.visuals(), tiles, tile_id, active)
             .gamma_multiply(gamma);
 
-        Some(Self {
+        Self {
             galley,
             rect,
             galley_rect,
@@ -560,10 +576,10 @@ impl TabWidget {
             icon_rect,
             bg_color,
             text_color,
-        })
+        }
     }
 
-    fn ui(self, ui: &mut egui::Ui) {
+    fn paint(self, ui: &mut egui::Ui) {
         ui.painter()
             .rect(self.rect, 0.0, self.bg_color, egui::Stroke::NONE);
 
