@@ -1,4 +1,4 @@
-name: Update links in PR Body
+name: Contrib
 
 on:
   # This will run workflows triggered by a pull request from the _base_ branch.
@@ -9,8 +9,8 @@ on:
       - synchronize
 
 permissions:
-  contents: "read" #
-  pull-requests: "write" # Updates PR body, needs this permission.
+  contents: "read"
+  pull-requests: "write" # Updates PR body
 
 jobs:
   update-pr-body:
