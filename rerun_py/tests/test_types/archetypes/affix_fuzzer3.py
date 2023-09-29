@@ -86,6 +86,30 @@ class AffixFuzzer3(Archetype):
             fuzz2018=None,
         )
 
+    @classmethod
+    def _clear(cls) -> AffixFuzzer3:
+        """Produce an empty AffixFuzzer3."""
+        return cls(
+            fuzz2001=None,  # type: ignore[arg-type]
+            fuzz2002=None,  # type: ignore[arg-type]
+            fuzz2003=None,  # type: ignore[arg-type]
+            fuzz2004=None,  # type: ignore[arg-type]
+            fuzz2005=None,  # type: ignore[arg-type]
+            fuzz2006=None,  # type: ignore[arg-type]
+            fuzz2007=None,  # type: ignore[arg-type]
+            fuzz2008=None,  # type: ignore[arg-type]
+            fuzz2009=None,  # type: ignore[arg-type]
+            fuzz2010=None,  # type: ignore[arg-type]
+            fuzz2011=None,  # type: ignore[arg-type]
+            fuzz2012=None,  # type: ignore[arg-type]
+            fuzz2013=None,  # type: ignore[arg-type]
+            fuzz2014=None,  # type: ignore[arg-type]
+            fuzz2015=None,  # type: ignore[arg-type]
+            fuzz2016=None,  # type: ignore[arg-type]
+            fuzz2017=None,  # type: ignore[arg-type]
+            fuzz2018=None,  # type: ignore[arg-type]
+        )
+
     fuzz2001: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},
         default=None,

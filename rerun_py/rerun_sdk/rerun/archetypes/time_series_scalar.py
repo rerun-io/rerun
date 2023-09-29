@@ -129,6 +129,17 @@ class TimeSeriesScalar(Archetype):
             scattered=None,
         )
 
+    @classmethod
+    def _clear(cls) -> TimeSeriesScalar:
+        """Produce an empty TimeSeriesScalar."""
+        return cls(
+            scalar=None,  # type: ignore[arg-type]
+            radius=None,  # type: ignore[arg-type]
+            color=None,  # type: ignore[arg-type]
+            label=None,  # type: ignore[arg-type]
+            scattered=None,  # type: ignore[arg-type]
+        )
+
     scalar: components.ScalarBatch = field(
         metadata={"component": "required"},
         converter=components.ScalarBatch._required,  # type: ignore[misc]

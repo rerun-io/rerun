@@ -59,6 +59,13 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
             xyz=None,
         )
 
+    @classmethod
+    def _clear(cls) -> ViewCoordinates:
+        """Produce an empty ViewCoordinates."""
+        return cls(
+            xyz=None,  # type: ignore[arg-type]
+        )
+
     xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},
         converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]

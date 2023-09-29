@@ -72,6 +72,13 @@ class Transform3D(Archetype):
             transform=None,
         )
 
+    @classmethod
+    def _clear(cls) -> Transform3D:
+        """Produce an empty Transform3D."""
+        return cls(
+            transform=None,  # type: ignore[arg-type]
+        )
+
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},
         converter=components.Transform3DBatch._required,  # type: ignore[misc]

@@ -47,6 +47,14 @@ class TextDocument(Archetype):
             media_type=None,
         )
 
+    @classmethod
+    def _clear(cls) -> TextDocument:
+        """Produce an empty TextDocument."""
+        return cls(
+            text=None,  # type: ignore[arg-type]
+            media_type=None,  # type: ignore[arg-type]
+        )
+
     text: components.TextBatch = field(
         metadata={"component": "required"},
         converter=components.TextBatch._required,  # type: ignore[misc]

@@ -126,6 +126,19 @@ class Points3D(Archetype):
             instance_keys=None,
         )
 
+    @classmethod
+    def _clear(cls) -> Points3D:
+        """Produce an empty Points3D."""
+        return cls(
+            positions=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            keypoint_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     positions: components.Position3DBatch = field(
         metadata={"component": "required"},
         converter=components.Position3DBatch._required,  # type: ignore[misc]

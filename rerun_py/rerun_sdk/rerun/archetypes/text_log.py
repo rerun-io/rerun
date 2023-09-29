@@ -39,6 +39,15 @@ class TextLog(Archetype):
             color=None,
         )
 
+    @classmethod
+    def _clear(cls) -> TextLog:
+        """Produce an empty TextLog."""
+        return cls(
+            text=None,  # type: ignore[arg-type]
+            level=None,  # type: ignore[arg-type]
+            color=None,  # type: ignore[arg-type]
+        )
+
     text: components.TextBatch = field(
         metadata={"component": "required"},
         converter=components.TextBatch._required,  # type: ignore[misc]

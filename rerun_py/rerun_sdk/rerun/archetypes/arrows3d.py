@@ -48,6 +48,19 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     # __init__ can be found in arrows3d_ext.py
 
+    @classmethod
+    def _clear(cls) -> Arrows3D:
+        """Produce an empty Arrows3D."""
+        return cls(
+            vectors=None,  # type: ignore[arg-type]
+            origins=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     vectors: components.Vector3DBatch = field(
         metadata={"component": "required"},
         converter=components.Vector3DBatch._required,  # type: ignore[misc]

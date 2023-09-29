@@ -70,6 +70,13 @@ class Tensor(TensorExt, Archetype):
 
     # __init__ can be found in tensor_ext.py
 
+    @classmethod
+    def _clear(cls) -> Tensor:
+        """Produce an empty Tensor."""
+        return cls(
+            data=None,  # type: ignore[arg-type]
+        )
+
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=components.TensorDataBatch._required,  # type: ignore[misc]

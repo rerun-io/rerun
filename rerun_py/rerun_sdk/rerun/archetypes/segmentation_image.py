@@ -78,6 +78,14 @@ class SegmentationImage(SegmentationImageExt, Archetype):
             draw_order=None,
         )
 
+    @classmethod
+    def _clear(cls) -> SegmentationImage:
+        """Produce an empty SegmentationImage."""
+        return cls(
+            data=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+        )
+
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]

@@ -71,6 +71,19 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     # __init__ can be found in mesh3d_ext.py
 
+    @classmethod
+    def _clear(cls) -> Mesh3D:
+        """Produce an empty Mesh3D."""
+        return cls(
+            vertex_positions=None,  # type: ignore[arg-type]
+            mesh_properties=None,  # type: ignore[arg-type]
+            vertex_normals=None,  # type: ignore[arg-type]
+            vertex_colors=None,  # type: ignore[arg-type]
+            mesh_material=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},
         converter=components.Position3DBatch._required,  # type: ignore[misc]

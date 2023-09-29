@@ -153,6 +153,19 @@ class LineStrips2D(Archetype):
             instance_keys=None,
         )
 
+    @classmethod
+    def _clear(cls) -> LineStrips2D:
+        """Produce an empty LineStrips2D."""
+        return cls(
+            strips=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     strips: components.LineStrip2DBatch = field(
         metadata={"component": "required"},
         converter=components.LineStrip2DBatch._required,  # type: ignore[misc]

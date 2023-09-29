@@ -36,6 +36,20 @@ class Boxes2D(Boxes2DExt, Archetype):
 
     # __init__ can be found in boxes2d_ext.py
 
+    @classmethod
+    def _clear(cls) -> Boxes2D:
+        """Produce an empty Boxes2D."""
+        return cls(
+            half_sizes=None,  # type: ignore[arg-type]
+            centers=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     half_sizes: components.HalfSizes2DBatch = field(
         metadata={"component": "required"},
         converter=components.HalfSizes2DBatch._required,  # type: ignore[misc]

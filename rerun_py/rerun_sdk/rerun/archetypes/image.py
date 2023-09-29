@@ -77,6 +77,14 @@ class Image(ImageExt, Archetype):
             draw_order=None,
         )
 
+    @classmethod
+    def _clear(cls) -> Image:
+        """Produce an empty Image."""
+        return cls(
+            data=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+        )
+
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=ImageExt.data__field_converter_override,  # type: ignore[misc]

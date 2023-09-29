@@ -173,6 +173,18 @@ class LineStrips3D(Archetype):
             instance_keys=None,
         )
 
+    @classmethod
+    def _clear(cls) -> LineStrips3D:
+        """Produce an empty LineStrips3D."""
+        return cls(
+            strips=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     strips: components.LineStrip3DBatch = field(
         metadata={"component": "required"},
         converter=components.LineStrip3DBatch._required,  # type: ignore[misc]

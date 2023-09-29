@@ -113,6 +113,15 @@ class Asset3D(Asset3DExt, Archetype):
             transform=None,
         )
 
+    @classmethod
+    def _clear(cls) -> Asset3D:
+        """Produce an empty Asset3D."""
+        return cls(
+            blob=None,  # type: ignore[arg-type]
+            media_type=None,  # type: ignore[arg-type]
+            transform=None,  # type: ignore[arg-type]
+        )
+
     blob: components.BlobBatch = field(
         metadata={"component": "required"},
         converter=components.BlobBatch._required,  # type: ignore[misc]

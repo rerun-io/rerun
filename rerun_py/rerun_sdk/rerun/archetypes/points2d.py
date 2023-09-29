@@ -138,6 +138,20 @@ class Points2D(Archetype):
             instance_keys=None,
         )
 
+    @classmethod
+    def _clear(cls) -> Points2D:
+        """Produce an empty Points2D."""
+        return cls(
+            positions=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            keypoint_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     positions: components.Position2DBatch = field(
         metadata={"component": "required"},
         converter=components.Position2DBatch._required,  # type: ignore[misc]

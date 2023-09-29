@@ -53,6 +53,13 @@ class BarChart(BarChartExt, Archetype):
             values=None,
         )
 
+    @classmethod
+    def _clear(cls) -> BarChart:
+        """Produce an empty BarChart."""
+        return cls(
+            values=None,  # type: ignore[arg-type]
+        )
+
     values: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]

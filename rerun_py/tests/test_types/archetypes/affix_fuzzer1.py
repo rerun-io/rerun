@@ -94,6 +94,33 @@ class AffixFuzzer1(Archetype):
             fuzz1021=None,
         )
 
+    @classmethod
+    def _clear(cls) -> AffixFuzzer1:
+        """Produce an empty AffixFuzzer1."""
+        return cls(
+            fuzz1001=None,  # type: ignore[arg-type]
+            fuzz1002=None,  # type: ignore[arg-type]
+            fuzz1003=None,  # type: ignore[arg-type]
+            fuzz1004=None,  # type: ignore[arg-type]
+            fuzz1005=None,  # type: ignore[arg-type]
+            fuzz1006=None,  # type: ignore[arg-type]
+            fuzz1007=None,  # type: ignore[arg-type]
+            fuzz1008=None,  # type: ignore[arg-type]
+            fuzz1009=None,  # type: ignore[arg-type]
+            fuzz1010=None,  # type: ignore[arg-type]
+            fuzz1011=None,  # type: ignore[arg-type]
+            fuzz1012=None,  # type: ignore[arg-type]
+            fuzz1013=None,  # type: ignore[arg-type]
+            fuzz1014=None,  # type: ignore[arg-type]
+            fuzz1015=None,  # type: ignore[arg-type]
+            fuzz1016=None,  # type: ignore[arg-type]
+            fuzz1017=None,  # type: ignore[arg-type]
+            fuzz1018=None,  # type: ignore[arg-type]
+            fuzz1019=None,  # type: ignore[arg-type]
+            fuzz1020=None,  # type: ignore[arg-type]
+            fuzz1021=None,  # type: ignore[arg-type]
+        )
+
     fuzz1001: components.AffixFuzzer1Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer1Batch._required,  # type: ignore[misc]

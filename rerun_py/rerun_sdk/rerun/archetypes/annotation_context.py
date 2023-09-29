@@ -136,6 +136,13 @@ class AnnotationContext(Archetype):
             context=None,
         )
 
+    @classmethod
+    def _clear(cls) -> AnnotationContext:
+        """Produce an empty AnnotationContext."""
+        return cls(
+            context=None,  # type: ignore[arg-type]
+        )
+
     context: components.AnnotationContextBatch = field(
         metadata={"component": "required"},
         converter=components.AnnotationContextBatch._required,  # type: ignore[misc]

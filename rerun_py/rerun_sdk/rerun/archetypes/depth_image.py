@@ -122,6 +122,15 @@ class DepthImage(DepthImageExt, Archetype):
             draw_order=None,
         )
 
+    @classmethod
+    def _clear(cls) -> DepthImage:
+        """Produce an empty DepthImage."""
+        return cls(
+            data=None,  # type: ignore[arg-type]
+            meter=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+        )
+
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},
         converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]

@@ -43,6 +43,15 @@ class Pinhole(PinholeExt, Archetype):
 
     # __init__ can be found in pinhole_ext.py
 
+    @classmethod
+    def _clear(cls) -> Pinhole:
+        """Produce an empty Pinhole."""
+        return cls(
+            image_from_camera=None,  # type: ignore[arg-type]
+            resolution=None,  # type: ignore[arg-type]
+            camera_xyz=None,  # type: ignore[arg-type]
+        )
+
     image_from_camera: components.PinholeProjectionBatch = field(
         metadata={"component": "required"},
         converter=components.PinholeProjectionBatch._required,  # type: ignore[misc]

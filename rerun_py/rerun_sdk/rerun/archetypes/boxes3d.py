@@ -71,6 +71,20 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     # __init__ can be found in boxes3d_ext.py
 
+    @classmethod
+    def _clear(cls) -> Boxes3D:
+        """Produce an empty Boxes3D."""
+        return cls(
+            half_sizes=None,  # type: ignore[arg-type]
+            centers=None,  # type: ignore[arg-type]
+            rotations=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
     half_sizes: components.HalfSizes3DBatch = field(
         metadata={"component": "required"},
         converter=components.HalfSizes3DBatch._required,  # type: ignore[misc]

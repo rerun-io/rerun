@@ -54,6 +54,13 @@ class DisconnectedSpace(Archetype):
             disconnected_space=None,
         )
 
+    @classmethod
+    def _clear(cls) -> DisconnectedSpace:
+        """Produce an empty DisconnectedSpace."""
+        return cls(
+            disconnected_space=None,  # type: ignore[arg-type]
+        )
+
     disconnected_space: components.DisconnectedSpaceBatch = field(
         metadata={"component": "required"},
         converter=components.DisconnectedSpaceBatch._required,  # type: ignore[misc]
