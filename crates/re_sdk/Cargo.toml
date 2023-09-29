@@ -27,15 +27,15 @@ demo = []
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["re_types/glam"]
 
-## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["re_types/image"]
 
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
 ##
-## For faster & easier builds, the web-player build comes bundled with the crate.
-## Enabling this feature will embed this pre-built web-player.
+## For faster & easier builds, a pre-built web-views comes bundled with the crate as a Wasm binary.
+## Enabling this feature will embed this pre-built web viewer.
 ##
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
