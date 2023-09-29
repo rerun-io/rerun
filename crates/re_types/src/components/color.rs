@@ -165,7 +165,7 @@ impl crate::Loggable for Color {
             }
         }
         Ok({
-            let iterator = arrow_data
+            let slice = arrow_data
                 .as_any()
                 .downcast_ref::<UInt32Array>()
                 .ok_or_else(|| {
@@ -176,13 +176,15 @@ impl crate::Loggable for Color {
                 })
                 .with_context("rerun.components.Color#rgba")?
                 .values()
-                .as_slice()
-                .iter()
-                .copied()
-                .map(|v| crate::datatypes::Color(v));
+                .as_slice();
             {
                 re_tracing::profile_scope!("collect");
-                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::Color(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
             }
         })
     }

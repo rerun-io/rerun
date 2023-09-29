@@ -251,7 +251,7 @@ impl crate::Loggable for Origin3D {
             }
         }
         Ok({
-            let iterator = {
+            let slice = {
                 let arrow_data = arrow_data
                     .as_any()
                     .downcast_ref::<::arrow2::array::FixedSizeListArray>()
@@ -271,7 +271,7 @@ impl crate::Loggable for Origin3D {
                     })
                     .with_context("rerun.components.Origin3D#origin")?;
                 let arrow_data_inner = &**arrow_data.values();
-                let slice = bytemuck::cast_slice::<_, [_; 3usize]>(
+                bytemuck::cast_slice::<_, [_; 3usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
@@ -284,12 +284,16 @@ impl crate::Loggable for Origin3D {
                         .with_context("rerun.components.Origin3D#origin")?
                         .values()
                         .as_slice(),
-                );
-                slice.iter().copied().map(|v| crate::datatypes::Vec3D(v))
+                )
             };
             {
                 re_tracing::profile_scope!("collect");
-                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::Vec3D(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
             }
         })
     }
