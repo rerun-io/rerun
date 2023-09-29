@@ -70,7 +70,7 @@
 //! ```
 //!
 //! #### Buffering
-//! You can buffer the log messages in memory and then show them in an embeded viewer:
+//! You can buffer the log messages in memory and then show them in an embedded viewer:
 //!
 //! ```no_run
 //! # fn log_to(rec: &rerun::RecordingStream) {}
