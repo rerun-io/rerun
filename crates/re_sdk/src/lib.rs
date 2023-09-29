@@ -82,7 +82,8 @@ pub mod coordinates {
 pub use re_types::{
     archetypes, components, datatypes, Archetype, ArchetypeName, AsComponents, Component,
     ComponentBatch, ComponentName, Datatype, DatatypeBatch, DatatypeName,
-    GenericIndicatorComponent, Loggable, MaybeOwnedComponentBatch, NamedIndicatorComponent,
+    GenericIndicatorComponent, Loggable, LoggableBatch, MaybeOwnedComponentBatch,
+    NamedIndicatorComponent,
 };
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
