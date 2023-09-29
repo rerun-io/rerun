@@ -91,7 +91,7 @@ impl Renderer for TestTriangle {
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &TestTriangleDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawError> {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         pass.set_pipeline(pipeline);
         pass.draw(0..3, 0..1);

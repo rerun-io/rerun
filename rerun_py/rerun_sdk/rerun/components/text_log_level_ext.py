@@ -1,23 +1,35 @@
 from __future__ import annotations
 
-from typing import Final
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from . import TextLogLevel
 
 
 class TextLogLevelExt:
-    CRITICAL: Final = "CRITICAL"
+    CRITICAL: TextLogLevel = None  # type: ignore[assignment]
     """ Designates catastrophic failures. """
 
-    ERROR: Final = "ERROR"
+    ERROR: TextLogLevel = None  # type: ignore[assignment]
     """ Designates very serious errors. """
 
-    WARN: Final = "WARN"
+    WARN: TextLogLevel = None  # type: ignore[assignment]
     """ Designates hazardous situations. """
 
-    INFO: Final = "INFO"
+    INFO: TextLogLevel = None  # type: ignore[assignment]
     """ Designates useful information. """
 
-    DEBUG: Final = "DEBUG"
+    DEBUG: TextLogLevel = None  # type: ignore[assignment]
     """ Designates lower priority information. """
 
-    TRACE: Final = "TRACE"
+    TRACE: TextLogLevel = None  # type: ignore[assignment]
     """ Designates very low priority, often extremely verbose, information. """
+
+    @staticmethod
+    def deferred_patch_class(cls: Any) -> None:
+        cls.CRITICAL = cls("CRITICAL")
+        cls.ERROR = cls("ERROR")
+        cls.WARN = cls("WARN")
+        cls.INFO = cls("INFO")
+        cls.DEBUG = cls("DEBUG")
+        cls.TRACE = cls("TRACE")
