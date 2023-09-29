@@ -29,10 +29,7 @@ impl DataUi for InstancePath {
                     query.timeline.name()
                 ));
             } else {
-                ui.label(
-                    ctx.re_ui
-                        .error_text(format!("Unknown entity: {entity_path:?}")),
-                );
+                // Maybe hovering a root entity in the streams panel which has no components
             }
             return;
         };
