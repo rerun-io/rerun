@@ -100,7 +100,13 @@ class Boxes2DExt:
             if centers is not None:
                 _send_warning("Cannot specify both `array` and `centers` at the same time.", 1)
 
-            array = np.asarray(array, dtype="float32")
+            if np.any(array):
+                array = np.asarray(array, dtype="float32")
+                if array.ndim == 1:
+                    array = np.expand_dims(array, axis=0)
+            else:
+                array = np.zeros((0, 4), dtype="float32")
+            assert type(array) is np.ndarray
 
             if array_format == Box2DFormat.XYWH:
                 half_sizes = array[:, 2:4] / 2
