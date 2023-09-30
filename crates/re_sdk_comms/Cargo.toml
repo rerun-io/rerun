@@ -32,7 +32,7 @@ re_smart_channel.workspace = true
 
 ahash.workspace = true
 crossbeam.workspace = true
-document-features = "0.2"
+document-features.workspace = true
 rand = { workspace = true, features = ["std", "std_rng", "small_rng"] }
 thiserror.workspace = true
 tokio.workspace = true
