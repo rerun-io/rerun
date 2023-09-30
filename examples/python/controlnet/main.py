@@ -9,14 +9,16 @@ Run
 python 3 examples/python/controlnet/main.py
 ```
 """
+from __future__ import annotations
+
 import argparse
 import os
+from typing import Callable
 
 import cv2
 import numpy as np
 import PIL.Image
 import requests
-import rerun as rr
 import torch
 from diffusers import (
     AutoencoderKL,
@@ -24,9 +26,17 @@ from diffusers import (
     StableDiffusionXLControlNetPipeline,
 )
 
+import rerun as rr
 
-def controlnet_callback(iteration: int, timestep: float, latents: torch.Tensor):
-    breakpoint()
+
+def controlnet_callback(
+    iteration: int, timestep: float, latents: torch.Tensor, decode_latents: Callable
+):
+    pass
+    # rr.set_time_sequence("iteration", iteration)
+    # image = decode_latents(latents)
+    # breakpoint()
+    # rr.log("output", rr.Image(image))
 
 
 def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
@@ -49,8 +59,10 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
     high_threshold = 200.0
     canny_image = cv2.Canny(rgb_image, low_threshold, high_threshold)
     canny_image = canny_image[:, :, None]
+    # cv2.dilate(kjgk
     canny_image = np.concatenate([canny_image, canny_image, canny_image], axis=2)
     canny_image = PIL.Image.fromarray(canny_image)
+
     rr.log("input/raw", rr.Image(image))
     rr.log("input/canny", rr.Image(canny_image))
 
@@ -71,15 +83,25 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
     )
     pipeline.enable_model_cpu_offload()
 
-    rr.log("positive_prompt", rr.TextDocument(f"# Positive Prompt\n {prompt}"))
-    rr.log("negative_prompt", rr.TextDocument(f"# Negative Prompt\n {negative_prompt}"))
+    rr.log(
+        "positive_prompt",
+        rr.TextDocument(f"### Positive Prompt\n {prompt}", media_type="text/markdown"),
+    )
+    rr.log(
+        "negative_prompt",
+        rr.TextDocument(
+            f"### Negative Prompt\n {negative_prompt}", media_type="text/markdown"
+        ),
+    )
 
     images = pipeline(
         prompt,
         negative_prompt=negative_prompt,
-        image=image,
+        image=canny_image,  # add batch dimension
         controlnet_conditioning_scale=0.5,
-        callback=controlnet_callback,
+        # callback=lambda i, t, latents: controlnet_callback(
+        #     i, t, latents, pipeline.decode_latents
+        # ),
     ).images[0]
 
     rr.log("output", rr.Image(images))
