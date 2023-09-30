@@ -86,6 +86,7 @@ eframe = { version = "0.23.0", default-features = false, features = [
   "x11",
 ] }
 egui = { version = "0.23.0", features = [
+  "callstack",
   "extra_debug_asserts",
   "log",
   "puffin",
@@ -93,7 +94,7 @@ egui = { version = "0.23.0", features = [
 egui_commonmark = { version = "0.8", default-features = false }
 egui_extras = { version = "0.23.0", features = ["http", "image", "puffin"] }
 egui_plot = "0.23.0"
-egui_tiles = "0.3"
+egui_tiles = "0.3.1"
 egui-wgpu = "0.23.0"
 ehttp = "0.3.1"
 emath = "0.23.0"
@@ -169,6 +170,4 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles.git", rev = "b34432b2ff68eb2e087a41b241d70ec367a09334" }
 ewebsock = { git = "https://github.com/rerun-io/ewebsock.git", rev = "f5a554b67c84f53b9165fa6666e7255256960fa3" }

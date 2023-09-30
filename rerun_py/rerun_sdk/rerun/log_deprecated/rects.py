@@ -5,6 +5,7 @@ from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Boxes2D
@@ -42,6 +43,10 @@ class RectFormat(Enum):
     """[x_center, y_center, width/2, height/2]."""
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes2D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_rect(
     entity_path: str,
@@ -58,6 +63,11 @@ def log_rect(
 ) -> None:
     """
     Log a 2D rectangle.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes2D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Parameters
     ----------
@@ -103,6 +113,10 @@ def log_rect(
     )
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes2D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_rects(
     entity_path: str,
@@ -120,6 +134,11 @@ def log_rects(
 ) -> None:
     """
     Log multiple 2D rectangles.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes2D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Logging again to the same `entity_path` will replace all the previous rectangles.
 
@@ -165,6 +184,8 @@ def log_rects(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    from rerun import Box2DFormat
+
     if rects is None:
         raise ValueError("`rects` argument must be set")
 
@@ -176,31 +197,6 @@ def log_rects(
         rects = np.zeros((0, 4), dtype="float32")
     assert type(rects) is np.ndarray
 
-    if rect_format == RectFormat.XYWH:
-        half_sizes = rects[:, 2:4] / 2
-        centers = rects[:, 0:2] + half_sizes
-    elif rect_format == RectFormat.YXHW:
-        half_sizes = rects[:, 4:2] / 2
-        centers = rects[:, 2:0] + half_sizes
-    elif rect_format == RectFormat.XYXY:
-        min = rects[:, 0:2]
-        max = rects[:, 2:4]
-        centers = (min + max) / 2
-        half_sizes = max - centers
-    elif rect_format == RectFormat.YXYX:
-        min = rects[:, 2:0]
-        max = rects[:, 4:2]
-        centers = (min + max) / 2
-        half_sizes = max - centers
-    elif rect_format == RectFormat.XCYCWH:
-        half_sizes = rects[:, 2:4] / 2
-        centers = rects[:, 0:2]
-    elif rect_format == RectFormat.XCYCW2H2:
-        half_sizes = rects[:, 2:4]
-        centers = rects[:, 0:2]
-    else:
-        raise ValueError(f"Unknown rect format {rect_format}")
-
     recording = RecordingStream.to_native(recording)
 
     identifiers_np = None
@@ -210,9 +206,25 @@ def log_rects(
         except ValueError:
             _send_warning("Only integer identifiers supported", 1)
 
+    box2d_format = Box2DFormat.XYWH
+    if rect_format == RectFormat.XYWH:
+        box2d_format = Box2DFormat.XYWH
+    elif rect_format == RectFormat.YXHW:
+        box2d_format = Box2DFormat.YXHW
+    elif rect_format == RectFormat.XYXY:
+        box2d_format = Box2DFormat.XYXY
+    elif rect_format == RectFormat.YXYX:
+        box2d_format = Box2DFormat.YXYX
+    elif rect_format == RectFormat.XCYCWH:
+        box2d_format = Box2DFormat.XCYCWH
+    elif rect_format == RectFormat.XCYCW2H2:
+        box2d_format = Box2DFormat.XCYCW2H2
+    else:
+        box2d_format = Box2DFormat.XYWH
+
     arch = Boxes2D(
-        half_sizes=half_sizes,
-        centers=centers,
+        array=rects,
+        array_format=box2d_format,
         colors=colors,
         draw_order=draw_order,
         labels=labels,

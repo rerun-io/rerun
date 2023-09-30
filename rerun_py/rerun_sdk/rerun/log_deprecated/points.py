@@ -24,6 +24,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Points2D(…))` or `rr.log(…, rr.Points3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_point(
     entity_path: str,
@@ -41,6 +45,11 @@ def log_point(
 ) -> None:
     """
     Log a 2D or 3D point, with a position and optional color, radii, label, etc.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.Points2D][] or [rerun.Points3D][]
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Logging again to the same `entity_path` will replace the previous point.
 
@@ -126,7 +135,7 @@ def log_point(
 
 
 @deprecated(
-    """Please migrate to `Points3D` or `Points2D`.
+    """Please migrate to `rr.log(…, rr.Points2D(…))` or `rr.log(…, rr.Points3D(…))`.
   See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
 )
 @log_decorator
@@ -149,7 +158,7 @@ def log_points(
     Log 2D or 3D points, with positions and optional colors, radii, labels, etc.
 
     !!! Warning "Deprecated"
-        Please migrate to [rerun.Points3D][] or [rerun.Points2D][]
+        Please migrate to [rerun.Points2D][] or [rerun.Points3D][]
 
         See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
