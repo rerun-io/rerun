@@ -102,23 +102,40 @@ pub struct RenderPipelineDesc {
     pub multisample: wgpu::MultisampleState,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum RenderPipelineError {
+    // #[error("referenced pipeline layout not found")]
+    // PipelineLayoutNotFound(),
+    #[error("referenced vertex shader not found")]
+    VertexShaderNotFound(),
+
+    #[error("referenced fragment shader not found")]
+    FragmentShaderNotFound(),
+}
+
 impl RenderPipelineDesc {
     fn create_render_pipeline(
         &self,
         device: &wgpu::Device,
         pipeline_layouts: &GpuPipelineLayoutPool,
         shader_modules: &GpuShaderModulePool,
-    ) -> anyhow::Result<wgpu::RenderPipeline> {
-        let pipeline_layout = pipeline_layouts
-            .get_resource(self.pipeline_layout)
-            .context("referenced pipeline layout not found")?;
+    ) -> Result<wgpu::RenderPipeline, RenderPipelineError> {
+        let pipeline_layout =
+            if let Ok(pipeline_layout) = pipeline_layouts.get_resource(self.pipeline_layout) {
+                Some(&pipeline_layout.layout)
+            } else {
+                re_log::error!("referenced pipeline layout not found");
+                None
+            };
 
-        let vertex_shader_module = shader_modules
-            .get(self.vertex_handle)
-            .context("referenced vertex shader not found")?;
-        let fragment_shader_module = shader_modules
-            .get(self.fragment_handle)
-            .context("referenced fragment shader not found")?;
+        let Ok(vertex_shader_module) = shader_modules.get(self.vertex_handle) else {
+            re_log::error!("referenced vertex shader not found");
+            return Err(RenderPipelineError::VertexShaderNotFound());
+        };
+        let Ok(fragment_shader_module) = shader_modules.get(self.fragment_handle) else {
+            re_log::error!("referenced fragment shader not found");
+            return Err(RenderPipelineError::FragmentShaderNotFound());
+        };
 
         let buffers = self
             .vertex_buffers
@@ -129,7 +146,7 @@ impl RenderPipelineDesc {
         Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: self.label.get(),
-                layout: Some(&pipeline_layout.layout),
+                layout: pipeline_layout,
                 vertex: wgpu::VertexState {
                     module: vertex_shader_module,
                     entry_point: &self.vertex_entrypoint,
@@ -211,10 +228,10 @@ impl GpuRenderPipelinePool {
                     Some(sm)
                 }
                 Err(err) => {
-                    re_log::error!(
-                        err = re_error::format(err),
-                        "couldn't recompile render pipeline"
-                    );
+                    // re_log::error!(
+                    //     err = re_error::format(err),
+                    //     "couldn't recompile render pipeline"
+                    // );
                     None
                 }
             }
