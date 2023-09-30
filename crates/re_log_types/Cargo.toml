@@ -49,29 +49,29 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
 ] }
 arrow2_convert.workspace = true
-backtrace = "0.3"
-document-features = "0.2"
+backtrace.workspace = true
+document-features.workspace = true
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
 # `fixed` depends on `half`, so even though `half` is not directly used in this crate,
 # we keep it as a direct dependency to ensure it stays pinned on `2.2.1`
 half.workspace = true
 image.workspace = true
 itertools.workspace = true
-nohash-hasher = "0.2"
-num-derive = "0.3"
-num-traits = "0.2"
-similar-asserts = "1.4.2"
+nohash-hasher.workspace = true
+num-derive.workspace = true
+num-traits.workspace = true
+similar-asserts.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting", "macros"] }
-typenum = "1.15"
-uuid = { version = "1.1", features = ["serde", "v4", "js"] }
+typenum.workspace = true
+uuid = { workspace = true, features = ["serde", "v4", "js"] }
 web-time.workspace = true
 
 
 # Optional dependencies:
 rmp-serde = { version = "1.1", optional = true }
-serde = { version = "1", optional = true, features = ["derive", "rc"] }
+serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 serde_bytes = { version = "0.11", optional = true }
 
 # Native dependencies:
@@ -80,4 +80,4 @@ crossbeam.workspace = true
 
 
 [dev-dependencies]
-similar-asserts = "1.4.2"
+similar-asserts.workspace = true
