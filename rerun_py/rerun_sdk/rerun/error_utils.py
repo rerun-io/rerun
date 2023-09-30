@@ -22,7 +22,7 @@ _strict_mode = False
 _rerun_exception_ctx = threading.local()
 
 
-def check_strict_mode() -> bool:
+def strict_mode() -> bool:
     """
     Strict mode enabled.
 
@@ -81,7 +81,7 @@ def _send_warning(
     from rerun._log import log
     from rerun.archetypes import TextLog
 
-    if check_strict_mode():
+    if strict_mode():
         raise TypeError(message)
 
     # Send the warning to the user first
@@ -171,7 +171,7 @@ class catch_and_log_exceptions:
         exc_tb: TracebackType | None,
     ) -> bool:
         try:
-            if exc_type is not None and not check_strict_mode():
+            if exc_type is not None and not strict_mode():
                 if getattr(_rerun_exception_ctx, "pending_warnings", None) is None:
                     _rerun_exception_ctx.pending_warnings = []
 

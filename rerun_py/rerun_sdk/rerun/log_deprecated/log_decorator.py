@@ -10,7 +10,7 @@ from rerun._log import log
 from rerun.archetypes import TextLog
 from rerun.recording_stream import RecordingStream
 
-from ..error_utils import check_strict_mode
+from ..error_utils import strict_mode
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
@@ -45,7 +45,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
             )
             return
 
-        if check_strict_mode():
+        if strict_mode():
             # Pass on any exceptions to the caller
             return func(*args, **kwargs)
         else:
