@@ -5,6 +5,7 @@ from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Boxes2D
@@ -42,6 +43,10 @@ class RectFormat(Enum):
     """[x_center, y_center, width/2, height/2]."""
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes2D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_rect(
     entity_path: str,
@@ -58,6 +63,11 @@ def log_rect(
 ) -> None:
     """
     Log a 2D rectangle.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes2D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Parameters
     ----------
@@ -103,6 +113,10 @@ def log_rect(
     )
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes2D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_rects(
     entity_path: str,
@@ -120,6 +134,11 @@ def log_rects(
 ) -> None:
     """
     Log multiple 2D rectangles.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes2D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Logging again to the same `entity_path` will replace all the previous rectangles.
 
