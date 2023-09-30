@@ -19,6 +19,7 @@ import cv2
 import numpy as np
 import PIL.Image
 import requests
+import rerun as rr
 import torch
 from diffusers import (
     AutoencoderKL,
@@ -26,17 +27,17 @@ from diffusers import (
     StableDiffusionXLControlNetPipeline,
 )
 
-import rerun as rr
-
 
 def controlnet_callback(
-    iteration: int, timestep: float, latents: torch.Tensor, decode_latents: Callable
-):
-    pass
-    # rr.set_time_sequence("iteration", iteration)
-    # image = decode_latents(latents)
-    # breakpoint()
-    # rr.log("output", rr.Image(image))
+    iteration: int, timestep: float, latents: torch.Tensor, pipeline
+) -> None:
+    rr.set_time_sequence("iteration", iteration)
+    image = pipeline.vae.decode(
+        latents / pipeline.vae.config.scaling_factor, return_dict=False
+    )[0]
+    image = pipeline.image_processor.postprocess(image, output_type="np")[0]
+    rr.log("output", rr.Image(image))
+    rr.log("latent", rr.Tensor(latents[0], dim_names=["channel", "height", "width"]))
 
 
 def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
@@ -63,8 +64,8 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
     canny_image = np.concatenate([canny_image, canny_image, canny_image], axis=2)
     canny_image = PIL.Image.fromarray(canny_image)
 
-    rr.log("input/raw", rr.Image(image))
-    rr.log("input/canny", rr.Image(canny_image))
+    rr.log("input/raw", rr.Image(image), timeless=True)
+    rr.log("input/canny", rr.Image(canny_image), timeless=True)
 
     controlnet = ControlNetModel.from_pretrained(
         "diffusers/controlnet-canny-sdxl-1.0",
@@ -86,12 +87,14 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
     rr.log(
         "positive_prompt",
         rr.TextDocument(f"### Positive Prompt\n {prompt}", media_type="text/markdown"),
+        timeless=True,
     )
     rr.log(
         "negative_prompt",
         rr.TextDocument(
             f"### Negative Prompt\n {negative_prompt}", media_type="text/markdown"
         ),
+        timeless=True
     )
 
     images = pipeline(
@@ -99,9 +102,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
         negative_prompt=negative_prompt,
         image=canny_image,  # add batch dimension
         controlnet_conditioning_scale=0.5,
-        # callback=lambda i, t, latents: controlnet_callback(
-        #     i, t, latents, pipeline.decode_latents
-        # ),
+        callback=lambda i, t, latents: controlnet_callback(i, t, latents, pipeline),
     ).images[0]
 
     rr.log("output", rr.Image(images))
