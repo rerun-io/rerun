@@ -8,7 +8,7 @@ thumbnail_dimensions: [480, 298]
 
 This example integrates Rerun into [Hugging Face's ControlNet example](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet).
 
-https://vimeo.com/869832524?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=100:56.25
+https://vimeo.com/869834443?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=100:63.14
 
 To run this example use
 ```bash
