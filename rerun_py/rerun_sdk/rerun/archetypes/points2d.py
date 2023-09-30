@@ -138,10 +138,9 @@ class Points2D(Archetype):
             instance_keys=None,
         )
 
-    @classmethod
-    def _clear(cls) -> Points2D:
-        """Produce an empty Points2D."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             positions=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
@@ -151,6 +150,13 @@ class Points2D(Archetype):
             keypoint_ids=None,  # type: ignore[arg-type]
             instance_keys=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> Points2D:
+        """Produce an empty Points2D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     positions: components.Position2DBatch = field(
         metadata={"component": "required"},

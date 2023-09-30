@@ -72,12 +72,18 @@ class Transform3D(Archetype):
             transform=None,
         )
 
-    @classmethod
-    def _clear(cls) -> Transform3D:
-        """Produce an empty Transform3D."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             transform=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> Transform3D:
+        """Produce an empty Transform3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},

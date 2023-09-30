@@ -136,12 +136,18 @@ class AnnotationContext(Archetype):
             context=None,
         )
 
-    @classmethod
-    def _clear(cls) -> AnnotationContext:
-        """Produce an empty AnnotationContext."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             context=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> AnnotationContext:
+        """Produce an empty AnnotationContext, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     context: components.AnnotationContextBatch = field(
         metadata={"component": "required"},

@@ -129,16 +129,22 @@ class TimeSeriesScalar(Archetype):
             scattered=None,
         )
 
-    @classmethod
-    def _clear(cls) -> TimeSeriesScalar:
-        """Produce an empty TimeSeriesScalar."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             scalar=None,  # type: ignore[arg-type]
             radius=None,  # type: ignore[arg-type]
             color=None,  # type: ignore[arg-type]
             label=None,  # type: ignore[arg-type]
             scattered=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> TimeSeriesScalar:
+        """Produce an empty TimeSeriesScalar, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     scalar: components.ScalarBatch = field(
         metadata={"component": "required"},

@@ -70,12 +70,18 @@ class Tensor(TensorExt, Archetype):
 
     # __init__ can be found in tensor_ext.py
 
-    @classmethod
-    def _clear(cls) -> Tensor:
-        """Produce an empty Tensor."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> Tensor:
+        """Produce an empty Tensor, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

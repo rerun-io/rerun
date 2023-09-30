@@ -173,10 +173,9 @@ class LineStrips3D(Archetype):
             instance_keys=None,
         )
 
-    @classmethod
-    def _clear(cls) -> LineStrips3D:
-        """Produce an empty LineStrips3D."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             strips=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
@@ -184,6 +183,13 @@ class LineStrips3D(Archetype):
             class_ids=None,  # type: ignore[arg-type]
             instance_keys=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> LineStrips3D:
+        """Produce an empty LineStrips3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     strips: components.LineStrip3DBatch = field(
         metadata={"component": "required"},

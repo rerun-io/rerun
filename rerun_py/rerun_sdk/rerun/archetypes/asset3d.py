@@ -113,14 +113,20 @@ class Asset3D(Asset3DExt, Archetype):
             transform=None,
         )
 
-    @classmethod
-    def _clear(cls) -> Asset3D:
-        """Produce an empty Asset3D."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             blob=None,  # type: ignore[arg-type]
             media_type=None,  # type: ignore[arg-type]
             transform=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> Asset3D:
+        """Produce an empty Asset3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     blob: components.BlobBatch = field(
         metadata={"component": "required"},

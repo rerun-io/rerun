@@ -47,13 +47,19 @@ class TextDocument(Archetype):
             media_type=None,
         )
 
-    @classmethod
-    def _clear(cls) -> TextDocument:
-        """Produce an empty TextDocument."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             text=None,  # type: ignore[arg-type]
             media_type=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> TextDocument:
+        """Produce an empty TextDocument, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     text: components.TextBatch = field(
         metadata={"component": "required"},

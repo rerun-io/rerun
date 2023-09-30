@@ -59,12 +59,18 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
             xyz=None,
         )
 
-    @classmethod
-    def _clear(cls) -> ViewCoordinates:
-        """Produce an empty ViewCoordinates."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             xyz=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> ViewCoordinates:
+        """Produce an empty ViewCoordinates, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},

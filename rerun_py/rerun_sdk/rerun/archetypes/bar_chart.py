@@ -53,12 +53,18 @@ class BarChart(BarChartExt, Archetype):
             values=None,
         )
 
-    @classmethod
-    def _clear(cls) -> BarChart:
-        """Produce an empty BarChart."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             values=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> BarChart:
+        """Produce an empty BarChart, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     values: components.TensorDataBatch = field(
         metadata={"component": "required"},

@@ -620,7 +620,7 @@ fn code_for_struct(
     }
 
     if obj.kind == ObjectKind::Archetype {
-        code.push_text(quote_clear_method(obj), 2, 4);
+        code.push_text(quote_clear_methods(obj), 2, 4);
     }
 
     if obj.is_delegating_component() {
@@ -1688,29 +1688,31 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
     )
 }
 
-fn quote_clear_method(obj: &Object) -> String {
+fn quote_clear_methods(obj: &Object) -> String {
     let param_nones = obj
         .fields
         .iter()
         .map(|field| format!("{} = None, # type: ignore[arg-type]", field.name))
-        .join("\n");
+        .join("\n                ");
 
-    let body = [
-        r#"""""#.to_owned(),
-        format!("Produce an empty {}.", obj.name),
-        r#"""""#.to_owned(),
-        "return cls(".to_owned(),
-        param_nones,
-        ")".to_owned(),
-    ]
-    .join("\n");
+    let classname = &obj.name;
 
-    [
-        "@classmethod".to_owned(),
-        format!("def _clear(cls) -> {}:", obj.name),
-        indent::indent_all_by(4, body),
-    ]
-    .join("\n")
+    unindent::unindent(&format!(
+        r#"
+        def __attrs_clear__(self) -> None:
+            """Convenience method for calling `__attrs_init__` with all `None`s."""
+            self.__attrs_init__(
+                {param_nones}
+            )
+
+        @classmethod
+        def _clear(cls) -> {classname}:
+            """Produce an empty {classname}, bypassing `__init__`"""
+            inst = cls.__new__(cls)
+            inst.__attrs_clear__()
+            return inst
+        "#
+    ))
 }
 
 // --- Arrow registry code generators ---

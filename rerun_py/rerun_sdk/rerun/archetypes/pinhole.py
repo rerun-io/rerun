@@ -43,14 +43,20 @@ class Pinhole(PinholeExt, Archetype):
 
     # __init__ can be found in pinhole_ext.py
 
-    @classmethod
-    def _clear(cls) -> Pinhole:
-        """Produce an empty Pinhole."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             image_from_camera=None,  # type: ignore[arg-type]
             resolution=None,  # type: ignore[arg-type]
             camera_xyz=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> Pinhole:
+        """Produce an empty Pinhole, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     image_from_camera: components.PinholeProjectionBatch = field(
         metadata={"component": "required"},

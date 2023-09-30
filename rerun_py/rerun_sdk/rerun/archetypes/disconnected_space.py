@@ -54,12 +54,18 @@ class DisconnectedSpace(Archetype):
             disconnected_space=None,
         )
 
-    @classmethod
-    def _clear(cls) -> DisconnectedSpace:
-        """Produce an empty DisconnectedSpace."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             disconnected_space=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> DisconnectedSpace:
+        """Produce an empty DisconnectedSpace, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     disconnected_space: components.DisconnectedSpaceBatch = field(
         metadata={"component": "required"},

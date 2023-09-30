@@ -85,10 +85,9 @@ class AffixFuzzer2(Archetype):
             fuzz1118=None,
         )
 
-    @classmethod
-    def _clear(cls) -> AffixFuzzer2:
-        """Produce an empty AffixFuzzer2."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             fuzz1101=None,  # type: ignore[arg-type]
             fuzz1102=None,  # type: ignore[arg-type]
             fuzz1103=None,  # type: ignore[arg-type]
@@ -108,6 +107,13 @@ class AffixFuzzer2(Archetype):
             fuzz1117=None,  # type: ignore[arg-type]
             fuzz1118=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> AffixFuzzer2:
+        """Produce an empty AffixFuzzer2, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     fuzz1101: components.AffixFuzzer1Batch = field(
         metadata={"component": "required"},

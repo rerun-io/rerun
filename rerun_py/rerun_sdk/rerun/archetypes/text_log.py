@@ -66,14 +66,20 @@ class TextLog(Archetype):
             color=None,
         )
 
-    @classmethod
-    def _clear(cls) -> TextLog:
-        """Produce an empty TextLog."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             text=None,  # type: ignore[arg-type]
             level=None,  # type: ignore[arg-type]
             color=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> TextLog:
+        """Produce an empty TextLog, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     text: components.TextBatch = field(
         metadata={"component": "required"},

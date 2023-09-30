@@ -77,13 +77,19 @@ class Image(ImageExt, Archetype):
             draw_order=None,
         )
 
-    @classmethod
-    def _clear(cls) -> Image:
-        """Produce an empty Image."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> Image:
+        """Produce an empty Image, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},

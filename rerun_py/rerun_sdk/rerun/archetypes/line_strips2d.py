@@ -153,10 +153,9 @@ class LineStrips2D(Archetype):
             instance_keys=None,
         )
 
-    @classmethod
-    def _clear(cls) -> LineStrips2D:
-        """Produce an empty LineStrips2D."""
-        return cls(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
             strips=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
@@ -165,6 +164,13 @@ class LineStrips2D(Archetype):
             class_ids=None,  # type: ignore[arg-type]
             instance_keys=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> LineStrips2D:
+        """Produce an empty LineStrips2D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     strips: components.LineStrip2DBatch = field(
         metadata={"component": "required"},
