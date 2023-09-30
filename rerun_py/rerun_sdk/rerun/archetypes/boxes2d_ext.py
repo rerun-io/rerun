@@ -166,13 +166,4 @@ class Boxes2DExt:
             )
             return
 
-        self.__attrs_init__(
-            half_sizes=None,
-            centers=None,
-            radii=None,
-            colors=None,
-            labels=None,
-            draw_order=None,
-            class_ids=None,
-            instance_keys=None,
-        )
+        self.__attrs_clear__()

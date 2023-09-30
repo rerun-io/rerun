@@ -129,4 +129,4 @@ class PinholeExt:
             self.__attrs_init__(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)
             return
 
-        self.__attrs_init__(image_from_camera=None, resolution=None, camera_xyz=None)
+        self.__attrs_clear__()

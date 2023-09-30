@@ -87,13 +87,4 @@ class Boxes3DExt:
             )
             return
 
-        self.__attrs_init__(
-            half_sizes=None,
-            centers=None,
-            rotations=None,
-            colors=None,
-            radii=None,
-            labels=None,
-            class_ids=None,
-            instance_keys=None,
-        )
+        self.__attrs_clear__()

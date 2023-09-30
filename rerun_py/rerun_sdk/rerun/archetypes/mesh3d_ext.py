@@ -67,12 +67,4 @@ class Mesh3DExt:
             )
             return
 
-        self.__attrs_init__(
-            vertex_positions=None,
-            mesh_properties=None,
-            vertex_normals=None,
-            vertex_colors=None,
-            mesh_material=None,
-            class_ids=None,
-            instance_keys=None,
-        )
+        self.__attrs_clear__()
