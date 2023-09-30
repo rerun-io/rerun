@@ -101,6 +101,7 @@ emath = "0.23.0"
 enumset = "1.0.12"
 env_logger = "0.10"
 epaint = "0.23.0"
+ewebsock = "0.3"
 glam = "0.22"
 gltf = "1.1"
 half = "2.3.1"
@@ -169,5 +170,3 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-
-ewebsock = { git = "https://github.com/rerun-io/ewebsock.git", rev = "f5a554b67c84f53b9165fa6666e7255256960fa3" }

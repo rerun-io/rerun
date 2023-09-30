@@ -49,7 +49,7 @@ document-features = "0.2"
 thiserror.workspace = true
 
 # Client:
-ewebsock = { version = "0.2", optional = true }
+ewebsock = { workspace = true, optional = true }
 
 # Server:
 re_smart_channel = { workspace = true, optional = true }
