@@ -14,7 +14,7 @@ pip install -r examples/python/controlnet/requirements.txt
 python examples/python/controlnet/main.py
 ```
 
-You can specify your own prompts and image using
+You can specify your own image and prompts using
 ```bash
 main.py [--img_path IMG_PATH] [--prompt PROMPT] [--negative_prompt NEGATIVE_PROMPT]
 ```
