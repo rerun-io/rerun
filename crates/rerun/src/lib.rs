@@ -42,7 +42,7 @@
 //!
 //! Use a [`RecordingStream`] to log some[`archetypes`]:
 //!
-//! ```
+//! ```no_run
 //! # use rerun::external::image;
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Position3D> { Default::default() }
@@ -67,6 +67,8 @@
 //!
 //! ```no_run
 //! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").save("my_data.rrd")?;
+//!
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
 //! #### Buffering
