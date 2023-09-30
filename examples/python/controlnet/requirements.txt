@@ -1,0 +1,8 @@
+opencv-python
+pillow
+diffusers
+numpy
+torch
+rerun-sdk
+
+# TODO(roym899) figure out minimal set of requirements
