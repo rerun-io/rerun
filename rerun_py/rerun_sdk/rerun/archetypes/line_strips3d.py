@@ -164,14 +164,7 @@ class LineStrips3D(Archetype):
                 instance_keys=instance_keys,
             )
             return
-        self.__attrs_init__(
-            strips=None,
-            radii=None,
-            colors=None,
-            labels=None,
-            class_ids=None,
-            instance_keys=None,
-        )
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

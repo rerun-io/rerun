@@ -49,9 +49,7 @@ class BarChart(BarChartExt, Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(values=values)
             return
-        self.__attrs_init__(
-            values=None,
-        )
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

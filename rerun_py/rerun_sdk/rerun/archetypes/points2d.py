@@ -127,16 +127,7 @@ class Points2D(Archetype):
                 instance_keys=instance_keys,
             )
             return
-        self.__attrs_init__(
-            positions=None,
-            radii=None,
-            colors=None,
-            labels=None,
-            draw_order=None,
-            class_ids=None,
-            keypoint_ids=None,
-            instance_keys=None,
-        )
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

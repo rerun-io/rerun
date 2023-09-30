@@ -121,13 +121,7 @@ class TimeSeriesScalar(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
             return
-        self.__attrs_init__(
-            scalar=None,
-            radius=None,
-            color=None,
-            label=None,
-            scattered=None,
-        )
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

@@ -68,9 +68,7 @@ class Transform3D(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(transform=transform)
             return
-        self.__attrs_init__(
-            transform=None,
-        )
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

@@ -72,10 +72,7 @@ class Image(ImageExt, Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(data=data, draw_order=draw_order)
             return
-        self.__attrs_init__(
-            data=None,
-            draw_order=None,
-        )
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

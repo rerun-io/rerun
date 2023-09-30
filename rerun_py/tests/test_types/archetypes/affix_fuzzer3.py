@@ -65,26 +65,7 @@ class AffixFuzzer3(Archetype):
                 fuzz2018=fuzz2018,
             )
             return
-        self.__attrs_init__(
-            fuzz2001=None,
-            fuzz2002=None,
-            fuzz2003=None,
-            fuzz2004=None,
-            fuzz2005=None,
-            fuzz2006=None,
-            fuzz2007=None,
-            fuzz2008=None,
-            fuzz2009=None,
-            fuzz2010=None,
-            fuzz2011=None,
-            fuzz2012=None,
-            fuzz2013=None,
-            fuzz2014=None,
-            fuzz2015=None,
-            fuzz2016=None,
-            fuzz2017=None,
-            fuzz2018=None,
-        )
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
