@@ -2,11 +2,13 @@
 title: ControlNet
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/controlnet/main.py
 tags: [controlnet, canny, huggingface, stable-diffusion, tensor, text]
-thumbnail: https://static.rerun.io/depth_guided_stable_diffusion/a85516aba09f72649517891d767e15383ce7f4ea/480w.png
-thumbnail_dimensions: [480, 253]
+thumbnail: https://static.rerun.io/controlnet/cec698ef2ee9d9bf24e3d3c3fcd366d48f993915/480w.png
+thumbnail_dimensions: [480, 298]
 ---
 
 This example integrates Rerun into [Hugging Face's ControlNet example](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet).
+
+https://vimeo.com/869832524?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=100:56.25
 
 To run this example use
 ```bash
