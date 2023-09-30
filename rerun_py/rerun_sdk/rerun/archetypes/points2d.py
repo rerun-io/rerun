@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["Points2D"]
 
@@ -114,20 +115,43 @@ class Points2D(Archetype):
         """
 
         # You can define your own __init__ function as a member of Points2DExt in points2d_ext.py
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(
+                positions=positions,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+                keypoint_ids=keypoint_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            positions=positions,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            draw_order=draw_order,
-            class_ids=class_ids,
-            keypoint_ids=keypoint_ids,
-            instance_keys=instance_keys,
+            positions=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            keypoint_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> Points2D:
+        """Produce an empty Points2D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     positions: components.Position2DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position2DBatch,  # type: ignore[misc]
+        converter=components.Position2DBatch._required,  # type: ignore[misc]
     )
     """
     All the 2D positions at which the point cloud shows points.

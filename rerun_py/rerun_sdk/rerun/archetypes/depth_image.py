@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .depth_image_ext import DepthImageExt
 
 __all__ = ["DepthImage"]
@@ -112,7 +113,25 @@ class DepthImage(DepthImageExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
-        self.__attrs_init__(data=data, meter=meter, draw_order=draw_order)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(data=data, meter=meter, draw_order=draw_order)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            data=None,  # type: ignore[arg-type]
+            meter=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> DepthImage:
+        """Produce an empty DepthImage, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     data: components.TensorDataBatch = field(
         metadata={"component": "required"},
