@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["TextDocument"]
 
@@ -38,11 +39,28 @@ class TextDocument(Archetype):
         """
 
         # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py
-        self.__attrs_init__(text=text, media_type=media_type)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(text=text, media_type=media_type)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            text=None,  # type: ignore[arg-type]
+            media_type=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> TextDocument:
+        """Produce an empty TextDocument, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     text: components.TextBatch = field(
         metadata={"component": "required"},
-        converter=components.TextBatch,  # type: ignore[misc]
+        converter=components.TextBatch._required,  # type: ignore[misc]
     )
     """
     Contents of the text document.

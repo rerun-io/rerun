@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..error_utils import catch_and_log_exceptions
+
 if TYPE_CHECKING:
     from ..components import MediaType
     from . import Asset3D
@@ -36,8 +38,10 @@ class Asset3DExt:
         """
         from . import Asset3D
 
-        with open(path, "rb") as file:
-            return Asset3D.from_bytes(file.read(), guess_media_type(path))
+        with catch_and_log_exceptions(context="Asset3D.from_file"):
+            with open(path, "rb") as file:
+                return Asset3D.from_bytes(file.read(), guess_media_type(path))
+        return Asset3D._clear()
 
     @staticmethod
     def from_bytes(blob: bytes, media_type: MediaType | None) -> Asset3D:
@@ -50,4 +54,6 @@ class Asset3DExt:
         from . import Asset3D
 
         # TODO(cmc): we could try and guess using magic bytes here, like rust does.
-        return Asset3D(blob=blob, media_type=media_type)
+        with catch_and_log_exceptions(context="Asset3D.from_file"):
+            return Asset3D(blob=blob, media_type=media_type)
+        return Asset3D._clear()

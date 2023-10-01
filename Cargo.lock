@@ -1416,6 +1416,7 @@ checksum = "8bd69fed5fcf4fbb8225b24e80ea6193b61e17a625db105ef0c4d71dde6eb8b7"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
+ "backtrace",
  "epaint",
  "log",
  "nohash-hasher",
@@ -1513,8 +1514,9 @@ dependencies = [
 
 [[package]]
 name = "egui_tiles"
-version = "0.3.0"
-source = "git+https://github.com/rerun-io/egui_tiles.git?rev=b34432b2ff68eb2e087a41b241d70ec367a09334#b34432b2ff68eb2e087a41b241d70ec367a09334"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54986fb00d53325eaa4033cb5d8b1c1a77d4173fa3ed0d6602c6a542b151ace9"
 dependencies = [
  "ahash 0.8.3",
  "egui",

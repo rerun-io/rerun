@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .asset3d_ext import Asset3DExt
 
 __all__ = ["Asset3D"]
@@ -103,11 +104,29 @@ class Asset3D(Asset3DExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
-        self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            blob=None,  # type: ignore[arg-type]
+            media_type=None,  # type: ignore[arg-type]
+            transform=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> Asset3D:
+        """Produce an empty Asset3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     blob: components.BlobBatch = field(
         metadata={"component": "required"},
-        converter=components.BlobBatch,  # type: ignore[misc]
+        converter=components.BlobBatch._required,  # type: ignore[misc]
     )
     """
     The asset's bytes.

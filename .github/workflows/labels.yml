@@ -5,7 +5,7 @@
 name: Pull Request Labels
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -30,7 +30,6 @@ jobs:
           mode: minimum
           count: 1
           labels: "exclude from changelog, include in changelog"
-
 
       - name: Require at least one label
         uses: mheap/github-action-required-labels@v3
