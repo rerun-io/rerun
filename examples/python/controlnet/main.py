@@ -29,20 +29,14 @@ from diffusers import (
 RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controlnet/rerun-icon-1000.png"
 
 
-def controlnet_callback(
-    iteration: int, timestep: float, latents: torch.Tensor, pipeline
-) -> None:
+def controlnet_callback(iteration: int, timestep: float, latents: torch.Tensor, pipeline) -> None:
     rr.set_time_sequence("iteration", iteration)
     rr.set_time_seconds("timestep", timestep)
 
-    image = pipeline.vae.decode(
-        latents / pipeline.vae.config.scaling_factor, return_dict=False
-    )[0]
+    image = pipeline.vae.decode(latents / pipeline.vae.config.scaling_factor, return_dict=False)[0]
     image = pipeline.image_processor.postprocess(image, output_type="np").squeeze()
     rr.log("output", rr.Image(image))
-    rr.log(
-        "latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"])
-    )
+    rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))
 
 
 def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
@@ -96,9 +90,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
     )
     rr.log(
         "negative_prompt",
-        rr.TextDocument(
-            f"### Negative Prompt\n {negative_prompt}", media_type="text/markdown"
-        ),
+        rr.TextDocument(f"### Negative Prompt\n {negative_prompt}", media_type="text/markdown"),
         timeless=True,
     )
 
@@ -114,9 +106,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Use Canny-conditioned ControlNet to generate image."
-    )
+    parser = argparse.ArgumentParser(description="Use Canny-conditioned ControlNet to generate image.")
     parser.add_argument(
         "--img_path",
         type=str,
