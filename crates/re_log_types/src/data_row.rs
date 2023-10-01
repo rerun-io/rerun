@@ -3,9 +3,7 @@ use nohash_hasher::IntSet;
 use re_types::ComponentName;
 use smallvec::SmallVec;
 
-use crate::{
-    time::TimeZone, DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint,
-};
+use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint};
 
 // ---
 
@@ -552,7 +550,7 @@ impl std::fmt::Display for DataRow {
                 f,
                 "- {}: {}",
                 timeline.name(),
-                timeline.typ().format(*time, TimeZone::Utc)
+                timeline.typ().format_utc(*time)
             )?;
         }
 

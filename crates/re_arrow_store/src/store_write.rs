@@ -128,7 +128,7 @@ impl DataStore {
             id = self.insert_id,
             cluster_key = %self.cluster_key,
             timelines = ?timepoint.iter()
-                .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time, TimeZone::Utc)))
+                .map(|(timeline, time)| (timeline.name(), timeline.typ().format_utc(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
             components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
@@ -303,11 +303,11 @@ impl IndexedTable {
                 trace!(
                     kind = "insert",
                     timeline = %timeline.name(),
-                    time = timeline.typ().format(time, TimeZone::Utc),
+                    time = timeline.typ().format_utc(time),
                     entity = %ent_path,
                     len_limit = config.indexed_bucket_num_rows,
                     len, len_overflow,
-                    new_time_bound = timeline.typ().format(min, TimeZone::Utc),
+                    new_time_bound = timeline.typ().format_utc(min),
                     "splitting off indexed bucket following overflow"
                 );
 
@@ -353,11 +353,11 @@ impl IndexedTable {
                     debug!(
                         kind = "insert",
                         timeline = %timeline.name(),
-                        time = timeline.typ().format(time, TimeZone::Utc),
+                        time = timeline.typ().format_utc(time),
                         entity = %ent_path,
                         len_limit = config.indexed_bucket_num_rows,
                         len, len_overflow,
-                        new_time_bound = timeline.typ().format(new_time_bound.into(), TimeZone::Utc),
+                        new_time_bound = timeline.typ().format_utc(new_time_bound.into()),
                         "creating brand new indexed bucket following overflow"
                     );
 
@@ -400,7 +400,7 @@ impl IndexedTable {
                         "Found over {} rows with the same timepoint {:?}={} - perhaps you forgot to update or remove the timeline?",
                         config.indexed_bucket_num_rows,
                         bucket.timeline.name(),
-                        bucket.timeline.typ().format(bucket_time_range.min, TimeZone::Utc)
+                        bucket.timeline.typ().format_utc(bucket_time_range.min)
                     );
                 }
             }
@@ -409,7 +409,7 @@ impl IndexedTable {
         trace!(
             kind = "insert",
             timeline = %timeline.name(),
-            time = timeline.typ().format(time, TimeZone::Utc),
+            time = timeline.typ().format_utc(time),
             entity = %ent_path,
             ?components,
             "inserted into indexed tables"

@@ -144,6 +144,10 @@ impl TimeType {
         }
     }
 
+    pub fn format_utc(&self, time_int: TimeInt) -> String {
+        self.format(time_int, TimeZone::Utc)
+    }
+
     pub fn format_range(
         &self,
         time_range: TimeRange,
@@ -154,6 +158,10 @@ impl TimeType {
             self.format(time_range.min, time_zone_for_timestamps),
             self.format(time_range.max, time_zone_for_timestamps)
         )
+    }
+
+    pub fn format_range_utc(&self, time_range: TimeRange) -> String {
+        self.format_range(time_range, TimeZone::Utc)
     }
 }
 

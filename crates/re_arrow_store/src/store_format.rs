@@ -105,7 +105,7 @@ impl std::fmt::Display for IndexedTable {
                 8,
                 format!(
                     "index time bound: >= {}\n",
-                    timeline.typ().format(*time, TimeZone::Utc)
+                    timeline.typ().format_utc(*time)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;

@@ -82,7 +82,6 @@ fn top_bar_ui(
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
         input_latency_label_ui(ui, app);
-        paris_debug_ui(ui);
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -199,18 +198,6 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
         ui.label(egui::RichText::new(text).monospace().color(color))
             .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
     }
-}
-
-// TODO(paris): Just for testing, remove before going from draft to live.
-fn paris_debug_ui(ui: &mut egui::Ui) {
-    let visuals = ui.visuals();
-    let color = visuals.weak_text_color();
-
-    let t = Time::now();
-    let local = t.format(TimeZone::Local);
-    let utc = t.format(TimeZone::Utc);
-    let text = format!("Local Time: {local} - UTC Time: {utc}");
-    ui.label(egui::RichText::new(text).monospace().color(color));
 }
 
 fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
