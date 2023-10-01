@@ -1,12 +1,35 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 
 import numpy as np
-
-from rerun.error_utils import _send_warning
+import numpy.typing as npt
 
 from .. import components, datatypes
+from ..error_utils import _send_warning, catch_and_log_exceptions
+
+
+class Box2DFormat(Enum):
+    """How to specify 2D boxes (axis-aligned bounding boxes)."""
+
+    XYWH = "XYWH"
+    """[x,y,w,h], with x,y = left,top."""
+
+    YXHW = "YXHW"
+    """[y,x,h,w], with x,y = left,top."""
+
+    XYXY = "XYXY"
+    """[x0, y0, x1, y1], with x0,y0 = left,top and x1,y1 = right,bottom."""
+
+    YXYX = "YXYX"
+    """[y0, x0, y1, x1], with x0,y0 = left,top and x1,y1 = right,bottom."""
+
+    XCYCWH = "XCYCWH"
+    """[x_center, y_center, width, height]."""
+
+    XCYCW2H2 = "XCYCW2H2"
+    """[x_center, y_center, width/2, height/2]."""
 
 
 class Boxes2DExt:
@@ -17,6 +40,8 @@ class Boxes2DExt:
         mins: datatypes.Vec2DArrayLike | None = None,
         half_sizes: datatypes.Vec2DArrayLike | None = None,
         centers: datatypes.Vec2DArrayLike | None = None,
+        array: npt.ArrayLike | None = None,
+        array_format: Box2DFormat = Box2DFormat.XYWH,
         radii: components.RadiusArrayLike | None = None,
         colors: datatypes.ColorArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
@@ -30,13 +55,20 @@ class Boxes2DExt:
         Parameters
         ----------
         sizes:
-            Full extents in x/y. Specify this instead of `half_sizes`
+            Full extents in x/y.
+            Incompatible with `array` and `half_sizes`.
         half_sizes:
             All half-extents that make up the batch of boxes. Specify this instead of `sizes`
+            Incompatible with `array` and `sizes`.
         mins:
             Minimum coordinates of the boxes. Specify this instead of `centers`.
-
+            Incompatible with `array`.
             Only valid when used together with either `sizes` or `half_sizes`.
+        array:
+            An array of boxes in the format specified by `array_format`.
+            Incompatible with `sizes`, `half_sizes`, `mins` and `centers`.
+        array_format:
+            How to interpret the data in `array`.
         centers:
             Optional center positions of the boxes.
         colors:
@@ -58,33 +90,80 @@ class Boxes2DExt:
             Unique identifiers for each individual boxes in the batch.
         """
 
-        if sizes is not None:
-            if half_sizes is not None:
-                _send_warning("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if array is not None:
+                if half_sizes is not None:
+                    _send_warning("Cannot specify both `array` and `half_sizes` at the same time.", 1)
+                if sizes is not None:
+                    _send_warning("Cannot specify both `array` and `sizes` at the same time.", 1)
+                if mins is not None:
+                    _send_warning("Cannot specify both `array` and `mins` at the same time.", 1)
+                if centers is not None:
+                    _send_warning("Cannot specify both `array` and `centers` at the same time.", 1)
 
-            sizes = np.asarray(sizes, dtype=np.float32)
-            half_sizes = sizes / 2.0
+                if np.any(array):
+                    array = np.asarray(array, dtype="float32")
+                    if array.ndim == 1:
+                        array = np.expand_dims(array, axis=0)
+                else:
+                    array = np.zeros((0, 4), dtype="float32")
+                assert type(array) is np.ndarray
 
-        if mins is not None:
-            if centers is not None:
-                _send_warning("Cannot specify both `mins` and `centers` at the same time.", 1)
+                if array_format == Box2DFormat.XYWH:
+                    half_sizes = array[:, 2:4] / 2
+                    centers = array[:, 0:2] + half_sizes
+                elif array_format == Box2DFormat.YXHW:
+                    half_sizes = np.flip(array[:, 2:4]) / 2
+                    centers = np.flip(array[:, 0:2]) + half_sizes
+                elif array_format == Box2DFormat.XYXY:
+                    min = array[:, 0:2]
+                    max = array[:, 2:4]
+                    centers = (min + max) / 2
+                    half_sizes = max - centers
+                elif array_format == Box2DFormat.YXYX:
+                    min = np.flip(array[:, 0:2])
+                    max = np.flip(array[:, 2:4])
+                    centers = (min + max) / 2
+                    half_sizes = max - centers
+                elif array_format == Box2DFormat.XCYCWH:
+                    half_sizes = array[:, 2:4] / 2
+                    centers = array[:, 0:2]
+                elif array_format == Box2DFormat.XCYCW2H2:
+                    half_sizes = array[:, 2:4]
+                    centers = array[:, 0:2]
+                else:
+                    raise ValueError(f"Unknown Box2D format {array_format}")
+            else:
+                if sizes is not None:
+                    if half_sizes is not None:
+                        _send_warning("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
 
-            # already converted `sizes` to `half_sizes`
-            if half_sizes is None:
-                _send_warning("Cannot specify `mins` without `sizes` or `half_sizes`.", 1)
-                half_sizes = np.asarray([1, 1], dtype=np.float32)
+                    sizes = np.asarray(sizes, dtype=np.float32)
+                    half_sizes = sizes / 2.0
 
-            mins = np.asarray(mins, dtype=np.float32)
-            half_sizes = np.asarray(half_sizes, dtype=np.float32)
-            centers = mins + half_sizes
+                if mins is not None:
+                    if centers is not None:
+                        _send_warning("Cannot specify both `mins` and `centers` at the same time.", 1)
 
-        self.__attrs_init__(
-            half_sizes=half_sizes,
-            centers=centers,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            draw_order=draw_order,
-            class_ids=class_ids,
-            instance_keys=instance_keys,
-        )
+                    # already converted `sizes` to `half_sizes`
+                    if half_sizes is None:
+                        _send_warning("Cannot specify `mins` without `sizes` or `half_sizes`.", 1)
+                        half_sizes = np.asarray([1, 1], dtype=np.float32)
+
+                    mins = np.asarray(mins, dtype=np.float32)
+                    half_sizes = np.asarray(half_sizes, dtype=np.float32)
+                    centers = mins + half_sizes
+
+            self.__attrs_init__(
+                half_sizes=half_sizes,
+                centers=centers,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+                instance_keys=instance_keys,
+            )
+            return
+
+        self.__attrs_clear__()

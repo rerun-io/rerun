@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["Transform3D"]
 
@@ -64,11 +65,27 @@ class Transform3D(Archetype):
         """
 
         # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
-        self.__attrs_init__(transform=transform)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(transform=transform)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            transform=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> Transform3D:
+        """Produce an empty Transform3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Transform3DBatch,  # type: ignore[misc]
+        converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
     """
     The transform

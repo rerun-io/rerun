@@ -9,6 +9,7 @@ from typing import Any
 
 from attrs import define, field
 from rerun._baseclasses import Archetype
+from rerun.error_utils import catch_and_log_exceptions
 
 from .. import components, datatypes
 
@@ -42,26 +43,59 @@ class AffixFuzzer3(Archetype):
         """Create a new instance of the AffixFuzzer3 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(
+                fuzz2001=fuzz2001,
+                fuzz2002=fuzz2002,
+                fuzz2003=fuzz2003,
+                fuzz2004=fuzz2004,
+                fuzz2005=fuzz2005,
+                fuzz2006=fuzz2006,
+                fuzz2007=fuzz2007,
+                fuzz2008=fuzz2008,
+                fuzz2009=fuzz2009,
+                fuzz2010=fuzz2010,
+                fuzz2011=fuzz2011,
+                fuzz2012=fuzz2012,
+                fuzz2013=fuzz2013,
+                fuzz2014=fuzz2014,
+                fuzz2015=fuzz2015,
+                fuzz2016=fuzz2016,
+                fuzz2017=fuzz2017,
+                fuzz2018=fuzz2018,
+            )
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            fuzz2001=fuzz2001,
-            fuzz2002=fuzz2002,
-            fuzz2003=fuzz2003,
-            fuzz2004=fuzz2004,
-            fuzz2005=fuzz2005,
-            fuzz2006=fuzz2006,
-            fuzz2007=fuzz2007,
-            fuzz2008=fuzz2008,
-            fuzz2009=fuzz2009,
-            fuzz2010=fuzz2010,
-            fuzz2011=fuzz2011,
-            fuzz2012=fuzz2012,
-            fuzz2013=fuzz2013,
-            fuzz2014=fuzz2014,
-            fuzz2015=fuzz2015,
-            fuzz2016=fuzz2016,
-            fuzz2017=fuzz2017,
-            fuzz2018=fuzz2018,
+            fuzz2001=None,  # type: ignore[arg-type]
+            fuzz2002=None,  # type: ignore[arg-type]
+            fuzz2003=None,  # type: ignore[arg-type]
+            fuzz2004=None,  # type: ignore[arg-type]
+            fuzz2005=None,  # type: ignore[arg-type]
+            fuzz2006=None,  # type: ignore[arg-type]
+            fuzz2007=None,  # type: ignore[arg-type]
+            fuzz2008=None,  # type: ignore[arg-type]
+            fuzz2009=None,  # type: ignore[arg-type]
+            fuzz2010=None,  # type: ignore[arg-type]
+            fuzz2011=None,  # type: ignore[arg-type]
+            fuzz2012=None,  # type: ignore[arg-type]
+            fuzz2013=None,  # type: ignore[arg-type]
+            fuzz2014=None,  # type: ignore[arg-type]
+            fuzz2015=None,  # type: ignore[arg-type]
+            fuzz2016=None,  # type: ignore[arg-type]
+            fuzz2017=None,  # type: ignore[arg-type]
+            fuzz2018=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> AffixFuzzer3:
+        """Produce an empty AffixFuzzer3, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     fuzz2001: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},
