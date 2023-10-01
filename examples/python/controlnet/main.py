@@ -29,7 +29,9 @@ from diffusers import (
 RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controlnet/rerun-icon-1000.png"
 
 
-def controlnet_callback(iteration: int, timestep: float, latents: torch.Tensor, pipeline) -> None:
+def controlnet_callback(
+    iteration: int, timestep: float, latents: torch.Tensor, pipeline: StableDiffusionXLControlNetPipeline
+) -> None:
     rr.set_time_sequence("iteration", iteration)
     rr.set_time_seconds("timestep", timestep)
 
@@ -39,7 +41,7 @@ def controlnet_callback(iteration: int, timestep: float, latents: torch.Tensor, 
     rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))
 
 
-def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
+def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> None:
     if image_path.startswith("http://") or image_path.startswith("https://"):
         pil_image = PIL.Image.open(requests.get(image_path, stream=True).raw)
     elif os.path.isfile(image_path):
