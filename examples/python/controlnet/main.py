@@ -26,17 +26,23 @@ from diffusers import (
     StableDiffusionXLControlNetPipeline,
 )
 
+RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controlnet/rerun-icon-1000.png"
+
 
 def controlnet_callback(
     iteration: int, timestep: float, latents: torch.Tensor, pipeline
 ) -> None:
     rr.set_time_sequence("iteration", iteration)
+    rr.set_time_seconds("timestep", timestep)
+
     image = pipeline.vae.decode(
         latents / pipeline.vae.config.scaling_factor, return_dict=False
     )[0]
-    image = pipeline.image_processor.postprocess(image, output_type="np")[0]
+    image = pipeline.image_processor.postprocess(image, output_type="np").squeeze()
     rr.log("output", rr.Image(image))
-    rr.log("latent", rr.Tensor(latents[0], dim_names=["channel", "height", "width"]))
+    rr.log(
+        "latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"])
+    )
 
 
 def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
@@ -93,7 +99,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str):
         rr.TextDocument(
             f"### Negative Prompt\n {negative_prompt}", media_type="text/markdown"
         ),
-        timeless=True
+        timeless=True,
     )
 
     images = pipeline(
@@ -115,7 +121,7 @@ def main() -> None:
         "--img_path",
         type=str,
         help="Path to image used as input for Canny edge detector.",
-        default="https://huggingface.co/datasets/hf-internal-testing/diffusers-images/resolve/main/sd_controlnet/hf-logo.png",
+        default=RERUN_LOGO_URL,
     )
     parser.add_argument(
         "--prompt",
