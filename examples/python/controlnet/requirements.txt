@@ -1,8 +1,8 @@
+accelerate
 opencv-python
 pillow
 diffusers
 numpy
 torch
+transformers
 rerun-sdk
-
-# TODO(roym899) figure out minimal set of requirements
