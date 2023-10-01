@@ -17,6 +17,7 @@ __all__ = [
     "AsComponents",
     "Asset3D",
     "BarChart",
+    "Box2DFormat",
     "Boxes2D",
     "Boxes3D",
     "ClassDescription",
@@ -47,6 +48,7 @@ __all__ = [
     "Tensor",
     "TextDocument",
     "TextLog",
+    "TextLogLevel",
     "TimeSeriesScalar",
     "Transform3D",
     "Translation3D",
@@ -140,8 +142,10 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
-from .components import MediaType
+from .archetypes.boxes2d_ext import Box2DFormat
+from .components import MediaType, TextLogLevel
 from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
+from .error_utils import set_strict_mode
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
 from .log_deprecated.bounding_box import log_obb, log_obbs
@@ -156,7 +160,7 @@ from .log_deprecated.points import log_point, log_points
 from .log_deprecated.rects import RectFormat, log_rect, log_rects
 from .log_deprecated.scalar import log_scalar
 from .log_deprecated.tensor import log_tensor
-from .log_deprecated.text import LoggingHandler, log_text_entry
+from .log_deprecated.text import log_text_entry
 from .log_deprecated.transform import (
     Rigid3D,
     Translation3D,
@@ -165,6 +169,7 @@ from .log_deprecated.transform import (
     log_transform3d,
     log_view_coordinates,
 )
+from .logging_handler import LoggingHandler
 from .recording_stream import (
     RecordingStream,
     get_application_id,
@@ -195,7 +200,6 @@ __all__ += [
     "unregister_shutdown",
     "cleanup_if_forked_child",
     "shutdown_at_exit",
-    "strict_mode",
     "set_strict_mode",
     "start_web_viewer_server",
 ]
@@ -218,11 +222,6 @@ def _init_recording_stream() -> None:
 
 
 _init_recording_stream()
-
-
-# If `True`, we raise exceptions on use error (wrong parameter types, etc.).
-# If `False` we catch all errors and log a warning instead.
-_strict_mode = False
 
 
 def init(
@@ -294,8 +293,7 @@ def init(
         random.seed(0)
         np.random.seed(0)
 
-    global _strict_mode
-    _strict_mode = strict
+    set_strict_mode(strict)
 
     # Always check whether we are a forked child when calling init.  This should have happened
     # via `_register_on_fork` but it's worth being conservative.
@@ -500,35 +498,6 @@ def shutdown_at_exit(func: _TFunc) -> _TFunc:
 
 
 # ---
-
-
-def strict_mode() -> bool:
-    """
-    Strict mode enabled.
-
-    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
-    will result in exception being raised.
-    When strict mode is on, such problems are instead logged as warnings.
-
-    The default is OFF.
-    """
-
-    return _strict_mode
-
-
-def set_strict_mode(mode: bool) -> None:
-    """
-    Turn strict mode on/off.
-
-    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
-    will result in exception being raised.
-    When strict mode is off, such problems are instead logged as warnings.
-
-    The default is OFF.
-    """
-    global _strict_mode
-
-    _strict_mode = mode
 
 
 def start_web_viewer_server(port: int = 0) -> None:

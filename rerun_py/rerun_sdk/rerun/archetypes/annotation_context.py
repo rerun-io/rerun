@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["AnnotationContext"]
 
@@ -128,11 +129,27 @@ class AnnotationContext(Archetype):
         """Create a new instance of the AnnotationContext archetype."""
 
         # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
-        self.__attrs_init__(context=context)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(context=context)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            context=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> AnnotationContext:
+        """Produce an empty AnnotationContext, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     context: components.AnnotationContextBatch = field(
         metadata={"component": "required"},
-        converter=components.AnnotationContextBatch,  # type: ignore[misc]
+        converter=components.AnnotationContextBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

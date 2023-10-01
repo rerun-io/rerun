@@ -5,6 +5,8 @@ Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/s
 """
 from __future__ import annotations
 
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
 from rerun._log import log
 from rerun.archetypes import DisconnectedSpace, ViewCoordinates
 from rerun.datatypes import (
@@ -48,6 +50,10 @@ _up_attrs = {
 }
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.ViewCoordinates(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_view_coordinates(
     entity_path: str,
@@ -60,6 +66,11 @@ def log_view_coordinates(
 ) -> None:
     """
     Log the view coordinates for an entity.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.ViewCoordinates][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Each entity defines its own coordinate system, called a space.
     By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
@@ -150,6 +161,10 @@ def log_view_coordinates(
             raise ValueError("Invalid up value.")
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.DisconnectedSpace(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_disconnected_space(
     entity_path: str,
@@ -158,6 +173,11 @@ def log_disconnected_space(
 ) -> None:
     """
     Log that this entity is NOT in the same space as the parent.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.DisconnectedSpace][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     This is useful for specifying that a subgraph is independent of the rest of the scene.
     If a transform or pinhole is logged on the same path, this component will be ignored.
@@ -181,6 +201,10 @@ def log_disconnected_space(
     log(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Transform3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_transform3d(
     entity_path: str,
@@ -200,6 +224,11 @@ def log_transform3d(
 ) -> None:
     """
     Log an (affine) 3D transform between this entity and the parent.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Transform3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     If `from_parent` is set to `True`, the transformation is from the parent to the space of the entity_path,
     otherwise it is from the child to the parent.

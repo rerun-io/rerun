@@ -4,6 +4,7 @@ from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Mesh3D
@@ -18,6 +19,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Mesh3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_mesh(
     entity_path: str,
@@ -32,6 +37,11 @@ def log_mesh(
 ) -> None:
     """
     Log a raw 3D mesh by specifying its vertex positions, and optionally indices, normals and albedo factor.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Mesh3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     You can also use [`rerun.log_mesh_file`] to log .gltf, .glb, .obj, etc.
 
@@ -107,6 +117,10 @@ def log_mesh(
     return log(entity_path, mesh3d, timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Mesh3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_meshes(
     entity_path: str,
@@ -121,6 +135,11 @@ def log_meshes(
 ) -> None:
     """
     Log multiple raw 3D meshes by specifying their different buffers and albedo factors.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Mesh3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     To learn more about how the data within these buffers is interpreted and laid out, refer
     to the documentation for [`rerun.log_mesh`].

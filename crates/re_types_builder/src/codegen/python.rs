@@ -324,6 +324,7 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
+            from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
                 BaseExtensionType,
@@ -547,7 +548,7 @@ fn code_for_struct(
                 if field.is_nullable {
                     format!("converter={typ_unwrapped}Batch._optional, # type: ignore[misc]\n")
                 } else {
-                    format!("converter={typ_unwrapped}Batch, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch._required, # type: ignore[misc]\n")
                 }
             } else if !default_converter.is_empty() {
                 code.push_text(&converter_function, 1, 0);
@@ -616,6 +617,10 @@ fn code_for_struct(
         // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
         // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
         code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
+    }
+
+    if obj.kind == ObjectKind::Archetype {
+        code.push_text(quote_clear_methods(obj), 2, 4);
     }
 
     if obj.is_delegating_component() {
@@ -1656,6 +1661,20 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
         format!("self.__attrs_init__({})", attribute_init.join(", "))
     };
 
+    // Make sure Archetypes catch and log exceptions as a fallback
+    let forwarding_call = if obj.kind == ObjectKind::Archetype {
+        unindent::unindent(&format!(
+            r#"
+            with catch_and_log_exceptions(context=self.__class__.__name__):
+                {forwarding_call}
+                return
+            self.__attrs_clear__()
+            "#
+        ))
+    } else {
+        forwarding_call
+    };
+
     format!(
         "{head}\n{}",
         indent::indent_all_by(
@@ -1663,6 +1682,33 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
             format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),
         )
     )
+}
+
+fn quote_clear_methods(obj: &Object) -> String {
+    let param_nones = obj
+        .fields
+        .iter()
+        .map(|field| format!("{} = None, # type: ignore[arg-type]", field.name))
+        .join("\n                ");
+
+    let classname = &obj.name;
+
+    unindent::unindent(&format!(
+        r#"
+        def __attrs_clear__(self) -> None:
+            """Convenience method for calling `__attrs_init__` with all `None`s."""
+            self.__attrs_init__(
+                {param_nones}
+            )
+
+        @classmethod
+        def _clear(cls) -> {classname}:
+            """Produce an empty {classname}, bypassing `__init__`"""
+            inst = cls.__new__(cls)
+            inst.__attrs_clear__()
+            return inst
+        "#
+    ))
 }
 
 // --- Arrow registry code generators ---

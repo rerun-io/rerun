@@ -5,9 +5,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pyarrow as pa
 
-from rerun.error_utils import _send_warning
-
 from .._validators import find_non_empty_dim_indices
+from ..error_utils import _send_warning, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from ..components import TensorDataBatch
@@ -16,6 +15,7 @@ if TYPE_CHECKING:
 
 class ImageExt:
     @staticmethod
+    @catch_and_log_exceptions("Image converter")
     def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
         from ..components import TensorDataBatch
         from ..datatypes import TensorDataType, TensorDimensionType

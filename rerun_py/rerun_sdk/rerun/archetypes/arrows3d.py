@@ -48,9 +48,28 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     # __init__ can be found in arrows3d_ext.py
 
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            vectors=None,  # type: ignore[arg-type]
+            origins=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> Arrows3D:
+        """Produce an empty Arrows3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
+
     vectors: components.Vector3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Vector3DBatch,  # type: ignore[misc]
+        converter=components.Vector3DBatch._required,  # type: ignore[misc]
     )
     """
     All the vectors for each arrow in the batch.

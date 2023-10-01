@@ -46,9 +46,9 @@ analytics = ["dep:re_analytics"]
 [dependencies]
 re_log.workspace = true
 
-document-features = "0.2"
-futures-util = "0.3"
-hyper = { version = "0.14", features = ["full"] }
+document-features.workspace = true
+futures-util.workspace = true
+hyper = { workspace = true, features = ["full"] }
 thiserror.workspace = true
 tokio = { workspace = true, default-features = false, features = [
   "macros",
@@ -57,7 +57,7 @@ tokio = { workspace = true, default-features = false, features = [
 
 # Only needed for for main.rs:
 clap = { workspace = true, features = ["derive"] }
-webbrowser = "0.8.3"
+webbrowser.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }

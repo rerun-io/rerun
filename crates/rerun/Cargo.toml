@@ -20,7 +20,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["analytics", "demo", "glam", "image", "sdk", "server"]
+default = ["analytics", "demo", "glam", "image", "log", "sdk", "server"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = [
@@ -39,6 +39,9 @@ glam = ["re_sdk?/glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
 image = ["re_sdk?/image"]
+
+## Integration with the [`log`](https://crates.io/crates/log/) crate.
+log = ["re_sdk?/log"]
 
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
@@ -78,7 +81,7 @@ re_tracing.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
-document-features = "0.2"
+document-features.workspace = true
 itertools.workspace = true
 
 # Optional dependencies:

@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .bar_chart_ext import BarChartExt
 
 __all__ = ["BarChart"]
@@ -45,7 +46,23 @@ class BarChart(BarChartExt, Archetype):
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
-        self.__attrs_init__(values=values)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(values=values)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            values=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> BarChart:
+        """Produce an empty BarChart, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     values: components.TensorDataBatch = field(
         metadata={"component": "required"},

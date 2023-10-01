@@ -1,6 +1,5 @@
 use egui::NumExt as _;
 use re_format::format_number;
-use re_log_types::{Time, TimeZone};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UICommand;
 use re_viewer_context::StoreContext;
