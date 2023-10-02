@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Iterable
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 import rerun_bindings as bindings
 

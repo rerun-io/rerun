@@ -7,6 +7,7 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import LineStrips2D, LineStrips3D
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated import Color, Colors, _normalize_radii
@@ -96,14 +97,14 @@ def log_line_strip(
             colors=color,
             draw_order=draw_order,
         )
-        return log(entity_path, strips2d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips2d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     elif positions.shape[1] == 3:
         strips3d = LineStrips3D(
             [positions],
             radii=radii,
             colors=color,
         )
-        return log(entity_path, strips3d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips3d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     else:
         raise TypeError("Positions should be either Nx2 or Nx3")
 
@@ -199,7 +200,7 @@ def log_line_strips_2d(
         draw_order=draw_order,
         instance_keys=identifiers_np,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
 
 
 @deprecated(
@@ -287,7 +288,7 @@ def log_line_strips_3d(
         colors=colors,
         instance_keys=identifiers_np,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
 
 
 @deprecated(
@@ -368,7 +369,7 @@ def log_line_segments(
             colors=color,
             draw_order=draw_order,
         )
-        return log(entity_path, strips2d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips2d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     elif positions.ndim > 1 and positions.shape[1] == 3:
         # Same as above but for 3d points
         positions = positions.reshape([len(positions) // 2, 2, 3])
@@ -377,6 +378,6 @@ def log_line_segments(
             radii=stroke_width * 0.5 if stroke_width is not None else None,
             colors=color,
         )
-        return log(entity_path, strips3d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips3d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     else:
         raise TypeError("Positions should be either Nx2 or Nx3")

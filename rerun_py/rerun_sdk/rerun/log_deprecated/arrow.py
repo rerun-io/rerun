@@ -6,6 +6,7 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import Arrows3D
 from rerun.log_deprecated import Color
 from rerun.log_deprecated.log_decorator import log_decorator
@@ -78,4 +79,4 @@ def log_arrow(
         colors=color,
         labels=label,
     )
-    return log(entity_path, arrows3d, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arrows3d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
