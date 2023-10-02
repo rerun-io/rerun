@@ -11,7 +11,7 @@ import rerun as rr  # pip install rerun-sdk
 
 def run_realsense(num_frames: int | None) -> None:
     # Visualize the data as RDF
-    rr.log_view_coordinates("realsense", xyz="RDF", timeless=True)
+    rr.log("realsense", rr.ViewCoordinates.RDF, timeless=True)
 
     # Open the pipe
     pipe = rs.pipeline()
@@ -24,12 +24,13 @@ def run_realsense(num_frames: int | None) -> None:
     depth_profile = profile.get_stream(rs.stream.depth)
     depth_intr = depth_profile.as_video_stream_profile().get_intrinsics()
 
-    rr.log_pinhole(
+    rr.log(
         "realsense/depth/image",
-        width=depth_intr.width,
-        height=depth_intr.height,
-        focal_length_px=[depth_intr.fx, depth_intr.fy],
-        principal_point_px=[depth_intr.ppx, depth_intr.ppy],
+        rr.Pinhole(
+            resolution=[depth_intr.width, depth_intr.height],
+            focal_length=[depth_intr.fx, depth_intr.fy],
+            principal_point=[depth_intr.ppx, depth_intr.ppy],
+        ),
         timeless=True,
     )
 
@@ -37,24 +38,26 @@ def run_realsense(num_frames: int | None) -> None:
     rgb_profile = profile.get_stream(rs.stream.color)
 
     rgb_from_depth = depth_profile.get_extrinsics_to(rgb_profile)
-    rr.log_transform3d(
+    rr.log(
         "realsense/rgb",
-        transform=rr.TranslationAndMat3(
-            translation=rgb_from_depth.translation, mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3))
+        rr.Transform3D(
+            translation=rgb_from_depth.translation,
+            mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
+            from_parent=True,
         ),
-        from_parent=True,
         timeless=True,
     )
 
     # Get and log color intrinsics
     rgb_intr = rgb_profile.as_video_stream_profile().get_intrinsics()
 
-    rr.log_pinhole(
+    rr.log(
         "realsense/rgb/image",
-        width=rgb_intr.width,
-        height=rgb_intr.height,
-        focal_length_px=[rgb_intr.fx, rgb_intr.fy],
-        principal_point_px=[rgb_intr.ppx, rgb_intr.ppy],
+        rr.Pinhole(
+            resolution=[rgb_intr.width, rgb_intr.height],
+            focal_length=[rgb_intr.fx, rgb_intr.fy],
+            principal_point=[rgb_intr.ppx, rgb_intr.ppy],
+        ),
         timeless=True,
     )
 
@@ -74,12 +77,12 @@ def run_realsense(num_frames: int | None) -> None:
                 depth_frame = frames.get_depth_frame()
                 depth_units = depth_frame.get_units()
                 depth_image = np.asanyarray(depth_frame.get_data())
-                rr.log_depth_image("realsense/depth/image", depth_image, meter=1.0 / depth_units)
+                rr.log("realsense/depth/image", rr.DepthImage(depth_image, meter=1.0 / depth_units))
 
                 # Log the color frame
                 color_frame = frames.get_color_frame()
                 color_image = np.asanyarray(color_frame.get_data())
-                rr.log_image("realsense/rgb/image", color_image)
+                rr.log("realsense/rgb/image", rr.Image(color_image))
     finally:
         pipe.stop()
 

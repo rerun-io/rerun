@@ -21,6 +21,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
+        /// A single-precision 32-bit IEEE 754 floating point number.
         struct Float32 {
             float value;
 

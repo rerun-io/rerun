@@ -123,6 +123,11 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 
 fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
     let top_level_docs = get_documentation(&object.docs, &[]);
+
+    if top_level_docs.is_empty() {
+        reporter.error(format!("{:?} is undocumented", object.fqname.as_str()));
+    }
+
     let examples = object
         .docs
         .tagged_docs

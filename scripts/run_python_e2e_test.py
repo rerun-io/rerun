@@ -48,7 +48,6 @@ def main() -> None:
             "examples/python/minimal_options/requirements.txt",
             "examples/python/multithreading/requirements.txt",
             "examples/python/plots/requirements.txt",
-            "examples/python/text_logging/requirements.txt",
         ]
 
         print("----------------------------------------------------------")
@@ -67,7 +66,6 @@ def main() -> None:
         ("examples/python/minimal_options/main.py", []),
         ("examples/python/multithreading/main.py", []),
         ("examples/python/plots/main.py", []),
-        ("examples/python/text_logging/main.py", []),
     ]
 
     for example, args in examples:

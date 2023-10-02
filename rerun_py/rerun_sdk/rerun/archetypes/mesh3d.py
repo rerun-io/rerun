@@ -24,7 +24,6 @@ class Mesh3D(Mesh3DExt, Archetype):
     Simple indexed 3D mesh:
     ```python
     import rerun as rr
-    from rerun.components import Material
 
     rr.init("rerun_example_mesh3d_indexed", spawn=True)
 
@@ -35,7 +34,7 @@ class Mesh3D(Mesh3DExt, Archetype):
             vertex_normals=[0.0, 0.0, 1.0],
             vertex_colors=[[0, 0, 255], [0, 255, 0], [255, 0, 0]],
             indices=[2, 1, 0],
-            mesh_material=Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+            mesh_material=rr.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
         ),
     )
     ```

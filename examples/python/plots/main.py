@@ -29,7 +29,7 @@ def log_bar_chart() -> None:
     variance = np.square(std)
     x = np.arange(-5, 5, 0.1)
     y = np.exp(-np.square(x - mean) / 2 * variance) / (np.sqrt(2 * np.pi * variance))
-    rr.log_tensor("bar_chart", y)
+    rr.log("bar_chart", rr.BarChart(y))
 
 
 def log_parabola() -> None:
@@ -45,7 +45,15 @@ def log_parabola() -> None:
         elif f_of_t > 10.0:
             color = [0, 255, 0]
 
-        rr.log_scalar("curves/parabola", f_of_t, label="f(t) = (0.01t - 3)³ + 1", radius=radius, color=color)
+        rr.log(
+            "curves/parabola",
+            rr.TimeSeriesScalar(
+                f_of_t,
+                label="f(t) = (0.01t - 3)³ + 1",
+                radius=radius,
+                color=color,
+            ),
+        )
 
 
 def log_trig() -> None:
@@ -54,10 +62,10 @@ def log_trig() -> None:
         rr.set_time_sequence("frame_nr", t)
 
         sin_of_t = sin(float(t) / 100.0)
-        rr.log_scalar("trig/sin", sin_of_t, label="sin(0.01t)", color=[255, 0, 0])
+        rr.log("trig/sin", rr.TimeSeriesScalar(sin_of_t, label="sin(0.01t)", color=[255, 0, 0]))
 
         cos_of_t = cos(float(t) / 100.0)
-        rr.log_scalar("trig/cos", cos_of_t, label="cos(0.01t)", color=[0, 255, 0])
+        rr.log("trig/cos", rr.TimeSeriesScalar(cos_of_t, label="cos(0.01t)", color=[0, 255, 0]))
 
 
 def log_segmentation() -> None:
@@ -67,7 +75,7 @@ def log_segmentation() -> None:
 
         f_of_t = (2 * 0.01 * t) + 2
         color = [255, 255, 0]
-        rr.log_scalar("segmentation/line", f_of_t, color=color, radius=3.0)
+        rr.log("segmentation/line", rr.TimeSeriesScalar(f_of_t, color=color, radius=3.0))
 
         g_of_t = f_of_t + random.uniform(-5.0, 5.0)
         if g_of_t < f_of_t - 1.5:
@@ -77,7 +85,7 @@ def log_segmentation() -> None:
         else:
             color = [255, 255, 255]
         radius = abs(g_of_t - f_of_t)
-        rr.log_scalar("segmentation/samples", g_of_t, color=color, scattered=True, radius=radius)
+        rr.log("segmentation/samples", rr.TimeSeriesScalar(g_of_t, color=color, scattered=True, radius=radius))
 
 
 def main() -> None:

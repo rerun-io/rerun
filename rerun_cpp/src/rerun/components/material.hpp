@@ -21,6 +21,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
+        /// Material properties of a mesh.
         struct Material {
             rerun::datatypes::Material material;
 
