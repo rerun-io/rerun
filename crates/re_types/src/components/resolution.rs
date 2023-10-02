@@ -252,7 +252,7 @@ impl crate::Loggable for Resolution {
             }
         }
         Ok({
-            let iterator = {
+            let slice = {
                 let arrow_data = arrow_data
                     .as_any()
                     .downcast_ref::<::arrow2::array::FixedSizeListArray>()
@@ -272,7 +272,7 @@ impl crate::Loggable for Resolution {
                     })
                     .with_context("rerun.components.Resolution#resolution")?;
                 let arrow_data_inner = &**arrow_data.values();
-                let slice = bytemuck::cast_slice::<_, [_; 2usize]>(
+                bytemuck::cast_slice::<_, [_; 2usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
@@ -285,12 +285,16 @@ impl crate::Loggable for Resolution {
                         .with_context("rerun.components.Resolution#resolution")?
                         .values()
                         .as_slice(),
-                );
-                slice.iter().copied().map(|v| crate::datatypes::Vec2D(v))
+                )
             };
             {
                 re_tracing::profile_scope!("collect");
-                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::Vec2D(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
             }
         })
     }

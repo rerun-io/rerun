@@ -44,24 +44,24 @@ re_log_types = { workspace = true, features = ["serde"] }
 re_tracing.workspace = true
 
 anyhow.workspace = true
-bincode = "1.3"
-document-features = "0.2"
+bincode.workspace = true
+document-features.workspace = true
 thiserror.workspace = true
 
 # Client:
-ewebsock = { version = "0.2", optional = true }
+ewebsock = { workspace = true, optional = true }
 
 # Server:
 re_smart_channel = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-futures-channel = { version = "0.3", optional = true }
-futures-util = { version = "0.3", optional = true, default-features = false, features = [
+futures-channel = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true, default-features = false, features = [
   "sink",
   "std",
 ] }
 parking_lot = { workspace = true, optional = true }
-tokio-tungstenite = { version = "0.17.1", optional = true }
+tokio-tungstenite = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true, features = [
   "io-std",
   "macros",
@@ -70,4 +70,4 @@ tokio = { workspace = true, optional = true, features = [
   "sync",
   "time",
 ] }
-tungstenite = { version = "0.17", optional = true, default-features = false }
+tungstenite = { workspace = true, optional = true, default-features = false }

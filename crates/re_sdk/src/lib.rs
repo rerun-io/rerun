@@ -13,6 +13,9 @@ mod global;
 mod log_sink;
 mod recording_stream;
 
+#[cfg(feature = "log")]
+mod log_integration;
+
 // -------------
 // Public items:
 
@@ -86,6 +89,11 @@ pub use re_types::{
     NamedIndicatorComponent,
 };
 
+#[cfg(feature = "log")]
+pub use self::log_integration::Logger;
+#[cfg(feature = "log")]
+pub use re_log::default_log_filter;
+
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;
@@ -101,6 +109,9 @@ pub mod external {
     pub use re_log::external::*;
     pub use re_log_types::external::*;
     pub use re_types::external::*;
+
+    #[cfg(feature = "log")]
+    pub use log;
 }
 
 // -----

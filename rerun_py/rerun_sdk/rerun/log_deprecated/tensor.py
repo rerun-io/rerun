@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Protocol, Sequence
 
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import BarChart, Tensor
@@ -23,6 +24,10 @@ class TorchTensorLike(Protocol):
         ...
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Tensor(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_tensor(
     entity_path: str,
@@ -36,6 +41,11 @@ def log_tensor(
 ) -> None:
     """
     Log an n-dimensional tensor.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Tensor][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Parameters
     ----------

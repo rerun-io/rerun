@@ -44,11 +44,11 @@ parking_lot.workspace = true
 serde = "1"
 slotmap.workspace = true
 thiserror.workspace = true
-uuid = { version = "1.1", features = ["serde", "v4", "js"] }
+uuid = { workspace = true, features = ["serde", "v4", "js"] }
 wgpu.workspace = true
 
 # Native only dependencies.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-arboard = { version = "3.2", default-features = false, features = [
+arboard = { workspace = true, default-features = false, features = [
   "image-data",
 ] }

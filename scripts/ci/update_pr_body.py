@@ -41,6 +41,9 @@ def main() -> None:
     gh = Github(args.github_token)
     repo = gh.get_repo(args.github_repository)
     pr = repo.get_pull(args.pr_number)
+    if not pr.body:
+        # body is empty
+        return
 
     latest_commit = pr.get_commits().reversed[0]
 

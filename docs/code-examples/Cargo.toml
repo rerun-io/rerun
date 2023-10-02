@@ -164,6 +164,10 @@ name = "text_log"
 path = "text_log.rs"
 
 [[bin]]
+name = "text_log_integration"
+path = "text_log_integration.rs"
+
+[[bin]]
 name = "transform3d_simple"
 path = "transform3d_simple.rs"
 

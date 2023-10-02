@@ -27,7 +27,7 @@ serde = ["dep:serde"]
 
 
 [dependencies]
-document-features = "0.2"
+document-features.workspace = true
 getrandom = "0.2"
 once_cell.workspace = true
 web-time.workspace = true

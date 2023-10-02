@@ -169,7 +169,7 @@ impl crate::Loggable for KeypointId {
             }
         }
         Ok({
-            let iterator = arrow_data
+            let slice = arrow_data
                 .as_any()
                 .downcast_ref::<UInt16Array>()
                 .ok_or_else(|| {
@@ -180,13 +180,15 @@ impl crate::Loggable for KeypointId {
                 })
                 .with_context("rerun.components.KeypointId#id")?
                 .values()
-                .as_slice()
-                .iter()
-                .copied()
-                .map(|v| crate::datatypes::KeypointId(v));
+                .as_slice();
             {
                 re_tracing::profile_scope!("collect");
-                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::KeypointId(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
             }
         })
     }

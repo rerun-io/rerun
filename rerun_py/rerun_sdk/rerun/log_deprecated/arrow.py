@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Arrows3D
@@ -15,6 +16,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Arrows3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_arrow(
     entity_path: str,
@@ -30,6 +35,11 @@ def log_arrow(
 ) -> None:
     """
     Log a 3D arrow.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Arrows3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     An arrow is defined with an `origin`, and a `vector`. This can also be considered as `start` and `end` positions
     for the arrow.
