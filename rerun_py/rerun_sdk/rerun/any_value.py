@@ -29,16 +29,18 @@ class AnyBatchValue(ComponentBatchLike):
 
         The component will be named "user.components.<NAME>".
 
-        The value will be attempted to be converted into an arrow array using
-        pyarrow. In general, if you can pass it to
-        [pyarrow.array](https://arrow.apache.org/docs/python/generated/pyarrow.array.html),
-           you can log it as an AnyBatchValue.
+        The value will be attempted to be converted into an arrow array by first calling
+        the `as_arrow_array()` method if it's defined. All Rerun Batch datatypes implement
+        this function so it's possible to pass them directly to AnyValues.
+
+        If the object doesn't implement `as_arrow_array()`, it will be passed as an argument
+        to [pyarrow.array](https://arrow.apache.org/docs/python/generated/pyarrow.array.html).
 
         Note: rerun requires that a given component only take on a single type.
         The first type logged will be the type that is used for all future logs
         of that component. The API will make a best effort to do type conversion
         if supported by numpy and arrow. Any components that can't be converted
-        will be dropped.
+        will be dropped, and a warning will be sent to the log.
 
         If you are want to inspect how your component will be converted to the
         underlying arrow code, the following snippet is what is happening
@@ -62,18 +64,21 @@ class AnyBatchValue(ComponentBatchLike):
         self.pa_array = None
 
         try:
-            if np_type is not None:
-                if value is None:
-                    value = []
-                np_value = np.atleast_1d(np.array(value, copy=False, dtype=np_type))
-                self.pa_array = pa.array(np_value, type=pa_type)
+            if hasattr(value, "as_arrow_array"):
+                self.pa_array = value.as_arrow_array()
             else:
-                if value is None:
-                    _send_warning(f"AnyValues '{name}' of unknown type has no data. Ignoring.", 1)
+                if np_type is not None:
+                    if value is None:
+                        value = []
+                    np_value = np.atleast_1d(np.array(value, copy=False, dtype=np_type))
+                    self.pa_array = pa.array(np_value, type=pa_type)
                 else:
-                    np_value = np.atleast_1d(np.array(value, copy=False))
-                    self.pa_array = pa.array(np_value)
-                    ANY_VALUE_TYPE_REGISTRY[name] = (np_value.dtype, self.pa_array.type)
+                    if value is None:
+                        _send_warning(f"AnyValues '{name}' of unknown type has no data. Ignoring.", 1)
+                    else:
+                        np_value = np.atleast_1d(np.array(value, copy=False))
+                        self.pa_array = pa.array(np_value)
+                        ANY_VALUE_TYPE_REGISTRY[name] = (np_value.dtype, self.pa_array.type)
 
         except Exception as ex:
             _send_warning(

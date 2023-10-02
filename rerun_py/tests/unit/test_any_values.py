@@ -17,3 +17,14 @@ def test_any_value() -> None:
     assert len(foo_batch.as_arrow_array()) == 3
     assert len(bar_batch.as_arrow_array()) == 1
     assert np.all(foo_batch.as_arrow_array().to_numpy() == np.array([1.0, 2.0, 3.0]))
+
+
+def test_any_value_datatypes() -> None:
+    values = rr.AnyValues(my_points=rr.datatypes.Vec2DBatch([(0, 1), (2, 3), (4, 5)]))
+
+    batches = list(values.as_component_batches())
+
+    foo_batch = batches[0]
+
+    assert foo_batch.component_name() == "user.components.my_points"
+    assert len(foo_batch.as_arrow_array()) == 3
