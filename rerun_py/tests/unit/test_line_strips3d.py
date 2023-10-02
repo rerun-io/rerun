@@ -11,7 +11,7 @@ from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.components.radius import RadiusArrayLike
 from rerun.datatypes import Vec3D
 from rerun.datatypes.class_id import ClassIdArrayLike
-from rerun.datatypes.Rgba32 import Rgba32ArrayLike
+from rerun.datatypes.rgba32 import Rgba32ArrayLike
 from rerun.datatypes.utf8 import Utf8ArrayLike
 
 from .common_arrays import (
