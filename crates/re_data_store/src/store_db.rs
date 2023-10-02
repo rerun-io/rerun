@@ -55,8 +55,16 @@ impl EntityDb {
         self.entity_path_from_hash.get(entity_path_hash)
     }
 
+    /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
-    pub fn knows_of_entity(&self, entity_path: &EntityPath) -> bool {
+    pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
+        self.tree.subtree(entity_path).is_some()
+    }
+
+    /// If you log `world/points`, then that is a logged entity, but `world` is not,
+    /// unless you log something to `world` too.
+    #[inline]
+    pub fn is_logged_entity(&self, entity_path: &EntityPath) -> bool {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 

@@ -35,7 +35,7 @@ ecolor = ["dep:ecolor"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["dep:glam"]
 
-## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
 
 ## Enable (de)serialization using serde.
