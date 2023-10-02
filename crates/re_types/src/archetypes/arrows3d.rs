@@ -24,9 +24,8 @@
 /// use std::f32::consts::TAU;
 ///
 /// use rerun::{
-///     archetypes::Arrows3D,
 ///     components::{Color, Origin3D, Vector3D},
-///     RecordingStreamBuilder,
+///     Arrows3D, RecordingStreamBuilder,
 /// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

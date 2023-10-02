@@ -95,6 +95,48 @@ pub use re_types::{
     NamedIndicatorComponent,
 };
 
+mod prelude {
+    // Import all archetypes into the global namespace to minimize
+    // the amount of typing for our users.
+    // We explicitly select archetypes with no name clashes.
+    pub use super::archetypes::{
+        AnnotationContext,
+        Arrows3D,
+        Asset3D,
+        BarChart,
+        Boxes2D,
+        Boxes3D,
+        Clear,
+        DepthImage,
+        DisconnectedSpace,
+        Image,
+        LineStrips2D,
+        LineStrips3D,
+        Mesh3D,
+        Pinhole,
+        Points2D,
+        Points3D,
+        SegmentationImage,
+        Tensor,
+        TextDocument,
+        TextLog,
+        TimeSeriesScalar,
+        ViewCoordinates, // Has a conflict with `re_types::components::ViewCoordinates`, but this is the one you mostly want
+    };
+
+    // Also import some select, often-used, datatypes and components:
+    pub use super::components::{
+        Color, HalfSizes2D, HalfSizes3D, InstanceKey, MediaType, Position3D, TextLogLevel,
+    };
+    pub use super::datatypes::{
+        Angle, Mat3x3, Quaternion, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
+        TranslationRotationScale3D,
+    };
+
+    pub use super::time::{Time, TimePoint, Timeline};
+}
+pub use prelude::*;
+
 #[cfg(feature = "log")]
 pub use self::log_integration::Logger;
 #[cfg(feature = "log")]

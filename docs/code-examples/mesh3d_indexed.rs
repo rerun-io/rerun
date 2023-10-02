@@ -1,9 +1,8 @@
 //! Log a simple colored triangle with indexed drawing.
 
 use rerun::{
-    archetypes::Mesh3D,
     components::{Material, MeshProperties},
-    RecordingStreamBuilder,
+    Mesh3D, RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

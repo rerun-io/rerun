@@ -22,11 +22,10 @@
 /// //! Log some transforms.
 ///
 /// use rerun::{
-///     archetypes::{Arrows3D, Transform3D},
-///     datatypes::{Angle, RotationAxisAngle, Scale3D, TranslationRotationScale3D},
-///     RecordingStreamBuilder,
+///     archetypes::Transform3D, Angle, Arrows3D, RecordingStreamBuilder, RotationAxisAngle, Scale3D,
+///     TranslationRotationScale3D,
 /// };
-/// use std::f32::consts::PI;
+/// use std::f32::consts::TAU;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
@@ -49,7 +48,9 @@
 ///     rec.log(
 ///         "base/rotated_scaled",
 ///         &Transform3D::new(TranslationRotationScale3D {
-///             rotation: Some(RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(PI / 4.)).into()),
+///             rotation: Some(
+///                 RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(TAU / 8.0)).into(),
+///             ),
 ///             scale: Some(Scale3D::from(2.0)),
 ///             ..Default::default()
 ///         }),

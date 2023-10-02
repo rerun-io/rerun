@@ -1,9 +1,8 @@
 //! Shows how to manually associate one or more indicator components with arbitrary data.
 
 use rerun::{
-    archetypes::{Mesh3D, Points3D},
     components::{Color, Position3D, Radius},
-    Archetype, ComponentBatch, RecordingStreamBuilder,
+    Archetype, ComponentBatch, Mesh3D, Points3D, RecordingStreamBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

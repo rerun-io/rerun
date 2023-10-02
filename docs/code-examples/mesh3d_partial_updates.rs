@@ -1,6 +1,6 @@
 //! Log a simple colored triangle, then update its vertices' positions each frame.
 
-use rerun::{archetypes::Mesh3D, components::Position3D, external::glam, RecordingStreamBuilder};
+use rerun::{components::Position3D, external::glam, Mesh3D, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =

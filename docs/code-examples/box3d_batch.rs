@@ -1,9 +1,7 @@
 //! Log a batch of oriented bounding boxes.
 use rerun::{
-    archetypes::Boxes3D,
-    components::Color,
-    datatypes::{Angle, Quaternion, Rotation3D, RotationAxisAngle},
-    RecordingStreamBuilder,
+    components::Color, Angle, Boxes3D, Quaternion, RecordingStreamBuilder, Rotation3D,
+    RotationAxisAngle,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

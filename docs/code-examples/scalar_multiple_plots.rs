@@ -1,6 +1,6 @@
 //! Log a scalar over time.
 
-use rerun::{archetypes::TimeSeriesScalar, RecordingStreamBuilder};
+use rerun::{RecordingStreamBuilder, TimeSeriesScalar};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =

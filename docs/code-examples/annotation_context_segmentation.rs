@@ -1,11 +1,7 @@
 //! Log a segmentation image with annotations.
 
 use ndarray::{s, Array, ShapeBuilder};
-use rerun::{
-    archetypes::{AnnotationContext, SegmentationImage},
-    datatypes::Color,
-    RecordingStreamBuilder,
-};
+use rerun::{datatypes::Color, AnnotationContext, RecordingStreamBuilder, SegmentationImage};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =

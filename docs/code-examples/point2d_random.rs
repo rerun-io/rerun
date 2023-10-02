@@ -1,11 +1,7 @@
 //! Log some random points with color and radii.
 
 use rand::{distributions::Uniform, Rng as _};
-use rerun::{
-    archetypes::{Boxes2D, Points2D},
-    components::Color,
-    RecordingStreamBuilder,
-};
+use rerun::{Boxes2D, Color, Points2D, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;

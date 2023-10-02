@@ -26,10 +26,7 @@
 /// ```ignore
 /// //! Disconnect two spaces.
 ///
-/// use rerun::{
-///     archetypes::{DisconnectedSpace, Points3D},
-///     RecordingStreamBuilder,
-/// };
+/// use rerun::{DisconnectedSpace, Points3D, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =

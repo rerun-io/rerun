@@ -12,11 +12,9 @@ use std::path::PathBuf;
 
 use bytes::Bytes;
 use rerun::{
-    archetypes::{Mesh3D, ViewCoordinates},
-    components::{Color, MeshProperties, Transform3D},
+    components::{MeshProperties, Transform3D},
     external::{ecolor, re_log, re_memory::AccountingAllocator},
-    transform::TranslationRotationScale3D,
-    RecordingStream,
+    Color, Mesh3D, RecordingStream, TranslationRotationScale3D,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -169,7 +167,7 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        rec.log_timeless(root.name.as_str(), &ViewCoordinates::RIGHT_HAND_Y_UP)?;
+        rec.log_timeless(root.name.as_str(), &rerun::ViewCoordinates::RIGHT_HAND_Y_UP)?;
         log_node(rec, root)?;
     }
 

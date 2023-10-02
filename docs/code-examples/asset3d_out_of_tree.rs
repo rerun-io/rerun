@@ -1,12 +1,10 @@
 //! Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 
 use rerun::{
-    archetypes::{Asset3D, Points3D, ViewCoordinates},
     components::OutOfTreeTransform3D,
-    datatypes::TranslationRotationScale3D,
     demo_util::grid,
     external::{anyhow, glam},
-    RecordingStreamBuilder,
+    Asset3D, Points3D, RecordingStreamBuilder, TranslationRotationScale3D, ViewCoordinates,
 };
 
 fn main() -> anyhow::Result<()> {
