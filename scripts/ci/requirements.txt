@@ -6,7 +6,7 @@
 Jinja2==3.1.2
 Pillow==10.0.0
 PyGithub==1.59.0
-
+GitPython==3.1.37
 aiohttp==3.8.5
 colorama==0.4.6
 gitignore-parser==0.1.4

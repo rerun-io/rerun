@@ -32,6 +32,7 @@ from pathlib import Path
 from time import sleep, time
 from typing import Any, Generator
 
+import git
 import requests
 import tomlkit
 from colorama import Fore
@@ -360,14 +361,28 @@ def publish(dry_run: bool, token: str) -> None:
                 sleep(1 - elapsed_s)
 
 
-def get_version(finalize: bool) -> None:
-    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
-    current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
+    if from_git:
+        branch_name = git.Repo().active_branch.name.lstrip("release-")
+        try:
+            current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
+        except ValueError:
+            print(f"the current branch `{branch_name}` does not specify a valid version.")
+            print("this script expects the format `release-x.y.z-meta.N`")
+            exit(1)
+    else:
+        root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+        current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+
     if finalize:
         current_version = current_version.finalize_version()
 
-    sys.stdout.write(str(current_version))
-    sys.stdout.flush()
+    if pre_id:
+        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))
+        sys.stdout.flush()
+    else:
+        sys.stdout.write(str(current_version))
+        sys.stdout.flush()
 
 
 def main() -> None:
@@ -403,10 +418,12 @@ def main() -> None:
     get_version_parser.add_argument(
         "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
     )
+    get_version_parser.add_argument("--from-git", action="store_true", help="Get version from branch name")
+    get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
     args = parser.parse_args()
 
     if args.cmd == "get-version":
-        get_version(args.finalize)
+        get_version(args.finalize, args.from_git, args.pre_id)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")
