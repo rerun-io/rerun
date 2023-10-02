@@ -2,6 +2,7 @@
 title: "Blob"
 ---
 
+A binary blob of data.
 
 
 

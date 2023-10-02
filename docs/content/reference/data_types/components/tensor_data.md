@@ -2,6 +2,7 @@
 title: "TensorData"
 ---
 
+A multi-dimensional `Tensor` with optionally named arguments.
 
 ## Fields
 

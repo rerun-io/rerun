@@ -29,6 +29,8 @@ __all__ = [
 
 @define(init=False)
 class MeshProperties(MeshPropertiesExt):
+    """Optional triangle indices for a mesh."""
+
     def __init__(self: Any, indices: npt.ArrayLike | None = None):
         """
         Create a new instance of the MeshProperties datatype.

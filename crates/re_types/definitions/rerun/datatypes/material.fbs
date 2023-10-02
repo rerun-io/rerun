@@ -8,7 +8,7 @@ namespace rerun.datatypes;
 
 // ---
 
-// Material properties of a mesh.
+/// Material properties of a mesh.
 struct Material (
   "attr.rust.derive": "Copy, PartialEq, Eq, Hash"
 ) {

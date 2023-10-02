@@ -2,6 +2,7 @@
 title: "MeshProperties"
 ---
 
+Optional triangle indices for a mesh.
 
 ## Fields
 

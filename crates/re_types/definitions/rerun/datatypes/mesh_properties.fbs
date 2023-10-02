@@ -8,7 +8,7 @@ namespace rerun.datatypes;
 
 // ---
 
-// Global properties of a mesh.
+/// Optional triangle indices for a mesh.
 table MeshProperties (
   "attr.rust.derive": "PartialEq, Eq"
 ) {
