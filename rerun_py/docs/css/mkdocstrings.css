@@ -27,6 +27,10 @@ html {
   background: white;
 }
 
+img {
+  filter: invert(1) contrast(100%) hue-rotate(180deg);
+}
+
 body {
   font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 500;
