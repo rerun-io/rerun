@@ -27,6 +27,8 @@
 //! You can also ask questions on the [Rerun Discord](https://discord.gg/Gcm8BbTaAj).
 //!
 //! ## Using the `rerun` library
+//! You first create a [`RecordingStream`] using [`RecordingStreamBuilder`].
+//!
 //! #### Logging
 //!
 //! ```
@@ -83,6 +85,10 @@
 //! cargo install rerun
 //! rerun --help
 //! ```
+//!
+//! ## Forwarding text log events to Rerun
+//! See [`Logger`].
+//!
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 

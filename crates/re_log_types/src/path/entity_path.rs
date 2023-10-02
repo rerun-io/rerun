@@ -58,11 +58,32 @@ impl std::fmt::Debug for EntityPathHash {
 
 // ----------------------------------------------------------------------------
 
-/// `camera / "left" / points / #42`
+/// The unique identifier of an entity, e.g. `camera/"ACME Örnöga"/points`
 ///
-/// Cheap to clone.
+/// The entity path is a list of [parts][EntityPathPart] separated by slashes.
+///
+/// Each part is either a [_name_][EntityPathPart::name] of a limited set of characters,
+/// or an [`Index`].
+/// Names are like idenitifers in code, and must match the regex: `[a-zA-z0-9_-]+`
+/// Indices are like array indices or keys in a map or table, and can be any string,
+/// uuid, or number.
+///
+/// Reference-counted internally, so this is cheap to clone.
 ///
 /// Implements [`nohash_hasher::IsEnabled`].
+///
+/// ```
+/// # use re_log_types::{EntityPath, EntityPathPart, Index};
+/// assert_eq!(
+///     EntityPath::parse_strict(r#"camera/"ACME Örnöga"/points/#42"#).unwrap(),
+///     EntityPath::new(vec![
+///         EntityPathPart::Name("camera"),
+///         EntityPathPart::Index(Index::String("ACME Örnöga".into())),
+///         EntityPathPart::Name("points"),
+///         EntityPathPart::Index(Index::Sequence(42))
+///     ])
+/// );
+/// ```
 ///
 /// ```
 /// # use re_log_types::EntityPath;
