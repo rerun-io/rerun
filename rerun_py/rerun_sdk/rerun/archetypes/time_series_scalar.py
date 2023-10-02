@@ -66,7 +66,7 @@ class TimeSeriesScalar(Archetype):
         scalar: components.ScalarLike,
         *,
         radius: components.RadiusLike | None = None,
-        color: datatypes.ColorLike | None = None,
+        color: datatypes.Rgba32Like | None = None,
         label: datatypes.Utf8Like | None = None,
         scattered: components.ScalarScatteringLike | None = None,
     ):

@@ -52,7 +52,7 @@ class TextLog(Archetype):
         text: datatypes.Utf8Like,
         *,
         level: datatypes.Utf8Like | None = None,
-        color: datatypes.ColorLike | None = None,
+        color: datatypes.Rgba32Like | None = None,
     ):
         """Create a new instance of the TextLog archetype."""
 

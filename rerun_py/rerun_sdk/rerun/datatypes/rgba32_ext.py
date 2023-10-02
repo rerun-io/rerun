@@ -9,7 +9,7 @@ import pyarrow as pa
 from rerun.color_conversion import u8_array_to_rgba
 
 if TYPE_CHECKING:
-    from . import ColorArrayLike, ColorLike
+    from . import Rgba32ArrayLike, Rgba32Like
 
 
 def _numpy_array_to_u32(data: npt.NDArray[np.uint8 | np.float32 | np.float64]) -> npt.NDArray[np.uint32]:
@@ -25,26 +25,26 @@ def _numpy_array_to_u32(data: npt.NDArray[np.uint8 | np.float32 | np.float64]) -
     return array
 
 
-class ColorExt:
+class Rgba32Ext:
     """
-    Extension for the `Color` datatype.
+    Extension for the `Rgba32` datatype.
 
-    Possible input for `Color`:
+    Possible input for `Rgba32`:
     - Sequence[int]: interpreted as rgb or rgba values in 0-255 range
     - numpy array: interpreted as rgb or rgba values, range depending on dtype
     - anything else (int or convertible to int): interpreted as a 32-bit packed rgba value
 
-    Possible inputs for `ColorBatch()`:
-    - a single `Color` instance
-    - a sequence of `Color` instances
+    Possible inputs for `Rgba32Batch()`:
+    - a single `Rgba32` instance
+    - a sequence of `Rgba32` instances
     - Nx3 or Nx4 numpy array, range depending on dtype
     """
 
     @staticmethod
-    def rgba__field_converter_override(data: ColorLike) -> int:
-        from . import Color
+    def rgba__field_converter_override(data: Rgba32Like) -> int:
+        from . import Rgba32
 
-        if isinstance(data, Color):
+        if isinstance(data, Rgba32):
             return data.rgba
         if isinstance(data, np.ndarray):
             return int(_numpy_array_to_u32(data.reshape((1, -1)))[0])
@@ -57,11 +57,11 @@ class ColorExt:
             return int(data)
 
     @staticmethod
-    def native_to_pa_array_override(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Color
+    def native_to_pa_array_override(data: Rgba32ArrayLike, data_type: pa.DataType) -> pa.Array:
+        from . import Rgba32
 
-        if isinstance(data, int) or isinstance(data, Color):
-            # A single packed int or Color (which implements __int__())
+        if isinstance(data, int) or isinstance(data, Rgba32):
+            # A single packed int or Rgba32 (which implements __int__())
             int_array = np.array([data])
         elif isinstance(data, Sequence) and len(data) == 0:
             # An empty array
@@ -88,18 +88,18 @@ class ColorExt:
                 # Fallback support
                 data_list = list(data)  # type: ignore[arg-type]
 
-                # First try to coerce it to a single Color instance
+                # First try to coerce it to a single Rgba32 instance
                 try:
-                    data_list = [Color(data_list)]  # type: ignore[arg-type]
+                    data_list = [Rgba32(data_list)]  # type: ignore[arg-type]
                 except (IndexError, ValueError):
                     pass
 
-                # Fially, handle heterogeneous sequence of Color-like object,
-                # such as Color instances, ints, sub-sequence, etc.
+                # Fially, handle heterogeneous sequence of Rgba32-like object,
+                # such as Rgba32 instances, ints, sub-sequence, etc.
                 #
                 # Note how this is simplified by the flexible implementation of
-                # `Color`, thanks to its converter function and the
+                # `Rgba32`, thanks to its converter function and the
                 # auto-generated `__int__()` method.
-                int_array = np.array([Color(datum) for datum in data_list], np.uint32)  # type: ignore[arg-type]
+                int_array = np.array([Rgba32(datum) for datum in data_list], np.uint32)  # type: ignore[arg-type]
 
         return pa.array(int_array, type=data_type)

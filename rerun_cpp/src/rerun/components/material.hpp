@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../data_cell.hpp"
-#include "../datatypes/color.hpp"
 #include "../datatypes/material.hpp"
+#include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -30,7 +30,7 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'material_ext.cpp'
 
-            static Material from_albedo_factor(rerun::datatypes::Color color) {
+            static Material from_albedo_factor(rerun::datatypes::Rgba32 color) {
                 return Material(color);
             }
 
@@ -44,7 +44,7 @@ namespace rerun {
                 return *this;
             }
 
-            Material(std::optional<rerun::datatypes::Color> arg) : material(std::move(arg)) {}
+            Material(std::optional<rerun::datatypes::Rgba32> arg) : material(std::move(arg)) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

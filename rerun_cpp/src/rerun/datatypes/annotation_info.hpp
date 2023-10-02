@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../result.hpp"
-#include "color.hpp"
+#include "rgba32.hpp"
 #include "utf8.hpp"
 
 #include <cstdint>
@@ -32,18 +32,18 @@ namespace rerun {
             std::optional<rerun::datatypes::Utf8> label;
 
             /// The color that will be applied to the annotated entity.
-            std::optional<rerun::datatypes::Color> color;
+            std::optional<rerun::datatypes::Rgba32> color;
 
           public:
             // Extensions to generated type defined in 'annotation_info_ext.cpp'
 
             AnnotationInfo(
                 uint16_t _id, std::optional<std::string> _label = std::nullopt,
-                std::optional<datatypes::Color> _color = std::nullopt
+                std::optional<datatypes::Rgba32> _color = std::nullopt
             )
                 : id(_id), label(std::move(_label)), color(_color) {}
 
-            AnnotationInfo(uint16_t _id, datatypes::Color _color)
+            AnnotationInfo(uint16_t _id, datatypes::Rgba32 _color)
                 : id(_id), label(std::nullopt), color(_color) {}
 
           public:

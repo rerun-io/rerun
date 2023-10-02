@@ -25,7 +25,6 @@ from .class_description_map_elem import (
     ClassDescriptionMapElemType,
 )
 from .class_id import ClassId, ClassIdArrayLike, ClassIdBatch, ClassIdLike, ClassIdType
-from .color import Color, ColorArrayLike, ColorBatch, ColorLike, ColorType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
@@ -40,6 +39,7 @@ from .mesh_properties import (
     MeshPropertiesType,
 )
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike, QuaternionType
+from .rgba32 import Rgba32, Rgba32ArrayLike, Rgba32Batch, Rgba32Like, Rgba32Type
 from .rotation3d import Rotation3D, Rotation3DArrayLike, Rotation3DBatch, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
     RotationAxisAngle,
@@ -107,11 +107,6 @@ __all__ = [
     "ClassIdBatch",
     "ClassIdLike",
     "ClassIdType",
-    "Color",
-    "ColorArrayLike",
-    "ColorBatch",
-    "ColorLike",
-    "ColorType",
     "Float32",
     "Float32ArrayLike",
     "Float32Batch",
@@ -152,6 +147,11 @@ __all__ = [
     "QuaternionBatch",
     "QuaternionLike",
     "QuaternionType",
+    "Rgba32",
+    "Rgba32ArrayLike",
+    "Rgba32Batch",
+    "Rgba32Like",
+    "Rgba32Type",
     "Rotation3D",
     "Rotation3DArrayLike",
     "Rotation3DBatch",

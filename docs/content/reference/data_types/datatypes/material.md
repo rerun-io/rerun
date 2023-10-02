@@ -5,7 +5,7 @@ title: "Material"
 
 ## Fields
 
-* albedo_factor: [`Color`](../datatypes/color.md)
+* albedo_factor: [`Rgba32`](../datatypes/rgba32.md)
 
 
 ## Used by

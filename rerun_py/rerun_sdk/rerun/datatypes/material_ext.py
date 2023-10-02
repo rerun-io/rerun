@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class MaterialExt:
     @staticmethod
     def native_to_pa_array_override(data: MaterialArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import ColorType, Material
+        from . import Material, Rgba32Type
 
         if isinstance(data, Material):
             data = [data]
@@ -20,7 +20,7 @@ class MaterialExt:
 
         albedo_factors = pa.array(
             [datum.albedo_factor.rgba if datum.albedo_factor is not None else None for datum in data],
-            type=ColorType().storage_type,
+            type=Rgba32Type().storage_type,
         )
 
         return pa.StructArray.from_arrays(

@@ -13,5 +13,5 @@ struct Material (
   "attr.rust.derive": "Copy, PartialEq, Eq, Hash"
 ) {
   /// Optional color multiplier.
-  albedo_factor: rerun.datatypes.Color (nullable, order: 100);
+  albedo_factor: rerun.datatypes.Rgba32 (nullable, order: 100);
 }

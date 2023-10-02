@@ -5,7 +5,7 @@ from typing import Optional, cast
 
 import rerun as rr
 from rerun.components import InstanceKeyArrayLike, Origin3DBatch, RadiusArrayLike, Vector3DBatch
-from rerun.datatypes import ClassIdArrayLike, ColorArrayLike, Utf8ArrayLike, Vec3DArrayLike
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec3DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -45,7 +45,7 @@ def test_arrows3d() -> None:
         vectors = cast(Vec3DArrayLike, vectors)
         origins = cast(Optional[Vec3DArrayLike], origins)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)

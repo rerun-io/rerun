@@ -67,7 +67,7 @@ impl crate::Loggable for Material {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "albedo_factor".to_owned(),
-            data_type: <crate::datatypes::Color>::arrow_datatype(),
+            data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])

@@ -43,7 +43,7 @@ class Boxes2DExt:
         array: npt.ArrayLike | None = None,
         array_format: Box2DFormat = Box2DFormat.XYWH,
         radii: components.RadiusArrayLike | None = None,
-        colors: datatypes.ColorArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         draw_order: components.DrawOrderLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
