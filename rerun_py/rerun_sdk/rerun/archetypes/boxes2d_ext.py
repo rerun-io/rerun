@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .. import components, datatypes
-from ..error_utils import _send_warning, catch_and_log_exceptions
+from ..error_utils import catch_and_log_exceptions
 
 
 class Box2DFormat(Enum):
@@ -41,7 +41,7 @@ class Boxes2DExt:
         half_sizes: datatypes.Vec2DArrayLike | None = None,
         centers: datatypes.Vec2DArrayLike | None = None,
         array: npt.ArrayLike | None = None,
-        array_format: Box2DFormat = Box2DFormat.XYWH,
+        array_format: Box2DFormat | None = None,
         radii: components.RadiusArrayLike | None = None,
         colors: datatypes.ColorArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
@@ -66,6 +66,7 @@ class Boxes2DExt:
             Only valid when used together with either `sizes` or `half_sizes`.
         array:
             An array of boxes in the format specified by `array_format`.
+            *Requires* specifying `array_format`.
             Incompatible with `sizes`, `half_sizes`, `mins` and `centers`.
         array_format:
             How to interpret the data in `array`.
@@ -92,14 +93,16 @@ class Boxes2DExt:
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if array is not None:
+                if array_format is None:
+                    raise ValueError("Must specify `array_format` when specifying `array`.")
                 if half_sizes is not None:
-                    _send_warning("Cannot specify both `array` and `half_sizes` at the same time.", 1)
+                    raise ValueError("Cannot specify both `array` and `half_sizes` at the same time.")
                 if sizes is not None:
-                    _send_warning("Cannot specify both `array` and `sizes` at the same time.", 1)
+                    raise ValueError("Cannot specify both `array` and `sizes` at the same time.")
                 if mins is not None:
-                    _send_warning("Cannot specify both `array` and `mins` at the same time.", 1)
+                    raise ValueError("Cannot specify both `array` and `mins` at the same time.")
                 if centers is not None:
-                    _send_warning("Cannot specify both `array` and `centers` at the same time.", 1)
+                    raise ValueError("Cannot specify both `array` and `centers` at the same time.")
 
                 if np.any(array):
                     array = np.asarray(array, dtype="float32")
@@ -136,19 +139,18 @@ class Boxes2DExt:
             else:
                 if sizes is not None:
                     if half_sizes is not None:
-                        _send_warning("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
+                        raise ValueError("Cannot specify both `sizes` and `half_sizes` at the same time.")
 
                     sizes = np.asarray(sizes, dtype=np.float32)
                     half_sizes = sizes / 2.0
 
                 if mins is not None:
                     if centers is not None:
-                        _send_warning("Cannot specify both `mins` and `centers` at the same time.", 1)
+                        raise ValueError("Cannot specify both `mins` and `centers` at the same time.")
 
                     # already converted `sizes` to `half_sizes`
                     if half_sizes is None:
-                        _send_warning("Cannot specify `mins` without `sizes` or `half_sizes`.", 1)
-                        half_sizes = np.asarray([1, 1], dtype=np.float32)
+                        raise ValueError("Cannot specify `mins` without `sizes` or `half_sizes`.")
 
                     mins = np.asarray(mins, dtype=np.float32)
                     half_sizes = np.asarray(half_sizes, dtype=np.float32)

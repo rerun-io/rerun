@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
+import pytest
 import rerun as rr
 from rerun.components import (
     DrawOrderLike,
@@ -134,6 +135,32 @@ def test_with_array_xcycwh() -> None:
 
 def test_with_array_xcycw2h2() -> None:
     assert rr.Boxes2D(mins=[1, 1], sizes=[2, 4]) == rr.Boxes2D(array=[2, 3, 1, 2], array_format=rr.Box2DFormat.XCYCW2H2)
+
+
+def test_invalid_parameter_combinations() -> None:
+    rr.set_strict_mode(True)
+
+    # invalid size/position combinations
+    with pytest.raises(ValueError):
+        rr.Boxes2D(half_sizes=[1, 2], sizes=[3, 4])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(centers=[1, 2], mins=[3, 4])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(mins=[3, 4])
+
+    # with array
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, half_sizes=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, sizes=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, mins=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, centers=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format="bonkers")  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":
