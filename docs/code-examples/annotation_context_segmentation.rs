@@ -1,6 +1,7 @@
 //! Log a segmentation image with annotations.
 
 use ndarray::{s, Array, ShapeBuilder};
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =
         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation")
