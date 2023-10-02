@@ -33,6 +33,8 @@ legal_todo_inner_pattern = re.compile(
     r"TODO\(((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+)(?:,\s*((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+))*\)"
 )
 
+anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
+
 
 def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if line == "":
@@ -75,6 +77,9 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
 
     if "from attr import dataclass" in line:
         return "Avoid 'from attr import dataclass'; prefer 'from dataclasses import dataclass'"
+
+    if anyhow_result.search(line):
+        return "Prefer using anyhow::Result<>"
 
     m = re.search(error_map_err_name, line) or re.search(error_match_name, line)
     if m:
@@ -142,6 +147,7 @@ def test_lint_line() -> None:
         "let Some(foo) = bar else { return; };",
         "{foo:?}",
         "rec",
+        "anyhow::Result<()>",
     ]
 
     should_error = [
@@ -172,6 +178,7 @@ def test_lint_line() -> None:
         "trailing whitespace ",
         "rr_stream",
         "rec_stream",
+        "Result<(), anyhow::Error>",
     ]
 
     for line in should_pass:
