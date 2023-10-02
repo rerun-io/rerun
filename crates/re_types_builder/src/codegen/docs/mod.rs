@@ -167,6 +167,7 @@ fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
     putln!(o, "---");
     putln!(o, "title: {title:?}");
     if let Some(order) = order {
+        // The order is used to sort `rerun.io/docs` side navigation
         putln!(o, "order: {order}");
     }
     putln!(o, "---");
