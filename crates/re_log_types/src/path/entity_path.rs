@@ -77,9 +77,9 @@ impl std::fmt::Debug for EntityPathHash {
 /// assert_eq!(
 ///     EntityPath::parse_strict(r#"camera/"ACME Örnöga"/points/#42"#).unwrap(),
 ///     EntityPath::new(vec![
-///         EntityPathPart::Name("camera"),
+///         EntityPathPart::Name("camera".into()),
 ///         EntityPathPart::Index(Index::String("ACME Örnöga".into())),
-///         EntityPathPart::Name("points"),
+///         EntityPathPart::Name("points".into()),
 ///         EntityPathPart::Index(Index::Sequence(42))
 ///     ])
 /// );
