@@ -28,6 +28,8 @@ def _material__albedo_factor__special_field_converter_override(x: datatypes.Colo
 
 @define(init=False)
 class Material(MaterialExt):
+    """Material properties of a mesh."""
+
     def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
         """
         Create a new instance of the Material datatype.

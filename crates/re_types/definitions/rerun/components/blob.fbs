@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-// A binary blob.
+/// A binary blob of data.
 table Blob (
   "attr.arrow.transparent",
   "attr.python.aliases": "bytes, npt.NDArray[np.uint8]",

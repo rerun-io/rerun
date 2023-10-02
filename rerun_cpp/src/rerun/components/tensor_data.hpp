@@ -19,6 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
+        /// A multi-dimensional `Tensor` with optionally named arguments.
         struct TensorData {
             rerun::datatypes::TensorData data;
 

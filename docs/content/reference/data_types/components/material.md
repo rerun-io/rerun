@@ -2,6 +2,7 @@
 title: "Material"
 ---
 
+Material properties of a mesh.
 
 ## Fields
 

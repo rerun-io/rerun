@@ -14,6 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+/// Material properties of a mesh.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Material(pub crate::datatypes::Material);
 

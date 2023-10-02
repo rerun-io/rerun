@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-// A Multi-dimensional `Tensor` of data.
+/// A multi-dimensional `Tensor` with optionally named arguments.
 table TensorData (
   "attr.arrow.transparent",
   "attr.rust.derive": "PartialEq",
