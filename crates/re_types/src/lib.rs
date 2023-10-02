@@ -172,7 +172,7 @@
 //! Then the url you should use is `https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/1024w.png`.
 //!
 //! It works this way because `upload_image.py` does not upscale screenshots, it only downscales them.
-//! We need to know what the maximum width we can use is, becuase we can't just provide all the widths all the time.
+//! We need to know what the maximum width we can use is, because we can't just provide all the widths all the time.
 //! If the currently-used `max-width` source fails to load, it will show the blank image icon.
 //! There is no way to provide a fallback in `<picture>` if a specific `max-width` source fails to load.
 //! Browsers will not automatically try to load the other sources!
