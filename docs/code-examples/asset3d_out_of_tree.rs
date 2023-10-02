@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
 
         // Modify the asset's out-of-tree transform: this will not affect its children (i.e. the points)!
         let translation =
-            rerun::TranslationRotationScale3D::translation([0.0, 0.0, i as f32 - 10.0]);
+            rerun::TranslationRotationScale3D::from_translation([0.0, 0.0, i as f32 - 10.0]);
         rec.log_component_batches(
             "world/asset",
             false,

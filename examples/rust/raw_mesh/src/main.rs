@@ -14,7 +14,7 @@ use bytes::Bytes;
 use rerun::{
     components::{MeshProperties, Transform3D},
     external::{ecolor, re_log, re_memory::AccountingAllocator},
-    Color, Mesh3D, RecordingStream, TranslationRotationScale3D,
+    Color, Mesh3D, RecordingStream,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -64,11 +64,11 @@ impl From<GltfPrimitive> for Mesh3D {
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
 impl From<GltfTransform> for Transform3D {
     fn from(transform: GltfTransform) -> Self {
-        Transform3D::new(TranslationRotationScale3D::affine(
+        Transform3D::from_translation_rotation_scale(
             transform.t,
             rerun::datatypes::Quaternion::from_xyzw(transform.r),
             transform.s,
-        ))
+        )
     }
 }
 

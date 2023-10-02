@@ -123,7 +123,7 @@ fn log_baseline_objects(
                 .with_labels([label])
                 .with_colors([rerun::Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log_timeless(path, &rerun::archetypes::Transform3D::new(transform))?;
+        rec.log_timeless(path, &rerun::Transform3D::new(transform))?;
     }
 
     Ok(())
@@ -170,10 +170,7 @@ fn log_ar_camera(
 
     rec.log(
         "world/camera",
-        &rerun::archetypes::Transform3D::new(rerun::TranslationRotationScale3D::rigid(
-            translation,
-            rot,
-        )),
+        &rerun::Transform3D::from_translation_rotation(translation, rot),
     )?;
 
     rec.log(

@@ -101,13 +101,13 @@ fn roundtrip() {
             .from_parent(),
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
-            TranslationRotationScale3D::rigid(
+            TranslationRotationScale3D::from_translation_rotation(
                 [1.0, 2.0, 3.0],
                 RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
             ),
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
-            TranslationRotationScale3D::affine(
+            TranslationRotationScale3D::from_translation_rotation_scale(
                 [1.0, 2.0, 3.0],
                 RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
                 42.0,
@@ -118,10 +118,10 @@ fn roundtrip() {
             TranslationAndMat3x3::IDENTITY,
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
-            TranslationAndMat3x3::translation([1.0, 2.0, 3.0]).from_parent(),
+            TranslationAndMat3x3::from_translation([1.0, 2.0, 3.0]).from_parent(),
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
-            TranslationAndMat3x3::rotation([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+            TranslationAndMat3x3::from_mat3x3([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
                 .from_parent(),
         )), //
     ];

@@ -30,14 +30,14 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
         "translation_and_mat3x3/translation",
         &Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
-            TranslationAndMat3x3::translation([1.0, 2.0, 3.0]).from_parent(),
+            TranslationAndMat3x3::from_translation([1.0, 2.0, 3.0]).from_parent(),
         )), //
     )?;
 
     rec.log(
         "translation_and_mat3x3/rotation",
         &Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
-            TranslationAndMat3x3::rotation([[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]]),
+            TranslationAndMat3x3::from_mat3x3([[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]]),
         )),
     )?;
 
@@ -63,7 +63,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
         "translation_rotation_scale/rigid",
         &Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
-            TranslationRotationScale3D::rigid(
+            TranslationRotationScale3D::from_translation_rotation(
                 [1.0, 2.0, 3.0],
                 RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
             ),
@@ -73,7 +73,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
         "translation_rotation_scale/affine",
         &Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
-            TranslationRotationScale3D::affine(
+            TranslationRotationScale3D::from_translation_rotation_scale(
                 [1.0, 2.0, 3.0],
                 RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
                 42.0,

@@ -26,7 +26,7 @@ impl TranslationAndMat3x3 {
     }
 
     #[inline]
-    pub fn translation<T: Into<Vec3D>>(translation: T) -> Self {
+    pub fn from_translation<T: Into<Vec3D>>(translation: T) -> Self {
         Self {
             translation: Some(translation.into()),
             mat3x3: None,
@@ -35,7 +35,7 @@ impl TranslationAndMat3x3 {
     }
 
     #[inline]
-    pub fn rotation<M: Into<Mat3x3>>(mat3x3: M) -> Self {
+    pub fn from_mat3x3<M: Into<Mat3x3>>(mat3x3: M) -> Self {
         Self {
             translation: None,
             mat3x3: Some(mat3x3.into()),
@@ -43,6 +43,8 @@ impl TranslationAndMat3x3 {
         }
     }
 
+    /// Indicate that this transform is from parent to child.
+    /// This is the oppositve of the default, which is from child to parent.
     #[allow(clippy::wrong_self_convention)]
     pub fn from_parent(mut self) -> Self {
         self.from_parent = true;

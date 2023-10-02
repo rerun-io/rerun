@@ -242,17 +242,14 @@ fn test_clean_for_polars_modify() {
 
     use re_log_types::DataCell;
     use re_types::components::Transform3D;
-    use re_types::datatypes::{
-        Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
-    };
+    use re_types::datatypes::{Angle, RotationAxisAngle, Scale3D};
 
     let cell = DataCell::try_from_native([
-        Transform3D::new(TranslationAndMat3x3::translation([1.0, 0.0, 0.0])), //
-        Transform3D::new(TranslationRotationScale3D {
-            rotation: Some(RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(PI / 4.)).into()),
-            scale: Some(Scale3D::from(2.0)),
-            ..Default::default()
-        }),
+        Transform3D::from_translation([1.0, 0.0, 0.0]), //
+        Transform3D::from_rotation_scale(
+            RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(PI / 4.)),
+            Scale3D::from(2.0),
+        ),
     ])
     .unwrap();
 

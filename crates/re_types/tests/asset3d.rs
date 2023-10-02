@@ -32,14 +32,12 @@ fn roundtrip() {
     };
 
     let arch = Asset3D::from_bytes(BYTES, Some(MediaType::gltf())).with_transform(
-        re_types::datatypes::Transform3D::TranslationRotationScale(
-            TranslationRotationScale3D::affine(
-                [1.0, 2.0, 3.0],
-                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
-                42.0,
-            )
-            .from_parent(),
-        ),
+        re_types::datatypes::Transform3D::from_translation_rotation_scale(
+            [1.0, 2.0, 3.0],
+            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
+            42.0,
+        )
+        .from_parent(),
     );
     similar_asserts::assert_eq!(expected, arch);
 

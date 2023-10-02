@@ -414,7 +414,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::{LineStrips3D, Points3D, Transform3D, ViewCoordinates},
         components::{Color, Position3D},
-        datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
+        datatypes::{Angle, RotationAxisAngle},
     };
 
     let sun_to_planet_distance = 6.0;
@@ -502,26 +502,24 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
 
         rec.log(
             "transforms3d/sun/planet",
-            &Transform3D::new(rerun::datatypes::TranslationRotationScale3D::rigid(
+            &Transform3D::from_translation_rotation(
                 [
                     (time * rotation_speed_planet).sin() * sun_to_planet_distance,
                     (time * rotation_speed_planet).cos() * sun_to_planet_distance,
                     0.0,
                 ],
                 RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
-            )),
+            ),
         )?;
 
         rec.log(
             "transforms3d/sun/planet/moon",
-            &Transform3D::new(
-                TranslationRotationScale3D::from(Vec3D::new(
-                    (time * rotation_speed_moon).cos() * planet_to_moon_distance,
-                    (time * rotation_speed_moon).sin() * planet_to_moon_distance,
-                    0.0,
-                ))
-                .from_parent(),
-            ),
+            &Transform3D::from_translation([
+                (time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                (time * rotation_speed_moon).sin() * planet_to_moon_distance,
+                0.0,
+            ])
+            .from_parent(),
         )?;
     }
 
