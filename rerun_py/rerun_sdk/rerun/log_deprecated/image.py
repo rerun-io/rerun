@@ -84,9 +84,13 @@ def log_image(
 
     """
 
+    img = Image(image, draw_order=draw_order)
+    if jpeg_quality is not None:
+        img = img.compress(jpeg_quality=jpeg_quality)  # type: ignore[assignment]
+
     log(
         entity_path,
-        Image(image, draw_order=draw_order, jpeg_quality=jpeg_quality),
+        img,
         AnyValues(**(ext or {})),
         timeless=timeless,
         recording=recording,

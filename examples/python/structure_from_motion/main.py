@@ -173,7 +173,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
             bgr = cv2.imread(str(image_file))
             bgr = cv2.resize(bgr, resize)
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-            rr.log("camera/image", rr.Image(rr.TensorData(array=rgb, jpeg_quality=75)))
+            rr.log("camera/image", rr.Image(rgb).compress(jpeg_quality=75))
         else:
             rr.log("camera/image", rr.ImageEncoded(path=dataset_path / "images" / image.name))
 
