@@ -7,8 +7,10 @@
 //! over the networks, and to open our `.rrd` data files.
 //! If you need it, install the `rerun` binary with `cargo install rerun-cli`.
 //!
+//!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
+//!
 //!
 //! ## Links
 //! - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
@@ -36,11 +38,16 @@
 //!
 //! Install it with `cargo install rerun-cli`.
 //!
+//! Running just `rerun` will start the viewer, waiting for the logging library to connect
+//! using [`RecordingStreamBuilder::connect`] (see below).
+//!
+//! You can run `rerun --help` for more info.
+//!
 //!
 //! ## Using the `rerun` library
 //! #### Logging
 //! You first create a [`RecordingStream`] using [`RecordingStreamBuilder`].
-//! You then use it to log some[`archetypes`]:
+//! You then use it to log some [`archetypes`] to a given [`EntityPath`] using [`RecordingStream::log`]:
 //!
 //! ```no_run
 //! # use rerun::external::image;
@@ -89,6 +96,7 @@
 //! cargo install rerun
 //! rerun --help
 //! ```
+//!
 //!
 //! ## Forwarding text log events to Rerun
 //! See [`Logger`].
