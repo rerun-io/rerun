@@ -228,7 +228,7 @@ def transforms(experimental_api: bool) -> None:
         # Log a transform with translation and shear along x.
         rr.log(
             "transforms/shear",
-            TranslationAndMat3x3(translation=(3, 0, 1), matrix=np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
+            TranslationAndMat3x3(translation=(3, 0, 1), mat3x3=np.array([[1, 1, 0], [0, 1, 0], [0, 0, 1]])),
         )
     else:
         # Log scale along the x axis only.

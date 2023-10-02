@@ -43,8 +43,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             world_from_mesh = node_data[0]
             rr.log(
                 path,
-                rr.TranslationAndMat3x3(
-                    trimesh.transformations.translation_from_matrix(world_from_mesh), world_from_mesh[0:3, 0:3]
+                rr.Transform3D(
+                    mat3x3=trimesh.transformations.translation_from_matrix(world_from_mesh),
+                    translation=world_from_mesh[0:3, 0:3],
                 ),
             )
 

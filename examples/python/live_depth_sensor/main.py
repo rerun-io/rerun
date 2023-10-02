@@ -40,9 +40,9 @@ def run_realsense(num_frames: int | None) -> None:
     rgb_from_depth = depth_profile.get_extrinsics_to(rgb_profile)
     rr.log(
         "realsense/rgb",
-        rr.TranslationAndMat3(
+        rr.Transform3D(
             translation=rgb_from_depth.translation,
-            matrix=np.reshape(rgb_from_depth.rotation, (3, 3)),
+            mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
             from_parent=True,
         ),
         timeless=True,
