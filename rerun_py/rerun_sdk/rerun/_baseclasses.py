@@ -28,7 +28,13 @@ class ComponentBatchLike(Protocol):
 
 
 class AsComponents(Protocol):
-    """Describes interface for interpreting an object as a bundle of Components."""
+    """
+    Describes interface for interpreting an object as a bundle of Components.
+
+    Note: the `num_instances()` function is an optional part of this interface. The method does not need to be
+    implemented as it is only used after checking for its existence. (There is unfortunately no way to express this
+    correctly with the Python typing system, see https://github.com/python/typing/issues/601).
+    """
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -41,18 +47,18 @@ class AsComponents(Protocol):
         """
         ...
 
-    def num_instances(self) -> int | None:
-        """
-        (Optional) The number of instances in each batch.
-
-        If not implemented, the number of instances will be determined by the longest
-        batch in the bundle.
-
-        Each batch returned by `as_component_batches` should have this number of
-        elements, or 1 in the case it is a splat, or 0 in the case that
-        component is being cleared.
-        """
-        return None
+    # def num_instances(self) -> int | None:
+    #     """
+    #     (Optional) The number of instances in each batch.
+    #
+    #     If not implemented, the number of instances will be determined by the longest
+    #     batch in the bundle.
+    #
+    #     Each batch returned by `as_component_batches` should have this number of
+    #     elements, or 1 in the case it is a splat, or 0 in the case that
+    #     component is being cleared.
+    #     """
+    #     return None
 
 
 @define

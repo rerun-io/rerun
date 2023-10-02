@@ -116,10 +116,8 @@ class FaceDetectorLogger:
         # With this annotation, the viewer will connect the keypoints with some lines to improve visibility.
         rr.log(
             "video/detector",
-            rr.AnnotationContext(
-                rr.ClassDescription(
-                    info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
-                )
+            rr.ClassDescription(
+                info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
             ),
             timeless=True,
         )
