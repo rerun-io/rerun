@@ -605,7 +605,7 @@ impl RecordingStream {
     /// into the past.
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
-    /// This is mosty often used for [`re_types::components::ViewCoordinates`] and
+    /// This is most often used for [`re_types::components::ViewCoordinates`] and
     /// [`re_types::components::AnnotationContext`].
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
