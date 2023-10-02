@@ -1,4 +1,4 @@
-name: Weekly release
+name: Automated crates release
 
 on:
   workflow_dispatch:
@@ -29,17 +29,18 @@ jobs:
           python3 scripts/ci/crates.py version --bump prerelease
 
       - name: Get bumped version
+        id: versioning
         run: |
-          CRATE_VERSION=$(python3 scripts/ci/crates.py get-version)
-          echo "CRATE_VERSION=$CRATE_VERSION" >> "$GITHUB_ENV"
+          crate_version=$(python3 scripts/ci/crates.py get-version)
+          echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5.0.2
         with:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
-          branch: "weekly-release-${{ env.CRATE_VERSION }}"
-          commit-message: "[weekly-release] ${{ env.CRATE_VERSION }}"
-          title: "Release ${{ env.CRATE_VERSION }}"
+          branch: "weekly-release-${{ steps.versioning.outputs.crate_version }}"
+          commit-message: "[weekly-release] ${{ steps.versioning.outputs.crate_version }}"
+          title: "Release ${{ steps.versioning.outputs.crate_version }}"
           labels: |
             ⛴ release
             exclude from changelog
@@ -48,7 +49,7 @@ jobs:
           body: |
             ### What
 
-            - [x] Bump all crate versions to `${{ env.CRATE_VERSION }}`
+            - [x] Bump all crate versions to `${{ steps.versioning.outputs.crate_version }}`
 
             The release process will begin once this pull request is merged.
 
