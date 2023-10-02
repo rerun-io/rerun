@@ -1,0 +1,8 @@
+accelerate
+opencv-python
+pillow
+diffusers
+numpy
+torch
+transformers
+rerun-sdk

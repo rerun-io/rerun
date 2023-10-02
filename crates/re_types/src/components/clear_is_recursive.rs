@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Configures how a clear operation should behave - recurive or no?
+/// Configures how a clear operation should behave - recursive or not?
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct ClearIsRecursive(
     /// If true, also clears all recursive children entities.

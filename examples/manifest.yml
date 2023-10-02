@@ -90,6 +90,9 @@ root:
         - name: depth-guided-stable-diffusion
           python: python/depth_guided_stable_diffusion
 
+        - name: controlnet
+          python: python/controlnet
+
         - name: detect-and-track-objects
           python: python/detect_and_track_objects
 
