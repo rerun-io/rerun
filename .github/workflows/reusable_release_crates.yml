@@ -32,17 +32,11 @@ jobs:
         shell: bash
         run: ./scripts/setup_web.sh
 
-      - name: Build web-viewer (release)
+      - name: Build web-viewer
         uses: actions-rs/cargo@v1
         with:
           command: run
           args: --locked -p re_build_web_viewer -- --release
-
-      - name: Build web-viewer (release)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked -p re_build_web_viewer -- --debug
 
       - name: Publish
         run: |
