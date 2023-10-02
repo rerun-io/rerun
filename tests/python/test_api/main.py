@@ -145,7 +145,7 @@ def transforms(experimental_api: bool) -> None:
     rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP)
 
     # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
-    rr.log("transforms/disconnected", rr.DisconnectedSpace())
+    rr.log("transforms/disconnected", rr.DisconnectedSpace(True))
 
     # Log scale along the x axis only.
     rr.log("transforms/x_scaled", rr.Transform3D(scale=(3, 1, 1)))
