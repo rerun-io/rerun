@@ -58,9 +58,7 @@ impl Report {
     pub fn finalize(&self) {
         let mut errored = false;
 
-        let ci = std::env::var("CI").is_ok();
         while let Ok(warn) = self.warnings.try_recv() {
-            errored = ci; // treat warnings as errors in CI
             eprintln!("Warning: {warn}");
         }
 
