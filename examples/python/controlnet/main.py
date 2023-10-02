@@ -87,18 +87,11 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
         torch_dtype=torch.float16,
         use_safetensors=True,
     )
+
     pipeline.enable_model_cpu_offload()
 
-    rr.log(
-        "positive_prompt",
-        rr.TextDocument(f"### Positive Prompt\n {prompt}", media_type="text/markdown"),
-        timeless=True,
-    )
-    rr.log(
-        "negative_prompt",
-        rr.TextDocument(f"### Negative Prompt\n {negative_prompt}", media_type="text/markdown"),
-        timeless=True,
-    )
+    rr.log("positive_prompt", rr.TextDocument(prompt), timeless=True)
+    rr.log("negative_prompt", rr.TextDocument(negative_prompt), timeless=True)
 
     images = pipeline(
         prompt,
