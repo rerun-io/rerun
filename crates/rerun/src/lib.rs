@@ -39,8 +39,8 @@
 //!
 //! ## Using the `rerun` library
 //! #### Logging
-//!
-//! Use a [`RecordingStream`] to log some[`archetypes`]:
+//! You first create a [`RecordingStream`] using [`RecordingStreamBuilder`].
+//! You then use it to log some[`archetypes`]:
 //!
 //! ```no_run
 //! # use rerun::external::image;
@@ -89,6 +89,10 @@
 //! cargo install rerun
 //! rerun --help
 //! ```
+//!
+//! ## Forwarding text log events to Rerun
+//! See [`Logger`].
+//!
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 

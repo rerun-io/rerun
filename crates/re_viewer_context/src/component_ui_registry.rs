@@ -8,7 +8,7 @@ use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 use crate::ViewerContext;
 
 /// Controls how mich space we use to show the data in a component ui.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UiVerbosity {
     /// Keep it small enough to fit on one row.
     Small,
