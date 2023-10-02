@@ -12,7 +12,7 @@ use re_types_builder::{compute_re_types_hash, SourceLocations};
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
-const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
+const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code_examples";
 const DOC_CONTENT_DIR_PATH: &str = "../../docs/content/reference/data_types";
 const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = ".";

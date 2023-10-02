@@ -399,5 +399,5 @@ jobs:
 
       - name: Build code examples
         shell: bash
-        run: ./docs/code-examples/build_all.sh --werror
+        run: ./docs/code_examples/build_all.sh --werror
 

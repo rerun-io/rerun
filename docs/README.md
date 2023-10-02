@@ -14,11 +14,11 @@ The site documentation lives in Markdown files inside [`/content`](./content).
 
 The entry point to the documentation is [`/content/index.md`](./content/index.md)
 
-Code examples can be rendered in multiple languages by placing them in `code-examples`, like so:
+Code examples can be rendered in multiple languages by placing them in `code_examples`, like so:
 
 ```
 /docs
-    /code-examples
+    /code_examples
         /my-example
             /example.py
             /example.rs
@@ -39,7 +39,7 @@ order: 6
 
 ### Code Examples
 
-Code-examples can be referenced in Markdown using this syntax:
+code_examples can be referenced in Markdown using this syntax:
 ```
 code-example: my-example
 ```

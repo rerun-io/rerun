@@ -74,4 +74,4 @@ FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
 add_subdirectory(examples/cpp/minimal)
 add_subdirectory(tests/cpp)
-add_subdirectory(docs/code-examples)
+add_subdirectory(docs/code_examples)

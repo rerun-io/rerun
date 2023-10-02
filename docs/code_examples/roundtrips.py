@@ -177,9 +177,9 @@ def main() -> None:
         if "rust" in example_opt_out_entirely:
             continue  # No baseline to compare against
 
-        cpp_output_path = f"docs/code-examples/{example}_cpp.rrd"
-        python_output_path = f"docs/code-examples/{example}_py.rrd"
-        rust_output_path = f"docs/code-examples/{example}_rust.rrd"
+        cpp_output_path = f"docs/code_examples/{example}_cpp.rrd"
+        python_output_path = f"docs/code_examples/{example}_py.rrd"
+        rust_output_path = f"docs/code_examples/{example}_rust.rrd"
 
         if "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
             run_comparison(python_output_path, rust_output_path, args.full_dump)
@@ -220,8 +220,8 @@ def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
 
 
 def run_roundtrip_python(example: str) -> str:
-    main_path = f"docs/code-examples/{example}.py"
-    output_path = f"docs/code-examples/{example}_py.rrd"
+    main_path = f"docs/code_examples/{example}.py"
+    output_path = f"docs/code_examples/{example}_py.rrd"
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
@@ -237,7 +237,7 @@ def run_roundtrip_python(example: str) -> str:
 
 
 def run_roundtrip_rust(example: str, release: bool, target: str | None, target_dir: str | None) -> str:
-    output_path = f"docs/code-examples/{example}_rust.rrd"
+    output_path = f"docs/code_examples/{example}_rust.rrd"
 
     cmd = ["cargo", "run", "--quiet", "-p", "code_examples", "--bin", example]
 
@@ -261,11 +261,11 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
 
 def run_roundtrip_cpp(example: str, release: bool) -> str:
     target_name = f"{example}"
-    output_path = f"docs/code-examples/{example}_cpp.rrd"
+    output_path = f"docs/code_examples/{example}_cpp.rrd"
 
     cmake_build(target_name, release)
 
-    cmd = [f"./build/docs/code-examples/{example}"] + (extra_args.get(example) or [])
+    cmd = [f"./build/docs/code_examples/{example}"] + (extra_args.get(example) or [])
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 

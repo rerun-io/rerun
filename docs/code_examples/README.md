@@ -11,9 +11,9 @@ You can run each example individually using the following:
 - **Python**: `python <example_name>.py`, e.g. `python point3d_random.py`.
 - **Rust**: `cargo r -p code_examples --bin <example_name`, e.g. `cargo r -p code_examples --bin point3d_random`.
 - **C++**:
-  - `./docs/code-examples/build_all.sh` to compile all examples
+  - `./docs/code_examples/build_all.sh` to compile all examples
   - start a Rerun Viewer listening on the default port: `rerun`
-  - `./build/docs/code-examples/<example_name>` to run, e.g.  `./build/docs/code-examples/point3d_random`
+  - `./build/docs/code_examples/<example_name>` to run, e.g.  `./build/docs/code_examples/point3d_random`
 
 ## Roundtrips
 
@@ -24,8 +24,8 @@ These tests check that A) all of our SDKs yield the exact same data when used th
 
 ### Usage
 
-To run the roundtrip tests, check out `./docs/code-examples/roundtrips.py --help`.
-`./docs/code-examples/roundtrips.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
+To run the roundtrip tests, check out `./docs/code_examples/roundtrips.py --help`.
+`./docs/code_examples/roundtrips.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
 
 ### Implementing new tests
 
@@ -33,5 +33,5 @@ Just pick a name for your test, and look at existing examples to get started.  T
 
 The roundtrip process is driven by file names, so make sure all 3 tests use the same name: `<test_name>.rs`, `<test_name>.cpp`, `<test_name>.py`.
 
-For Rust, also make sure to declare the new binary in `docs/code-examples/Cargo.toml`.
+For Rust, also make sure to declare the new binary in `docs/code_examples/Cargo.toml`.
 

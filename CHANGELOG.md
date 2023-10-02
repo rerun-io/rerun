@@ -185,7 +185,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 - Added example screenshot instructions in `just upload --help` [#2454](https://github.com/rerun-io/rerun/pull/2454)
 - Added support for puling image from an URL to `upload_image.py` [#2462](https://github.com/rerun-io/rerun/pull/2462)
 - `setup_dev.sh` now installs pngcrush [#2470](https://github.com/rerun-io/rerun/pull/2470)
-- Added docs/code-examples to the directories checked by py-lint and py-format [#2476](https://github.com/rerun-io/rerun/pull/2476)
+- Added docs/code_examples to the directories checked by py-lint and py-format [#2476](https://github.com/rerun-io/rerun/pull/2476)
 - Link to demo in PR + check checkboxes [#2543](https://github.com/rerun-io/rerun/pull/2543)
 - Add script to find external issues we haven't commented on [#2532](https://github.com/rerun-io/rerun/pull/2532)
 - Move CI-related scripts to its own folder [#2561](https://github.com/rerun-io/rerun/pull/2561)

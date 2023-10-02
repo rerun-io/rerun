@@ -27,7 +27,7 @@ cpp-format:
 
 ### Python
 
-py_folders := "docs/code-examples examples rerun_py scripts tests"
+py_folders := "docs/code_examples examples rerun_py scripts tests"
 
 # Set up a Pythonvirtual environment for development
 py-dev-env:
