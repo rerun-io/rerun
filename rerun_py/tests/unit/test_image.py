@@ -87,3 +87,16 @@ def test_image_shapes() -> None:
     for img in BAD_IMAGE_INPUTS:
         with pytest.raises(TypeError):
             rr.Image(img)
+
+
+def test_image_invalid_arguments() -> None:
+    import rerun as rr
+
+    rr.set_strict_mode(True)
+
+    image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint8)
+
+    with pytest.raises(ValueError):
+        rr.Image(data=TensorData(array=image_data), jpeg_quality=80)
+    # This however, should not throw!
+    rr.Image(image_data, jpeg_quality=80)
