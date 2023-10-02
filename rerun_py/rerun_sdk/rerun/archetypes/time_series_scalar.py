@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["TimeSeriesScalar"]
 
@@ -117,11 +118,31 @@ class TimeSeriesScalar(Archetype):
         """
 
         # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
-        self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(scalar=scalar, radius=radius, color=color, label=label, scattered=scattered)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            scalar=None,  # type: ignore[arg-type]
+            radius=None,  # type: ignore[arg-type]
+            color=None,  # type: ignore[arg-type]
+            label=None,  # type: ignore[arg-type]
+            scattered=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> TimeSeriesScalar:
+        """Produce an empty TimeSeriesScalar, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     scalar: components.ScalarBatch = field(
         metadata={"component": "required"},
-        converter=components.ScalarBatch,  # type: ignore[misc]
+        converter=components.ScalarBatch._required,  # type: ignore[misc]
     )
     """
     The scalar value to log.

@@ -145,7 +145,7 @@ impl crate::Loggable for Scalar {
             }
         }
         Ok({
-            let iterator = arrow_data
+            let slice = arrow_data
                 .as_any()
                 .downcast_ref::<Float64Array>()
                 .ok_or_else(|| {
@@ -156,12 +156,10 @@ impl crate::Loggable for Scalar {
                 })
                 .with_context("rerun.components.Scalar#value")?
                 .values()
-                .as_slice()
-                .iter()
-                .copied();
+                .as_slice();
             {
                 re_tracing::profile_scope!("collect");
-                iterator.map(|v| Self(v)).collect::<Vec<_>>()
+                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
             }
         })
     }

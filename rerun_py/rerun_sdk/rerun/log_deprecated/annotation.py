@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
 from rerun._log import log
 from rerun.archetypes import AnnotationContext
 from rerun.datatypes import AnnotationInfo, ClassDescription, ClassDescriptionArrayLike
@@ -9,6 +11,10 @@ from rerun.recording_stream import RecordingStream
 __all__ = ["log_annotation_context", "AnnotationInfo", "ClassDescription", "ClassDescriptionArrayLike"]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.AnnotationContext(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_annotation_context(
     entity_path: str,
@@ -19,6 +25,11 @@ def log_annotation_context(
 ) -> None:
     """
     Log an annotation context made up of a collection of [ClassDescription][rerun.log_deprecated.annotation.ClassDescription]s.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.AnnotationContext][]
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Any entity needing to access the annotation context will find it by searching the
     path upward. If all entities share the same you can simply log it to the

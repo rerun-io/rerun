@@ -348,7 +348,7 @@ pub fn quote_arrow_deserializer(
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum InnerRepr {
     /// The inner elements of the field should be exposed as `Buffer<T>`
     /// This is only applicable when T is an arrow primitive
@@ -869,14 +869,17 @@ pub fn quote_arrow_deserializer_buffer_slice(
             }
         );
 
-        let deserizlized_as_iterator = quote_arrow_field_deserializer_buffer_slice(
-            objects,
-            &arrow_registry.get(&obj_field.fqname),
+        let datatype = arrow_registry.get(&obj_field.fqname);
+        let deserizlized_as_slice = quote_arrow_field_deserializer_buffer_slice(
+            &datatype,
             obj_field.is_nullable,
             obj_field_fqname,
             &data_src,
-            InnerRepr::NativeIterable,
         );
+
+        let quoted_iter_transparency =
+            quote_iterator_transparency(objects, &datatype, IteratorKind::Value, None);
+        let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
 
         let quoted_remapping = if is_tuple_struct {
             quote!(.map(|v| Self(v)))
@@ -885,11 +888,13 @@ pub fn quote_arrow_deserializer_buffer_slice(
         };
 
         quote! {{
-            let iterator = #deserizlized_as_iterator;
+            let slice = #deserizlized_as_slice;
 
             {
                 re_tracing::profile_scope!("collect");
-                iterator
+                slice
+                    .iter()
+                    #quoted_iter_transparency
                     #quoted_remapping
                     .collect::<Vec<_>>()
             }
@@ -907,12 +912,10 @@ pub fn quote_arrow_deserializer_buffer_slice(
 ///
 /// See [`quote_arrow_field_deserializer`] for additional information.
 fn quote_arrow_field_deserializer_buffer_slice(
-    objects: &Objects,
     datatype: &DataType,
     is_nullable: bool,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
-    inner_repr: InnerRepr,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
 
@@ -928,46 +931,26 @@ fn quote_arrow_field_deserializer_buffer_slice(
         | DataType::Float16
         | DataType::Float32
         | DataType::Float64 => {
-            let quoted_iter_transparency =
-                quote_iterator_transparency(objects, datatype, IteratorKind::Value, None);
-
-            let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
-
             let quoted_downcast = {
                 let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
                 let cast_as = format_ident!("{cast_as}Array"); // e.g. `Uint32Array`
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            match inner_repr {
-                InnerRepr::BufferT => quote! {
-                    #quoted_downcast?
-                    .values()
-                    .as_slice()
-                },
-                InnerRepr::NativeIterable => quote! {
-                    #quoted_downcast?
-                    .values()
-                    .as_slice()
-                    .iter()
-                    #quoted_iter_transparency
-                },
+            quote! {
+                #quoted_downcast?
+                .values()
+                .as_slice()
             }
         }
 
         DataType::FixedSizeList(inner, length) => {
-            if matches!(inner_repr, InnerRepr::BufferT) {
-                // This implies a nested fixed-sized-array
-                unimplemented!("{datatype:#?}")
-            }
             let data_src_inner = format_ident!("{data_src}_inner");
             let quoted_inner = quote_arrow_field_deserializer_buffer_slice(
-                objects,
                 inner.data_type(),
                 inner.is_nullable,
                 obj_field_fqname,
                 &data_src_inner,
-                InnerRepr::BufferT,
             );
 
             let quoted_downcast = {
@@ -975,17 +958,11 @@ fn quote_arrow_field_deserializer_buffer_slice(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
-            let quoted_iter_transparency =
-                quote_iterator_transparency(objects, datatype, IteratorKind::Value, None);
-            let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
-
             quote! {{
                 let #data_src = #quoted_downcast?;
 
                 let #data_src_inner = &**#data_src.values();
-                let slice = bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner);
-
-                slice.iter()#quoted_iter_transparency
+                bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner)
             }}
         }
 

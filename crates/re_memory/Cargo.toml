@@ -24,7 +24,7 @@ re_tracing.workspace = true
 ahash.workspace = true
 emath.workspace = true
 itertools = { workspace = true }
-nohash-hasher = "0.2"
+nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
@@ -32,10 +32,10 @@ web-time.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-backtrace = "0.3"
-memory-stats = { version = "1.1", features = ["always_use_statm"] }
-sysinfo = { version = "0.29.0", default-features = false }
+backtrace.workspace = true
+memory-stats = { workspace = true, features = ["always_use_statm"] }
+sysinfo = { workspace = true, default-features = false }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2.87"
+wasm-bindgen.workspace = true
