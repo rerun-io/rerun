@@ -9,7 +9,7 @@ byte is `R` and the least significant byte is `A`.
 
 ## Fields
 
-* rgba: [`Color`](../datatypes/color.md)
+* rgba: [`Rgba32`](../datatypes/rgba32.md)
 
 
 ## Used by

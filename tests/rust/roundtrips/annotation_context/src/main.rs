@@ -1,10 +1,9 @@
 //! Logs an `AnnotationContext` archetype for roundtrip checks.
 
 use rerun::{
-    archetypes::AnnotationContext,
-    datatypes::{ClassDescription, Color, KeypointPair},
+    datatypes::{ClassDescription, KeypointPair},
     external::re_log,
-    RecordingStream,
+    AnnotationContext, RecordingStream, Rgba32,
 };
 
 #[derive(Debug, clap::Parser)]
@@ -20,7 +19,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         &AnnotationContext::new([
             (1, "hello").into(),
             ClassDescription {
-                info: (2, "world", Color::from_rgb(3, 4, 5)).into(),
+                info: (2, "world", Rgba32::from_rgb(3, 4, 5)).into(),
                 keypoint_annotations: vec![(17, "head").into(), (42, "shoulders").into()],
                 keypoint_connections: KeypointPair::vec_from([(1, 2), (3, 4)]),
             },

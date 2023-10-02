@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
         rr::archetypes::AnnotationContext({
             rr::datatypes::ClassDescription({1, "hello"}),
             rr::datatypes::ClassDescription(
-                {2, "world", rr::datatypes::Color(3, 4, 5)},
+                {2, "world", rr::datatypes::Rgba32(3, 4, 5)},
                 {{17, "head"}, {42, "shoulders"}},
                 {
                     {1, 2},

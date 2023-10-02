@@ -11,7 +11,7 @@ from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.components.radius import RadiusArrayLike
 from rerun.datatypes import Vec3D
 from rerun.datatypes.class_id import ClassIdArrayLike
-from rerun.datatypes.color import ColorArrayLike
+from rerun.datatypes.rgba32 import Rgba32ArrayLike
 from rerun.datatypes.utf8 import Utf8ArrayLike
 
 from .common_arrays import (
@@ -83,7 +83,7 @@ def test_line_strips3d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         strips = cast(LineStrip3DArrayLike, strips)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)

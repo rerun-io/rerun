@@ -5,7 +5,7 @@ from typing import Optional, cast
 
 import rerun as rr
 from rerun.components import HalfSizes3DBatch, InstanceKeyArrayLike, Position3DBatch, RadiusArrayLike, Rotation3DBatch
-from rerun.datatypes import ClassIdArrayLike, ColorArrayLike, Rotation3DArrayLike, Utf8ArrayLike
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Rotation3DArrayLike, Utf8ArrayLike
 from rerun.datatypes.vec3d import Vec3DArrayLike
 
 from .common_arrays import (
@@ -56,7 +56,7 @@ def test_boxes3d() -> None:
         centers = cast(Vec3DArrayLike, centers)
         rotations = cast(Rotation3DArrayLike, rotations)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)

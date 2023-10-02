@@ -3,7 +3,7 @@
 
 #include "annotation_info.hpp"
 
-#include "color.hpp"
+#include "rgba32.hpp"
 #include "utf8.hpp"
 
 #include <arrow/builder.h>
@@ -15,7 +15,7 @@ namespace rerun {
             static const auto datatype = arrow::struct_({
                 arrow::field("id", arrow::uint16(), false),
                 arrow::field("label", rerun::datatypes::Utf8::arrow_datatype(), true),
-                arrow::field("color", rerun::datatypes::Color::arrow_datatype(), true),
+                arrow::field("color", rerun::datatypes::Rgba32::arrow_datatype(), true),
             });
             return datatype;
         }
@@ -33,7 +33,7 @@ namespace rerun {
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::UInt16Builder>(memory_pool),
                     rerun::datatypes::Utf8::new_arrow_array_builder(memory_pool).value,
-                    rerun::datatypes::Color::new_arrow_array_builder(memory_pool).value,
+                    rerun::datatypes::Rgba32::new_arrow_array_builder(memory_pool).value,
                 })
             ));
         }
@@ -80,7 +80,7 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.color.has_value()) {
-                        RR_RETURN_NOT_OK(rerun::datatypes::Color::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Rgba32::fill_arrow_array_builder(
                             field_builder,
                             &element.color.value(),
                             1

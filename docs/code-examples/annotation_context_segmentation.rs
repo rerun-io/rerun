@@ -11,8 +11,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "segmentation",
         &rerun::AnnotationContext::new([
-            (1, "red", rerun::datatypes::Color::from(0xFF0000FF)),
-            (2, "green", rerun::datatypes::Color::from(0x00FF00FF)),
+            (1, "red", rerun::Rgba32::from(0xFF0000FF)),
+            (2, "green", rerun::Rgba32::from(0x00FF00FF)),
         ]),
     )?;
 

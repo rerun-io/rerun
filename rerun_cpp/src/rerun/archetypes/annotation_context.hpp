@@ -41,8 +41,8 @@ namespace rerun {
         ///     rec.log(
         ///         "/",
         ///         rr::AnnotationContext({
-        ///             rr::datatypes::AnnotationInfo(1, "red", rr::datatypes::Color(255, 0, 0)),
-        ///             rr::datatypes::AnnotationInfo(2, "green", rr::datatypes::Color(0, 255, 0)),
+        ///             rr::datatypes::AnnotationInfo(1, "red", rr::datatypes::Rgba32(255, 0, 0)),
+        ///             rr::datatypes::AnnotationInfo(2, "green", rr::datatypes::Rgba32(0, 255, 0)),
         ///         })
         ///     );
         ///

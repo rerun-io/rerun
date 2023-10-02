@@ -10,7 +10,7 @@ The id refers either to a class or key-point id
 ## Fields
 
 * label: [`Utf8`](../datatypes/utf8.md)
-* color: [`Color`](../datatypes/color.md)
+* color: [`Rgba32`](../datatypes/rgba32.md)
 
 
 ## Used by

@@ -12,7 +12,7 @@ from rerun.components import (
     Position2DBatch,
     RadiusArrayLike,
 )
-from rerun.datatypes import ClassIdArrayLike, ColorArrayLike, Utf8ArrayLike, Vec2DArrayLike
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -61,7 +61,7 @@ def test_boxes2d() -> None:
         half_sizes = cast(Vec2DArrayLike, half_sizes)
         centers = cast(Vec2DArrayLike, centers)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)

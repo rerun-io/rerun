@@ -106,7 +106,7 @@ mod prelude {
         Origin3D, OutOfTreeTransform3D, Position3D, Radius, TextLogLevel, Vector3D,
     };
     pub use super::datatypes::{
-        Angle, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rotation3D,
+        Angle, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32, Rotation3D,
         RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
     };
 

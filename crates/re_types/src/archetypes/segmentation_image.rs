@@ -28,7 +28,6 @@
 /// //! Create and log a segmentation image.
 ///
 /// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::datatypes::Color;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
@@ -41,8 +40,8 @@
 ///
 ///     // create an annotation context to describe the classes
 ///     let annotation = rerun::AnnotationContext::new([
-///         (1, "red", Color::from(0xFF0000FF)),
-///         (2, "green", Color::from(0x00FF00FF)),
+///         (1, "red", rerun::Rgba32::from(0xFF0000FF)),
+///         (2, "green", rerun::Rgba32::from(0x00FF00FF)),
 ///     ]);
 ///
 ///     // log the annotation and the image

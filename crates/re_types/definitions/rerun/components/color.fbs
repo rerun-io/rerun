@@ -24,5 +24,5 @@ table Color (
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
-  rgba: rerun.datatypes.Color (order: 100);
+  rgba: rerun.datatypes.Rgba32 (order: 100);
 }

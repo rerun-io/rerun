@@ -361,9 +361,9 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.log(
         "seg_test",
         &AnnotationContext::new([
-            (13, "label1", datatypes::Color::from(0xFF0000FF)),
-            (42, "label2", datatypes::Color::from(0x00FF00FF)),
-            (99, "label3", datatypes::Color::from_rgb(0, 0, 255)),
+            (13, "label1", datatypes::Rgba32::from(0xFF0000FF)),
+            (42, "label2", datatypes::Rgba32::from(0x00FF00FF)),
+            (99, "label3", datatypes::Rgba32::from_rgb(0, 0, 255)),
         ]),
     )?;
     log_info(rec, "points/rects with user specified colors")?;
@@ -377,9 +377,9 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
             AnnotationInfo {
                 id: 13,
                 label: None,
-                color: Some(datatypes::Color::from(0xFF0000FF)),
+                color: Some(datatypes::Rgba32::from(0xFF0000FF)),
             },
-            (42, "label2", datatypes::Color::from(0x00FF00FF)).into(),
+            (42, "label2", datatypes::Rgba32::from(0x00FF00FF)).into(),
             (99, "label3").into(),
         ]),
     )?;

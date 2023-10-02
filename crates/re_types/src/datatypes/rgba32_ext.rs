@@ -1,6 +1,6 @@
-use super::Color;
+use super::Rgba32;
 
-impl Color {
+impl Rgba32 {
     #[inline]
     pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self::from([r, g, b, 255])
@@ -36,28 +36,28 @@ impl Color {
     }
 }
 
-impl From<(u8, u8, u8)> for Color {
+impl From<(u8, u8, u8)> for Rgba32 {
     #[inline]
     fn from((r, g, b): (u8, u8, u8)) -> Self {
         Self::from_rgb(r, g, b)
     }
 }
 
-impl From<[u8; 3]> for Color {
+impl From<[u8; 3]> for Rgba32 {
     #[inline]
     fn from([r, g, b]: [u8; 3]) -> Self {
         Self::from_rgb(r, g, b)
     }
 }
 
-impl From<[u8; 4]> for Color {
+impl From<[u8; 4]> for Rgba32 {
     #[inline]
     fn from([r, g, b, a]: [u8; 4]) -> Self {
         Self::from_unmultiplied_rgba(r, g, b, a)
     }
 }
 
-impl From<(u8, u8, u8, u8)> for Color {
+impl From<(u8, u8, u8, u8)> for Rgba32 {
     #[inline]
     fn from((r, g, b, a): (u8, u8, u8, u8)) -> Self {
         Self::from_unmultiplied_rgba(r, g, b, a)
@@ -65,23 +65,23 @@ impl From<(u8, u8, u8, u8)> for Color {
 }
 
 #[cfg(feature = "ecolor")]
-impl From<Color> for ecolor::Color32 {
-    fn from(color: Color) -> Self {
+impl From<Rgba32> for ecolor::Color32 {
+    fn from(color: Rgba32) -> Self {
         let [r, g, b, a] = color.to_array();
         Self::from_rgba_unmultiplied(r, g, b, a)
     }
 }
 
 #[cfg(feature = "ecolor")]
-impl From<Color> for ecolor::Rgba {
-    fn from(color: Color) -> Self {
+impl From<Rgba32> for ecolor::Rgba {
+    fn from(color: Rgba32) -> Self {
         let color: ecolor::Color32 = color.into();
         color.into()
     }
 }
 
 #[cfg(feature = "ecolor")]
-impl From<ecolor::Rgba> for Color {
+impl From<ecolor::Rgba> for Rgba32 {
     fn from(val: ecolor::Rgba) -> Self {
         val.to_srgba_unmultiplied().into()
     }

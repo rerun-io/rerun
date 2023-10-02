@@ -22,8 +22,8 @@ from rerun.components import (
 )
 from rerun.datatypes import (
     Angle,
-    ColorArrayLike,
     Quaternion,
+    Rgba32ArrayLike,
     Rotation3D,
     Rotation3DArrayLike,
     RotationAxisAngle,
@@ -226,21 +226,21 @@ def radii_expected(obj: Any) -> Any:
     return RadiusBatch._optional(expected)
 
 
-colors_arrays: list[ColorArrayLike | None] = [
+colors_arrays: list[Rgba32ArrayLike | None] = [
     None,
     [],
     np.array([]),
-    # ColorArrayLike: Sequence[ColorLike]: int
+    # Rgba32ArrayLike: Sequence[ColorLike]: int
     [
         0xAA0000CC,
         0x00BB00DD,
     ],
-    # ColorArrayLike: Sequence[ColorLike]: Color
+    # Rgba32ArrayLike: Sequence[ColorLike]: Color
     [
         Color(0xAA0000CC),
         Color(0x00BB00DD),
     ],
-    # ColorArrayLike: Sequence[ColorLike]: npt.NDArray[np.uint8]
+    # Rgba32ArrayLike: Sequence[ColorLike]: npt.NDArray[np.uint8]
     np.array(
         [
             [0xAA, 0x00, 0x00, 0xCC],
@@ -248,7 +248,7 @@ colors_arrays: list[ColorArrayLike | None] = [
         ],
         dtype=np.uint8,
     ),
-    # ColorArrayLike: Sequence[ColorLike]: npt.NDArray[np.uint32]
+    # Rgba32ArrayLike: Sequence[ColorLike]: npt.NDArray[np.uint32]
     np.array(
         [
             [0xAA0000CC],
@@ -256,7 +256,7 @@ colors_arrays: list[ColorArrayLike | None] = [
         ],
         dtype=np.uint32,
     ),
-    # ColorArrayLike: Sequence[ColorLike]: npt.NDArray[np.float32]
+    # Rgba32ArrayLike: Sequence[ColorLike]: npt.NDArray[np.float32]
     np.array(
         [
             [0xAA / 0xFF, 0.0, 0.0, 0xCC / 0xFF],
@@ -264,7 +264,7 @@ colors_arrays: list[ColorArrayLike | None] = [
         ],
         dtype=np.float32,
     ),
-    # ColorArrayLike: Sequence[ColorLike]: npt.NDArray[np.float64]
+    # Rgba32ArrayLike: Sequence[ColorLike]: npt.NDArray[np.float64]
     np.array(
         [
             [0xAA / 0xFF, 0.0, 0.0, 0xCC / 0xFF],
@@ -272,7 +272,7 @@ colors_arrays: list[ColorArrayLike | None] = [
         ],
         dtype=np.float64,
     ),
-    # ColorArrayLike: npt.NDArray[np.uint8]
+    # Rgba32ArrayLike: npt.NDArray[np.uint8]
     np.array(
         [
             0xAA,
@@ -286,7 +286,7 @@ colors_arrays: list[ColorArrayLike | None] = [
         ],
         dtype=np.uint8,
     ),
-    # ColorArrayLike: npt.NDArray[np.uint32]
+    # Rgba32ArrayLike: npt.NDArray[np.uint32]
     np.array(
         [
             0xAA0000CC,
@@ -294,7 +294,7 @@ colors_arrays: list[ColorArrayLike | None] = [
         ],
         dtype=np.uint32,
     ),
-    # ColorArrayLike: npt.NDArray[np.float32]
+    # Rgba32ArrayLike: npt.NDArray[np.float32]
     np.array(
         [
             0xAA / 0xFF,
@@ -308,7 +308,7 @@ colors_arrays: list[ColorArrayLike | None] = [
         ],
         dtype=np.float32,
     ),
-    # ColorArrayLike: npt.NDArray[np.float64]
+    # Rgba32ArrayLike: npt.NDArray[np.float64]
     np.array(
         [
             0xAA / 0xFF,

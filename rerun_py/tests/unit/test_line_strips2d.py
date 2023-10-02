@@ -13,7 +13,7 @@ from rerun.components import (
     LineStrip2DBatch,
     RadiusArrayLike,
 )
-from rerun.datatypes import ClassIdArrayLike, ColorArrayLike, Utf8ArrayLike, Vec2D
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2D
 
 from .common_arrays import (
     class_ids_arrays,
@@ -87,7 +87,7 @@ def test_line_strips2d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         strips = cast(LineStrip2DArrayLike, strips)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)

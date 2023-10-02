@@ -127,7 +127,7 @@ class LineStrips3D(Archetype):
         strips: components.LineStrip3DArrayLike,
         *,
         radii: components.RadiusArrayLike | None = None,
-        colors: datatypes.ColorArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,

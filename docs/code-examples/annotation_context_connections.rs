@@ -1,7 +1,5 @@
 //! Log some very simple points.
 
-use rerun::datatypes::Color;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =
         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_connections")
@@ -15,10 +13,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::AnnotationContext::new([rerun::ClassDescription {
             info: 0.into(),
             keypoint_annotations: vec![
-                (0, "zero", Color::from(0xFF0000FF)).into(),
-                (1, "one", Color::from(0x00FF00FF)).into(),
-                (2, "two", Color::from(0x0000FFFF)).into(),
-                (3, "three", Color::from(0xFFFF00FF)).into(),
+                (0, "zero", rerun::Rgba32::from(0xFF0000FF)).into(),
+                (1, "one", rerun::Rgba32::from(0x00FF00FF)).into(),
+                (2, "two", rerun::Rgba32::from(0x0000FFFF)).into(),
+                (3, "three", rerun::Rgba32::from(0xFFFF00FF)).into(),
             ],
             keypoint_connections: rerun::KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
         }]),

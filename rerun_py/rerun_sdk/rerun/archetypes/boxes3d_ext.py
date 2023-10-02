@@ -17,7 +17,7 @@ class Boxes3DExt:
         half_sizes: datatypes.Vec3DArrayLike | None = None,
         centers: datatypes.Vec3DArrayLike | None = None,
         rotations: datatypes.Rotation3DArrayLike | None = None,
-        colors: datatypes.ColorArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
         radii: components.RadiusArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,

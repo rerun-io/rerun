@@ -1,7 +1,5 @@
 //! Log rectangles with different colors and labels using annotation context
 
-use rerun::datatypes::Color;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =
         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_rects").memory()?;
@@ -10,8 +8,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "/",
         &rerun::AnnotationContext::new([
-            (1, "red", Color::from(0xFF0000FF)),
-            (2, "green", Color::from(0x00FF00FF)),
+            (1, "red", rerun::Rgba32::from(0xFF0000FF)),
+            (2, "green", rerun::Rgba32::from(0x00FF00FF)),
         ]),
     )?;
 

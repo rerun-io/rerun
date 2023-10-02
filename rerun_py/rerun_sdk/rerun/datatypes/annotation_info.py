@@ -32,13 +32,15 @@ def _annotation_info__label__special_field_converter_override(x: datatypes.Utf8L
         return datatypes.Utf8(x)
 
 
-def _annotation_info__color__special_field_converter_override(x: datatypes.ColorLike | None) -> datatypes.Color | None:
+def _annotation_info__color__special_field_converter_override(
+    x: datatypes.Rgba32Like | None,
+) -> datatypes.Rgba32 | None:
     if x is None:
         return None
-    elif isinstance(x, datatypes.Color):
+    elif isinstance(x, datatypes.Rgba32):
         return x
     else:
-        return datatypes.Color(x)
+        return datatypes.Rgba32(x)
 
 
 @define(init=False)
@@ -50,7 +52,9 @@ class AnnotationInfo(AnnotationInfoExt):
     The id refers either to a class or key-point id
     """
 
-    def __init__(self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.ColorLike | None = None):
+    def __init__(
+        self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.Rgba32Like | None = None
+    ):
         """
         Create a new instance of the AnnotationInfo datatype.
 
@@ -79,7 +83,7 @@ class AnnotationInfo(AnnotationInfoExt):
     The label that will be shown in the UI.
     """
 
-    color: datatypes.Color | None = field(
+    color: datatypes.Rgba32 | None = field(
         default=None, converter=_annotation_info__color__special_field_converter_override
     )
     """
@@ -88,7 +92,7 @@ class AnnotationInfo(AnnotationInfoExt):
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, int, Tuple[int, str], Tuple[int, str, datatypes.ColorLike]]
+    AnnotationInfoLike = Union[AnnotationInfo, int, Tuple[int, str], Tuple[int, str, datatypes.Rgba32Like]]
 else:
     AnnotationInfoLike = Any
 

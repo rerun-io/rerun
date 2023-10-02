@@ -17,7 +17,7 @@ SCENARIO(
             rr::datatypes::ClassDescription({1, "hello"}),
             rr::datatypes::ClassDescription(rr::datatypes::AnnotationInfo(1, "hello")),
             rr::datatypes::ClassDescription(
-                {2, "world", rr::datatypes::Color(3, 4, 5)},
+                {2, "world", rr::datatypes::Rgba32(3, 4, 5)},
                 {{17, "head"}, {42, "shoulders"}},
                 {
                     {1, 2},
@@ -25,7 +25,7 @@ SCENARIO(
                 }
             ),
             rr::datatypes::ClassDescription(
-                rr::datatypes::AnnotationInfo(2, "world", rr::datatypes::Color(3, 4, 5)),
+                rr::datatypes::AnnotationInfo(2, "world", rr::datatypes::Rgba32(3, 4, 5)),
                 {
                     rr::datatypes::AnnotationInfo(17, "head"),
                     rr::datatypes::AnnotationInfo(42, "shoulders"),
@@ -55,7 +55,7 @@ SCENARIO(
             {
                 element.class_id = 2;
                 element.class_description.info.id = 2;
-                element.class_description.info.color = rr::datatypes::Color(3, 4, 5);
+                element.class_description.info.color = rr::datatypes::Rgba32(3, 4, 5);
                 element.class_description.info.label = "world";
 
                 keypoint_annotation.id = 17;

@@ -52,19 +52,19 @@
 //! ```no_run
 //! # use rerun::external::image;
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
-//! # fn positions() -> Vec<rerun::components::Position3D> { Default::default() }
-//! # fn colors() -> Vec<rerun::components::Color> { Default::default() }
+//! # fn positions() -> Vec<rerun::Position3D> { Default::default() }
+//! # fn colors() -> Vec<rerun::Color> { Default::default() }
 //! // Stream log data to an awaiting `rerun` process.
 //! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app")
 //!     .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
 //!
-//! let points: Vec<rerun::components::Position3D> = positions();
-//! let colors: Vec<rerun::components::Color> = colors();
+//! let points: Vec<rerun::Position3D> = positions();
+//! let colors: Vec<rerun::Color> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
 //! rec.set_time_sequence("frame", 42);
-//! rec.log("path/to/points", &rerun::archetypes::Points3D::new(points).with_colors(colors))?;
-//! rec.log("path/to/image", &rerun::archetypes::Image::try_from(image)?)?;
+//! rec.log("path/to/points", &rerun::Points3D::new(points).with_colors(colors))?;
+//! rec.log("path/to/image", &rerun::Image::try_from(image)?)?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
