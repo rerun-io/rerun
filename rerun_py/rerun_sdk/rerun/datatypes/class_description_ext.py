@@ -64,6 +64,7 @@ class ClassDescriptionExt:
     # Implement the AsComponents protocol
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         from ..archetypes import AnnotationContext
+        from . import ClassDescription
 
         return AnnotationContext(cast(ClassDescription, self)).as_component_batches()
 
