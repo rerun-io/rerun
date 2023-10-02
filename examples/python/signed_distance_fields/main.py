@@ -92,7 +92,7 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
     scale = bs2.scale / bs1.scale
     center = bs2.center - bs1.center * scale
 
-    mesh3d = rr.Asset3D.from_file(path=str(path))
+    mesh3d = rr.Asset3D(path)
     mesh3d.transform = rr.OutOfTreeTransform3DBatch(rr.TranslationRotationScale3D(translation=center, scale=scale))
     rr.log("world/mesh", mesh3d)
 
