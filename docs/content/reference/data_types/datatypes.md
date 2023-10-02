@@ -1,11 +1,11 @@
 ---
-title: "Data Types"
+title: "Datatypes"
 order: 3
 ---
 
 Data types are the lowest layer of the data model hierarchy
 
-## Available data types
+## Available datatypes
 
 * [`Angle`](datatypes/angle.md)
 * [`AnnotationInfo`](datatypes/annotation_info.md)

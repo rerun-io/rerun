@@ -320,7 +320,7 @@ impl ObjectKindExt for ObjectKind {
 
     fn title(&self) -> &'static str {
         match self {
-            ObjectKind::Datatype => "Data Types",
+            ObjectKind::Datatype => "Datatypes",
             ObjectKind::Component => "Components",
             ObjectKind::Archetype => "Archetypes",
         }
