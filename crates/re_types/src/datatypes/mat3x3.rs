@@ -25,7 +25,10 @@
 /// row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 /// ```
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
-pub struct Mat3x3(pub [f32; 9usize]);
+pub struct Mat3x3(
+    /// Flat list of matrix coefficients in column-major order.
+    pub [f32; 9usize],
+);
 
 impl From<[f32; 9usize]> for Mat3x3 {
     #[inline]

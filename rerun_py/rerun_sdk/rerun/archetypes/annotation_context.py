@@ -125,7 +125,14 @@ class AnnotationContext(Archetype):
     """
 
     def __init__(self: Any, context: components.AnnotationContextLike):
-        """Create a new instance of the AnnotationContext archetype."""
+        """
+        Create a new instance of the AnnotationContext archetype.
+
+        Parameters
+        ----------
+        context:
+             List of class descriptions, mapping class indices to class names, colors etc.
+        """
 
         # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
         self.__attrs_init__(context=context)
@@ -134,5 +141,9 @@ class AnnotationContext(Archetype):
         metadata={"component": "required"},
         converter=components.AnnotationContextBatch,  # type: ignore[misc]
     )
+    """
+    List of class descriptions, mapping class indices to class names, colors etc.
+    """
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
