@@ -258,9 +258,11 @@ fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMa
         ));
     }
 
-    if !required.is_empty() || !recommended.is_empty() || !optional.is_empty() {
-        putln!(o, "## Components");
+    if required.is_empty() && recommended.is_empty() && optional.is_empty() {
+        return;
     }
+
+    putln!(o, "## Components");
     if !required.is_empty() {
         putln!(o);
         putln!(o, "**Required**: {}", required.join(", "));
