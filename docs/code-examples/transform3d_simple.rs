@@ -2,9 +2,7 @@
 
 use rerun::{
     archetypes::{Arrows3D, Transform3D},
-    datatypes::{
-        Angle, RotationAxisAngle, Scale3D, TranslationRotationScale3D,
-    },
+    datatypes::{Angle, RotationAxisAngle, Scale3D, TranslationRotationScale3D},
     RecordingStreamBuilder,
 };
 use std::f32::consts::PI;
