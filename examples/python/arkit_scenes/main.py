@@ -256,7 +256,7 @@ def log_camera(
 
     # pathlib makes it easy to get the parent, but log methods requires a string
     camera_path = str(PosixPath(entity_id).parent)
-    rr.log(camera_path, camera_from_world)
+    rr.log(camera_path, rr.Transform3D(transform=camera_from_world))
     rr.log(entity_id, rr.Pinhole(image_from_camera=intrinsic, resolution=[w, h]))
 
 

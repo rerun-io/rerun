@@ -43,7 +43,7 @@ def log_data() -> None:
 
         rr.log(
             "helix/structure",
-            rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau)),
+            rr.Transform3D(rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau)),
         )
 
 

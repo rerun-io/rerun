@@ -145,7 +145,7 @@ def log_camera(cam: ARCamera) -> None:
 
     rr.log(
         "world/camera",
-        rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rot.as_quat())),
+        rr.Transform3D(translation=translation, rotation=rr.Quaternion(xyzw=rot.as_quat())),
     )
     rr.log(
         "world/camera",

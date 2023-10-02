@@ -27,7 +27,7 @@ def log_car_data() -> None:
         # Log the camera pose:
         rr.log(
             "world/camera",
-            rr.TranslationRotationScale3D(sample.camera.position, rr.Quaternion(xyzw=sample.camera.rotation_q)),
+            rr.Transform3D(translation=sample.camera.position, rotation=rr.Quaternion(xyzw=sample.camera.rotation_q)),
         )
         rr.log("world/camera", rr.ViewCoordinates.RDF, timeless=True)  # X=Right, Y=Down, Z=Forward
 
