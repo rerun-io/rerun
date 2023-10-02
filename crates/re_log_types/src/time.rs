@@ -1,10 +1,6 @@
 use std::ops::RangeInclusive;
 use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 
-// TODO(paris): Added `serde::Deserialize, serde::Serialize` to fix error in `crates/re_viewer_context/src/app_options.rs`:
-// error[E0277]: the trait bound `TimeZone: Deserialize<'_>` is not satisfied
-// error[E0277]: the trait bound `TimeZone: Serialize` is not satisfied
-// Is there any issue with this I'm not seeing?
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeZone {
@@ -73,22 +69,27 @@ impl Time {
         self.nanos_since_epoch() % (24 * 60 * 60 * 1_000_000_000) == 0
     }
 
-    // TODO(paris): Is there a pattern in Rust where you put free functions in an anonymous namespace versus in the struct?
-    // TODO(paris): Should we #[inline] this? I'm guessing the suggestion is to benchmark with and without, though this perhaps seems a bit big for inlining.
     fn time_string(
         datetime: OffsetDateTime,
         parsed_format: &Vec<FormatItem<'_>>,
         time_zone_for_timestamps: TimeZone,
     ) -> String {
-        let local_offset =
-            (time_zone_for_timestamps == TimeZone::Local).then(UtcOffset::current_local_offset);
-        if let Some(Ok(local_offset)) = local_offset {
-            // Return in the local timezone.
-            let local_datetime = datetime.to_offset(local_offset);
-            local_datetime.format(&parsed_format).unwrap()
-        } else {
-            // Return in UTC.
-            format!("{}Z", datetime.format(&parsed_format).unwrap())
+        match time_zone_for_timestamps {
+            TimeZone::Local => {
+                let local_offset =
+                    (time_zone_for_timestamps == TimeZone::Local).then(UtcOffset::current_local_offset);
+                if let Some(Ok(local_offset)) = local_offset {
+                    // Return in the local timezone.
+                    let local_datetime = datetime.to_offset(local_offset);
+                    local_datetime.format(&parsed_format).unwrap()
+                } else {
+                    // Return in UTC.
+                    format!("{}Z", datetime.format(&parsed_format).unwrap())
+                }
+            }
+            TimeZone::Utc => {
+                format!("{}Z", datetime.format(&parsed_format).unwrap())
+            }
         }
     }
 
@@ -178,7 +179,6 @@ impl Time {
         }
     }
 
-    // TODO(paris): I left the return type as Option<String> to match the existing calling code in recordings_panel.rs. Is this okay, or a bad pattern?
     // Human-readable formatting with a custom time_format.
     pub fn format_time_custom(
         &self,

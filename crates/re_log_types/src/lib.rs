@@ -52,7 +52,6 @@ pub use self::data_table::{
 };
 pub use self::index::*;
 pub use self::path::*;
-// TODO(paris): TimeZone is also used by Timeline etc. in time_point - should I put it under a different parent / a new top level parent?
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
