@@ -40,7 +40,7 @@
 ///
 ///     rec.log(
 ///         "base/translated",
-///         &Transform3D::new(TranslationAndMat3x3::translation([1.0, 0.0, 0.0])),
+///         &Transform3D::new(TranslationRotationScale3D::translation([1.0, 0.0, 0.0])),
 ///     )?;
 ///
 ///     rec.log(
