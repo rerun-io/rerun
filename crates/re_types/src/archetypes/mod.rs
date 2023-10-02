@@ -33,6 +33,7 @@ mod text_document;
 mod text_log;
 mod time_series_scalar;
 mod transform3d;
+mod transform3d_ext;
 mod view_coordinates;
 mod view_coordinates_ext;
 
