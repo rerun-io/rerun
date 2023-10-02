@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
       - uses: streetsidesoftware/cspell-action@v2
         with:
           config: "docs/cspell.json"
@@ -26,8 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
       - uses: jprochazk/linkinator-action@main
         with:
           paths: "docs/**/*.md"

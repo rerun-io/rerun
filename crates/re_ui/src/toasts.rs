@@ -107,9 +107,7 @@ impl Toasts {
                 })
                 .response;
 
-            let response = response
-                .interact(egui::Sense::click())
-                .on_hover_text("Click to close and copy contents");
+            let response = response.on_hover_text("Click to close and copy contents");
 
             if !response.hovered() {
                 toast.options.ttl_sec -= dt;
