@@ -7,7 +7,7 @@ use rerun::{
 
 // ---
 
-/// A custom [component bundle] that extends Rerun's builtin [`Points3D`] archetype with extra
+/// A custom [component bundle] that extends Rerun's builtin [`rerun::Points3D`] archetype with extra
 /// [`rerun::Component`]s.
 ///
 /// [component bundle]: [`AsComponents`]
@@ -38,7 +38,7 @@ impl rerun::AsComponents for CustomPoints3D {
 
 // ---
 
-/// A custom [`rerun::Component`] that is backed by a builtin [`Float32`] scalar [`rerun::Datatype`].
+/// A custom [`rerun::Component`] that is backed by a builtin [`rerun::Float32`] scalar [`rerun::Datatype`].
 #[derive(Debug, Clone, Copy)]
 struct Confidence(rerun::Float32);
 
