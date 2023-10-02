@@ -5,10 +5,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .image_ext import ImageExt
 
 __all__ = ["Image"]
@@ -52,7 +55,24 @@ class Image(ImageExt, Archetype):
     </picture>
     """
 
-    # __init__ can be found in image_ext.py
+    def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
+        """
+        Create a new instance of the Image archetype.
+
+        Parameters
+        ----------
+        data:
+             The image data. Should always be a rank-2 or rank-3 tensor.
+        draw_order:
+             An optional floating point value that specifies the 2D drawing order.
+             Objects with higher values are drawn on top of those with lower values.
+        """
+
+        # You can define your own __init__ function as a member of ImageExt in image_ext.py
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(data=data, draw_order=draw_order)
+            return
+        self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

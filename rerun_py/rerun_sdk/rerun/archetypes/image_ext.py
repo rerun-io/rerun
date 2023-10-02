@@ -1,58 +1,79 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from io import BytesIO
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pyarrow as pa
 
-import rerun as rr
-from rerun.components.draw_order import DrawOrderLike
-from rerun.datatypes.tensor_data import TensorDataLike
-
 from .._validators import find_non_empty_dim_indices
+from ..datatypes import TensorBufferType
 from ..error_utils import _send_warning, catch_and_log_exceptions
 
 if TYPE_CHECKING:
+    from .._image import ImageEncoded
     from ..components import TensorDataBatch
     from ..datatypes import TensorDataArrayLike
+    from . import Image
 
 
 class ImageExt:
-    def __init__(
-        self: Any, data: TensorDataLike, *, draw_order: DrawOrderLike | None = None, jpeg_quality: None | int = None
-    ):
+    JPEG_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("JPEG")
+
+    def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:
         """
-        Create a new instance of the Image archetype.
+        Converts an `Image` to an `ImageEncoded` using JPEG compression.
+
+        JPEG compression works best for photographs. Only RGB images are
+        supported. Note that compressing to JPEG costs a bit of CPU time, both
+        when logging and later when viewing them.
 
         Parameters
         ----------
-        data:
-            The image data. Should always be a rank-2 or rank-3 tensor.
-        draw_order:
-            An optional floating point value that specifies the 2D drawing order.
-            Objects with higher values are drawn on top of those with lower values.
         jpeg_quality:
-            If set, encode the image as a JPEG to save storage space.
-            Higher quality = larger file size.
-            A quality of 95 still saves a lot of space, but is visually very similar.
-            JPEG compression works best for photographs.
-            Only RGB images are supported.
-            Note that compressing to JPEG costs a bit of CPU time, both when logging
-            and later when viewing them.
-            Setting this parameter is only allowed if the passed in image `data` is not already of type `TensorData`
-            which may specify the `jpeg_quality` already.
+            Higher quality = larger file size. A quality of 95 still saves a lot
+            of space, but is visually very similar.
         """
 
-        # You can define your own __init__ function as a member of ImageExt in image_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            if jpeg_quality is not None:
-                if isinstance(data, rr.components.TensorData) or isinstance(data, rr.datatypes.TensorData):
-                    raise ValueError("Cannot specify `jpeg_quality` if `data` is already of type `TensorData`")
-                data = rr.components.TensorData(array=data, jpeg_quality=jpeg_quality)
+        from PIL import Image as PILImage
 
-            self.__attrs_init__(data=data, draw_order=draw_order)
-            return
-        self.__attrs_clear__()
+        from .._image import ImageEncoded
+        from . import Image
+
+        self = cast(Image, self)
+
+        with catch_and_log_exceptions(context="Image compression"):
+            tensor_data_arrow = self.data.as_arrow_array()
+
+            if tensor_data_arrow[0].value["buffer"].type_code == self.JPEG_TYPE_ID:
+                _send_warning(
+                    "Image is already compressed as JPEG. Ignoring compression request.",
+                    1,
+                    recording=None,
+                )
+                return self
+
+            shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
+            non_empty_dims = find_non_empty_dim_indices(shape_dims)
+            filtered_shape = shape_dims[non_empty_dims]
+            if filtered_shape[-1] != 3:
+                raise ValueError("Only RGB images are supported for JPEG compression")
+
+            image_array = tensor_data_arrow[0].value["buffer"].value.values.to_numpy().reshape(filtered_shape)
+
+            if image_array.dtype not in ["uint8", "sint32", "float32"]:
+                # Convert to a format supported by Image.fromarray
+                image_array = image_array.astype("float32")
+
+            pil_image = PILImage.fromarray(image_array, mode="RGB")
+            output = BytesIO()
+            pil_image.save(output, format="JPEG", quality=jpeg_quality)
+            jpeg_bytes = output.getvalue()
+            output.close()
+            return ImageEncoded(contents=jpeg_bytes)
+
+        # On failure to compress, still return the original image
+        return self
 
     @staticmethod
     @catch_and_log_exceptions("Image converter")
