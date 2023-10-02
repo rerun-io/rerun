@@ -598,10 +598,8 @@ pub fn picking(
             // thing as an up-front archetype query somewhere.
             if meaning == TensorDataMeaning::Depth {
                 if let Some(meter) = meter {
-                    if let Some(raw_value) = tensor.get(&[
-                        picking_context.pointer_in_space2d.y.round() as _,
-                        picking_context.pointer_in_space2d.x.round() as _,
-                    ]) {
+                    let [x, y] = coords;
+                    if let Some(raw_value) = tensor.get(&[y as _, x as _]) {
                         let raw_value = raw_value.as_f64();
                         let depth_in_meters = raw_value / meter as f64;
                         depth_at_pointer = Some(depth_in_meters as f32);
