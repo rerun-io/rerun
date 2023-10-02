@@ -259,3 +259,25 @@ def test_transform3d_translation_rotation_scale3d_scale(scale: Scale3DLike) -> N
         Transform3D(TranslationRotationScale3D(scale=Scale3D([1, 2, 3])))
     ) or tm.transform == Transform3DBatch(Transform3D(TranslationRotationScale3D(scale=Scale3D(4.0))))
     assert tm == rr.Transform3D(scale=Scale3D([1, 2, 3])) or tm == rr.Transform3D(scale=Scale3D(4.0))
+
+
+def test_transform3d_invalid_parameter_combinations() -> None:
+    rr.set_strict_mode(True)
+
+    # combine transform with anything else.
+    with pytest.raises(ValueError):
+        rr.Transform3D(transform=TranslationRotationScale3D(translation=[1, 2, 3]), translation=[1, 2, 3])
+    with pytest.raises(ValueError):
+        rr.Transform3D(transform=TranslationRotationScale3D(translation=[1, 2, 3]), scale=2)
+    with pytest.raises(ValueError):
+        rr.Transform3D(
+            transform=TranslationRotationScale3D(translation=[1, 2, 3]), rotation=rr.Quaternion(xyzw=[1, 2, 3, 4])
+        )
+    with pytest.raises(ValueError):
+        rr.Transform3D(transform=TranslationRotationScale3D(translation=[1, 2, 3]), mat3x3=[1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    # combine 3x3 matrix with rotation or scale
+    with pytest.raises(ValueError):
+        rr.Transform3D(mat3x3=[1, 2, 3, 4, 5, 6, 7, 8, 9], scale=2)
+    with pytest.raises(ValueError):
+        rr.Transform3D(mat3x3=[1, 2, 3, 4, 5, 6, 7, 8, 9], rotation=rr.Quaternion(xyzw=[1, 2, 3, 4]))
