@@ -22,14 +22,17 @@ impl DataUi for InstancePath {
         let store = &ctx.store_db.entity_db.data_store;
 
         let Some(components) = store.all_components(&query.timeline, entity_path) else {
-            if ctx.store_db.entity_db.knows_of_entity(entity_path) {
+            if ctx.store_db.entity_db.is_known_entity(entity_path) {
                 ui.label(format!(
                     "No components in entity {:?} on timeline {:?}",
                     entity_path,
                     query.timeline.name()
                 ));
             } else {
-                // Maybe hovering a root entity in the streams panel which has no components
+                ui.label(
+                    ctx.re_ui
+                        .error_text(format!("Unknown entity: {entity_path:?}")),
+                );
             }
             return;
         };
