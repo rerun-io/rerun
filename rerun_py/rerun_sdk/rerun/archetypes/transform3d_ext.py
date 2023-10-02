@@ -19,7 +19,7 @@ class Transform3DExt:
         translation: Vec3DLike | None = None,
         rotation: Rotation3DLike | None = None,
         scale: Scale3DLike | None = None,
-        matrix: Mat3x3Like | None = None,
+        mat3x3: Mat3x3Like | None = None,
         from_parent: bool = False,
     ):
         """
@@ -35,11 +35,11 @@ class Transform3DExt:
             Not compatible with `transform`.
         rotation:
             3D rotation, applied second.
-            Not compatible with `transform` and `matrix` parameters.
+            Not compatible with `transform` and `mat3x3` parameters.
         scale:
             3D scale, applied last.
-            Not compatible with `transform` and `matrix` parameters.
-        matrix:
+            Not compatible with `transform` and `mat3x3` parameters.
+        mat3x3:
             3x3 matrix representing scale and rotation, applied after translation.
             Not compatible with `rotation` and `scale` parameters.
             TODO(#3559): Support 4x4 and 4x3 matrices.
@@ -49,18 +49,18 @@ class Transform3DExt:
         """
 
         if transform is not None:
-            if translation is not None or rotation is not None or scale is not None or matrix is not None:
+            if translation is not None or rotation is not None or scale is not None or mat3x3 is not None:
                 raise ValueError("If a transform is given, none of the other parameters can be set.")
             self.__attrs_init__(transform=transform)
         else:
-            if rotation is not None and matrix is not None:
-                raise ValueError("Rotation and matrix parameters are mutually exclusive.")
-            if scale is not None and matrix is not None:
-                raise ValueError("Scale and matrix parameters are mutually exclusive.")
+            if rotation is not None and mat3x3 is not None:
+                raise ValueError("Rotation and mat3x3 parameters are mutually exclusive.")
+            if scale is not None and mat3x3 is not None:
+                raise ValueError("Scale and mat3x3 parameters are mutually exclusive.")
 
-            if matrix is not None:
+            if mat3x3 is not None:
                 self.__attrs_init__(
-                    transform=TranslationAndMat3x3(translation=translation, matrix=matrix, from_parent=from_parent)
+                    transform=TranslationAndMat3x3(translation=translation, mat3x3=mat3x3, from_parent=from_parent)
                 )
             else:
                 self.__attrs_init__(

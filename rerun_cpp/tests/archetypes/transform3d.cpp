@@ -39,7 +39,7 @@ SCENARIO(
             AND_GIVEN("matrix as initializer list") {
                 auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST, true)
                                            : Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST);
-                translation_and_mat3.matrix = rrd::Mat3x3(MATRIX_ILIST);
+                translation_and_mat3.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
@@ -48,7 +48,7 @@ SCENARIO(
             AND_GIVEN("matrix as column vectors") {
                 auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, columns, true)
                                            : Transform3D({1.0f, 2.0f, 3.0f}, columns);
-                translation_and_mat3.matrix = columns;
+                translation_and_mat3.mat3x3 = columns;
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
@@ -60,7 +60,7 @@ SCENARIO(
                                        : Transform3D({1.0f, 2.0f, 3.0f});
 
             translation_and_mat3.translation = {1.0f, 2.0f, 3.0f};
-            translation_and_mat3.matrix = std::nullopt;
+            translation_and_mat3.mat3x3 = std::nullopt;
             translation_and_mat3.from_parent = from_parent;
             manual.transform.repr = rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
@@ -73,7 +73,7 @@ SCENARIO(
             AND_GIVEN("matrix as initializer list") {
                 auto utility =
                     from_parent ? Transform3D(MATRIX_ILIST, true) : Transform3D(MATRIX_ILIST);
-                translation_and_mat3.matrix = rrd::Mat3x3(MATRIX_ILIST);
+                translation_and_mat3.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
@@ -81,7 +81,7 @@ SCENARIO(
             }
             AND_GIVEN("matrix as column vectors") {
                 auto utility = from_parent ? Transform3D(columns, true) : Transform3D(columns);
-                translation_and_mat3.matrix = columns;
+                translation_and_mat3.mat3x3 = columns;
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 

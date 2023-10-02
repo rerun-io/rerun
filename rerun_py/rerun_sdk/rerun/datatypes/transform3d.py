@@ -68,7 +68,7 @@ class Transform3DType(BaseExtensionType):
                                     metadata={},
                                 ),
                                 pa.field(
-                                    "matrix",
+                                    "mat3x3",
                                     pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
                                     nullable=True,
                                     metadata={},

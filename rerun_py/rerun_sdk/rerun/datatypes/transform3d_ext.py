@@ -124,12 +124,12 @@ def _build_struct_array_from_translation_mat3x3(
     translation_mat3: TranslationAndMat3x3, type_: pa.StructType
 ) -> pa.StructArray:
     translation = _optional_translation_to_arrow(translation_mat3.translation)
-    matrix = _optional_mat3x3_to_arrow(translation_mat3.matrix)
+    mat3x3 = _optional_mat3x3_to_arrow(translation_mat3.mat3x3)
 
     return pa.StructArray.from_arrays(
         [
             translation,
-            matrix,
+            mat3x3,
             pa.array([translation_mat3.from_parent], type=pa.bool_()),
         ],
         fields=list(type_),

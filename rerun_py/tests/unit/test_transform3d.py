@@ -144,15 +144,15 @@ def test_translation_rotation_from_parent() -> None:
 @pytest.mark.parametrize("trans", VEC_3D_INPUT + [None])
 @pytest.mark.parametrize("mat", MAT_3X3_INPUT + [None])
 def test_translation_and_mat3x3(trans: Vec3DLike | None, mat: Mat3x3Like | None) -> None:
-    tm = TranslationAndMat3x3(translation=trans, matrix=mat)
+    tm = TranslationAndMat3x3(translation=trans, mat3x3=mat)
     if trans is None:
         assert tm.translation is None
     else:
         assert_correct_vec3d(tm.translation)
     if mat is None:
-        assert tm.matrix is None
+        assert tm.mat3x3 is None
     else:
-        assert_correct_mat3x3(tm.matrix)
+        assert_correct_mat3x3(tm.mat3x3)
 
 
 def test_translation_and_mat3x3_from_parent() -> None:
@@ -171,34 +171,34 @@ def test_transform3d_translation_and_mat3x3(trans: Vec3DLike | None, mat: Mat3x3
     expected_trans = Vec3D([1, 2, 3]) if trans is not None else None
     expected_mat = Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]) if mat is not None else None
 
-    tm = rr.Transform3D(TranslationAndMat3x3(translation=trans, matrix=mat))
+    tm = rr.Transform3D(TranslationAndMat3x3(translation=trans, mat3x3=mat))
 
     assert tm.transform == Transform3DBatch(
         Transform3D(
             TranslationAndMat3x3(
                 translation=expected_trans,
-                matrix=expected_mat,
+                mat3x3=expected_mat,
             )
         )
     )
     if mat is None:
         assert rr.Transform3D(TranslationRotationScale3D(translation=trans)) == rr.Transform3D(
             translation=trans,
-            matrix=mat,
+            mat3x3=mat,
         )
     else:
         assert tm == rr.Transform3D(
             translation=trans,
-            matrix=mat,
+            mat3x3=mat,
         )
 
-    tm2 = rr.Transform3D(TranslationAndMat3x3(translation=trans, matrix=mat, from_parent=True))
+    tm2 = rr.Transform3D(TranslationAndMat3x3(translation=trans, mat3x3=mat, from_parent=True))
 
     assert tm2.transform == Transform3DBatch(
         Transform3D(
             TranslationAndMat3x3(
                 translation=expected_trans,
-                matrix=expected_mat,
+                mat3x3=expected_mat,
                 from_parent=True,
             )
         )
@@ -206,13 +206,13 @@ def test_transform3d_translation_and_mat3x3(trans: Vec3DLike | None, mat: Mat3x3
     if mat is None:
         assert rr.Transform3D(TranslationRotationScale3D(translation=trans, from_parent=True)) == rr.Transform3D(
             translation=trans,
-            matrix=mat,
+            mat3x3=mat,
             from_parent=True,
         )
     else:
         assert tm2 == rr.Transform3D(
             translation=expected_trans,
-            matrix=expected_mat,
+            mat3x3=expected_mat,
             from_parent=True,
         )
 

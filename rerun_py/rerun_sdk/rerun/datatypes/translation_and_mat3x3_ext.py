@@ -11,7 +11,7 @@ class TranslationAndMat3x3Ext:
     def __init__(
         self: Any,
         translation: Vec3DLike | None = None,
-        matrix: Mat3x3Like | None = None,
+        mat3x3: Mat3x3Like | None = None,
         *,
         from_parent: bool = False,
     ) -> None:
@@ -22,7 +22,7 @@ class TranslationAndMat3x3Ext:
         ----------
         translation:
              3D translation, applied after the matrix.
-        matrix:
+        mat3x3:
              3x3 matrix for scale, rotation & shear.
         from_parent:
              If true, the transform maps from the parent space to the space where the transform was logged.
@@ -30,5 +30,5 @@ class TranslationAndMat3x3Ext:
         """
 
         self.__attrs_init__(  # pyright: ignore[reportGeneralTypeIssues]
-            translation=translation, matrix=matrix, from_parent=from_parent
+            translation=translation, mat3x3=mat3x3, from_parent=from_parent
         )
