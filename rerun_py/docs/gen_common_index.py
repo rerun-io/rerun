@@ -63,7 +63,17 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Spatial Primitives",
         module_summary=None,
         func_list=[],
-        class_list=["Points2D", "Points3D", "Boxes2D", "Boxes3D", "LineStrips2D", "LineStrips3D", "Mesh3D", "Asset3D"],
+        class_list=[
+            "Points2D",
+            "Points3D",
+            "Boxes2D",
+            "Boxes3D",
+            "LineStrips2D",
+            "LineStrips3D",
+            "Arrows3D",
+            "Mesh3D",
+            "Asset3D",
+        ],
     ),
     Section(
         title="Images",
@@ -228,6 +238,7 @@ overview of what's possible and how.
                 # fd.write(f"::: rerun.{class_name}\n")
                 fd.write(f"::: rerun.{class_name}\n")
                 fd.write("    options:\n")
+                fd.write("      show_root_heading: true\n")
                 fd.write("      heading_level: 4\n")
                 fd.write("      inherited_members: true\n")
 
