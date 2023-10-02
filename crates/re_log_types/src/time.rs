@@ -76,14 +76,15 @@ impl Time {
     ) -> String {
         match time_zone_for_timestamps {
             TimeZone::Local => {
-                let local_offset =
-                    (time_zone_for_timestamps == TimeZone::Local).then(UtcOffset::current_local_offset);
-                if let Some(Ok(local_offset)) = local_offset {
+                if let Ok(local_offset) = UtcOffset::current_local_offset() {
                     // Return in the local timezone.
                     let local_datetime = datetime.to_offset(local_offset);
                     local_datetime.format(&parsed_format).unwrap()
                 } else {
-                    // Return in UTC.
+                    // Fallback to UTC.
+                    // Skipping `err` description from logging because as of writing it doesn't add much, see
+                    // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
+                    re_log::warn_once!("Failed to access local timezone offset to UTC.");
                     format!("{}Z", datetime.format(&parsed_format).unwrap())
                 }
             }
@@ -185,15 +186,10 @@ impl Time {
         time_format: &str,
         time_zone_for_timestamps: TimeZone,
     ) -> Option<String> {
-        if let Some(datetime) = self.to_datetime() {
+        self.to_datetime().map(|datetime| {
             let parsed_format = time::format_description::parse(time_format).unwrap();
-            return Some(Self::time_string(
-                datetime,
-                &parsed_format,
-                time_zone_for_timestamps,
-            ));
-        }
-        None
+            Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
+        })
     }
 
     #[inline]

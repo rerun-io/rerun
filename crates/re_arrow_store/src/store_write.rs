@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 use re_log::{debug, trace};
 use re_log_types::{
     DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, SizeBytes as _, TimeInt,
-    TimePoint, TimeRange, TimeZone,
+    TimePoint, TimeRange,
 };
 use re_types::{components::InstanceKey, ComponentName, ComponentNameSet, Loggable};
 
@@ -388,9 +388,7 @@ impl IndexedTable {
 
                 re_log::debug_once!(
                     "Failed to split bucket on timeline {}",
-                    bucket
-                        .timeline
-                        .format_time_range(&bucket_time_range, TimeZone::Utc)
+                    bucket.timeline.format_time_range_utc(&bucket_time_range)
                 );
 
                 if 1 < config.indexed_bucket_num_rows

@@ -106,6 +106,12 @@ impl Timeline {
         )
     }
 
+    /// Returns a formatted string of `time_range` on this `Timeline`.
+    #[inline]
+    pub fn format_time_range_utc(&self, time_range: &TimeRange) -> String {
+        self.format_time_range(time_range, TimeZone::Utc)
+    }
+
     /// Returns the appropriate arrow datatype to represent this timeline.
     #[inline]
     pub fn datatype(&self) -> DataType {
