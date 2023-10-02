@@ -10,16 +10,19 @@ impl Transform3D {
     pub const IDENTITY: Self = Self(Transform3DDatatype::IDENTITY);
 
     /// Creates a new transform with a given representation, transforming from the parent space into the child space.
+    #[inline]
     pub fn new<T: Into<Transform3DDatatype>>(t: T) -> Self {
         Self(t.into())
     }
 
     /// From a translation.
+    #[inline]
     pub fn from_translation(translation: impl Into<Vec3D>) -> Self {
         Self::from(TranslationRotationScale3D::from_translation(translation))
     }
 
     /// From a translation applied after a rotation, known as a rigid transformation.
+    #[inline]
     pub fn from_translation_rotation(
         translation: impl Into<Vec3D>,
         rotation: impl Into<Rotation3D>,
@@ -31,6 +34,7 @@ impl Transform3D {
     }
 
     /// From a translation applied after a 3x3 matrix.
+    #[inline]
     pub fn from_translation_mat3x3(
         translation: impl Into<Vec3D>,
         mat3x3: impl Into<crate::datatypes::Mat3x3>,
