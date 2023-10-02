@@ -51,7 +51,7 @@ impl TensorData {
                 // NV12 encodes a color image in 1.5 "channels" -> 1 luma (per pixel) + (1U+1V) / 4 pixels.
                 // Return the RGB size.
                 match shape_short {
-                    [h, w] => Some([(h.size as f64 / 1.5) as u64, w.size, 3]),
+                    [h, w] => Some([h.size * 3 / 2, w.size, 3]),
                     _ => None,
                 }
             }
