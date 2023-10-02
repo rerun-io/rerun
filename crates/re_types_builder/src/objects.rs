@@ -218,6 +218,14 @@ impl ObjectKind {
             ObjectKind::Archetype => "archetypes",
         }
     }
+
+    pub fn plural_name(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Datatypes",
+            ObjectKind::Component => "Components",
+            ObjectKind::Archetype => "Archetypes",
+        }
+    }
 }
 
 /// A high-level representation of a flatbuffers object's documentation.
