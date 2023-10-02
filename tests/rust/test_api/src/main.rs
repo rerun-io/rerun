@@ -12,10 +12,7 @@
 //! cargo run -p test_api -- --test rects
 //! ```
 
-use std::{
-    collections::HashSet,
-    f32::consts::{PI, TAU},
-};
+use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools;
 use rerun::{
@@ -38,8 +35,8 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_rotations([Quaternion::from_xyzw([
                 0.0,
                 0.0,
-                (PI / 4.0).sin(),
-                (PI / 4.0).cos(),
+                (TAU / 8.0).sin(),
+                (TAU / 8.0).cos(),
             ])])
             .with_radii([0.005])
             .with_labels(["box/t0"]),
@@ -53,8 +50,8 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_rotations([Quaternion::from_xyzw([
                 0.0,
                 0.0,
-                (PI / 4.0).sin(),
-                (PI / 4.0).cos(),
+                (TAU / 8.0).sin(),
+                (TAU / 8.0).cos(),
             ])])
             .with_radii([0.01])
             .with_labels(["box/t1"]),
