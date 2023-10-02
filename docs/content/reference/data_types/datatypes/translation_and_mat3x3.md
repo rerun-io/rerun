@@ -9,7 +9,7 @@ First applies the matrix, then the translation.
 ## Fields
 
 * translation: [`Vec3D`](../datatypes/vec3d.md)
-* matrix: [`Mat3x3`](../datatypes/mat3x3.md)
+* mat3x3: [`Mat3x3`](../datatypes/mat3x3.md)
 
 
 ## Used by
