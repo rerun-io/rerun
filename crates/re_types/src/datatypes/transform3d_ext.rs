@@ -69,7 +69,7 @@ impl Transform3D {
         self
     }
 
-    /// Indicate that this transform is from parent to child.
+    /// Indicates whether this transform is from parent to child.
     /// This is the oppositve of the default, which is from child to parent.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
