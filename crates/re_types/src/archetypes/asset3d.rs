@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
+/// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 ///
 /// ## Examples
 ///

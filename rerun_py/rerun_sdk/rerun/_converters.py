@@ -111,18 +111,26 @@ def str_or_none(data: str | None) -> str | None:
     return str(data)
 
 
-def to_np_uint8(data: npt.ArrayLike) -> npt.NDArray[np.uint8]:
-    """Convert some datat to a numpy uint8 array."""
-    return np.asarray(data, dtype=np.uint8)
+def to_np_uint8(data: npt.ArrayLike | bytes) -> npt.NDArray[np.uint8]:
+    """
+    Convert some data to a numpy uint8 array.
+
+    This function additionally supports `bytes`.
+    """
+
+    if isinstance(data, bytes):
+        return np.frombuffer(data, dtype=np.uint8)
+    else:
+        return np.asarray(data, dtype=np.uint8)
 
 
 def to_np_uint16(data: npt.ArrayLike) -> npt.NDArray[np.uint16]:
-    """Convert some datat to a numpy uint16 array."""
+    """Convert some data to a numpy uint16 array."""
     return np.asarray(data, dtype=np.uint16)
 
 
 def to_np_uint32(data: npt.ArrayLike | None) -> npt.NDArray[np.uint32] | None:
-    """Convert some datat to a numpy uint32 array."""
+    """Convert some data to a numpy uint32 array."""
     if data is not None:
         return np.asarray(data, dtype=np.uint32)
     else:
@@ -130,45 +138,45 @@ def to_np_uint32(data: npt.ArrayLike | None) -> npt.NDArray[np.uint32] | None:
 
 
 def to_np_uint64(data: npt.ArrayLike) -> npt.NDArray[np.uint64]:
-    """Convert some datat to a numpy uint64 array."""
+    """Convert some data to a numpy uint64 array."""
     return np.asarray(data, dtype=np.uint64)
 
 
 def to_np_int8(data: npt.ArrayLike) -> npt.NDArray[np.int8]:
-    """Convert some datat to a numpy int8 array."""
+    """Convert some data to a numpy int8 array."""
     return np.asarray(data, dtype=np.int8)
 
 
 def to_np_int16(data: npt.ArrayLike) -> npt.NDArray[np.int16]:
-    """Convert some datat to a numpy int16 array."""
+    """Convert some data to a numpy int16 array."""
     return np.asarray(data, dtype=np.int16)
 
 
 def to_np_int32(data: npt.ArrayLike) -> npt.NDArray[np.int32]:
-    """Convert some datat to a numpy int32 array."""
+    """Convert some data to a numpy int32 array."""
     return np.asarray(data, dtype=np.int32)
 
 
 def to_np_int64(data: npt.ArrayLike) -> npt.NDArray[np.int64]:
-    """Convert some datat to a numpy int64 array."""
+    """Convert some data to a numpy int64 array."""
     return np.asarray(data, dtype=np.int64)
 
 
 def to_np_bool(data: npt.ArrayLike) -> npt.NDArray[np.bool_]:
-    """Convert some datat to a numpy bool array."""
+    """Convert some data to a numpy bool array."""
     return np.asarray(data, dtype=np.bool_)
 
 
 def to_np_float16(data: npt.ArrayLike) -> npt.NDArray[np.float16]:
-    """Convert some datat to a numpy float16 array."""
+    """Convert some data to a numpy float16 array."""
     return np.asarray(data, dtype=np.float16)
 
 
 def to_np_float32(data: npt.ArrayLike) -> npt.NDArray[np.float32]:
-    """Convert some datat to a numpy float32 array."""
+    """Convert some data to a numpy float32 array."""
     return np.asarray(data, dtype=np.float32)
 
 
 def to_np_float64(data: npt.ArrayLike) -> npt.NDArray[np.float64]:
-    """Convert some datat to a numpy float64 array."""
+    """Convert some data to a numpy float64 array."""
     return np.asarray(data, dtype=np.float64)
