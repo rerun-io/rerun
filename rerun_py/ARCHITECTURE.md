@@ -2,13 +2,13 @@
 
 ## Background
 
-Rerun primarily logs components, which are pieces of data with well-defined memory layout and semantics. For example, the `Color` component is stored as a `uint32` and represent a sRGB, RGBA color information. Components are typically logged in array form.
+Rerun primarily logs components, which are pieces of data with well-defined memory layout and semantics. For example, the `Color` component is stored as a `uint32` and represent a sRGB, RGBA rgba32 information. Components are typically logged in array form.
 
-In most cases, multiple components are needed to represent an object to be logged and displayed in the Rerun viewer. For example, a 3D point cloud might need a `Position3D` component with the coordinates, a `Colors` component with the colors, and a `Label` component with the text labels.
+In most cases, multiple components are needed to represent an object to be logged and displayed in the Rerun viewer. For example, a 3D point cloud might need a `Position3D` component with the coordinates, a `Colors` component with the rgba32s, and a `Label` component with the text labels.
 
 We call an `Archetype` a well-define collection of component that represent a give type of high-level object understood by the Rerun viewer. For example, the `Points3D` archetype (note the plural form) includes the following components:
 - `Position3D`: the point coordinates (note the singular form)
-- `Color`: the color information, if any
+- `Color`: the rgba32 information, if any
 - `Label`: the textual label, if any
 - `Radii`: the radius of the point, if any
 - etc.
@@ -83,8 +83,8 @@ This section covers the available hooks.
 ### The TypeExt class
 
 During codegen, each class looks for a file: `class_ext.py` in the same directory where the class
-will be generated. For example `datatypes/color_ext.py` is the extension file for the `Color` datatype,
-which can be found in `datatypes/color.py`.
+will be generated. For example `datatypes/rgba32_ext.py` is the extension file for the `Rgba32` datatype,
+which can be found in `datatypes/rgba32.py`.
 
 In this file you must define a class called `<Type>Ext`, which will be added as a mixin to the generated class.
 
