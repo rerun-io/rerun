@@ -45,8 +45,10 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 
 2. ### Create a release branch.
 
-   Name it `release-0.x.y`, replacing `0.x.y` with the current version number you found in `Cargo.toml`.
-   The branch name _must_ match the `release-0.x.y` pattern, otherwise the CI can't infer the version from it.
+   The name should be:
+   - `release-0.x.y` for final releases.
+   - `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
+     or defaulted to `1` if no previous alpha exists.
 
 ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
 
@@ -68,11 +70,17 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 
 5. ### Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
 
-   Set `Use workflow from` to the new release branch, and choose `prerelease` in the drop-down menu.
+   In the UI:
+   - Set `Use workflow from` to the release branch you created in step (2).
+   - Then choose one of the following values in the dropdown:
+     - `alpha` if the branch name is `release-x.y.z-alpha.N`.
+       This will create a one-off alpha release.
+
+     - `rc` if the branch name is `release-x.y.z`.
+       This will create a pull request for the release, and publish a release candidate.
 
    ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
 6. ### Wait for the workflow to finish
 
-   The workflow will create a pull request for the release.
    The PR description will contain next steps.

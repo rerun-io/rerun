@@ -107,11 +107,11 @@ fn tensor_ui(
 
     match verbosity {
         UiVerbosity::Small => {
-            ui.horizontal_centered(|ui| {
+            ui.horizontal(|ui| {
                 if let Some(texture) = &texture_result {
                     // We want all preview images to take up the same amount of space,
                     // no matter what the actual aspect ratio of the images are.
-                    let preview_size = Vec2::splat(24.0);
+                    let preview_size = Vec2::splat(ui.available_height());
                     ui.allocate_ui_with_layout(
                         preview_size,
                         egui::Layout::centered_and_justified(egui::Direction::TopDown),
