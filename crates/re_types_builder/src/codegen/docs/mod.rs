@@ -58,7 +58,7 @@ impl CodeGenerator for DocsCodeGenerator {
             let page = object_page(reporter, object, object_map);
             let path = self.docs_dir.join(format!(
                 "{}/{}.md",
-                object.kind.dirname(),
+                object.kind.plural_snake_case(),
                 object.snake_case_name()
             ));
             super::common::write_file(&path, &page);
@@ -86,7 +86,9 @@ impl CodeGenerator for DocsCodeGenerator {
             ),
         ] {
             let page = index_page(kind, order, prelude, objects);
-            let path = self.docs_dir.join(format!("{}.md", kind.dirname()));
+            let path = self
+                .docs_dir
+                .join(format!("{}.md", kind.plural_snake_case()));
             super::common::write_file(&path, &page);
             filepaths.insert(path);
         }
@@ -98,19 +100,19 @@ impl CodeGenerator for DocsCodeGenerator {
 fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) -> String {
     let mut page = String::new();
 
-    write_frontmatter(&mut page, kind.title(), Some(order));
+    write_frontmatter(&mut page, kind.plural_name(), Some(order));
     putln!(page);
     putln!(page, "{prelude}");
     putln!(page);
     if !objects.is_empty() {
-        putln!(page, "## Available {}", kind.title().to_lowercase());
+        putln!(page, "## Available {}", kind.plural_name().to_lowercase());
         putln!(page);
         for object in objects {
             putln!(
                 page,
                 "* [`{}`]({}/{}.md)",
                 object.name,
-                object.kind.dirname(),
+                object.kind.plural_snake_case(),
                 object.snake_case_name()
             );
         }
@@ -190,7 +192,7 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
             "* {}: [`{}`](../{}/{}.md)",
             field.name,
             ty.name,
-            ty.kind.dirname(),
+            ty.kind.plural_snake_case(),
             ty.snake_case_name()
         ));
     }
@@ -212,7 +214,7 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
                 used_by.push(format!(
                     "* [`{}`](../{}/{}.md)",
                     ty.name,
-                    ty.kind.dirname(),
+                    ty.kind.plural_snake_case(),
                     ty.snake_case_name()
                 ));
             }
@@ -253,7 +255,7 @@ fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMa
         target.push(format!(
             "[`{}`](../{}/{}.md)",
             ty.name,
-            ty.kind.dirname(),
+            ty.kind.plural_snake_case(),
             ty.snake_case_name()
         ));
     }
@@ -301,28 +303,5 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
             }
         }
         putln!(o);
-    }
-}
-
-trait ObjectKindExt {
-    fn dirname(&self) -> &'static str;
-    fn title(&self) -> &'static str;
-}
-
-impl ObjectKindExt for ObjectKind {
-    fn dirname(&self) -> &'static str {
-        match self {
-            ObjectKind::Datatype => "datatypes",
-            ObjectKind::Component => "components",
-            ObjectKind::Archetype => "archetypes",
-        }
-    }
-
-    fn title(&self) -> &'static str {
-        match self {
-            ObjectKind::Datatype => "Datatypes",
-            ObjectKind::Component => "Components",
-            ObjectKind::Archetype => "Archetypes",
-        }
     }
 }
