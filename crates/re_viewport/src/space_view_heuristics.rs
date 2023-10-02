@@ -4,8 +4,9 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::EntityPath;
+use re_types::archetypes::Image;
 use re_types::components::{DisconnectedSpace, TensorData};
-use re_types::ComponentNameSet;
+use re_types::{Archetype, ComponentNameSet};
 use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
     ViewSystemName, ViewerContext,
@@ -123,22 +124,17 @@ pub fn all_possible_space_views(
         .collect_vec()
 }
 
-fn contains_any_image(
-    entity_path: &EntityPath,
-    store: &re_arrow_store::DataStore,
-    query: &LatestAtQuery,
-) -> bool {
-    if let Some(tensor) = store.query_latest_component::<TensorData>(entity_path, query) {
-        tensor.is_shaped_like_an_image()
-    } else {
-        false
-    }
+fn contains_any_image(ent_path: &EntityPath, store: &re_arrow_store::DataStore) -> bool {
+    store
+        .all_components(&Timeline::log_time(), ent_path)
+        .unwrap_or_default()
+        .iter()
+        .any(|comp| *comp == Image::indicator().name())
 }
 
 fn is_interesting_space_view_at_root(
     data_store: &re_arrow_store::DataStore,
     candidate: &SpaceViewBlueprint,
-    query: &LatestAtQuery,
 ) -> bool {
     // Not interesting if it has only data blueprint groups and no direct entities.
     // -> If there In that case we want spaceviews at those groups.
@@ -149,7 +145,7 @@ fn is_interesting_space_view_at_root(
     // If there are any images directly under the root, don't create root space either.
     // -> For images we want more fine grained control and resort to child-of-root spaces only.
     for entity_path in &candidate.contents.root_group().entities {
-        if contains_any_image(entity_path, data_store, query) {
+        if contains_any_image(entity_path, data_store) {
             return false;
         }
     }
@@ -208,7 +204,7 @@ pub fn default_created_space_views(
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_origin.is_root()
-                && is_interesting_space_view_at_root(store, space_view_candidate, &query))
+                && is_interesting_space_view_at_root(store, space_view_candidate))
             .then_some(*space_view_candidate.class_name())
         })
         .collect::<Vec<_>>();
