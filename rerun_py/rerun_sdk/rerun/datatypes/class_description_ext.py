@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
 
 import pyarrow as pa
 
 from .keypoint_pair_ext import _keypoint_pair_converter
 
 if TYPE_CHECKING:
+    from .. import ComponentBatchLike
     from . import (
         AnnotationInfo,
         AnnotationInfoLike,
@@ -46,7 +47,7 @@ class ClassDescriptionExt:
         info:
             The `AnnotationInfo` for the class.
         keypoint_annotations:
-            The `AnnotationInfo` for all of the keypoints.
+            The `AnnotationInfo` for all the keypoints.
         keypoint_connections:
             The connections between keypoints.
         """
@@ -59,6 +60,12 @@ class ClassDescriptionExt:
         self.__attrs_init__(
             info=info, keypoint_annotations=keypoint_annotations, keypoint_connections=keypoint_connections
         )
+
+    # Implement the AsComponents protocol
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
+        from ..archetypes import AnnotationContext
+
+        return AnnotationContext(cast(ClassDescription, self)).as_component_batches()
 
     @staticmethod
     def info__field_converter_override(

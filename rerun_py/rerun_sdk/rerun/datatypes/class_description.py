@@ -40,6 +40,10 @@ class ClassDescription(ClassDescriptionExt):
     defined, and both keypoints exist within the instance of the class, then the
     keypoints should be connected with an edge. The edge should be labeled and
     colored as described by the class's `AnnotationInfo`.
+
+    Note that a `ClassDescription` can be directly logged using `rerun.log`.
+    This is equivalent to logging a `rerun.AnnotationContext` containing
+    a single `ClassDescription`.
     """
 
     # __init__ can be found in class_description_ext.py
