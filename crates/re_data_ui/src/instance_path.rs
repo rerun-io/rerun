@@ -11,7 +11,7 @@ impl DataUi for InstancePath {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let Self {
@@ -37,10 +37,20 @@ impl DataUi for InstancePath {
             return;
         };
 
+        let all_are_indicators = components.iter().all(|c| c.is_indicator_component());
+
         egui::Grid::new("entity_instance")
             .num_columns(2)
             .show(ui, |ui| {
                 for &component_name in crate::ui_visible_components(&components) {
+                    if verbosity != UiVerbosity::All
+                        && component_name.is_indicator_component()
+                        && !all_are_indicators
+                    {
+                        // Skip indicator components in hover ui (unless there are no other types of components).
+                        continue;
+                    }
+
                     let Some((_, component_data)) =
                         get_component_with_instances(store, query, entity_path, component_name)
                     else {
