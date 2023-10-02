@@ -43,7 +43,7 @@ impl CodeGenerator for DocsCodeGenerator {
 
         let (mut archetypes, mut components, mut datatypes) = (Vec::new(), Vec::new(), Vec::new());
         let object_map = &objects.objects;
-        for object in objects.ordered_objects(None) {
+        for object in object_map.values() {
             // skip test-only archetypes
             if object.is_testing() {
                 continue;
