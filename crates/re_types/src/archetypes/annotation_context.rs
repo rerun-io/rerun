@@ -167,6 +167,7 @@
 /// </picture>
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AnnotationContext {
+    /// List of class descriptions, mapping class indices to class names, colors etc.
     pub context: crate::components::AnnotationContext,
 }
 

@@ -26,7 +26,10 @@
 /// row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
 /// ```
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
-pub struct Mat4x4(pub [f32; 16usize]);
+pub struct Mat4x4(
+    /// Flat list of matrix coefficients in column-major order.
+    pub [f32; 16usize],
+);
 
 impl From<[f32; 16usize]> for Mat4x4 {
     #[inline]
