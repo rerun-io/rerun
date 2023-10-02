@@ -688,7 +688,18 @@ fn image_hover_ui(
     meter: Option<f32>,
 ) {
     ui.label(instance_path.to_string());
-    instance_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+    if true {
+        // Only show the `TensorData` component, to keep the hover UI small; see https://github.com/rerun-io/rerun/issues/3573
+        use re_types::Loggable as _;
+        let component_path = re_log_types::ComponentPath::new(
+            instance_path.entity_path.clone(),
+            re_types::components::TensorData::name(),
+        );
+        component_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+    } else {
+        // Show it all, like we do for any other thing we hover
+        instance_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+    }
 
     if let Some([h, w, ..]) = tensor.image_height_width_channels() {
         ui.separator();
