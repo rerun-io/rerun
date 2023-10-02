@@ -98,31 +98,7 @@ pub use re_types::{
 mod prelude {
     // Import all archetypes into the global namespace to minimize
     // the amount of typing for our users.
-    // We explicitly select archetypes with no name clashes.
-    pub use super::archetypes::{
-        AnnotationContext,
-        Arrows3D,
-        Asset3D,
-        BarChart,
-        Boxes2D,
-        Boxes3D,
-        Clear,
-        DepthImage,
-        DisconnectedSpace,
-        Image,
-        LineStrips2D,
-        LineStrips3D,
-        Mesh3D,
-        Pinhole,
-        Points2D,
-        Points3D,
-        SegmentationImage,
-        Tensor,
-        TextDocument,
-        TextLog,
-        TimeSeriesScalar,
-        ViewCoordinates, // Has a conflict with `re_types::components::ViewCoordinates`, but this is the one you mostly want
-    };
+    pub use super::archetypes::*;
 
     // Also import some select, often-used, datatypes and components:
     pub use super::components::{
