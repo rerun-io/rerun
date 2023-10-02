@@ -19,6 +19,7 @@ rr.log(
             )
         ]
     ),
+    timeless=True,
 )
 
 rr.log(
