@@ -35,9 +35,9 @@ Image and tensor archetypes all build on top of a common tensor component. The t
 generic container for arrays of data. Images are restricted to tensors of rank 2 or rank 3; these can be viewed in the
 `Spatial` space view. Generic tensors of greater rank can only be viewed in the specialized `Tensor` space view.
 * [Image](data_types/archetypes/image.md)
-* [DepthImage](archetypes/depth_image.md)
-* [SegmentationImage](archetypes/segmentation_image.md)
-* [Tensor](archetypes/tensor.md)
+* [DepthImage](data_types/archetypes/depth_image.md)
+* [SegmentationImage](data_types/archetypes/segmentation_image.md)
+* [Tensor](data_types/archetypes/tensor.md)
 
 ## Other **Archetypes**
 * [AnnotationContext](data_types/archetypes/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
