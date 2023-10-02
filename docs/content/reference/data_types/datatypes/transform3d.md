@@ -10,7 +10,7 @@ Representation of a 3D affine transform.
 * TranslationRotationScale: [`TranslationRotationScale3D`](../datatypes/translation_rotation_scale3d.md)
 
 
-## Related
+## Used by
 
 * [`OutOfTreeTransform3D`](../components/out_of_tree_transform3d.md)
 * [`Transform3D`](../components/transform3d.md)

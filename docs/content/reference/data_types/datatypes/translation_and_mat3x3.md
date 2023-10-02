@@ -12,6 +12,6 @@ First applies the matrix, then the translation.
 * matrix: [`Mat3x3`](../datatypes/mat3x3.md)
 
 
-## Related
+## Used by
 
 * [`Transform3D`](../datatypes/transform3d.md)

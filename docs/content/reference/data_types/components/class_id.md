@@ -9,7 +9,7 @@ A 16-bit ID representing a type of semantic class.
 * id: [`ClassId`](../datatypes/class_id.md)
 
 
-## Related
+## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)

@@ -20,6 +20,6 @@ The points will be connected in order, like so:
 * points: [`Vec3D`](../datatypes/vec3d.md)
 
 
-## Related
+## Used by
 
 * [`LineStrips3D`](../archetypes/line_strips3d.md)

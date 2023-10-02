@@ -6,6 +6,6 @@ Configures how a clear operation should behave - recursive or not?
 
 
 
-## Related
+## Used by
 
 * [`Clear`](../archetypes/clear.md)

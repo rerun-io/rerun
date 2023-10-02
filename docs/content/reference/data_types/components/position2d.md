@@ -9,7 +9,7 @@ A position in 2D space.
 * xy: [`Vec2D`](../datatypes/vec2d.md)
 
 
-## Related
+## Used by
 
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Points2D`](../archetypes/points2d.md)

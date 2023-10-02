@@ -118,7 +118,7 @@ fn main() {
         ),
     );
 
-    report.panic_on_errors();
+    report.finalize();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }

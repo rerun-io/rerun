@@ -10,6 +10,6 @@ A connection between two `Keypoints`.
 * keypoint1: [`KeypointId`](../datatypes/keypoint_id.md)
 
 
-## Related
+## Used by
 
 * [`ClassDescription`](../datatypes/class_description.md)

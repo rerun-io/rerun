@@ -6,6 +6,6 @@ A single dimension within a multi-dimensional tensor.
 
 
 
-## Related
+## Used by
 
 * [`TensorData`](../datatypes/tensor_data.md)

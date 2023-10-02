@@ -9,7 +9,7 @@ A position in 3D space.
 * xyz: [`Vec3D`](../datatypes/vec3d.md)
 
 
-## Related
+## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)

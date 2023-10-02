@@ -10,6 +10,6 @@ title: "RotationAxisAngle"
 * angle: [`Angle`](../datatypes/angle.md)
 
 
-## Related
+## Used by
 
 * [`Rotation3D`](../datatypes/rotation3d.md)

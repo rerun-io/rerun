@@ -5,6 +5,6 @@ title: "MeshProperties"
 
 
 
-## Related
+## Used by
 
 * [`MeshProperties`](../components/mesh_properties.md)

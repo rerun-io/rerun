@@ -8,6 +8,6 @@ title: "MeshProperties"
 * props: [`MeshProperties`](../datatypes/mesh_properties.md)
 
 
-## Related
+## Used by
 
 * [`Mesh3D`](../archetypes/mesh3d.md)

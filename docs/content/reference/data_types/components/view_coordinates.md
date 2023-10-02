@@ -21,7 +21,7 @@ The following constants are used to represent the different directions.
 
 
 
-## Related
+## Used by
 
 * [`Pinhole`](../archetypes/pinhole.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)

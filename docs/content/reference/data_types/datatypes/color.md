@@ -9,7 +9,7 @@ byte is `R` and the least significant byte is `A`.
 
 
 
-## Related
+## Used by
 
 * [`Color`](../components/color.md)
 * [`AnnotationInfo`](../datatypes/annotation_info.md)

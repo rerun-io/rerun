@@ -12,6 +12,6 @@ Negative sizes indicate that the box is flipped along the respective axis, but t
 * xy: [`Vec2D`](../datatypes/vec2d.md)
 
 
-## Related
+## Used by
 
 * [`Boxes2D`](../archetypes/boxes2d.md)

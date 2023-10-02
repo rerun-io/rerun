@@ -13,7 +13,7 @@ The id refers either to a class or key-point id
 * color: [`Color`](../datatypes/color.md)
 
 
-## Related
+## Used by
 
 * [`ClassDescription`](../datatypes/class_description.md)
 * [`ClassDescription`](../datatypes/class_description.md)

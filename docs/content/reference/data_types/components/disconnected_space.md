@@ -10,6 +10,6 @@ If a transform or pinhole is logged on the same path, this component will be ign
 
 
 
-## Related
+## Used by
 
 * [`DisconnectedSpace`](../archetypes/disconnected_space.md)

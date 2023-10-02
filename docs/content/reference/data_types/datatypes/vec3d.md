@@ -6,7 +6,7 @@ A vector in 3D space.
 
 
 
-## Related
+## Used by
 
 * [`HalfSizes3D`](../components/half_sizes3d.md)
 * [`LineStrip3D`](../components/line_strip3d.md)

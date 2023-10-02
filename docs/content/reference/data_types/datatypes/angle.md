@@ -6,6 +6,6 @@ Angle in either radians or degrees.
 
 
 
-## Related
+## Used by
 
 * [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)

@@ -6,6 +6,6 @@ A component indicating how long a meter is, expressed in native units.
 
 
 
-## Related
+## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)

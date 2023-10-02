@@ -17,6 +17,6 @@ which stores a contiguous array of typed values.
 * buffer: [`TensorBuffer`](../datatypes/tensor_buffer.md)
 
 
-## Related
+## Used by
 
 * [`TensorData`](../components/tensor_data.md)

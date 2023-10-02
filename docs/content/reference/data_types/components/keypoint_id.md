@@ -9,7 +9,7 @@ A 16-bit ID representing a type of semantic keypoint within a class.
 * id: [`KeypointId`](../datatypes/keypoint_id.md)
 
 
-## Related
+## Used by
 
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)

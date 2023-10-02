@@ -12,7 +12,7 @@ consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 * value: [`Utf8`](../datatypes/utf8.md)
 
 
-## Related
+## Used by
 
 * [`Asset3D`](../archetypes/asset3d.md)
 * [`TextDocument`](../archetypes/text_document.md)

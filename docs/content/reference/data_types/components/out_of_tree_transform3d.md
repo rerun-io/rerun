@@ -11,6 +11,6 @@ An out-of-tree affine transform between two 3D spaces, represented in a given di
 * repr: [`Transform3D`](../datatypes/transform3d.md)
 
 
-## Related
+## Used by
 
 * [`Asset3D`](../archetypes/asset3d.md)

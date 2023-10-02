@@ -15,7 +15,7 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 
 
 
-## Related
+## Used by
 
 * [`PinholeProjection`](../components/pinhole_projection.md)
 * [`TranslationAndMat3x3`](../datatypes/translation_and_mat3x3.md)

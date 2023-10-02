@@ -15,6 +15,6 @@ path.
 * class_map: [`ClassDescriptionMapElem`](../datatypes/class_description_map_elem.md)
 
 
-## Related
+## Used by
 
 * [`AnnotationContext`](../archetypes/annotation_context.md)

@@ -24,6 +24,6 @@ colored as described by the class's `AnnotationInfo`.
 * keypoint_connections: [`KeypointPair`](../datatypes/keypoint_pair.md)
 
 
-## Related
+## Used by
 
 * [`ClassDescriptionMapElem`](../datatypes/class_description_map_elem.md)

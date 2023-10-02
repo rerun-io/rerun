@@ -8,7 +8,7 @@ title: "TensorData"
 * data: [`TensorData`](../datatypes/tensor_data.md)
 
 
-## Related
+## Used by
 
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`DepthImage`](../archetypes/depth_image.md)

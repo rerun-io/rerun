@@ -6,7 +6,7 @@ A unique numeric identifier for each individual instance within a batch.
 
 
 
-## Related
+## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)

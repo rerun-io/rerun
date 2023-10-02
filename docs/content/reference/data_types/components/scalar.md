@@ -8,6 +8,6 @@ Used for time series plots.
 
 
 
-## Related
+## Used by
 
 * [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

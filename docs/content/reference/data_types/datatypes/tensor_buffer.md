@@ -8,6 +8,6 @@ Tensor elements are stored in a contiguous buffer of a single type.
 
 
 
-## Related
+## Used by
 
 * [`TensorData`](../datatypes/tensor_data.md)

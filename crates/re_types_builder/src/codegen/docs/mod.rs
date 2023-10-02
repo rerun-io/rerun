@@ -33,7 +33,7 @@ impl DocsCodeGenerator {
 impl CodeGenerator for DocsCodeGenerator {
     fn generate(
         &mut self,
-        _reporter: &Reporter,
+        reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &crate::ArrowRegistry,
     ) -> BTreeSet<camino::Utf8PathBuf> {
@@ -55,7 +55,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Archetype => archetypes.push(object),
             }
 
-            let page = object_page(object, object_map);
+            let page = object_page(reporter, object, object_map);
             let path = self.docs_dir.join(format!(
                 "{}/{}.md",
                 object.kind.dirname(),
@@ -105,21 +105,21 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
     if !objects.is_empty() {
         putln!(page, "## Available {}", kind.title().to_lowercase());
         putln!(page);
-    }
-    for object in objects {
-        putln!(
-            page,
-            "* [`{}`]({}/{}.md)",
-            object.name,
-            object.kind.dirname(),
-            object.snake_case_name()
-        );
+        for object in objects {
+            putln!(
+                page,
+                "* [`{}`]({}/{}.md)",
+                object.name,
+                object.kind.dirname(),
+                object.snake_case_name()
+            );
+        }
     }
 
     page
 }
 
-fn object_page(object: &Object, object_map: &ObjectMap) -> String {
+fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
     let top_level_docs = get_documentation(&object.docs, &[]);
     let examples = object
         .docs
@@ -155,7 +155,7 @@ fn object_page(object: &Object, object_map: &ObjectMap) -> String {
     match object.kind {
         ObjectKind::Datatype | ObjectKind::Component => {
             putln!(page);
-            write_used_by(&mut page, object, object_map);
+            write_used_by(&mut page, reporter, object, object_map);
         }
         ObjectKind::Archetype => {}
     }
@@ -198,13 +198,13 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
     if !fields.is_empty() {
         putln!(o, "## Fields");
         putln!(o);
-    }
-    for field in fields {
-        putln!(o, "{field}");
+        for field in fields {
+            putln!(o, "{field}");
+        }
     }
 }
 
-fn write_used_by(o: &mut String, object: &Object, object_map: &ObjectMap) {
+fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_map: &ObjectMap) {
     let mut used_by = Vec::new();
     for ty in object_map.values() {
         for field in &ty.fields {
@@ -219,12 +219,14 @@ fn write_used_by(o: &mut String, object: &Object, object_map: &ObjectMap) {
         }
     }
 
-    if !used_by.is_empty() {
-        putln!(o, "## Related");
+    if used_by.is_empty() {
+        reporter.warn(format!("{:?} is unused", object.fqname.as_str()));
+    } else {
+        putln!(o, "## Used by");
         putln!(o);
-    }
-    for ty in used_by {
-        putln!(o, "{ty}");
+        for ty in used_by {
+            putln!(o, "{ty}");
+        }
     }
 }
 

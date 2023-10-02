@@ -11,6 +11,6 @@ Typically in integer units, but for some use cases floating point may be used.
 * resolution: [`Vec2D`](../datatypes/vec2d.md)
 
 
-## Related
+## Used by
 
 * [`Pinhole`](../archetypes/pinhole.md)

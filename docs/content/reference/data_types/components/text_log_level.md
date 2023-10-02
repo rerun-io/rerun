@@ -17,6 +17,6 @@ Recommended to be one of:
 * value: [`Utf8`](../datatypes/utf8.md)
 
 
-## Related
+## Used by
 
 * [`TextLog`](../archetypes/text_log.md)

@@ -12,7 +12,7 @@ Draw order for entities with the same draw order is generally undefined.
 
 
 
-## Related
+## Used by
 
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`DepthImage`](../archetypes/depth_image.md)

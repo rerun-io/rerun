@@ -6,7 +6,7 @@ A string of text, encoded as UTF-8.
 
 
 
-## Related
+## Used by
 
 * [`MediaType`](../components/media_type.md)
 * [`Text`](../components/text.md)

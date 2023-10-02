@@ -10,7 +10,7 @@ A 3D rotation.
 * AxisAngle: [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 
 
-## Related
+## Used by
 
 * [`Rotation3D`](../components/rotation3d.md)
 * [`TranslationRotationScale3D`](../datatypes/translation_rotation_scale3d.md)

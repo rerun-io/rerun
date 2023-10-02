@@ -12,7 +12,7 @@ byte is `R` and the least significant byte is `A`.
 * rgba: [`Color`](../datatypes/color.md)
 
 
-## Related
+## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)

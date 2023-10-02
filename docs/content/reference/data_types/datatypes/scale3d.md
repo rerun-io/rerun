@@ -9,6 +9,6 @@ title: "Scale3D"
 * ThreeD: [`Vec3D`](../datatypes/vec3d.md)
 
 
-## Related
+## Used by
 
 * [`TranslationRotationScale3D`](../datatypes/translation_rotation_scale3d.md)

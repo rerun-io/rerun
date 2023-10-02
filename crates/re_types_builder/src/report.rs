@@ -6,23 +6,33 @@ use std::sync::mpsc;
 ///
 /// The [`Report`] should not be sent to other threads.
 pub fn init() -> (Report, Reporter) {
-    let (tx, rx) = mpsc::channel();
-    (Report::new(rx), Reporter::new(tx))
+    let (errors_tx, errors_rx) = mpsc::channel();
+    let (warnings_tx, warnings_rx) = mpsc::channel();
+    (
+        Report::new(errors_rx, warnings_rx),
+        Reporter::new(errors_tx, warnings_tx),
+    )
 }
 
 /// Used to accumulate errors and warnings.
 #[derive(Clone)]
 pub struct Reporter {
     errors: mpsc::Sender<anyhow::Error>,
+    warnings: mpsc::Sender<String>,
 }
 
 impl Reporter {
-    fn new(errors: mpsc::Sender<anyhow::Error>) -> Self {
-        Self { errors }
+    fn new(errors: mpsc::Sender<anyhow::Error>, warnings: mpsc::Sender<String>) -> Self {
+        Self { errors, warnings }
     }
 
     pub fn error(&self, error: impl IntoError) {
         let _ = self.errors.send(error.into_error());
+    }
+
+    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    pub fn warn(&self, text: impl ToString) {
+        let _ = self.warnings.send(text.to_string());
     }
 }
 
@@ -31,24 +41,32 @@ impl Reporter {
 /// This should only exist on the main thread.
 pub struct Report {
     errors: mpsc::Receiver<anyhow::Error>,
+    warnings: mpsc::Receiver<String>,
     _not_send: std::marker::PhantomData<*mut ()>,
 }
 
 impl Report {
-    fn new(errors: mpsc::Receiver<anyhow::Error>) -> Self {
+    fn new(errors: mpsc::Receiver<anyhow::Error>, warnings: mpsc::Receiver<String>) -> Self {
         Self {
             errors,
+            warnings,
             _not_send: std::marker::PhantomData,
         }
     }
 
-    /// This outputs all errors to stderr and panics if there were any.
-    pub fn panic_on_errors(&self) {
+    /// This outputs all errors and warnings to stderr and panics if there were any errors.
+    pub fn finalize(&self) {
         let mut errored = false;
+
+        let ci = std::env::var("CI").is_ok();
+        while let Ok(warn) = self.warnings.try_recv() {
+            errored = ci; // treat warnings as errors in CI
+            eprintln!("Warning: {warn}");
+        }
 
         while let Ok(err) = self.errors.try_recv() {
             errored = true;
-            eprintln!("{err}");
+            eprintln!("Error: {err}");
         }
 
         #[allow(clippy::manual_assert)] // we don't want the noise of an assert

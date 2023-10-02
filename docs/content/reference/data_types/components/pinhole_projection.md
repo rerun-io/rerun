@@ -19,6 +19,6 @@ Example:
 * image_from_camera: [`Mat3x3`](../datatypes/mat3x3.md)
 
 
-## Related
+## Used by
 
 * [`Pinhole`](../archetypes/pinhole.md)

@@ -9,6 +9,6 @@ A point of origin in 3D space.
 * origin: [`Vec3D`](../datatypes/vec3d.md)
 
 
-## Related
+## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)

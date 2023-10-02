@@ -6,7 +6,7 @@ A Radius component.
 
 
 
-## Related
+## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)

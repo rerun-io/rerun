@@ -9,7 +9,7 @@ A string of text, e.g. for labels and text documents
 * value: [`Utf8`](../datatypes/utf8.md)
 
 
-## Related
+## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)

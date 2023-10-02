@@ -9,6 +9,6 @@ datastore as provided, when used in the viewer Quaternions will always be normal
 
 
 
-## Related
+## Used by
 
 * [`Rotation3D`](../datatypes/rotation3d.md)

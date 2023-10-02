@@ -12,6 +12,6 @@ This is internal to the `AnnotationContext` structure.
 * class_description: [`ClassDescription`](../datatypes/class_description.md)
 
 
-## Related
+## Used by
 
 * [`AnnotationContext`](../components/annotation_context.md)

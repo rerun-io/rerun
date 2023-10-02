@@ -11,6 +11,6 @@ Representation of an affine transform via separate translation, rotation & scale
 * scale: [`Scale3D`](../datatypes/scale3d.md)
 
 
-## Related
+## Used by
 
 * [`Transform3D`](../datatypes/transform3d.md)

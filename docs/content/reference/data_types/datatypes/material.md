@@ -8,6 +8,6 @@ title: "Material"
 * albedo_factor: [`Color`](../datatypes/color.md)
 
 
-## Related
+## Used by
 
 * [`Material`](../components/material.md)

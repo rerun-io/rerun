@@ -8,6 +8,6 @@ title: "Material"
 * material: [`Material`](../datatypes/material.md)
 
 
-## Related
+## Used by
 
 * [`Mesh3D`](../archetypes/mesh3d.md)
