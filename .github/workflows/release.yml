@@ -111,9 +111,11 @@ jobs:
 
             ### Next steps
             - [Test the release](#testing)
-            - For any added commits, run the release workflow in `prerelease` mode again
-            - After testing, run the release workflow in `release` mode
-            - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+            - If this is an `alpha` release, you can just merge the pull request.
+            - Otherwise:
+              - For any added commits, run the release workflow in `rc` mode again
+              - After testing, run the release workflow in `release` mode
+              - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
 
             ### Testing
             - [ ] Docs

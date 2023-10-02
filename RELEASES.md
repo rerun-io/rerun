@@ -76,11 +76,8 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
      - `alpha` if the branch name is `release-x.y.z-alpha.N`.
        This will create a one-off alpha release.
 
-     - `rc` if the branch is `release-x.y.z`.
+     - `rc` if the branch name is `release-x.y.z`.
        This will create a pull request for the release, and publish a release candidate.
-
-     - `final` if this is a final release.
-       This will perform a full release for the existing `release-x.y.z` pull request.
 
    ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
