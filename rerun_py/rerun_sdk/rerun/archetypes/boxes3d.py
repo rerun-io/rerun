@@ -71,9 +71,29 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     # __init__ can be found in boxes3d_ext.py
 
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            half_sizes=None,  # type: ignore[arg-type]
+            centers=None,  # type: ignore[arg-type]
+            rotations=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> Boxes3D:
+        """Produce an empty Boxes3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
+
     half_sizes: components.HalfSizes3DBatch = field(
         metadata={"component": "required"},
-        converter=components.HalfSizes3DBatch,  # type: ignore[misc]
+        converter=components.HalfSizes3DBatch._required,  # type: ignore[misc]
     )
     """
     All half-extents that make up the batch of boxes.

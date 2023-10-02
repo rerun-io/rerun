@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Asset3D
@@ -37,6 +38,10 @@ class MeshFormat(Enum):
     """Wavefront .obj format."""
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Asset3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_mesh_file(
     entity_path: str,
@@ -50,6 +55,11 @@ def log_mesh_file(
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Asset3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     You must pass either `mesh_bytes` or `mesh_path`.
 
@@ -108,6 +118,10 @@ def log_mesh_file(
     return log(entity_path, asset3d, timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.ImageEncoded(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_image_file(
     entity_path: str,
@@ -120,6 +134,11 @@ def log_image_file(
 ) -> None:
     """
     Log an image file given its contents or path on disk.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.ImageEncoded][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     You must pass either `img_bytes` or `img_path`.
 

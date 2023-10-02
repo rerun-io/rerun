@@ -2,6 +2,7 @@
 -r blueprint/requirements.txt
 -r car/requirements.txt
 -r clock/requirements.txt
+-r controlnet/requirements.txt
 -r depth_guided_stable_diffusion/requirements.txt
 -r detect_and_track_objects/requirements.txt
 -r dicom_mri/requirements.txt

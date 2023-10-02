@@ -17,6 +17,10 @@ def main() -> None:
     gh = Github(args.github_token)
     repo = gh.get_repo(args.github_repository)
     pr = repo.get_pull(args.pr_number)
+    if not pr.body:
+        # body is empty
+        print("Don't delete the PR description")
+        exit(1)
 
     latest_commit = pr.get_commits().reversed[0]
     print(f"Latest commit: {latest_commit.sha}")

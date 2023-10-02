@@ -65,7 +65,7 @@ re_types = { workspace = true, features = ["ecolor", "glam"] }
 
 ahash.workspace = true
 crossbeam.workspace = true
-document-features = "0.2"
+document-features.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
@@ -80,7 +80,7 @@ re_web_viewer_server = { workspace = true, optional = true }
 anyhow = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
-webbrowser = { version = "0.8", optional = true }
+webbrowser = { workspace = true, optional = true }
 
 
 [dev-dependencies]
@@ -88,9 +88,9 @@ re_types = { workspace = true, features = ["datagen"] }
 
 arrow2_convert.workspace = true
 ndarray.workspace = true
-ndarray-rand = "0.14"
+ndarray-rand.workspace = true
 rand.workspace = true
-similar-asserts = "1.4.2"
+similar-asserts.workspace = true
 
 
 [build-dependencies]

@@ -63,9 +63,22 @@ class Clear(ClearExt, Archetype):
 
     # __init__ can be found in clear_ext.py
 
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            recursive=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> Clear:
+        """Produce an empty Clear, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
+
     recursive: components.ClearIsRecursiveBatch = field(
         metadata={"component": "required"},
-        converter=components.ClearIsRecursiveBatch,  # type: ignore[misc]
+        converter=components.ClearIsRecursiveBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

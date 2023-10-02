@@ -531,7 +531,9 @@ struct PyMemorySinkStorage {
 
 #[pymethods]
 impl PyMemorySinkStorage {
-    /// This will do a blocking flush before returning!
+    /// Concatenate the contents of the [`MemorySinkStorage`] as byes.
+    ///
+    /// Note: This will do a blocking flush before returning!
     fn concat_as_bytes<'p>(
         &self,
         concat: Option<&PyMemorySinkStorage>,
@@ -551,6 +553,18 @@ impl PyMemorySinkStorage {
         )
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+
+    /// Count the number of pending messages in the [`MemorySinkStorage`].
+    ///
+    /// This will do a blocking flush before returning!
+    fn num_msgs(&self, py: Python<'_>) -> usize {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            self.rec.flush_blocking();
+        });
+
+        self.inner.num_msgs()
     }
 }
 

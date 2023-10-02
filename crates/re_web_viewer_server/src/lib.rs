@@ -27,18 +27,8 @@ mod data {
     pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index_bundled.html");
     pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
     pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
-
-    #[cfg(debug_assertions)]
-    pub const VIEWER_JS_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug.js");
-
-    #[cfg(debug_assertions)]
-    pub const VIEWER_WASM_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug_bg.wasm");
-
-    #[cfg(not(debug_assertions))]
-    pub const VIEWER_JS_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
-
-    #[cfg(not(debug_assertions))]
-    pub const VIEWER_WASM_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
+    pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
+    pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -117,25 +107,11 @@ impl Service<Request<Body>> for Svc {
             "/" | "/index.html" => ("text/html", data::INDEX_HTML),
             "/favicon.svg" => ("image/svg+xml", data::FAVICON),
             "/sw.js" => ("text/javascript", data::SW_JS),
-
-            #[cfg(debug_assertions)]
-            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS_DEBUG),
-            #[cfg(not(debug_assertions))]
-            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS_RELEASE),
-
+            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS),
             "/re_viewer_bg.wasm" => {
                 #[cfg(feature = "analytics")]
                 self.on_serve_wasm();
-
-                #[cfg(debug_assertions)]
-                {
-                    re_log::info_once!("Serving DEBUG web-viewer");
-                    ("application/wasm", data::VIEWER_WASM_DEBUG)
-                }
-                #[cfg(not(debug_assertions))]
-                {
-                    ("application/wasm", data::VIEWER_WASM_RELEASE)
-                }
+                ("application/wasm", data::VIEWER_WASM)
             }
             _ => {
                 re_log::warn!("404 path: {}", req.uri().path());
