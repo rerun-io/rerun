@@ -49,8 +49,7 @@
 /// ```ignore
 /// //! Log some random points with color and radii.
 ///
-/// use rand::distributions::Uniform;
-/// use rand::Rng;
+/// use rand::{distributions::Uniform, Rng as _};
 /// use rerun::{
 ///     archetypes::{Boxes2D, Points2D},
 ///     components::Color,

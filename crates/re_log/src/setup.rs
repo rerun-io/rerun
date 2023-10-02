@@ -2,7 +2,7 @@
 
 /// Get `RUST_LOG` environment variable or `info`, if not set.
 ///
-/// Also set some other log levels on crates that are too loud.
+/// Also sets some other log levels on crates that are too loud.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
     let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
@@ -17,7 +17,7 @@ pub fn default_log_filter() -> String {
             rust_log += &format!(",{crate_name}=warn");
         }
     }
-    for crate_name in crate::CRATES_FORCED_TO_INFO {
+    for crate_name in crate::CRATES_AT_INFO_LEVEL {
         if !rust_log.contains(&format!("{crate_name}=")) {
             rust_log += &format!(",{crate_name}=info");
         }

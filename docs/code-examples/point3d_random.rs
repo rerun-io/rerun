@@ -1,7 +1,6 @@
 //! Log some random points with color and radii.
 
-use rand::distributions::Uniform;
-use rand::Rng;
+use rand::{distributions::Uniform, Rng as _};
 use rerun::{archetypes::Points3D, components::Color, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

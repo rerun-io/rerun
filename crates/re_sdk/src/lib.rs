@@ -1,4 +1,10 @@
-//! The Rerun SDK
+//! The Rerun logging SDK
+//!
+//! This is the bare-bones version of the [`rerun`](https://docs.rs/rerun/) crate.
+//! `rerun` exports everything in `re_sdk`, so in most cases you want to use `rerun`
+//! instead.
+//!
+//! Please read [the docs for the `rerun` crate](https://docs.rs/rerun/) instead.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
@@ -69,20 +75,6 @@ pub mod time {
     pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
 }
 
-/// These are the different _components_ you can log.
-///
-/// They all implement the [`Component`][`re_types::Component`] trait,
-/// and can be used in [`RecordingStream::log_component_batches`].
-pub mod components {
-    pub use re_types::components::{
-        AnnotationContext, Blob, ClassId, ClearIsRecursive, Color, DepthMeter, DisconnectedSpace,
-        DrawOrder, HalfSizes2D, HalfSizes3D, InstanceKey, KeypointId, LineStrip2D, LineStrip3D,
-        Material, MediaType, MeshProperties, Origin2D, Origin3D, OutOfTreeTransform3D,
-        PinholeProjection, Position2D, Position3D, Radius, Resolution, Rotation3D, Scalar,
-        ScalarScattering, TensorData, Text, TextLogLevel, Transform3D, Vector3D, ViewCoordinates,
-    };
-}
-
 /// Transform helpers, for use with [`components::Transform3D`].
 pub mod transform {
     pub use re_types::datatypes::{
@@ -97,9 +89,10 @@ pub mod coordinates {
 }
 
 pub use re_types::{
-    archetypes, datatypes, Archetype, ArchetypeName, AsComponents, Component, ComponentBatch,
-    ComponentName, Datatype, DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable,
-    MaybeOwnedComponentBatch, NamedIndicatorComponent,
+    archetypes, components, datatypes, Archetype, ArchetypeName, AsComponents, Component,
+    ComponentBatch, ComponentName, Datatype, DatatypeBatch, DatatypeName,
+    GenericIndicatorComponent, Loggable, LoggableBatch, MaybeOwnedComponentBatch,
+    NamedIndicatorComponent,
 };
 
 #[cfg(feature = "log")]

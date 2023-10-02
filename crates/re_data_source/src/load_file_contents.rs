@@ -102,7 +102,7 @@ fn log_msg_from_file_contents(
     Ok(LogMsg::ArrowMsg(store_id, arrow_msg))
 }
 
-fn load_rrd_sync(file_contents: &FileContents, tx: &Sender<LogMsg>) -> Result<(), anyhow::Error> {
+fn load_rrd_sync(file_contents: &FileContents, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     re_tracing::profile_function!(file_contents.name.as_str());
 
     let bytes: &[u8] = &file_contents.bytes;
