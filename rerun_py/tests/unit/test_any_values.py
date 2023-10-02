@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import rerun as rr
+from rerun.error_utils import RerunWarning
 
 
 def test_any_value() -> None:
@@ -28,3 +30,17 @@ def test_any_value_datatypes() -> None:
 
     assert foo_batch.component_name() == "user.components.my_points"
     assert len(foo_batch.as_arrow_array()) == 3
+
+
+def test_bad_any_value() -> None:
+    class Foo:
+        pass
+
+    with pytest.warns(RerunWarning) as warnings:
+        values = rr.AnyValues(bad_data=[Foo()])
+
+        batches = list(values.as_component_batches())
+
+        assert len(batches) == 0
+        assert len(warnings) == 1
+        assert "Error converting data to arrow for AnyValues 'bad_data'" in str(warnings[0].message)
