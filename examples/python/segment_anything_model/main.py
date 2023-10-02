@@ -85,7 +85,7 @@ def create_sam(model: str, device: str) -> Sam:
 
 def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> None:
     """Run segmentation on a single image."""
-    rr.log_image("image", image)
+    rr.log("image", rr.Image(image))
 
     logging.info("Finding masks")
     masks = mask_generator.generate(image)
@@ -98,7 +98,7 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
         np.dstack([np.zeros((image.shape[0], image.shape[1]))] + [m["segmentation"] for m in masks]).astype("uint8")
         * 128
     )
-    rr.log_tensor("mask_tensor", mask_tensor)
+    rr.log("mask_tensor", rr.Tensor(mask_tensor))
 
     # Note: for stacking, it is important to sort these masks by area from largest to smallest
     # this is because the masks are overlapping and we want smaller masks to
@@ -108,24 +108,15 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
     masks_with_ids = list(enumerate(masks, start=1))
     masks_with_ids.sort(key=(lambda x: x[1]["area"]), reverse=True)  # type: ignore[no-any-return]
 
-    # Work-around for https://github.com/rerun-io/rerun/issues/1782
-    # Make sure we have an AnnotationInfo present for every class-id used in this image
-    # TODO(jleibs): Remove when fix is released
-    rr.log_annotation_context(
-        "image",
-        [rr.AnnotationInfo(id) for id, _ in masks_with_ids],
-        timeless=False,
-    )
-
     # Layer all of the masks together, using the id as class-id in the segmentation
     segmentation_img = np.zeros((image.shape[0], image.shape[1]))
     for id, m in masks_with_ids:
         segmentation_img[m["segmentation"]] = id
 
-    rr.log_segmentation_image("image/masks", segmentation_img)
+    rr.log("image/masks", rr.SegmentationImage(segmentation_img.astype(np.uint8)))
 
     mask_bbox = np.array([m["bbox"] for _, m in masks_with_ids])
-    rr.log_rects("image/boxes", rects=mask_bbox, class_ids=[id for id, _ in masks_with_ids])
+    rr.log("image/boxes", rr.Boxes2D(array=mask_bbox, class_ids=[id for id, _ in masks_with_ids]))
 
 
 def is_url(path: str) -> bool:

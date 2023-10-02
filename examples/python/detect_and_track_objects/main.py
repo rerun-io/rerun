@@ -85,7 +85,7 @@ class Detector:
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv2.resize(rgb, scaled_size)
-        rr.log_image("image_scaled/rgb", rgb_scaled, jpeg_quality=85)
+        rr.log("image_scaled/rgb", rr.Image(rr.TensorData(array=rgb_scaled, jpeg_quality=85)))
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)
@@ -98,7 +98,7 @@ class Detector:
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
-        rr.log_segmentation_image("image_scaled/segmentation", mask)
+        rr.log("image_scaled/segmentation", rr.SegmentationImage(mask))
 
         boxes = detections["boxes"].detach().cpu().numpy()
         class_ids = detections["labels"].detach().cpu().numpy()
@@ -128,20 +128,24 @@ class Detector:
 
         thing_boxes = boxes[things_np, :]
         thing_class_ids = class_ids_np[things_np]
-        rr.log_rects(
+        rr.log(
             "image_scaled/detections/things",
-            thing_boxes,
-            rect_format=rr.RectFormat.XYXY,
-            class_ids=thing_class_ids,
+            rr.Boxes2D(
+                array=thing_boxes,
+                array_format=rr.Box2DFormat.XYXY,
+                class_ids=thing_class_ids,
+            ),
         )
 
         background_boxes = boxes[~things_np, :]
         background_class_ids = class_ids[~things_np]
-        rr.log_rects(
+        rr.log(
             "image_scaled/detections/background",
-            background_boxes,
-            rect_format=rr.RectFormat.XYXY,
-            class_ids=background_class_ids,
+            rr.Boxes2D(
+                array=background_boxes,
+                array_format=rr.Box2DFormat.XYXY,
+                class_ids=background_class_ids,
+            ),
         )
 
 
@@ -188,14 +192,16 @@ class Tracker:
 
     def log_tracked(self) -> None:
         if self.is_tracking:
-            rr.log_rect(
+            rr.log(
                 f"image/tracked/{self.tracking_id}",
-                self.tracked.bbox_xywh,
-                rect_format=rr.RectFormat.XYWH,
-                class_id=self.tracked.class_id,
+                rr.Boxes2D(
+                    array=self.tracked.bbox_xywh,
+                    array_format=rr.Box2DFormat.XYWH,
+                    class_ids=self.tracked.class_id,
+                ),
             )
         else:
-            rr.log_rect(f"image/tracked/{self.tracking_id}", [])
+            rr.log(f"image/tracked/{self.tracking_id}", rr.Clear(recursive=False))  # TODO(#3381)
 
     def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
         self.num_recent_undetected_frames = 0
@@ -314,7 +320,7 @@ def track_objects(video_path: str) -> None:
     class_descriptions = [
         rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
-    rr.log_annotation_context("/", class_descriptions, timeless=True)
+    rr.log("/", rr.AnnotationContext(class_descriptions), timeless=True)
 
     detector = Detector(coco_categories=coco_categories)
 
@@ -333,7 +339,7 @@ def track_objects(video_path: str) -> None:
             break
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rr.log_image("image/rgb", rgb, jpeg_quality=85)
+        rr.log("image/rgb", rr.Image(rr.TensorData(array=rgb, jpeg_quality=85)))
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)

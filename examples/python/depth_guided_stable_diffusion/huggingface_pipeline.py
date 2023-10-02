@@ -208,8 +208,8 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
                 if `guidance_scale` is less than `1`).
         """
         batch_size = len(prompt) if isinstance(prompt, list) else 1
-        rr.log_text_entry("prompt/text", prompt)
-        rr.log_text_entry("prompt/text_negative", negative_prompt)
+        rr.log("prompt/text", rr.TextLog(prompt))
+        rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
         text_inputs = self.tokenizer(
             prompt,
             padding="max_length",
@@ -218,7 +218,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             return_tensors="pt",
         )
         text_input_ids = text_inputs.input_ids
-        rr.log_tensor("prompt/text_input/ids", text_input_ids)
+        rr.log("prompt/text_input/ids", rr.Tensor(text_input_ids))
         untruncated_ids = self.tokenizer(prompt, padding="longest", return_tensors="pt").input_ids
 
         if untruncated_ids.shape[-1] >= text_input_ids.shape[-1] and not torch.equal(text_input_ids, untruncated_ids):
@@ -229,7 +229,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             )
 
         if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
-            rr.log_tensor("prompt/text_input/attention_mask", text_inputs.attention_mask)
+            rr.log("prompt/text_input/attention_mask", rr.Tensor(text_inputs.attention_mask))
             attention_mask = text_inputs.attention_mask.to(device)
         else:
             attention_mask = None
@@ -274,7 +274,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
                 truncation=True,
                 return_tensors="pt",
             )
-            rr.log_tensor("prompt/uncond_input/ids", uncond_input.input_ids)
+            rr.log("prompt/uncond_input/ids", rr.Tensor(uncond_input.input_ids))
 
             if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
                 attention_mask = uncond_input.attention_mask.to(device)
@@ -295,8 +295,8 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             # For classifier free guidance, we need to do two forward passes.
             # Here we concatenate the unconditional and text embeddings into a single batch
             # to avoid doing two forward passes
-            rr.log_tensor("prompt/text_embeddings", text_embeddings)
-            rr.log_tensor("prompt/uncond_embeddings", uncond_embeddings)
+            rr.log("prompt/text_embeddings", rr.Tensor(text_embeddings))
+            rr.log("prompt/uncond_embeddings", rr.Tensor(uncond_embeddings))
             text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
         return text_embeddings
@@ -373,14 +373,14 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         image = image.to(device=device, dtype=dtype)
         init_latent_dist = self.vae.encode(image).latent_dist
         init_latents = init_latent_dist.sample(generator=generator)
-        rr.log_tensor("encoded_input_image", init_latents, names=["b", "c", "h", "w"])
+        rr.log("encoded_input_image", rr.Tensor(init_latents, dim_names=["b", "c", "h", "w"]))
 
         # Decode the initial latents so we can inspect the image->latent->image loop
         decoded = self.vae.decode(init_latents).sample
         decoded = (decoded / 2 + 0.5).clamp(0, 1)
         decoded = decoded.cpu().permute(0, 2, 3, 1).float().numpy()
         decoded = (decoded * 255).round().astype("uint8")
-        rr.log_image("decoded_init_latents", decoded)
+        rr.log("decoded_init_latents", rr.Image(decoded))
 
         init_latents = 0.18215 * init_latents
 
@@ -424,7 +424,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
 
         if depth_map is None:
             pixel_values = self.feature_extractor(images=image, return_tensors="pt").pixel_values
-            rr.log_tensor("depth/input_preprocessed", pixel_values)
+            rr.log("depth/input_preprocessed", rr.Tensor(pixel_values))
             pixel_values = pixel_values.to(device=device)
             # The DPT-Hybrid model uses batch-norm layers which are not compatible with fp16.
             # So we use `torch.autocast` here for half precision inference.
@@ -434,19 +434,19 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         else:
             depth_map = depth_map.to(device=device, dtype=dtype)
 
-        rr.log_depth_image("depth/estimated", depth_map)
+        rr.log("depth/estimated", rr.DepthImage(depth_map))
         depth_map = torch.nn.functional.interpolate(
             depth_map.unsqueeze(1),
             size=(height // self.vae_scale_factor, width // self.vae_scale_factor),
             mode="bicubic",
             align_corners=False,
         )
-        rr.log_depth_image("depth/interpolated", depth_map)
+        rr.log("depth/interpolated", rr.DepthImage(depth_map))
 
         depth_min = torch.amin(depth_map, dim=[1, 2, 3], keepdim=True)
         depth_max = torch.amax(depth_map, dim=[1, 2, 3], keepdim=True)
         depth_map = 2.0 * (depth_map - depth_min) / (depth_max - depth_min) - 1.0
-        rr.log_depth_image("depth/normalized", depth_map)
+        rr.log("depth/normalized", rr.DepthImage(depth_map))
         depth_map = depth_map.to(dtype)
 
         # duplicate mask and masked_image_latents for each generation per prompt, using mps friendly method
@@ -555,9 +555,9 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         )
 
         # 5. Preprocess image
-        rr.log_image("image/original", image)
+        rr.log("image/original", rr.Image(image))
         image = preprocess(image)
-        rr.log_tensor("input_image/preprocessed", image)
+        rr.log("input_image/preprocessed", rr.Tensor(image))
 
         # 6. set timesteps
         self.scheduler.set_timesteps(num_inference_steps, device=device)
@@ -568,9 +568,10 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         latents = self.prepare_latents(
             image, latent_timestep, batch_size, num_images_per_prompt, text_embeddings.dtype, device, generator
         )
-        rr.log_tensor("diffusion/latents", latents, names=["b", "c", "h", "w"])
+        rr.log("diffusion/latents", rr.Tensor(latents, dim_names=["b", "c", "h", "w"]))
 
-        # 8. Prepare extra step kwargs. TODO(someone): Logic should ideally just be moved out of the pipeline
+        # 8. Prepare extra step kwargs.
+        # TODO(someone): Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
         # 9. Denoising loop
@@ -584,11 +585,11 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
                 latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
                 latent_model_input = torch.cat([latent_model_input, depth_mask], dim=1)
-                rr.log_tensor("diffusion/latent_model_input", latent_model_input)
+                rr.log("diffusion/latent_model_input", rr.Tensor(latent_model_input))
 
                 # predict the noise residual
                 noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
-                rr.log_tensor("diffusion/noise_pred", noise_pred, names=["b", "c", "h", "w"])
+                rr.log("diffusion/noise_pred", rr.Tensor(noise_pred, dim_names=["b", "c", "h", "w"]))
 
                 # perform guidance
                 if do_classifier_free_guidance:
@@ -597,12 +598,12 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
-                rr.log_tensor("diffusion/latents", latents, names=["b", "c", "h", "w"])
+                rr.log("diffusion/latents", rr.Tensor(latents, dim_names=["b", "c", "h", "w"]))
 
                 # Decode the latents for visualization purposes
                 image = self.decode_latents(latents)
                 image = (image * 255).round().astype("uint8")
-                rr.log_image("image/diffused", image)
+                rr.log("image/diffused", rr.Image(image))
 
                 # call the callback, if provided
                 if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
@@ -613,7 +614,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         # 10. Post-processing
         image = self.decode_latents(latents)
         image_8 = (image * 255).round().astype("uint8")
-        rr.log_image("image/diffused", image_8)
+        rr.log("image/diffused", rr.Image(image_8))
 
         # 11. Convert to PIL
         if output_type == "pil":

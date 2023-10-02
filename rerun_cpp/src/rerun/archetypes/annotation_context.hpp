@@ -60,6 +60,7 @@ namespace rerun {
         /// }
         /// ```
         struct AnnotationContext {
+            /// List of class descriptions, mapping class indices to class names, colors etc.
             rerun::components::AnnotationContext context;
 
             /// Name of the indicator component, used to identify the archetype when converting to a

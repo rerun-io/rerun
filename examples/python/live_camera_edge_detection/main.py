@@ -41,15 +41,15 @@ def run_canny(num_frames: int | None) -> None:
 
         # Log the original image
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        rr.log_image("image/rgb", rgb)
+        rr.log("image/rgb", rr.Image(rgb))
 
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        rr.log_image("image/gray", gray)
+        rr.log("image/gray", rr.Image(gray))
 
         # Run the canny edge detector
         canny = cv2.Canny(gray, 50, 200)
-        rr.log_image("image/canny", canny)
+        rr.log("image/canny", rr.Image(canny))
 
 
 def main() -> None:

@@ -95,6 +95,25 @@ pub use re_types::{
     NamedIndicatorComponent,
 };
 
+mod prelude {
+    // Import all archetypes into the global namespace to minimize
+    // the amount of typing for our users.
+    pub use super::archetypes::*;
+
+    // Also import some select, often-used, datatypes and components:
+    pub use super::components::{
+        Color, HalfSizes2D, HalfSizes3D, InstanceKey, Material, MediaType, MeshProperties,
+        Origin3D, OutOfTreeTransform3D, Position3D, Radius, TextLogLevel, Vector3D,
+    };
+    pub use super::datatypes::{
+        Angle, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rotation3D,
+        RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+    };
+
+    pub use super::time::{Time, TimePoint, Timeline};
+}
+pub use prelude::*;
+
 #[cfg(feature = "log")]
 pub use self::log_integration::Logger;
 #[cfg(feature = "log")]

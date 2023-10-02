@@ -106,7 +106,7 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rr.log_view_coordinates("world", up="+Y", timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
 
     log_annotated_bboxes(seq.objects)
 
@@ -116,7 +116,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         rr.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        rr.log_image_file("world/camera", img_path=sample.image_path, img_format=rr.ImageFormat.JPEG)
+        rr.log("world/camera", rr.ImageEncoded(path=sample.image_path))
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -143,16 +143,17 @@ def log_camera(cam: ARCamera) -> None:
 
     rot = rot * R.from_rotvec((math.tau / 2.0) * X)  # TODO(emilk): figure out why this is needed
 
-    rr.log_transform3d(
+    rr.log(
         "world/camera",
-        rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rot.as_quat())),
+        rr.Transform3D(translation=translation, rotation=rr.Quaternion(xyzw=rot.as_quat())),
     )
-    rr.log_pinhole(
+    rr.log(
         "world/camera",
-        width=w,
-        height=h,
-        child_from_parent=intrinsics,
-        camera_xyz="RDF",
+        rr.Pinhole(
+            resolution=[w, h],
+            image_from_camera=intrinsics,
+            camera_xyz=rr.ViewCoordinates.RDF,
+        ),
     )
 
 
@@ -161,7 +162,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
 
     positions = np.array([[p.x, p.y, p.z] for p in point_cloud.point]).astype(np.float32)
     identifiers = point_cloud.identifier
-    rr.log_points("world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
+    rr.log("world/points", rr.Points3D(positions, instance_keys=identifiers, colors=[255, 255, 255, 255]))
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
@@ -173,13 +174,15 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
             continue
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
-        rr.log_obb(
+        rr.log(
             f"world/annotations/box-{bbox.id}",
-            half_size=0.5 * np.array(bbox.scale),
-            position=bbox.translation,
-            rotation_q=rot.as_quat(),
-            color=[160, 230, 130, 255],
-            label=bbox.category,
+            rr.Boxes3D(
+                half_sizes=0.5 * np.array(bbox.scale),
+                centers=bbox.translation,
+                rotations=rr.Quaternion(xyzw=rot.as_quat()),
+                colors=[160, 230, 130, 255],
+                labels=bbox.category,
+            ),
             timeless=True,
         )
 
@@ -206,45 +209,36 @@ def log_frame_annotations(frame_times: list[float], frame_annotations: list[Fram
                 log_projected_bbox(f"world/camera/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for id, pos2 in zip(keypoint_ids, keypoint_pos2s):
-                    rr.log_point(
+                    rr.log(
                         f"world/camera/estimates/box-{obj_ann.object_id}/{id}",
-                        pos2,
-                        color=[130, 160, 250, 255],
+                        rr.Points2D(pos2, colors=[130, 160, 250, 255]),
                     )
 
 
+# TODO(#3412): replace once we can auto project 3D bboxes on 2D views (need blueprints)
 def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
     """
     Projects the 3D bounding box to a 2D plane, using line segments.
 
     The 3D bounding box is described by the keypoints of an `ObjectAnnotation`
     """
-
-    # NOTE: we don't yet support projecting arbitrary 3D stuff onto 2D views, so
-    # we manually render a 3D bounding box by drawing line segments using the
-    # already projected coordinates.
-    # Try commenting 2 out of the 3 blocks and running the whole thing again if
-    # this doesn't make sense, that'll make everything clearer.
-    #
-    # TODO(cmc): replace once we can project 3D bboxes on 2D views
     # fmt: off
-    segments = np.array([keypoints[1], keypoints[2],
-                         keypoints[1], keypoints[3],
-                         keypoints[4], keypoints[2],
-                         keypoints[4], keypoints[3],
+    segments = np.array([[keypoints[1], keypoints[2]],
+                         [keypoints[1], keypoints[3]],
+                         [keypoints[4], keypoints[2]],
+                         [keypoints[4], keypoints[3]],
 
-                         keypoints[5], keypoints[6],
-                         keypoints[5], keypoints[7],
-                         keypoints[8], keypoints[6],
-                         keypoints[8], keypoints[7],
+                         [keypoints[5], keypoints[6]],
+                         [keypoints[5], keypoints[7]],
+                         [keypoints[8], keypoints[6]],
+                         [keypoints[8], keypoints[7]],
 
-                         keypoints[1], keypoints[5],
-                         keypoints[2], keypoints[6],
-                         keypoints[3], keypoints[7],
-                         keypoints[4], keypoints[8]], dtype=np.float32)
+                         [keypoints[1], keypoints[5]],
+                         [keypoints[2], keypoints[6]],
+                         [keypoints[3], keypoints[7]],
+                         [keypoints[4], keypoints[8]]], dtype=np.float32)
     # fmt: on
-
-    rr.log_line_segments(path, segments, color=[130, 160, 250, 255])
+    rr.log(path, rr.LineStrips2D(segments, colors=[130, 160, 250, 255]))
 
 
 def main() -> None:

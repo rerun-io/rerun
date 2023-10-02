@@ -1,17 +1,17 @@
 //! Log a `TextDocument`
 
-use rerun::{
-    archetypes::TextDocument, external::re_types::components::MediaType, RecordingStreamBuilder,
-};
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_text_document").memory()?;
+    let (rec, storage) =
+        rerun::RecordingStreamBuilder::new("rerun_example_text_document").memory()?;
 
-    rec.log("text_document", &TextDocument::new("Hello, TextDocument!"))?;
+    rec.log(
+        "text_document",
+        &rerun::TextDocument::new("Hello, TextDocument!"),
+    )?;
 
     rec.log(
         "markdown",
-        &TextDocument::new(
+        &rerun::TextDocument::new(
             r#"
 # Hello Markdown!
 [Click here to see the raw text](recording://markdown.Text).
@@ -55,7 +55,7 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
 ![A random image](https://picsum.photos/640/480)
 "#.trim(),
         )
-        .with_media_type(MediaType::markdown()),
+        .with_media_type(rerun::MediaType::markdown()),
     )?;
 
     rerun::native_viewer::show(storage.take())?;

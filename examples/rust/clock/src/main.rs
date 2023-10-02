@@ -9,12 +9,7 @@
 
 use std::f32::consts::TAU;
 
-use rerun::{
-    archetypes::{Arrows3D, Boxes3D, Points3D, ViewCoordinates},
-    components::Color,
-    external::re_log,
-    RecordingStream,
-};
+use rerun::external::re_log;
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -26,7 +21,21 @@ struct Args {
     steps: usize,
 }
 
-fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    re_log::setup_native_logging();
+
+    use clap::Parser as _;
+    let args = Args::parse();
+
+    let default_enabled = true;
+    args.rerun
+        .clone()
+        .run("rerun_example_clock", default_enabled, move |rec| {
+            run(&rec, &args).unwrap();
+        })
+}
+
+fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     const LENGTH_S: f32 = 20.0;
     const LENGTH_M: f32 = 10.0;
     const LENGTH_H: f32 = 4.0;
@@ -34,24 +43,24 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     const WIDTH_M: f32 = 0.4;
     const WIDTH_H: f32 = 0.6;
 
-    rec.log_timeless("world", &ViewCoordinates::RIGHT_HAND_Y_UP)?;
+    rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_UP)?;
 
     rec.log_timeless(
         "world/frame",
-        &Boxes3D::from_half_sizes([(LENGTH_S, LENGTH_S, 1.0)]),
+        &rerun::Boxes3D::from_half_sizes([(LENGTH_S, LENGTH_S, 1.0)]),
     )?;
 
     fn pos(angle: f32, length: f32) -> [f32; 3] {
         [length * angle.sin(), length * angle.cos(), 0.0]
     }
 
-    fn color(angle: f32, blue: u8) -> Color {
+    fn color(angle: f32, blue: u8) -> rerun::Color {
         let c = (angle * 255.0) as u8;
-        Color::from_unmultiplied_rgba(255 - c, c, blue, u8::max(128, blue))
+        rerun::Color::from_unmultiplied_rgba(255 - c, c, blue, u8::max(128, blue))
     }
 
     fn log_hand(
-        rec: &RecordingStream,
+        rec: &rerun::RecordingStream,
         name: &str,
         step: usize,
         angle: f32,
@@ -66,11 +75,11 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
 
         rec.log(
             format!("world/{name}_pt"),
-            &Points3D::new([pos]).with_colors([color]),
+            &rerun::Points3D::new([pos]).with_colors([color]),
         )?;
         rec.log(
             format!("world/{name}_hand"),
-            &Arrows3D::from_vectors([pos])
+            &rerun::Arrows3D::from_vectors([pos])
                 .with_origins([(0.0, 0.0, 0.0)])
                 .with_colors([color])
                 .with_radii([width * 0.5]),
@@ -87,18 +96,4 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     };
 
     Ok(())
-}
-
-fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
-
-    use clap::Parser as _;
-    let args = Args::parse();
-
-    let default_enabled = true;
-    args.rerun
-        .clone()
-        .run("rerun_example_clock", default_enabled, move |rec| {
-            run(&rec, &args).unwrap();
-        })
 }

@@ -21,16 +21,17 @@
 /// ```ignore
 /// //! Shows integration of Rerun's `TextLog` with the native logging interface.
 ///
-/// use rerun::{archetypes::TextLog, components::TextLogLevel, external::log, RecordingStreamBuilder};
+/// use rerun::external::log;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_text_log_integration").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration").memory()?;
 ///
 ///     // Log a text entry directly:
 ///     rec.log(
 ///         "logs",
-///         &TextLog::new("this entry has loglevel TRACE").with_level(TextLogLevel::TRACE),
+///         &rerun::TextLog::new("this entry has loglevel TRACE")
+///             .with_level(rerun::TextLogLevel::TRACE),
 ///     )?;
 ///
 ///     // Or log via a logging handler:
