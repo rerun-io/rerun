@@ -52,10 +52,12 @@ def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
     # the data is i16, but in range [0, 536].
     voxels_volume_u16: npt.NDArray[np.uint16] = np.require(voxels_volume, np.uint16)
 
-    rr.log_tensor(
+    rr.log(
         "tensor",
-        voxels_volume_u16,
-        names=["right", "back", "up"],
+        rr.Tensor(
+            voxels_volume_u16,
+            dim_names=["right", "back", "up"],
+        ),
     )
 
 

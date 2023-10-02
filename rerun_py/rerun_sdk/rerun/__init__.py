@@ -32,9 +32,13 @@ __all__ = [
     "LineStrips2D",
     "LineStrips3D",
     "LoggingHandler",
+    "Material",
     "MediaType",
     "Mesh3D",
     "MeshFormat",
+    "MeshProperties",
+    "OutOfTreeTransform3D",
+    "OutOfTreeTransform3DBatch",
     "Pinhole",
     "Points2D",
     "Points3D",
@@ -46,6 +50,7 @@ __all__ = [
     "Scale3D",
     "SegmentationImage",
     "Tensor",
+    "TensorData",
     "TextDocument",
     "TextLog",
     "TextLogLevel",
@@ -143,8 +148,22 @@ from .archetypes import (
     ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import Box2DFormat
-from .components import MediaType, TextLogLevel
-from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
+from .components import (
+    Material,
+    MediaType,
+    MeshProperties,
+    OutOfTreeTransform3D,
+    OutOfTreeTransform3DBatch,
+    TextLogLevel,
+)
+from .datatypes import (
+    Quaternion,
+    RotationAxisAngle,
+    Scale3D,
+    TensorData,
+    TranslationAndMat3x3,
+    TranslationRotationScale3D,
+)
 from .error_utils import set_strict_mode
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow

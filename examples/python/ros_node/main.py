@@ -82,11 +82,9 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         # Log a bounding box as a visual placeholder for the map
         # # TODO(jleibs): Log the real map once [#1531](https://github.com/rerun-io/rerun/issues/1531) is merged
-        rr.log_obb(
+        rr.log(
             "map/box",
-            half_size=[3, 3, 1],
-            position=[0, 0, 1],
-            color=[255, 255, 255, 255],
+            rr.Boxes3D(half_sizes=[3, 3, 1], centers=[0, 0, 1], colors=[255, 255, 255, 255]),
             timeless=True,
         )
 
@@ -159,9 +157,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
             t = tf.transform.translation
             q = tf.transform.rotation
-            rr.log_transform3d(
-                path, rr.TranslationRotationScale3D([t.x, t.y, t.z], rr.Quaternion(xyzw=[q.x, q.y, q.z, q.w]))
-            )
+            rr.log(path, rr.Transform3D(translation=[t.x, t.y, t.z], rotation=rr.Quaternion(xyzw=[q.x, q.y, q.z, q.w])))
         except TransformException as ex:
             print(f"Failed to get transform: {ex}")
 
@@ -172,11 +168,12 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         self.model.fromCameraInfo(info)
 
-        rr.log_pinhole(
+        rr.log(
             "map/robot/camera/img",
-            child_from_parent=self.model.intrinsicMatrix(),
-            width=self.model.width,
-            height=self.model.height,
+            rr.Pinhole(
+                resolution=[self.model.width, self.model.height],
+                image_from_camera=self.model.intrinsicMatrix(),
+            ),
         )
 
     def odom_callback(self, odom: Odometry) -> None:
@@ -185,8 +182,8 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.set_time_nanos("ros_time", time.nanoseconds)
 
         # Capture time-series data for the linear and angular velocities
-        rr.log_scalar("odometry/vel", odom.twist.twist.linear.x)
-        rr.log_scalar("odometry/ang_vel", odom.twist.twist.angular.z)
+        rr.log("odometry/vel", rr.TimeSeriesScalar(odom.twist.twist.linear.x))
+        rr.log("odometry/ang_vel", rr.TimeSeriesScalar(odom.twist.twist.angular.z))
 
         # Update the robot pose itself via TF
         self.log_tf_as_transform3d("map/robot", time)
@@ -196,7 +193,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         time = Time.from_msg(img.header.stamp)
         rr.set_time_nanos("ros_time", time.nanoseconds)
 
-        rr.log_image("map/robot/camera/img", self.cv_bridge.imgmsg_to_cv2(img))
+        rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
         self.log_tf_as_transform3d("map/robot/camera", time)
 
     def points_callback(self, points: PointCloud2) -> None:
@@ -222,7 +219,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         # Log points once rigidly under robot/camera/points. This is a robot-centric
         # view of the world.
-        rr.log_points("map/robot/camera/points", positions=pts, colors=colors)
+        rr.log("map/robot/camera/points", rr.Points3D(pts, colors=colors))
         self.log_tf_as_transform3d("map/robot/camera/points", time)
 
         # Log points a second time after transforming to the map frame. This is a map-centric
@@ -230,7 +227,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         #
         # Once Rerun supports fixed-frame aware transforms [#1522](https://github.com/rerun-io/rerun/issues/1522)
         # this will no longer be necessary.
-        rr.log_points("map/points", positions=pts, colors=colors)
+        rr.log("map/points", rr.Points3D(pts, colors=colors))
         self.log_tf_as_transform3d("map/points", time)
 
     def scan_callback(self, scan: LaserScan) -> None:
@@ -253,7 +250,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         origin = (pts / np.linalg.norm(pts, axis=1).reshape(-1, 1)) * 0.3
         segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
-        rr.log_line_segments("map/robot/scan", segs, stroke_width=0.005)
+        rr.log("map/robot/scan", rr.LineStrips3D(segs, radii=0.0025))
         self.log_tf_as_transform3d("map/robot/scan", time)
 
     def urdf_callback(self, urdf_msg: String) -> None:
