@@ -62,8 +62,8 @@ impl std::fmt::Debug for EntityPathHash {
 ///
 /// The entity path is a list of [parts][EntityPathPart] separated by slashes.
 ///
-/// Each part is either a [_name_][EntityPathPart::name] of a limited set of characters,
-/// or an [`Index`].
+/// Each part is either a [_name_][EntityPathPart::Name] of a limited set of characters,
+/// or an [`Index`][crate::Index].
 /// Names are like idenitifers in code, and must match the regex: `[a-zA-z0-9_-]+`
 /// Indices are like array indices or keys in a map or table, and can be any string,
 /// uuid, or number.

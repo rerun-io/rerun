@@ -4,7 +4,7 @@ use crate::hash::Hash128;
 
 /// The key of a table, or an array index.
 ///
-/// This is a variant of [`EntityPathPart`] which makes up [`EntityPath`].
+/// This is a variant of [`EntityPathPart`][crate::EntityPathPart] which makes up [`EntityPath`][crate::EntityPath].
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Index {
