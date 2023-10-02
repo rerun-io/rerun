@@ -55,9 +55,7 @@ impl DataUi for InstancePath {
                         );
                     });
 
-                    if let Some(archetype_name) =
-                        crate::indicator_component_archetype(&component_name)
-                    {
+                    if let Some(archetype_name) = component_name.indicator_component_archetype() {
                         ui.weak(format!(
                             "Indicator component for the {archetype_name} archetype"
                         ));
