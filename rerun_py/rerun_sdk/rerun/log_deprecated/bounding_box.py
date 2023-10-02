@@ -4,6 +4,7 @@ from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Boxes3D
@@ -22,6 +23,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_obb(
     entity_path: str,
@@ -39,6 +44,11 @@ def log_obb(
 ) -> None:
     """
     Log a 3D Oriented Bounding Box, or OBB.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Example:
     --------
@@ -89,6 +99,10 @@ def log_obb(
     )
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_obbs(
     entity_path: str,
@@ -105,13 +119,12 @@ def log_obbs(
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Log a 3D Oriented Bounding Box, or OBB.
+    Log a collection of 3D Oriented Bounding Boxes, or OBB.
 
-    Example:
-    --------
-    ```
-    rr.log_obb("my_obb", half_size=[1.0, 2.0, 3.0], position=[0, 0, 0], rotation_q=[0, 0, 0, 1])
-    ```
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Parameters
     ----------

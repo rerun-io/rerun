@@ -17,18 +17,18 @@ all-features = true
 
 
 [dependencies]
-log = { version = "0.4", features = ["std"] }
-log-once = "0.4"
+log = { workspace = true, features = ["std"] }
+log-once.workspace = true
 parking_lot.workspace = true
 
 # make sure dependencies that user tracing gets forwarded to `log`:
-tracing = { version = "0.1", features = ["log"] }
+tracing = { workspace = true, features = ["log"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger = "0.10"
+env_logger.workspace = true
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-js-sys = "0.3"
-wasm-bindgen = "0.2.87"
+js-sys.workspace = true
+wasm-bindgen.workspace = true

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Pinhole
@@ -14,6 +15,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Pinhole(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_pinhole(
     entity_path: str,
@@ -29,6 +34,11 @@ def log_pinhole(
 ) -> None:
     """
     Log a perspective camera model.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Pinhole][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     This logs the pinhole model that projects points from the parent (camera) space to this space (image) such that:
     ```

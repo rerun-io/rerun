@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
 from rerun._log import log
 from rerun.archetypes import Clear
 from rerun.recording_stream import RecordingStream
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Clear(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 def log_cleared(
     entity_path: str,
     *,
@@ -13,6 +19,11 @@ def log_cleared(
 ) -> None:
     """
     Indicate that an entity at a given path should no longer be displayed.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Clear][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     If `recursive` is True this will also clear all sub-paths
 

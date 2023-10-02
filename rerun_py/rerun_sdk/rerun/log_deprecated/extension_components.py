@@ -5,6 +5,7 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 import rerun.error_utils
 from rerun import bindings
@@ -73,6 +74,10 @@ def _add_extension_components(
             instanced[name] = pa_value
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.AnyValues(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_extension_components(
     entity_path: str,
@@ -84,6 +89,11 @@ def log_extension_components(
 ) -> None:
     """
     Log an arbitrary collection of extension components.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.AnyValues][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Each item in `ext` will be logged as a separate component.
 

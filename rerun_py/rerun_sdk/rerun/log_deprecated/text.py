@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
 from rerun._log import log
 from rerun.archetypes import TextLog
 from rerun.log_deprecated import Color, _normalize_colors
@@ -15,6 +17,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.TextLog(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_text_entry(
     entity_path: str,
@@ -28,6 +34,11 @@ def log_text_entry(
 ) -> None:
     """
     Log a text entry, with optional level.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.TextLog][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Parameters
     ----------
