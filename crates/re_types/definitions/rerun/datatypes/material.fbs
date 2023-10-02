@@ -3,6 +3,7 @@ include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
 include "rerun/attributes.fbs";
+include "rerun/datatypes/rgba32.fbs";
 
 namespace rerun.datatypes;
 

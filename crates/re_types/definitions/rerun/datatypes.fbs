@@ -1,5 +1,3 @@
-include "./datatypes/rgba32.fbs"; // Must come before material.fbs
-
 include "./datatypes/angle.fbs";
 include "./datatypes/annotation_info.fbs";
 include "./datatypes/class_description_map_elem.fbs";
@@ -12,6 +10,7 @@ include "./datatypes/mat4x4.fbs";
 include "./datatypes/material.fbs"; // Must come after rgba32.fbs
 include "./datatypes/mesh_properties.fbs";
 include "./datatypes/quaternion.fbs";
+include "./datatypes/rgba32.fbs";
 include "./datatypes/rotation_axis_angle.fbs";
 include "./datatypes/rotation3d.fbs";
 include "./datatypes/scalars.fbs";
