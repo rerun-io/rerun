@@ -11,7 +11,7 @@ impl DataUi for InstancePath {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let Self {
@@ -21,7 +21,7 @@ impl DataUi for InstancePath {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        let Some(mut components) = store.all_components(&query.timeline, entity_path) else {
+        let Some(components) = store.all_components(&query.timeline, entity_path) else {
             if ctx.store_db.entity_db.knows_of_entity(entity_path) {
                 ui.label(format!(
                     "No components in entity {:?} on timeline {:?}",
@@ -36,12 +36,21 @@ impl DataUi for InstancePath {
             }
             return;
         };
-        components.sort();
+
+        let all_are_indicators = components.iter().all(|c| c.is_indicator_component());
 
         egui::Grid::new("entity_instance")
             .num_columns(2)
             .show(ui, |ui| {
                 for &component_name in crate::ui_visible_components(&components) {
+                    if verbosity != UiVerbosity::All
+                        && component_name.is_indicator_component()
+                        && !all_are_indicators
+                    {
+                        // Skip indicator components in hover ui (unless there are no other types of components).
+                        continue;
+                    }
+
                     let Some((_, component_data)) =
                         get_component_with_instances(store, query, entity_path, component_name)
                     else {
@@ -56,9 +65,7 @@ impl DataUi for InstancePath {
                         );
                     });
 
-                    if let Some(archetype_name) =
-                        crate::indicator_component_archetype(&component_name)
-                    {
+                    if let Some(archetype_name) = component_name.indicator_component_archetype() {
                         ui.weak(format!(
                             "Indicator component for the {archetype_name} archetype"
                         ));
