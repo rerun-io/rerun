@@ -1,10 +1,10 @@
 //! The Rerun logging SDK
 //!
-//! This is the bare-bones version of the [`rerun`][https://docs.rs/rerun/] crate.
+//! This is the bare-bones version of the [`rerun`](https://docs.rs/rerun/) crate.
 //! `rerun` exports everything in `re_sdk`, so in most cases you want to use `rerun`
 //! instead.
 //!
-//! Please read [the docs for the `rerun` crate][https://docs.rs/rerun/] instead.
+//! Please read [the docs for the `rerun` crate](https://docs.rs/rerun/) instead.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
