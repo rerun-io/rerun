@@ -7,6 +7,7 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import Boxes3D
 from rerun.datatypes import Quaternion
 from rerun.log_deprecated import (
@@ -191,4 +192,4 @@ def log_obbs(
         labels=labels,
         class_ids=class_ids,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)

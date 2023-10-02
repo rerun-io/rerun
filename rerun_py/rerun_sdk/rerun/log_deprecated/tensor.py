@@ -6,6 +6,7 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import BarChart, Tensor
 from rerun.datatypes.tensor_data import TensorData, TensorDataLike
 from rerun.error_utils import _send_warning
@@ -94,6 +95,6 @@ def _log_tensor(
 
     # Our legacy documentation is that 1D tensors were interpreted as barcharts
     if len(tensor_data.shape) == 1:
-        log(entity_path, BarChart(tensor_data), ext=ext, timeless=timeless, recording=recording)
+        log(entity_path, BarChart(tensor_data), AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     else:
-        log(entity_path, Tensor(tensor_data), ext=ext, timeless=timeless, recording=recording)
+        log(entity_path, Tensor(tensor_data), AnyValues(**(ext or {})), timeless=timeless, recording=recording)

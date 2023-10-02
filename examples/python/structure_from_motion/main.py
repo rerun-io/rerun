@@ -45,7 +45,7 @@ The colored 3D points were added to the scene by logging the
 [rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points3d)
 to the [points entity](recording://points):
 ```python
-rr.log("points", rr.Points3D(points, colors=point_colors), ext={"error": point_errors})
+rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
 ```
 **Note:** we added some [custom per-point errors](recording://points.ext.error) that you can see when you
 hover over the points in the 3D view.
@@ -150,7 +150,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
 
         rr.log("plot/avg_reproj_err", rr.TimeSeriesScalar(np.mean(point_errors), color=[240, 45, 58]))
 
-        rr.log("points", rr.Points3D(points, colors=point_colors), ext={"error": point_errors})
+        rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
 
         # COLMAP's camera transform is "camera from world"
         rr.log(

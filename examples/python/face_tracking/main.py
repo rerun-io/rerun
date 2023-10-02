@@ -143,7 +143,7 @@ class FaceDetectorLogger:
             rr.log(
                 f"video/detector/faces/{i}/bbox",
                 rr.Boxes2D(array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height]),
-                ext={"index": index, "score": score},
+                rr.AnyValues(index=index, score=score),
             )
 
             # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.

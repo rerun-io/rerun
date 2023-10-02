@@ -8,6 +8,7 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import Boxes2D
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated import Color, Colors, OptionalClassIds
@@ -231,4 +232,4 @@ def log_rects(
         class_ids=class_ids,
         instance_keys=identifiers_np,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)

@@ -7,6 +7,7 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import Points2D, Points3D
 from rerun.error_utils import _send_warning
 from rerun.log_deprecated import (
@@ -117,7 +118,7 @@ def log_point(
             class_ids=class_id,
             keypoint_ids=keypoint_id,
         )
-        return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, points2d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     elif position.size == 3:
         if draw_order is not None:
             raise ValueError("`draw_order` is only supported for 3D points")
@@ -129,7 +130,7 @@ def log_point(
             class_ids=class_id,
             keypoint_ids=keypoint_id,
         )
-        return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, points3d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     else:
         raise TypeError("Position must have a total size of 2 or 3")
 
@@ -243,7 +244,7 @@ def log_points(
             keypoint_ids=keypoint_ids,
             instance_keys=identifiers_np,
         )
-        return log(entity_path, points2d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, points2d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     elif positions.shape[1] == 3:
         if draw_order is not None:
             raise ValueError("`draw_order` is only supported for 3D points")
@@ -257,6 +258,6 @@ def log_points(
             keypoint_ids=keypoint_ids,
             instance_keys=identifiers_np,
         )
-        return log(entity_path, points3d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, points3d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     else:
         raise TypeError("Positions should be Nx2 or Nx3")

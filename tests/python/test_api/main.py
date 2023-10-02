@@ -398,21 +398,20 @@ def run_bounding_box(experimental_api: bool) -> None:
 def run_extension_component(experimental_api: bool) -> None:
     rr.set_time_seconds("sim_time", 0)
     # Hack to establish 2d view bounds
-    rr.log_rect("extension_components", [0, 0, 128, 128])
+    rr.log("extension_components", rr.Boxes2D(array=[0, 0, 128, 128], array_format=rr.Box2DFormat.XYWH))
 
     # Single point
-    rr.log_point("extension_components/point", np.array([64, 64]), color=(255, 0, 0))
+    rr.log("extension_components/point", rr.Points2D(np.array([64, 64]), colors=(255, 0, 0)))
     # Separate extension component
-    rr.log_extension_components("extension_components/point", {"confidence": 0.9})
+    rr.log("extension_components/point", rr.AnyValues(confidence=0.9))
 
     # Batch points with extension
     # Note: each extension component must either be length 1 (a splat) or the same length as the batch
     rr.set_time_seconds("sim_time", 1)
-    rr.log_points(
+    rr.log(
         "extension_components/points",
-        np.array([[32, 32], [32, 96], [96, 32], [96, 96]]),
-        colors=(0, 255, 0),
-        ext={"corner": ["upper left", "lower left", "upper right", "lower right"], "training": True},
+        rr.Points2D(np.array([[32, 32], [32, 96], [96, 32], [96, 96]]), colors=(0, 255, 0)),
+        rr.AnyValues(corner=["upper left", "lower left", "upper right", "lower right"], training=True),
     )
 
 

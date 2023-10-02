@@ -29,6 +29,7 @@ opt_out_entirely = {
     "custom_data": ["cpp"],
     "depth_image_3d": ["cpp"],
     "depth_image_simple": ["cpp"],
+    "extra_values": ["cpp", "rust"], # Only implemented for Python
     "image_advanced": ["cpp", "rust"], # Missing example for Rust
     "image_simple": ["cpp"],
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
