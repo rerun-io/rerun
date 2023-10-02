@@ -58,7 +58,7 @@ rerun = { workspace = true, features = [
 ] }
 
 anyhow.workspace = true
-document-features = "0.2"
+document-features.workspace = true
 mimalloc.workspace = true
 rayon.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

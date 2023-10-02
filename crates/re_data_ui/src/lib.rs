@@ -42,7 +42,7 @@ pub fn ui_visible_components<'a>(
         .collect();
 
     // Put indicator components first:
-    components.sort_by_key(|c| !is_indicator_component(c));
+    components.sort_by_key(|c| (!c.is_indicator_component(), c.full_name()));
 
     components.into_iter()
 }
@@ -53,21 +53,6 @@ fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
     !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }
 
-/// Is this an indicator component for an archetype?
-pub fn is_indicator_component(component_name: &ComponentName) -> bool {
-    component_name.starts_with("rerun.components.") && component_name.ends_with("Indicator")
-}
-
-/// If this is an indicator component, for which archetype?
-pub fn indicator_component_archetype(component_name: &ComponentName) -> Option<String> {
-    if let Some(name) = component_name.strip_prefix("rerun.components.") {
-        if let Some(name) = name.strip_suffix("Indicator") {
-            return Some(name.to_owned());
-        }
-    }
-    None
-}
-
 pub fn temporary_style_ui_for_component<R>(
     ui: &mut egui::Ui,
     component_name: &ComponentName,
@@ -75,7 +60,7 @@ pub fn temporary_style_ui_for_component<R>(
 ) -> R {
     let old_style: egui::Style = (**ui.style()).clone();
 
-    if crate::is_indicator_component(component_name) {
+    if component_name.is_indicator_component() {
         // Make indicator components stand out by making them slightly fainter:
 
         let inactive = &mut ui.style_mut().visuals.widgets.inactive;

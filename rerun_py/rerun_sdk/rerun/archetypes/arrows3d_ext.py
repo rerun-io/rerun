@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .. import components, datatypes
+from ..error_utils import catch_and_log_exceptions
 
 
 class Arrows3DExt:
@@ -47,12 +48,15 @@ class Arrows3DExt:
 
         # Custom constructor to remove positional arguments and force use of keyword arguments
         # while still making vectors required.
-        self.__attrs_init__(
-            vectors=vectors,
-            origins=origins,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            class_ids=class_ids,
-            instance_keys=instance_keys,
-        )
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(
+                vectors=vectors,
+                origins=origins,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                class_ids=class_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_clear__()

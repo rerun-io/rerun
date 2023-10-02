@@ -4,6 +4,7 @@ from typing import Any, Iterable, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import LineStrips2D, LineStrips3D
@@ -20,6 +21,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips2D(…)) or `rr.log(…, rr.LineStrips3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_strip(
     entity_path: str,
@@ -34,6 +39,11 @@ def log_line_strip(
 ) -> None:
     r"""
     Log a line strip through 2D or 3D space.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips2D][] or [rerun.LineStrips3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     A line strip is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
@@ -98,6 +108,10 @@ def log_line_strip(
         raise TypeError("Positions should be either Nx2 or Nx3")
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips2D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_strips_2d(
     entity_path: str,
@@ -113,6 +127,11 @@ def log_line_strips_2d(
 ) -> None:
     r"""
     Log a batch of line strips through 2D space.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips2D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Each line strip is a list of points connected by line segments. It can be used to draw
     approximations of smooth curves.
@@ -183,6 +202,10 @@ def log_line_strips_2d(
     return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_strips_3d(
     entity_path: str,
@@ -197,6 +220,11 @@ def log_line_strips_3d(
 ) -> None:
     r"""
     Log a batch of line strips through 3D space.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Each line strip is a list of points connected by line segments. It can be used to draw approximations
     of smooth curves.
@@ -262,6 +290,10 @@ def log_line_strips_3d(
     return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips2D(…)) or `rr.log(…, rr.LineStrips3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_segments(
     entity_path: str,
@@ -276,6 +308,11 @@ def log_line_segments(
 ) -> None:
     r"""
     Log many 2D or 3D line segments.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips2D][] or [rerun.LineStrips3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The points will be connected in even-odd pairs, like so:
 

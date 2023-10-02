@@ -39,15 +39,9 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
         std::env!("CARGO_MANIFEST_DIR")
     );
 
-    let target_name = if release {
-        crate_name.to_owned()
-    } else {
-        format!("{crate_name}_debug")
-    };
-
     // The two files we are building:
-    let wasm_path = build_dir.join(format!("{target_name}_bg.wasm"));
-    let js_path = build_dir.join(format!("{target_name}.js"));
+    let wasm_path = build_dir.join(format!("{crate_name}_bg.wasm"));
+    let js_path = build_dir.join(format!("{crate_name}.js"));
 
     // Clean old versions:
     std::fs::remove_file(wasm_path.clone()).ok();
@@ -113,7 +107,7 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
         .no_modules(true)?
         .input_path(target_wasm_path.as_str())
         .typescript(false)
-        .out_name(target_name.as_str())
+        .out_name(crate_name)
         .generate(build_dir.as_str())
     {
         if err

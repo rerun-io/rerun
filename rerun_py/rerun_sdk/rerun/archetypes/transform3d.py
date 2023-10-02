@@ -5,18 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import Archetype
+from .transform3d_ext import Transform3DExt
 
 __all__ = ["Transform3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Transform3D(Archetype):
+class Transform3D(Transform3DExt, Archetype):
     """
     A 3D transform.
 
@@ -32,12 +31,12 @@ class Transform3D(Archetype):
 
     rr.log("base", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
-    rr.log("base/translated", rr.TranslationAndMat3x3(translation=[1, 0, 0]))
+    rr.log("base/translated", rr.Transform3D(translation=[1, 0, 0]))
     rr.log("base/translated", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
     rr.log(
         "base/rotated_scaled",
-        rr.TranslationRotationScale3D(
+        rr.Transform3D(
             rotation=RotationAxisAngle(axis=[0, 0, 1], angle=Angle(rad=pi / 4)),
             scale=2,
         ),
@@ -53,22 +52,24 @@ class Transform3D(Archetype):
     </picture>
     """
 
-    def __init__(self: Any, transform: datatypes.Transform3DLike):
-        """
-        Create a new instance of the Transform3D archetype.
+    # __init__ can be found in transform3d_ext.py
 
-        Parameters
-        ----------
-        transform:
-             The transform
-        """
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            transform=None,  # type: ignore[arg-type]
+        )
 
-        # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
-        self.__attrs_init__(transform=transform)
+    @classmethod
+    def _clear(cls) -> Transform3D:
+        """Produce an empty Transform3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Transform3DBatch,  # type: ignore[misc]
+        converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
     """
     The transform
@@ -76,3 +77,7 @@ class Transform3D(Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
+
+
+if hasattr(Transform3DExt, "deferred_patch_class"):
+    Transform3DExt.deferred_patch_class(Transform3D)

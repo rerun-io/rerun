@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates"]
@@ -51,11 +52,27 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         """Create a new instance of the ViewCoordinates archetype."""
 
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
-        self.__attrs_init__(xyz=xyz)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(xyz=xyz)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            xyz=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> ViewCoordinates:
+        """Produce an empty ViewCoordinates, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},
-        converter=components.ViewCoordinatesBatch,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

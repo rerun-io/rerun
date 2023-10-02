@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import DepthImage, Image, SegmentationImage
@@ -19,6 +20,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Image(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_image(
     entity_path: str,
@@ -32,6 +37,11 @@ def log_image(
 ) -> None:
     """
     Log a gray or color image.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Image][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The image should either have 1, 3 or 4 channels (gray, RGB or RGBA).
 
@@ -78,6 +88,10 @@ def log_image(
     log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.DepthImage(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_depth_image(
     entity_path: str,
@@ -91,6 +105,11 @@ def log_depth_image(
 ) -> None:
     """
     Log a depth image.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.DepthImage][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The image must be a 2D array.
 
@@ -134,6 +153,10 @@ def log_depth_image(
     )
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.SegmentationImage(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_segmentation_image(
     entity_path: str,
@@ -146,6 +169,11 @@ def log_segmentation_image(
 ) -> None:
     """
     Log an image made up of integer class-ids.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.SegmentationImage][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The image should have 1 channel, i.e. be either `H x W` or `H x W x 1`.
 

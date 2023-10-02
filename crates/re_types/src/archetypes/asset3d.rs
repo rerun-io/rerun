@@ -28,7 +28,7 @@
 ///     RecordingStreamBuilder,
 /// };
 ///
-/// fn main() -> Result<(), anyhow::Error> {
+/// fn main() -> anyhow::Result<()> {
 ///     let args = std::env::args().collect::<Vec<_>>();
 ///     let Some(path) = args.get(1) else {
 ///         anyhow::bail!("Usage: {} <path_to_asset.[gltf|glb]>", args[0]);
@@ -57,7 +57,7 @@
 ///     RecordingStreamBuilder,
 /// };
 ///
-/// fn main() -> Result<(), anyhow::Error> {
+/// fn main() -> anyhow::Result<()> {
 ///     let args = std::env::args().collect::<Vec<_>>();
 ///     let Some(path) = args.get(1) else {
 ///         anyhow::bail!("Usage: {} <path_to_asset.[gltf|glb]>", args[0]);

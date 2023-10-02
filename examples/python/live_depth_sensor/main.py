@@ -40,7 +40,7 @@ def run_realsense(num_frames: int | None) -> None:
     rr.log_transform3d(
         "realsense/rgb",
         transform=rr.TranslationAndMat3(
-            translation=rgb_from_depth.translation, matrix=np.reshape(rgb_from_depth.rotation, (3, 3))
+            translation=rgb_from_depth.translation, mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3))
         ),
         from_parent=True,
         timeless=True,

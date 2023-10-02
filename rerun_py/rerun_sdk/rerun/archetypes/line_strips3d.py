@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["LineStrips3D"]
 
@@ -153,13 +154,39 @@ class LineStrips3D(Archetype):
         """
 
         # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(
+                strips=strips,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                class_ids=class_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            strips=strips, radii=radii, colors=colors, labels=labels, class_ids=class_ids, instance_keys=instance_keys
+            strips=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
+            colors=None,  # type: ignore[arg-type]
+            labels=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> LineStrips3D:
+        """Produce an empty LineStrips3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     strips: components.LineStrip3DBatch = field(
         metadata={"component": "required"},
-        converter=components.LineStrip3DBatch,  # type: ignore[misc]
+        converter=components.LineStrip3DBatch._required,  # type: ignore[misc]
     )
     """
     All the actual 3D line strips that make up the batch.

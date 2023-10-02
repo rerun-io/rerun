@@ -119,7 +119,8 @@
     "wgpu",
     "gltf",
     "glb",
-    "obj"
+    "obj",
+    "unmultiplied"
   ]
 }
 
