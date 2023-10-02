@@ -22,6 +22,7 @@ from os.path import isfile, join
 opt_out_entirely = {
     "annotation_context_connections": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
+    "any_values": ["cpp", "rust"], # Only implemented for Python
     "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "asset3d_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
     "bar_chart": ["cpp"],
