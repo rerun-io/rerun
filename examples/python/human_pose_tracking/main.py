@@ -60,14 +60,14 @@ def track_pose(video_path: str, segment: bool) -> None:
             if landmark_positions_2d is not None:
                 rr.log(
                     "video/pose/points",
-                    rr.Points2D(landmark_positions_2d, class_ids=0, keypoint_ids=mp_pose.PoseLandmark),
+                    rr.Points2D(landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark),
                 )
 
             landmark_positions_3d = read_landmark_positions_3d(results)
             if landmark_positions_3d is not None:
                 rr.log(
                     "person/pose/points",
-                    rr.Points3D(landmark_positions_3d, class_ids=0, keypoint_ids=mp_pose.PoseLandmark),
+                    rr.Points3D(landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark),
                 )
 
             segmentation_mask = results.segmentation_mask
