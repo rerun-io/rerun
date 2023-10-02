@@ -41,7 +41,9 @@ jobs:
       previous: ${{ steps.versioning.outputs.previous }}
       current: ${{ steps.versioning.outputs.current }}
       final: ${{ steps.versioning.outputs.final }}
-      release-commit: ${{ steps.create-pull-request.outputs.pull-request-head-sha }}
+      # will be set to `github.sha` if the pull request already exists
+      # this is the last (and not merge) commit in the release branch
+      release-commit: ${{ steps.create-pull-request.outputs.pull-request-head-sha || github.sha }}
 
     steps:
       - name: Checkout repository
