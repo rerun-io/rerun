@@ -130,7 +130,7 @@ impl ColormappedTexture {
         match self.encoding {
             Some(TextureEncoding::Nv12) => {
                 let [width, height] = self.texture.width_height();
-                [width, (height as f64 / 1.5) as u32]
+                [width, height * 2 / 3]
             }
             _ => self.texture.width_height(),
         }
