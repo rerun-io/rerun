@@ -23,9 +23,7 @@
 ///
 /// use rerun::{
 ///     archetypes::{Arrows3D, Transform3D},
-///     datatypes::{
-///         Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
-///     },
+///     datatypes::{Angle, RotationAxisAngle, Scale3D, TranslationRotationScale3D},
 ///     RecordingStreamBuilder,
 /// };
 /// use std::f32::consts::PI;
@@ -40,7 +38,7 @@
 ///
 ///     rec.log(
 ///         "base/translated",
-///         &Transform3D::new(TranslationAndMat3x3::translation([1.0, 0.0, 0.0])),
+///         &Transform3D::new(TranslationRotationScale3D::translation([1.0, 0.0, 0.0])),
 ///     )?;
 ///
 ///     rec.log(

@@ -27,7 +27,7 @@ def main() -> None:
 
     rr.log(
         "translation_and_mat3x3/rotation",
-        rr.Transform3D(TranslationAndMat3x3(matrix=[1, 2, 3, 4, 5, 6, 7, 8, 9])),
+        rr.Transform3D(TranslationAndMat3x3(mat3x3=[1, 2, 3, 4, 5, 6, 7, 8, 9])),
     )
 
     rr.log(

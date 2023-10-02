@@ -161,7 +161,7 @@ class OPFProject:
                 )
             )
 
-            rr.log_transform3d(entity, rr.TranslationAndMat3(translation=calib_camera.position, matrix=rot))
+            rr.log_transform3d(entity, rr.TranslationAndMat3(translation=calib_camera.position, mat3x3=rot))
 
             assert calib_sensor.internals.type == "perspective"
 

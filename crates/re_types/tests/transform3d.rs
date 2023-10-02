@@ -63,7 +63,7 @@ fn roundtrip() {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
                 TranslationAndMat3x3 {
                     translation: None,
-                    matrix: None,
+                    mat3x3: None,
                     from_parent: false,
                 },
             )),
@@ -72,7 +72,7 @@ fn roundtrip() {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
                 TranslationAndMat3x3 {
                     translation: Some(Vec3D([1.0, 2.0, 3.0])),
-                    matrix: None,
+                    mat3x3: None,
                     from_parent: true,
                 },
             )),
@@ -81,7 +81,7 @@ fn roundtrip() {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
                 TranslationAndMat3x3 {
                     translation: None,
-                    matrix: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])),
+                    mat3x3: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])),
                     from_parent: true,
                 },
             )),
