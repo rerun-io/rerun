@@ -1,6 +1,6 @@
 //! Logs a `Transform3D` archetype for roundtrip checks.
 
-use std::f32::consts::PI;
+use std::f32::consts::TAU;
 
 use rerun::{
     archetypes::Transform3D,
@@ -65,7 +65,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         &Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
             TranslationRotationScale3D::from_translation_rotation(
                 [1.0, 2.0, 3.0],
-                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
+                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
             ),
         )), //
     )?;
@@ -75,7 +75,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         &Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
             TranslationRotationScale3D::from_translation_rotation_scale(
                 [1.0, 2.0, 3.0],
-                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
+                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
                 42.0,
             )
             .from_parent(),

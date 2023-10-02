@@ -238,7 +238,7 @@ fn test_clean_for_polars_nomodify() {
 
 #[test]
 fn test_clean_for_polars_modify() {
-    use std::f32::consts::PI;
+    use std::f32::consts::TAU;
 
     use re_log_types::DataCell;
     use re_types::components::Transform3D;
@@ -247,7 +247,7 @@ fn test_clean_for_polars_modify() {
     let cell = DataCell::try_from_native([
         Transform3D::from_translation([1.0, 0.0, 0.0]), //
         Transform3D::from_rotation_scale(
-            RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(PI / 4.)),
+            RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(TAU / 8.)),
             Scale3D::from(2.0),
         ),
     ])

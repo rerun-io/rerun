@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::TAU;
 
 use re_types::{
     archetypes::Asset3D,
@@ -22,7 +22,7 @@ fn roundtrip() {
                     translation: Some(Vec3D([1.0, 2.0, 3.0])),
                     rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
                         axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::Radians(PI),
+                        angle: Angle::Radians(0.5 * TAU),
                     })),
                     scale: Some(Scale3D::Uniform(42.0)),
                     from_parent: true,
@@ -34,7 +34,7 @@ fn roundtrip() {
     let arch = Asset3D::from_bytes(BYTES, Some(MediaType::gltf())).with_transform(
         re_types::datatypes::Transform3D::from_translation_rotation_scale(
             [1.0, 2.0, 3.0],
-            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
+            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
             42.0,
         )
         .from_parent(),

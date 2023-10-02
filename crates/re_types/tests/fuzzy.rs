@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_clone)]
 
-use std::{collections::HashMap, f32::consts::PI};
+use std::{collections::HashMap, f32::consts::TAU};
 
 use arrow2::types::f16;
 use re_types::{
@@ -120,17 +120,17 @@ fn roundtrip() {
     ]));
 
     let fuzzy14_1 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Degrees(90.0));
-    let fuzzy14_2 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Radians(Some(PI)));
+    let fuzzy14_2 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Radians(Some(TAU / 2.0)));
     let fuzzy14_3 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Radians(None));
 
     let fuzzy15_1 = components::AffixFuzzer15(None);
     let fuzzy15_2 =
-        components::AffixFuzzer15(Some(datatypes::AffixFuzzer3::Radians(Some(PI / 4.0))));
+        components::AffixFuzzer15(Some(datatypes::AffixFuzzer3::Radians(Some(TAU / 8.0))));
 
     let fuzzy16_1 = components::AffixFuzzer16(vec![
-        datatypes::AffixFuzzer3::Radians(None),           //
-        datatypes::AffixFuzzer3::Degrees(45.0),           //
-        datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
+        datatypes::AffixFuzzer3::Radians(None),      //
+        datatypes::AffixFuzzer3::Degrees(45.0),      //
+        datatypes::AffixFuzzer3::Radians(Some(TAU)), //
     ]);
     let fuzzy16_2 = components::AffixFuzzer16(vec![
         datatypes::AffixFuzzer3::Degrees(20.0),           //
@@ -165,9 +165,9 @@ fn roundtrip() {
     ]));
     let fuzzy18_3 = components::AffixFuzzer18(Some(vec![
         datatypes::AffixFuzzer4::ManyRequired(vec![
-            datatypes::AffixFuzzer3::Radians(None),           //
-            datatypes::AffixFuzzer3::Degrees(45.0),           //
-            datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
+            datatypes::AffixFuzzer3::Radians(None),      //
+            datatypes::AffixFuzzer3::Degrees(45.0),      //
+            datatypes::AffixFuzzer3::Radians(Some(TAU)), //
             datatypes::AffixFuzzer3::Craziness(vec![datatypes::AffixFuzzer1 {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),
@@ -186,9 +186,9 @@ fn roundtrip() {
 
     let fuzzy19_1 = components::AffixFuzzer19(datatypes::AffixFuzzer5 {
         single_optional_union: Some(datatypes::AffixFuzzer4::ManyRequired(vec![
-            datatypes::AffixFuzzer3::Radians(None),           //
-            datatypes::AffixFuzzer3::Degrees(45.0),           //
-            datatypes::AffixFuzzer3::Radians(Some(PI * 2.0)), //
+            datatypes::AffixFuzzer3::Radians(None),      //
+            datatypes::AffixFuzzer3::Degrees(45.0),      //
+            datatypes::AffixFuzzer3::Radians(Some(TAU)), //
             datatypes::AffixFuzzer3::Craziness(vec![datatypes::AffixFuzzer1 {
                 single_float_optional: Some(3.0),
                 single_string_required: "c".into(),

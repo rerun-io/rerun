@@ -13,7 +13,7 @@
 //! cargo run-wasm --example depth_cloud
 //! ```
 
-use std::f32::consts::PI;
+use std::f32::consts::TAU;
 
 use glam::Vec3;
 use itertools::Itertools;
@@ -380,7 +380,7 @@ fn spiral(dimensions: glam::UVec2) -> impl Iterator<Item = (glam::UVec2, f32)> {
             let texcoords = (pos * factor).as_uvec2();
 
             i += 1;
-            angle_rad += 0.001 * PI;
+            angle_rad += 0.0005 * TAU;
 
             return Some((texcoords, radius));
         }
