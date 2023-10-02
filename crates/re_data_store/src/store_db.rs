@@ -55,7 +55,7 @@ impl EntityDb {
         self.entity_path_from_hash.get(entity_path_hash)
     }
 
-    /// Returns `true` also for entites higher up in the hierarchy.
+    /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
         self.tree.subtree(entity_path).is_some()
