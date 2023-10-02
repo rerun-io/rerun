@@ -115,7 +115,7 @@ def to_np_uint8(data: npt.ArrayLike | bytes) -> npt.NDArray[np.uint8]:
     """
     Convert some data to a numpy uint8 array.
 
-    This function additionally supports bytes.
+    This function additionally supports `bytes`.
     """
 
     if isinstance(data, bytes):
