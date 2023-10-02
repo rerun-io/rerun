@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pytest
 import rerun as rr
-from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
+from rerun.datatypes import TensorBuffer, TensorBufferType, TensorData, TensorDataLike, TensorDimension
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.integers(0, 255, size=(10, 20))
@@ -71,3 +71,13 @@ def test_segmentation_image_shapes() -> None:
     for img in BAD_IMAGE_INPUTS:
         with pytest.raises(TypeError):
             rr.DepthImage(img)
+
+
+def test_segmentation_coercion() -> None:
+    seg_img = np.require(RANDOM_IMAGE_SOURCE, np.float32)
+
+    seg = rr.SegmentationImage(seg_img)
+
+    U16_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("U16")
+
+    assert seg.data.as_arrow_array().storage.field(1)[0].type_code == U16_TYPE_ID
