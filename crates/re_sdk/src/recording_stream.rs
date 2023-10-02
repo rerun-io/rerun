@@ -586,7 +586,7 @@ impl RecordingStream {
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// See also: [Self::log_timeless`].
+    /// See also: [`Self::log_timeless`].
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
