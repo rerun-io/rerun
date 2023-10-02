@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <rerun/components/color.hpp>
-#include <rerun/datatypes/color.hpp>
+#include <rerun/datatypes/rgba32.hpp>
 
 #define TEST_TAG "[color][archetypes]"
 
