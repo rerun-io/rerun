@@ -118,7 +118,7 @@ fn main() {
         ),
     );
 
-    report.panic_on_errors();
+    report.finalize();
 
     write_versioning_hash(re_types_source_hash_path, new_hash);
     write_versioning_hash(re_types_builder_source_hash_path, builder_hash);

@@ -38,6 +38,7 @@ mod origin3d;
 mod origin3d_ext;
 mod out_of_tree_transform3d;
 mod pinhole_projection;
+mod pinhole_projection_ext;
 mod position2d;
 mod position2d_ext;
 mod position3d;

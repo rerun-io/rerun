@@ -67,10 +67,10 @@ impl From<Transform3D> for glam::Affine3A {
         match value {
             Transform3D::TranslationAndMat3x3(TranslationAndMat3x3 {
                 translation,
-                matrix,
+                mat3x3,
                 from_parent: _,
             }) => glam::Affine3A::from_mat3_translation(
-                matrix.unwrap_or(super::Mat3x3::IDENTITY).into(),
+                mat3x3.unwrap_or(super::Mat3x3::IDENTITY).into(),
                 translation.map_or(glam::Vec3::ZERO, |v| v.into()),
             ),
 

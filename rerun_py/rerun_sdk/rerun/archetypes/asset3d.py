@@ -5,13 +5,10 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import Archetype
-from ..error_utils import catch_and_log_exceptions
 from .asset3d_ext import Asset3DExt
 
 __all__ = ["Asset3D"]
@@ -20,7 +17,7 @@ __all__ = ["Asset3D"]
 @define(str=False, repr=False, init=False)
 class Asset3D(Asset3DExt, Archetype):
     """
-    A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
+    A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 
     Examples
     --------
@@ -37,7 +34,7 @@ class Asset3D(Asset3DExt, Archetype):
     rr.init("rerun_example_asset3d_simple", spawn=True)
 
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
-    rr.log("world/asset", rr.Asset3D.from_file(sys.argv[1]))
+    rr.log("world/asset", rr.Asset3D(sys.argv[1]))
     ```
 
     3D asset with out-of-tree transform:
@@ -58,56 +55,23 @@ class Asset3D(Asset3DExt, Archetype):
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
 
     rr.set_time_sequence("frame", 0)
-    rr.log("world/asset", rr.Asset3D.from_file(sys.argv[1]))
+    rr.log("world/asset", rr.Asset3D(sys.argv[1]))
     # Those points will not be affected by their parent's out-of-tree transform!
     rr.log(
         "world/asset/points",
         rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T),
     )
 
-    asset = rr.Asset3D.from_file(sys.argv[1])
+    asset = rr.Asset3D(sys.argv[1])
     for i in range(1, 20):
         rr.set_time_sequence("frame", i)
 
         translation = TranslationRotationScale3D(translation=[0, 0, i - 10.0])
-        rr.log_components("asset", [OutOfTreeTransform3DBatch(translation)])
+        rr.log_components("world/asset", [OutOfTreeTransform3DBatch(translation)])
     ```
     """
 
-    def __init__(
-        self: Any,
-        blob: components.BlobLike,
-        *,
-        media_type: datatypes.Utf8Like | None = None,
-        transform: datatypes.Transform3DLike | None = None,
-    ):
-        """
-        Create a new instance of the Asset3D archetype.
-
-        Parameters
-        ----------
-        blob:
-             The asset's bytes.
-        media_type:
-             The Media Type of the asset.
-
-             For instance:
-             * `model/gltf-binary`
-             * `model/obj`
-
-             If omitted, the viewer will try to guess from the data blob.
-             If it cannot guess, it won't be able to render the asset.
-        transform:
-             An out-of-tree transform.
-
-             Applies a transformation to the asset itself without impacting its children.
-        """
-
-        # You can define your own __init__ function as a member of Asset3DExt in asset3d_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in asset3d_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
