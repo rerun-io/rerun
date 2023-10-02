@@ -10,6 +10,8 @@ from rerun.datatypes.translation_and_mat3x3 import TranslationAndMat3x3
 from rerun.datatypes.translation_rotation_scale3d import TranslationRotationScale3D
 from rerun.datatypes.vec3d import Vec3DLike
 
+from ..error_utils import catch_and_log_exceptions
+
 
 class Transform3DExt:
     def __init__(
@@ -48,23 +50,27 @@ class Transform3DExt:
              Otherwise, the transform maps from the space to its parent.
         """
 
-        if transform is not None:
-            if translation is not None or rotation is not None or scale is not None or mat3x3 is not None:
-                raise ValueError("If a transform is given, none of the other parameters can be set.")
-            self.__attrs_init__(transform=transform)
-        else:
-            if rotation is not None and mat3x3 is not None:
-                raise ValueError("Rotation and mat3x3 parameters are mutually exclusive.")
-            if scale is not None and mat3x3 is not None:
-                raise ValueError("Scale and mat3x3 parameters are mutually exclusive.")
-
-            if mat3x3 is not None:
-                self.__attrs_init__(
-                    transform=TranslationAndMat3x3(translation=translation, mat3x3=mat3x3, from_parent=from_parent)
-                )
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if transform is not None:
+                if translation is not None or rotation is not None or scale is not None or mat3x3 is not None:
+                    raise ValueError("If a transform is given, none of the other parameters can be set.")
+                self.__attrs_init__(transform=transform)
             else:
-                self.__attrs_init__(
-                    transform=TranslationRotationScale3D(
-                        translation=translation, rotation=rotation, scale=scale, from_parent=from_parent
+                if rotation is not None and mat3x3 is not None:
+                    raise ValueError("Rotation and mat3x3 parameters are mutually exclusive.")
+                if scale is not None and mat3x3 is not None:
+                    raise ValueError("Scale and mat3x3 parameters are mutually exclusive.")
+
+                if mat3x3 is not None:
+                    self.__attrs_init__(
+                        transform=TranslationAndMat3x3(translation=translation, mat3x3=mat3x3, from_parent=from_parent)
                     )
-                )
+                else:
+                    self.__attrs_init__(
+                        transform=TranslationRotationScale3D(
+                            translation=translation, rotation=rotation, scale=scale, from_parent=from_parent
+                        )
+                    )
+            return
+
+        self.__attrs_clear__()
