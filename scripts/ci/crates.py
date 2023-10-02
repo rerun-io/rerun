@@ -362,10 +362,7 @@ def publish(dry_run: bool, token: str) -> None:
 
 
 def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
-    if not from_git:
-        root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
-        current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
-    else:
+    if from_git:
         branch_name = git.Repo().active_branch.name.lstrip("release-")
         try:
             current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
@@ -373,6 +370,9 @@ def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
             print("this script expects the format `release-x.y.z-meta.N`")
             exit(1)
+    else:
+        root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+        current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
 
     if finalize:
         current_version = current_version.finalize_version()

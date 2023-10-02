@@ -166,8 +166,8 @@ jobs:
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
-      PY_DOCS_VERSION_NAME: ${{ inputs.release-type != 'final' && 'prerelease' || needs.version.outputs.final }}
-      RS_DOCS_VERSION_NAME: ${{ inputs.release-type != 'final' && 'prerelease' || 'head' }}
+      PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'prerelease' }}
+      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'head' || 'prerelease' }}
       UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
