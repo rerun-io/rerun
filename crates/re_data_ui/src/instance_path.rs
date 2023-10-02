@@ -21,7 +21,7 @@ impl DataUi for InstancePath {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        let Some(mut components) = store.all_components(&query.timeline, entity_path) else {
+        let Some(components) = store.all_components(&query.timeline, entity_path) else {
             if ctx.store_db.entity_db.knows_of_entity(entity_path) {
                 ui.label(format!(
                     "No components in entity {:?} on timeline {:?}",
@@ -36,7 +36,6 @@ impl DataUi for InstancePath {
             }
             return;
         };
-        components.sort();
 
         egui::Grid::new("entity_instance")
             .num_columns(2)

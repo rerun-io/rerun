@@ -42,7 +42,7 @@ pub fn ui_visible_components<'a>(
         .collect();
 
     // Put indicator components first:
-    components.sort_by_key(|c| !is_indicator_component(c));
+    components.sort_by_key(|c| (!is_indicator_component(c), c.full_name()));
 
     components.into_iter()
 }
