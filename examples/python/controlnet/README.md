@@ -8,7 +8,7 @@ thumbnail_dimensions: [480, 298]
 
 This example integrates Rerun into [Hugging Face's ControlNet example](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet). ControlNet allows to condition Stable Diffusion on various modalities. In this example we condition on edges detected by the Canny edge detector.
 
-https://vimeo.com/870287718?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1408:1080
+https://vimeo.com/870289439?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1440:1080
 
 To run this example use
 ```bash
