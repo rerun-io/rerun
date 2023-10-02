@@ -36,7 +36,7 @@ re_tracing.workspace = true
 # External dependencies:
 arrow2.workspace = true
 backtrace = "0.3"
-document-features = "0.2"
+document-features.workspace = true
 itertools = { workspace = true }
 thiserror.workspace = true
 

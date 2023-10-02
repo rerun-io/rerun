@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["TextLog"]
 
@@ -56,11 +57,29 @@ class TextLog(Archetype):
         """Create a new instance of the TextLog archetype."""
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
-        self.__attrs_init__(text=text, level=level, color=color)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(text=text, level=level, color=color)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            text=None,  # type: ignore[arg-type]
+            level=None,  # type: ignore[arg-type]
+            color=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> TextLog:
+        """Produce an empty TextLog, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     text: components.TextBatch = field(
         metadata={"component": "required"},
-        converter=components.TextBatch,  # type: ignore[misc]
+        converter=components.TextBatch._required,  # type: ignore[misc]
     )
     level: components.TextLogLevelBatch | None = field(
         metadata={"component": "optional"},
