@@ -1,12 +1,8 @@
 //! Demonstrates how to implement custom archetypes and components, and extend existing ones.
 
 use rerun::{
-    archetypes::Points3D,
-    datatypes::Float32,
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    AsComponents, ComponentBatch, ComponentName, Loggable, MaybeOwnedComponentBatch,
-    NamedIndicatorComponent, RecordingStreamBuilder,
 };
 
 // ---
@@ -16,13 +12,13 @@ use rerun::{
 ///
 /// [component bundle]: [`AsComponents`]
 struct CustomPoints3D {
-    points3d: Points3D,
+    points3d: rerun::Points3D,
     confidences: Option<Vec<Confidence>>,
 }
 
-impl AsComponents for CustomPoints3D {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        let indicator = NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
+impl rerun::AsComponents for CustomPoints3D {
+    fn as_component_batches(&self) -> Vec<rerun::MaybeOwnedComponentBatch<'_>> {
+        let indicator = rerun::NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
         self.points3d
             .as_component_batches()
             .into_iter()
@@ -31,7 +27,7 @@ impl AsComponents for CustomPoints3D {
                     Some(indicator.to_batch()),
                     self.confidences
                         .as_ref()
-                        .map(|v| (v as &dyn ComponentBatch).into()),
+                        .map(|v| (v as &dyn rerun::ComponentBatch).into()),
                 ]
                 .into_iter()
                 .flatten(),
@@ -44,23 +40,23 @@ impl AsComponents for CustomPoints3D {
 
 /// A custom [`rerun::Component`] that is backed by a builtin [`Float32`] scalar [`rerun::Datatype`].
 #[derive(Debug, Clone, Copy)]
-struct Confidence(Float32);
+struct Confidence(rerun::Float32);
 
 impl From<f32> for Confidence {
     fn from(v: f32) -> Self {
-        Self(Float32(v))
+        Self(rerun::Float32(v))
     }
 }
 
-impl Loggable for Confidence {
-    type Name = ComponentName;
+impl rerun::Loggable for Confidence {
+    type Name = rerun::ComponentName;
 
     fn name() -> Self::Name {
         "user.Confidence".into()
     }
 
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        Float32::arrow_datatype()
+        rerun::Float32::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -69,19 +65,24 @@ impl Loggable for Confidence {
     where
         Self: 'a,
     {
-        Float32::to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
+        rerun::Float32::to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
     }
 }
 
 // ---
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_custom_data").memory()?;
+    let (rec, storage) =
+        rerun::RecordingStreamBuilder::new("rerun_example_custom_data").memory()?;
 
     rec.log(
         "left/my_confident_point_cloud",
         &CustomPoints3D {
-            points3d: Points3D::new(grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 3)),
+            points3d: rerun::Points3D::new(grid(
+                glam::Vec3::splat(-5.0),
+                glam::Vec3::splat(5.0),
+                3,
+            )),
             confidences: Some(vec![42f32.into()]),
         },
     )?;
@@ -89,7 +90,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "right/my_polarized_point_cloud",
         &CustomPoints3D {
-            points3d: Points3D::new(grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 3)),
+            points3d: rerun::Points3D::new(grid(
+                glam::Vec3::splat(-5.0),
+                glam::Vec3::splat(5.0),
+                3,
+            )),
             confidences: Some((0..27).map(|i| i as f32).map(Into::into).collect()),
         },
     )?;

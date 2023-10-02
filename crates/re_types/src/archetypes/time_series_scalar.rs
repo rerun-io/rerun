@@ -43,11 +43,9 @@
 /// ```ignore
 /// //! Log a scalar over time.
 ///
-/// use rerun::{RecordingStreamBuilder, TimeSeriesScalar};
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_scalar_multiple_plots").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_scalar_multiple_plots").memory()?;
 ///     let mut lcg_state = 0_i64;
 ///
 ///     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
@@ -56,13 +54,13 @@
 ///         // Log two time series under a shared root so that they show in the same plot by default.
 ///         rec.log(
 ///             "trig/sin",
-///             &TimeSeriesScalar::new((t as f64 / 100.0).sin())
+///             &rerun::TimeSeriesScalar::new((t as f64 / 100.0).sin())
 ///                 .with_label("sin(0.01t)")
 ///                 .with_color([255, 0, 0]),
 ///         )?;
 ///         rec.log(
 ///             "trig/cos",
-///             &TimeSeriesScalar::new((t as f64 / 100.0).cos())
+///             &rerun::TimeSeriesScalar::new((t as f64 / 100.0).cos())
 ///                 .with_label("cos(0.01t)")
 ///                 .with_color([0, 255, 0]),
 ///         )?;
@@ -74,7 +72,7 @@
 ///             % 16777216; // simple linear congruency generator
 ///         rec.log(
 ///             "scatter/lcg",
-///             &TimeSeriesScalar::new(lcg_state as f64).with_scattered(true),
+///             &rerun::TimeSeriesScalar::new(lcg_state as f64).with_scattered(true),
 ///         )?;
 ///     }
 ///
