@@ -46,6 +46,8 @@ def save(path: str, recording: RecordingStream | None = None) -> None:
     """
     Stream all log-data to a file.
 
+    Call this _before_ you log any data!
+
     Parameters
     ----------
     path : str

@@ -17,9 +17,9 @@ LENGTH_S: Final = 20.0
 LENGTH_M: Final = 10.0
 LENGTH_H: Final = 4.0
 
-WIDTH_S: Final = 0.25
-WIDTH_M: Final = 0.4
-WIDTH_H: Final = 0.6
+WIDTH_S: Final = 0.125
+WIDTH_M: Final = 0.2
+WIDTH_H: Final = 0.3
 
 
 def log_clock(steps: int) -> None:
@@ -30,13 +30,11 @@ def log_clock(steps: int) -> None:
             0.0,
         )
 
-    rr.log_view_coordinates("world", up="+Y", timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
 
-    rr.log_obb(
+    rr.log(
         "world/frame",
-        half_size=[LENGTH_S, LENGTH_S, 1.0],
-        position=[0.0, 0.0, 0.0],
-        rotation_q=[0.0, 0.0, 0.0, 0.0],
+        rr.Boxes3D(half_sizes=[LENGTH_S, LENGTH_S, 1.0], centers=[0.0, 0.0, 0.0]),
         timeless=True,
     )
 
@@ -48,20 +46,20 @@ def log_clock(steps: int) -> None:
         scaled_s = (t_secs % 60) / 60.0
         point_s = np.array(rotate(math.tau * scaled_s, LENGTH_S))
         color_s = (int(255 - (scaled_s * 255)), int(scaled_s * 255), 0, 128)
-        rr.log_point("world/seconds_pt", position=point_s, color=color_s)
-        rr.log_arrow("world/seconds_hand", origin=[0.0, 0.0, 0.0], vector=point_s, color=color_s, width_scale=WIDTH_S)
+        rr.log("world/seconds_pt", rr.Points3D(positions=point_s, colors=color_s))
+        rr.log("world/seconds_hand", rr.Arrows3D(vectors=point_s, colors=color_s, radii=WIDTH_S))
 
         scaled_m = (t_secs % 3600) / 3600.0
         point_m = np.array(rotate(math.tau * scaled_m, LENGTH_M))
         color_m = (int(255 - (scaled_m * 255)), int(scaled_m * 255), 128, 128)
-        rr.log_point("world/minutes_pt", position=point_m, color=color_m)
-        rr.log_arrow("world/minutes_hand", origin=[0.0, 0.0, 0.0], vector=point_m, color=color_m, width_scale=WIDTH_M)
+        rr.log("world/minutes_pt", rr.Points3D(positions=point_m, colors=color_m))
+        rr.log("world/minutes_hand", rr.Arrows3D(vectors=point_m, colors=color_m, radii=WIDTH_M))
 
         scaled_h = (t_secs % 43200) / 43200.0
         point_h = np.array(rotate(math.tau * scaled_h, LENGTH_H))
         color_h = (int(255 - (scaled_h * 255)), int(scaled_h * 255), 255, 255)
-        rr.log_point("world/hours_pt", position=point_h, color=color_h)
-        rr.log_arrow("world/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_H)
+        rr.log("world/hours_pt", rr.Points3D(positions=point_h, colors=color_h))
+        rr.log("world/hours_hand", rr.Arrows3D(vectors=point_h, colors=color_h, radii=WIDTH_H))
 
 
 if __name__ == "__main__":

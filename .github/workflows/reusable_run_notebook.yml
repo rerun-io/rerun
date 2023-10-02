@@ -39,16 +39,27 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
 
-      - name: Download Wheel
+      - name: Download Wheel Artifact
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
-          path: wheel
+          path: wheel_artifact
 
-      - name: Install built wheel
+      - name: Install wheel dependencies
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
+        # TODO(jleibs): pull these deps from pyproject.toml
         shell: bash
         run: |
-          pip install --find-links wheel rerun-sdk
+          pip install deprecated numpy>=1.23 pillow>=9.5.0 pyarrow==10.0.1 pytest==7.1.2
+
+      - name: Install downloaded wheel_artifact
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        shell: bash
+        run: |
+          pip install rerun-sdk --no-index --find-links wheel_artifact
 
       - name: Install Deps
         shell: bash

@@ -172,7 +172,7 @@
 //! Then the url you should use is `https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/1024w.png`.
 //!
 //! It works this way because `upload_image.py` does not upscale screenshots, it only downscales them.
-//! We need to know what the maximum width we can use is, becuase we can't just provide all the widths all the time.
+//! We need to know what the maximum width we can use is, because we can't just provide all the widths all the time.
 //! If the currently-used `max-width` source fails to load, it will show the blank image icon.
 //! There is no way to provide a fallback in `<picture>` if a specific `max-width` source fails to load.
 //! Browsers will not automatically try to load the other sources!
@@ -256,8 +256,34 @@ pub trait AsComponents {
 /// Number of decimals shown for all vector display methods.
 pub const DISPLAY_PRECISION: usize = 3;
 
+/// Acrchetype are the high-level things you can log, like [`Image`][archetypes::Image], [`Points3D`][archetypes::Points3D], etc.
+///
+/// All archetypes implement the [`Archetype`] trait.
+///
+/// Each archetype is a collection of homogeneous [`ComponentBatch`]es.
+/// For instance, the [`Points3D`][archetypes::Points3D] archetype contains a
+/// batch of positions, a batch of colors, etc.
+///
+/// These component batches are must all have the same length, or one of the special lengths:
+/// * 0 - an empty batch
+/// * 1 - a "splat" batch, e.g. using the same color for all positions.
+///
+/// Each entity can consist of many archetypes, but usually each entity will only have one archetype.
+///
+/// A special archetype is [`Clear`][archetypes::Clear] which resets all the components
+/// of an already logged entity.
 pub mod archetypes;
+
+/// Components are the basic building blocks of [`archetypes`].
+///
+/// They all implement the [`Component`] trait.
+///
+/// Each component is a wrapper around a [`datatype`][datatypes].
 pub mod components;
+
+/// The low-level datatypes that [`components`] are built from.
+///
+/// They all implement the [`Datatype`] trait.
 pub mod datatypes;
 
 mod archetype;

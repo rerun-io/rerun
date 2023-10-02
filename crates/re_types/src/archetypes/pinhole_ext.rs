@@ -34,31 +34,6 @@ impl Pinhole {
             .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_camera.col(1)[1]).atan())
     }
 
-    /// X & Y focal length in pixels.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[inline]
-    pub fn focal_length_in_pixels(&self) -> Vec2D {
-        [
-            self.image_from_camera.col(0)[0],
-            self.image_from_camera.col(1)[1],
-        ]
-        .into()
-    }
-
-    /// Principal point of the pinhole camera,
-    /// i.e. the intersection of the optical axis and the image plane.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[cfg(feature = "glam")]
-    #[inline]
-    pub fn principal_point(&self) -> glam::Vec2 {
-        glam::vec2(
-            self.image_from_camera.col(2)[0],
-            self.image_from_camera.col(2)[1],
-        )
-    }
-
     #[inline]
     #[cfg(feature = "glam")]
     pub fn resolution(&self) -> Option<glam::Vec2> {
@@ -70,14 +45,33 @@ impl Pinhole {
         self.resolution.map(|r| r[0] / r[1])
     }
 
+    // ------------------------------------------------------------------------
+    // Forwarding calls to `PinholeProjection`:
+
+    /// X & Y focal length in pixels.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[inline]
+    pub fn focal_length_in_pixels(&self) -> Vec2D {
+        self.image_from_camera.focal_length_in_pixels()
+    }
+
+    /// Principal point of the pinhole camera,
+    /// i.e. the intersection of the optical axis and the image plane.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn principal_point(&self) -> glam::Vec2 {
+        self.image_from_camera.principal_point()
+    }
+
     /// Project camera-space coordinates into pixel coordinates,
     /// returning the same z/depth.
     #[cfg(feature = "glam")]
     #[inline]
     pub fn project(&self, pixel: glam::Vec3) -> glam::Vec3 {
-        ((pixel.truncate() * glam::Vec2::from(self.focal_length_in_pixels())) / pixel.z
-            + self.principal_point())
-        .extend(pixel.z)
+        self.image_from_camera.project(pixel)
     }
 
     /// Given pixel coordinates and a world-space depth,
@@ -87,8 +81,6 @@ impl Pinhole {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn unproject(&self, pixel: glam::Vec3) -> glam::Vec3 {
-        ((pixel.truncate() - self.principal_point()) * pixel.z
-            / glam::Vec2::from(self.focal_length_in_pixels()))
-        .extend(pixel.z)
+        self.image_from_camera.unproject(pixel)
     }
 }

@@ -22,7 +22,10 @@
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct AnnotationContext(pub Vec<crate::datatypes::ClassDescriptionMapElem>);
+pub struct AnnotationContext(
+    /// List of class descriptions, mapping class indices to class names, colors etc.
+    pub Vec<crate::datatypes::ClassDescriptionMapElem>,
+);
 
 impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>
     for AnnotationContext

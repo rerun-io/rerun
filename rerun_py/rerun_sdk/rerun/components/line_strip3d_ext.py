@@ -25,7 +25,7 @@ class LineStrip3DExt:
             if len(data) == 0:
                 inners = []
             elif data.ndim == 2:
-                inners = [Vec3DBatch(data).as_arrow_array().as_arrow_array().storage]
+                inners = [Vec3DBatch(data).as_arrow_array().storage]
             else:
                 o = 0
                 offsets = [o] + [o := next_offset(o, arr) for arr in data]

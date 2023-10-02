@@ -20,5 +20,6 @@ namespace rerun.archetypes;
 table AnnotationContext (
   "attr.rust.derive": "Eq, PartialEq"
 ) {
+  /// List of class descriptions, mapping class indices to class names, colors etc.
   context: rerun.components.AnnotationContext ("attr.rerun.component_required", order: 1000);
 }

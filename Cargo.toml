@@ -18,66 +18,79 @@ include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.72"
-version = "0.9.0-alpha.4"
+version = "0.9.0-alpha.6"
 
 [workspace.dependencies]
 # When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
 # This is because we treat alpha-releases as incompatible, but semver doesn't.
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
-re_analytics = { path = "crates/re_analytics", version = "=0.9.0-alpha.4", default-features = false }
-re_arrow_store = { path = "crates/re_arrow_store", version = "=0.9.0-alpha.4", default-features = false }
-re_build_info = { path = "crates/re_build_info", version = "=0.9.0-alpha.4", default-features = false }
-re_build_tools = { path = "crates/re_build_tools", version = "=0.9.0-alpha.4", default-features = false }
-re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.9.0-alpha.4", default-features = false }
-re_crash_handler = { path = "crates/re_crash_handler", version = "=0.9.0-alpha.4", default-features = false }
-re_data_source = { path = "crates/re_data_source", version = "=0.9.0-alpha.4", default-features = false }
-re_data_store = { path = "crates/re_data_store", version = "=0.9.0-alpha.4", default-features = false }
-re_data_ui = { path = "crates/re_data_ui", version = "=0.9.0-alpha.4", default-features = false }
-re_error = { path = "crates/re_error", version = "=0.9.0-alpha.4", default-features = false }
-re_format = { path = "crates/re_format", version = "=0.9.0-alpha.4", default-features = false }
-re_int_histogram = { path = "crates/re_int_histogram", version = "=0.9.0-alpha.4", default-features = false }
-re_log = { path = "crates/re_log", version = "=0.9.0-alpha.4", default-features = false }
-re_log_encoding = { path = "crates/re_log_encoding", version = "=0.9.0-alpha.4", default-features = false }
-re_log_types = { path = "crates/re_log_types", version = "=0.9.0-alpha.4", default-features = false }
-re_memory = { path = "crates/re_memory", version = "=0.9.0-alpha.4", default-features = false }
-re_query = { path = "crates/re_query", version = "=0.9.0-alpha.4", default-features = false }
-re_renderer = { path = "crates/re_renderer", version = "=0.9.0-alpha.4", default-features = false }
-re_sdk = { path = "crates/re_sdk", version = "=0.9.0-alpha.4", default-features = false }
-re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.9.0-alpha.4", default-features = false }
-re_smart_channel = { path = "crates/re_smart_channel", version = "=0.9.0-alpha.4", default-features = false }
-re_space_view = { path = "crates/re_space_view", version = "=0.9.0-alpha.4", default-features = false }
-re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.9.0-alpha.4", default-features = false }
-re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.9.0-alpha.4", default-features = false }
-re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.9.0-alpha.4", default-features = false }
-re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0.9.0-alpha.4", default-features = false }
-re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.9.0-alpha.4", default-features = false }
-re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "=0.9.0-alpha.4", default-features = false }
-re_string_interner = { path = "crates/re_string_interner", version = "=0.9.0-alpha.4", default-features = false }
-re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.9.0-alpha.4", default-features = false }
-re_time_panel = { path = "crates/re_time_panel", version = "=0.9.0-alpha.4", default-features = false }
-re_tracing = { path = "crates/re_tracing", version = "=0.9.0-alpha.4", default-features = false }
-re_tuid = { path = "crates/re_tuid", version = "=0.9.0-alpha.4", default-features = false }
-re_types = { path = "crates/re_types", version = "=0.9.0-alpha.4", default-features = false }
-re_types_builder = { path = "crates/re_types_builder", version = "=0.9.0-alpha.4", default-features = false }
-re_ui = { path = "crates/re_ui", version = "=0.9.0-alpha.4", default-features = false }
-re_viewer = { path = "crates/re_viewer", version = "=0.9.0-alpha.4", default-features = false }
-re_viewer_context = { path = "crates/re_viewer_context", version = "=0.9.0-alpha.4", default-features = false }
-re_viewport = { path = "crates/re_viewport", version = "=0.9.0-alpha.4", default-features = false }
-re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.9.0-alpha.4", default-features = false }
-re_ws_comms = { path = "crates/re_ws_comms", version = "=0.9.0-alpha.4", default-features = false }
-rerun = { path = "crates/rerun", version = "=0.9.0-alpha.4", default-features = false }
+re_analytics = { path = "crates/re_analytics", version = "=0.9.0-alpha.6", default-features = false }
+re_arrow_store = { path = "crates/re_arrow_store", version = "=0.9.0-alpha.6", default-features = false }
+re_build_info = { path = "crates/re_build_info", version = "=0.9.0-alpha.6", default-features = false }
+re_build_tools = { path = "crates/re_build_tools", version = "=0.9.0-alpha.6", default-features = false }
+re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.9.0-alpha.6", default-features = false }
+re_crash_handler = { path = "crates/re_crash_handler", version = "=0.9.0-alpha.6", default-features = false }
+re_data_source = { path = "crates/re_data_source", version = "=0.9.0-alpha.6", default-features = false }
+re_data_store = { path = "crates/re_data_store", version = "=0.9.0-alpha.6", default-features = false }
+re_data_ui = { path = "crates/re_data_ui", version = "=0.9.0-alpha.6", default-features = false }
+re_error = { path = "crates/re_error", version = "=0.9.0-alpha.6", default-features = false }
+re_format = { path = "crates/re_format", version = "=0.9.0-alpha.6", default-features = false }
+re_int_histogram = { path = "crates/re_int_histogram", version = "=0.9.0-alpha.6", default-features = false }
+re_log = { path = "crates/re_log", version = "=0.9.0-alpha.6", default-features = false }
+re_log_encoding = { path = "crates/re_log_encoding", version = "=0.9.0-alpha.6", default-features = false }
+re_log_types = { path = "crates/re_log_types", version = "=0.9.0-alpha.6", default-features = false }
+re_memory = { path = "crates/re_memory", version = "=0.9.0-alpha.6", default-features = false }
+re_query = { path = "crates/re_query", version = "=0.9.0-alpha.6", default-features = false }
+re_renderer = { path = "crates/re_renderer", version = "=0.9.0-alpha.6", default-features = false }
+re_sdk = { path = "crates/re_sdk", version = "=0.9.0-alpha.6", default-features = false }
+re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.9.0-alpha.6", default-features = false }
+re_smart_channel = { path = "crates/re_smart_channel", version = "=0.9.0-alpha.6", default-features = false }
+re_space_view = { path = "crates/re_space_view", version = "=0.9.0-alpha.6", default-features = false }
+re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.9.0-alpha.6", default-features = false }
+re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.9.0-alpha.6", default-features = false }
+re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.9.0-alpha.6", default-features = false }
+re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0.9.0-alpha.6", default-features = false }
+re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.9.0-alpha.6", default-features = false }
+re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "=0.9.0-alpha.6", default-features = false }
+re_string_interner = { path = "crates/re_string_interner", version = "=0.9.0-alpha.6", default-features = false }
+re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.9.0-alpha.6", default-features = false }
+re_time_panel = { path = "crates/re_time_panel", version = "=0.9.0-alpha.6", default-features = false }
+re_tracing = { path = "crates/re_tracing", version = "=0.9.0-alpha.6", default-features = false }
+re_tuid = { path = "crates/re_tuid", version = "=0.9.0-alpha.6", default-features = false }
+re_types = { path = "crates/re_types", version = "=0.9.0-alpha.6", default-features = false }
+re_types_builder = { path = "crates/re_types_builder", version = "=0.9.0-alpha.6", default-features = false }
+re_ui = { path = "crates/re_ui", version = "=0.9.0-alpha.6", default-features = false }
+re_viewer = { path = "crates/re_viewer", version = "=0.9.0-alpha.6", default-features = false }
+re_viewer_context = { path = "crates/re_viewer_context", version = "=0.9.0-alpha.6", default-features = false }
+re_viewport = { path = "crates/re_viewport", version = "=0.9.0-alpha.6", default-features = false }
+re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.9.0-alpha.6", default-features = false }
+re_ws_comms = { path = "crates/re_ws_comms", version = "=0.9.0-alpha.6", default-features = false }
+rerun = { path = "crates/rerun", version = "=0.9.0-alpha.6", default-features = false }
 
+# All of our direct external dependencies should be found here:
 ahash = "0.8"
 anyhow = "1.0"
+arboard = { version = "3.2", default-features = false }
+array-init = "2.1"
 arrow2 = "0.17"
 arrow2_convert = "0.5.0"
+async-executor = "1.0"
+backtrace = "0.3"
+bincode = "1.3"
+bitflags = "1.3"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 camino = "1.1"
+cargo-run-wasm = "0.3.2"
 cfg-if = "1.0"
 clap = "4.0"
+clean-path = "0.2"
 comfy-table = { version = "6.1", default-features = false }
+console_error_panic_hook = "0.1.6"
+criterion = "0.5"
 crossbeam = "0.8"
+directories-next = "2"
+document-features = "0.2"
 ecolor = "0.23.0"
 eframe = { version = "0.23.0", default-features = false, features = [
   "default_fonts",
@@ -101,46 +114,89 @@ emath = "0.23.0"
 enumset = "1.0.12"
 env_logger = "0.10"
 epaint = "0.23.0"
+ewebsock = "0.2"
+futures-channel = "0.3"
+futures-util = { version = "0.3", default-features = false }
+getrandom = "0.2"
 glam = "0.22"
 gltf = "1.1"
 half = "2.3.1"
+hyper = "0.14"
 image = { version = "0.24", default-features = false }
+indent = "0.1"
 infer = "0.15" # infer MIME type by checking the magic number signature
 itertools = "0.11"
+js-sys = "0.3"
 lazy_static = "1.4"
 log = "0.4"
+log-once = "0.4"
 macaw = "0.18"
+memory-stats = "1.1"
 mimalloc = "0.1.29"
 mime = "0.3"
 mime_guess = "2.0"
 ndarray = "0.15"
+ndarray-rand = "0.14"
+never = "0.1"
 nohash-hasher = "0.2"
+notify = "6.0"
+num-derive = "0.3"
+num-traits = "0.2"
 once_cell = "1.17"
+ordered-float = "3.2"
 parking_lot = "0.12"
+pathdiff = "0.2"
+pico-args = "0.5"
 polars-core = "0.29"
 polars-lazy = "0.29"
 polars-ops = "0.29"
+poll-promise = "0.3"
+pollster = "0.3"
 puffin = "0.16"
 puffin_http = "0.13"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
 rfd = { version = "0.12", default_features = false, features = ["xdg-portal"] }
+ron = "0.8.0"
+serde = "1"
+serde_json = { version = "1", default-features = false, features = ["std"] }
+serde_yaml = { version = "0.9.21", default-features = false }
+sha2 = "0.10"
+similar-asserts = "1.4.2"
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
+static_assertions = "1.1"
+sysinfo = { version = "0.29.0", default-features = false }
 thiserror = "1.0"
 time = { version = "0.3", default-features = false, features = [
   "wasm-bindgen",
 ] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
+tokio-tungstenite = { version = "0.17.1", default-features = false }
+tracing = "0.1"
+tungstenite = { version = "0.17", default-features = false }
+type-map = "0.5"
+typenum = "1.15"
 unindent = "0.1"
+uuid = "1.1"
 vec1 = "1.8"
+walkdir = "2.0"
+wasm-bindgen = "0.2.87"
+wasm-bindgen-futures = "0.4.33"
+web-sys = "0.3.61"
 web-time = "0.2.0"
+webbrowser = "0.8"
+winit = "0.28.1"
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
 wgpu = { version = "0.17.0", features = ["fragile-send-sync-non-atomic-wasm"] }
 wgpu-core = "0.17.0"
+xshell = "0.2"
+zip = { version = "0.6", default-features = false }
+zune-core = "0.2"
+zune-jpeg = "0.3"
 
 
 [profile.dev]

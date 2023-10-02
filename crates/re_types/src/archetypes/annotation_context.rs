@@ -28,20 +28,16 @@
 /// ```ignore
 /// //! Log rectangles with different colors and labels using annotation context
 ///
-/// use rerun::{
-///     archetypes::{AnnotationContext, Boxes2D},
-///     datatypes::Color,
-///     RecordingStreamBuilder,
-/// };
+/// use rerun::datatypes::Color;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_annotation_context_rects").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_rects").memory()?;
 ///
 ///     // Log an annotation context to assign a label and color to each class
 ///     rec.log(
 ///         "/",
-///         &AnnotationContext::new([
+///         &rerun::AnnotationContext::new([
 ///             (1, "red", Color::from(0xFF0000FF)),
 ///             (2, "green", Color::from(0x00FF00FF)),
 ///         ]),
@@ -50,12 +46,12 @@
 ///     // Log a batch of 2 rectangles with different class IDs
 ///     rec.log(
 ///         "detections",
-///         &Boxes2D::from_mins_and_sizes([(-2., -2.), (0., 0.)], [(3., 3.), (2., 2.)])
+///         &rerun::Boxes2D::from_mins_and_sizes([(-2., -2.), (0., 0.)], [(3., 3.), (2., 2.)])
 ///             .with_class_ids([1, 2]),
 ///     )?;
 ///
 ///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &Boxes2D::from_half_sizes([(2.5, 2.5)]))?;
+///     rec.log("bounds", &rerun::Boxes2D::from_half_sizes([(2.5, 2.5)]))?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
@@ -74,22 +70,18 @@
 /// //! Log a segmentation image with annotations.
 ///
 /// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::{
-///     archetypes::{AnnotationContext, SegmentationImage},
-///     datatypes::Color,
-///     RecordingStreamBuilder,
-/// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation")
+///             .memory()?;
 ///
 ///     // create an annotation context to describe the classes
 ///     rec.log(
 ///         "segmentation",
-///         &AnnotationContext::new([
-///             (1, "red", Color::from(0xFF0000FF)),
-///             (2, "green", Color::from(0x00FF00FF)),
+///         &rerun::AnnotationContext::new([
+///             (1, "red", rerun::datatypes::Color::from(0xFF0000FF)),
+///             (2, "green", rerun::datatypes::Color::from(0x00FF00FF)),
 ///         ]),
 ///     )?;
 ///
@@ -98,7 +90,10 @@
 ///     data.slice_mut(s![0..4, 0..6]).fill(1);
 ///     data.slice_mut(s![4..8, 6..12]).fill(2);
 ///
-///     rec.log("segmentation/image", &SegmentationImage::try_from(data)?)?;
+///     rec.log(
+///         "segmentation/image",
+///         &rerun::SegmentationImage::try_from(data)?,
+///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
@@ -116,20 +111,19 @@
 /// ```ignore
 /// //! Log some very simple points.
 ///
-/// use rerun::archetypes::{AnnotationContext, Points3D};
-/// use rerun::datatypes::{ClassDescription, Color, KeypointPair};
-/// use rerun::RecordingStreamBuilder;
+/// use rerun::datatypes::Color;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_annotation_context_connections").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_connections")
+///             .memory()?;
 ///
 ///     // Log an annotation context to assign a label and color to each class
 ///     // Create a class description with labels and color for each keypoint ID as well as some
 ///     // connections between keypoints.
 ///     rec.log(
 ///         "/",
-///         &AnnotationContext::new([ClassDescription {
+///         &rerun::AnnotationContext::new([rerun::ClassDescription {
 ///             info: 0.into(),
 ///             keypoint_annotations: vec![
 ///                 (0, "zero", Color::from(0xFF0000FF)).into(),
@@ -137,14 +131,14 @@
 ///                 (2, "two", Color::from(0x0000FFFF)).into(),
 ///                 (3, "three", Color::from(0xFFFF00FF)).into(),
 ///             ],
-///             keypoint_connections: KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
+///             keypoint_connections: rerun::KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
 ///         }]),
 ///     )?;
 ///
 ///     // Log some points with different keypoint IDs
 ///     rec.log(
 ///         "points",
-///         &Points3D::new([
+///         &rerun::Points3D::new([
 ///             [0., 0., 0.],
 ///             [50., 0., 20.],
 ///             [100., 100., 30.],
@@ -167,6 +161,7 @@
 /// </picture>
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AnnotationContext {
+    /// List of class descriptions, mapping class indices to class names, colors etc.
     pub context: crate::components::AnnotationContext,
 }
 

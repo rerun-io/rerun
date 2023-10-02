@@ -154,7 +154,7 @@ impl DataUi for TranslationAndMat3x3 {
     ) {
         let TranslationAndMat3x3 {
             translation,
-            matrix,
+            mat3x3,
             from_parent: _,
         } = self;
 
@@ -167,7 +167,7 @@ impl DataUi for TranslationAndMat3x3 {
                     ui.end_row();
                 }
 
-                if let Some(matrix) = matrix {
+                if let Some(matrix) = mat3x3 {
                     ui.label("matrix");
                     matrix.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();

@@ -24,7 +24,6 @@ class Mesh3D(Mesh3DExt, Archetype):
     Simple indexed 3D mesh:
     ```python
     import rerun as rr
-    from rerun.components import Material
 
     rr.init("rerun_example_mesh3d_indexed", spawn=True)
 
@@ -35,7 +34,7 @@ class Mesh3D(Mesh3DExt, Archetype):
             vertex_normals=[0.0, 0.0, 1.0],
             vertex_colors=[[0, 0, 255], [0, 255, 0], [255, 0, 0]],
             indices=[2, 1, 0],
-            mesh_material=Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+            mesh_material=rr.Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
         ),
     )
     ```
@@ -71,9 +70,28 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     # __init__ can be found in mesh3d_ext.py
 
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            vertex_positions=None,  # type: ignore[arg-type]
+            mesh_properties=None,  # type: ignore[arg-type]
+            vertex_normals=None,  # type: ignore[arg-type]
+            vertex_colors=None,  # type: ignore[arg-type]
+            mesh_material=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
+            instance_keys=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> Mesh3D:
+        """Produce an empty Mesh3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
+
     vertex_positions: components.Position3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Position3DBatch,  # type: ignore[misc]
+        converter=components.Position3DBatch._required,  # type: ignore[misc]
     )
     """
     The positions of each vertex.

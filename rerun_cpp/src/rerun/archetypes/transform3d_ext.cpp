@@ -55,7 +55,7 @@ namespace rerun {
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(const datatypes::Vec3D& translation, bool from_parent = false)
-                : Transform3D(datatypes::TranslationAndMat3x3(translation, from_parent)) {}
+                : Transform3D(datatypes::TranslationRotationScale3D(translation, from_parent)) {}
 
             /// From 3x3 matrix only.
             ///

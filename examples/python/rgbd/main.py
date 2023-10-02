@@ -50,7 +50,7 @@ def read_depth_image(buf: bytes) -> npt.NDArray[Any]:
 
 
 def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -72,22 +72,23 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rr.log_image("world/camera/image/rgb", img_rgb, jpeg_quality=95)
+                rr.log("world/camera/image/rgb", rr.Image(rr.TensorData(array=img_rgb, jpeg_quality=95)))
 
             elif f.filename.endswith(".pgm"):
                 buf = archive.read(f)
                 img_depth = read_depth_image(buf)
 
                 # Log the camera transforms:
-                rr.log_pinhole(
+                rr.log(
                     "world/camera/image",
-                    width=img_depth.shape[1],
-                    height=img_depth.shape[0],
-                    focal_length_px=0.7 * img_depth.shape[1],
+                    rr.Pinhole(
+                        resolution=[img_depth.shape[1], img_depth.shape[0]],
+                        focal_length=0.7 * img_depth.shape[1],
+                    ),
                 )
 
                 # Log the depth image to the cameras image-space:
-                rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
+                rr.log("world/camera/image/depth", rr.DepthImage(img_depth, meter=DEPTH_IMAGE_SCALING))
 
 
 def ensure_recording_downloaded(name: str) -> Path:

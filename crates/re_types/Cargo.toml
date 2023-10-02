@@ -35,7 +35,7 @@ ecolor = ["dep:ecolor"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["dep:glam"]
 
-## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
 
 ## Enable (de)serialization using serde.
@@ -54,16 +54,16 @@ re_tracing.workspace = true
 
 # External
 anyhow.workspace = true
-array-init = "2.1"
+array-init.workspace = true
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",
   "compute_concatenate",
 ] }
 arrow2_convert.workspace = true
-backtrace = "0.3"
-bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
-document-features = "0.2"
+backtrace.workspace = true
+bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
+document-features.workspace = true
 infer.workspace = true
 itertools.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
@@ -72,16 +72,16 @@ ndarray.workspace = true
 once_cell.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
-uuid = { version = "1.1", features = ["serde", "v4", "js"] }
+uuid = { workspace = true, features = ["serde", "v4", "js"] }
 
 # External (optional)
 ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false }
 rand = { workspace = true, optional = true, features = ["std", "std_rng"] }
-serde = { version = "1", optional = true, features = ["derive", "rc"] }
-zune-core = { version = "0.2", optional = true }
-zune-jpeg = { version = "0.3", optional = true }
+serde = { workspace = true, optional = true, features = ["derive", "rc"] }
+zune-core = { workspace = true, optional = true }
+zune-jpeg = { workspace = true, optional = true }
 
 
 [dev-dependencies]
@@ -89,7 +89,7 @@ zune-jpeg = { version = "0.3", optional = true }
 # External
 glam.workspace = true
 itertools.workspace = true
-similar-asserts = "1.4.2"
+similar-asserts.workspace = true
 
 
 [build-dependencies]
