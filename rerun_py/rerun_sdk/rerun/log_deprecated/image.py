@@ -84,11 +84,9 @@ def log_image(
 
     """
 
-    tensor_data = TensorData(array=image, jpeg_quality=jpeg_quality)
-
     log(
         entity_path,
-        Image(tensor_data, draw_order=draw_order),
+        Image(image, draw_order=draw_order, jpeg_quality=jpeg_quality),
         AnyValues(**(ext or {})),
         timeless=timeless,
         recording=recording,

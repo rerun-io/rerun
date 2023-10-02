@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
+
+import rerun as rr
+from rerun.components.draw_order import DrawOrderLike
+from rerun.datatypes.tensor_data import TensorDataLike
 
 from .._validators import find_non_empty_dim_indices
 from ..error_utils import _send_warning, catch_and_log_exceptions
@@ -14,6 +18,42 @@ if TYPE_CHECKING:
 
 
 class ImageExt:
+    def __init__(
+        self: Any, data: TensorDataLike, *, draw_order: DrawOrderLike | None = None, jpeg_quality: None | int = None
+    ):
+        """
+        Create a new instance of the Image archetype.
+
+        Parameters
+        ----------
+        data:
+            The image data. Should always be a rank-2 or rank-3 tensor.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+            Objects with higher values are drawn on top of those with lower values.
+        jpeg_quality:
+            If set, encode the image as a JPEG to save storage space.
+            Higher quality = larger file size.
+            A quality of 95 still saves a lot of space, but is visually very similar.
+            JPEG compression works best for photographs.
+            Only RGB images are supported.
+            Note that compressing to JPEG costs a bit of CPU time, both when logging
+            and later when viewing them.
+            Setting this parameter is only allowed if the passed in image `data` is not already of type `TensorData`
+            which may specify the `jpeg_quality` already.
+        """
+
+        # You can define your own __init__ function as a member of ImageExt in image_ext.py
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if jpeg_quality is not None:
+                if isinstance(data, rr.components.TensorData) or isinstance(data, rr.datatypes.TensorData):
+                    raise ValueError("Cannot specify `jpeg_quality` if `data` is already of type `TensorData`")
+                data = rr.components.TensorData(array=data, jpeg_quality=jpeg_quality)
+
+            self.__attrs_init__(data=data, draw_order=draw_order)
+            return
+        self.__attrs_clear__()
+
     @staticmethod
     @catch_and_log_exceptions("Image converter")
     def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
