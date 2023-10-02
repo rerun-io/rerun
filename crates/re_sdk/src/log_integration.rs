@@ -8,6 +8,7 @@ use crate::RecordingStream;
 /// Implements a [`log::Log`] that forwards all events to the Rerun SDK.
 ///
 /// ```
+/// # use re_sdk as rerun;
 /// let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").buffered()?;
 ///
 /// rerun::Logger::new(rec.clone()) // recording streams are ref-counted
@@ -16,6 +17,7 @@ use crate::RecordingStream;
 ///     .init()?;
 ///
 /// log::info!("This INFO log got added through the standard logging interface");
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Debug)]
 pub struct Logger {
