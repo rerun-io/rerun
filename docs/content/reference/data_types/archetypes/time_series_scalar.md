@@ -15,13 +15,9 @@ cannot be timeless!
 
 **Optional**: [`Text`](../components/text.md), [`ScalarScattering`](../components/scalar_scattering.md)
 
-## Examples
+## Example
 
 ### scalar_simple
 
 code-example: scalar_simple
-
-### scalar_multiple_plots
-
-code-example: scalar_multiple_plots
 

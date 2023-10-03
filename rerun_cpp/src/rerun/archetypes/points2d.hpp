@@ -25,26 +25,7 @@ namespace rerun {
     namespace archetypes {
         /// **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
         ///
-        /// ## Examples
-        ///
-        /// ### `point2d_simple`:
-        /// ```cpp,ignore
-        /// // Log some very simple points.
-        ///
-        /// #include <rerun.hpp>
-        ///
-        /// namespace rr = rerun;
-        ///
-        /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_points2d_simple");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
-        ///
-        ///     rec.log("points", rr::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}}));
-        ///
-        ///     // Log an extra rect to set the view bounds
-        ///     rec.log("bounds", rr::Boxes2D::from_half_sizes({{2.0f, 1.5f}}));
-        /// }
-        /// ```
+        /// ## Example
         ///
         /// ### `point2d_random`:
         /// ```cpp,ignore

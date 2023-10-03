@@ -16,7 +16,7 @@
 
 /// **Archetype**:  A generic n-dimensional Tensor.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ### `tensor_simple`:
 /// ```ignore
@@ -45,39 +45,6 @@
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png">
 ///   <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png" width="640">
-/// </picture>
-/// </center>
-///
-/// ### `tensor_one_dim`:
-/// ```ignore
-/// //! Create and log a one dimensional tensor.
-///
-/// use ndarray::{Array, ShapeBuilder};
-/// use rand::{thread_rng, Rng};
-/// use rand_distr::StandardNormal;
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_tensors").memory()?;
-///
-///     let mut data = Array::<f64, _>::default((100).f());
-///     data.map_inplace(|x| *x = thread_rng().sample(StandardNormal));
-///
-///     rec.log(
-///         "tensor",
-///         &rerun::Tensor::try_from(data.as_standard_layout().view())?,
-///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1200w.png">
-///   <img src="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]

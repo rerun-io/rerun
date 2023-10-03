@@ -19,39 +19,7 @@
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.
 ///
-/// ## Examples
-///
-/// ### Simple example
-/// ```ignore
-/// //! Create and log a depth image.
-///
-/// use ndarray::{s, Array, ShapeBuilder};
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
-///
-///     let mut image = Array::<u16, _>::from_elem((8, 12).f(), 65535);
-///     image.slice_mut(s![0..4, 0..6]).fill(20000);
-///     image.slice_mut(s![4..8, 6..12]).fill(45000);
-///
-///     let depth_image = rerun::DepthImage::try_from(image)?.with_meter(10_000.0);
-///
-///     rec.log("depth", &depth_image)?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1200w.png">
-///   <img src="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/full.png" width="640">
-/// </picture>
-/// </center>
+/// ## Example
 ///
 /// ### Depth to 3D example
 /// ```ignore

@@ -18,6 +18,8 @@
 namespace rerun {
     namespace archetypes {
         /// **Archetype**: A text element intended to be displayed in its own text-box.
+        ///
+        /// Supports raw text and markdown.
         struct TextDocument {
             /// Contents of the text document.
             rerun::components::Text text;

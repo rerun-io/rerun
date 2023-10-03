@@ -13,21 +13,7 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 
 **Optional**: [`DepthMeter`](../components/depth_meter.md), [`DrawOrder`](../components/draw_order.md)
 
-## Examples
-
-### Simple example
-
-code-example: depth_image_simple
-
-<center>
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1200w.png">
-  <img src="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/full.png" width="640">
-</picture>
-</center>
+## Example
 
 ### Depth to 3D example
 

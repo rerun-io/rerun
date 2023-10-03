@@ -16,34 +16,7 @@
 
 /// **Archetype**:  A 3D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// ## Examples
-///
-/// ### `point3d_simple`:
-/// ```ignore
-/// //! Log some very simple points.
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple").memory()?;
-///
-///     rec.log(
-///         "points",
-///         &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
-///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
-///   <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png" width="640">
-/// </picture>
-/// </center>
+/// ## Example
 ///
 /// ### `point3d_random`:
 /// ```ignore
