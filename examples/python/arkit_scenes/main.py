@@ -192,7 +192,7 @@ def project_3d_bboxes_to_2d_keypoints(
     translation, rotation_q = camera_from_world.translation, camera_from_world.rotation
     # We know we stored the rotation as a quaternion, so extract it again.
     # TODO(#3467): This shouldn't directly access rotation.inner
-    rotation = R.from_quat(np.array(rotation_q.inner))  # type: ignore[union-attr]
+    rotation = R.from_quat(rotation_q.inner)  # type: ignore[union-attr]
 
     # Transform 3D keypoints from world to camera frame
     world_to_camera_rotation = rotation.as_matrix()
