@@ -35,7 +35,6 @@ class ScalarScattering(ScalarScatteringExt):
         self.__attrs_init__(scattered=scattered)
 
     scattered: bool = field(converter=bool)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

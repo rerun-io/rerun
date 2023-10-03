@@ -41,7 +41,6 @@ class DisconnectedSpace(DisconnectedSpaceExt):
         self.__attrs_init__(is_disconnected=is_disconnected)
 
     is_disconnected: bool = field(converter=bool)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

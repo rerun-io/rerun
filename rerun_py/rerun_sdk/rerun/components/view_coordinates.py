@@ -61,7 +61,9 @@ class ViewCoordinates(ViewCoordinatesExt):
     coordinates: npt.NDArray[np.uint8] = field(
         converter=ViewCoordinatesExt.coordinates__field_converter_override,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+    # The directions of the [x, y, z] axes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py

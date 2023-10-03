@@ -36,7 +36,6 @@ class KeypointId(KeypointIdExt):
         self.__attrs_init__(id=id)
 
     id: int = field(converter=int)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of KeypointIdExt in keypoint_id_ext.py

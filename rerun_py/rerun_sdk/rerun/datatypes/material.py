@@ -48,7 +48,9 @@ class Material(MaterialExt):
     albedo_factor: datatypes.Rgba32 | None = field(
         default=None, converter=_material__albedo_factor__special_field_converter_override
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+    # Optional color multiplier.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 MaterialLike = Material

@@ -35,10 +35,7 @@ class TensorDimension:
         self.__attrs_init__(size=size, name=name)
 
     size: int = field(converter=int)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     name: str | None = field(default=None, converter=str_or_none)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 TensorDimensionLike = TensorDimension

@@ -63,33 +63,16 @@ class AffixFuzzer1:
         )
 
     single_string_required: str = field(converter=str)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     many_strings_required: list[str] = field()
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     flattened_scalar: float = field(converter=float)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     almost_flattened_scalar: datatypes.FlattenedScalar = field(
         converter=_affix_fuzzer1__almost_flattened_scalar__special_field_converter_override
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     single_float_optional: float | None = field(default=None, converter=float_or_none)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     single_string_optional: str | None = field(default=None, converter=str_or_none)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     many_strings_optional: list[str] | None = field(default=None)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     from_parent: bool | None = field(default=None, converter=bool_or_none)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer1Like = AffixFuzzer1

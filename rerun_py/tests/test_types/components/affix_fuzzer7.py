@@ -25,7 +25,6 @@ class AffixFuzzer7:
         self.__attrs_init__(many_optional=many_optional)
 
     many_optional: list[datatypes.AffixFuzzer1] | None = field(default=None)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer7Like = AffixFuzzer7

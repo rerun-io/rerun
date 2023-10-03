@@ -81,21 +81,15 @@ class TextLog(Archetype):
         metadata={"component": "required"},
         converter=components.TextBatch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     level: components.TextLogLevelBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextLogLevelBatch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

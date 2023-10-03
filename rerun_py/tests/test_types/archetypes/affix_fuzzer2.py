@@ -100,109 +100,73 @@ class AffixFuzzer2(Archetype):
         metadata={"component": "required"},
         converter=components.AffixFuzzer1Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1102: components.AffixFuzzer2Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer2Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1103: components.AffixFuzzer3Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer3Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1104: components.AffixFuzzer4Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer4Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1105: components.AffixFuzzer5Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer5Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1106: components.AffixFuzzer6Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer6Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1107: components.AffixFuzzer7Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer7Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1108: components.AffixFuzzer8Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer8Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1109: components.AffixFuzzer9Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer9Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1110: components.AffixFuzzer10Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer10Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1111: components.AffixFuzzer11Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer11Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1112: components.AffixFuzzer12Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer12Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1113: components.AffixFuzzer13Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer13Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1114: components.AffixFuzzer14Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer14Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1115: components.AffixFuzzer15Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer15Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1116: components.AffixFuzzer16Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer16Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1117: components.AffixFuzzer17Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer17Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz1118: components.AffixFuzzer18Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer18Batch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

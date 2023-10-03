@@ -25,7 +25,6 @@ class AffixFuzzer16:
         self.__attrs_init__(many_required_unions=many_required_unions)
 
     many_required_unions: list[datatypes.AffixFuzzer3] = field()
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer16Like = AffixFuzzer16

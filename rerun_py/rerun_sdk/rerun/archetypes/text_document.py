@@ -62,14 +62,24 @@ class TextDocument(Archetype):
         metadata={"component": "required"},
         converter=components.TextBatch._required,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+    # Contents of the text document.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+    # The Media Type of the text.
+    #
+    # For instance:
+    # * `text/plain`
+    # * `text/markdown`
+    #
+    # If omitted, `text/plain` is assumed.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

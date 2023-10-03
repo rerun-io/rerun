@@ -56,17 +56,26 @@ class TranslationAndMat3x3(TranslationAndMat3x3Ext):
     # __init__ can be found in translation_and_mat3x3_ext.py
 
     from_parent: bool = field(converter=bool)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+    # If true, this transform is from the parent space to the space where the transform was logged.
+    #
+    # If false (default), the transform maps from this space to its parent,
+    # i.e. the translation is the position in the parent space.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     translation: datatypes.Vec3D | None = field(
         default=None, converter=_translation_and_mat3x3__translation__special_field_converter_override
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+    # 3D translation, applied after the matrix.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     mat3x3: datatypes.Mat3x3 | None = field(
         default=None, converter=_translation_and_mat3x3__mat3x3__special_field_converter_override
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+    # 3x3 matrix for scale, rotation & shear.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 TranslationAndMat3x3Like = TranslationAndMat3x3

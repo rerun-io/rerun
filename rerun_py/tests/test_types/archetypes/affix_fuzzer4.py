@@ -102,126 +102,90 @@ class AffixFuzzer4(Archetype):
         default=None,
         converter=components.AffixFuzzer1Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2102: components.AffixFuzzer2Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer2Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2103: components.AffixFuzzer3Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer3Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2104: components.AffixFuzzer4Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer4Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2105: components.AffixFuzzer5Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer5Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2106: components.AffixFuzzer6Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer6Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2107: components.AffixFuzzer7Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer7Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2108: components.AffixFuzzer8Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer8Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2109: components.AffixFuzzer9Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer9Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2110: components.AffixFuzzer10Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer10Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2111: components.AffixFuzzer11Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer11Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2112: components.AffixFuzzer12Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer12Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2113: components.AffixFuzzer13Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer13Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2114: components.AffixFuzzer14Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer14Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2115: components.AffixFuzzer15Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer15Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2116: components.AffixFuzzer16Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer16Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2117: components.AffixFuzzer17Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer17Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     fuzz2118: components.AffixFuzzer18Batch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.AffixFuzzer18Batch._optional,  # type: ignore[misc]
     )
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

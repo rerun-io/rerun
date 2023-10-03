@@ -41,10 +41,7 @@ class AffixFuzzer20:
         self.__attrs_init__(p=p, s=s)
 
     p: datatypes.PrimitiveComponent = field(converter=_affix_fuzzer20__p__special_field_converter_override)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     s: datatypes.StringComponent = field(converter=_affix_fuzzer20__s__special_field_converter_override)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer20Like = AffixFuzzer20

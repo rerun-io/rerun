@@ -28,7 +28,6 @@ class AffixFuzzer11:
         self.__attrs_init__(many_floats_optional=many_floats_optional)
 
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py

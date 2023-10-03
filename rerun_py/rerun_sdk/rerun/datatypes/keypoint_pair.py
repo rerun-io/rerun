@@ -42,10 +42,7 @@ class KeypointPair(KeypointPairExt):
         self.__attrs_init__(keypoint0=keypoint0, keypoint1=keypoint1)
 
     keypoint0: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint0__special_field_converter_override)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
-
     keypoint1: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint1__special_field_converter_override)
-    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:
