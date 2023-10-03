@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -26,7 +27,7 @@ pub struct AnnotationInfo {
     pub label: Option<crate::datatypes::Utf8>,
 
     /// The color that will be applied to the annotated entity.
-    pub color: Option<crate::datatypes::Color>,
+    pub color: Option<crate::datatypes::Rgba32>,
 }
 
 impl<'a> From<AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
@@ -70,7 +71,7 @@ impl crate::Loggable for AnnotationInfo {
             },
             Field {
                 name: "color".to_owned(),
-                data_type: <crate::datatypes::Color>::arrow_datatype(),
+                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
@@ -78,12 +79,13 @@ impl crate::Loggable for AnnotationInfo {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -200,7 +202,7 @@ impl crate::Loggable for AnnotationInfo {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::Color(data0) = datum;
+                                            let crate::datatypes::Rgba32(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -218,12 +220,13 @@ impl crate::Loggable for AnnotationInfo {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -247,7 +250,7 @@ impl crate::Loggable for AnnotationInfo {
                             },
                             Field {
                                 name: "color".to_owned(),
-                                data_type: <crate::datatypes::Color>::arrow_datatype(),
+                                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
@@ -363,7 +366,7 @@ impl crate::Loggable for AnnotationInfo {
                         .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
                         .map(|opt| opt.copied())
-                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Color(v)))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Rgba32(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(id, label, color),

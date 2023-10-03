@@ -7,14 +7,16 @@
 //! The [`Index`]es are for tables, arrays etc.
 
 mod component_path;
+mod data_path;
 mod entity_path;
 mod entity_path_impl;
 mod parse_path;
 
 pub use component_path::ComponentPath;
+pub use data_path::DataPath;
 pub use entity_path::{EntityPath, EntityPathHash};
 pub use entity_path_impl::EntityPathImpl;
-pub use parse_path::{parse_entity_path, PathParseError};
+pub use parse_path::PathParseError;
 
 use re_string_interner::InternedString;
 
@@ -26,10 +28,12 @@ use crate::Index;
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum EntityPathPart {
-    /// Struct member. Each member can have a different type.
+    /// Corresponds to the name of a struct field.
+    ///
+    /// Names must match the regex: `[a-zA-z0-9_-]+`
     Name(InternedString),
 
-    /// Array/table/map member. Each member must be of the same type (homogeneous).
+    /// Array/table/map member.
     Index(Index),
 }
 
@@ -72,13 +76,13 @@ impl From<Index> for EntityPathPart {
 /// ```
 #[macro_export]
 macro_rules! entity_path_vec {
-        () => {
-            vec![]
-        };
-        ($($part: expr),* $(,)?) => {
-            vec![ $($crate::EntityPathPart::from($part),)+ ]
-        };
-    }
+    () => {
+        vec![]
+    };
+    ($($part: expr),* $(,)?) => {
+        vec![ $($crate::EntityPathPart::from($part),)+ ]
+    };
+}
 
 /// Build a `EntityPath`:
 /// ```
@@ -87,10 +91,10 @@ macro_rules! entity_path_vec {
 /// ```
 #[macro_export]
 macro_rules! entity_path {
-        () => {
-            vec![]
-        };
-        ($($part: expr),* $(,)?) => {
-            $crate::EntityPath::from(vec![ $($crate::EntityPathPart::from($part),)+ ])
-        };
-    }
+    () => {
+        vec![]
+    };
+    ($($part: expr),* $(,)?) => {
+        $crate::EntityPath::from(vec![ $($crate::EntityPathPart::from($part),)+ ])
+    };
+}

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f32::consts::PI};
+use std::{collections::HashMap, f32::consts::TAU};
 
 use re_types::{
     archetypes::Transform3D,
@@ -7,7 +7,7 @@ use re_types::{
         self, Angle, Mat3x3, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3x3,
         TranslationRotationScale3D, Vec3D,
     },
-    Archetype as _,
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -39,7 +39,7 @@ fn roundtrip() {
                     translation: Some(Vec3D([1.0, 2.0, 3.0])),
                     rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
                         axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::Radians(PI),
+                        angle: Angle::Radians(0.5 * TAU),
                     })),
                     scale: None,
                     from_parent: false,
@@ -52,7 +52,7 @@ fn roundtrip() {
                     translation: Some(Vec3D([1.0, 2.0, 3.0])),
                     rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
                         axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::Radians(PI),
+                        angle: Angle::Radians(0.5 * TAU),
                     })),
                     scale: Some(Scale3D::Uniform(42.0)),
                     from_parent: true,
@@ -63,7 +63,7 @@ fn roundtrip() {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
                 TranslationAndMat3x3 {
                     translation: None,
-                    matrix: None,
+                    mat3x3: None,
                     from_parent: false,
                 },
             )),
@@ -72,7 +72,7 @@ fn roundtrip() {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
                 TranslationAndMat3x3 {
                     translation: Some(Vec3D([1.0, 2.0, 3.0])),
-                    matrix: None,
+                    mat3x3: None,
                     from_parent: true,
                 },
             )),
@@ -81,7 +81,7 @@ fn roundtrip() {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
                 TranslationAndMat3x3 {
                     translation: None,
-                    matrix: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])),
+                    mat3x3: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])),
                     from_parent: true,
                 },
             )),
@@ -101,15 +101,15 @@ fn roundtrip() {
             .from_parent(),
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
-            TranslationRotationScale3D::rigid(
+            TranslationRotationScale3D::from_translation_rotation(
                 [1.0, 2.0, 3.0],
-                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
+                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
             ),
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationRotationScale(
-            TranslationRotationScale3D::affine(
+            TranslationRotationScale3D::from_translation_rotation_scale(
                 [1.0, 2.0, 3.0],
-                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(PI)),
+                RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
                 42.0,
             )
             .from_parent(),
@@ -118,10 +118,10 @@ fn roundtrip() {
             TranslationAndMat3x3::IDENTITY,
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
-            TranslationAndMat3x3::translation([1.0, 2.0, 3.0]).from_parent(),
+            TranslationAndMat3x3::from_translation([1.0, 2.0, 3.0]).from_parent(),
         )), //
         Transform3D::new(datatypes::Transform3D::TranslationAndMat3x3(
-            TranslationAndMat3x3::rotation([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+            TranslationAndMat3x3::from_mat3x3([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
                 .from_parent(),
         )), //
     ];
@@ -135,7 +135,7 @@ fn roundtrip() {
         similar_asserts::assert_eq!(expected, arch);
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow();
+        let serialized = arch.to_arrow().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -152,7 +152,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = Transform3D::try_from_arrow(serialized).unwrap();
+        let deserialized = Transform3D::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

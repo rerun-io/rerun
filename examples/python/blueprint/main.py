@@ -6,7 +6,7 @@ import argparse
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-import rerun.experimental as rr2
+import rerun.experimental as rr_exp
 
 
 def main() -> None:
@@ -42,17 +42,19 @@ def main() -> None:
         img = np.zeros([128, 128, 3], dtype="uint8")
         for i in range(8):
             img[(i * 16) + 4 : (i * 16) + 12, :] = (0, 0, 200)
-        rr.log_image("image", img)
-        rr.log_rect("rect/0", [16, 16, 64, 64], label="Rect1", color=(255, 0, 0))
-        rr.log_rect("rect/1", [48, 48, 64, 64], label="Rect2", color=(0, 255, 0))
+        rr.log("image", rr.Image(img))
+        rr.log("rect/0", rr.Boxes2D(mins=[16, 16], sizes=[64, 64], labels="Rect0", colors=(255, 0, 0)))
+        rr.log("rect/1", rr.Boxes2D(mins=[48, 48], sizes=[64, 64], labels="Rect1", colors=(0, 255, 0)))
 
     if not args.skip_blueprint:
         if args.auto_space_views:
-            rr2.set_auto_space_views(True)
+            rr_exp.set_auto_space_views(True)
 
-        rr2.set_panels(all_expanded=False)
+        rr_exp.set_panels(all_expanded=False)
 
-        rr2.add_space_view(name="overlaid", origin="/", entity_paths=["image", "rect/0", "rect/1"])
+        rr_exp.add_space_view(
+            name="overlaid", space_view_class="2D", origin="/", entity_paths=["image", "rect/0", "rect/1"]
+        )
 
 
 if __name__ == "__main__":

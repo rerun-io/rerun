@@ -12,14 +12,11 @@
 //! cargo run -p test_api -- --test rects
 //! ```
 
-use std::{
-    collections::HashSet,
-    f32::consts::{PI, TAU},
-};
+use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools;
 use rerun::{
-    archetypes::{SegmentationImage, TextLog},
+    archetypes::{Clear, SegmentationImage, TextLog},
     datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
     EntityPath, RecordingStream,
@@ -38,8 +35,8 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_rotations([Quaternion::from_xyzw([
                 0.0,
                 0.0,
-                (PI / 4.0).sin(),
-                (PI / 4.0).cos(),
+                (TAU / 8.0).sin(),
+                (TAU / 8.0).cos(),
             ])])
             .with_radii([0.005])
             .with_labels(["box/t0"]),
@@ -53,8 +50,8 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_rotations([Quaternion::from_xyzw([
                 0.0,
                 0.0,
-                (PI / 4.0).sin(),
-                (PI / 4.0).cos(),
+                (TAU / 8.0).sin(),
+                (TAU / 8.0).cos(),
             ])])
             .with_radii([0.01])
             .with_labels(["box/t1"]),
@@ -81,10 +78,10 @@ fn test_log_cleared(rec: &RecordingStream) -> anyhow::Result<()> {
     )?;
 
     rec.set_time_seconds("sim_time", 2f64);
-    rec.log("null_test/rect/0", &rerun::archetypes::Clear::flat())?;
+    rec.log("null_test/rect/0", &Clear::flat())?;
 
     rec.set_time_seconds("sim_time", 3f64);
-    rec.log("null_test/rect", &rerun::archetypes::Clear::recursive())?;
+    rec.log("null_test/rect", &Clear::recursive())?;
 
     rec.set_time_seconds("sim_time", 4f64);
     rec.log(
@@ -196,7 +193,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.set_time_seconds("sim_time", 3f64);
     rec.log(
         "rects_test/rects",
-        // TODO(#3279): Should be &Boxes2D::empty()
+        // TODO(#3381): Should be &Boxes2D::empty()
         &Boxes2D::from_half_sizes(std::iter::empty::<HalfSizes2D>()),
     )?;
 
@@ -332,7 +329,7 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
         &Points2D::new([(40.0, 50.0), (120.0, 70.0), (80.0, 30.0)]).with_class_ids([13, 42, 99]),
     )?;
     rec.log(
-        "seg_test/many points",
+        "seg_test/many_points",
         &Points2D::new(
             (0..25).map(|i| (100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0)),
         )
@@ -361,9 +358,9 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.log(
         "seg_test",
         &AnnotationContext::new([
-            (13, "label1", datatypes::Color::from(0xFF0000FF)),
-            (42, "label2", datatypes::Color::from(0x00FF00FF)),
-            (99, "label3", datatypes::Color::from_rgb(0, 0, 255)),
+            (13, "label1", datatypes::Rgba32::from(0xFF0000FF)),
+            (42, "label2", datatypes::Rgba32::from(0x00FF00FF)),
+            (99, "label3", datatypes::Rgba32::from_rgb(0, 0, 255)),
         ]),
     )?;
     log_info(rec, "points/rects with user specified colors")?;
@@ -377,9 +374,9 @@ fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
             AnnotationInfo {
                 id: 13,
                 label: None,
-                color: Some(datatypes::Color::from(0xFF0000FF)),
+                color: Some(datatypes::Rgba32::from(0xFF0000FF)),
             },
-            (42, "label2", datatypes::Color::from(0x00FF00FF)).into(),
+            (42, "label2", datatypes::Rgba32::from(0x00FF00FF)).into(),
             (99, "label3").into(),
         ]),
     )?;
@@ -412,10 +409,9 @@ fn test_text_logs(rec: &RecordingStream) -> anyhow::Result<()> {
 
 fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
-        archetypes::{LineStrips3D, Points3D, Transform3D},
-        components::{Color, Position3D, ViewCoordinates},
-        coordinates::SignedAxis3,
-        datatypes::{Angle, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
+        archetypes::{LineStrips3D, Points3D, Transform3D, ViewCoordinates},
+        components::{Color, Position3D},
+        datatypes::{Angle, RotationAxisAngle},
     };
 
     let sun_to_planet_distance = 6.0;
@@ -428,18 +424,8 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
         rec: &RecordingStream,
         ent_path: impl Into<EntityPath>,
     ) -> anyhow::Result<()> {
-        // TODO(#2816): Pinhole archetype
-        let view_coords = ViewCoordinates::from_up_and_handedness(
-            SignedAxis3::POSITIVE_Z,
-            rerun::coordinates::Handedness::Right,
-        );
-        rec.log_component_batches(
-            ent_path,
-            true,
-            1,
-            [&view_coords as _, &Color::from_rgb(255, 215, 0) as _],
-        )
-        .map_err(Into::into)
+        rec.log_timeless(ent_path, &ViewCoordinates::RIGHT_HAND_Z_UP)
+            .map_err(Into::into)
     }
     log_coordinate_space(rec, "transforms3d")?;
     log_coordinate_space(rec, "transforms3d/sun")?;
@@ -513,26 +499,24 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
 
         rec.log(
             "transforms3d/sun/planet",
-            &Transform3D::new(rerun::datatypes::TranslationRotationScale3D::rigid(
+            &Transform3D::from_translation_rotation(
                 [
                     (time * rotation_speed_planet).sin() * sun_to_planet_distance,
                     (time * rotation_speed_planet).cos() * sun_to_planet_distance,
                     0.0,
                 ],
                 RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
-            )),
+            ),
         )?;
 
         rec.log(
             "transforms3d/sun/planet/moon",
-            &Transform3D::new(
-                TranslationRotationScale3D::from(Vec3D::new(
-                    (time * rotation_speed_moon).cos() * planet_to_moon_distance,
-                    (time * rotation_speed_moon).sin() * planet_to_moon_distance,
-                    0.0,
-                ))
-                .from_parent(),
-            ),
+            &Transform3D::from_translation([
+                (time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                (time * rotation_speed_moon).sin() * planet_to_moon_distance,
+                0.0,
+            ])
+            .from_parent(),
         )?;
     }
 

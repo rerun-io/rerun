@@ -117,7 +117,7 @@ impl Points2DPart {
                     re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
                         | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
                 )
-                .world_from_obj(ent_context.world_from_obj)
+                .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -153,7 +153,7 @@ impl Points2DPart {
             {
                 re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
-                    // TODO(andreas/jeremy): We can do this much more efficiently
+                    // TODO(andreas, jeremy): We can do this much more efficiently
                     let highlighted_point_index = arch_view
                         .iter_instance_keys()
                         .position(|key| *highlighted_key == key);
@@ -174,7 +174,7 @@ impl Points2DPart {
             arch_view
                 .iter_required_component::<Position2D>()?
                 .map(|pt| pt.into()),
-            ent_context.world_from_obj,
+            ent_context.world_from_entity,
         );
 
         Ok(())
@@ -196,7 +196,7 @@ impl ViewPartSystem for Points2DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points2D::indicator_component()).collect()
+        std::iter::once(Points2D::indicator().name()).collect()
     }
 
     fn execute(

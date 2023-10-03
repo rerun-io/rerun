@@ -20,10 +20,10 @@ All of the code for this guide can be found on GitHub in
 [rerun/examples/python/ros_node](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/).
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/67b71229d4891875ccb2ad572f27d39189c777d1_ros1_preview_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/150376fc397ef97b8cc2a2f47b3037ade347dca8_ros1_preview_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/3f2d8247a448685da5f5c40b102677c3d52332a4_ros1_preview_1024w.png">
-  <img src="https://static.rerun.io/1a7818ed5bc11f6e9af6ac099df55fd7ee92953d_ros1_preview_full.png" alt="Rerun 3D view of ROS 2 turtlebot3 navigation demo">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros1_preview/e64387f9355056015a8e1de6cc0ec893851acc76/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros1_preview/e64387f9355056015a8e1de6cc0ec893851acc76/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros1_preview/e64387f9355056015a8e1de6cc0ec893851acc76/1024w.png">
+  <img src="https://static.rerun.io/ros1_preview/e64387f9355056015a8e1de6cc0ec893851acc76/full.png" alt="Rerun 3D view of ROS 2 turtlebot3 navigation demo">
 </picture>
 
 
@@ -87,11 +87,11 @@ With the previous dependencies installed, and gazebo running, you should now be 
 You should see a window similar to:
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/503e1d77933852b686b2c8410bff77ba7b3e303a_ros2_launched_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/3c8c0d61cf8fb7861e6f637d8047bcc04b8596fb_ros2_launched_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/e1687fad31ec38cc83beef8ae87cc4c4b6780b45_ros2_launched_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/247d9761473c244d9087785c43d8a3b31abd922c_ros2_launched_1200w.png">
-  <img src="https://static.rerun.io/1a2c23c43ad171e7dc9f594487ec037204742cce_ros2_launched_full.png" alt="Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros2_launched/4274bbe19dbf163fddaea4d6c24d8ad3e040cecb/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros2_launched/4274bbe19dbf163fddaea4d6c24d8ad3e040cecb/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros2_launched/4274bbe19dbf163fddaea4d6c24d8ad3e040cecb/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros2_launched/4274bbe19dbf163fddaea4d6c24d8ad3e040cecb/1200w.png">
+  <img src="https://static.rerun.io/ros2_launched/4274bbe19dbf163fddaea4d6c24d8ad3e040cecb/full.png" alt="Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo">
 </picture>
 
 
@@ -103,17 +103,17 @@ the environment.
 If you are familiar with the turtlebot nav example and rviz, this view will likely be familiar:
 
  * `map/box` is a placeholder for the map. (This will eventually be a map: [#1531](https://github.com/rerun-io/rerun/issues/1531).)
- * `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../reference/data_types/transform3d.md).
- * `map/robot/urdf` contains the `URDF` logged as a [mesh](../reference/data_types/mesh.md).
- * `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/data_types/linestrip3d.md). (This will eventually be a
+ * `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../reference/data_types/archetypes/transform3d.md).
+ * `map/robot/urdf` contains the `URDF` logged as a [mesh](../reference/data_types/archetypes/mesh3d.md).
+ * `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/data_types/archetypes/line_strips3d.md). (This will eventually be a
    native type: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
- * `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../reference/data_types/pinhole.md) transform.
- * `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/data_types/image.md).
- * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/data_types/point3d.md).
+ * `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../reference/data_types/archetypes/pinhole.md) transform.
+ * `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/data_types/archetypes/image.md).
+ * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/data_types/archetypes/points3d.md).
  * `map/points` contains a second copy of `PointCloud2` with a different transform.  (This is a workaround until Rerun
    has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
- * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/data_types/scalar.md).
- * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/data_types/scalar.md).
+ * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/data_types/archetypes/time_series_scalar.md).
+ * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/data_types/archetypes/time_series_scalar.md).
 
 ## Code Explanation
 

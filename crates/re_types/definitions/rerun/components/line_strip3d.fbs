@@ -24,8 +24,7 @@ namespace rerun.components;
 table LineStrip3D (
   "attr.python.aliases": "datatypes.Vec3DArrayLike, npt.NDArray[np.float32]",
   "attr.python.array_aliases": "npt.NDArray[np.float32]",
-  "attr.rust.derive": "Default, PartialEq, PartialOrd",
-  order: 100
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   points: [rerun.datatypes.Vec3D] (order: 100);
 }

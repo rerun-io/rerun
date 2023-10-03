@@ -25,15 +25,17 @@ def task(child_index: int) -> None:
     # We then have to connect to the viewer instance.
     rr.connect()
 
-    title = f"task {child_index}"
-    rr.log_text_entry(
+    title = f"task_{child_index}"
+    rr.log(
         "log",
-        text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",  # noqa: E501 line too long
+        rr.TextLog(
+            f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}"
+        ),  # noqa: E501 line too long
     )
     if child_index == 0:
-        rr.log_rect(title, [5, 5, 80, 80], label=title)
+        rr.log(title, rr.Boxes2D(array=[5, 5, 80, 80], labels=title))
     else:
-        rr.log_rect(title, [10 + child_index * 10, 20 + child_index * 5, 30, 40], label=title)
+        rr.log(title, rr.Boxes2D(array=[10 + child_index * 10, 20 + child_index * 5, 30, 40], labels=title))
 
 
 def main() -> None:

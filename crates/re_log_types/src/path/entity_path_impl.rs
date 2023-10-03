@@ -26,6 +26,11 @@ impl EntityPathImpl {
     }
 
     #[inline]
+    pub fn to_vec(&self) -> Vec<EntityPathPart> {
+        self.parts.clone()
+    }
+
+    #[inline]
     pub fn is_root(&self) -> bool {
         self.parts.is_empty()
     }

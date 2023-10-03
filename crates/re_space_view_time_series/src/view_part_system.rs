@@ -1,6 +1,10 @@
 use re_arrow_store::TimeRange;
-use re_query::{range_entity_with_primary, QueryError};
-use re_types::{components::InstanceKey, ComponentName, ComponentNameSet, Loggable as _};
+use re_query::{range_archetype, QueryError};
+use re_types::{
+    archetypes::TimeSeriesScalar,
+    components::{Color, Radius, Scalar, ScalarScattering, Text},
+    Archetype, ComponentNameSet,
+};
 use re_viewer_context::{
     AnnotationMap, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewPartSystem,
     ViewQuery, ViewerContext,
@@ -68,23 +72,15 @@ impl NamedViewSystem for TimeSeriesSystem {
 
 impl ViewPartSystem for TimeSeriesSystem {
     fn required_components(&self) -> ComponentNameSet {
-        std::iter::once(re_components::Scalar::name()).collect()
+        TimeSeriesScalar::required_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
-    // TODO(#3174): use this instead
-    // fn required_components(&self) -> ComponentNameSet {
-    //     ScalarOrWhateverItllBeCalled::required_components().to_vec()
-    // }
-
-    // TODO(#3174): use this instead
-    // fn heuristic_filter(
-    //     &self,
-    //     _store: &re_arrow_store::DataStore,
-    //     _ent_path: &EntityPath,
-    //     components: &[re_types::ComponentName],
-    // ) -> bool {
-    //     components.contains(&ScalarOrWhateverItllBeCalled::indicator_component())
-    // }
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(TimeSeriesScalar::indicator().name()).collect()
+    }
 
     fn execute(
         &mut self,
@@ -100,9 +96,10 @@ impl ViewPartSystem for TimeSeriesSystem {
             query.iter_entities_for_system(Self::name()).map(|(p, _)| p),
         );
 
-        self.load_scalars(ctx, query);
-
-        Ok(Vec::new())
+        match self.load_scalars(ctx, query) {
+            Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
+            Err(err) => Err(err.into()),
+        }
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -111,18 +108,11 @@ impl ViewPartSystem for TimeSeriesSystem {
 }
 
 impl TimeSeriesSystem {
-    fn archetype_array() -> [ComponentName; 6] {
-        [
-            InstanceKey::name(),
-            re_components::Scalar::name(),
-            re_components::ScalarPlotProps::name(),
-            re_types::components::Color::name(),
-            re_types::components::Radius::name(),
-            re_types::components::Text::name(),
-        ]
-    }
-
-    fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>) {
+    fn load_scalars(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &ViewQuery<'_>,
+    ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
@@ -140,46 +130,39 @@ impl TimeSeriesSystem {
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),
             );
 
-            let components = Self::archetype_array();
-            let ent_views = range_entity_with_primary::<re_components::Scalar, 6>(
-                store, &query, ent_path, components,
-            );
+            let arch_views = range_archetype::<
+                TimeSeriesScalar,
+                { TimeSeriesScalar::NUM_COMPONENTS },
+            >(store, &query, ent_path);
 
-            for (time, ent_view) in ent_views {
+            for (time, arch_view) in arch_views {
                 let Some(time) = time else {
                     continue;
                 }; // scalars cannot be timeless
 
-                match ent_view.visit5(
-                    |_instance,
-                     scalar: re_components::Scalar,
-                     props: Option<re_components::ScalarPlotProps>,
-                     color: Option<re_types::components::Color>,
-                     radius: Option<re_types::components::Radius>,
-                     label: Option<re_types::components::Text>| {
-                        // TODO(andreas): Support entity path
-                        let color = annotation_info
-                            .color(color.map(|c| c.to_array()).as_ref(), default_color);
-                        let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
-
-                        const DEFAULT_RADIUS: f32 = 0.75;
-
-                        points.push(PlotPoint {
-                            time: time.as_i64(),
-                            value: scalar.into(),
-                            attrs: PlotPointAttrs {
-                                label,
-                                color,
-                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                                scattered: props.map_or(false, |props| props.scattered),
-                            },
-                        });
-                    },
+                for (scalar, scattered, color, radius, label) in itertools::izip!(
+                    arch_view.iter_required_component::<Scalar>()?,
+                    arch_view.iter_optional_component::<ScalarScattering>()?,
+                    arch_view.iter_optional_component::<Color>()?,
+                    arch_view.iter_optional_component::<Radius>()?,
+                    arch_view.iter_optional_component::<Text>()?,
                 ) {
-                    Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
-                    Err(err) => {
-                        re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                    }
+                    let color =
+                        annotation_info.color(color.map(|c| c.to_array()).as_ref(), default_color);
+                    let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+
+                    const DEFAULT_RADIUS: f32 = 0.75;
+
+                    points.push(PlotPoint {
+                        time: time.as_i64(),
+                        value: scalar.0,
+                        attrs: PlotPointAttrs {
+                            label,
+                            color,
+                            radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                            scattered: scattered.map_or(false, |s| s.0),
+                        },
+                    });
                 }
             }
 
@@ -201,6 +184,8 @@ impl TimeSeriesSystem {
 
             self.add_line_segments(&line_label, points);
         }
+
+        Ok(())
     }
 
     // We have a bunch of raw points, and now we need to group them into actual line

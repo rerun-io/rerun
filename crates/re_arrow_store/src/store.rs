@@ -335,7 +335,7 @@ impl DataStore {
 /// ```
 #[test]
 fn datastore_internal_repr() {
-    use re_components::datagen::data_table_example;
+    use re_log_types::DataTable;
     use re_types::{components::InstanceKey, Loggable as _};
 
     let mut store = DataStore::new(
@@ -347,11 +347,11 @@ fn datastore_internal_repr() {
         },
     );
 
-    let timeless = data_table_example(true);
+    let timeless = DataTable::example(true);
     eprintln!("{timeless}");
     store.insert_table(&timeless).unwrap();
 
-    let temporal = data_table_example(false);
+    let temporal = DataTable::example(false);
     eprintln!("{temporal}");
     store.insert_table(&temporal).unwrap();
 
@@ -371,8 +371,6 @@ fn datastore_internal_repr() {
 /// ```text
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
-//
-// TODO(#1524): inline visualization once it's back to a manageable state
 #[derive(Debug, Clone)]
 pub struct IndexedTable {
     /// The timeline this table operates in, for debugging purposes.
@@ -539,7 +537,6 @@ impl Default for IndexedBucketInner {
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
 //
-// TODO(#1524): inline visualization once it's back to a manageable state
 // TODO(#1807): timeless should be row-id ordered too then
 #[derive(Debug, Clone)]
 pub struct PersistentIndexedTable {

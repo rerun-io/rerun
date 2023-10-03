@@ -11,8 +11,8 @@ namespace rerun.components;
 
 /// A vector in 3D space.
 struct Vector3D (
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
 ) {
   vector: rerun.datatypes.Vec3D (order: 100);
 }

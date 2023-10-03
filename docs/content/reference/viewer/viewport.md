@@ -10,7 +10,7 @@ View controls
 -------------
 
 <picture>
-  <img src="https://static.rerun.io/d93ec977f99173207c57ab790b8e3112131b1bc1_view-controls_full.png" alt="">
+  <img src="https://static.rerun.io/view-controls/e911cec51fcf840e014340b3cb135b7faeb2e8b6/full.png" alt="">
 </picture>
 
 
@@ -38,7 +38,5 @@ Rerun distinguishes various categories of Space Views:
   * Bar-chart lots made from 1D tensor data.
 
 Which category is used is determined upon creation of a Space View.
-
-[TODO(@#1164)](https://github.com/rerun-io/rerun/issues/1164): Allow configuring the category of a space view after its creation.
 
 The kind of Space View determines which Entities it can display, how it displays them and the way they can be interacted with.

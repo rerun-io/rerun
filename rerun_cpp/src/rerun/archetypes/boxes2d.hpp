@@ -28,24 +28,24 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// Simple 2D boxes:
-        ///```
-        ///// Log some simple 2D boxes.
+        /// ### Simple 2D boxes
+        /// ```cpp,ignore
+        /// // Log some simple 2D boxes.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_box2d");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_box2d");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    rec.log("simple", rr::Boxes2D::from_mins_and_sizes({{-1.f, -1.f}}, {{2.f, 2.f}}));
+        ///     rec.log("simple", rr::Boxes2D::from_mins_and_sizes({{-1.f, -1.f}}, {{2.f, 2.f}}));
         ///
-        ///    // Log an extra rect to set the view bounds
-        ///    rec.log("bounds", rr::Boxes2D::from_sizes({{4.f, 3.f}}));
+        ///     // Log an extra rect to set the view bounds
+        ///     rec.log("bounds", rr::Boxes2D::from_sizes({{4.f, 3.f}}));
         /// }
-        ///```
+        /// ```
         struct Boxes2D {
             /// All half-extents that make up the batch of boxes.
             std::vector<rerun::components::HalfSizes2D> half_sizes;
@@ -53,11 +53,11 @@ namespace rerun {
             /// Optional center positions of the boxes.
             std::optional<std::vector<rerun::components::Position2D>> centers;
 
-            /// Optional radii for the lines that make up the boxes.
-            std::optional<std::vector<rerun::components::Radius>> radii;
-
             /// Optional colors for the boxes.
             std::optional<std::vector<rerun::components::Color>> colors;
+
+            /// Optional radii for the lines that make up the boxes.
+            std::optional<std::vector<rerun::components::Radius>> radii;
 
             /// Optional text labels for the boxes.
             std::optional<std::vector<rerun::components::Text>> labels;
@@ -142,18 +142,6 @@ namespace rerun {
                 return *this;
             }
 
-            /// Optional radii for the lines that make up the boxes.
-            Boxes2D& with_radii(std::vector<rerun::components::Radius> _radii) {
-                radii = std::move(_radii);
-                return *this;
-            }
-
-            /// Optional radii for the lines that make up the boxes.
-            Boxes2D& with_radii(rerun::components::Radius _radii) {
-                radii = std::vector(1, std::move(_radii));
-                return *this;
-            }
-
             /// Optional colors for the boxes.
             Boxes2D& with_colors(std::vector<rerun::components::Color> _colors) {
                 colors = std::move(_colors);
@@ -163,6 +151,18 @@ namespace rerun {
             /// Optional colors for the boxes.
             Boxes2D& with_colors(rerun::components::Color _colors) {
                 colors = std::vector(1, std::move(_colors));
+                return *this;
+            }
+
+            /// Optional radii for the lines that make up the boxes.
+            Boxes2D& with_radii(std::vector<rerun::components::Radius> _radii) {
+                radii = std::move(_radii);
+                return *this;
+            }
+
+            /// Optional radii for the lines that make up the boxes.
+            Boxes2D& with_radii(rerun::components::Radius _radii) {
+                radii = std::vector(1, std::move(_radii));
                 return *this;
             }
 
@@ -220,6 +220,11 @@ namespace rerun {
             size_t num_instances() const {
                 return half_sizes.size();
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

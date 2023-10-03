@@ -1,5 +1,11 @@
-use re_components::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
+use itertools::Itertools;
 use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
+use re_types::{
+    archetypes::{Asset3D, Mesh3D},
+    components::MediaType,
+};
+
+use crate::mesh_cache::AnyMesh;
 
 pub struct LoadedMesh {
     name: String,
@@ -12,38 +18,38 @@ pub struct LoadedMesh {
 }
 
 impl LoadedMesh {
-    pub fn load(name: String, mesh: &Mesh3D, render_ctx: &RenderContext) -> anyhow::Result<Self> {
+    pub fn load(
+        name: String,
+        mesh: AnyMesh<'_>,
+        render_ctx: &RenderContext,
+    ) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
-            // Mesh from some file format. File passed in bytes.
-            Mesh3D::Encoded(encoded_mesh) => {
-                Self::load_encoded_mesh(name, encoded_mesh, render_ctx)
-            }
-            // Mesh from user logging some triangles.
-            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
+            AnyMesh::Asset(asset3d) => Self::load_asset3d(name, asset3d, render_ctx),
+            AnyMesh::Mesh(mesh3d) => Ok(Self::load_mesh3d(name, mesh3d, render_ctx)?),
         }
     }
 
-    pub fn load_raw(
+    pub fn load_asset3d_parts(
         name: String,
-        format: MeshFormat,
+        media_type: &MediaType,
         bytes: &[u8],
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let mesh_instances = match format {
-            MeshFormat::Glb | MeshFormat::Gltf => {
-                re_renderer::importer::gltf::load_gltf_from_buffer(
-                    &name,
-                    bytes,
-                    ResourceLifeTime::LongLived,
-                    render_ctx,
-                )
-            }
-            // TODO(cmc): support obj
-            MeshFormat::Obj => anyhow::bail!(".obj files are not supported yet"),
+        let mesh_instances = if media_type == &MediaType::gltf() || media_type == &MediaType::glb()
+        {
+            re_renderer::importer::gltf::load_gltf_from_buffer(
+                &name,
+                bytes,
+                ResourceLifeTime::LongLived,
+                render_ctx,
+            )
+        } else {
+            anyhow::bail!("{media_type} files are not supported")
         }?;
+
         let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
 
         Ok(Self {
@@ -53,71 +59,66 @@ impl LoadedMesh {
         })
     }
 
-    fn load_encoded_mesh(
+    fn load_asset3d(
         name: String,
-        encoded_mesh: &EncodedMesh3D,
+        asset3d: &Asset3D,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
-        let EncodedMesh3D {
-            format,
-            bytes,
-            transform,
-        } = encoded_mesh;
 
-        let mut slf = Self::load_raw(name, *format, bytes.as_slice(), render_ctx)?;
+        let Asset3D {
+            blob,
+            media_type,
+            transform: _,
+        } = asset3d;
 
-        // TODO(cmc): Why are we creating the matrix twice here?
-        let (scale, rotation, translation) =
-            glam::Affine3A::from_cols_array_2d(transform).to_scale_rotation_translation();
-        let transform =
-            glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
-        for instance in &mut slf.mesh_instances {
-            instance.world_from_mesh = transform * instance.world_from_mesh;
-        }
-        slf.bbox = re_renderer::importer::calculate_bounding_box(&slf.mesh_instances);
+        let media_type = MediaType::or_guess_from_data(media_type.clone(), blob.0.as_slice())
+            .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
+        let slf = Self::load_asset3d_parts(name, &media_type, blob.0.as_slice(), render_ctx)?;
 
         Ok(slf)
     }
 
-    fn load_raw_mesh(
+    fn load_mesh3d(
         name: String,
-        raw_mesh: &RawMesh3D,
+        mesh3d: &Mesh3D,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        // TODO(cmc): Having to do all of these data conversions, copies and allocations doesn't
-        // really make sense when you consider that both the component and the renderer are native
-        // Rust. Need to clean all of that up later.
-
-        let RawMesh3D {
+        let Mesh3D {
             vertex_positions,
-            vertex_colors,
+            mesh_properties,
             vertex_normals,
-            indices,
-            albedo_factor,
-        } = raw_mesh;
+            vertex_colors,
+            mesh_material,
+            class_ids: _,
+            instance_keys: _,
+        } = mesh3d;
 
         let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
         let num_positions = vertex_positions.len();
 
-        let indices = if let Some(indices) = indices {
-            indices.clone()
+        let triangle_indices = if let Some(indices) = mesh_properties
+            .as_ref()
+            .and_then(|props| props.indices.as_ref())
+        {
+            anyhow::ensure!(indices.len() % 3 == 0);
+            let indices: &[glam::UVec3] = bytemuck::cast_slice(indices);
+            indices.to_vec()
         } else {
             anyhow::ensure!(num_positions % 3 == 0);
-            (0..num_positions as u32).collect()
+            (0..num_positions as u32)
+                .tuples::<(_, _, _)>()
+                .map(glam::UVec3::from)
+                .collect::<Vec<_>>()
         };
-        let num_indices = indices.len();
+        let num_indices = triangle_indices.len() * 3;
 
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
             vertex_colors
                 .iter()
-                .map(|c| {
-                    Rgba32Unmul::from_rgba_unmul_array(
-                        re_types::datatypes::Color::from_u32(*c).to_array(),
-                    )
-                })
+                .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
                 .collect()
         } else {
             std::iter::repeat(Rgba32Unmul::WHITE)
@@ -126,10 +127,7 @@ impl LoadedMesh {
         };
 
         let vertex_normals = if let Some(normals) = vertex_normals {
-            normals
-                .chunks_exact(3)
-                .map(|v| glam::Vec3::from([v[0], v[1], v[2]]))
-                .collect::<Vec<_>>()
+            normals.iter().map(|v| v.0.into()).collect::<Vec<_>>()
         } else {
             // TODO(andreas): Calculate normals
             // TODO(cmc): support textured raw meshes
@@ -139,12 +137,13 @@ impl LoadedMesh {
         };
 
         let vertex_texcoords = vec![glam::Vec2::ZERO; vertex_normals.len()];
+        let albedo_factor = mesh_material.as_ref().and_then(|mat| mat.albedo_factor);
 
         let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
 
         let mesh = re_renderer::mesh::Mesh {
             label: name.clone().into(),
-            indices: indices.as_slice().into(),
+            triangle_indices,
             vertex_positions: vertex_positions.into(),
             vertex_colors,
             vertex_normals,
@@ -156,9 +155,7 @@ impl LoadedMesh {
                     .texture_manager_2d
                     .white_texture_unorm_handle()
                     .clone(),
-                albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
-                    re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())
-                }),
+                albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.into()),
             }],
         };
 
@@ -183,7 +180,7 @@ impl LoadedMesh {
         &self.name
     }
 
-    pub fn bbox(&self) -> &macaw::BoundingBox {
-        &self.bbox
+    pub fn bbox(&self) -> macaw::BoundingBox {
+        self.bbox
     }
 }

@@ -1,12 +1,11 @@
 """Log a batch of 3d line strips."""
 import rerun as rr
-import rerun.experimental as rr2
 
 rr.init("rerun_example_line_strip3d", spawn=True)
 
-rr2.log(
+rr.log(
     "strips",
-    rr2.LineStrips3D(
+    rr.LineStrips3D(
         [
             [
                 [0, 0, 2],

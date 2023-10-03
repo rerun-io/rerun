@@ -23,6 +23,9 @@ use crate::{
 
 #[derive(thiserror::Error, Debug)]
 pub enum WriteError {
+    #[error("The incoming data was inconsistent: {0}")]
+    DataRead(#[from] re_log_types::DataReadError),
+
     #[error("Error with one or more the underlying data cells")]
     DataCell(#[from] DataCellError),
 
@@ -59,7 +62,7 @@ impl DataStore {
     /// See [`Self::insert_row`].
     pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
         for row in table.to_rows() {
-            self.insert_row(&row)?;
+            self.insert_row(&row?)?;
         }
         Ok(())
     }
@@ -545,8 +548,6 @@ impl IndexedBucket {
     /// ```text
     /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
     /// ```
-    //
-    // TODO(#1524): inline visualization once it's back to a manageable state
     fn split(&self) -> Option<(TimeInt, Self)> {
         let Self {
             timeline,

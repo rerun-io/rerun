@@ -19,13 +19,14 @@ namespace rerun {
     namespace archetypes {
         /// A text element intended to be displayed in its own text-box.
         struct TextDocument {
-            rerun::components::Text body;
+            /// Contents of the text document.
+            rerun::components::Text text;
 
             /// The Media Type of the text.
             ///
             /// For instance:
-            ///* `text/plain`
-            ///* `text/markdown`
+            /// * `text/plain`
+            /// * `text/markdown`
             ///
             /// If omitted, `text/plain` is assumed.
             std::optional<rerun::components::MediaType> media_type;
@@ -37,13 +38,13 @@ namespace rerun {
           public:
             TextDocument() = default;
 
-            TextDocument(rerun::components::Text _body) : body(std::move(_body)) {}
+            TextDocument(rerun::components::Text _text) : text(std::move(_text)) {}
 
             /// The Media Type of the text.
             ///
             /// For instance:
-            ///* `text/plain`
-            ///* `text/markdown`
+            /// * `text/plain`
+            /// * `text/markdown`
             ///
             /// If omitted, `text/plain` is assumed.
             TextDocument& with_media_type(rerun::components::MediaType _media_type) {
@@ -55,6 +56,11 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

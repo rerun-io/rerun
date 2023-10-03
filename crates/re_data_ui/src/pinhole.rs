@@ -1,9 +1,9 @@
-use re_components::Pinhole;
+use re_types::components::{PinholeProjection, Resolution};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use crate::DataUi;
 
-impl DataUi for Pinhole {
+impl DataUi for PinholeProjection {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -11,38 +11,36 @@ impl DataUi for Pinhole {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        match verbosity {
-            UiVerbosity::Small => {
-                ui.label("Pinhole transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::All, query);
-                });
-            }
+        if verbosity == UiVerbosity::Small {
+            // See if this is a trivial pinhole, and can be displayed as such:
+            let fl = self.focal_length_in_pixels();
+            let pp = self.principal_point();
+            if *self == Self::from_focal_length_and_principal_point(fl, pp) {
+                let fl = if fl.x() == fl.y() {
+                    fl.x().to_string()
+                } else {
+                    fl.to_string()
+                };
 
-            UiVerbosity::All | UiVerbosity::Reduced => {
-                let Pinhole {
-                    image_from_cam: image_from_view,
-                    resolution,
-                } = self;
-
-                ui.vertical(|ui| {
-                    ui.label("Pinhole transform:");
-                    ui.indent("pinole", |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label("resolution:");
-                            if let Some(re_components::LegacyVec2D([x, y])) = resolution {
-                                ui.monospace(format!("{x}x{y}"));
-                            } else {
-                                ui.weak("(none)");
-                            }
-                        });
-
-                        ui.label("image from view:");
-                        ui.indent("image_from_view", |ui| {
-                            image_from_view.data_ui(ctx, ui, verbosity, query);
-                        });
-                    });
-                });
+                ui.label(format!("Focal length: {fl}\nPrincipal point: {pp}"))
+                    .on_hover_ui(|ui| self.data_ui(ctx, ui, UiVerbosity::Reduced, query));
+                return;
             }
         }
+
+        self.0.data_ui(ctx, ui, verbosity, query);
+    }
+}
+
+impl DataUi for Resolution {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        let [x, y] = self.0 .0;
+        ui.monospace(format!("{x}x{y}"));
     }
 }

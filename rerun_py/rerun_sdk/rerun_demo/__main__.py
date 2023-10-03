@@ -31,7 +31,7 @@ def run_structure_from_motion(args):
 
     serve_opts = []
 
-    # TODO(https://github.com/rerun-io/rerun/issues/1924): The need to special-case
+    # TODO(#1924): The need to special-case
     # this flag conversion is a bit awkward.
     if args.connect or args.addr:
         print("Connecting to external viewer is only supported with the --cube demo.", file=sys.stderr)

@@ -50,11 +50,11 @@ cargo run
 Once everything finishes compiling, you will see the points in the Rerun Viewer:
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/64200b0042929ec0a686de6ee154488447a80540_intro_users1_result_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/2d8bbd8fe7da242f73ea269fdaa1c830552cff7d_intro_users1_result_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/429ce634ff41a5350167eff9dea51477c9225772_intro_users1_result_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/c18c538b4e1a577cb0f89e87ef5853c03d5eb2d2_intro_users1_result_1200w.png">
-  <img src="https://static.rerun.io/40dca5343e79c4a214fdac277dc601c3da8fb491_intro_users1_result_full.png" alt="Rust getting started result">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/1200w.png">
+  <img src="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/full.png" alt="Rust getting started result">
 </picture>
 
 

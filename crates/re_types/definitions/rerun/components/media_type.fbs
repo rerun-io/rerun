@@ -9,18 +9,18 @@ namespace rerun.components;
 
 // ---
 
-/// [MIME-type](https://en.wikipedia.org/wiki/Media_type) of an entity.
+// TODO(#2388): need a bunch of mime constants in here
+
+/// A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
 ///
-/// For instance:
-/// * `text/plain`
-/// * `text/markdown`
+/// The complete reference of officially registered media types is maintained by the IANA and can be
+/// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 table MediaType (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
-  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.repr": "transparent",
-  order: 100
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.repr": "transparent"
 ) {
   value: rerun.datatypes.Utf8 (order: 100);
 }

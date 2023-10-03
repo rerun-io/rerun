@@ -1,11 +1,11 @@
 use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::RowId;
-use re_query::{range_entity_with_primary, QueryError};
+use re_query::range_archetype;
 use re_types::{
     archetypes::TextLog,
-    components::{Color, InstanceKey, Text, TextLogLevel},
-    Archetype as _, ComponentNameSet, Loggable as _,
+    components::{Color, Text, TextLogLevel},
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
@@ -50,7 +50,7 @@ impl ViewPartSystem for TextLogSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TextLog::indicator_component()).collect()
+        std::iter::once(TextLog::indicator().name()).collect()
     }
 
     fn execute(
@@ -66,35 +66,26 @@ impl ViewPartSystem for TextLogSystem {
             let timeline_query =
                 re_arrow_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
-            let components = [
-                InstanceKey::name(),
-                Text::name(),
-                TextLogLevel::name(),
-                Color::name(),
-            ];
-            let ent_views =
-                range_entity_with_primary::<Text, 4>(store, &timeline_query, ent_path, components);
+            let arch_views = range_archetype::<TextLog, { TextLog::NUM_COMPONENTS }>(
+                store,
+                &timeline_query,
+                ent_path,
+            );
 
-            for (time, ent_view) in ent_views {
-                match ent_view.visit3(
-                    |_instance_key,
-                     body: Text,
-                     level: Option<TextLogLevel>,
-                     color: Option<Color>| {
-                        self.entries.push(Entry {
-                            row_id: ent_view.primary_row_id(),
-                            entity_path: ent_path.clone(),
-                            time: time.map(|time| time.as_i64()),
-                            color,
-                            body,
-                            level,
-                        });
-                    },
-                ) {
-                    Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
-                    Err(err) => {
-                        re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                    }
+            for (time, arch_view) in arch_views {
+                let bodies = arch_view.iter_required_component::<Text>()?;
+                let levels = arch_view.iter_optional_component::<TextLogLevel>()?;
+                let colors = arch_view.iter_optional_component::<Color>()?;
+
+                for (body, level, color) in itertools::izip!(bodies, levels, colors) {
+                    self.entries.push(Entry {
+                        row_id: arch_view.primary_row_id(),
+                        entity_path: ent_path.clone(),
+                        time: time.map(|time| time.as_i64()),
+                        color,
+                        body,
+                        level,
+                    });
                 }
             }
         }

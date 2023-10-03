@@ -107,30 +107,39 @@ fn tensor_ui(
 
     match verbosity {
         UiVerbosity::Small => {
-            ui.horizontal_centered(|ui| {
+            ui.horizontal(|ui| {
                 if let Some(texture) = &texture_result {
-                    let max_height = 24.0;
-                    let max_size = Vec2::new(4.0 * max_height, max_height);
-                    show_image_at_max_size(
-                        ctx.render_ctx,
-                        ctx.re_ui,
-                        ui,
-                        texture.clone(),
-                        &debug_name,
-                        max_size,
-                    )
-                    .on_hover_ui(|ui| {
-                        // Show larger image on hover
-                        let max_size = Vec2::splat(400.0);
-                        show_image_at_max_size(
-                            ctx.render_ctx,
-                            ctx.re_ui,
-                            ui,
-                            texture.clone(),
-                            &debug_name,
-                            max_size,
-                        );
-                    });
+                    // We want all preview images to take up the same amount of space,
+                    // no matter what the actual aspect ratio of the images are.
+                    let preview_size = Vec2::splat(ui.available_height());
+                    ui.allocate_ui_with_layout(
+                        preview_size,
+                        egui::Layout::centered_and_justified(egui::Direction::TopDown),
+                        |ui| {
+                            ui.set_min_size(preview_size);
+
+                            show_image_preview(
+                                ctx.render_ctx,
+                                ctx.re_ui,
+                                ui,
+                                texture.clone(),
+                                &debug_name,
+                                preview_size,
+                            )
+                            .on_hover_ui(|ui| {
+                                // Show larger image on hover.
+                                let preview_size = Vec2::splat(400.0);
+                                show_image_preview(
+                                    ctx.render_ctx,
+                                    ctx.re_ui,
+                                    ui,
+                                    texture.clone(),
+                                    &debug_name,
+                                    preview_size,
+                                );
+                            });
+                        },
+                    );
                 }
 
                 ui.label(format!(
@@ -171,17 +180,17 @@ fn tensor_ui(
                 );
 
                 if let Some(texture) = &texture_result {
-                    let max_size = ui
+                    let preview_size = ui
                         .available_size()
                         .min(texture_size(texture))
                         .min(egui::vec2(150.0, 300.0));
-                    let response = show_image_at_max_size(
+                    let response = show_image_preview(
                         ctx.render_ctx,
                         ctx.re_ui,
                         ui,
                         texture.clone(),
                         &debug_name,
-                        max_size,
+                        preview_size,
                     );
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
@@ -230,26 +239,38 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
     egui::vec2(w as f32, h as f32)
 }
 
-fn show_image_at_max_size(
+/// Shows preview of an image.
+///
+/// Displays the image at the desired size, without overshooting it, and preserving aspect ration.
+///
+/// Extremely small images will be stretched on their thin axis to make them visible.
+/// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
+fn show_image_preview(
     render_ctx: &mut re_renderer::RenderContext,
     re_ui: &ReUi,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,
     debug_name: &str,
-    max_size: Vec2,
+    desired_size: egui::Vec2,
 ) -> egui::Response {
-    let desired_size = {
-        let mut desired_size = texture_size(&colormapped_texture);
-        desired_size *= (max_size.x / desired_size.x).min(1.0);
-        desired_size *= (max_size.y / desired_size.y).min(1.0);
-        desired_size
-    };
+    const MIN_SIZE: f32 = 2.0;
 
-    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    let texture_size = texture_size(&colormapped_texture);
+
+    let scaled_size = largest_size_that_fits_in(texture_size.x / texture_size.y, desired_size);
+
+    // Don't allow images so thin that we cannot see them:
+    let scaled_size = scaled_size.max(Vec2::splat(MIN_SIZE));
+
+    let (response, painter) = ui.allocate_painter(scaled_size, egui::Sense::hover());
+
+    // Place it in the center:
+    let texture_rect_on_screen = egui::Rect::from_center_size(response.rect.center(), scaled_size);
+
     if let Err(err) = gpu_bridge::render_image(
         render_ctx,
         &painter,
-        response.rect,
+        texture_rect_on_screen,
         colormapped_texture,
         egui::TextureOptions::LINEAR,
         debug_name,
@@ -258,6 +279,16 @@ fn show_image_at_max_size(
         response.union(label_response)
     } else {
         response
+    }
+}
+
+fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
+    if aspect_ratio < max_size.x / max_size.y {
+        // A thin image in a landscape frame
+        egui::vec2(aspect_ratio * max_size.y, max_size.y)
+    } else {
+        // A wide image in a portrait frame
+        egui::vec2(max_size.x, max_size.x / aspect_ratio)
     }
 }
 
@@ -322,8 +353,7 @@ pub fn tensor_summary_ui_grid_contents(
         | TensorBuffer::I16(_)
         | TensorBuffer::I32(_)
         | TensorBuffer::I64(_)
-        // TODO(jleibs): F16 support
-        //| TensorBuffer::F16(_)
+        | TensorBuffer::F16(_)
         | TensorBuffer::F32(_)
         | TensorBuffer::F64(_) => {}
         TensorBuffer::Jpeg(jpeg_bytes) => {

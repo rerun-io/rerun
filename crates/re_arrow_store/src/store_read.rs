@@ -657,10 +657,6 @@ impl IndexedTable {
         &mut self,
         time_range: impl RangeBounds<TimeInt>,
     ) -> impl Iterator<Item = (TimeInt, &mut IndexedBucket)> {
-        // Beware! This merely measures the time it takes to gather all the necessary metadata
-        // for building the returned iterator.
-        re_tracing::profile_function!();
-
         self.buckets
             .range_mut(time_range)
             .rev()
@@ -990,12 +986,8 @@ impl IndexedBucketInner {
             re_tracing::profile_scope!("data");
             // shuffle component columns back into a sorted state
             for column in columns.values_mut() {
-                let mut source = {
-                    re_tracing::profile_scope!("clone");
-                    column.clone()
-                };
+                let mut source = column.clone();
                 {
-                    re_tracing::profile_scope!("rotate");
                     for (from, to) in swaps.iter().copied() {
                         column[to] = source[from].take();
                     }

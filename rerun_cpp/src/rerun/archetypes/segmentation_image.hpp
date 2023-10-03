@@ -23,7 +23,7 @@ namespace rerun {
         /// Each pixel corresponds to a depth value in units specified by meter.
         ///
         /// Leading and trailing unit-dimensions are ignored, so that
-        ///`1x640x480x1` is treated as a `640x480` image.
+        /// `1x640x480x1` is treated as a `640x480` image.
         struct SegmentationImage {
             /// The image data. Should always be a rank-2 tensor.
             rerun::components::TensorData data;
@@ -52,6 +52,11 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

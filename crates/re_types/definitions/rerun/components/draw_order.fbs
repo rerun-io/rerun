@@ -20,8 +20,7 @@ struct DrawOrder (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
   "attr.rust.derive": "Copy",
-  "attr.rust.repr": "transparent",
-  order: 100
+  "attr.rust.repr": "transparent"
 ) {
    value: float (order: 100);
 }

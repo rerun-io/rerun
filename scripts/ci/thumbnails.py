@@ -40,15 +40,20 @@ def update() -> None:
     for example in examples_with_thumbnails():
         width, height = get_thumbnail_dimensions(example.fm["thumbnail"])
 
-        thumbnail_key_start = example.readme.find("thumbnail: ")
-        assert thumbnail_key_start != -1
-        thumbnail_key_end = example.readme.find("\n", thumbnail_key_start)
-        assert thumbnail_key_end != -1
+        if "thumbnail_dimensions" not in example.fm:
+            start = example.readme.find("thumbnail: ")
+            assert start != -1
+            end = example.readme.find("\n", start)
+            assert end != -1
+            start = end + 1
+        else:
+            start = example.readme.find("thumbnail_dimensions: ")
+            assert start != -1
+            end = example.readme.find("\n", start)
+            assert end != -1
 
         (example.path / "README.md").write_text(
-            example.readme[: thumbnail_key_end + 1]
-            + f"thumbnail_dimensions: [{width}, {height}]"
-            + example.readme[thumbnail_key_end:]
+            example.readme[:start] + f"thumbnail_dimensions: [{width}, {height}]" + example.readme[end:]
         )
 
         print(f"✔ {example.path}")

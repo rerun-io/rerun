@@ -17,9 +17,19 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A 3x3 column-major Matrix.
+        /// A 3x3 Matrix.
+        ///
+        /// Matrices in Rerun are stored as flat list of coefficients in column-major order:
+        /// ```text
+        ///             column 0       column 1       column 2
+        ///        -------------------------------------------------
+        /// row 0 | flat_columns[0] flat_columns[3] flat_columns[6]
+        /// row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
+        /// row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
+        /// ```
         struct Mat3x3 {
-            float coeffs[9];
+            /// Flat list of matrix coefficients in column-major order.
+            float flat_columns[9];
 
           public:
             // Extensions to generated type defined in 'mat3x3_ext.cpp'
@@ -28,7 +38,7 @@ namespace rerun {
 
             /// Creates a new 3x3 matrix from 3 *columns* of 3 elements each.
             Mat3x3(const Vec3D (&columns)[3])
-                : coeffs{
+                : flat_columns{
                       columns[0].x(),
                       columns[0].y(),
                       columns[0].z(),
@@ -43,17 +53,17 @@ namespace rerun {
           public:
             Mat3x3() = default;
 
-            Mat3x3(const float (&_coeffs)[9])
-                : coeffs{
-                      _coeffs[0],
-                      _coeffs[1],
-                      _coeffs[2],
-                      _coeffs[3],
-                      _coeffs[4],
-                      _coeffs[5],
-                      _coeffs[6],
-                      _coeffs[7],
-                      _coeffs[8]} {}
+            Mat3x3(const float (&_flat_columns)[9])
+                : flat_columns{
+                      _flat_columns[0],
+                      _flat_columns[1],
+                      _flat_columns[2],
+                      _flat_columns[3],
+                      _flat_columns[4],
+                      _flat_columns[5],
+                      _flat_columns[6],
+                      _flat_columns[7],
+                      _flat_columns[8]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

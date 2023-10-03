@@ -12,12 +12,14 @@ image[4:8, 6:12] = 45000
 rr.init("rerun_example_depth_image", spawn=True)
 
 # If we log a pinhole camera model, the depth gets automatically back-projected to 3D
-rr.log_pinhole(
+rr.log(
     "world/camera",
-    width=image.shape[1],
-    height=image.shape[0],
-    focal_length_px=200,
+    rr.Pinhole(
+        width=image.shape[1],
+        height=image.shape[0],
+        focal_length=20,
+    ),
 )
 
-# Log the tensor, assigning names to each dimension
-rr.log_depth_image("world/camera/depth", image, meter=10000.0)
+# Log the tensor.
+rr.log("world/camera/depth", rr.DepthImage(image, meter=10_000.0))

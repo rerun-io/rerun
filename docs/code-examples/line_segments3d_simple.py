@@ -2,13 +2,12 @@
 """Log a simple set of line segments."""
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
 
 rr.init("rerun_example_line_segments3d", spawn=True)
 
-rr2.log(
+rr.log(
     "segments",
-    rr2.LineStrips3D(
+    rr.LineStrips3D(
         np.array(
             [
                 [[0, 0, 0], [0, 0, 1]],

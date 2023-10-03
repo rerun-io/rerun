@@ -8,16 +8,11 @@ namespace rerun.archetypes;
 
 /// A generic n-dimensional Tensor.
 ///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/tensor_simple.rs
-/// \rs ```
-///
+/// \example tensor_simple image="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png"
+/// \example tensor_one_dim image="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1200w.png"
 table Tensor (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   /// The tensor data
-  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
 }

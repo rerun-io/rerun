@@ -1,9 +1,6 @@
 //! Implements the Python codegen pass.
 
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    io::Write,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -11,9 +8,13 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, StringExt as _},
+    codegen::{
+        autogen_warning,
+        common::{collect_examples, Example},
+        StringExt as _,
+    },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 /// The standard python init method.
@@ -69,12 +70,14 @@ impl PythonObjectExt for Object {
 
 pub struct PythonCodeGenerator {
     pkg_path: Utf8PathBuf,
+    testing_pkg_path: Utf8PathBuf,
 }
 
 impl PythonCodeGenerator {
-    pub fn new(pkg_path: impl Into<Utf8PathBuf>) -> Self {
+    pub fn new(pkg_path: impl Into<Utf8PathBuf>, testing_pkg_path: impl Into<Utf8PathBuf>) -> Self {
         Self {
             pkg_path: pkg_path.into(),
+            testing_pkg_path: testing_pkg_path.into(),
         }
     }
 }
@@ -82,6 +85,7 @@ impl PythonCodeGenerator {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
+        _reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -92,6 +96,8 @@ impl CodeGenerator for PythonCodeGenerator {
         }
 
         {
+            // TODO(jleibs): Should we still be generating an equivalent to this?
+            /*
             let archetype_names = objects
                 .ordered_objects(ObjectKind::Archetype.into())
                 .iter()
@@ -101,9 +107,10 @@ impl CodeGenerator for PythonCodeGenerator {
                 self.pkg_path.join("__init__.py"),
                 lib_source_code(&archetype_names),
             );
+            */
         }
 
-        write_files(&files_to_write);
+        self.write_files(&files_to_write);
 
         let filepaths = files_to_write.keys().cloned().collect();
 
@@ -238,14 +245,20 @@ impl PythonCodeGenerator {
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
+        let test_kind_path = self.testing_pkg_path.join(object_kind.plural_snake_case());
 
         // (module_name, [object_name])
-        let mut mods = HashMap::<String, Vec<String>>::new();
+        let mut mods = BTreeMap::<String, Vec<String>>::new();
+        let mut test_mods = BTreeMap::<String, Vec<String>>::new();
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
-            let filepath = kind_path.join(format!("{}.py", obj.snake_case_name()));
+            let filepath = if obj.is_testing() {
+                test_kind_path.join(format!("{}.py", obj.snake_case_name()))
+            } else {
+                kind_path.join(format!("{}.py", obj.snake_case_name()))
+            };
 
             let ext_class = ExtensionClass::new(&kind_path, obj);
 
@@ -254,13 +267,13 @@ impl PythonCodeGenerator {
                     let name = &obj.name;
 
                     if obj.is_delegating_component() {
-                        vec![name.clone(), format!("{name}Array"), format!("{name}Type")]
+                        vec![name.clone(), format!("{name}Batch"), format!("{name}Type")]
                     } else {
                         vec![
                             format!("{name}"),
-                            format!("{name}Like"),
-                            format!("{name}Array"),
                             format!("{name}ArrayLike"),
+                            format!("{name}Batch"),
+                            format!("{name}Like"),
                             format!("{name}Type"),
                         ]
                     }
@@ -270,9 +283,14 @@ impl PythonCodeGenerator {
 
             // NOTE: Isolating the file stem only works because we're handling datatypes, components
             // and archetypes separately (and even then it's a bit shady, eh).
-            mods.entry(filepath.file_stem().unwrap().to_owned())
-                .or_default()
-                .extend(names.iter().cloned());
+            if obj.is_testing() {
+                &mut test_mods
+            } else {
+                &mut mods
+            }
+            .entry(filepath.file_stem().unwrap().to_owned())
+            .or_default()
+            .extend(names.iter().cloned());
 
             let mut code = String::new();
             code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
@@ -290,8 +308,11 @@ impl PythonCodeGenerator {
 
             let manifest = quote_manifest(names);
 
+            let rerun_path = if obj.is_testing() { "rerun." } else { ".." };
+
             code.push_unindented_text(
-                "
+                format!(
+                    "
             from __future__ import annotations
 
             from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
@@ -303,14 +324,14 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
-            from .._baseclasses import (
+            from {rerun_path}error_utils import catch_and_log_exceptions
+            from {rerun_path}_baseclasses import (
                 Archetype,
                 BaseExtensionType,
-                BaseExtensionArray,
-                BaseDelegatingExtensionType,
-                BaseDelegatingExtensionArray
+                BaseBatch,
+                ComponentBatchMixin
             )
-            from .._converters import (
+            from {rerun_path}_converters import (
                 int_or_none,
                 float_or_none,
                 bool_or_none,
@@ -328,7 +349,8 @@ impl PythonCodeGenerator {
                 to_np_float32,
                 to_np_float64
             )
-            ",
+            "
+                ),
                 0,
             );
 
@@ -343,6 +365,13 @@ impl PythonCodeGenerator {
                 .fields
                 .iter()
                 .filter_map(quote_import_clauses_from_field)
+                .chain(obj.fields.iter().filter_map(|field| {
+                    field.typ.fqname().and_then(|fqname| {
+                        objects[fqname]
+                            .delegate_datatype(objects)
+                            .map(|delegate| quote_import_clauses_from_fqname(&delegate.fqname))
+                    })
+                }))
                 .collect();
             for clause in import_clauses {
                 code.push_text(&clause, 1, 0);
@@ -365,68 +394,96 @@ impl PythonCodeGenerator {
             };
             code.push_text(&obj_code, 1, 0);
 
+            if ext_class.found {
+                code.push_unindented_text(
+                    format!("if hasattr({}, 'deferred_patch_class'):", ext_class.name),
+                    1,
+                );
+                code.push_text(
+                    format!("{}.deferred_patch_class({})", ext_class.name, obj.name),
+                    1,
+                    1,
+                );
+            }
+
             files_to_write.insert(filepath.clone(), code);
         }
 
         // rerun/{datatypes|components|archetypes}/__init__.py
-        {
-            let path = kind_path.join("__init__.py");
+        write_init_file(&kind_path, &mods, files_to_write);
+        write_init_file(&test_kind_path, &test_mods, files_to_write);
+    }
 
-            let mut code = String::new();
+    fn write_files(&self, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
+        re_tracing::profile_function!();
 
-            let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+        // Running `black` once for each file is very slow, so we write all
+        // files to a temporary folder, format it, and copy back the results.
 
-            code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
-            code.push_unindented_text(
-                "
+        let tempdir = tempfile::tempdir().unwrap();
+        let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
+
+        files_to_write.par_iter().for_each(|(filepath, source)| {
+            let formatted_source_path = self.format_path_for_tmp_dir(filepath, &tempdir_path);
+            super::common::write_file(&formatted_source_path, source);
+        });
+
+        format_python_dir(&tempdir_path).unwrap();
+
+        // Read back and copy to the final destination:
+        files_to_write
+            .par_iter()
+            .for_each(|(filepath, _original_source)| {
+                let formatted_source_path = self.format_path_for_tmp_dir(filepath, &tempdir_path);
+                let formatted_source = std::fs::read_to_string(formatted_source_path).unwrap();
+                super::common::write_file(filepath, &formatted_source);
+            });
+    }
+
+    fn format_path_for_tmp_dir(
+        &self,
+        filepath: &Utf8Path,
+        tempdir_path: &Utf8PathBuf,
+    ) -> Utf8PathBuf {
+        // If the prefix is pkg_path, strip it, and then append to tempdir
+        // However, if the prefix is testing_pkg_path, strip it and insert an extra
+        // "testing" to avoid name collisions.
+        filepath.strip_prefix(&self.pkg_path).map_or_else(
+            |_| {
+                tempdir_path
+                    .join("testing")
+                    .join(filepath.strip_prefix(&self.testing_pkg_path).unwrap())
+            },
+            |f| tempdir_path.join(f),
+        )
+    }
+}
+
+fn write_init_file(
+    kind_path: &Utf8PathBuf,
+    mods: &BTreeMap<String, Vec<String>>,
+    files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+) {
+    let path = kind_path.join("__init__.py");
+    let mut code = String::new();
+    let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+    code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
+    code.push_unindented_text(
+        "
             from __future__ import annotations
 
             ",
-                0,
-            );
-
-            for (module, names) in &mods {
-                let names = names.join(", ");
-                code.push_text(&format!("from .{module} import {names}"), 1, 0);
-            }
-
-            code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
-
-            files_to_write.insert(path, code);
-        }
+        0,
+    );
+    for (module, names) in mods {
+        let names = names.join(", ");
+        code.push_text(&format!("from .{module} import {names}"), 1, 0);
     }
+    code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+    files_to_write.insert(path, code);
 }
 
-fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
-    re_tracing::profile_function!();
-    // TODO(emilk): running `black` and `ruff` once for each file is very slow.
-    // It would probably be faster to write all files to a temporary folder, run `black` and `ruff` on
-    // that folder, and then copy the results to the final destination (if the files has changed).
-    files_to_write.par_iter().for_each(|(path, source)| {
-        write_file(path, source.clone());
-    });
-}
-
-fn write_file(filepath: &Utf8PathBuf, mut source: String) {
-    re_tracing::profile_function!();
-
-    match format_python(&source) {
-        Ok(formatted) => source = formatted,
-        Err(err) => {
-            // NOTE: Formatting code requires both `black` and `ruff` to be in $PATH, but only for contributors,
-            // not end users.
-            // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
-            // .fbs files… and even then, this won't crash if they are missing, it will just fail to pass
-            // the CI!
-            re_log::warn_once!(
-                "Failed to format Python code: {err}. Make sure `black` and `ruff` are installed."
-            );
-        }
-    }
-
-    super::common::write_file(filepath, source);
-}
-
+#[allow(dead_code)]
 fn lib_source_code(archetype_names: &[String]) -> String {
     let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
@@ -486,13 +543,12 @@ fn code_for_struct(
             {
                 format!("converter={}.{converter_override_name}", ext_class.name)
             } else if *kind == ObjectKind::Archetype {
-                // Archetypes default to using `from_similar` from the Component
+                // Archetypes use the ComponentBatch constructor for their fields
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
-                // archetype always delegate field init to the component array object
                 if field.is_nullable {
-                    format!("converter={typ_unwrapped}Array.optional_from_similar, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch._optional, # type: ignore[misc]\n")
                 } else {
-                    format!("converter={typ_unwrapped}Array.from_similar, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch._required, # type: ignore[misc]\n")
                 }
             } else if !default_converter.is_empty() {
                 code.push_text(&converter_function, 1, 0);
@@ -504,23 +560,15 @@ fn code_for_struct(
         }
     }
 
-    // If the `ExtensionClass` has its own `__init__` then we need to pass the `init=False` argument
-    // to the `@define` decorator, to prevent it from generating its own `__init__`, which would
-    // take precedence over the `ExtensionClass`.
-    let init_define_arg = if ext_class.has_init {
-        "init=False".to_owned()
-    } else {
-        String::new()
-    };
-
     let mut superclasses = vec![];
+
+    // Extension class needs to come first, so its __init__ method is called if there is one.
+    if ext_class.found {
+        superclasses.push(ext_class.name.clone());
+    }
 
     if *kind == ObjectKind::Archetype {
         superclasses.push("Archetype".to_owned());
-    }
-
-    if ext_class.found {
-        superclasses.push(ext_class.name.clone());
     }
 
     // Delegating component inheritance comes after the `ExtensionClass`
@@ -532,42 +580,21 @@ fn code_for_struct(
         ));
     }
 
+    if !obj.is_delegating_component() {
+        let define_args = if *kind == ObjectKind::Archetype {
+            "str=False, repr=False, init=False"
+        } else {
+            "init=False"
+        };
+        code.push_unindented_text(format!("@define({define_args})"), 1);
+    }
+
     let superclass_decl = if superclasses.is_empty() {
         String::new()
     } else {
         format!("({})", superclasses.join(","))
     };
-
-    let define_args = if *kind == ObjectKind::Archetype {
-        format!(
-            "str=False, repr=False{}{init_define_arg}",
-            if init_define_arg.is_empty() { "" } else { ", " }
-        )
-    } else {
-        init_define_arg
-    };
-
-    let define_args = if define_args.is_empty() {
-        define_args
-    } else {
-        format!("({define_args})")
-    };
-
-    let define_decorator = if obj.is_delegating_component() {
-        String::new()
-    } else {
-        format!("@define{define_args}")
-    };
-
-    code.push_unindented_text(
-        format!(
-            r#"
-                {define_decorator}
-                class {name}{superclass_decl}:
-                "#
-        ),
-        0,
-    );
+    code.push_unindented_text(format!("class {name}{superclass_decl}:"), 1);
 
     code.push_text(quote_doc_from_docs(docs), 0, 4);
 
@@ -577,7 +604,7 @@ fn code_for_struct(
             2,
             4,
         );
-    } else {
+    } else if obj.is_delegating_component() {
         code.push_text(
             format!(
                 "# You can define your own __init__ function as a member of {} in {}",
@@ -586,6 +613,14 @@ fn code_for_struct(
             2,
             4,
         );
+    } else {
+        // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
+        // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
+        code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
+    }
+
+    if obj.kind == ObjectKind::Archetype {
+        code.push_text(quote_clear_methods(obj), 2, 4);
     }
 
     if obj.is_delegating_component() {
@@ -598,6 +633,7 @@ fn code_for_struct(
             1,
             4,
         );
+
         code.push_text("pass", 2, 4);
     } else {
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
@@ -613,24 +649,16 @@ fn code_for_struct(
             .chain(fields.iter().filter(|field| field.is_nullable));
         for field in fields_in_order {
             let ObjectField {
-                virtpath: _,
-                filepath: _,
-                fqname: _,
-                pkg_name: _,
                 name,
                 docs,
-                typ: _,
-                attrs: _,
-                order: _,
                 is_nullable,
-                is_deprecated: _,
-                datatype: _,
+                ..
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
             let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
             let typ = if *kind == ObjectKind::Archetype {
-                format!("{typ_unwrapped}Array")
+                format!("{typ_unwrapped}Batch")
             } else {
                 typ
             };
@@ -682,26 +710,9 @@ fn code_for_struct(
 
     match kind {
         ObjectKind::Archetype => (),
-        ObjectKind::Component => {
-            // a component might be either delegating to a datatype or using a native type
-            if let Type::Object(ref dtype_fqname) = obj.fields[0].typ {
-                let dtype_obj = &objects[dtype_fqname];
-                code.push_text(
-                    quote_arrow_support_from_delegating_component(obj, dtype_obj),
-                    1,
-                    0,
-                );
-            } else {
-                code.push_text(
-                    quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
-                    1,
-                    0,
-                );
-            }
-        }
-        ObjectKind::Datatype => {
+        ObjectKind::Component | ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
                 0,
             );
@@ -739,12 +750,13 @@ fn code_for_union(
 
     let mut superclasses = vec![];
 
-    if *kind == ObjectKind::Archetype {
-        superclasses.push("Archetype");
-    }
-
+    // Extension class needs to come first, so its __init__ method is called if there is one.
     if ext_class.found {
         superclasses.push(ext_class.name.as_str());
+    }
+
+    if *kind == ObjectKind::Archetype {
+        superclasses.push("Archetype");
     }
 
     let superclass_decl = if superclasses.is_empty() {
@@ -854,7 +866,7 @@ fn code_for_union(
         }
         ObjectKind::Datatype => {
             code.push_text(
-                quote_arrow_support_from_obj(arrow_registry, ext_class, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
                 0,
             );
@@ -876,8 +888,45 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     quoted_names.join(", ")
 }
 
+fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
+    let mut examples = examples.into_iter().peekable();
+    while let Some(example) = examples.next() {
+        if let Some(title) = example.base.title {
+            lines.push(format!("{title}:"));
+        }
+        lines.push("```python".into());
+        lines.extend(example.lines.into_iter());
+        lines.push("```".into());
+        if let Some(image) = &example.base.image {
+            lines.extend(image.image_stack());
+        }
+        if examples.peek().is_some() {
+            // blank line between examples
+            lines.push(String::new());
+        }
+    }
+}
+
 fn quote_doc_from_docs(docs: &Docs) -> String {
-    let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    for line in &mut lines {
+        if line.starts_with(char::is_whitespace) {
+            line.remove(0);
+        }
+    }
+
+    let examples = collect_examples(docs, "py", true).unwrap();
+    if !examples.is_empty() {
+        lines.push(String::new());
+        let (section_title, divider) = if examples.len() == 1 {
+            ("Example", "-------")
+        } else {
+            ("Examples", "--------")
+        };
+        lines.push(section_title.into());
+        lines.push(divider.into());
+        quote_examples(examples, &mut lines);
+    }
 
     if lines.is_empty() {
         return String::new();
@@ -897,13 +946,24 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     let mut lines = vec![];
 
     for field in fields {
-        let field_lines = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        for line in &mut content {
+            if line.starts_with(char::is_whitespace) {
+                line.remove(0);
+            }
+        }
+
+        let examples = collect_examples(&field.docs, "py", true).unwrap();
+        if !examples.is_empty() {
+            content.push(String::new()); // blank line between docs and examples
+            quote_examples(examples, &mut lines);
+        }
         lines.push(format!(
             "{} ({}):",
             field.name,
             quote_field_type_from_field(objects, field, false).0
         ));
-        lines.extend(field_lines.into_iter().map(|line| format!("    {line}")));
+        lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }
 
@@ -1096,23 +1156,29 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases...
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
-    fqname.map(|fqname| {
-        let fqname = fqname.replace(".testing", "");
-        let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-        if from.starts_with("rerun.datatypes") {
-            "from .. import datatypes".to_owned()
-        } else if from.starts_with("rerun.components") {
-            "from .. import components".to_owned()
-        } else if from.starts_with("rerun.archetypes") {
-            // NOTE: This is assuming importing other archetypes is legal… which whether it is or
-            // isn't for this code generator to say.
-            "from .. import archetypes".to_owned()
-        } else if from.is_empty() {
-            format!("from . import {class}")
-        } else {
-            format!("from {from} import {class}")
-        }
-    })
+    fqname.map(|fqname| quote_import_clauses_from_fqname(fqname))
+}
+
+fn quote_import_clauses_from_fqname(fqname: &str) -> String {
+    // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
+    // nasty lazy circular dependencies in weird edge cases...
+    // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
+
+    let fqname = fqname.replace(".testing", "");
+    let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
+    if from.starts_with("rerun.datatypes") {
+        "from .. import datatypes".to_owned()
+    } else if from.starts_with("rerun.components") {
+        "from .. import components".to_owned()
+    } else if from.starts_with("rerun.archetypes") {
+        // NOTE: This is assuming importing other archetypes is legal… which whether it is or
+        // isn't for this code generator to say.
+        "from .. import archetypes".to_owned()
+    } else if from.is_empty() {
+        format!("from . import {class}")
+    } else {
+        format!("from {from} import {class}")
+    }
 }
 
 /// Returns type name as string and whether it was force unwrapped.
@@ -1291,84 +1357,49 @@ fn quote_field_converter_from_field(
     (converter, function)
 }
 
-fn quote_type_from_element_type(typ: &ElementType) -> String {
+fn fqname_to_type(fqname: &str) -> String {
+    let fqname = fqname.replace(".testing", "");
+    let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
+    if from.starts_with("rerun.datatypes") {
+        format!("datatypes.{class}")
+    } else if from.starts_with("rerun.components") {
+        format!("components.{class}")
+    } else if from.starts_with("rerun.archetypes") {
+        // NOTE: This is assuming importing other archetypes is legal… which whether it is or
+        // isn't for this code generator to say.
+        format!("archetypes.{class}")
+    } else if from.is_empty() {
+        format!("from . import {class}")
+    } else {
+        format!("from {from} import {class}")
+    }
+}
+
+fn quote_type_from_type(typ: &Type) -> String {
     match typ {
-        ElementType::UInt8
-        | ElementType::UInt16
-        | ElementType::UInt32
-        | ElementType::UInt64
-        | ElementType::Int8
-        | ElementType::Int16
-        | ElementType::Int32
-        | ElementType::Int64 => "int".to_owned(),
-        ElementType::Bool => "bool".to_owned(),
-        ElementType::Float16 | ElementType::Float32 | ElementType::Float64 => "float".to_owned(),
-        ElementType::String => "str".to_owned(),
-        ElementType::Object(fqname) => {
-            let fqname = fqname.replace(".testing", "");
-            let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-            if from.starts_with("rerun.datatypes") {
-                format!("datatypes.{class}")
-            } else if from.starts_with("rerun.components") {
-                format!("components.{class}")
-            } else if from.starts_with("rerun.archetypes") {
-                // NOTE: This is assuming importing other archetypes is legal… which whether it is or
-                // isn't for this code generator to say.
-                format!("archetypes.{class}")
-            } else if from.is_empty() {
-                format!("from . import {class}")
-            } else {
-                format!("from {from} import {class}")
-            }
+        Type::UInt8
+        | Type::UInt16
+        | Type::UInt32
+        | Type::UInt64
+        | Type::Int8
+        | Type::Int16
+        | Type::Int32
+        | Type::Int64 => "int".to_owned(),
+        Type::Bool => "bool".to_owned(),
+        Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::String => "str".to_owned(),
+        Type::Object(fqname) => fqname_to_type(fqname),
+        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+            format!(
+                "list[{}]",
+                quote_type_from_type(&Type::from(elem_type.clone()))
+            )
         }
     }
 }
 
-fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Object) -> String {
-    let Object {
-        fqname, name, kind, ..
-    } = obj;
-
-    assert_eq!(
-        *kind,
-        ObjectKind::Component,
-        "this function only handles components"
-    );
-
-    // extract datatype, must be *only* one
-    assert_eq!(
-        obj.fields.len(),
-        1,
-        "component must have exactly one field, but {} has {}",
-        fqname,
-        obj.fields.len()
-    );
-
-    let extension_type = format!("{name}Type");
-    let extension_array = format!("{name}Array");
-
-    let dtype_extension_type = format!("{}Type", dtype_obj.name);
-    let dtype_extension_array = format!("{}Array", dtype_obj.name);
-    let dtype_extension_array_like = format!("{}ArrayLike", dtype_obj.name);
-
-    unindent::unindent(&format!(
-        r#"
-
-        class {extension_type}(BaseDelegatingExtensionType):
-            _TYPE_NAME = "{fqname}"
-            _DELEGATED_EXTENSION_TYPE = datatypes.{dtype_extension_type}
-
-        class {extension_array}(BaseDelegatingExtensionArray[datatypes.{dtype_extension_array_like}]):
-            _EXTENSION_NAME = "{fqname}"
-            _EXTENSION_TYPE = {extension_type}
-            _DELEGATED_ARRAY_TYPE = datatypes.{dtype_extension_array}
-
-        {extension_type}._ARRAY_TYPE = {extension_array}
-
-        # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-        # pa.register_extension_type({extension_type}())
-        "#
-    ))
+fn quote_type_from_element_type(typ: &ElementType) -> String {
+    quote_type_from_type(&Type::from(typ.clone()))
 }
 
 /// Arrow support objects
@@ -1378,26 +1409,39 @@ fn quote_arrow_support_from_delegating_component(obj: &Object, dtype_obj: &Objec
 fn quote_arrow_support_from_obj(
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
+    objects: &Objects,
     obj: &Object,
 ) -> String {
     let Object { fqname, name, .. } = obj;
 
-    let (ext_type_base, ext_array_base) =
-        if obj.kind == ObjectKind::Datatype || obj.is_non_delegating_component() {
-            ("BaseExtensionType", "BaseExtensionArray")
-        } else if obj.is_delegating_component() {
-            (
-                "BaseDelegatingExtensionType",
-                "BaseDelegatingExtensionArray",
-            )
+    let mut type_superclasses: Vec<String> = vec![];
+    let mut batch_superclasses: Vec<String> = vec![];
+
+    let many_aliases = if let Some(data_type) = obj.delegate_datatype(objects) {
+        format!("datatypes.{}ArrayLike", data_type.name)
+    } else {
+        format!("{name}ArrayLike")
+    };
+
+    if obj.kind == ObjectKind::Datatype {
+        type_superclasses.push("BaseExtensionType".to_owned());
+        batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
+    } else if obj.kind == ObjectKind::Component {
+        if let Some(data_type) = obj.delegate_datatype(objects) {
+            let data_extension_type = format!("datatypes.{}Type", data_type.name);
+            let data_extension_array = format!("datatypes.{}Batch", data_type.name);
+            type_superclasses.push(data_extension_type);
+            batch_superclasses.push(data_extension_array);
         } else {
-            unreachable!("archetypes do not have arrow support")
-        };
+            type_superclasses.push("BaseExtensionType".to_owned());
+            batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
+        }
+        batch_superclasses.push("ComponentBatchMixin".to_owned());
+    }
 
     let datatype = quote_arrow_datatype(&arrow_registry.get(fqname));
-    let extension_array = format!("{name}Array");
+    let extension_batch = format!("{name}Batch");
     let extension_type = format!("{name}Type");
-    let many_aliases = format!("{name}ArrayLike");
 
     let override_ = if ext_class.has_native_to_pa_array {
         format!(
@@ -1411,29 +1455,258 @@ fn quote_arrow_support_from_obj(
         )
     };
 
+    let type_superclass_decl = if type_superclasses.is_empty() {
+        String::new()
+    } else {
+        format!("({})", type_superclasses.join(","))
+    };
+
+    let batch_superclass_decl = if batch_superclasses.is_empty() {
+        String::new()
+    } else {
+        format!("({})", batch_superclasses.join(","))
+    };
+
+    if obj.kind == ObjectKind::Datatype || obj.is_non_delegating_component() {
+        // Datatypes and non-delegating components declare init
+        unindent::unindent(&format!(
+            r#"
+            class {extension_type}{type_superclass_decl}:
+                _TYPE_NAME: str = "{fqname}"
+
+                def __init__(self) -> None:
+                    pa.ExtensionType.__init__(
+                        self, {datatype}, self._TYPE_NAME
+                    )
+
+            class {extension_batch}{batch_superclass_decl}:
+                _ARROW_TYPE = {extension_type}()
+
+                @staticmethod
+                def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
+                    {override_}
+
+            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
+            # pa.register_extension_type({extension_type}())
+            "#
+        ))
+    } else {
+        // Delegating components are already inheriting from their base type
+        unindent::unindent(&format!(
+            r#"
+            class {extension_type}{type_superclass_decl}:
+                _TYPE_NAME: str = "{fqname}"
+
+            class {extension_batch}{batch_superclass_decl}:
+                _ARROW_TYPE = {extension_type}()
+
+            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
+            # pa.register_extension_type({extension_type}())
+            "#
+        ))
+    }
+}
+
+fn quote_parameter_type_alias(
+    arg_type_fqname: &str,
+    class_fqname: &str,
+    objects: &Objects,
+    array: bool,
+) -> String {
+    let obj = &objects[arg_type_fqname];
+
+    let base = if let Some(delegate) = obj.delegate_datatype(objects) {
+        fqname_to_type(&delegate.fqname)
+    } else if arg_type_fqname == class_fqname {
+        // We're in the same namespace, so we can use the object name directly.
+        // (in fact we have to since we don't import ourselves)
+        obj.name.clone()
+    } else {
+        fqname_to_type(arg_type_fqname)
+    };
+
+    if array {
+        format!("{base}ArrayLike")
+    } else {
+        format!("{base}Like")
+    }
+}
+
+fn quote_init_parameter_from_field(
+    field: &ObjectField,
+    objects: &Objects,
+    current_obj_fqname: &str,
+) -> String {
+    let type_annotation = if let Some(fqname) = field.typ.fqname() {
+        quote_parameter_type_alias(fqname, current_obj_fqname, objects, field.typ.is_plural())
+    } else {
+        let type_annotation = quote_field_type_from_field(objects, field, false).0;
+        // Relax type annotation for numpy arrays.
+        if type_annotation.starts_with("npt.NDArray") {
+            "npt.ArrayLike".to_owned()
+        } else {
+            type_annotation
+        }
+    };
+
+    if field.is_nullable {
+        format!("{}: {} | None = None", field.name, type_annotation)
+    } else {
+        format!("{}: {}", field.name, type_annotation)
+    }
+}
+
+fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects) -> String {
+    // If the type is fully transparent (single non-nullable field and not an archetype),
+    // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
+    // -> Whatever type aliases there are for this type, we need to pick them up.
+    let parameters: Vec<_> =
+        if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable
+        {
+            vec![format!(
+                "{}: {}",
+                obj.fields[0].name,
+                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
+            )]
+        } else if obj.is_union() {
+            vec![format!(
+                "inner: {} | None = None",
+                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
+            )]
+        } else {
+            let required = obj
+                .fields
+                .iter()
+                .filter(|field| !field.is_nullable)
+                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+                .collect_vec();
+
+            let optional = obj
+                .fields
+                .iter()
+                .filter(|field| field.is_nullable)
+                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+                .collect_vec();
+
+            if optional.is_empty() {
+                required
+            } else if obj.kind == ObjectKind::Archetype {
+                // Force kw-args for all optional arguments:
+                required
+                    .into_iter()
+                    .chain(std::iter::once("*".to_owned()))
+                    .chain(optional)
+                    .collect()
+            } else {
+                required.into_iter().chain(optional).collect()
+            }
+        };
+
+    let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
+
+    let parameter_docs = if obj.is_union() {
+        Vec::new()
+    } else {
+        obj.fields
+            .iter()
+            .filter_map(|field| {
+                if field.docs.doc.is_empty() {
+                    None
+                } else {
+                    let doc_content =
+                        crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+                    Some(format!(
+                        "{}:\n    {}",
+                        field.name,
+                        doc_content.join("\n    ")
+                    ))
+                }
+            })
+            .collect::<Vec<_>>()
+    };
+    let doc_typedesc = match obj.kind {
+        ObjectKind::Datatype => "datatype",
+        ObjectKind::Component => "component",
+        ObjectKind::Archetype => "archetype",
+    };
+    let mut doc_string_lines = vec![
+        r#"""""#.to_owned(),
+        format!("Create a new instance of the {} {doc_typedesc}.", obj.name),
+    ];
+    if !parameter_docs.is_empty() {
+        doc_string_lines.push("\n".to_owned());
+        doc_string_lines.push("Parameters".to_owned());
+        doc_string_lines.push("----------".to_owned());
+        for doc in parameter_docs {
+            doc_string_lines.push(doc);
+        }
+    };
+    doc_string_lines.push(r#"""""#.to_owned());
+    let doc_block = doc_string_lines.join("\n");
+
+    let custom_init_hint = format!(
+        "# You can define your own __init__ function as a member of {} in {}",
+        ext_class.name, ext_class.file_name
+    );
+
+    let forwarding_call = if obj.is_union() {
+        "self.inner = inner".to_owned()
+    } else {
+        let attribute_init = obj
+            .fields
+            .iter()
+            .map(|field| format!("{}={}", field.name, field.name))
+            .collect::<Vec<_>>();
+
+        format!("self.__attrs_init__({})", attribute_init.join(", "))
+    };
+
+    // Make sure Archetypes catch and log exceptions as a fallback
+    let forwarding_call = if obj.kind == ObjectKind::Archetype {
+        unindent::unindent(&format!(
+            r#"
+            with catch_and_log_exceptions(context=self.__class__.__name__):
+                {forwarding_call}
+                return
+            self.__attrs_clear__()
+            "#
+        ))
+    } else {
+        forwarding_call
+    };
+
+    format!(
+        "{head}\n{}",
+        indent::indent_all_by(
+            4,
+            format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),
+        )
+    )
+}
+
+fn quote_clear_methods(obj: &Object) -> String {
+    let param_nones = obj
+        .fields
+        .iter()
+        .map(|field| format!("{} = None, # type: ignore[arg-type]", field.name))
+        .join("\n                ");
+
+    let classname = &obj.name;
+
     unindent::unindent(&format!(
         r#"
+        def __attrs_clear__(self) -> None:
+            """Convenience method for calling `__attrs_init__` with all `None`s."""
+            self.__attrs_init__(
+                {param_nones}
+            )
 
-        # --- Arrow support ---
-
-        class {extension_type}({ext_type_base}):
-            def __init__(self) -> None:
-                pa.ExtensionType.__init__(
-                    self, {datatype}, "{fqname}"
-                )
-
-        class {extension_array}({ext_array_base}[{many_aliases}]):
-            _EXTENSION_NAME = "{fqname}"
-            _EXTENSION_TYPE = {extension_type}
-
-            @staticmethod
-            def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
-                {override_}
-
-        {extension_type}._ARRAY_TYPE = {extension_array}
-
-        # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-        # pa.register_extension_type({extension_type}())
+        @classmethod
+        def _clear(cls) -> {classname}:
+            """Produce an empty {classname}, bypassing `__init__`"""
+            inst = cls.__new__(cls)
+            inst.__attrs_clear__()
+            return inst
         "#
     ))
 }
@@ -1524,7 +1797,7 @@ fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
     format!("{{{kvs}}}")
 }
 
-fn format_python(source: &str) -> anyhow::Result<String> {
+fn format_python_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     // The order below is important and sadly we need to call black twice. Ruff does not yet
@@ -1534,10 +1807,10 @@ fn format_python(source: &str) -> anyhow::Result<String> {
     // 2) Call ruff, which requires line-lengths to be correct
     // 3) Call black again to cleanup some whitespace issues ruff might introduce
 
-    let mut source = run_black(source).context("black")?;
-    source = run_ruff(&source).context("ruff")?;
-    source = run_black(&source).context("black")?;
-    Ok(source)
+    run_black_on_dir(dir).context("black")?;
+    run_ruff_on_dir(dir).context("ruff")?;
+    run_black_on_dir(dir).context("black")?;
+    Ok(())
 }
 
 fn python_project_path() -> Utf8PathBuf {
@@ -1548,59 +1821,47 @@ fn python_project_path() -> Utf8PathBuf {
     path
 }
 
-fn run_black(source: &str) -> anyhow::Result<String> {
+fn run_black_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
-    let mut proc = Command::new("black")
-        .stdin(Stdio::piped())
+    let proc = Command::new("black")
+        .arg(format!("--config={}", python_project_path()))
+        .arg(dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .arg(format!("--config={}", python_project_path()))
-        .arg("-") // Read from stdin
         .spawn()?;
-
-    {
-        let mut stdin = proc.stdin.take().unwrap();
-        stdin.write_all(source.as_bytes())?;
-    }
 
     let output = proc.wait_with_output()?;
 
     if output.status.success() {
-        let stdout = String::from_utf8(output.stdout)?;
-        Ok(stdout)
+        Ok(())
     } else {
-        let stderr = String::from_utf8(output.stderr)?;
-        anyhow::bail!("{stderr}")
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+        anyhow::bail!("{stdout}\n{stderr}")
     }
 }
 
-fn run_ruff(source: &str) -> anyhow::Result<String> {
+fn run_ruff_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
-    let mut proc = Command::new("ruff")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+    let proc = Command::new("ruff")
         .arg(format!("--config={}", python_project_path()))
         .arg("--fix")
-        .arg("-") // Read from stdin
+        .arg(dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()?;
-
-    {
-        let mut stdin = proc.stdin.take().unwrap();
-        stdin.write_all(source.as_bytes())?;
-    }
 
     let output = proc.wait_with_output()?;
 
     if output.status.success() {
-        let stdout = String::from_utf8(output.stdout)?;
-        Ok(stdout)
+        Ok(())
     } else {
-        let stderr = String::from_utf8(output.stderr)?;
-        anyhow::bail!("{stderr}")
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+        anyhow::bail!("{stdout}\n{stderr}")
     }
 }

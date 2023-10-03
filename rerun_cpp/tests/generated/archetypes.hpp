@@ -3,3 +3,6 @@
 #pragma once
 
 #include "archetypes/affix_fuzzer1.hpp"
+#include "archetypes/affix_fuzzer2.hpp"
+#include "archetypes/affix_fuzzer3.hpp"
+#include "archetypes/affix_fuzzer4.hpp"

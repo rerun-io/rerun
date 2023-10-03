@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -18,29 +19,76 @@
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.
 ///
-/// ## Example
+/// ## Examples
 ///
+/// ### Simple example
 /// ```ignore
 /// //! Create and log a depth image.
 ///
 /// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::{archetypes::DepthImage, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
 ///
-///    let mut image = Array::<u16, _>::from_elem((8, 12).f(), 65535);
-///    image.slice_mut(s![0..4, 0..6]).fill(20000);
-///    image.slice_mut(s![4..8, 6..12]).fill(45000);
+///     let mut image = Array::<u16, _>::from_elem((8, 12).f(), 65535);
+///     image.slice_mut(s![0..4, 0..6]).fill(20000);
+///     image.slice_mut(s![4..8, 6..12]).fill(45000);
 ///
-///    let depth_image = DepthImage::try_from(image)?.with_meter(10_000.0);
+///     let depth_image = rerun::DepthImage::try_from(image)?.with_meter(10_000.0);
 ///
-///    rec.log("depth", &depth_image)?;
+///     rec.log("depth", &depth_image)?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1200w.png">
+///   <img src="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/full.png">
+/// </picture>
+///
+/// ### Depth to 3D example
+/// ```ignore
+/// //! Create and log a depth image.
+/// use ndarray::{s, Array, ShapeBuilder};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
+///
+///     // Create a dummy depth image
+///     let mut image = Array::<u16, _>::from_elem((8, 12).f(), 65535);
+///     image.slice_mut(s![0..4, 0..6]).fill(20000);
+///     image.slice_mut(s![4..8, 6..12]).fill(45000);
+///
+///     let depth_image = rerun::DepthImage::try_from(image.clone())?.with_meter(10000.0);
+///
+///     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
+///     rec.log(
+///         "world/camera",
+///         &rerun::Pinhole::from_focal_length_and_resolution(
+///             [20.0, 20.0],
+///             [image.shape()[1] as f32, image.shape()[0] as f32],
+///         ),
+///     )?;
+///
+///     rec.log("world/camera/depth", &depth_image)?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1200w.png">
+///   <img src="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png">
+/// </picture>
 #[derive(Clone, Debug, PartialEq)]
 pub struct DepthImage {
     /// The depth-image data. Should always be a rank-2 tensor.
@@ -99,6 +147,12 @@ impl crate::Archetype for DepthImage {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: DepthImageIndicator = DepthImageIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -119,104 +173,12 @@ impl crate::Archetype for DepthImage {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.data as &dyn crate::ComponentBatch).into()),
-            self.meter
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-            self.draw_order
-                .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([
-            {
-                Some({
-                    let array = <crate::components::TensorData>::try_to_arrow([&self.data]);
-                    array.map(|array| {
-                        let datatype = ::arrow2::datatypes::DataType::Extension(
-                            "rerun.components.TensorData".into(),
-                            Box::new(array.data_type().clone()),
-                            None,
-                        );
-                        (
-                            ::arrow2::datatypes::Field::new("data", datatype, false),
-                            array,
-                        )
-                    })
-                })
-                .transpose()
-                .with_context("rerun.archetypes.DepthImage#data")?
-            },
-            {
-                self.meter
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::DepthMeter>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.DepthMeter".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("meter", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.DepthImage#meter")?
-            },
-            {
-                self.draw_order
-                    .as_ref()
-                    .map(|single| {
-                        let array = <crate::components::DrawOrder>::try_to_arrow([single]);
-                        array.map(|array| {
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                "rerun.components.DrawOrder".into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (
-                                ::arrow2::datatypes::Field::new("draw_order", datatype, false),
-                                array,
-                            )
-                        })
-                    })
-                    .transpose()
-                    .with_context("rerun.archetypes.DepthImage#draw_order")?
-            },
-        ]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -224,10 +186,10 @@ impl crate::Archetype for DepthImage {
             .collect();
         let data = {
             let array = arrays_by_name
-                .get("data")
+                .get("rerun.components.TensorData")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#data")?;
-            <crate::components::TensorData>::try_from_arrow_opt(&**array)
+            <crate::components::TensorData>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#data")?
                 .into_iter()
                 .next()
@@ -235,9 +197,9 @@ impl crate::Archetype for DepthImage {
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#data")?
         };
-        let meter = if let Some(array) = arrays_by_name.get("meter") {
+        let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
             Some({
-                <crate::components::DepthMeter>::try_from_arrow_opt(&**array)
+                <crate::components::DepthMeter>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.DepthImage#meter")?
                     .into_iter()
                     .next()
@@ -248,9 +210,9 @@ impl crate::Archetype for DepthImage {
         } else {
             None
         };
-        let draw_order = if let Some(array) = arrays_by_name.get("draw_order") {
+        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
             Some({
-                <crate::components::DrawOrder>::try_from_arrow_opt(&**array)
+                <crate::components::DrawOrder>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.DepthImage#draw_order")?
                     .into_iter()
                     .next()
@@ -266,6 +228,31 @@ impl crate::Archetype for DepthImage {
             meter,
             draw_order,
         })
+    }
+}
+
+impl crate::AsComponents for DepthImage {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
+            self.meter
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+            self.draw_order
+                .as_ref()
+                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

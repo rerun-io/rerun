@@ -55,11 +55,11 @@ Now you can run your application just as you would any other python script:
 And with that, we're ready to start sending out data:
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/b509f0c8ba4a46ed8ffd68bea4ade384525a41a1_logging_data2_waiting_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/89b4674ee51f3f5365bad2347bc3f7319ff8de0f_logging_data2_waiting_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/349e38deb9307100471b66becd6fab5d09dae80f_logging_data2_waiting_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/4820da379135db095f0d160550245114e6257400_logging_data2_waiting_1200w.png">
-  <img src="https://static.rerun.io/a45b879f74828ff22d0767c7892bffb17a0ac25f_logging_data2_waiting_full.png" alt="screenshot of the waiting screen">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data2_waiting/51c09ff974ee4789c0e500af5b8fa347c5294ac0/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data2_waiting/51c09ff974ee4789c0e500af5b8fa347c5294ac0/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data2_waiting/51c09ff974ee4789c0e500af5b8fa347c5294ac0/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data2_waiting/51c09ff974ee4789c0e500af5b8fa347c5294ac0/1200w.png">
+  <img src="https://static.rerun.io/logging_data2_waiting/51c09ff974ee4789c0e500af5b8fa347c5294ac0/full.png" alt="screenshot of the waiting screen">
 </picture>
 
 
@@ -102,11 +102,11 @@ Run your script once again and you should now see this scene in the viewer.
 Note that if the viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../concepts/apps-and-recordings.md).
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/5305cec597b9957036291198402d5afbbcce218e_logging_data3_first_points_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/5fa88ed6192920f6162b7080928aa538ae2025dd_logging_data3_first_points_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/9a87ed7e20b72902c6506a87fda3d62f716eed88_logging_data3_first_points_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/b32a40031e47a4aa3b1669bef53048765c1b7b10_logging_data3_first_points_1200w.png">
-  <img src="https://static.rerun.io/0e0fada083d59cf14ad20ed0ee50ef88a9550d82_logging_data3_first_points_full.png" alt="screenshot after logging the first points">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data3_first_points/bb8ec9fb325e7912124d1d5dbbaf6f52178046b8/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data3_first_points/bb8ec9fb325e7912124d1d5dbbaf6f52178046b8/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data3_first_points/bb8ec9fb325e7912124d1d5dbbaf6f52178046b8/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data3_first_points/bb8ec9fb325e7912124d1d5dbbaf6f52178046b8/1200w.png">
+  <img src="https://static.rerun.io/logging_data3_first_points/bb8ec9fb325e7912124d1d5dbbaf6f52178046b8/full.png" alt="screenshot after logging the first points">
 </picture>
 
 
@@ -169,11 +169,11 @@ Once again, although we are getting fancier and fancier with our [`numpy` incant
 there is nothing new here: it's all about building out `numpy` arrays and feeding them to the Rerun API.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/5ad83403acc560dac2bd85211419482c60019783_logging_data5_beads_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/cdec3af724a3ceff147c1c6fd6cc9dbc51a2204d_logging_data5_beads_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cb272220c85e3376c75fd6da7f18462b920e172a_logging_data5_beads_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/de68973ad6420112eba8b91217d9f4713d5d9a02_logging_data5_beads_1200w.png">
-  <img src="https://static.rerun.io/7825d736cb8b7dab27f27aa7611c4bac24f23433_logging_data5_beads_full.png" alt="screenshot after logging beads">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data5_beads/af49e7cd040ec6caab56ec3e45a732a943341088/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data5_beads/af49e7cd040ec6caab56ec3e45a732a943341088/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data5_beads/af49e7cd040ec6caab56ec3e45a732a943341088/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data5_beads/af49e7cd040ec6caab56ec3e45a732a943341088/1200w.png">
+  <img src="https://static.rerun.io/logging_data5_beads/af49e7cd040ec6caab56ec3e45a732a943341088/full.png" alt="screenshot after logging beads">
 </picture>
 
 
@@ -186,11 +186,11 @@ Up until this point, we've completely set aside one of the core concepts of Reru
 Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyways by memorizing when each log call occurred.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/720e5ba4d1881f88e1f0dd3342c52f3b472b70c6_logging_data6_timeline_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/96bdee91b139b19023524bc6954798005a24f298_logging_data6_timeline_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/c824ea981c457ee11c03b10645245b51e75de428_logging_data6_timeline_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/d8dcfc5d19865d0c50f43d377fbbcad027d44bf3_logging_data6_timeline_1200w.png">
-  <img src="https://static.rerun.io/37fbc6fcbe8e89b2267057e3eae2e56b8d9ddf42_logging_data6_timeline_full.png" alt="screenshot of the beads with the timeline">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/1200w.png">
+  <img src="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/full.png" alt="screenshot of the beads with the timeline">
 </picture>
 
 
@@ -220,11 +220,11 @@ A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/latest/common/ti
 ⚠️  If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/af29a2c3ed2c7a829cd91c2ad11d38f4418b9b23_logging_data7_wat_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/a46e9b2e7cc03366712fc0d3e3bc5bcb1efb406c_logging_data7_wat_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/398fb5f7164b6ccf010e4af8b5c761818bf015a1_logging_data7_wat_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/263d82b50e184ecb4d83350a1ef8b89b5a4d7b5f_logging_data7_wat_1200w.png">
-  <img src="https://static.rerun.io/74239084e9e45d2a0187b5e5e944063e3c8df5fa_logging_data7_wat_full.png" alt="screenshot of the surprising situation">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data7_wat/2a3b65f4a0e1e948184d85bab497e4bffdda0b7e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data7_wat/2a3b65f4a0e1e948184d85bab497e4bffdda0b7e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data7_wat/2a3b65f4a0e1e948184d85bab497e4bffdda0b7e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data7_wat/2a3b65f4a0e1e948184d85bab497e4bffdda0b7e/1200w.png">
+  <img src="https://static.rerun.io/logging_data7_wat/2a3b65f4a0e1e948184d85bab497e4bffdda0b7e/full.png" alt="screenshot of the surprising situation">
 </picture>
 
 
@@ -240,11 +240,11 @@ rr.set_time_seconds("stable_time", 0)
 ```
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/6c6918d4e1c33dc321d15e8746753ed2b1ca2037_logging_data8_latest_at_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/73755db0243987f750f620c34d2b5f67e47c6ab4_logging_data8_latest_at_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/72d2625d37ed6b149a4f5c016768d300c36a9bee_logging_data8_latest_at_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/a9559392295bc0bfc75da81badae2ae053f707e7_logging_data8_latest_at_1200w.png">
-  <img src="https://static.rerun.io/0a7c2f339aaff03c3ccf82d5686f3af2c19a00a7_logging_data8_latest_at_full.png" alt="screenshot after using latest at">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/1200w.png">
+  <img src="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/full.png" alt="screenshot after using latest at">
 </picture>
 
 

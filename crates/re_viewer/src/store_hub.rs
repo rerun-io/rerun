@@ -161,7 +161,7 @@ impl StoreHub {
     pub fn set_app_id(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
-        // TODO(2579): implement web-storage for blueprints as well
+        // TODO(#2579): implement web-storage for blueprints as well
         #[cfg(not(target_arch = "wasm32"))]
         if !self.blueprint_by_app_id.contains_key(&app_id) {
             if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {

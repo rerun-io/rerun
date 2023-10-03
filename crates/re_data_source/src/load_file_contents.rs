@@ -1,5 +1,5 @@
 use re_log_encoding::decoder::VersionPolicy;
-use re_log_types::LogMsg;
+use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
 use crate::FileContents;
@@ -7,6 +7,7 @@ use crate::FileContents;
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 pub fn load_file_contents(
     store_id: re_log_types::StoreId,
+    file_source: FileSource,
     file_contents: FileContents,
     tx: Sender<LogMsg>,
 ) -> anyhow::Result<()> {
@@ -29,11 +30,11 @@ pub fn load_file_contents(
     } else {
         // non-rrd = image or mesh:
         if cfg!(target_arch = "wasm32") {
-            load_and_send(store_id, file_contents, &tx)
+            load_and_send(store_id, file_source, file_contents, &tx)
         } else {
             rayon::spawn(move || {
                 let name = file_contents.name.clone();
-                if let Err(err) = load_and_send(store_id, file_contents, &tx) {
+                if let Err(err) = load_and_send(store_id, file_source, file_contents, &tx) {
                     re_log::error!("Failed to load {name:?}: {err}");
                 }
             });
@@ -44,6 +45,7 @@ pub fn load_file_contents(
 
 fn load_and_send(
     store_id: re_log_types::StoreId,
+    file_source: FileSource,
     file_contents: FileContents,
     tx: &Sender<LogMsg>,
 ) -> anyhow::Result<()> {
@@ -59,10 +61,7 @@ fn load_and_send(
             store_id: store_id.clone(),
             is_official_example: false,
             started: re_log_types::Time::now(),
-            store_source: re_log_types::StoreSource::FileFromCli {
-                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-            },
+            store_source: re_log_types::StoreSource::File { file_source },
             store_kind: re_log_types::StoreKind::Recording,
         },
     }))
@@ -83,7 +82,7 @@ fn log_msg_from_file_contents(
     let FileContents { name, bytes } = file_contents;
 
     let entity_path = re_log_types::EntityPath::from_single_string(name.clone());
-    let cells = re_components::data_cells_from_file_contents(&name, bytes.to_vec())?;
+    let cells = re_log_types::data_cells_from_file_contents(&name, bytes.to_vec())?;
 
     let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
 
@@ -95,7 +94,7 @@ fn log_msg_from_file_contents(
         entity_path,
         num_instances,
         cells,
-    );
+    )?;
 
     let data_table =
         re_log_types::DataTable::from_rows(re_log_types::TableId::random(), [data_row]);
@@ -103,7 +102,7 @@ fn log_msg_from_file_contents(
     Ok(LogMsg::ArrowMsg(store_id, arrow_msg))
 }
 
-fn load_rrd_sync(file_contents: &FileContents, tx: &Sender<LogMsg>) -> Result<(), anyhow::Error> {
+fn load_rrd_sync(file_contents: &FileContents, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     re_tracing::profile_function!(file_contents.name.as_str());
 
     let bytes: &[u8] = &file_contents.bytes;

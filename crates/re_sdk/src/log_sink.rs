@@ -147,6 +147,12 @@ impl MemorySinkStorage {
         self.msgs.read()
     }
 
+    /// How many messages are currently written to this memory sink
+    #[inline]
+    pub fn num_msgs(&self) -> usize {
+        self.read().len()
+    }
+
     /// Consumes and returns the inner array of [`LogMsg`].
     ///
     /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].

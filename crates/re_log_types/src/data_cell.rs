@@ -103,13 +103,27 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # assert_eq!(points, cell.to_native().as_slice());
 /// ```
 ///
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct DataCell {
     /// While the arrow data is already refcounted, the contents of the `DataCell` still have to
     /// be wrapped in an `Arc` to work around performance issues in `arrow2`.
     ///
     /// See [`DataCellInner`] for more information.
     pub inner: Arc<DataCellInner>,
+}
+
+impl PartialEq for DataCell {
+    fn eq(&self, rhs: &Self) -> bool {
+        let Self { inner: lhs_inner } = self;
+        let Self { inner: rhs_inner } = rhs;
+
+        // NOTE: Compare the inner pointers first, and only if they don't match actually do a full
+        // contents comparison.
+        // Arc normally handles this automatically if T implements `Eq`, but in our case
+        // `DataCellInner` cannot implement `Eq`.
+        // Still, the optimization is valid, and so here we are.
+        Arc::as_ptr(lhs_inner) == Arc::as_ptr(rhs_inner) || self.inner == rhs.inner
+    }
 }
 
 /// The actual contents of a [`DataCell`].
@@ -161,7 +175,7 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
-        Ok(Self::from_arrow(C::name(), C::try_to_arrow(values)?))
+        Ok(Self::from_arrow(C::name(), C::to_arrow(values)?))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.
@@ -175,7 +189,7 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
-        Ok(Self::from_arrow(C::name(), C::try_to_arrow_opt(values)?))
+        Ok(Self::from_arrow(C::name(), C::to_arrow_opt(values)?))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.
@@ -262,9 +276,6 @@ impl DataCell {
     // ---
 
     /// Builds an empty `DataCell` from a native component type.
-    //
-    // TODO(#1595): do keep in mind there's a future not too far away where components become a
-    // `(component, type)` tuple kinda thing.
     #[inline]
     pub fn from_native_empty<C: Component>() -> Self {
         Self::from_arrow_empty(C::name(), C::arrow_field().data_type)
@@ -358,7 +369,7 @@ impl DataCell {
     #[inline]
     pub fn try_to_native<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<C>> {
         re_tracing::profile_function!(C::name().as_str());
-        Ok(C::try_from_arrow(self.inner.values.as_ref())?)
+        Ok(C::from_arrow(self.inner.values.as_ref())?)
     }
 
     /// Returns the contents of an expected mono-component as an `Option<C>`.
@@ -368,7 +379,7 @@ impl DataCell {
     pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
         re_tracing::profile_function!(C::name().as_str());
 
-        let mut instances = C::try_from_arrow_opt(self.inner.values.as_ref())?.into_iter();
+        let mut instances = C::from_arrow_opt(self.inner.values.as_ref())?.into_iter();
 
         let result = match instances.next() {
             // It's ok to have no result from the iteration: this is what we
@@ -406,7 +417,7 @@ impl DataCell {
     #[inline]
     pub fn try_to_native_opt<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<Option<C>>> {
         re_tracing::profile_function!(C::name().as_str());
-        Ok(C::try_from_arrow_opt(self.inner.values.as_ref())?)
+        Ok(C::from_arrow_opt(self.inner.values.as_ref())?)
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.

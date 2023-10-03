@@ -17,9 +17,7 @@ all-features = true
 
 [dependencies]
 re_arrow_store.workspace = true
-re_components.workspace = true
 re_log_types.workspace = true
-re_log.workspace = true
 re_renderer.workspace = true
 re_space_view.workspace = true
 re_tracing.workspace = true
@@ -31,4 +29,4 @@ re_format.workspace = true
 
 egui_plot.workspace = true
 egui.workspace = true
-vec1.workspace = true
+itertools.workspace = true

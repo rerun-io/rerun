@@ -2,26 +2,20 @@
 from math import pi
 
 import rerun as rr
-import rerun.experimental as rr2
-from rerun.experimental import dt as rrd
+from rerun.datatypes import Angle, RotationAxisAngle
 
 rr.init("rerun_example_transform3d", spawn=True)
 
-origin = [0, 0, 0]
-base_vector = [0, 1, 0]
+rr.log("base", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
-rr.log_arrow("base", origin=origin, vector=base_vector)
+rr.log("base/translated", rr.Transform3D(translation=[1, 0, 0]))
+rr.log("base/translated", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
-rr2.log("base/translated", rrd.TranslationRotationScale3D(translation=[1, 0, 0]))
-
-rr.log_arrow("base/translated", origin=origin, vector=base_vector)
-
-rr2.log(
+rr.log(
     "base/rotated_scaled",
-    rrd.TranslationRotationScale3D(
-        rotation=rrd.RotationAxisAngle(axis=[0, 0, 1], angle=rrd.Angle(rad=pi / 4)),
+    rr.Transform3D(
+        rotation=RotationAxisAngle(axis=[0, 0, 1], angle=Angle(rad=pi / 4)),
         scale=2,
     ),
 )
-
-rr.log_arrow("base/rotated_scaled", origin=origin, vector=base_vector)
+rr.log("base/rotated_scaled", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))

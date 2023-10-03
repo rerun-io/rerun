@@ -1,6 +1,7 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
 mod arrows3d;
+mod assets3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
@@ -46,13 +47,14 @@ pub fn register_parts(
     system_registry: &mut SpaceViewSystemRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
     system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
+    system_registry.register_part_system::<assets3d::Asset3DPart>()?;
     system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
     system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
     system_registry.register_part_system::<cameras::CamerasPart>()?;
     system_registry.register_part_system::<images::ImagesPart>()?;
     system_registry.register_part_system::<lines2d::Lines2DPart>()?;
     system_registry.register_part_system::<lines3d::Lines3DPart>()?;
-    system_registry.register_part_system::<meshes::MeshPart>()?;
+    system_registry.register_part_system::<meshes::Mesh3DPart>()?;
     system_registry.register_part_system::<points2d::Points2DPart>()?;
     system_registry.register_part_system::<points3d::Points3DPart>()?;
     system_registry.register_part_system::<transform3d_arrows::Transform3DArrowsPart>()?;
@@ -270,7 +272,7 @@ pub fn load_keypoint_connections(
     let mut line_builder = ent_context.shared_render_builders.lines();
     let mut line_batch = line_builder
         .batch("keypoint connections")
-        .world_from_obj(ent_context.world_from_obj)
+        .world_from_obj(ent_context.world_from_entity)
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
     for ((class_id, _time), keypoints_in_class) in keypoints {
@@ -313,10 +315,10 @@ pub fn load_keypoint_connections(
 /// Returns the view coordinates used for 2D (image) views.
 ///
 /// TODO(#1387): Image coordinate space should be configurable.
-pub fn image_view_coordinates() -> re_components::ViewCoordinates {
+pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
     // Typical image spaces have
     // - x pointing right
     // - y pointing down
     // - z pointing into the image plane (this is convenient for reading out a depth image which has typically positive z values)
-    re_components::ViewCoordinates::RDF
+    re_types::components::ViewCoordinates::RDF
 }

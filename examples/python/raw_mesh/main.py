@@ -18,6 +18,7 @@ import numpy as np
 import rerun as rr  # pip install rerun-sdk
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
+from rerun.components import Material
 
 
 def load_scene(path: Path) -> trimesh.Scene:
@@ -40,27 +41,39 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
         if parent:
             # TODO(andreas): We should support 4x4 matrices directly
             world_from_mesh = node_data[0]
-            rr.log_transform3d(
+            rr.log(
                 path,
-                rr.TranslationAndMat3(
-                    trimesh.transformations.translation_from_matrix(world_from_mesh), world_from_mesh[0:3, 0:3]
+                rr.Transform3D(
+                    translation=trimesh.transformations.translation_from_matrix(world_from_mesh),
+                    mat3x3=world_from_mesh[0:3, 0:3],
                 ),
             )
 
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
         if mesh:
-            albedo_factor = None
-            # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
-            # as an albedo factor for the whole primitive.
+            vertex_colors = None
+            mesh_material = None
             try:
                 colors = mesh.visual.to_color().vertex_colors
                 if len(colors) == 4:
-                    albedo_factor = np.array(colors) / 255.0
+                    # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
+                    # as an albedo factor for the whole primitive.
+                    mesh_material = Material(albedo_factor=np.array(colors))
+                else:
+                    vertex_colors = colors
             except Exception:
                 pass
-            rr.log_mesh(
-                path, mesh.vertices, indices=mesh.faces, normals=mesh.vertex_normals, albedo_factor=albedo_factor
+
+            rr.log(
+                path,
+                rr.Mesh3D(
+                    vertex_positions=mesh.vertices,
+                    vertex_colors=vertex_colors,
+                    vertex_normals=mesh.vertex_normals,
+                    indices=mesh.faces,
+                    mesh_material=mesh_material,
+                ),
             )
 
     if children:
@@ -97,7 +110,7 @@ def main() -> None:
     root = next(iter(scene.graph.nodes))
 
     # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
-    rr.log_view_coordinates(root, xyz="RUB", timeless=True)
+    rr.log(root, rr.ViewCoordinates.RUB, timeless=True)
     log_scene(scene, root)
 
     rr.script_teardown(args)

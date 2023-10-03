@@ -11,32 +11,11 @@ namespace rerun.archetypes;
 
 /// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py Simple 2D boxes:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/box2d_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs Simple 2D boxes:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/box2d_simple.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp Simple 2D boxes:
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/box2d_simple.cpp
-/// \cpp ```
+/// \example box2d_simple "Simple 2D boxes"
 table Boxes2D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
-  "attr.cpp.no_field_ctors",
-  order: 100
+  "attr.cpp.no_field_ctors"
 ) {
   // --- Required ---
 
@@ -50,7 +29,7 @@ table Boxes2D (
 
   // TODO(#3247): Add 2D rotation.
   // Optional rotations of the boxes.
-  //rotations: [rerun.components.Rotation2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  //rotations: [rerun.components.Rotation2D] ("attr.rerun.component_recommended", nullable, order: 2050);
 
   /// Optional colors for the boxes.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
@@ -58,7 +37,7 @@ table Boxes2D (
   // --- Optional ---
 
   /// Optional radii for the lines that make up the boxes.
-  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 2000);
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 2500);
 
   /// Optional text labels for the boxes.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);

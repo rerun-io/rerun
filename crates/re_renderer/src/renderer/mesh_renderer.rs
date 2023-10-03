@@ -22,7 +22,7 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
     WgpuResourcePools,
 };
 
@@ -204,7 +204,7 @@ impl MeshDrawData {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 instances.len(),
-            );
+            )?;
 
             let mesh_manager = ctx.mesh_manager.read();
             let mut num_processed_instances = 0;
@@ -420,7 +420,7 @@ impl Renderer for MeshRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
         let Some(instance_buffer) = &draw_data.instance_buffer else {

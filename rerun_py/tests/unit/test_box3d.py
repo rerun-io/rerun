@@ -3,9 +3,10 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.components import HalfSizes3DBatch, InstanceKeyArrayLike, Position3DBatch, RadiusArrayLike, Rotation3DBatch
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Rotation3DArrayLike, Utf8ArrayLike
+from rerun.datatypes.vec3d import Vec3DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -51,27 +52,28 @@ def test_boxes3d() -> None:
         half_sizes = half_sizes if half_sizes is not None else half_sizes_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        half_sizes = cast(rrd.Vec3DArrayLike, half_sizes)
-        centers = cast(rrd.Vec3DArrayLike, centers)
-        rotations = cast(rrd.Rotation3DArrayLike, rotations)
-        radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
-        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
+        half_sizes = cast(Vec3DArrayLike, half_sizes)
+        centers = cast(Vec3DArrayLike, centers)
+        rotations = cast(Rotation3DArrayLike, rotations)
+        radii = cast(Optional[RadiusArrayLike], radii)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
+        labels = cast(Optional[Utf8ArrayLike], labels)
+        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"rr2.Boxes3D(\n"
+            f"rr.Boxes3D(\n"
             f"    half_sizes={half_sizes}\n"
+            f"    rotations={rotations}\n"
             f"    centers={centers}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
-        arch = rr2.Boxes3D(
+        arch = rr.Boxes3D(
             half_sizes=half_sizes,
             centers=centers,
             rotations=rotations,
@@ -83,9 +85,9 @@ def test_boxes3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes3DArray)
-        assert arch.centers == centers_expected(centers, rrc.Position3DArray)
-        assert arch.rotations == expected_rotations(rotations, rrc.Rotation3DArray)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSizes3DBatch)
+        assert arch.centers == centers_expected(centers, Position3DBatch)
+        assert arch.rotations == expected_rotations(rotations, Rotation3DBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
         assert arch.labels == labels_expected(labels)
@@ -93,5 +95,20 @@ def test_boxes3d() -> None:
         assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
+def test_with_sizes() -> None:
+    assert rr.Boxes3D(sizes=[1, 2, 3]) == rr.Boxes3D(half_sizes=[0.5, 1, 1.5])
+
+
+def test_with_centers_and_sizes() -> None:
+    assert rr.Boxes3D(centers=[1, 2, 3], sizes=[4, 6, 8]) == rr.Boxes3D(centers=[1, 2, 3], half_sizes=[2, 3, 4])
+
+
+def test_with_mins_and_sizes() -> None:
+    assert rr.Boxes3D(mins=[-1, -1, -1], sizes=[2, 4, 2]) == rr.Boxes3D(centers=[0, 1, 0], half_sizes=[1, 2, 1])
+
+
 if __name__ == "__main__":
     test_boxes3d()
+    test_with_sizes()
+    test_with_centers_and_sizes()
+    test_with_mins_and_sizes()

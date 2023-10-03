@@ -113,7 +113,7 @@ impl Points3DPart {
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_obj,
+                ent_context.world_from_entity,
             )?);
         }
 
@@ -121,7 +121,7 @@ impl Points3DPart {
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
                 .batch("3d points")
-                .world_from_obj(ent_context.world_from_obj)
+                .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -158,7 +158,7 @@ impl Points3DPart {
             {
                 re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
-                    // TODO(andreas/jeremy): We can do this much more efficiently
+                    // TODO(andreas, jeremy): We can do this much more efficiently
                     let highlighted_point_index = arch_view
                         .iter_instance_keys()
                         .position(|key| *highlighted_key == key);
@@ -174,7 +174,7 @@ impl Points3DPart {
 
             self.data.extend_bounding_box_with_points(
                 positions.iter().copied(),
-                ent_context.world_from_obj,
+                ent_context.world_from_entity,
             );
         }
 
@@ -199,7 +199,7 @@ impl ViewPartSystem for Points3DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points3D::indicator_component()).collect()
+        std::iter::once(Points3D::indicator().name()).collect()
     }
 
     fn execute(

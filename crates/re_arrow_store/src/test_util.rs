@@ -13,6 +13,7 @@ macro_rules! test_row {
             $n,
             $c0,
         )
+        .unwrap()
     }};
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr, $c1:expr $(,)*]) => {{
         ::re_log_types::DataRow::from_cells2_sized(
@@ -22,6 +23,7 @@ macro_rules! test_row {
             $n,
             ($c0, $c1),
         )
+        .unwrap()
     }};
 }
 

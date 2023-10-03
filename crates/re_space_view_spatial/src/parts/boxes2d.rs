@@ -117,7 +117,7 @@ impl Boxes2DPart {
         let mut line_batch = line_builder
             .batch("boxes2d")
             .depth_offset(ent_context.depth_offset)
-            .world_from_obj(ent_context.world_from_obj)
+            .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -134,7 +134,7 @@ impl Boxes2DPart {
                     min: min.extend(0.),
                     max: max.extend(0.),
                 },
-                ent_context.world_from_obj,
+                ent_context.world_from_entity,
             );
 
             let rectangle = line_batch
@@ -174,7 +174,7 @@ impl ViewPartSystem for Boxes2DPart {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Boxes2D::indicator_component()).collect()
+        std::iter::once(Boxes2D::indicator().name()).collect()
     }
 
     fn execute(

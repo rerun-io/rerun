@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
-use re_log_types::{RowId, TimeInt, Timeline};
+use re_log_types::RowId;
 use re_types::{
     archetypes::Tensor,
     components::{InstanceKey, TensorData},
@@ -8,8 +8,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
@@ -32,28 +32,7 @@ impl ViewPartSystem for TensorSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Tensor::indicator_component()).collect()
-    }
-
-    /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]
-    fn heuristic_filter(
-        &self,
-        store: &re_arrow_store::DataStore,
-        ent_path: &EntityPath,
-        entity_components: &ComponentNameSet,
-    ) -> bool {
-        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
-            return false;
-        }
-
-        if let Some(tensor) = store.query_latest_component::<TensorData>(
-            ent_path,
-            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
-        ) {
-            !tensor.is_shaped_like_an_image() && !tensor.is_vector()
-        } else {
-            false
-        }
+        std::iter::once(Tensor::indicator().name()).collect()
     }
 
     fn execute(
@@ -92,22 +71,18 @@ impl TensorSystem {
         _props: &EntityProperties,
         tensor: TensorData,
     ) {
-        if !tensor.is_shaped_like_an_image() {
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
-            match ctx
-                .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
-            {
-                Ok(tensor) => {
-                    let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
-                    self.tensors.insert(instance_path, (row_id, tensor));
-                }
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Failed to decode decoding tensor at path {ent_path}: {err}"
-                    );
-                }
+        // NOTE: Tensors don't support batches at the moment so always splat.
+        let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
+        match ctx
+            .cache
+            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+        {
+            Ok(tensor) => {
+                let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
+                self.tensors.insert(instance_path, (row_id, tensor));
+            }
+            Err(err) => {
+                re_log::warn_once!("Failed to decode decoding tensor at path {ent_path}: {err}");
             }
         }
     }

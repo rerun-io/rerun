@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    hash::Hash64, parse_entity_path, path::entity_path_impl::EntityPathImpl, EntityPathPart,
-    SizeBytes,
-};
+use crate::{hash::Hash64, path::entity_path_impl::EntityPathImpl, EntityPathPart, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -61,11 +58,32 @@ impl std::fmt::Debug for EntityPathHash {
 
 // ----------------------------------------------------------------------------
 
-/// `camera / "left" / points / #42`
+/// The unique identifier of an entity, e.g. `camera/"ACME Örnöga"/points`
 ///
-/// Cheap to clone.
+/// The entity path is a list of [parts][EntityPathPart] separated by slashes.
+///
+/// Each part is either a [_name_][EntityPathPart::Name] of a limited set of characters,
+/// or an [`Index`][crate::Index].
+/// Names are like idenitifers in code, and must match the regex: `[a-zA-z0-9_-]+`
+/// Indices are like array indices or keys in a map or table, and can be any string,
+/// uuid, or number.
+///
+/// Reference-counted internally, so this is cheap to clone.
 ///
 /// Implements [`nohash_hasher::IsEnabled`].
+///
+/// ```
+/// # use re_log_types::{EntityPath, EntityPathPart, Index};
+/// assert_eq!(
+///     EntityPath::parse_strict(r#"camera/"ACME Örnöga"/points/#42"#).unwrap(),
+///     EntityPath::new(vec![
+///         EntityPathPart::Name("camera".into()),
+///         EntityPathPart::Index(Index::String("ACME Örnöga".into())),
+///         EntityPathPart::Name("points".into()),
+///         EntityPathPart::Index(Index::Sequence(42))
+///     ])
+/// );
+/// ```
 ///
 /// ```
 /// # use re_log_types::EntityPath;
@@ -123,6 +141,11 @@ impl EntityPath {
     #[inline]
     pub fn as_slice(&self) -> &[EntityPathPart] {
         self.path.as_slice()
+    }
+
+    #[inline]
+    pub fn to_vec(&self) -> Vec<EntityPathPart> {
+        self.path.to_vec()
     }
 
     #[inline]
@@ -208,18 +231,17 @@ impl From<&[EntityPathPart]> for EntityPath {
     }
 }
 
-#[allow(clippy::fallible_impl_from)]
 impl From<&str> for EntityPath {
     #[inline]
     fn from(path: &str) -> Self {
-        Self::from(parse_entity_path(path).unwrap())
+        EntityPath::parse_forgiving(path)
     }
 }
 
 impl From<String> for EntityPath {
     #[inline]
     fn from(path: String) -> Self {
-        Self::from(path.as_str())
+        EntityPath::parse_forgiving(&path)
     }
 }
 

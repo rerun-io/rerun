@@ -1,30 +1,18 @@
 //! Log a pinhole and a random image.
 
 use ndarray::{Array, ShapeBuilder};
-use rerun::{
-    archetypes::Image,
-    components::Pinhole,
-    datatypes::{Mat3x3, Vec2D},
-    RecordingStreamBuilder,
-};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_pinhole").memory()?;
+    let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_pinhole").memory()?;
 
     let mut image = Array::<u8, _>::default((3, 3, 3).f());
     image.map_inplace(|x| *x = rand::random());
 
-    // TODO(#2816): Pinhole archetype
-    rec.log_component_batches(
+    rec.log(
         "world/image",
-        false,
-        1,
-        [&Pinhole {
-            image_from_cam: Mat3x3::from([[3., 0., 1.5], [0., 3., 1.5], [0., 0., 1.]]).into(),
-            resolution: Some(Vec2D::from([3., 3.]).into()),
-        } as _],
+        &rerun::Pinhole::from_focal_length_and_resolution([3., 3.], [3., 3.]),
     )?;
-    rec.log("world/image", &Image::try_from(image)?)?;
+    rec.log("world/image", &rerun::Image::try_from(image)?)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

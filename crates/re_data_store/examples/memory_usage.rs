@@ -55,8 +55,8 @@ fn main() {
 }
 
 fn log_messages() {
-    use re_components::datagen::{build_frame_nr, build_some_positions2d};
-    use re_log_types::{LogMsg, TimeInt, TimePoint, Timeline};
+    use re_log_types::{build_frame_nr, LogMsg, TimeInt, TimePoint, Timeline};
+    use re_types::datagen::build_some_positions2d;
 
     // Note: we use Box in this function so that we also count the "static"
     // part of all the data, i.e. its `std::mem::size_of`.
@@ -115,6 +115,7 @@ fn log_messages() {
                 1,
                 build_some_positions2d(1),
             )
+            .unwrap()
             .into_table(),
         );
         let table_bytes = live_bytes() - used_bytes_start;
@@ -141,6 +142,7 @@ fn log_messages() {
                 NUM_POINTS as _,
                 build_some_positions2d(NUM_POINTS),
             )
+            .unwrap()
             .into_table(),
         );
         let table_bytes = live_bytes() - used_bytes_start;

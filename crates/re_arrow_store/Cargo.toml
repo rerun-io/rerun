@@ -46,10 +46,10 @@ re_types.workspace = true
 ahash.workspace = true
 arrow2 = { workspace = true, features = ["compute_concatenate"] }
 arrow2_convert.workspace = true
-document-features = "0.2"
-indent = "0.1"
+document-features.workspace = true
+indent.workspace = true
 itertools = { workspace = true }
-nohash-hasher = "0.2"
+nohash-hasher.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
@@ -72,10 +72,10 @@ polars-ops = { workspace = true, optional = true, features = [
 
 
 [dev-dependencies]
-re_components = { workspace = true, features = ["arrow_datagen"] }
+re_types = { workspace = true, features = ["datagen"] }
 
 anyhow.workspace = true
-criterion = "0.5"
+criterion.workspace = true
 mimalloc.workspace = true
 polars-core = { workspace = true, features = [
   "diagonal_concat",

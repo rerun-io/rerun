@@ -5,9 +5,8 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
-use re_log_types::{EntityPathHash, TimeInt, Timeline};
+use re_log_types::EntityPathHash;
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -15,7 +14,7 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
-    components::{Color, DrawOrder, TensorData},
+    components::{Color, DrawOrder, TensorData, ViewCoordinates},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype as _, ComponentNameSet,
 };
@@ -28,6 +27,7 @@ use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
     parts::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    query_pinhole,
     view_kind::SpatialSpaceViewKind,
 };
 
@@ -102,13 +102,13 @@ fn to_textured_rect(
 
             Some(re_renderer::renderer::TexturedRect {
                 top_left_corner_position: ent_context
-                    .world_from_obj
+                    .world_from_entity
                     .transform_point3(glam::Vec3::ZERO),
                 extent_u: ent_context
-                    .world_from_obj
+                    .world_from_entity
                     .transform_vector3(glam::Vec3::X * width as f32),
                 extent_v: ent_context
-                    .world_from_obj
+                    .world_from_entity
                     .transform_vector3(glam::Vec3::Y * height as f32),
                 colormapped_texture,
                 options: RectangleOptions {
@@ -219,7 +219,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &Image::indicator_component(),
+            &Image::indicator().name(),
         ) {
             return Ok(());
         }
@@ -307,7 +307,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &DepthImage::indicator_component(),
+            &DepthImage::indicator().name(),
         ) {
             return Ok(());
         }
@@ -428,7 +428,7 @@ impl ImagesPart {
         if !ctx.store_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
-            &SegmentationImage::indicator_component(),
+            &SegmentationImage::indicator().name(),
         ) {
             return Ok(());
         }
@@ -510,29 +510,30 @@ impl ImagesPart {
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
-        let store = &ctx.store_db.entity_db.data_store;
-
-        let Some(intrinsics) =
-            store.query_latest_component::<Pinhole>(parent_pinhole_path, &ctx.current_query())
-        else {
-            anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
-        };
-
-        let view_coordinates = crate::contexts::pinhole_camera_view_coordinates(
+        let Some(intrinsics) = query_pinhole(
             ctx.store_db.store(),
             &ctx.current_query(),
             parent_pinhole_path,
-        );
+        ) else {
+            anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
+        };
 
-        // TODO(cmc): getting to those extrinsics is no easy task :|
-        let world_from_view = parent_pinhole_path
-            .parent()
-            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+        // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
+        let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
+            parent_pinhole_path,
+            ctx.store_db.store(),
+            &ctx.current_query(),
+        );
         let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };
-        let world_from_rdf =
-            world_from_view * glam::Affine3A::from_mat3(view_coordinates.from_rdf());
+        let world_from_rdf = world_from_view
+            * glam::Affine3A::from_mat3(
+                intrinsics
+                    .camera_xyz
+                    .unwrap_or(ViewCoordinates::RDF) // TODO(#2641): This should come from archetype
+                    .from_rdf(),
+            );
 
         let Some([height, width, _]) = tensor.image_height_width_channels() else {
             anyhow::bail!("Tensor at {ent_path:?} is not an image");
@@ -576,7 +577,7 @@ impl ImagesPart {
 
         Ok(DepthCloud {
             world_from_rdf,
-            depth_camera_intrinsics: intrinsics.image_from_cam.into(),
+            depth_camera_intrinsics: intrinsics.image_from_camera.0.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
             max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
@@ -633,9 +634,9 @@ impl ViewPartSystem for ImagesPart {
 
     fn indicator_components(&self) -> ComponentNameSet {
         [
-            Image::indicator_component(),
-            DepthImage::indicator_component(),
-            SegmentationImage::indicator_component(),
+            Image::indicator().name(),
+            DepthImage::indicator().name(),
+            SegmentationImage::indicator().name(),
         ]
         .into_iter()
         .collect()
@@ -645,17 +646,18 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
             return false;
         }
 
-        if let Some(tensor) = store.query_latest_component::<TensorData>(
-            ent_path,
-            &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
-        ) {
-            tensor.is_shaped_like_an_image() && !tensor.is_vector()
+        // NOTE: We want to make sure we query at the right time, otherwise we might take into
+        // account a `Clear()` that actually only applies into the future, and then
+        // `is_shaped_like_an_image` will righfully fail because of the empty tensor.
+        if let Some(tensor) = store.query_latest_component::<TensorData>(ent_path, query) {
+            tensor.is_shaped_like_an_image()
         } else {
             false
         }

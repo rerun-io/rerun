@@ -9,151 +9,136 @@ namespace rerun.testing.components;
 // ---
 
 table AffixFuzzer1 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 100
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   single_required: rerun.testing.datatypes.AffixFuzzer1 (order: 101);
 }
 
 table AffixFuzzer2 (
   "attr.rust.derive": "Default, PartialEq",
-  "attr.rust.tuple_struct",
-  order: 200
+  "attr.rust.tuple_struct"
 ) {
   single_required: rerun.testing.datatypes.AffixFuzzer1 (order: 102);
 }
 
 table AffixFuzzer3 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 300
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   single_required: rerun.testing.datatypes.AffixFuzzer1 (order: 103);
 }
 
 table AffixFuzzer4 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 400
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   single_optional: rerun.testing.datatypes.AffixFuzzer1 (nullable, order: 104);
 }
 
 table AffixFuzzer5 (
   "attr.rust.derive": "Default, PartialEq",
-  "attr.rust.tuple_struct",
-  order: 500
+  "attr.rust.tuple_struct"
 ) {
   single_optional: rerun.testing.datatypes.AffixFuzzer1 (nullable, order: 105);
 }
 
 table AffixFuzzer6 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 600
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   single_optional: rerun.testing.datatypes.AffixFuzzer1 (nullable, order: 106);
 }
 
 table AffixFuzzer7 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 700
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   many_optional: [rerun.testing.datatypes.AffixFuzzer1] (nullable, order: 107);
 }
 
 table AffixFuzzer8 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 800
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   single_float_optional: float (nullable, order: 108);
 }
 
 table AffixFuzzer9 (
-  "attr.rust.derive": "Default, PartialEq, Eq",
-  order: 900
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   single_string_required: string (order: 109);
 }
 
 table AffixFuzzer10 (
-  "attr.rust.derive": "Default, PartialEq, Eq",
-  order: 1000
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   single_string_optional: string (nullable, order: 110);
 }
 
 table AffixFuzzer11 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 1100
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   many_floats_optional: [float] (nullable, order: 111);
 }
 
 table AffixFuzzer12 (
-  "attr.rust.derive": "Default, PartialEq, Eq",
-  order: 1200
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   many_strings_required: [string] (order: 112);
 }
 
 table AffixFuzzer13 (
-  "attr.rust.derive": "Default, PartialEq, Eq",
-  order: 1300
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   many_strings_optional: [string] (nullable, order: 113);
 }
 
 table AffixFuzzer14 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 1400
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   single_required_union: rerun.testing.datatypes.AffixFuzzer3 (order: 114);
 }
 
 table AffixFuzzer15 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 1500
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   single_optional_union: rerun.testing.datatypes.AffixFuzzer3 (nullable, order: 115);
 }
 
 table AffixFuzzer16 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 1600
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   many_required_unions: [rerun.testing.datatypes.AffixFuzzer3] (order: 116);
 }
 
 table AffixFuzzer17 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 1700
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   many_optional_unions: [rerun.testing.datatypes.AffixFuzzer3] (nullable, order: 117);
 }
 
 table AffixFuzzer18 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 1800
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   many_optional_unions: [rerun.testing.datatypes.AffixFuzzer4] (nullable, order: 118);
 }
 
 table AffixFuzzer19 (
-  "attr.rust.derive": "Default, PartialEq",
-  order: 1900
+  "attr.rust.derive": "Default, PartialEq"
 ) {
   just_a_table_nothing_shady: rerun.testing.datatypes.AffixFuzzer5 (order: 119);
 }
 
 table AffixFuzzer20 (
-  "attr.rust.derive": "Default, Eq, PartialEq",
-  order: 2000
+  "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
   nested_transparent: rerun.testing.datatypes.AffixFuzzer20 (order: 120);
 }
 
+table AffixFuzzer21 (
+  "attr.rust.derive": "Default, PartialEq"
+) {
+  nested_halves: rerun.testing.datatypes.AffixFuzzer21 (order: 120);
+}
+
 // TODO(cmc): the ugly bug we need to take care of at some point
 // table AffixFuzzer14 (
-//   "attr.rust.derive": "Default, PartialEq",
-//   order: 1400
+//   "attr.rust.derive": "Default, PartialEq"
 // ) {
 //
 //   many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (nullable, order: 107);

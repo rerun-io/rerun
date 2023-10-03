@@ -18,7 +18,6 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
-mod component;
 mod data_cell;
 mod data_row;
 mod data_table;
@@ -40,9 +39,11 @@ pub mod serde_field;
 use std::sync::Arc;
 
 pub use self::arrow_msg::ArrowMsg;
-pub use self::component::LegacyComponent;
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
-pub use self::data_row::{DataCellRow, DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
+pub use self::data_row::{
+    DataCellRow, DataCellVec, DataReadError, DataReadResult, DataRow, DataRowError, DataRowResult,
+    RowId,
+};
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
     ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_ENTITY_PATH,
@@ -64,6 +65,13 @@ pub use re_types::SizeBytes;
 pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
 };
+
+mod load_file;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::load_file::data_cells_from_file_path;
+
+pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 
 pub mod external {
     pub use arrow2;
@@ -307,6 +315,14 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum FileSource {
+    Cli,
+    DragAndDrop,
+    FileDialog,
+}
+
 /// The source of a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -321,14 +337,16 @@ pub enum StoreSource {
 
     /// The official Rerun Rust Logging SDK
     RustSdk {
+        /// Rust version of the the code compiling the Rust SDK
         rustc_version: String,
+
+        /// LLVM version of the the code compiling the Rust SDK
         llvm_version: String,
     },
 
-    /// Loading a file directly from disk via the CLI.
-    FileFromCli {
-        rustc_version: String,
-        llvm_version: String,
+    /// Loading a file via CLI, drag-and-drop, a file-dialog, etc.
+    File {
+        file_source: FileSource,
     },
 
     /// Perhaps from some manual data ingestion?
@@ -341,14 +359,12 @@ impl std::fmt::Display for StoreSource {
             Self::Unknown => "Unknown".fmt(f),
             Self::CSdk => "C SDK".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
-            Self::RustSdk {
-                rustc_version,
-                llvm_version: _,
-            } => write!(f, "Rust {rustc_version} SDK"),
-            Self::FileFromCli {
-                rustc_version,
-                llvm_version: _,
-            } => write!(f, "File via CLI {rustc_version} "),
+            Self::RustSdk { rustc_version, .. } => write!(f, "Rust SDK (rustc {rustc_version})"),
+            Self::File { file_source, .. } => match file_source {
+                FileSource::Cli => write!(f, "File via CLI"),
+                FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
+                FileSource::FileDialog => write!(f, "File via file dialog"),
+            },
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
@@ -403,28 +419,27 @@ impl PathOp {
 
 // ---------------------------------------------------------------------------
 
+/// Implements [`re_types::Component`] for `T: arrow2_convert::{Serialize, Deserialize}`.
 #[doc(hidden)]
 #[macro_export]
-macro_rules! component_legacy_shim {
-    ($entity:ident) => {
+macro_rules! arrow2convert_component_shim {
+    ($entity:ident as $fqname:expr) => {
 
         impl re_types::Loggable for $entity {
             type Name = re_types::ComponentName;
 
             #[inline]
             fn name() -> Self::Name {
-                <Self as re_log_types::LegacyComponent>::legacy_name()
-                    .as_str()
-                    .into()
+                $fqname.into()
             }
 
             #[inline]
             fn arrow_datatype() -> arrow2::datatypes::DataType {
-                <Self as re_log_types::LegacyComponent>::field().data_type
+                <Self as ::arrow2_convert::field::ArrowField>::data_type()
             }
 
             #[inline]
-            fn try_to_arrow_opt<'a>(
+            fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
             ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
             where
@@ -446,7 +461,7 @@ macro_rules! component_legacy_shim {
             }
 
             #[inline]
-            fn try_from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
+            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
             where
                 Self: Sized
             {
@@ -476,6 +491,18 @@ macro_rules! component_legacy_shim {
             }
         }
     };
+}
 
+// ---
 
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
+#[inline]
+pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
+    (Timeline::log_time(), log_time.into())
+}
+
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`TimePoint`].
+#[inline]
+pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
+    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }

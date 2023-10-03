@@ -24,22 +24,56 @@ namespace rerun {
     namespace archetypes {
         /// A 3D point cloud with positions and optional colors, radii, labels, etc.
         ///
-        /// ## Example
+        /// ## Examples
         ///
-        ///```
-        ///// Log some very simple points.
+        /// ```cpp,ignore
+        /// // Log some very simple points.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_points3d_simple");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_points3d_simple");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    rec.log("points", rr::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
+        ///     rec.log("points", rr::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
         /// }
-        ///```
+        /// ```
+        ///
+        /// ```cpp,ignore
+        /// // Log some random points with color and radii.
+        ///
+        /// #include <rerun.hpp>
+        ///
+        /// #include <algorithm>
+        /// #include <random>
+        ///
+        /// namespace rr = rerun;
+        ///
+        /// int main() {
+        ///     auto rec = rr::RecordingStream("rerun_example_points3d_random");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///
+        ///     std::default_random_engine gen;
+        ///     std::uniform_real_distribution<float> dist_pos(-5.0, 5.0);
+        ///     std::uniform_real_distribution<float> dist_radius(0.1, 1.0);
+        ///     std::uniform_int_distribution<uint8_t> dist_color(0, 255);
+        ///
+        ///     std::vector<rr::components::Position3D> points3d(10);
+        ///     std::generate(points3d.begin(), points3d.end(), [&] {
+        ///         return rr::components::Position3D(dist_pos(gen), dist_pos(gen), dist_pos(gen));
+        ///     });
+        ///     std::vector<rr::components::Color> colors(10);
+        ///     std::generate(colors.begin(), colors.end(), [&] {
+        ///         return rr::components::Color(dist_color(gen), dist_color(gen), dist_color(gen));
+        ///     });
+        ///     std::vector<rr::components::Radius> radii(10);
+        ///     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
+        ///
+        ///     rec.log("random", rr::Points3D(points3d).with_colors(colors).with_radii(radii));
+        /// }
+        /// ```
         struct Points3D {
             /// All the 3D positions at which the point cloud shows points.
             std::vector<rerun::components::Position3D> positions;
@@ -176,6 +210,11 @@ namespace rerun {
             size_t num_instances() const {
                 return positions.size();
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

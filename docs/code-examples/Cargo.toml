@@ -24,6 +24,18 @@ name = "arrow3d_simple"
 path = "arrow3d_simple.rs"
 
 [[bin]]
+name = "bar_chart"
+path = "bar_chart.rs"
+
+[[bin]]
+name = "asset3d_simple"
+path = "asset3d_simple.rs"
+
+[[bin]]
+name = "asset3d_out_of_tree"
+path = "asset3d_out_of_tree.rs"
+
+[[bin]]
 name = "box3d_simple"
 path = "box3d_simple.rs"
 
@@ -84,8 +96,20 @@ name = "line_strip3d_batch"
 path = "line_strip3d_batch.rs"
 
 [[bin]]
-name = "mesh_simple"
-path = "mesh_simple.rs"
+name = "manual_indicator"
+path = "manual_indicator.rs"
+
+[[bin]]
+name = "mesh3d_simple"
+path = "mesh3d_simple.rs"
+
+[[bin]]
+name = "mesh3d_indexed"
+path = "mesh3d_indexed.rs"
+
+[[bin]]
+name = "mesh3d_partial_updates"
+path = "mesh3d_partial_updates.rs"
 
 [[bin]]
 name = "pinhole_simple"
@@ -116,6 +140,10 @@ name = "scalar_simple"
 path = "scalar_simple.rs"
 
 [[bin]]
+name = "scalar_multiple_plots"
+path = "scalar_multiple_plots.rs"
+
+[[bin]]
 name = "segmentation_image_simple"
 path = "segmentation_image_simple.rs"
 
@@ -136,9 +164,16 @@ name = "text_log"
 path = "text_log.rs"
 
 [[bin]]
+name = "text_log_integration"
+path = "text_log_integration.rs"
+
+[[bin]]
 name = "transform3d_simple"
 path = "transform3d_simple.rs"
 
+[[bin]]
+name = "view_coordinates_simple"
+path = "view_coordinates_simple.rs"
 
 [dependencies]
 ndarray.workspace = true

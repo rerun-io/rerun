@@ -26,60 +26,60 @@ namespace rerun {
         /// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors
         /// etc.
         ///
-        /// ## Example
+        /// ## Examples
         ///
-        /// Simple 3D boxes:
-        ///```
-        ///// Log a single 3D box.
-        ///
-        /// #include <rerun.hpp>
-        ///
-        /// namespace rr = rerun;
-        ///
-        /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_box3d_simple");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
-        ///
-        ///    rec.log("bounds", rr::Boxes3D::from_half_sizes({{2.f, 2.f, 1.0f}}));
-        /// }
-        ///```
-        ///
-        /// Batch of 3D boxes:
-        ///```
-        ///// Log a batch of oriented bounding boxes.
+        /// ### Simple 3D boxes
+        /// ```cpp,ignore
+        /// // Log a single 3D box.
         ///
         /// #include <rerun.hpp>
         ///
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_box3d_batch");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_box3d_simple");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    rec.log(
-        ///        "batch",
-        ///        rr::Boxes3D::from_centers_and_half_sizes(
-        ///            {{2.0f, 0.0f, 0.0f}, {-2.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}},
-        ///            {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
-        ///        )
-        ///            .with_rotations({
-        ///                rr::datatypes::Rotation3D::IDENTITY,
-        ///                rr::datatypes::Quaternion(0.0f, 0.0f, 0.382683f, 0.923880f), // 45
-        ///                degrees around Z rr::datatypes::RotationAxisAngle(
-        ///                    {0.0f, 1.0f, 1.0f},
-        ///                    rr::datatypes::Angle::degrees(30.0f)
-        ///                ),
-        ///            })
-        ///            .with_radii(0.025f)
-        ///            .with_colors({
-        ///                rr::datatypes::Color(255, 0, 0),
-        ///                rr::datatypes::Color(0, 255, 0),
-        ///                rr::datatypes::Color(0, 0, 255),
-        ///            })
-        ///            .with_labels({"red", "green", "blue"})
-        ///    );
+        ///     rec.log("simple", rr::Boxes3D::from_half_sizes({{2.f, 2.f, 1.0f}}));
         /// }
-        ///```
+        /// ```
+        ///
+        /// ### Batch of 3D boxes
+        /// ```cpp,ignore
+        /// // Log a batch of oriented bounding boxes.
+        ///
+        /// #include <rerun.hpp>
+        ///
+        /// namespace rr = rerun;
+        ///
+        /// int main() {
+        ///     auto rec = rr::RecordingStream("rerun_example_box3d_batch");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///
+        ///     rec.log(
+        ///         "batch",
+        ///         rr::Boxes3D::from_centers_and_half_sizes(
+        ///             {{2.0f, 0.0f, 0.0f}, {-2.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}},
+        ///             {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
+        ///         )
+        ///             .with_rotations({
+        ///                 rr::datatypes::Quaternion::IDENTITY,
+        ///                 rr::datatypes::Quaternion(0.0f, 0.0f, 0.382683f, 0.923880f), // 45
+        ///                 degrees around Z rr::datatypes::RotationAxisAngle(
+        ///                     {0.0f, 1.0f, 0.0f},
+        ///                     rr::datatypes::Angle::degrees(30.0f)
+        ///                 ),
+        ///             })
+        ///             .with_radii(0.025f)
+        ///             .with_colors({
+        ///                 rr::datatypes::Rgba32(255, 0, 0),
+        ///                 rr::datatypes::Rgba32(0, 255, 0),
+        ///                 rr::datatypes::Rgba32(0, 0, 255),
+        ///             })
+        ///             .with_labels({"red", "green", "blue"})
+        ///     );
+        /// }
+        /// ```
         struct Boxes3D {
             /// All half-extents that make up the batch of boxes.
             std::vector<rerun::components::HalfSizes3D> half_sizes;
@@ -251,6 +251,11 @@ namespace rerun {
             size_t num_instances() const {
                 return half_sizes.size();
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

@@ -1,9 +1,10 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
+use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
-use super::{DataUi, EntityDataUi};
+use super::EntityDataUi;
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
     re_tracing::profile_function!();
@@ -32,18 +33,21 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
-    add::<re_components::Mesh3D>(&mut registry);
-    add::<re_components::Pinhole>(&mut registry);
-    add::<re_components::ViewCoordinates>(&mut registry);
     add::<re_types::components::AnnotationContext>(&mut registry);
     add::<re_types::components::ClassId>(&mut registry);
     add::<re_types::components::Color>(&mut registry);
+    add::<re_types::components::PinholeProjection>(&mut registry);
     add::<re_types::components::KeypointId>(&mut registry);
-    add::<re_types::components::Transform3D>(&mut registry);
-    add::<re_types::components::Rotation3D>(&mut registry);
     add::<re_types::components::LineStrip2D>(&mut registry);
     add::<re_types::components::LineStrip3D>(&mut registry);
+    add::<re_types::components::Resolution>(&mut registry);
+    add::<re_types::components::Rotation3D>(&mut registry);
+    add::<re_types::components::Material>(&mut registry);
+    add::<re_types::components::MeshProperties>(&mut registry);
     add::<re_types::components::TensorData>(&mut registry);
+    add::<re_types::components::Transform3D>(&mut registry);
+    add::<re_types::components::OutOfTreeTransform3D>(&mut registry);
+    add::<re_types::components::ViewCoordinates>(&mut registry);
 
     registry
 }
@@ -51,7 +55,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 fn fallback_component_ui(
     _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    verbosity: UiVerbosity,
     _query: &LatestAtQuery,
     _entity_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -59,69 +63,80 @@ fn fallback_component_ui(
 ) {
     // No special ui implementation - use a generic one:
     if let Some(value) = component.lookup_arrow(instance_key) {
-        ui.label(format_arrow(&*value));
+        arrow_ui(ui, verbosity, &*value);
     } else {
         ui.weak("(null)");
     }
 }
 
-fn format_arrow(value: &dyn arrow2::array::Array) -> String {
+fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array::Array) {
     use re_log_types::SizeBytes as _;
 
-    let bytes = value.total_size_bytes();
-    if bytes < 256 {
+    // Special-treat text.
+    // Note: we match on the raw data here, so this works for any component containing text.
+    if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
+        if utf8.len() == 1 {
+            let string = utf8.value(0);
+            text_ui(string, ui, verbosity);
+            return;
+        }
+    }
+    if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
+        if utf8.len() == 1 {
+            let string = utf8.value(0);
+            text_ui(string, ui, verbosity);
+            return;
+        }
+    }
+
+    let num_bytes = array.total_size_bytes();
+    if num_bytes < 256 {
         // Print small items:
         let mut string = String::new();
-        let display = arrow2::array::get_display(value, "null");
+        let display = arrow2::array::get_display(array, "null");
         if display(&mut string, 0).is_ok() {
-            return string;
+            ui.label(string);
+            return;
         }
     }
 
     // Fallback:
-    format!("{bytes} bytes")
+    ui.label(format!(
+        "{} of {:?}",
+        re_format::format_bytes(num_bytes as _),
+        array.data_type()
+    ));
 }
 
-// ----------------------------------------------------------------------------
+fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
+    let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+    let color = ui.visuals().text_color();
+    let wrap_width = ui.available_width();
+    let mut layout_job =
+        egui::text::LayoutJob::simple(string.to_owned(), font_id, color, wrap_width);
 
-impl DataUi for re_components::Mesh3D {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            re_components::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
-            re_components::Mesh3D::Raw(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
+    let mut needs_scroll_area = false;
+
+    match verbosity {
+        UiVerbosity::Small => {
+            // Elide
+            layout_job.wrap.max_rows = 1;
+            layout_job.wrap.break_anywhere = true;
+        }
+        UiVerbosity::Reduced => {
+            layout_job.wrap.max_rows = 3;
+        }
+        UiVerbosity::All => {
+            let num_newlines = string.chars().filter(|&c| c == '\n').count();
+            needs_scroll_area = 10 < num_newlines || 300 < string.len();
         }
     }
-}
 
-impl DataUi for re_components::EncodedMesh3D {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ui.label(format!("{} mesh", self.format));
-    }
-}
-
-impl DataUi for re_components::RawMesh3D {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ui.label(format!(
-            "mesh ({} triangles)",
-            re_format::format_number(self.num_triangles())
-        ));
+    if needs_scroll_area {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.label(layout_job);
+        });
+    } else {
+        ui.label(layout_job);
     }
 }

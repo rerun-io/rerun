@@ -8,11 +8,12 @@ namespace rerun.archetypes;
 // ---
 
 /// A log entry in a text log, comprised of a text body and its log level.
+///
+/// \example text_log_integration image="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png"
 table TextLog (
-  "attr.rust.derive": "PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
-  body: rerun.components.Text ("attr.rerun.component_required", order: 100);
+  text: rerun.components.Text ("attr.rerun.component_required", order: 100);
   level: rerun.components.TextLogLevel ("attr.rerun.component_recommended", nullable, order: 200);
   color: rerun.components.Color (nullable, order: 300);
 }

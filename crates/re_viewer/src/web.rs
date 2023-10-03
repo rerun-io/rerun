@@ -2,7 +2,7 @@ use eframe::wasm_bindgen::{self, prelude::*};
 
 use std::sync::Arc;
 
-use re_error::ResultExt as _;
+use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
 
 #[global_allocator]
@@ -38,6 +38,7 @@ impl WebHandle {
             default_theme: eframe::Theme::Dark,
             wgpu_options: crate::wgpu_options(),
             depth_buffer: 0,
+            ..Default::default()
         };
 
         self.runner

@@ -9,10 +9,9 @@ namespace rerun.components;
 
 // ---
 
-// A Multi-dimensional `Tensor` of data.
+/// A multi-dimensional `Tensor` with optionally named arguments.
 table TensorData (
   "attr.arrow.transparent",
-  order: 100,
   "attr.rust.derive": "PartialEq",
   "attr.rust.repr": "transparent"
 ) {

@@ -22,16 +22,18 @@ ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
 # TODO(#3207): implement missing cpp roundtrips
 opt_out = {
+    "asset3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
+    "bar_chart": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "depth_image": ["cpp"],  # TODO(#2792)
-    "image": ["cpp"],  # TODO(#2792)
-    "line_strips2d": ["cpp"],  # TODO(#2786): Needs rect
-    "points2d": ["cpp"],  # TODO(#2786): Needs rect
-    "segmentation_image": ["cpp"],  # TODO(#2792)
-    "tensor": ["cpp"],  # TODO(#2792)
+    "depth_image": ["cpp"],  # TODO(#3380)
+    "image": ["cpp"],  # TODO(#3380)
+    "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
+    "segmentation_image": ["cpp"],  # TODO(#3380)
+    "tensor": ["cpp"],  # TODO(#3380)
+    "time_series_scalar": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "transform3d": [
         "cpp"
-    ],  # TODO(#2792) - `tests/roundtrips.py --release transform3d` fails on mac (but works without --release)
+    ],  # TODO(#3380) - `tests/roundtrips.py --release transform3d` fails on mac (but works without --release)
 }
 
 

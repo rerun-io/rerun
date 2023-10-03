@@ -8,7 +8,6 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -26,7 +25,7 @@ def main() -> None:
     class_ids = np.array([126, 127], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    line_strips2d = rr2.LineStrips2D(
+    line_strips2d = rr.LineStrips2D(
         points,
         radii=radii,
         colors=colors,
@@ -42,9 +41,9 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_line_strips2d")
 
-    rr2.log("line_strips2d", line_strips2d)
+    rr.log("line_strips2d", line_strips2d)
     # Hack to establish 2d view bounds
-    rr2.log("rect", rr2.Boxes2D(centers=[0, 0], half_sizes=[10, 10]))
+    rr.log("rect", rr.Boxes2D(centers=[0, 0], half_sizes=[10, 10]))
 
     rr.script_teardown(args)
 

@@ -3,11 +3,7 @@
 use arrow2::{array::Array, datatypes::Field, ffi};
 use itertools::Itertools as _;
 use pyo3::{
-    exceptions::{PyAttributeError, PyValueError},
-    ffi::Py_uintptr_t,
-    types::PyDict,
-    types::{IntoPyDict, PyString},
-    PyAny, PyResult,
+    exceptions::PyValueError, ffi::Py_uintptr_t, types::PyDict, types::PyString, PyAny, PyResult,
 };
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimePoint};
 
@@ -48,27 +44,6 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
     }
 }
 
-#[pyo3::pyfunction]
-pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
-    let pyarrow = py.import("pyarrow")?;
-    let pyarrow_field_cls = pyarrow
-        .dict()
-        .get_item("Field")
-        .ok_or_else(|| PyAttributeError::new_err("Module 'pyarrow' has no attribute 'Field'"))?;
-
-    let fields = re_components::iter_registered_field_types()
-        .map(|field| {
-            let schema = Box::new(ffi::export_field_to_c(field));
-            let schema_ptr = &*schema as *const ffi::ArrowSchema;
-            pyarrow_field_cls
-                .call_method1("_import_from_c", (schema_ptr as Py_uintptr_t,))
-                .map(|f| (field.name.clone(), f))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    Ok(fields.into_py_dict(py))
-}
-
 /// Build a [`DataRow`] given a '**kwargs'-style dictionary of component arrays.
 pub fn build_data_row_from_components(
     entity_path: &EntityPath,
@@ -96,7 +71,8 @@ pub fn build_data_row_from_components(
         entity_path.clone(),
         num_instances,
         cells,
-    );
+    )
+    .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
     Ok(row)
 }

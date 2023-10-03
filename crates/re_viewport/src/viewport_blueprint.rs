@@ -22,6 +22,14 @@ use crate::{
 
 // ----------------------------------------------------------------------------
 
+// We delay any modifications to the tree until the end of the frame,
+// so that we don't iterate over something while modifying it.
+#[derive(Clone, Default)]
+pub(crate) struct TreeActions {
+    pub focus_tab: Option<SpaceViewId>,
+    pub remove: Vec<egui_tiles::TileId>,
+}
+
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Clone)]
 pub struct ViewportBlueprint<'a> {
@@ -39,11 +47,19 @@ pub struct ViewportBlueprint<'a> {
     /// Show one tab as maximized?
     pub maximized: Option<SpaceViewId>,
 
-    /// Set to `true` the first time the user messes around with the viewport blueprint.
-    pub has_been_user_edited: bool,
+    /// Whether the viewport layout is determined automatically.
+    ///
+    /// Set to `false` the first time the user messes around with the viewport blueprint.
+    pub auto_layout: bool,
 
     /// Whether or not space views should be created automatically.
     pub auto_space_views: bool,
+
+    /// Actions to perform at the end of the frame.
+    ///
+    /// We delay any modifications to the tree until the end of the frame,
+    /// so that we don't mutate something while inspecitng it.
+    pub(crate) deferred_tree_actions: TreeActions,
 }
 
 impl<'a> ViewportBlueprint<'a> {
@@ -75,20 +91,22 @@ impl<'a> ViewportBlueprint<'a> {
             space_views,
             tree,
             maximized,
-            has_been_user_edited,
+            auto_layout,
             auto_space_views,
+            deferred_tree_actions: tree_actions,
         } = self;
 
         // Note, it's important that these values match the behavior in `load_viewport_blueprint` below.
         *space_views = Default::default();
         *tree = Default::default();
         *maximized = None;
-        *has_been_user_edited = false;
+        *auto_layout = true;
         // Only enable auto-space-views if this is the app-default blueprint
         *auto_space_views = self
             .blueprint_db
             .store_info()
             .map_or(false, |ri| ri.is_app_default_blueprint());
+        *tree_actions = Default::default();
 
         let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
         for space_view in
@@ -114,16 +132,17 @@ impl<'a> ViewportBlueprint<'a> {
     }
 
     pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceViewBlueprint> {
+        self.mark_user_interaction();
+
         let Self {
             blueprint_db: _,
             space_views,
             tree,
             maximized,
-            has_been_user_edited,
+            auto_layout: _,
             auto_space_views: _,
+            deferred_tree_actions: _,
         } = self;
-
-        *has_been_user_edited = true;
 
         if *maximized == Some(*space_view_id) {
             *maximized = None;
@@ -158,7 +177,12 @@ impl<'a> ViewportBlueprint<'a> {
     }
 
     pub fn mark_user_interaction(&mut self) {
-        self.has_been_user_edited = true;
+        if self.auto_layout {
+            re_log::trace!("User edits - will no longer auto-layout");
+        }
+
+        self.auto_layout = false;
+        self.auto_space_views = false;
     }
 
     pub fn add_space_view(&mut self, mut space_view: SpaceViewBlueprint) -> SpaceViewId {
@@ -183,24 +207,29 @@ impl<'a> ViewportBlueprint<'a> {
 
         self.space_views.insert(space_view_id, space_view);
 
-        if self.has_been_user_edited {
+        if self.auto_layout {
+            // Re-run the auto-layout next frame:
+            re_log::trace!("Added a space view with no user edits yet - will re-run auto-layout");
+            self.tree = Default::default();
+        } else {
             // Try to insert it in the tree, in the top level:
             if let Some(root_id) = self.tree.root {
                 let tile_id = self.tree.tiles.insert_pane(space_view_id);
                 if let Some(egui_tiles::Tile::Container(container)) =
                     self.tree.tiles.get_mut(root_id)
                 {
+                    re_log::trace!("Inserting new space view into root container");
                     container.add_child(tile_id);
                 } else {
                     re_log::trace!("Root was not a container - will re-run auto-layout");
-                    self.tree = Default::default(); // we'll just re-initialize later instead
+                    self.tree = Default::default();
                 }
+            } else {
+                re_log::trace!("No root found - will re-run auto-layout");
             }
-        } else {
-            // Re-run the auto-layout next frame:
-            re_log::trace!("No user edits yet - will re-run auto-layout");
-            self.tree = Default::default();
         }
+
+        self.deferred_tree_actions.focus_tab = Some(space_view_id);
 
         space_view_id
     }
@@ -241,11 +270,13 @@ impl<'a> ViewportBlueprint<'a> {
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
-        if after.tree != before.tree || after.has_been_user_edited != before.has_been_user_edited {
+        if after.tree != before.tree || after.auto_layout != before.auto_layout {
+            re_log::trace!("Syncing tree");
+
             let component = ViewportLayout {
                 space_view_keys: after.space_views.keys().cloned().collect(),
                 tree: after.tree.clone(),
-                has_been_user_edited: after.has_been_user_edited,
+                auto_layout: after.auto_layout,
             };
 
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
@@ -275,7 +306,7 @@ impl<'a> ViewportBlueprint<'a> {
 // ----------------------------------------------------------------------------
 
 // TODO(jleibs): Move this helper to a better location
-pub fn add_delta_from_single_component<'a, C>(
+fn add_delta_from_single_component<'a, C>(
     deltas: &mut Vec<DataRow>,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
@@ -290,7 +321,8 @@ pub fn add_delta_from_single_component<'a, C>(
         timepoint.clone(),
         1,
         [component],
-    );
+    )
+    .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
 
     deltas.push(row);
 }
@@ -302,6 +334,7 @@ pub fn load_space_view_blueprint(
     blueprint_db: &re_data_store::StoreDb,
 ) -> Option<SpaceViewBlueprint> {
     re_tracing::profile_function!();
+
     let mut space_view = blueprint_db
         .store()
         .query_timeless_component::<SpaceViewComponent>(path)
@@ -324,6 +357,8 @@ pub fn load_space_view_blueprint(
 }
 
 pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
+    re_tracing::profile_function!();
+
     let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
         blueprint_db
             .entity_db
@@ -342,7 +377,6 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         Default::default()
     };
 
-    re_tracing::profile_function!();
     let auto_space_views = blueprint_db
         .store()
         .query_timeless_component::<AutoSpaceViews>(&VIEWPORT_PATH.into())
@@ -386,8 +420,9 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         space_views: known_space_views,
         tree: viewport_layout.tree,
         maximized: space_view_maximized.0,
-        has_been_user_edited: viewport_layout.has_been_user_edited,
+        auto_layout: viewport_layout.auto_layout,
         auto_space_views: auto_space_views.0,
+        deferred_tree_actions: Default::default(),
     };
     // TODO(jleibs): It seems we shouldn't call this until later, after we've created
     // the snapshot. Doing this here means we are mutating the state before it goes
@@ -438,7 +473,7 @@ pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) 
     let cell =
         DataCell::from_arrow_empty(SpaceViewComponent::name(), SpaceViewComponent::data_type());
 
-    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell);
+    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell).unwrap();
 
     deltas.push(row);
 }

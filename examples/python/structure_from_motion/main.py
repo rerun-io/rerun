@@ -23,6 +23,34 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 # When dataset filtering is turned on, drop views with less than this many valid points.
 FILTER_MIN_VISIBLE: Final = 500
 
+DESCRIPTION = """
+# Sparse Reconstruction by COLMAP
+
+This example was generated from the output of a sparse reconstruction
+done with COLMAP.
+
+[COLMAP](https://colmap.github.io/index.html) is a general-purpose
+Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline
+with a graphical and command-line interface.
+
+In this example a short video clip has been processed offline by the
+COLMAP pipeline, and we use Rerun to visualize the individual
+camera frames, estimated camera poses, and resulting point clouds over time.
+
+## How it was made
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
+
+### Colored 3D Points
+The colored 3D points were added to the scene by logging the
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points3d)
+to the [points entity](recording://points):
+```python
+rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
+```
+**Note:** we added some [custom per-point errors](recording://points.ext.error) that you can see when you
+hover over the points in the 3D view.
+""".strip()
+
 
 def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.NDArray[np.float_]]:
     """Scale the camera intrinsics to match the resized image."""
@@ -81,7 +109,8 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    rr.log_view_coordinates("/", up="-Y", timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
@@ -119,35 +148,36 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         point_colors = [point.rgb for point in visible_xyzs]
         point_errors = [point.error for point in visible_xyzs]
 
-        rr.log_scalar("plot/avg_reproj_err", np.mean(point_errors), color=[240, 45, 58])
+        rr.log("plot/avg_reproj_err", rr.TimeSeriesScalar(np.mean(point_errors), color=[240, 45, 58]))
 
-        rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})
+        rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
 
         # COLMAP's camera transform is "camera from world"
-        rr.log_transform3d(
-            "camera", rr.TranslationRotationScale3D(image.tvec, rr.Quaternion(xyzw=quat_xyzw)), from_parent=True
+        rr.log(
+            "camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True)
         )
-        rr.log_view_coordinates("camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
+        rr.log("camera", rr.ViewCoordinates.RDF)  # X=Right, Y=Down, Z=Forward
 
         # Log camera intrinsics
         assert camera.model == "PINHOLE"
-        rr.log_pinhole(
+        rr.log(
             "camera/image",
-            width=camera.width,
-            height=camera.height,
-            focal_length_px=camera.params[:2],
-            principal_point_px=camera.params[2:],
+            rr.Pinhole(
+                resolution=[camera.width, camera.height],
+                focal_length=camera.params[:2],
+                principal_point=camera.params[2:],
+            ),
         )
 
         if resize:
             bgr = cv2.imread(str(image_file))
             bgr = cv2.resize(bgr, resize)
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-            rr.log_image("camera/image", rgb, jpeg_quality=75)
+            rr.log("camera/image", rr.Image(rr.TensorData(array=rgb, jpeg_quality=75)))
         else:
-            rr.log_image_file("camera/image", img_path=dataset_path / "images" / image.name)
+            rr.log("camera/image", rr.ImageEncoded(path=dataset_path / "images" / image.name))
 
-        rr.log_points("camera/image/keypoints", visible_xys, colors=[34, 138, 167])
+        rr.log("camera/image/keypoints", rr.Points2D(visible_xys, colors=[34, 138, 167]))
 
 
 def main() -> None:

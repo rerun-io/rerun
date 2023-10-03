@@ -11,8 +11,8 @@ namespace rerun.components;
 
 /// A point of origin in 3D space.
 struct Origin3D (
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
 ) {
   origin: rerun.datatypes.Vec3D (order: 100);
 }

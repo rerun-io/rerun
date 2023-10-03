@@ -1,21 +1,19 @@
 # Rerun Python SDK Architecture
 
-**NOTE**: this document applies to the next generation, WIP API, currently residing in `rerun_sdk/rerun/_rerun2`.
-
 ## Background
 
-Rerun primarily logs components, which are pieces of data with well-defined memory layout and semantics. For example, the `Color` component is stored as a `uint32` and represent a sRGB, RGBA color information. Components are typically logged in array form.
+Rerun primarily logs components, which are pieces of data with well-defined memory layout and semantics. For example, the `Color` component is stored as a `uint32` and represent a sRGB, RGBA rgba32 information. Components are typically logged in array form.
 
-In most cases, multiple components are needed to represent an object to be logged and displayed in the Rerun viewer. For example, a 3D point cloud might need a `Point3D` component with the coordinates, a `Colors` component with the colors, and a `Label` component with the text labels.
+In most cases, multiple components are needed to represent an object to be logged and displayed in the Rerun viewer. For example, a 3D point cloud might need a `Position3D` component with the coordinates, a `Colors` component with the rgba32s, and a `Label` component with the text labels.
 
 We call an `Archetype` a well-define collection of component that represent a give type of high-level object understood by the Rerun viewer. For example, the `Points3D` archetype (note the plural form) includes the following components:
-- `Point3D`: the point coordinates (note the singular form)
-- `Color`: the color information, if any
+- `Position3D`: the point coordinates (note the singular form)
+- `Color`: the rgba32 information, if any
 - `Label`: the textual label, if any
 - `Radii`: the radius of the point, if any
 - etc.
 
-Some complex components are build using combination of another type of object called "datatype". These objects have well-defined memory layout but typically lack semantics. For example, the `Vec3D` datatype is a size 3 array of `float32`, and can be used by various components (for example, the `Point3D` component use the `Vec3D` datatype).
+Some complex components are build using combination of another type of object called "datatype". These objects have well-defined memory layout but typically lack semantics. For example, the `Vec3D` datatype is a size 3 array of `float32`, and can be used by various components (for example, the `Position3D` component use the `Vec3D` datatype).
 
 The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and datatypes needed to build them. In addition, the SDK provides the `rr.log()` function to log any archetype-conforming object, and several support function for initialisation, recording session management, etc.
 
@@ -85,8 +83,8 @@ This section covers the available hooks.
 ### The TypeExt class
 
 During codegen, each class looks for a file: `class_ext.py` in the same directory where the class
-will be generated. For example `datatypes/color_ext.py` is the extension file for the `Color` datatype,
-which can be found in `datatypes/color.py`.
+will be generated. For example `datatypes/rgba32_ext.py` is the extension file for the `Rgba32` datatype,
+which can be found in `datatypes/rgba32.py`.
 
 In this file you must define a class called `<Type>Ext`, which will be added as a mixin to the generated class.
 
@@ -160,7 +158,7 @@ Implementing a Pythonic API for a component or datatype sometime require a subtl
 The `converter` attribute of [`attrs.field()`] can be any callable. Often, `lambda` would make for a concise and efficient converter implementation, but, unfortunately, mypy doesn't support anything else than regular functions and emits error otherwise. For this reason, the code generator always uses regular functions when generating default converter. This is done by either of the following means:
 
 - using built-in function (e.g. `int()`, for non-nullable `int` fields);
-- using one of the functions provided in `_rerun2/_converters.py` (e.g. `int_or_none()` for nullable `int` fields);
+- using one of the functions provided in `_converters.py` (e.g. `int_or_none()` for nullable `int` fields);
 - locally generating a bespoke converter function (e.g. for field using datatypes, nullable or otherwise).
 
 

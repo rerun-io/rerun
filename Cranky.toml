@@ -153,7 +153,9 @@ allow = [
   "trivial_casts",
   "unused_qualifications",
 
-  # This would be nice to enable, but we have way too many unwraps in our arrow store 😭
+  # TODO(#3408): Forbid `.unwrap()`
+  # This would be nice to enable, but we have way too many unwraps right now 😭
   # Enabling this lint in 2023-04-27 yielded 556 hits.
+  # Enabling this lint in 2023-09-23 yielded 352 hits
   "clippy::unwrap_used",
 ]

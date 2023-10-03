@@ -146,7 +146,7 @@ impl DataStore {
     {
         re_tracing::profile_function!();
 
-        let mut row = match DataRow::try_from_cells1(
+        let mut row = match DataRow::from_cells1(
             RowId::random(),
             entity_path.clone(),
             timepoint.clone(),
@@ -186,7 +186,7 @@ impl DataStore {
         if let Some(datatype) = self.lookup_datatype(&component) {
             let cell = DataCell::from_arrow_empty(component, datatype.clone());
 
-            let mut row = match DataRow::try_from_cells1(
+            let mut row = match DataRow::from_cells1(
                 RowId::random(),
                 entity_path.clone(),
                 timepoint.clone(),

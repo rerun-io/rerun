@@ -8,28 +8,10 @@ namespace rerun.archetypes;
 
 /// A 3D transform.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/transform3d_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/transform3d_simple.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp ```ignore
-/// \cpp \include:../../../../../docs/code-examples/transform3d_simple.cpp
-/// \cpp ```
+/// \example transform3d_simple image="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png"
 table Transform3D (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   /// The transform
-  transform: rerun.components.Transform3D ("attr.rerun.component_required", required, order: 1000);
+  transform: rerun.components.Transform3D ("attr.rerun.component_required", order: 1000);
 }

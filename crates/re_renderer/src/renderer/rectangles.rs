@@ -28,7 +28,7 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
     WgpuResourcePools,
 };
 
@@ -632,7 +632,7 @@ impl Renderer for RectangleRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
         if draw_data.instances.is_empty() {
             return Ok(());

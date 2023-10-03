@@ -3,7 +3,6 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_components::ViewCoordinates;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
@@ -13,6 +12,7 @@ use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
     ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
+use re_types::components::ViewCoordinates;
 use re_viewer_context::{
     gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartCollection, ViewQuery, ViewerContext,
@@ -631,7 +631,7 @@ fn show_projections_from_2d_space(
     match ctx.selection_state().hovered_space() {
         HoveredSpace::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
-                if let Some(pinhole) = cam.pinhole {
+                if let Some(pinhole) = cam.pinhole.as_ref() {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
                     // If we don't have a z value, we only render the thick one.
                     let depth = if 0.0 < pos.z && pos.z.is_finite() {
@@ -721,7 +721,7 @@ fn default_eye(
 
     let look_up: glam::Vec3 = view_coordinates
         .and_then(|vc| vc.up())
-        .unwrap_or(re_components::coordinates::SignedAxis3::POSITIVE_Z)
+        .unwrap_or(re_types::view_coordinates::SignedAxis3::POSITIVE_Z)
         .into();
 
     let look_dir = if let Some(right) = view_coordinates.and_then(|vc| vc.right()) {

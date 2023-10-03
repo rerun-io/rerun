@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -15,27 +16,64 @@
 
 /// A generic n-dimensional Tensor.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```ignore
 /// //! Create and log a tensor.
 ///
 /// use ndarray::{Array, ShapeBuilder};
-/// use rerun::{archetypes::Tensor, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_tensor_simple").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_tensor_simple").memory()?;
 ///
-///    let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
-///    data.map_inplace(|x| *x = rand::random());
+///     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
+///     data.map_inplace(|x| *x = rand::random());
 ///
-///    let tensor = Tensor::try_from(data)?.with_names(["batch", "channel", "height", "width"]);
-///    rec.log("tensor", &tensor)?;
+///     let tensor = rerun::Tensor::try_from(data)?.with_names(["batch", "channel", "height", "width"]);
+///     rec.log("tensor", &tensor)?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png">
+///   <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png">
+/// </picture>
+///
+/// ```ignore
+/// //! Create and log a one dimensional tensor.
+///
+/// use ndarray::{Array, ShapeBuilder};
+/// use rand::{thread_rng, Rng};
+/// use rand_distr::StandardNormal;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_tensors").memory()?;
+///
+///     let mut data = Array::<f64, _>::default((100).f());
+///     data.map_inplace(|x| *x = thread_rng().sample(StandardNormal));
+///
+///     rec.log(
+///         "tensor",
+///         &rerun::Tensor::try_from(data.as_standard_layout().view())?,
+///     )?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1200w.png">
+///   <img src="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/full.png">
+/// </picture>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tensor {
     /// The tensor data
@@ -76,6 +114,12 @@ impl crate::Archetype for Tensor {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: TensorIndicator = TensorIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -96,56 +140,12 @@ impl crate::Archetype for Tensor {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.data as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::TensorData>::try_to_arrow([&self.data]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.TensorData".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("data", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.Tensor#data")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -153,10 +153,10 @@ impl crate::Archetype for Tensor {
             .collect();
         let data = {
             let array = arrays_by_name
-                .get("data")
+                .get("rerun.components.TensorData")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?;
-            <crate::components::TensorData>::try_from_arrow_opt(&**array)
+            <crate::components::TensorData>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Tensor#data")?
                 .into_iter()
                 .next()
@@ -165,6 +165,25 @@ impl crate::Archetype for Tensor {
                 .with_context("rerun.archetypes.Tensor#data")?
         };
         Ok(Self { data })
+    }
+}
+
+impl crate::AsComponents for Tensor {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.data as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

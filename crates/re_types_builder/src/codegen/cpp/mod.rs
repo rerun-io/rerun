@@ -13,10 +13,10 @@ use rayon::prelude::*;
 
 use crate::codegen::common::write_file;
 use crate::{
-    codegen::autogen_warning, ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects,
-    Type,
+    codegen::{autogen_warning, common::collect_examples},
+    ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects, Type,
 };
-use crate::{Object, ObjectSpecifics, ATTR_CPP_NO_FIELD_CTORS};
+use crate::{Object, ObjectSpecifics, Reporter, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -38,7 +38,6 @@ const DOC_COMMENT_SUFFIX_TOKEN: &str = "DOC_COMMENT_SUFFIX_TOKEN";
 const ANGLE_BRACKET_LEFT_TOKEN: &str = "SYS_INCLUDE_PATH_PREFIX_TOKEN";
 const ANGLE_BRACKET_RIGHT_TOKEN: &str = "SYS_INCLUDE_PATH_SUFFIX_TOKEN";
 const HEADER_EXTENSION_TOKEN: &str = "HEADER_EXTENSION_TOKEN";
-const TODO_TOKEN: &str = "TODO_TOKEN";
 
 fn quote_comment(text: &str) -> TokenStream {
     quote! { #NORMAL_COMMENT_PREFIX_TOKEN #text #NORMAL_COMMENT_SUFFIX_TOKEN }
@@ -67,10 +66,6 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
         .replace(&format!("{ANGLE_BRACKET_LEFT_TOKEN:?} \""), "<")
         .replace(&format!("\" {ANGLE_BRACKET_RIGHT_TOKEN:?}"), ">")
-        .replace(
-            &format!("{TODO_TOKEN:?}"),
-            "\n// TODO(#2647): code-gen for C++\n",
-        )
         .replace("< ", "<")
         .replace(" >", ">")
         .replace(" ::", "::");
@@ -107,6 +102,7 @@ pub struct CppCodeGenerator {
 impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
+        _reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
@@ -160,7 +156,7 @@ impl CppCodeGenerator {
                     &folder_path_sdk
                 };
                 let filepath = folder_path.join(format!("{filename_stem}.{extension}"));
-                write_file(&filepath, string);
+                write_file(&filepath, &string);
                 let inserted = filepaths.insert(filepath);
                 assert!(
                     inserted,
@@ -193,7 +189,7 @@ impl CppCodeGenerator {
                 .join(format!("{folder_name}.hpp"));
             let string = string_from_token_stream(&tokens, None);
             let string = format_code(&string);
-            write_file(&filepath, string);
+            write_file(&filepath, &string);
             filepaths.insert(filepath);
         }
 
@@ -416,7 +412,9 @@ impl QuotedObject {
                     .collect_vec();
 
                 // Constructors with all required components.
-                if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
+                if !required_component_fields.is_empty()
+                    && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
+                {
                     let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
                         .iter()
                         .map(|obj_field| {
@@ -522,12 +520,16 @@ impl QuotedObject {
 
                 // Num instances gives the number of primary instances.
                 {
-                    let first_required_field = required_component_fields.first().unwrap();
-                    let first_required_field_name = &format_ident!("{}", first_required_field.name);
-                    let definition_body = if first_required_field.typ.is_plural() {
-                        quote!(return #first_required_field_name.size();)
+                    let first_required_field = required_component_fields.first();
+                    let definition_body = if let Some(field) = first_required_field {
+                        let first_required_field_name = &format_ident!("{}", field.name);
+                        if field.typ.is_plural() {
+                            quote!(return #first_required_field_name.size();)
+                        } else {
+                            quote!(return 1;)
+                        }
                     } else {
-                        quote!(return 1;)
+                        quote!(return 0;)
                     };
                     methods.push(Method {
                         docs: "Returns the number of primary instances of this archetype.".into(),
@@ -542,6 +544,12 @@ impl QuotedObject {
                         inline: true,
                     });
                 }
+
+                methods.push(archetype_indicator(
+                    &type_ident,
+                    &mut hpp_includes,
+                    &mut cpp_includes,
+                ));
 
                 methods.push(archetype_as_component_batches(
                     &type_ident,
@@ -1230,6 +1238,33 @@ fn component_to_data_cell_method(
     }
 }
 
+fn archetype_indicator(
+    type_ident: &Ident,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+) -> Method {
+    hpp_includes.insert_rerun("data_cell.hpp");
+    hpp_includes.insert_rerun("arrow.hpp");
+    hpp_includes.insert_rerun("component_batch.hpp");
+    cpp_includes.insert_rerun("indicator_component.hpp");
+
+    Method {
+        docs: "Creates an `AnonymousComponentBatch` out of the associated indicator component. \
+        This allows for associating arbitrary indicator components with arbitrary data. \
+        Check out the `manual_indicator` API example to see what's possible."
+            .into(),
+        declaration: MethodDeclaration {
+            is_static: true,
+            return_type: quote!(AnonymousComponentBatch),
+            name_and_parameters: quote!(indicator()),
+        },
+        definition_body: quote! {
+            return ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+        },
+        inline: false,
+    }
+}
+
 fn archetype_as_component_batches(
     type_ident: &Ident,
     obj: &Object,
@@ -1273,7 +1308,7 @@ fn archetype_as_component_batches(
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_batches)*
-            comp_batches.emplace_back(ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, num_instances()));
+            comp_batches.emplace_back(#type_ident::indicator());
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             return comp_batches;
@@ -1785,6 +1820,7 @@ fn quote_variable(
 ) -> TokenStream {
     if obj_field.is_nullable {
         includes.insert_system("optional");
+        #[allow(clippy::match_same_arms)]
         match &obj_field.typ {
             Type::UInt8 => quote! { std::optional<uint8_t> #name },
             Type::UInt16 => quote! { std::optional<uint16_t> #name },
@@ -1795,7 +1831,7 @@ fn quote_variable(
             Type::Int32 => quote! { std::optional<int32_t> #name },
             Type::Int64 => quote! { std::optional<int64_t> #name },
             Type::Bool => quote! { std::optional<bool> #name },
-            Type::Float16 => unimplemented!("float16 not yet implemented for C++"),
+            Type::Float16 => quote! { std::optional<uint16_t> #name },
             Type::Float32 => quote! { std::optional<float> #name },
             Type::Float64 => quote! { std::optional<double> #name },
             Type::String => {
@@ -1819,6 +1855,7 @@ fn quote_variable(
             }
         }
     } else {
+        #[allow(clippy::match_same_arms)]
         match &obj_field.typ {
             Type::UInt8 => quote! { uint8_t #name },
             Type::UInt16 => quote! { uint16_t #name },
@@ -1829,7 +1866,7 @@ fn quote_variable(
             Type::Int32 => quote! { int32_t #name },
             Type::Int64 => quote! { int64_t #name },
             Type::Bool => quote! { bool #name },
-            Type::Float16 => unimplemented!("float16 not yet implemented for C++"),
+            Type::Float16 => quote! { uint16_t #name },
             Type::Float32 => quote! { float #name },
             Type::Float64 => quote! { double #name },
             Type::String => {
@@ -1856,6 +1893,7 @@ fn quote_variable(
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
+    #[allow(clippy::match_same_arms)]
     match typ {
         ElementType::UInt8 => quote! { uint8_t },
         ElementType::UInt16 => quote! { uint16_t },
@@ -1866,7 +1904,7 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => unimplemented!("float16 not yet implemented for C++"),
+        ElementType::Float16 => quote! { uint16_t },
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {
@@ -1890,7 +1928,34 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
 }
 
 fn quote_docstrings(docs: &Docs) -> TokenStream {
-    let lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+
+    let required = false; // TODO(#2919): `cpp` examples are not required for now
+    let examples = collect_examples(docs, "cpp", required).unwrap_or_default();
+    if !examples.is_empty() {
+        lines.push(String::new());
+        let section_title = if examples.len() == 1 {
+            "Example"
+        } else {
+            "Examples"
+        };
+        lines.push(format!("## {section_title}"));
+        lines.push(String::new());
+        let mut examples = examples.into_iter().peekable();
+        while let Some(example) = examples.next() {
+            if let Some(title) = example.base.title {
+                lines.push(format!(" ### {title}"));
+            }
+            lines.push(" ```cpp,ignore".into());
+            lines.extend(example.lines.iter().map(|line| format!(" {line}")));
+            lines.push(" ```".into());
+            if examples.peek().is_some() {
+                // blank line between examples
+                lines.push(String::new());
+            }
+        }
+    }
+
     let quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN

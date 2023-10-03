@@ -4,11 +4,11 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use re_components::datagen::{build_frame_nr, build_some_colors, build_some_positions2d};
-
 use re_log_types::{
-    entity_path, DataRow, DataTable, Index, LogMsg, RowId, StoreId, StoreKind, TableId,
+    entity_path, DataRow, DataTable, Index, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt,
+    TimeType, Timeline,
 };
+use re_types::datagen::{build_some_colors, build_some_positions2d};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
@@ -77,7 +77,8 @@ fn mono_points_arrow(c: &mut Criterion) {
                         [build_frame_nr(0.into())],
                         1,
                         (build_some_positions2d(1), build_some_colors(1)),
-                    )],
+                    )
+                    .unwrap()],
                 )
             })
             .collect()
@@ -135,6 +136,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
                     1,
                     (build_some_positions2d(1), build_some_colors(1)),
                 )
+                .unwrap()
             }),
         )
     }
@@ -192,7 +194,8 @@ fn batch_points_arrow(c: &mut Criterion) {
                     build_some_positions2d(NUM_POINTS),
                     build_some_colors(NUM_POINTS),
                 ),
-            )],
+            )
+            .unwrap()],
         )]
     }
 
@@ -234,4 +237,9 @@ fn batch_points_arrow(c: &mut Criterion) {
             b.iter(|| decode_tables(&decode_log_msgs(&encoded)));
         });
     }
+}
+
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`re_log_types::TimePoint`].
+fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
+    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }

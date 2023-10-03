@@ -11,47 +11,12 @@ namespace rerun.archetypes;
 
 /// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py Simple 3D boxes:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/box3d_simple.py
-/// \py ```
-/// \py
-/// \py Batch of 3D boxes:
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/box3d_batch.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs Simple 3D boxes:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/box3d_simple.rs
-/// \rs ```
-/// \rs
-/// \rs Batch of 3D boxes:
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/box3d_batch.rs
-/// \rs ```
-///
-/// \cpp ## Example
-/// \cpp
-/// \cpp Simple 3D boxes:
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/box3d_simple.cpp
-/// \cpp ```
-/// \cpp
-/// \cpp Batch of 3D boxes:
-/// \cpp ```
-/// \cpp \include:../../../../../docs/code-examples/box3d_batch.cpp
-/// \cpp ```
+/// \example box3d_simple title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
+/// \example box3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/1200w.png"
 table Boxes3D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
-  "attr.cpp.no_field_ctors",
-  order: 100
+  "attr.cpp.no_field_ctors"
 ) {
   // --- Required ---
 

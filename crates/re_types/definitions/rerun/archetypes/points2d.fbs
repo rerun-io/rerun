@@ -7,29 +7,15 @@ namespace rerun.archetypes;
 
 // ---
 
-// TODO(#2371): archetype IDL definitions must always be tables
-// TODO(#2372): archetype IDL definitions must refer to objects of kind component
 // TODO(#2373): `attr.rerun.component_required` implies `required`
 // TODO(#2427): distinguish optional vs. recommended in language backends
-// TODO(#2521): always derive debug & clone for rust backend
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/point2d_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/point2d_simple.rs
-/// \rs ```
+/// \example point2d_simple image="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1200w.png"
+/// \example point2d_random image="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png"
 table Points2D (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

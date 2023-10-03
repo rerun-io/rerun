@@ -59,7 +59,7 @@ impl Boxes3DPart {
         let mut line_batch = line_builder
             .batch("boxes3d")
             .depth_offset(ent_context.depth_offset)
-            .world_from_obj(ent_context.world_from_obj)
+            .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
@@ -79,7 +79,7 @@ impl Boxes3DPart {
                     min: half_extent.box_min(position),
                     max: half_extent.box_max(position),
                 },
-                ent_context.world_from_obj,
+                ent_context.world_from_entity,
             );
 
             let position = position.into();
@@ -106,7 +106,7 @@ impl Boxes3DPart {
                     text,
                     color,
                     target: UiLabelTarget::Position3D(
-                        ent_context.world_from_obj.transform_point3(position),
+                        ent_context.world_from_entity.transform_point3(position),
                     ),
                     labeled_instance: instance_hash,
                 });
@@ -131,13 +131,8 @@ impl ViewPartSystem for Boxes3DPart {
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
-        components: &std::collections::BTreeSet<re_types::ComponentName>,
-    ) -> bool {
-        components.contains(&Boxes3D::indicator_component())
+    fn indicator_components(&self) -> ComponentNameSet {
+        std::iter::once(Boxes3D::indicator().as_ref().name()).collect()
     }
 
     fn execute(

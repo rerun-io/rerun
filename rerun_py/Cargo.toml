@@ -43,7 +43,6 @@ re_build_info.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
-re_components = { workspace = true, features = ["image"] }
 re_memory.workspace = true
 rerun = { workspace = true, features = ["analytics", "server", "sdk"] }
 re_web_viewer_server = { workspace = true, optional = true }
@@ -55,11 +54,9 @@ re_viewer.workspace = true
 re_viewport.workspace = true
 
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
-document-features = "0.2"
-image = { workspace = true, default-features = false, features = ["png"] }
+document-features.workspace = true
 itertools = { workspace = true }
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
-numpy = { version = "0.19.0", features = ["half"] }
 once_cell.workspace = true
 parking_lot = "0.12"
 pyo3 = { version = "0.19.0", features = ["abi3-py38"] }

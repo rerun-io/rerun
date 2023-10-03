@@ -80,10 +80,10 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
                 let comment = &line[slashes + 3..];
                 output.push_str(leading_spaces);
                 output.push_str("///");
-                if !comment.is_empty() {
+                if !comment.starts_with(char::is_whitespace) {
                     output.push(' ');
-                    output.push_str(comment);
                 }
+                output.push_str(comment);
                 output.push('\n');
 
                 prev_line_was_attr = false;

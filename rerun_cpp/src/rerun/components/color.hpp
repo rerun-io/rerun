@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../data_cell.hpp"
-#include "../datatypes/color.hpp"
+#include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -28,7 +28,7 @@ namespace rerun {
         /// The color is stored as a 32-bit integer, where the most significant
         /// byte is `R` and the least significant byte is `A`.
         struct Color {
-            rerun::datatypes::Color rgba;
+            rerun::datatypes::Rgba32 rgba;
 
             /// Name of the component, used for serialization.
             static const char NAME[];
@@ -58,9 +58,9 @@ namespace rerun {
           public:
             Color() = default;
 
-            Color(rerun::datatypes::Color _rgba) : rgba(std::move(_rgba)) {}
+            Color(rerun::datatypes::Rgba32 _rgba) : rgba(std::move(_rgba)) {}
 
-            Color& operator=(rerun::datatypes::Color _rgba) {
+            Color& operator=(rerun::datatypes::Rgba32 _rgba) {
                 rgba = std::move(_rgba);
                 return *this;
             }

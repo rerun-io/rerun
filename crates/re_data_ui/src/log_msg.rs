@@ -114,19 +114,26 @@ impl DataUi for ArrowMsg {
 
         // TODO(cmc): Come up with something a bit nicer once data tables become a common sight.
         for row in table.to_rows() {
-            egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-                ui.monospace("entity_path:");
-                item_ui::entity_path_button(ctx, ui, None, row.entity_path());
-                ui.end_row();
+            match row {
+                Ok(row) => {
+                    egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
+                        ui.monospace("entity_path:");
+                        item_ui::entity_path_button(ctx, ui, None, row.entity_path());
+                        ui.end_row();
 
-                ui.monospace("time_point:");
-                row.timepoint().data_ui(ctx, ui, verbosity, query);
-                ui.end_row();
+                        ui.monospace("time_point:");
+                        row.timepoint().data_ui(ctx, ui, verbosity, query);
+                        ui.end_row();
 
-                ui.monospace("components:");
-                row.cells().data_ui(ctx, ui, verbosity, query);
-                ui.end_row();
-            });
+                        ui.monospace("components:");
+                        row.cells().data_ui(ctx, ui, verbosity, query);
+                        ui.end_row();
+                    });
+                }
+                Err(err) => {
+                    ui.label(ctx.re_ui.error_text(err.to_string()));
+                }
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rerun.experimental import dt as rrd
+from rerun.datatypes import Rotation3DBatch
 
 from .common_arrays import (
     expected_rotations,
@@ -10,11 +10,11 @@ from .common_arrays import (
 
 def test_rotation3d() -> None:
     for rotations in rotations_arrays:
-        print(f"rrd.Rotation3DArray.from_similar({rotations})")
-        datatype = rrd.Rotation3DArray.from_similar(rotations)
+        print(f"rrd.Rotation3DBatch({rotations})")
+        datatype = Rotation3DBatch(rotations)
         print(f"{datatype}\n")
 
-        assert datatype == expected_rotations(rotations, rrd.Rotation3DArray)
+        assert datatype == expected_rotations(rotations, Rotation3DBatch)
 
 
 if __name__ == "__main__":

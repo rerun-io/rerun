@@ -14,26 +14,14 @@ namespace rerun.archetypes;
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/segmentation_image_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/segmentation_image_simple.rs
-/// \rs ```
+/// \example segmentation_image_simple image="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png"
 table SegmentationImage (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 
   /// The image data. Should always be a rank-2 tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
 
   // --- Optional ---
 

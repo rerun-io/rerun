@@ -3,16 +3,17 @@ use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_components::Pinhole;
 use re_data_store::EntityPath;
+use re_types::archetypes::Image;
 use re_types::components::{DisconnectedSpace, TensorData};
-use re_types::ComponentNameSet;
+use re_types::{Archetype, ComponentNameSet};
 use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
     ViewSystemName, ViewerContext,
 };
 use tinyvec::TinyVec;
 
+use crate::query_pinhole;
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
 pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
@@ -123,22 +124,17 @@ pub fn all_possible_space_views(
         .collect_vec()
 }
 
-fn contains_any_image(
-    entity_path: &EntityPath,
-    store: &re_arrow_store::DataStore,
-    query: &LatestAtQuery,
-) -> bool {
-    if let Some(tensor) = store.query_latest_component::<TensorData>(entity_path, query) {
-        tensor.is_shaped_like_an_image()
-    } else {
-        false
-    }
+fn contains_any_image(ent_path: &EntityPath, store: &re_arrow_store::DataStore) -> bool {
+    store
+        .all_components(&Timeline::log_time(), ent_path)
+        .unwrap_or_default()
+        .iter()
+        .any(|comp| *comp == Image::indicator().name())
 }
 
 fn is_interesting_space_view_at_root(
     data_store: &re_arrow_store::DataStore,
     candidate: &SpaceViewBlueprint,
-    query: &LatestAtQuery,
 ) -> bool {
     // Not interesting if it has only data blueprint groups and no direct entities.
     // -> If there In that case we want spaceviews at those groups.
@@ -149,7 +145,7 @@ fn is_interesting_space_view_at_root(
     // If there are any images directly under the root, don't create root space either.
     // -> For images we want more fine grained control and resort to child-of-root spaces only.
     for entity_path in &candidate.contents.root_group().entities {
-        if contains_any_image(entity_path, data_store, query) {
+        if contains_any_image(entity_path, data_store) {
             return false;
         }
     }
@@ -177,9 +173,7 @@ fn is_interesting_space_view_not_at_root(
     //    .. a disconnect transform, the children can't be shown otherwise
     //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
     if is_spatial_class(candidate.class_name())
-        && (store
-            .query_latest_component::<Pinhole>(&candidate.space_origin, query)
-            .is_some()
+        && (query_pinhole(store, query, &candidate.space_origin).is_some()
             || store
                 .query_latest_component::<DisconnectedSpace>(&candidate.space_origin, query)
                 .map_or(false, |dp| dp.0))
@@ -210,7 +204,7 @@ pub fn default_created_space_views(
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_origin.is_root()
-                && is_interesting_space_view_at_root(store, space_view_candidate, &query))
+                && is_interesting_space_view_at_root(store, space_view_candidate))
             .then_some(*space_view_candidate.class_name())
         })
         .collect::<Vec<_>>();
@@ -413,12 +407,13 @@ pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
     class: &SpaceViewClassName,
     ent_path: &EntityPath,
+    query: &LatestAtQuery,
 ) -> bool {
     let parts = ctx
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
-    is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path)
+    is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path, query)
 }
 
 /// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
@@ -426,6 +421,7 @@ fn is_entity_processed_by_part_collection(
     store: &re_arrow_store::DataStore,
     parts: &ViewPartCollection,
     ent_path: &EntityPath,
+    query: &LatestAtQuery,
 ) -> bool {
     let timeline = Timeline::log_time();
     let components = store
@@ -434,7 +430,7 @@ fn is_entity_processed_by_part_collection(
         .into_iter()
         .collect();
     for part in parts.iter() {
-        if part.heuristic_filter(store, ent_path, &components) {
+        if part.heuristic_filter(store, ent_path, query, &components) {
             return true;
         }
     }
@@ -514,7 +510,12 @@ pub fn identify_entities_per_system_per_class(
 
                 for system in systems {
                     if let Ok(view_part_system) = part_collection.get_by_name(*system) {
-                        if !view_part_system.heuristic_filter(store, ent_path, &all_components) {
+                        if !view_part_system.heuristic_filter(
+                            store,
+                            ent_path,
+                            &ctx.current_query(),
+                            &all_components,
+                        ) {
                             continue;
                         }
                     }

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions, TimeInt};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
 use re_log_types::{
     ApplicationId, ArrowMsg, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
     EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo,
@@ -55,6 +55,19 @@ impl EntityDb {
         self.entity_path_from_hash.get(entity_path_hash)
     }
 
+    /// Returns `true` also for entities higher up in the hierarchy.
+    #[inline]
+    pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
+        self.tree.subtree(entity_path).is_some()
+    }
+
+    /// If you log `world/points`, then that is a logged entity, but `world` is not,
+    /// unless you log something to `world` too.
+    #[inline]
+    pub fn is_logged_entity(&self, entity_path: &EntityPath) -> bool {
+        self.entity_path_from_hash.contains_key(&entity_path.hash())
+    }
+
     fn register_entity_path(&mut self, entity_path: &EntityPath) {
         self.entity_path_from_hash
             .entry(entity_path.hash())
@@ -64,25 +77,24 @@ impl EntityDb {
     fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         re_tracing::profile_function!();
 
-        #[cfg(debug_assertions)]
-        check_known_component_schemas(msg);
-
         // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
         let mut table = DataTable::from_arrow_msg(msg)?;
         table.compute_all_size_bytes();
 
         // TODO(cmc): batch all of this
         for row in table.to_rows() {
+            let row = row?;
+
             self.register_entity_path(&row.entity_path);
 
             self.try_add_data_row(&row)?;
 
-            // Look for a `ClearSettings` component, and if it's there, go through the clear path
+            // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
             // instead.
-            use re_types::components::ClearSettings;
-            if let Some(idx) = row.find_cell(&ClearSettings::name()) {
+            use re_types::components::ClearIsRecursive;
+            if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
                 let cell = &row.cells()[idx];
-                let settings = cell.try_to_native_mono::<ClearSettings>().unwrap();
+                let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
                 let path_op = if settings.map_or(false, |s| s.0) {
                     PathOp::ClearRecursive(row.entity_path.clone())
                 } else {
@@ -124,7 +136,7 @@ impl EntityDb {
                     time_point.clone(),
                     cell.num_instances(),
                     cell,
-                );
+                )?;
                 self.data_store.insert_row(&row).ok();
 
                 // Also update the tree with the clear-event
@@ -167,19 +179,21 @@ impl EntityDb {
             // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
             //    these rows! This flaky ordering will in turn leak through the public
             //    API (e.g. range queries)!!
-            let row = DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells);
-            self.data_store.insert_row(&row).ok();
+            match DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
+                Ok(row) => {
+                    self.data_store.insert_row(&row).ok();
+                }
+                Err(err) => {
+                    re_log::error_once!("Failed to insert PathOp {path_op:?}: {err}");
+                }
+            }
 
             // Don't reuse the same row ID for the next entity!
             row_id = row_id.next();
         }
     }
 
-    pub fn purge(
-        &mut self,
-        cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>,
-        drop_row_ids: &ahash::HashSet<RowId>,
-    ) {
+    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted) {
         re_tracing::profile_function!();
 
         let Self {
@@ -189,57 +203,21 @@ impl EntityDb {
             data_store: _, // purged before this function is called
         } = self;
 
-        {
-            re_tracing::profile_scope!("times_per_timeline");
-            times_per_timeline.purge(cutoff_times);
-        }
+        let mut actually_deleted = Default::default();
 
         {
             re_tracing::profile_scope!("tree");
-            tree.purge(cutoff_times, drop_row_ids);
+            tree.purge(deleted, &mut actually_deleted);
         }
-    }
-}
 
-/// Check that known (`rerun.`) components have the expected schemas.
-#[cfg(debug_assertions)]
-fn check_known_component_schemas(msg: &ArrowMsg) {
-    // Check that we have the expected schemas
-    let known_fields: ahash::HashMap<&str, &arrow2::datatypes::Field> =
-        re_components::iter_registered_field_types()
-            .map(|field| (field.name.as_str(), field))
-            .collect();
-
-    for actual in &msg.schema.fields {
-        if let Some(expected) = known_fields.get(actual.name.as_str()) {
-            if let arrow2::datatypes::DataType::List(actual_field) = &actual.data_type {
-                // NOTE: Don't care about extensions until the migration is over (arrow2-convert
-                // issues).
-                let actual_datatype = actual_field.data_type.to_logical_type();
-                let expected_datatype = expected.data_type.to_logical_type();
-                if actual_datatype != expected_datatype {
-                    re_log::warn_once!(
-                        "The incoming component {:?} had the type:\n{:#?}\nExpected type:\n{:#?}",
-                        actual.name,
-                        actual_field.data_type,
-                        expected.data_type,
-                    );
+        {
+            re_tracing::profile_scope!("times_per_timeline");
+            for (timeline, times) in actually_deleted.timeful {
+                if let Some(time_set) = times_per_timeline.get_mut(&timeline) {
+                    for time in times {
+                        time_set.remove(&time);
+                    }
                 }
-                if actual.is_nullable != expected.is_nullable {
-                    re_log::warn_once!(
-                        "The incoming component {:?} has is_nullable={}, expected is_nullable={}",
-                        actual.name,
-                        actual.is_nullable,
-                        expected.is_nullable,
-                    );
-                }
-            } else {
-                re_log::warn_once!(
-                    "The incoming component {:?} was:\n{:#?}\nExpected:\n{:#?}",
-                    actual.name,
-                    actual.data_type,
-                    expected.data_type,
-                );
             }
         }
     }
@@ -373,22 +351,19 @@ impl StoreDb {
         re_tracing::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
+        let (deleted, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
-            gc_timeless: false,
-            protect_latest: 0,
+            gc_timeless: true,
+            protect_latest: 1,
             purge_empty_tables: false,
         });
         re_log::trace!(
-            num_row_ids_dropped = drop_row_ids.len(),
+            num_row_ids_dropped = deleted.row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
             "purged datastore"
         );
-
-        let drop_row_ids: ahash::HashSet<_> = drop_row_ids.into_iter().collect();
-        let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
             store_id: _,
@@ -400,10 +375,10 @@ impl StoreDb {
 
         {
             re_tracing::profile_scope!("entity_op_msgs");
-            entity_op_msgs.retain(|row_id, _| !drop_row_ids.contains(row_id));
+            entity_op_msgs.retain(|row_id, _| !deleted.row_ids.contains(row_id));
         }
 
-        entity_db.purge(&cutoff_times, &drop_row_ids);
+        entity_db.purge(&deleted);
     }
 
     /// Key used for sorting recordings in the UI.

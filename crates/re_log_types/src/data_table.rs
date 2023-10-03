@@ -8,8 +8,8 @@ use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use crate::{
-    ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId, SizeBytes,
-    TimePoint, Timeline,
+    data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
+    RowId, SizeBytes, TimePoint, Timeline,
 };
 
 // ---
@@ -221,18 +221,18 @@ impl std::ops::DerefMut for TableId {
 ///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
-///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))
+///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
 /// };
 /// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
+///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)?
 /// };
 /// let row2 = {
 ///     let num_instances = 1;
 ///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
-///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))
+///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))?
 /// };
 /// let table = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// ```
@@ -282,14 +282,14 @@ impl std::ops::DerefMut for TableId {
 ///         timepoint(1, 1),
 ///         num_instances,
 ///         (points, colors, labels),
-///     )
+///     ).unwrap()
 /// };
 ///
 /// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
 ///
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
+///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors).unwrap()
 /// };
 ///
 /// let row2 = {
@@ -303,7 +303,7 @@ impl std::ops::DerefMut for TableId {
 ///         timepoint(2, 1),
 ///         num_instances,
 ///         (colors, labels),
-///     )
+///     ).unwrap()
 /// };
 ///
 /// let table_in = DataTable::from_rows(table_id, [row0, row1, row2]);
@@ -454,8 +454,11 @@ impl DataTable {
         self.col_row_id.len() as _
     }
 
+    /// Fails if any row has:
+    /// - cells that aren't 0, 1 or `num_instances` long
+    /// - two or more cells share the same component type
     #[inline]
-    pub fn to_rows(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
+    pub fn to_rows(&self) -> impl ExactSizeIterator<Item = DataReadResult<DataRow>> + '_ {
         let num_rows = self.num_rows() as usize;
 
         let Self {
@@ -1066,30 +1069,23 @@ impl DataTable {
     ///
     /// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
     pub fn similar(table1: &DataTable, table2: &DataTable) -> anyhow::Result<()> {
-        /// Given a [`DataTable`], returns all of its rows sorted by timeline.
-        fn compute_rows(table: &DataTable) -> HashMap<Timeline, Vec<DataRow>> {
+        /// Given a [`DataTable`], returns all of its rows grouped by timeline.
+        fn compute_rows(table: &DataTable) -> anyhow::Result<HashMap<Timeline, Vec<DataRow>>> {
             let mut rows_by_timeline: HashMap<Timeline, Vec<DataRow>> = Default::default();
 
-            let rows = table.to_rows().flat_map(|row| {
-                row.timepoint
-                    .iter()
-                    .map(|(timeline, time)| {
-                        let mut row = row.clone();
-                        row.timepoint = TimePoint::from([(*timeline, *time)]);
-                        (*timeline, row)
-                    })
-                    .collect_vec()
-            });
-
-            for (timeline, row) in rows {
-                rows_by_timeline.entry(timeline).or_default().push(row);
+            for row in table.to_rows() {
+                let row = row?;
+                for (&timeline, &time) in row.timepoint.iter() {
+                    let mut row = row.clone();
+                    row.timepoint = TimePoint::from([(timeline, time)]);
+                    rows_by_timeline.entry(timeline).or_default().push(row);
+                }
             }
-
-            rows_by_timeline
+            Ok(rows_by_timeline)
         }
 
-        let mut rows_by_timeline1 = compute_rows(table1);
-        let mut rows_by_timeline2 = compute_rows(table2);
+        let mut rows_by_timeline1 = compute_rows(table1)?;
+        let mut rows_by_timeline2 = compute_rows(table2)?;
 
         for timeline1 in rows_by_timeline1.keys() {
             anyhow::ensure!(
@@ -1214,7 +1210,8 @@ impl DataTable {
                                 TimePoint::default(),
                                 cell.num_instances(),
                                 cell,
-                            );
+                            )
+                            .unwrap();
                             let table = DataTable::from_rows(TableId::ZERO, [row]);
 
                             let msg = table.to_arrow_msg().unwrap();
@@ -1272,5 +1269,76 @@ impl DataTable {
         }
 
         Ok(())
+    }
+}
+
+// ---
+
+#[cfg(not(target_arch = "wasm32"))]
+impl DataTable {
+    /// Crafts a simple but interesting [`DataTable`].
+    pub fn example(timeless: bool) -> DataTable {
+        use crate::Time;
+        use re_types::components::{Color, Position2D, Text};
+
+        let table_id = TableId::random();
+
+        let mut tick = 0i64;
+        let mut timepoint = |frame_nr: i64| {
+            let tp = if timeless {
+                TimePoint::timeless()
+            } else {
+                TimePoint::from([
+                    (Timeline::log_time(), Time::now().into()),
+                    (Timeline::log_tick(), tick.into()),
+                    (Timeline::new_sequence("frame_nr"), frame_nr.into()),
+                ])
+            };
+            tick += 1;
+            tp
+        };
+
+        let row0 = {
+            let num_instances = 2;
+            let positions: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+            let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
+            let labels: &[Text] = &[];
+
+            DataRow::from_cells3(
+                RowId::random(),
+                "a",
+                timepoint(1),
+                num_instances,
+                (positions, colors, labels),
+            )
+            .unwrap()
+        };
+
+        let row1 = {
+            let num_instances = 0;
+            let colors: &[Color] = &[];
+
+            DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors).unwrap()
+        };
+
+        let row2 = {
+            let num_instances = 1;
+            let colors: &[_] = &[Color::from_rgb(255, 255, 255)];
+            let labels: &[_] = &[Text("hey".into())];
+
+            DataRow::from_cells2(
+                RowId::random(),
+                "c",
+                timepoint(2),
+                num_instances,
+                (colors, labels),
+            )
+            .unwrap()
+        };
+
+        let mut table = DataTable::from_rows(table_id, [row0, row1, row2]);
+        table.compute_all_size_bytes();
+
+        table
     }
 }

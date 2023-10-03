@@ -9,6 +9,11 @@ namespace rerun {
     namespace archetypes {
         const char Boxes2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Boxes2DIndicator";
 
+        AnonymousComponentBatch Boxes2D::indicator() {
+            return ComponentBatch<
+                components::IndicatorComponent<Boxes2D::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+        }
+
         std::vector<AnonymousComponentBatch> Boxes2D::as_component_batches() const {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(8);
@@ -17,11 +22,11 @@ namespace rerun {
             if (centers.has_value()) {
                 comp_batches.emplace_back(centers.value());
             }
-            if (radii.has_value()) {
-                comp_batches.emplace_back(radii.value());
-            }
             if (colors.has_value()) {
                 comp_batches.emplace_back(colors.value());
+            }
+            if (radii.has_value()) {
+                comp_batches.emplace_back(radii.value());
             }
             if (labels.has_value()) {
                 comp_batches.emplace_back(labels.value());
@@ -35,12 +40,7 @@ namespace rerun {
             if (instance_keys.has_value()) {
                 comp_batches.emplace_back(instance_keys.value());
             }
-            comp_batches.emplace_back(
-                ComponentBatch<components::IndicatorComponent<Boxes2D::INDICATOR_COMPONENT_NAME>>(
-                    nullptr,
-                    num_instances()
-                )
-            );
+            comp_batches.emplace_back(Boxes2D::indicator());
 
             return comp_batches;
         }

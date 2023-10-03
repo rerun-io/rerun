@@ -24,10 +24,11 @@ namespace rerun {
         ///
         /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
         /// the labels and colors will be looked up in the appropriate
-        ///`AnnotationContext`. We use the *first* annotation context we find in the
+        /// `AnnotationContext`. We use the *first* annotation context we find in the
         /// path-hierarchy when searching up through the ancestors of a given entity
         /// path.
         struct AnnotationContext {
+            /// List of class descriptions, mapping class indices to class names, colors etc.
             std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map;
 
             /// Name of the component, used for serialization.

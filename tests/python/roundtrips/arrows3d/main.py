@@ -8,7 +8,6 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -26,8 +25,8 @@ def main() -> None:
     class_ids = np.array([126, 127], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    arrows3d = rr2.Arrows3D(
-        vectors,
+    arrows3d = rr.Arrows3D(
+        vectors=vectors,
         origins=origins,
         radii=radii,
         colors=colors,
@@ -42,7 +41,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_arrows3d")
 
-    rr2.log("arrows3d", arrows3d)
+    rr.log("arrows3d", arrows3d)
 
     rr.script_teardown(args)
 

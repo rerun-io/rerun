@@ -14,78 +14,9 @@
     "demo_url": "https://demo.rerun.io/version/nightly/examples/arkit_scenes/",
     "rrd_url": "https://demo.rerun.io/version/nightly/examples/arkit_scenes/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/8b90a80c72b27fad289806b7e5dff0c9ac97e87c_arkit_scenes_480w.png",
+      "url": "https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png",
       "width": 480,
       "height": 243
-    }
-  },
-  {
-    "name": "dna",
-    "title": "Helix",
-    "description": "Simple example of logging point and line primitives to draw a 3D helix.",
-    "tags": [
-      "3d",
-      "api-example"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/dna/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dna/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/ea7a9ab2f716bd37d1bbc1eabf3f55e4f526660e_helix_480w.png",
-      "width": 480,
-      "height": 285
-    }
-  },
-  {
-    "name": "dicom_mri",
-    "title": "Dicom MRI",
-    "description": "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.",
-    "tags": [
-      "tensor",
-      "mri",
-      "dicom"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/dicom_mri/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dicom_mri/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/b8b25dd01e892e6daf5177e6fc05ff5feb19ee8d_dicom_mri_480w.png",
-      "width": 480,
-      "height": 285
-    }
-  },
-  {
-    "name": "structure_from_motion",
-    "title": "Structure from Motion",
-    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline.",
-    "tags": [
-      "2D",
-      "3D",
-      "colmap",
-      "pinhole-camera",
-      "time-series"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/033edff752f86bcdc9a81f7877e0b4411ff4e6c5_structure_from_motion_480w.png",
-      "width": 480,
-      "height": 275
-    }
-  },
-  {
-    "name": "plots",
-    "title": "Plots",
-    "description": "Demonstration of various plots and charts supported by Rerun.",
-    "tags": [
-      "2d",
-      "plots",
-      "api-example"
-    ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/plots/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/plots/data.rrd",
-    "thumbnail": {
-      "url": "https://static.rerun.io/ca0c72df93d70c79b0e640fb4b7c33cdc0bfe5f4_plots_480w.png",
-      "width": 480,
-      "height": 271
     }
   },
   {
@@ -102,9 +33,42 @@
     "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
     "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/efb301d64eef6f25e8f6ae29294bd003c0cda3a7_detect_and_track_objects_480w.png",
+      "url": "https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png",
       "width": 480,
       "height": 279
+    }
+  },
+  {
+    "name": "dicom_mri",
+    "title": "Dicom MRI",
+    "description": "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.",
+    "tags": [
+      "tensor",
+      "mri",
+      "dicom"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/dicom_mri/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dicom_mri/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/480w.png",
+      "width": 480,
+      "height": 285
+    }
+  },
+  {
+    "name": "dna",
+    "title": "Helix",
+    "description": "Simple example of logging point and line primitives to draw a 3D helix.",
+    "tags": [
+      "3d",
+      "api-example"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/dna/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dna/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/480w.png",
+      "width": 480,
+      "height": 285
     }
   },
   {
@@ -120,9 +84,45 @@
     "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
     "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
     "thumbnail": {
-      "url": "https://static.rerun.io/277b9c72da1d0d0ae9d221f7552dede9c4d5b2fa_human_pose_tracking_480w.png",
+      "url": "https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/480w.png",
       "width": 480,
       "height": 272
+    }
+  },
+  {
+    "name": "plots",
+    "title": "Plots",
+    "description": "Demonstration of various plots and charts supported by Rerun.",
+    "tags": [
+      "2d",
+      "plots",
+      "api-example"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/plots/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/plots/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/480w.png",
+      "width": 480,
+      "height": 271
+    }
+  },
+  {
+    "name": "structure_from_motion",
+    "title": "Structure from Motion",
+    "description": "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline.",
+    "tags": [
+      "2D",
+      "3D",
+      "colmap",
+      "pinhole-camera",
+      "time-series"
+    ],
+    "demo_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/",
+    "rrd_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/data.rrd",
+    "thumbnail": {
+      "url": "https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/480w.png",
+      "width": 480,
+      "height": 275
     }
   }
 ]

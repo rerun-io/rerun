@@ -10,6 +10,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{
         autogen_warning,
+        common::collect_examples,
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -22,7 +23,7 @@ use crate::{
         StringExt as _,
     },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -51,13 +52,20 @@ impl RustCodeGenerator {
 impl CodeGenerator for RustCodeGenerator {
     fn generate(
         &mut self,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
-            self.generate_folder(objects, arrow_registry, object_kind, &mut files_to_write);
+            self.generate_folder(
+                reporter,
+                objects,
+                arrow_registry,
+                object_kind,
+                &mut files_to_write,
+            );
         }
 
         write_files(&files_to_write);
@@ -81,6 +89,7 @@ impl CodeGenerator for RustCodeGenerator {
 impl RustCodeGenerator {
     fn generate_folder(
         &self,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
@@ -101,7 +110,7 @@ impl RustCodeGenerator {
             } else {
                 kind_path.join(filename)
             };
-            let code = generate_object_file(objects, arrow_registry, obj);
+            let code = generate_object_file(reporter, objects, arrow_registry, obj);
 
             files_to_write.insert(filepath, code);
         }
@@ -129,7 +138,12 @@ impl RustCodeGenerator {
     }
 }
 
-fn generate_object_file(objects: &Objects, arrow_registry: &ArrowRegistry, obj: &Object) -> String {
+fn generate_object_file(
+    reporter: &Reporter,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
+    obj: &Object,
+) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = obj.relative_filepath() {
@@ -143,6 +157,7 @@ fn generate_object_file(objects: &Objects, arrow_registry: &ArrowRegistry, obj: 
     code.push_str("#![allow(clippy::map_flatten)]\n");
     code.push_str("#![allow(clippy::match_wildcard_for_single_variants)]\n");
     code.push_str("#![allow(clippy::needless_question_mark)]\n");
+    code.push_str("#![allow(clippy::new_without_default)]\n");
     code.push_str("#![allow(clippy::redundant_closure)]\n");
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
@@ -155,9 +170,9 @@ fn generate_object_file(objects: &Objects, arrow_registry: &ArrowRegistry, obj: 
     // random spacing into doc comments that look like code!
 
     let quoted_obj = if obj.is_struct() {
-        quote_struct(arrow_registry, objects, obj)
+        quote_struct(reporter, arrow_registry, objects, obj)
     } else {
-        quote_union(arrow_registry, objects, obj)
+        quote_union(reporter, arrow_registry, objects, obj)
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -252,7 +267,7 @@ fn write_file(filepath: &Utf8PathBuf, mut code: String) {
         }
     }
 
-    crate::codegen::common::write_file(filepath, code);
+    crate::codegen::common::write_file(filepath, &code);
 }
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
@@ -279,8 +294,12 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
             if let Some(off) = code[content_start..].find(end_pattern) {
                 let content_end = content_start + off;
                 new_code.push_str(&code[i..doc_start]);
-                new_code.push_str("/// ");
-                unescape_string_into(&code[content_start..content_end], &mut new_code);
+                new_code.push_str("///");
+                let content = &code[content_start..content_end];
+                if !content.starts_with(char::is_whitespace) {
+                    new_code.push(' ');
+                }
+                unescape_string_into(content, &mut new_code);
                 new_code.push('\n');
 
                 i = content_end + end_pattern.len();
@@ -322,7 +341,12 @@ fn unescape_string_into(input: &str, output: &mut String) {
 
 // --- Codegen core loop ---
 
-fn quote_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> TokenStream {
+fn quote_struct(
+    reporter: &Reporter,
+    arrow_registry: &ArrowRegistry,
+    objects: &Objects,
+    obj: &Object,
+) -> TokenStream {
     assert!(obj.is_struct());
 
     let Object {
@@ -331,7 +355,7 @@ fn quote_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object)
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_doc_from_docs(docs);
+    let quoted_doc = quote_doc_from_docs(reporter, docs);
 
     let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
     let quoted_derive_clone_debug = if derive_only {
@@ -349,7 +373,7 @@ fn quote_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object)
 
     let quoted_fields = fields
         .iter()
-        .map(|obj_field| ObjectFieldTokenizer(obj, obj_field));
+        .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field));
 
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
     let quoted_struct = if is_tuple_struct {
@@ -382,7 +406,12 @@ fn quote_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object)
     tokens
 }
 
-fn quote_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> TokenStream {
+fn quote_union(
+    reporter: &Reporter,
+    arrow_registry: &ArrowRegistry,
+    objects: &Objects,
+    obj: &Object,
+) -> TokenStream {
     assert!(!obj.is_struct());
 
     let Object {
@@ -391,7 +420,7 @@ fn quote_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) 
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_doc_from_docs(docs);
+    let quoted_doc = quote_doc_from_docs(reporter, docs);
     let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
     let quoted_derive_clone_debug = if derive_only {
         quote!()
@@ -407,30 +436,10 @@ fn quote_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) 
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let quoted_fields = fields.iter().map(|obj_field| {
-        let ObjectField {
-            virtpath: _,
-            filepath: _,
-            fqname: _,
-            pkg_name: _,
-            name,
-            docs,
-            typ: _,
-            attrs: _,
-            order: _,
-            is_nullable,
-            is_deprecated: _,
-            datatype: _,
-        } = obj_field;
+        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
 
-        let name = format_ident!("{}", crate::to_pascal_case(name));
-
-        let quoted_doc = quote_doc_from_docs(docs);
-        let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
-        let quoted_type = if *is_nullable {
-            quote!(Option<#quoted_type>)
-        } else {
-            quoted_type
-        };
+        let quoted_doc = quote_doc_from_docs(reporter, &obj_field.docs);
+        let quoted_type = quote_field_type_from_object_field(obj_field);
 
         quote! {
             #quoted_doc
@@ -458,37 +467,14 @@ fn quote_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) 
 
 // --- Code generators ---
 
-struct ObjectFieldTokenizer<'a>(&'a Object, &'a ObjectField);
+struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
 
 impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self(obj, obj_field) = self;
-
-        let ObjectField {
-            virtpath: _,
-            filepath: _,
-            pkg_name: _,
-            fqname: _,
-            name,
-            docs,
-            typ: _,
-            attrs: _,
-            order: _,
-            is_nullable,
-            // TODO(#2366): support for deprecation notices
-            is_deprecated: _,
-            datatype: _,
-        } = obj_field;
-
-        let quoted_docs = quote_doc_from_docs(docs);
-        let name = format_ident!("{name}");
-
-        let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
-        let quoted_type = if *is_nullable {
-            quote!(Option<#quoted_type>)
-        } else {
-            quoted_type
-        };
+        let Self(reporter, obj, obj_field) = self;
+        let quoted_docs = quote_doc_from_docs(reporter, &obj_field.docs);
+        let name = format_ident!("{}", &obj_field.name);
+        let quoted_type = quote_field_type_from_object_field(obj_field);
 
         if is_tuple_struct_from_obj(obj) {
             quote! {
@@ -505,7 +491,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     }
 }
 
-fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
+fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
     struct DocCommentTokenizer<'a>(&'a [String]);
 
     impl quote::ToTokens for DocCommentTokenizer<'_> {
@@ -514,7 +500,43 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
         }
     }
 
-    let lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
+    let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
+
+    let examples = collect_examples(docs, "rs", true)
+        .map_err(|err| reporter.error(err))
+        .unwrap_or_default();
+    if !examples.is_empty() {
+        lines.push(" ".into());
+        let section_title = if examples.len() == 1 {
+            "Example"
+        } else {
+            "Examples"
+        };
+        lines.push(format!(" ## {section_title}"));
+        lines.push(" ".into());
+        let mut examples = examples.into_iter().peekable();
+        while let Some(example) = examples.next() {
+            if let Some(title) = example.base.title {
+                lines.push(format!(" ### {title}"));
+            }
+            lines.push(" ```ignore".into());
+            lines.extend(example.lines.into_iter().map(|line| format!(" {line}")));
+            lines.push(" ```".into());
+            if let Some(image) = &example.base.image {
+                lines.extend(
+                    image
+                        .image_stack()
+                        .into_iter()
+                        .map(|line| format!(" {line}")),
+                );
+            }
+            if examples.peek().is_some() {
+                // blank line between examples
+                lines.push(" ".into());
+            }
+        }
+    }
+
     let lines = DocCommentTokenizer(&lines);
     quote!(#lines)
 }
@@ -524,13 +546,19 @@ fn quote_doc_from_docs(docs: &Docs) -> TokenStream {
 /// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
 /// becomes just `String`.
 /// The returned boolean indicates whether there was anything to unwrap at all.
-fn quote_field_type_from_field(obj_field: &ObjectField, unwrap: bool) -> (TokenStream, bool) {
-    let obj_field_type = TypeTokenizer {
-        typ: &obj_field.typ,
-        unwrap,
-    };
-    let unwrapped = unwrap && matches!(obj_field.typ, Type::Array { .. } | Type::Vector { .. });
+fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
+    let obj_field_type = TypeTokenizer { typ, unwrap };
+    let unwrapped = unwrap && matches!(typ, Type::Array { .. } | Type::Vector { .. });
     (quote!(#obj_field_type), unwrapped)
+}
+
+fn quote_field_type_from_object_field(obj_field: &ObjectField) -> TokenStream {
+    let (quoted_type, _) = quote_field_type_from_typ(&obj_field.typ, false);
+    if obj_field.is_nullable {
+        quote!(Option<#quoted_type>)
+    } else {
+        quoted_type
+    }
 }
 
 struct TypeTokenizer<'a> {
@@ -551,7 +579,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Int32 => quote!(i32),
             Type::Int64 => quote!(i64),
             Type::Bool => quote!(bool),
-            Type::Float16 => unimplemented!("{typ:#?}"),
+            Type::Float16 => quote!(arrow2::types::f16),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
             Type::String => quote!(crate::ArrowString),
@@ -589,7 +617,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Int32 => quote!(i32),
             ElementType::Int64 => quote!(i64),
             ElementType::Bool => quote!(bool),
-            ElementType::Float16 => unimplemented!("{self:#?}"),
+            ElementType::Float16 => quote!(arrow2::types::f16),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
             ElementType::String => quote!(crate::ArrowString),
@@ -627,18 +655,7 @@ fn quote_trait_impls_from_obj(
     obj: &Object,
 ) -> TokenStream {
     let Object {
-        virtpath: _,
-        filepath: _,
-        fqname,
-        pkg_name: _,
-        name,
-        docs: _,
-        kind,
-        attrs: _,
-        order: _,
-        fields: _,
-        specifics: _,
-        datatype: _,
+        fqname, name, kind, ..
     } = obj;
 
     let name = format_ident!("{name}");
@@ -683,15 +700,18 @@ fn quote_trait_impls_from_obj(
                 }
             };
 
-            let quoted_try_from_arrow = if optimize_for_buffer_slice {
+            let quoted_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn try_from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
+                        re_tracing::profile_function!();
+
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
 
@@ -730,29 +750,35 @@ fn quote_trait_impls_from_obj(
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_to_arrow_opt<'a>(
+                    fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
                     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
                     where
                         Self: Clone + 'a
                     {
+                        re_tracing::profile_function!();
+
                         use ::arrow2::{datatypes::*, array::*};
                         use crate::{Loggable as _, ResultExt as _};
+
                         Ok(#quoted_serializer)
                     }
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn try_from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
+                    fn from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized
                     {
+                        re_tracing::profile_function!();
+
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
                         use crate::{Loggable as _, ResultExt as _};
+
                         Ok(#quoted_deserializer)
                     }
 
-                    #quoted_try_from_arrow
+                    #quoted_from_arrow
                 }
             }
         }
@@ -773,22 +799,21 @@ fn quote_trait_impls_from_obj(
                 (num_components, quoted_components)
             }
 
-            let first_required_comp = obj
-                .fields
-                .iter()
-                .find(|field| {
-                    field
-                        .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
-                        .is_some()
-                })
-                // NOTE: must have at least one required component.
-                .unwrap();
+            let first_required_comp = obj.fields.iter().find(|field| {
+                field
+                    .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
+                    .is_some()
+            });
 
-            let num_instances = if first_required_comp.typ.is_plural() {
-                let name = format_ident!("{}", first_required_comp.name);
-                quote!(self.#name.len())
+            let num_instances = if let Some(comp) = first_required_comp {
+                if comp.typ.is_plural() {
+                    let name = format_ident!("{}", comp.name);
+                    quote!(self.#name.len())
+                } else {
+                    quote!(1)
+                }
             } else {
-                quote!(1)
+                quote!(0)
             };
 
             let indicator_name = format!("{}Indicator", obj.name);
@@ -822,7 +847,7 @@ fn quote_trait_impls_from_obj(
 
             let all_component_batches = {
                 std::iter::once(quote!{
-                    Some(Self::Indicator::batch(self.num_instances() as _).into())
+                    Some(Self::indicator())
                 }).chain(obj.fields.iter().map(|obj_field| {
                     let field_name = format_ident!("{}", obj_field.name);
                     let is_plural = obj_field.typ.is_plural();
@@ -845,79 +870,10 @@ fn quote_trait_impls_from_obj(
                 }))
             };
 
-            let all_serializers = {
-                obj.fields.iter().map(|obj_field| {
-                    let obj_field_fqname = obj_field.fqname.as_str();
-                    let field_name_str = &obj_field.name;
-                    let field_name = format_ident!("{}", obj_field.name);
-
-                    let is_plural = obj_field.typ.is_plural();
-                    let is_nullable = obj_field.is_nullable;
-
-                    // NOTE: unwrapping is safe since the field must point to a component.
-                    let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
-
-                    let fqname = obj_field.typ.fqname().unwrap();
-
-                    let extract_datatype_and_return = quote! {
-                        array.map(|array| {
-                            // NOTE: Temporarily injecting the extension metadata as well as the
-                            // legacy fully-qualified name into the `Field` object so we can work
-                            // around `arrow2-convert` limitations and map to old names while we're
-                            // migrating.
-                            let datatype = ::arrow2::datatypes::DataType::Extension(
-                                #fqname.into(),
-                                Box::new(array.data_type().clone()),
-                                None,
-                            );
-                            (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
-                        })
-                    };
-
-                    // NOTE: Archetypes are AoS (arrays of structs), thus the nullability we're
-                    // dealing with here is the nullability of an entire array of components, not
-                    // the nullability of individual elements (i.e. instances)!
-                    match (is_plural, is_nullable) {
-                        (true, true) => quote! {
-                             self.#field_name.as_ref().map(|many| {
-                                let array = <#component>::try_to_arrow(many.iter());
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (true, false) => quote! {
-                            Some({
-                                let array = <#component>::try_to_arrow(self.#field_name.iter());
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (false, true) => quote! {
-                             self.#field_name.as_ref().map(|single| {
-                                let array = <#component>::try_to_arrow([single]);
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                        (false, false) => quote! {
-                            Some({
-                                let array = <#component>::try_to_arrow([&self.#field_name]);
-                                #extract_datatype_and_return
-                            })
-                            .transpose()
-                            .with_context(#obj_field_fqname)?
-                        },
-                    }
-                })
-            };
-
             let all_deserializers = {
                 obj.fields.iter().map(|obj_field| {
                     let obj_field_fqname = obj_field.fqname.as_str();
-                    let field_name_str = &obj_field.name;
+                    let field_typ_fqname_str = obj_field.typ.fqname().unwrap();
                     let field_name = format_ident!("{}", obj_field.name);
 
                     let is_plural = obj_field.typ.is_plural();
@@ -943,11 +899,13 @@ fn quote_trait_impls_from_obj(
                         }
                     };
 
+                    // NOTE: An archetype cannot have overlapped component types by definition, so use the
+                    // component's fqname to do the mapping.
                     let quoted_deser = if is_nullable {
                         quote! {
-                            if let Some(array) = arrays_by_name.get(#field_name_str) {
+                            if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
                                 Some({
-                                    <#component>::try_from_arrow_opt(&**array)
+                                    <#component>::from_arrow_opt(&**array)
                                         .with_context(#obj_field_fqname)?
                                         #quoted_collection
                                 })
@@ -958,11 +916,11 @@ fn quote_trait_impls_from_obj(
                     } else {
                         quote! {{
                             let array = arrays_by_name
-                                .get(#field_name_str)
+                                .get(#field_typ_fqname_str)
                                 .ok_or_else(crate::DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?;
 
-                            <#component>::try_from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
+                            <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
                         }}
                     };
 
@@ -999,6 +957,12 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
+                    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+                        static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
+                        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+                    }
+
+                    #[inline]
                     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
                         REQUIRED_COMPONENTS.as_slice().into()
                     }
@@ -1020,38 +984,37 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn num_instances(&self) -> usize {
-                        #num_instances
-                    }
-
-                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-                        [#(#all_component_batches,)*].into_iter().flatten().collect()
-                    }
-
-                    #[inline]
-                    fn try_to_arrow(
-                        &self,
-                    ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
-                        use crate::{Loggable as _, ResultExt as _};
-                        Ok([ #({ #all_serializers }),*, ].into_iter().flatten().collect())
-                    }
-
-                    #[inline]
-                    fn try_from_arrow(
+                    fn from_arrow(
                         arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
                     ) -> crate::DeserializationResult<Self> {
+                        re_tracing::profile_function!();
+
                         use crate::{Loggable as _, ResultExt as _};
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
                             .into_iter()
-                            .map(|(field, array)| (field.name, array))
-                            .collect();
+                            .map(|(field, array)| (field.name, array)).collect();
 
                         #(#all_deserializers;)*
 
                         Ok(Self {
                             #(#quoted_field_names,)*
                         })
+                    }
+                }
+
+                impl crate::AsComponents for #name {
+                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+                        re_tracing::profile_function!();
+
+                        use crate::Archetype as _;
+
+                        [#(#all_component_batches,)*].into_iter().flatten().collect()
+                    }
+
+                    #[inline]
+                    fn num_instances(&self) -> usize {
+                        #num_instances
                     }
                 }
             }
@@ -1068,49 +1031,54 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
         return TokenStream::new();
     }
 
+    let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
     let obj_field = &obj.fields[0];
-    if obj_field.typ.fqname().is_some() {
-        let quoted_obj_name = format_ident!("{}", obj.name);
-        let (quoted_type, _) = quote_field_type_from_field(&obj.fields[0], false);
+    let quoted_obj_name = format_ident!("{}", obj.name);
+    let quoted_obj_field_name = format_ident!("{}", obj_field.name);
 
+    if obj_field.typ.fqname().is_some() {
         if let Some(inner) = obj_field.typ.vector_inner() {
             if obj_field.is_nullable {
+                let quoted_binding = if obj_is_tuple_struct {
+                    quote!(Self(v.map(|v| v.into_iter().map(|v| v.into()).collect())))
+                } else {
+                    quote!(Self { #quoted_obj_field_name: v.map(|v| v.into_iter().map(|v| v.into()).collect()) })
+                };
+
                 quote! {
                     impl<I: Into<#inner>, T: IntoIterator<Item = I>> From<Option<T>> for #quoted_obj_name {
                         fn from(v: Option<T>) -> Self {
-                            Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
+                            #quoted_binding
                         }
                     }
                 }
             } else {
+                let quoted_binding = if obj_is_tuple_struct {
+                    quote!(Self(v.into_iter().map(|v| v.into()).collect()))
+                } else {
+                    quote!(Self { #quoted_obj_field_name: v.into_iter().map(|v| v.into()).collect() })
+                };
+
                 quote! {
                     impl<I: Into<#inner>, T: IntoIterator<Item = I>> From<T> for #quoted_obj_name {
                         fn from(v: T) -> Self {
-                            Self(v.into_iter().map(|v| v.into()).collect())
+                            #quoted_binding
                         }
                     }
                 }
             }
         } else {
-            let quoted_type = if obj_field.is_nullable {
-                quote!(Option<#quoted_type>)
-            } else {
-                quote!(#quoted_type)
-            };
-
-            let obj_is_tuple_struct = is_tuple_struct_from_obj(obj);
+            let quoted_type = quote_field_type_from_object_field(obj_field);
 
             let quoted_binding = if obj_is_tuple_struct {
                 quote!(Self(v.into()))
             } else {
-                let quoted_obj_field_name = format_ident!("{}", obj_field.name);
                 quote!(Self { #quoted_obj_field_name: v.into() })
             };
 
             let quoted_borrow_deref_impl = if obj_is_tuple_struct {
                 quote!(&self.0)
             } else {
-                let quoted_obj_field_name = format_ident!("{}", obj_field.name);
                 quote!( &self.#quoted_obj_field_name )
             };
 
@@ -1139,7 +1107,33 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
             }
         }
     } else {
-        quote!()
+        let quoted_type = quote_field_type_from_object_field(obj_field);
+        let quoted_obj_field_name = format_ident!("{}", obj_field.name);
+
+        let (quoted_binding, quoted_read) = if obj_is_tuple_struct {
+            (quote!(Self(#quoted_obj_field_name)), quote!(value.0))
+        } else {
+            (
+                quote!(Self { #quoted_obj_field_name }),
+                quote!(value.#quoted_obj_field_name),
+            )
+        };
+
+        quote! {
+            impl From<#quoted_type> for #quoted_obj_name {
+                #[inline]
+                fn from(#quoted_obj_field_name: #quoted_type) -> Self {
+                    #quoted_binding
+                }
+            }
+
+            impl From<#quoted_obj_name> for #quoted_type {
+                #[inline]
+                fn from(value: #quoted_obj_name) -> Self {
+                    #quoted_read
+                }
+            }
+        }
     }
 }
 
@@ -1149,20 +1143,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         return TokenStream::new();
     }
 
-    let Object {
-        virtpath: _,
-        filepath: _,
-        fqname: _,
-        pkg_name: _,
-        name,
-        docs: _,
-        kind: _,
-        attrs: _,
-        order: _,
-        fields,
-        specifics: _,
-        datatype: _,
-    } = obj;
+    let Object { name, fields, .. } = obj;
 
     let name = format_ident!("{name}");
 
@@ -1180,7 +1161,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
 
     let quoted_params = required.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
-        let (typ, unwrapped) = quote_field_type_from_field(field, true);
+        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
         if unwrapped {
             // This was originally a vec/array!
             quote!(#field_name: impl IntoIterator<Item = impl Into<#typ>>)
@@ -1191,7 +1172,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
 
     let quoted_required = required.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
-        let (_, unwrapped) = quote_field_type_from_field(field, true);
+        let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
         if unwrapped {
             // This was originally a vec/array!
             quote!(#field_name: #field_name.into_iter().map(Into::into).collect())
@@ -1224,7 +1205,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
     let with_methods = optional.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
-        let (typ, unwrapped) = quote_field_type_from_field(field, true);
+        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
 
         if unwrapped {
             // This was originally a vec/array!

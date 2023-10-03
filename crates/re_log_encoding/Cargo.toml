@@ -30,7 +30,6 @@ encoder = ["dep:rmp-serde", "dep:lz4_flex"]
 
 # Rerun:
 re_build_info.workspace = true
-re_error.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true
 re_smart_channel.workspace = true
@@ -54,10 +53,11 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.52", features = ["Window"] }
 
 [dev-dependencies]
+re_types = { workspace = true, features = ["datagen"] }
+
 criterion = "0.5"
 mimalloc.workspace = true
 serde_test = { version = "1" }
-re_components = { workspace = true, features = ["arrow_datagen"] }
 
 [lib]
 bench = false

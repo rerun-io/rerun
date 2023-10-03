@@ -35,7 +35,7 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
     WgpuResourcePools,
 };
 
@@ -169,7 +169,7 @@ const DATA_TEXTURE_SIZE: u32 = 2048; // 2ki x 2ki = 4 Mi = 80 MiB
 impl PointCloudDrawData {
     /// Maximum number of vertices per [`PointCloudDrawData`].
     ///
-    /// TODO(#957): Get rid of this limit!.
+    /// TODO(#3076): Get rid of this limit!.
     pub const MAX_NUM_POINTS: usize = (DATA_TEXTURE_SIZE * DATA_TEXTURE_SIZE) as usize;
 
     /// Transforms and uploads point cloud data to be consumed by gpu.
@@ -296,7 +296,7 @@ impl PointCloudDrawData {
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
                 num_points_written,
-            );
+            )?;
             staging_buffer.extend_from_slice(vertices)?;
             staging_buffer.fill_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d(
@@ -715,7 +715,7 @@ impl Renderer for PointCloudRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawError> {
         let (pipeline_handle, bind_group_all_points) = match phase {
             DrawPhase::OutlineMask => (
                 self.render_pipeline_outline_mask,

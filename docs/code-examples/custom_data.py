@@ -9,10 +9,9 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 import rerun as rr  # pip install rerun-sdk
-import rerun.experimental as rr2
 
 
-class ConfidenceBatch(rr2.ComponentBatchLike):
+class ConfidenceBatch(rr.ComponentBatchLike):
     """A batch of confidence data."""
 
     def __init__(self: Any, confidence: npt.ArrayLike) -> None:
@@ -22,21 +21,21 @@ class ConfidenceBatch(rr2.ComponentBatchLike):
         """The name of the custom component."""
         return "user.Confidence"
 
-    def as_arrow_batch(self) -> pa.Array:
+    def as_arrow_array(self) -> pa.Array:
         """The arrow batch representing the custom component."""
         return pa.array(self.confidence, type=pa.float32())
 
 
-class CustomPoints3D(rr2.ArchetypeLike):
+class CustomPoints3D(rr.AsComponents):
     def __init__(self: Any, points3d: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
         self.points3d = points3d
         self.confidences = confidences
 
-    def as_component_batches(self) -> Iterable[rr2.ComponentBatchLike]:
+    def as_component_batches(self) -> Iterable[rr.ComponentBatchLike]:
         points3d = np.asarray(self.points3d)
         return (
-            list(rr2.Points3D(points3d).as_component_batches())  # The components from Points3D
-            + [rr2.IndicatorComponentBatch("user.CustomPoints3D", len(points3d))]  # Our custom indicator
+            list(rr.Points3D(points3d).as_component_batches())  # The components from Points3D
+            + [rr.IndicatorComponentBatch("user.CustomPoints3D")]  # Our custom indicator
             + [ConfidenceBatch(self.confidences)]  # Custom confidence data
         )
 
@@ -46,7 +45,7 @@ def log_custom_data() -> None:
     z, y, x = np.meshgrid(lin, lin, lin, indexing="ij")
     point_grid = np.vstack([x.flatten(), y.flatten(), z.flatten()]).T
 
-    rr2.log(
+    rr.log(
         "left/my_confident_point_cloud",
         CustomPoints3D(
             points3d=point_grid,
@@ -54,7 +53,7 @@ def log_custom_data() -> None:
         ),
     )
 
-    rr2.log(
+    rr.log(
         "right/my_polarized_point_cloud",
         CustomPoints3D(points3d=point_grid, confidences=np.arange(0, len(point_grid))),
     )

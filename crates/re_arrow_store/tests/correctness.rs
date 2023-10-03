@@ -10,10 +10,10 @@ use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
-use re_components::datagen::{
-    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_positions2d,
+use re_log_types::{
+    build_frame_nr, build_log_time, DataCell, Duration, EntityPath, Time, TimeType, Timeline,
 };
-use re_log_types::{DataCell, Duration, EntityPath, Time, TimeType, Timeline};
+use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
 use re_types::{components::InstanceKey, Loggable as _};
 
 // ---
@@ -245,9 +245,10 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     .collect::<Vec<_>>();
 
     let df_expected = {
-        let instances = InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]);
-        let positions = Position2D::to_arrow(positions);
-        let colors = Color::to_arrow(colors);
+        let instances =
+            InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]).unwrap();
+        let positions = Position2D::to_arrow(positions).unwrap();
+        let colors = Color::to_arrow(colors).unwrap();
 
         DataFrame::new(vec![
             Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
@@ -300,10 +301,10 @@ fn gc_correct() {
 
     let stats = DataStoreStats::from_store(&store);
 
-    let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
     let stats_diff = stats_diff + stats_empty; // account for fixed overhead
 
-    assert_eq!(row_ids.len() as u64, stats.total.num_rows);
+    assert_eq!(deleted.row_ids.len() as u64, stats.total.num_rows);
     assert_eq!(
         stats.metadata_registry.num_rows,
         stats_diff.metadata_registry.num_rows
@@ -316,12 +317,12 @@ fn gc_correct() {
 
     sanity_unwrap(&mut store);
     check_still_readable(&store);
-    for row_id in &row_ids {
+    for row_id in &deleted.row_ids {
         assert!(store.get_msg_metadata(row_id).is_none());
     }
 
-    let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
-    assert!(row_ids.is_empty());
+    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    assert!(deleted.row_ids.is_empty());
     assert_eq!(DataStoreStats::default(), stats_diff);
 
     sanity_unwrap(&mut store);

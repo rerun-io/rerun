@@ -11,26 +11,15 @@ namespace rerun.archetypes;
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/depth_image_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/depth_image_simple.rs
-/// \rs ```
+/// \example depth_image_simple title="Simple example" image="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1200w.png"
+/// \example depth_image_3d title="Depth to 3D example" image="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1200w.png"
 table DepthImage (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 
   /// The depth-image data. Should always be a rank-2 tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
 
   // --- Optional ---
 

@@ -3,7 +3,9 @@
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
 use itertools::Itertools;
+
 use re_log_types::{DataCell, EntityPath, PathOp, TimePoint};
+use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 mod annotation_context;
@@ -28,6 +30,50 @@ pub use crate::image::{
 };
 pub use component_ui_registry::create_component_ui_registry;
 pub use image_meaning::image_meaning_for_entity;
+
+/// Filter out components that should not be shown in the UI,
+/// and order the other components in a cosnsiten way.
+pub fn ui_visible_components<'a>(
+    iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
+) -> impl Iterator<Item = &'a ComponentName> {
+    let mut components: Vec<&ComponentName> = iter
+        .into_iter()
+        .filter(|c| is_component_visible_in_ui(c))
+        .collect();
+
+    // Put indicator components first:
+    components.sort_by_key(|c| (!c.is_indicator_component(), c.full_name()));
+
+    components.into_iter()
+}
+
+/// Show this component in the UI.
+fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
+    const HIDDEN_COMPONENTS: &[&str] = &["rerun.components.InstanceKey"];
+    !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
+}
+
+pub fn temporary_style_ui_for_component<R>(
+    ui: &mut egui::Ui,
+    component_name: &ComponentName,
+    add_contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    let old_style: egui::Style = (**ui.style()).clone();
+
+    if component_name.is_indicator_component() {
+        // Make indicator components stand out by making them slightly fainter:
+
+        let inactive = &mut ui.style_mut().visuals.widgets.inactive;
+        // TODO(emilk): get a color from the design-tokens
+        inactive.fg_stroke.color = inactive.fg_stroke.color.linear_multiply(0.45);
+    }
+
+    let ret = add_contents(ui);
+
+    ui.set_style(old_style);
+
+    ret
+}
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {

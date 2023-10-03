@@ -19,8 +19,8 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        ///```ignore
-        ///// Log some transforms.
+        /// ```cpp,ignore
+        /// // Log some transforms.
         ///
         /// #include <rerun.hpp>
         ///
@@ -32,26 +32,27 @@ namespace rerun {
         /// const float pi = static_cast<float>(M_PI);
         ///
         /// int main() {
-        ///    auto rec = rr::RecordingStream("rerun_example_transform3d");
-        ///    rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rr::RecordingStream("rerun_example_transform3d");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///    auto arrow = rr::Arrows3D({0.0f, 1.0f, 0.0f});
+        ///     auto arrow = rr::Arrows3D::from_vectors({0.0f, 1.0f, 0.0f}).with_origins({0.0f,
+        ///     0.0f, 0.0f});
         ///
-        ///    rec.log("base", arrow);
+        ///     rec.log("base", arrow);
         ///
-        ///    rec.log("base/translated", rr::Transform3D({1.0f, 0.0f, 0.0f}));
-        ///    rec.log("base/translated", arrow);
+        ///     rec.log("base/translated", rr::Transform3D({1.0f, 0.0f, 0.0f}));
+        ///     rec.log("base/translated", arrow);
         ///
-        ///    rec.log(
-        ///        "base/rotated_scaled",
-        ///        rr::Transform3D(
-        ///            rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(pi / 4.0f)),
-        ///            2.0f
-        ///        )
-        ///    );
-        ///    rec.log("base/rotated_scaled", arrow);
+        ///     rec.log(
+        ///         "base/rotated_scaled",
+        ///         rr::Transform3D(
+        ///             rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(pi / 4.0f)),
+        ///             2.0f
+        ///         )
+        ///     );
+        ///     rec.log("base/rotated_scaled", arrow);
         /// }
-        ///```
+        /// ```
         struct Transform3D {
             /// The transform
             rerun::components::Transform3D transform;
@@ -101,7 +102,7 @@ namespace rerun {
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(const datatypes::Vec3D& translation, bool from_parent = false)
-                : Transform3D(datatypes::TranslationAndMat3x3(translation, from_parent)) {}
+                : Transform3D(datatypes::TranslationRotationScale3D(translation, from_parent)) {}
 
             /// From 3x3 matrix only.
             ///
@@ -247,6 +248,11 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

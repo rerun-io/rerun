@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -20,42 +21,51 @@
 /// ```ignore
 /// //! Log some transforms.
 ///
-/// use rerun::{
-///    archetypes::{Arrows3D, Transform3D},
-///    datatypes::{
-///        Angle, Mat3x3, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
-///    },
-///    RecordingStreamBuilder,
-/// };
-/// use std::f32::consts::PI;
+/// use std::f32::consts::TAU;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
 ///
-///    rec.log("base", &Arrows3D::new([(0.0, 1.0, 0.0)]))?;
+///     rec.log(
+///         "base",
+///         &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
+///     )?;
 ///
-///    rec.log(
-///        "base/translated",
-///        &Transform3D::new(TranslationAndMat3x3::new([1.0, 0.0, 0.0], Mat3x3::IDENTITY)),
-///    )?;
+///     rec.log(
+///         "base/translated",
+///         &rerun::Transform3D::from_translation([1.0, 0.0, 0.0]),
+///     )?;
 ///
-///    rec.log("base/translated", &Arrows3D::new([(0.0, 1.0, 0.0)]))?;
+///     rec.log(
+///         "base/translated",
+///         &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
+///     )?;
 ///
-///    rec.log(
-///        "base/rotated_scaled",
-///        &Transform3D::new(TranslationRotationScale3D {
-///            rotation: Some(RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(PI / 4.)).into()),
-///            scale: Some(Scale3D::from(2.0)),
-///            ..Default::default()
-///        }),
-///    )?;
+///     rec.log(
+///         "base/rotated_scaled",
+///         &rerun::Transform3D::from_rotation_scale(
+///             rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::Radians(TAU / 8.0)),
+///             rerun::Scale3D::from(2.0),
+///         ),
+///     )?;
 ///
-///    rec.log("base/rotated_scaled", &Arrows3D::new([(0.0, 1.0, 0.0)]))?;
+///     rec.log(
+///         "base/rotated_scaled",
+///         &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
+///     )?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png">
+///   <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png">
+/// </picture>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transform3D {
     /// The transform
@@ -96,6 +106,12 @@ impl crate::Archetype for Transform3D {
     }
 
     #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: Transform3DIndicator = Transform3DIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+    }
+
+    #[inline]
     fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
@@ -116,56 +132,12 @@ impl crate::Archetype for Transform3D {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
-
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
-        [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.transform as &dyn crate::ComponentBatch).into()),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
-    }
-
-    #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::Transform3D>::try_to_arrow([&self.transform]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.Transform3D".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("transform", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.Transform3D#transform")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
+    fn from_arrow(
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -173,10 +145,10 @@ impl crate::Archetype for Transform3D {
             .collect();
         let transform = {
             let array = arrays_by_name
-                .get("transform")
+                .get("rerun.components.Transform3D")
                 .ok_or_else(crate::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Transform3D#transform")?;
-            <crate::components::Transform3D>::try_from_arrow_opt(&**array)
+            <crate::components::Transform3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#transform")?
                 .into_iter()
                 .next()
@@ -185,6 +157,25 @@ impl crate::Archetype for Transform3D {
                 .with_context("rerun.archetypes.Transform3D#transform")?
         };
         Ok(Self { transform })
+    }
+}
+
+impl crate::AsComponents for Transform3D {
+    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        use crate::Archetype as _;
+        [
+            Some(Self::indicator()),
+            Some((&self.transform as &dyn crate::ComponentBatch).into()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 

@@ -5,6 +5,7 @@ pub trait CodeGenerator {
     /// Returns the paths of all generated files.
     fn generate(
         &mut self,
+        reporter: &crate::Reporter,
         objects: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,
     ) -> std::collections::BTreeSet<camino::Utf8PathBuf>;
@@ -29,10 +30,12 @@ mod common;
 use self::common::{get_documentation, StringExt};
 
 mod cpp;
+mod docs;
 mod python;
 mod rust;
 
 pub use self::common::write_file;
 pub use self::cpp::CppCodeGenerator;
+pub use self::docs::DocsCodeGenerator;
 pub use self::python::PythonCodeGenerator;
 pub use self::rust::RustCodeGenerator;

@@ -16,26 +16,14 @@ namespace rerun.archetypes;
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 ///
-/// \py Example
-/// \py -------
-/// \py
-/// \py ```python
-/// \py \include:../../../../../docs/code-examples/image_simple.py
-/// \py ```
-///
-/// \rs ## Example
-/// \rs
-/// \rs ```ignore
-/// \rs \include:../../../../../docs/code-examples/image_simple.rs
-/// \rs ```
+/// \example image_simple image="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png"
 table Image (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 
   /// The image data. Should always be a rank-2 or rank-3 tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
 
   // --- Optional ---
 

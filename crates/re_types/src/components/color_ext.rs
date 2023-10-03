@@ -8,7 +8,7 @@ impl Color {
 
     #[inline]
     pub fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
-        Self::from(crate::datatypes::Color::from_unmultiplied_rgba(r, g, b, a))
+        Self::from(crate::datatypes::Rgba32::from_unmultiplied_rgba(r, g, b, a))
     }
 
     /// Most significant byte is `r`, least significant byte is `a`.
@@ -37,7 +37,7 @@ impl Color {
 
 impl Color {
     #[inline]
-    pub fn new(value: impl Into<crate::datatypes::Color>) -> Self {
+    pub fn new(value: impl Into<crate::datatypes::Rgba32>) -> Self {
         Self(value.into())
     }
 }
@@ -47,5 +47,13 @@ impl From<Color> for ecolor::Color32 {
     fn from(color: Color) -> Self {
         let [r, g, b, a] = color.to_array();
         Self::from_rgba_unmultiplied(r, g, b, a)
+    }
+}
+
+#[cfg(feature = "ecolor")]
+impl From<Color> for ecolor::Rgba {
+    fn from(color: Color) -> Self {
+        let color: ecolor::Color32 = color.into();
+        color.into()
     }
 }

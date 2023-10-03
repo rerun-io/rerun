@@ -3,7 +3,7 @@
 //! The semantic pass transforms the low-level raw reflection data into higher level types that
 //! are much easier to inspect and manipulate / friendler to work with.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType,
+    FbsType, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -21,7 +21,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Objects {
     /// Maps fully-qualified type names to their resolved object definitions.
-    pub objects: HashMap<String, Object>,
+    pub objects: BTreeMap<String, Object>,
 }
 
 impl Objects {
@@ -35,8 +35,8 @@ impl Objects {
 
     /// Runs the semantic pass on a deserialized flatbuffers [`FbsSchema`].
     pub fn from_raw_schema(include_dir_path: impl AsRef<Utf8Path>, schema: &FbsSchema<'_>) -> Self {
-        let mut resolved_objs = HashMap::new();
-        let mut resolved_enums = HashMap::new();
+        let mut resolved_objs = BTreeMap::new();
+        let mut resolved_enums = BTreeMap::new();
 
         let enums = schema.enums().iter().collect::<Vec<_>>();
         let objs = schema.objects().iter().collect::<Vec<_>>();
@@ -62,17 +62,17 @@ impl Objects {
         // Validate fields types: Archetype consist of components, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
-                if let Some(target_fqname) = field.typ.fqname() {
-                    let target_obj = &this[target_fqname];
+                if let Some(field_type_fqname) = field.typ.fqname() {
+                    let field_obj = &this[field_type_fqname];
                     if obj.kind == ObjectKind::Archetype {
-                        assert!(target_obj.kind == ObjectKind::Component,
+                        assert!(field_obj.kind == ObjectKind::Component,
                             "Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
-                            field.fqname, target_fqname
+                            field.fqname, field_type_fqname
                         );
                     } else {
-                        assert!(target_obj.kind == ObjectKind::Datatype,
+                        assert!(field_obj.kind == ObjectKind::Datatype,
                             "Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
-                            field.fqname, target_fqname
+                            field.fqname, field_type_fqname
                         );
                     }
                 } else {
@@ -104,18 +104,11 @@ impl Objects {
                             );
 
                             let ObjectField {
-                                virtpath: _,
-                                filepath: _,
                                 fqname,
-                                pkg_name: _,
-                                name: _,
-                                docs: _,
                                 typ,
                                 attrs,
-                                order: _,
-                                is_nullable: _,
-                                is_deprecated: _,
                                 datatype,
+                                ..
                             } = target_obj.fields.pop().unwrap();
 
                             field.typ = typ;
@@ -143,11 +136,7 @@ impl Objects {
         }
 
         // Remove whole objects marked as transparent.
-        this.objects = this
-            .objects
-            .drain()
-            .filter(|(_, obj)| !obj.is_transparent())
-            .collect();
+        this.objects.retain(|_, obj| !obj.is_transparent());
 
         this
     }
@@ -157,29 +146,19 @@ impl Objects {
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
-        let objs = self
-            .objects
+        self.objects
             .values_mut()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
-
-        let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order);
-
-        objs
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
+            .collect()
     }
 
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects(&self, kind: Option<ObjectKind>) -> Vec<&Object> {
-        let objs = self
-            .objects
+        self.objects
             .values()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
-
-        let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order);
-
-        objs
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
+            .collect()
     }
 }
 
@@ -239,6 +218,14 @@ impl ObjectKind {
             ObjectKind::Archetype => "archetypes",
         }
     }
+
+    pub fn plural_name(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Datatypes",
+            ObjectKind::Component => "Components",
+            ObjectKind::Archetype => "Archetypes",
+        }
+    }
 }
 
 /// A high-level representation of a flatbuffers object's documentation.
@@ -265,10 +252,10 @@ pub struct Docs {
     /// ```
     ///
     /// See also [`Docs::doc`].
-    pub tagged_docs: HashMap<String, Vec<String>>,
+    pub tagged_docs: BTreeMap<String, Vec<String>>,
 
     /// Contents of all the files included using `\include:<path>`.
-    pub included_files: HashMap<Utf8PathBuf, String>,
+    pub included_files: BTreeMap<Utf8PathBuf, String>,
 }
 
 impl Docs {
@@ -276,9 +263,9 @@ impl Docs {
         filepath: &Utf8Path,
         docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
     ) -> Self {
-        let mut included_files = HashMap::default();
+        let mut included_files = BTreeMap::default();
 
-        let include_file = |included_files: &mut HashMap<_, _>, raw_path: &str| {
+        let include_file = |included_files: &mut BTreeMap<_, _>, raw_path: &str| {
             let path: Utf8PathBuf = raw_path
                 .parse()
                 .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
@@ -343,7 +330,7 @@ impl Docs {
                 .collect::<Vec<_>>();
 
             let all_tags: HashSet<_> = tagged_lines.iter().map(|(tag, _)| tag).collect();
-            let mut tagged_docs = HashMap::new();
+            let mut tagged_docs = BTreeMap::new();
 
             for cur_tag in all_tags {
                 tagged_docs.insert(
@@ -394,9 +381,6 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
-    /// The object's `order` attribute's value, which is always mandatory.
-    pub order: u32,
-
     /// The object's inner fields, which can be either struct members or union values.
     ///
     /// These are pre-sorted, in ascending order, using their `order` attribute.
@@ -446,7 +430,6 @@ impl Object {
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
@@ -460,6 +443,17 @@ impl Object {
                 })
                 .collect();
             fields.sort_by_key(|field| field.order);
+
+            // Make sure no two fields have the same order:
+            for (a, b) in fields.iter().tuple_windows() {
+                assert!(
+                    a.order != b.order,
+                    "{name:?}: Fields {:?} and {:?} have the same order",
+                    a.name,
+                    b.name
+                );
+            }
+
             fields
         };
 
@@ -480,7 +474,6 @@ impl Object {
             docs,
             kind,
             attrs,
-            order,
             fields,
             specifics: ObjectSpecifics::Struct {},
             datatype: None,
@@ -514,6 +507,7 @@ impl Object {
         let docs = Docs::from_raw_docs(&filepath, enm.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
 
+        let attrs = Attributes::from_raw_attrs(enm.attributes());
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
                 // This is a union.
@@ -524,11 +518,10 @@ impl Object {
                     objs,
                     enm.underlying_type(),
                     enm.underlying_type().base_type(),
+                    &attrs,
                 ))
             }
         };
-        let attrs = Attributes::from_raw_attrs(enm.attributes());
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = enm
             .values()
@@ -559,7 +552,6 @@ impl Object {
             docs,
             kind,
             attrs,
-            order,
             fields,
             specifics: ObjectSpecifics::Union { utype },
             datatype: None,
@@ -730,8 +722,8 @@ impl ObjectField {
 
         let docs = Docs::from_raw_docs(&filepath, field.documentation());
 
-        let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
+        let typ = Type::from_raw_type(enums, objs, field.type_(), &attrs);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -776,14 +768,16 @@ impl ObjectField {
 
         let docs = Docs::from_raw_docs(&filepath, val.documentation());
 
+        let attrs = Attributes::from_raw_attrs(val.attributes());
+
         let typ = Type::from_raw_type(
             enums,
             objs,
             // NOTE: Unwrapping is safe, we never resolve enums without union types.
             val.union_type().unwrap(),
+            &attrs,
         );
 
-        let attrs = Attributes::from_raw_attrs(val.attributes());
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -826,6 +820,10 @@ impl ObjectField {
         self.attrs.try_get(self.fqname.as_str(), name)
     }
 
+    pub fn has_attr(&self, name: impl AsRef<str>) -> bool {
+        self.attrs.has(name)
+    }
+
     /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
@@ -835,6 +833,25 @@ impl ObjectField {
     pub fn pascal_case_name(&self) -> String {
         crate::to_pascal_case(&self.name)
     }
+
+    pub fn kind(&self) -> Option<FieldKind> {
+        if self.has_attr(crate::ATTR_RERUN_COMPONENT_REQUIRED) {
+            Some(FieldKind::Required)
+        } else if self.has_attr(crate::ATTR_RERUN_COMPONENT_RECOMMENDED) {
+            Some(FieldKind::Recommended)
+        } else if self.has_attr(crate::ATTR_RERUN_COMPONENT_OPTIONAL) {
+            Some(FieldKind::Optional)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldKind {
+    Required,
+    Recommended,
+    Optional,
 }
 
 /// The underlying type of an [`ObjectField`].
@@ -889,8 +906,23 @@ impl Type {
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
+        attrs: &Attributes,
     ) -> Self {
+        // TODO(jleibs): Clean up fqname plumbing
+        let fqname = "???";
+
         let typ = field_type.base_type();
+
+        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
+            match (typ, type_override.as_str()) {
+                (FbsBaseType::UShort, "float16") => {
+                    return Self::Float16;
+                },
+                (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
+                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
+            }
+        }
+
         match typ {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -901,7 +933,6 @@ impl Type {
             FbsBaseType::UInt => Self::UInt32,
             FbsBaseType::Long => Self::Int64,
             FbsBaseType::ULong => Self::UInt64,
-            // TODO(cmc): half support
             FbsBaseType::Float => Self::Float32,
             FbsBaseType::Double => Self::Float64,
             FbsBaseType::String => Self::String,
@@ -919,6 +950,7 @@ impl Type {
                     objs,
                     field_type,
                     field_type.element(),
+                    attrs,
                 ),
                 length: field_type.fixed_length() as usize,
             },
@@ -928,6 +960,7 @@ impl Type {
                     objs,
                     field_type,
                     field_type.element(),
+                    attrs,
                 ),
             },
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
@@ -1039,7 +1072,19 @@ impl ElementType {
         objs: &[FbsObject<'_>],
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
+        attrs: &Attributes,
     ) -> Self {
+        // TODO(jleibs): Clean up fqname plumbing
+        let fqname = "???";
+        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
+            match (inner_type, type_override.as_str()) {
+                (FbsBaseType::UShort, "float16") => {
+                    return Self::Float16;
+                }
+                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"),
+            }
+        }
+
         #[allow(clippy::match_same_arms)]
         match inner_type {
             FbsBaseType::Bool => Self::Bool,
@@ -1127,7 +1172,7 @@ impl ElementType {
 
 /// A collection of arbitrary attributes.
 #[derive(Debug, Default, Clone)]
-pub struct Attributes(HashMap<String, Option<String>>);
+pub struct Attributes(BTreeMap<String, Option<String>>);
 
 impl Attributes {
     fn from_raw_attrs(
@@ -1139,7 +1184,7 @@ impl Attributes {
                     attrs
                         .into_iter()
                         .map(|kv| (kv.key().to_owned(), kv.value().map(ToOwned::to_owned)))
-                        .collect::<HashMap<_, _>>()
+                        .collect::<BTreeMap<_, _>>()
                 })
                 .unwrap_or_default(),
         )

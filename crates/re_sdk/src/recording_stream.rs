@@ -9,7 +9,7 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::{components::InstanceKey, Archetype, ComponentBatch, SerializationError};
+use re_types::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -65,6 +65,9 @@ pub enum RecordingStreamError {
     #[cfg(feature = "web_viewer")]
     #[error(transparent)]
     WebSink(anyhow::Error),
+
+    #[error(transparent)]
+    DataReadError(#[from] re_log_types::DataReadError),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -574,7 +577,7 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Logs the contents of an [`Archetype`] into Rerun.
+    /// Logs the contents of a [component bundle] into Rerun.
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
     /// See `RecordingStream::set_time_*` family of methods for more information.
@@ -583,17 +586,44 @@ impl RecordingStream {
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
+    /// See also: [`Self::log_timeless`].
+    ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_timeless(ent_path, false, arch)
+        self.log_with_timeless(ent_path, false, arch)
     }
 
-    /// Logs the contents of an [`Archetype`] into Rerun.
+    /// Logs the contents of a [component bundle] into Rerun as timeless data.
+    ///
+    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
+    /// into the past.
+    /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
+    ///
+    /// This is most often used for [`re_types::components::ViewCoordinates`] and
+    /// [`re_types::components::AnnotationContext`].
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [component bundle]: [`AsComponents`]
+    #[inline]
+    pub fn log_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl AsComponents,
+    ) -> RecordingStreamResult<()> {
+        self.log_with_timeless(ent_path, true, arch)
+    }
+
+    /// Logs the contents of a [component bundle] into Rerun.
     ///
     /// If `timeless` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
@@ -609,17 +639,17 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_timeless(
+    pub fn log_with_timeless(
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
-        arch: &impl Archetype,
+        arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         self.log_component_batches(
             ent_path,
             timeless,
-            arch.num_instances() as u32,
             arch.as_component_batches()
                 .iter()
                 .map(|any_comp_batch| any_comp_batch.as_ref()),
@@ -637,11 +667,9 @@ impl RecordingStream {
     /// internal clock.
     /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
-    /// `num_instances` specify the expected number of component instances present in each list.
-    /// Each can have either:
-    /// - exactly `num_instances` instances,
-    /// - a single instance (splat),
-    /// - or zero instance (clear).
+    /// The number of instances will be determined by the longest batch in the bundle.
+    /// All of the batches should have the same number of instances, or length 1 if the component is
+    /// a splat, or 0 if the component is being cleared.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -652,7 +680,6 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
-        num_instances: u32,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
@@ -661,11 +688,13 @@ impl RecordingStream {
 
         let ent_path = ent_path.into();
 
+        let mut num_instances = 0;
         let comp_batches: Result<Vec<_>, _> = comp_batches
             .into_iter()
             .map(|comp_batch| {
+                num_instances = usize::max(num_instances, comp_batch.num_instances());
                 comp_batch
-                    .try_to_arrow()
+                    .to_arrow()
                     .map(|array| (comp_batch.arrow_field(), array))
             })
             .collect();
@@ -701,21 +730,31 @@ impl RecordingStream {
         // internal clock.
         let timepoint = TimePoint::timeless();
 
-        let instanced = (!instanced.is_empty()).then(|| {
-            DataRow::from_cells(
+        let instanced = if instanced.is_empty() {
+            None
+        } else {
+            Some(DataRow::from_cells(
                 RowId::random(),
                 timepoint.clone(),
                 ent_path.clone(),
-                num_instances,
+                num_instances as _,
                 instanced,
-            )
-        });
+            )?)
+        };
 
-        // TODO(#1629): unsplit splats once new data cells are in
-        let splatted = (!splatted.is_empty()).then(|| {
+        // TODO(#1893): unsplit splats once new data cells are in
+        let splatted = if splatted.is_empty() {
+            None
+        } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
-            DataRow::from_cells(RowId::random(), timepoint, ent_path, 1, splatted)
-        });
+            Some(DataRow::from_cells(
+                RowId::random(),
+                timepoint,
+                ent_path,
+                1,
+                splatted,
+            )?)
+        };
 
         if let Some(splatted) = splatted {
             self.record_row(splatted, !timeless);
@@ -1324,8 +1363,7 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_components::datagen::data_table_example;
-    use re_log_types::RowId;
+    use re_log_types::{DataTable, RowId};
 
     use super::*;
 
@@ -1345,10 +1383,10 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec.record_row(row, false);
+            rec.record_row(row.unwrap(), false);
         }
 
         let storage = rec.memory();
@@ -1386,7 +1424,7 @@ mod tests {
                 assert_eq!(store_info.store_id, rid);
 
                 let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                // TODO(1760): we shouldn't have to (re)do this!
+                // TODO(#1760): we shouldn't have to (re)do this!
                 got.compute_all_size_bytes();
                 // NOTE: Override the resulting table's ID so they can be compared.
                 got.table_id = table.table_id;
@@ -1402,6 +1440,8 @@ mod tests {
 
     #[test]
     fn always_flush() {
+        use itertools::Itertools as _;
+
         let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
             .enabled(true)
             .batcher_config(DataTableBatcherConfig::ALWAYS)
@@ -1410,10 +1450,10 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec.record_row(row, false);
+            rec.record_row(row.unwrap(), false);
         }
 
         let storage = rec.memory();
@@ -1445,7 +1485,7 @@ mod tests {
         }
 
         let mut rows = {
-            let mut rows: Vec<_> = table.to_rows().collect();
+            let mut rows: Vec<_> = table.to_rows().try_collect().unwrap();
             rows.reverse();
             rows
         };
@@ -1456,7 +1496,7 @@ mod tests {
                     assert_eq!(store_info.store_id, rid);
 
                     let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                    // TODO(1760): we shouldn't have to (re)do this!
+                    // TODO(#1760): we shouldn't have to (re)do this!
                     got.compute_all_size_bytes();
                     // NOTE: Override the resulting table's ID so they can be compared.
                     got.table_id = table.table_id;
@@ -1490,10 +1530,10 @@ mod tests {
 
         let store_info = rec.store_info().cloned().unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec.record_row(row, false);
+            rec.record_row(row.unwrap(), false);
         }
 
         {
@@ -1521,7 +1561,7 @@ mod tests {
                     assert_eq!(store_info.store_id, rid);
 
                     let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                    // TODO(1760): we shouldn't have to (re)do this!
+                    // TODO(#1760): we shouldn't have to (re)do this!
                     got.compute_all_size_bytes();
                     // NOTE: Override the resulting table's ID so they can be compared.
                     got.table_id = table.table_id;
@@ -1544,10 +1584,10 @@ mod tests {
             .memory()
             .unwrap();
 
-        let mut table = data_table_example(false);
+        let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec.record_row(row, false);
+            rec.record_row(row.unwrap(), false);
         }
 
         let mut msgs = {

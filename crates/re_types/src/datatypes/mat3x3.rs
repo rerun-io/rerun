@@ -8,14 +8,41 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 3x3 column-major Matrix.
+/// A 3x3 Matrix.
+///
+/// Matrices in Rerun are stored as flat list of coefficients in column-major order:
+/// ```text
+///             column 0       column 1       column 2
+///        -------------------------------------------------
+/// row 0 | flat_columns[0] flat_columns[3] flat_columns[6]
+/// row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
+/// row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
+/// ```
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
-pub struct Mat3x3(pub [f32; 9usize]);
+pub struct Mat3x3(
+    /// Flat list of matrix coefficients in column-major order.
+    pub [f32; 9usize],
+);
+
+impl From<[f32; 9usize]> for Mat3x3 {
+    #[inline]
+    fn from(flat_columns: [f32; 9usize]) -> Self {
+        Self(flat_columns)
+    }
+}
+
+impl From<Mat3x3> for [f32; 9usize] {
+    #[inline]
+    fn from(value: Mat3x3) -> Self {
+        value.0
+    }
+}
 
 impl<'a> From<Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
     #[inline]
@@ -55,12 +82,13 @@ impl crate::Loggable for Mat3x3 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -116,12 +144,13 @@ impl crate::Loggable for Mat3x3 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -142,7 +171,7 @@ impl crate::Loggable for Mat3x3 {
                         arrow_data.data_type().clone(),
                     )
                 })
-                .with_context("rerun.datatypes.Mat3x3#coeffs")?;
+                .with_context("rerun.datatypes.Mat3x3#flat_columns")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
@@ -160,7 +189,7 @@ impl crate::Loggable for Mat3x3 {
                                 arrow_data_inner.data_type().clone(),
                             )
                         })
-                        .with_context("rerun.datatypes.Mat3x3#coeffs")?
+                        .with_context("rerun.datatypes.Mat3x3#flat_columns")?
                         .into_iter()
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
@@ -195,7 +224,7 @@ impl crate::Loggable for Mat3x3 {
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.datatypes.Mat3x3#coeffs")
+        .with_context("rerun.datatypes.Mat3x3#flat_columns")
         .with_context("rerun.datatypes.Mat3x3")?)
     }
 }

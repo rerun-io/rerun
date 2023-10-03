@@ -176,7 +176,11 @@ impl ViewerAnalytics {
                 StoreSource::CSdk => "c_sdk".to_owned(),
                 StoreSource::PythonSdk(_version) => "python_sdk".to_owned(),
                 StoreSource::RustSdk { .. } => "rust_sdk".to_owned(),
-                StoreSource::FileFromCli { .. } => "file_cli".to_owned(),
+                StoreSource::File { file_source } => match file_source {
+                    re_log_types::FileSource::Cli => "file_cli".to_owned(),
+                    re_log_types::FileSource::DragAndDrop => "file_drag_and_drop".to_owned(),
+                    re_log_types::FileSource::FileDialog => "file_dialog".to_owned(),
+                },
                 StoreSource::Other(other) => other.clone(),
             };
 
@@ -187,16 +191,17 @@ impl ViewerAnalytics {
             // environment, _not_ the environment in which the viewer is running!
             #[allow(clippy::match_same_arms)]
             match &store_info.store_source {
-                StoreSource::FileFromCli {
-                    rustc_version,
-                    llvm_version,
+                StoreSource::File { .. } => {
+                    self.register("rust_version", env!("RE_BUILD_RUSTC_VERSION")); // Rust/LLVM version used to compile the viewer
+                    self.register("llvm_version", env!("RE_BUILD_LLVM_VERSION")); // Rust/LLVM version used to compile the viewer
+                    self.deregister("python_version"); // can't be both!
                 }
-                | StoreSource::RustSdk {
+                StoreSource::RustSdk {
                     rustc_version,
                     llvm_version,
                 } => {
-                    self.register("rust_version", rustc_version.to_string());
-                    self.register("llvm_version", llvm_version.to_string());
+                    self.register("rust_version", rustc_version.to_string()); // Rust/LLVM version of the the code compiling the Rust SDK
+                    self.register("llvm_version", llvm_version.to_string()); // Rust/LLVM version of the the code compiling the Rust SDK
                     self.deregister("python_version"); // can't be both!
                 }
                 StoreSource::PythonSdk(version) => {

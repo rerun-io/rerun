@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.9"
+LABEL version="0.10.0"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -17,7 +17,6 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
     libarrow-dev \
     build-essential \
-    clang-format \
     cmake \
     curl \
     git \
@@ -33,11 +32,31 @@ RUN set -eux; \
     libxkbcommon-dev \
     lsb-release \
     python3-pip \
+    software-properties-common \
     sudo; \
     rm -rf /var/lib/apt/lists/*;
 
 # Need a more recent pip for manylinux packages to work properly
 RUN python3 -m pip install -U pip
+
+# Need a more recent clang-format for codegen
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
+    apt update -y && \
+    apt upgrade -y && \
+    wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && \
+    ./llvm.sh 15 && \
+    apt-get install clang-format-15 && \
+    ln -sf clang-format-15 /usr/bin/clang-format && \
+    rm -rf /var/lib/apt/lists/*;
+
+# Need a more recent flatbuffers for codegen
+RUN git clone --depth 1 --branch v23.5.9 https://github.com/google/flatbuffers.git && \
+    cd flatbuffers && \
+    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release && \
+    make -j4 && \
+    make install && \
+    cd .. && rm -rf flatbuffers
 
 # We need a more modern patchelf than ships on ubuntu-20.04
 RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | tar -xz ./bin/patchelf
@@ -46,7 +65,7 @@ RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.72.0 \
+    RUST_VERSION=1.72.1 \
     RUSTUP_VERSION=1.26.0
 
 # Install Rust
@@ -75,6 +94,8 @@ RUN cargo install cargo-benchcmp
 # Install the python build dependencies
 ADD rerun_py/requirements-build.txt requirements-build.txt
 RUN pip install -r requirements-build.txt
+ADD rerun_py/requirements-lint.txt requirements-lint.txt
+RUN pip install -r requirements-lint.txt
 
 # Install tools from setup_web.sh
 ADD scripts/setup_web.sh setup_web.sh
@@ -84,7 +105,7 @@ RUN ./setup_web.sh || true
 RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.9
+ENV CACHE_KEY=rerun_docker_v0.10.0
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'

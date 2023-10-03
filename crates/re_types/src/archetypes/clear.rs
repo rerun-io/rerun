@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -17,91 +18,84 @@
 ///
 /// ## Examples
 ///
-/// Flat:
+/// ### Flat
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
-/// use rerun::{
-///    archetypes::{Arrows3D, Clear},
-///    components::Color,
-///    external::glam,
-///    RecordingStreamBuilder,
-/// };
+/// use rerun::external::glam;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_clear_simple").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_clear_simple").memory()?;
 ///
-///    #[rustfmt::skip]
-///    let (vectors, origins, colors) = (
-///        [glam::Vec3::X,    glam::Vec3::NEG_Y, glam::Vec3::NEG_X, glam::Vec3::Y],
-///        [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0),   (0.5, -0.5, 0.0),  (-0.5, -0.5, 0.0)],
-///        [(200, 0, 0),      (0, 200, 0),       (0, 0, 200),       (200, 0, 200)],
-///    );
+///     #[rustfmt::skip]
+///     let (vectors, origins, colors) = (
+///         [glam::Vec3::X,    glam::Vec3::NEG_Y, glam::Vec3::NEG_X, glam::Vec3::Y],
+///         [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0),   (0.5, -0.5, 0.0),  (-0.5, -0.5, 0.0)],
+///         [(200, 0, 0),      (0, 200, 0),       (0, 0, 200),       (200, 0, 200)],
+///     );
 ///
-///    // Log a handful of arrows.
-///    for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
-///        rec.log(
-///            format!("arrows/{i}"),
-///            &Arrows3D::new([vector])
-///                .with_origins([origin])
-///                .with_colors([Color::from_rgb(color.0, color.1, color.2)]),
-///        )?;
-///    }
+///     // Log a handful of arrows.
+///     for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
+///         rec.log(
+///             format!("arrows/{i}"),
+///             &rerun::Arrows3D::from_vectors([vector])
+///                 .with_origins([origin])
+///                 .with_colors([rerun::Color::from_rgb(color.0, color.1, color.2)]),
+///         )?;
+///     }
 ///
-///    // Now clear them, one by one on each tick.
-///    for i in 0..vectors.len() {
-///        rec.log(format!("arrows/{i}"), &Clear::flat())?;
-///    }
+///     // Now clear them, one by one on each tick.
+///     for i in 0..vectors.len() {
+///         rec.log(format!("arrows/{i}"), &rerun::Clear::flat())?;
+///     }
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
-/// Recursive:
+///
+/// ### Recursive
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
-/// use rerun::{
-///    archetypes::{Arrows3D, Clear},
-///    components::Color,
-///    external::glam,
-///    RecordingStreamBuilder,
-/// };
+/// use rerun::external::glam;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_clear_recursive").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_clear_recursive").memory()?;
 ///
-///    #[rustfmt::skip]
-///    let (vectors, origins, colors) = (
-///        [glam::Vec3::X,    glam::Vec3::NEG_Y, glam::Vec3::NEG_X, glam::Vec3::Y],
-///        [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0),   (0.5, -0.5, 0.0),  (-0.5, -0.5, 0.0)],
-///        [(200, 0, 0),      (0, 200, 0),       (0, 0, 200),       (200, 0, 200)],
-///    );
+///     #[rustfmt::skip]
+///     let (vectors, origins, colors) = (
+///         [glam::Vec3::X,    glam::Vec3::NEG_Y, glam::Vec3::NEG_X, glam::Vec3::Y],
+///         [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0),   (0.5, -0.5, 0.0),  (-0.5, -0.5, 0.0)],
+///         [(200, 0, 0),      (0, 200, 0),       (0, 0, 200),       (200, 0, 200)],
+///     );
 ///
-///    // Log a handful of arrows.
-///    for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
-///        rec.log(
-///            format!("arrows/{i}"),
-///            &Arrows3D::new([vector])
-///                .with_origins([origin])
-///                .with_colors([Color::from_rgb(color.0, color.1, color.2)]),
-///        )?;
-///    }
+///     // Log a handful of arrows.
+///     for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
+///         rec.log(
+///             format!("arrows/{i}"),
+///             &rerun::Arrows3D::from_vectors([vector])
+///                 .with_origins([origin])
+///                 .with_colors([rerun::Color::from_rgb(color.0, color.1, color.2)]),
+///         )?;
+///     }
 ///
-///    // Now clear all of them at once.
-///    rec.log("arrows", &Clear::recursive())?;
+///     // Now clear all of them at once.
+///     rec.log("arrows", &rerun::Clear::recursive())?;
 ///
-///    rerun::native_viewer::show(storage.take())?;
-///    Ok(())
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clear {
-    pub settings: crate::components::ClearSettings,
+    pub recursive: crate::components::ClearIsRecursive,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ClearSettings".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.ClearIsRecursive".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ClearIndicator".into()]);
@@ -112,7 +106,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]
 static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ClearSettings".into(),
+            "rerun.components.ClearIsRecursive".into(),
             "rerun.components.ClearIndicator".into(),
             "rerun.components.InstanceKey".into(),
         ]
@@ -131,6 +125,12 @@ impl crate::Archetype for Clear {
     #[inline]
     fn name() -> crate::ArchetypeName {
         "rerun.archetypes.Clear".into()
+    }
+
+    #[inline]
+    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+        static INDICATOR: ClearIndicator = ClearIndicator::DEFAULT;
+        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
@@ -154,14 +154,41 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        1
+    fn from_arrow(
+        arrow_data: impl IntoIterator<
+            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
+        >,
+    ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
+        use crate::{Loggable as _, ResultExt as _};
+        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let recursive = {
+            let array = arrays_by_name
+                .get("rerun.components.ClearIsRecursive")
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Clear#recursive")?;
+            <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Clear#recursive")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(crate::DeserializationError::missing_data)
+                .with_context("rerun.archetypes.Clear#recursive")?
+        };
+        Ok(Self { recursive })
     }
+}
 
+impl crate::AsComponents for Clear {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        use crate::Archetype as _;
         [
-            Some(Self::Indicator::batch(self.num_instances() as _).into()),
-            Some((&self.settings as &dyn crate::ComponentBatch).into()),
+            Some(Self::indicator()),
+            Some((&self.recursive as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -169,67 +196,15 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn try_to_arrow(
-        &self,
-    ) -> crate::SerializationResult<
-        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    > {
-        use crate::{Loggable as _, ResultExt as _};
-        Ok([{
-            Some({
-                let array = <crate::components::ClearSettings>::try_to_arrow([&self.settings]);
-                array.map(|array| {
-                    let datatype = ::arrow2::datatypes::DataType::Extension(
-                        "rerun.components.ClearSettings".into(),
-                        Box::new(array.data_type().clone()),
-                        None,
-                    );
-                    (
-                        ::arrow2::datatypes::Field::new("settings", datatype, false),
-                        array,
-                    )
-                })
-            })
-            .transpose()
-            .with_context("rerun.archetypes.Clear#settings")?
-        }]
-        .into_iter()
-        .flatten()
-        .collect())
-    }
-
-    #[inline]
-    fn try_from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(field, array)| (field.name, array))
-            .collect();
-        let settings = {
-            let array = arrays_by_name
-                .get("settings")
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#settings")?;
-            <crate::components::ClearSettings>::try_from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Clear#settings")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#settings")?
-        };
-        Ok(Self { settings })
+    fn num_instances(&self) -> usize {
+        1
     }
 }
 
 impl Clear {
-    pub fn new(settings: impl Into<crate::components::ClearSettings>) -> Self {
+    pub fn new(recursive: impl Into<crate::components::ClearIsRecursive>) -> Self {
         Self {
-            settings: settings.into(),
+            recursive: recursive.into(),
         }
     }
 }

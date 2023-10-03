@@ -3,6 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use anyhow::Context as _;
 use gltf::texture::WrappingMode;
+use itertools::Itertools;
 use smallvec::SmallVec;
 
 use crate::{
@@ -142,7 +143,7 @@ fn import_mesh(
 ) -> anyhow::Result<Mesh> {
     re_tracing::profile_function!();
 
-    let mut indices = Vec::new();
+    let mut triangle_indices = Vec::new();
     let mut vertex_positions = Vec::new();
     let mut vertex_colors = Vec::new();
     let mut vertex_normals = Vec::new();
@@ -157,12 +158,18 @@ fn import_mesh(
 
         let reader = primitive.reader(|buffer| Some(&*buffers[buffer.index()]));
 
-        let index_offset = indices.len() as u32;
+        let index_offset = triangle_indices.len() as u32 * 3;
         if let Some(primitive_indices) = reader.read_indices() {
             // GLTF restarts the index for every primitive, whereas we use the same range across all materials of the same mesh.
             // (`mesh_renderer` could do this for us by setting a base vertex index)
             let base_index = vertex_positions.len() as u32;
-            indices.extend(primitive_indices.into_u32().map(|i| i + base_index));
+            triangle_indices.extend(
+                primitive_indices
+                    .into_u32()
+                    .map(|i| i + base_index)
+                    .tuples::<(_, _, _)>()
+                    .map(glam::UVec3::from),
+            );
         } else {
             anyhow::bail!("Gltf primitives must have indices");
         }
@@ -246,18 +253,18 @@ fn import_mesh(
 
         materials.push(Material {
             label: primitive.material().name().into(),
-            index_range: index_offset..indices.len() as u32,
+            index_range: index_offset..triangle_indices.len() as u32 * 3,
             albedo,
             albedo_multiplier: albedo_factor,
         });
     }
-    if vertex_positions.is_empty() || indices.is_empty() {
+    if vertex_positions.is_empty() || triangle_indices.is_empty() {
         anyhow::bail!("empty mesh");
     }
 
     let mesh = Mesh {
         label: mesh.name().into(),
-        indices,
+        triangle_indices,
         vertex_positions,
         vertex_colors,
         vertex_normals,

@@ -35,8 +35,8 @@ The command palette is a powerful tool to reach arbitrary actions from anywhere 
 You reach it with `cmd/ctrl + P` or via the menu.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/7c73b6a15921f060e0469edbba64f1e15e5b8682_command-palette_480w.png">
-  <img src="https://static.rerun.io/1f9bd02ee38abc69cef538a7213d7e28a42080ad_command-palette_full.png" alt="screenshot of the command palette">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/command-palette/76d89ff6d2b768c718c84462c6e2bdaa54e40e54/480w.png">
+  <img src="https://static.rerun.io/command-palette/76d89ff6d2b768c718c84462c6e2bdaa54e40e54/full.png" alt="screenshot of the command palette">
 </picture>
 
 
@@ -49,7 +49,7 @@ Help icons
 Most views have an info icon at the top right corner.
 
 <picture>
-  <img src="https://static.rerun.io/40f6fd35a750ae2723a2352f1064971d1cb4f1dd_help-icon_full.png" alt="help icon">
+  <img src="https://static.rerun.io/help-icon/d6268a4576bad594b0c29cf77881d7f1bb9bb889/full.png" alt="help icon">
 </picture>
 
 

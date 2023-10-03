@@ -17,7 +17,6 @@ all-features = true
 
 [dependencies]
 re_arrow_store.workspace = true
-re_components = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_data_store = { workspace = true, features = ["serde"] }
 re_data_ui.workspace = true
 re_error.workspace = true
@@ -45,4 +44,3 @@ parking_lot.workspace = true
 rayon.workspace = true
 serde = "1"
 smallvec = { workspace = true, features = ["serde"] }
-vec1.workspace = true

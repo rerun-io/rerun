@@ -15,8 +15,7 @@ namespace rerun.datatypes;
 struct Quaternion (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.rust.tuple_struct",
-  order: 100
+  "attr.rust.tuple_struct"
 ) {
   xyzw: [float: 4] (order: 100);
 }

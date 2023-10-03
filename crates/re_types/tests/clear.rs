@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Clear, components::ClearSettings, Archetype as _};
+use re_types::{
+    archetypes::Clear, components::ClearIsRecursive, Archetype as _, AsComponents as _,
+};
 
 #[test]
 fn roundtrip() {
     let all_expected = [
         Clear {
-            settings: ClearSettings(true),
+            recursive: ClearIsRecursive(true),
         }, //
         Clear {
-            settings: ClearSettings(false),
+            recursive: ClearIsRecursive(false),
         },
     ];
 
@@ -19,7 +21,7 @@ fn roundtrip() {
     ];
 
     let expected_extensions: HashMap<_, _> = [
-        ("settings", vec!["rerun.components.Clear"]), //
+        ("recursive", vec!["rerun.components.Clear"]), //
     ]
     .into();
 
@@ -27,7 +29,7 @@ fn roundtrip() {
         similar_asserts::assert_eq!(expected, arch);
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow();
+        let serialized = arch.to_arrow().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -44,7 +46,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = Clear::try_from_arrow(serialized).unwrap();
+        let deserialized = Clear::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

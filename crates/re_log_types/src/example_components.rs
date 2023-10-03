@@ -2,8 +2,6 @@
 
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::{ComponentName, LegacyComponent};
-
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Default, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
@@ -12,16 +10,9 @@ pub struct MyPoint {
     pub y: f32,
 }
 
-impl LegacyComponent for MyPoint {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "test.point2d".into()
-    }
-}
-
 use crate as re_log_types;
 
-re_log_types::component_legacy_shim!(MyPoint);
+re_log_types::arrow2convert_component_shim!(MyPoint as "test.Point2D");
 
 // ----------------------------------------------------------------------------
 
@@ -40,14 +31,7 @@ re_log_types::component_legacy_shim!(MyPoint);
 #[repr(transparent)]
 pub struct MyColor(pub u32);
 
-impl LegacyComponent for MyColor {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "test.colorrgba".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(MyColor);
+re_log_types::arrow2convert_component_shim!(MyColor as "test.Color");
 
 // ----------------------------------------------------------------------------
 
@@ -56,11 +40,4 @@ re_log_types::component_legacy_shim!(MyColor);
 #[arrow_field(transparent)]
 pub struct MyLabel(pub String);
 
-impl LegacyComponent for MyLabel {
-    #[inline]
-    fn legacy_name() -> ComponentName {
-        "test.label".into()
-    }
-}
-
-re_log_types::component_legacy_shim!(MyLabel);
+re_log_types::arrow2convert_component_shim!(MyLabel as "test.Label");

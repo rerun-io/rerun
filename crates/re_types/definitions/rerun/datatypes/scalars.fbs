@@ -5,11 +5,11 @@ include "rust/attributes.fbs";
 
 namespace rerun.datatypes;
 
+/// A single-precision 32-bit IEEE 754 floating point number.
 struct Float32 (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.rust.tuple_struct",
-  order: 100
+  "attr.rust.tuple_struct"
 ) {
   value: float (order: 100);
 }

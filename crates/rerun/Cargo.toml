@@ -20,7 +20,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["analytics", "demo", "glam", "image", "sdk", "server"]
+default = ["analytics", "demo", "glam", "image", "log", "sdk", "server"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = [
@@ -37,8 +37,11 @@ demo = ["re_sdk?/demo"]
 ## Only relevant if feature `sdk` is enabled.
 glam = ["re_sdk?/glam"]
 
-## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["re_sdk?/image"]
+
+## Integration with the [`log`](https://crates.io/crates/log/) crate.
+log = ["re_sdk?/log"]
 
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
@@ -54,8 +57,8 @@ sdk = ["dep:re_sdk"]
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
 ##
-## For faster & easier builds, the web-player build comes bundled with the crate.
-## Enabling this feature will embed this pre-built web-player.
+## For faster & easier builds, a pre-built web-views comes bundled with the crate as a Wasm binary.
+## Enabling this feature will embed this pre-built web viewer.
 ##
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
@@ -78,7 +81,7 @@ re_tracing.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
-document-features = "0.2"
+document-features.workspace = true
 itertools.workspace = true
 
 # Optional dependencies:

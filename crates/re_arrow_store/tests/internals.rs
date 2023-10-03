@@ -5,9 +5,8 @@
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use re_arrow_store::{DataStore, DataStoreConfig};
-use re_components::datagen::{build_frame_nr, build_some_instances};
-use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
-use re_types::{components::InstanceKey, Loggable as _};
+use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimePoint};
+use re_types::{components::InstanceKey, datagen::build_some_instances, Loggable as _};
 
 // --- Internals ---
 
@@ -56,7 +55,8 @@ fn pathological_bucket_topology() {
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
-            );
+            )
+            .unwrap();
             store_forward.insert_row(&row).unwrap();
 
             let row = DataRow::from_cells1_sized(
@@ -65,7 +65,8 @@ fn pathological_bucket_topology() {
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
-            );
+            )
+            .unwrap();
             store_backward.insert_row(&row).unwrap();
         }
     }
@@ -88,6 +89,7 @@ fn pathological_bucket_topology() {
                     num_instances,
                     build_some_instances(num_instances as _),
                 )
+                .unwrap()
             })
             .collect::<Vec<_>>();
 

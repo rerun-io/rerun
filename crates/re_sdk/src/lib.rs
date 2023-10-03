@@ -1,4 +1,10 @@
-//! The Rerun SDK
+//! The Rerun logging SDK
+//!
+//! This is the bare-bones version of the [`rerun`](https://docs.rs/rerun/) crate.
+//! `rerun` exports everything in `re_sdk`, so in most cases you want to use `rerun`
+//! instead.
+//!
+//! Please read [the docs for the `rerun` crate](https://docs.rs/rerun/) instead.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
@@ -13,6 +19,9 @@ mod global;
 mod log_sink;
 mod recording_stream;
 
+#[cfg(feature = "log")]
+mod log_integration;
+
 // -------------
 // Public items:
 
@@ -20,7 +29,7 @@ pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder, Record
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
-pub use re_log_types::{ApplicationId, EntityPath, LegacyComponent, StoreId, StoreKind};
+pub use re_log_types::{ApplicationId, EntityPath, StoreId, StoreKind};
 
 pub use global::cleanup_if_forked_child;
 
@@ -31,7 +40,9 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self) {
+        re_log_encoding::FileSink::flush_blocking(self);
+    }
 }
 
 // ---------------
@@ -64,22 +75,6 @@ pub mod time {
     pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
 }
 
-/// These are the different _components_ you can log.
-///
-/// They all implement the [`Component`][`re_types::Component`] trait,
-/// and can be used in [`RecordingStream::log_component_batches`].
-pub mod components {
-    pub use re_components::{
-        EncodedMesh3D, Mesh3D, MeshFormat, Pinhole, Quaternion, RawMesh3D, Scalar, ScalarPlotProps,
-        ViewCoordinates,
-    };
-    pub use re_types::components::{
-        AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, HalfSizes2D, HalfSizes3D,
-        InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Origin3D, Position2D, Position3D,
-        Radius, Rotation3D, TensorData, Text, Transform3D, Vector3D,
-    };
-}
-
 /// Transform helpers, for use with [`components::Transform3D`].
 pub mod transform {
     pub use re_types::datatypes::{
@@ -90,14 +85,39 @@ pub mod transform {
 
 /// Coordinate system helpers, for use with [`components::ViewCoordinates`].
 pub mod coordinates {
-    pub use re_components::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
+    pub use re_types::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
 pub use re_types::{
-    archetypes, datatypes, Archetype, ArchetypeName, Component, ComponentBatch, ComponentName,
-    Datatype, DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable,
-    MaybeOwnedComponentBatch,
+    archetypes, components, datatypes, Archetype, ArchetypeName, AsComponents, Component,
+    ComponentBatch, ComponentName, Datatype, DatatypeBatch, DatatypeName,
+    GenericIndicatorComponent, Loggable, LoggableBatch, MaybeOwnedComponentBatch,
+    NamedIndicatorComponent,
 };
+
+mod prelude {
+    // Import all archetypes into the global namespace to minimize
+    // the amount of typing for our users.
+    pub use super::archetypes::*;
+
+    // Also import some select, often-used, datatypes and components:
+    pub use super::components::{
+        Color, HalfSizes2D, HalfSizes3D, InstanceKey, Material, MediaType, MeshProperties,
+        Origin3D, OutOfTreeTransform3D, Position3D, Radius, TextLogLevel, Vector3D,
+    };
+    pub use super::datatypes::{
+        Angle, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32, Rotation3D,
+        RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+    };
+
+    pub use super::time::{Time, TimePoint, Timeline};
+}
+pub use prelude::*;
+
+#[cfg(feature = "log")]
+pub use self::log_integration::Logger;
+#[cfg(feature = "log")]
+pub use re_log::default_log_filter;
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
@@ -115,11 +135,8 @@ pub mod external {
     pub use re_log_types::external::*;
     pub use re_types::external::*;
 
-    #[cfg(feature = "glam")]
-    pub use re_components::external::glam;
-
-    #[cfg(feature = "image")]
-    pub use re_components::external::image;
+    #[cfg(feature = "log")]
+    pub use log;
 }
 
 // -----

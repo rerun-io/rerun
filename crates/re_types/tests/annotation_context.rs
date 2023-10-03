@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::AnnotationContext,
     components,
-    datatypes::{ClassDescription, Color, KeypointPair},
-    Archetype as _,
+    datatypes::{ClassDescription, KeypointPair, Rgba32},
+    Archetype as _, AsComponents as _,
 };
 
 #[test]
@@ -12,7 +12,7 @@ fn roundtrip() {
     let expected = components::AnnotationContext::from([
         (1, "hello").into(),
         ClassDescription {
-            info: (2, "world", Color::from_rgb(3, 4, 5)).into(),
+            info: (2, "world", Rgba32::from_rgb(3, 4, 5)).into(),
             keypoint_annotations: vec![(17, "head").into(), (42, "shoulders").into()],
             keypoint_connections: KeypointPair::vec_from([(1, 2), (3, 4)]),
         },
@@ -24,7 +24,7 @@ fn roundtrip() {
         [("context", vec!["rerun.components.AnnotationContext"])].into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -41,7 +41,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = AnnotationContext::try_from_arrow(serialized).unwrap();
+    let deserialized = AnnotationContext::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(arch, deserialized);
 }
 

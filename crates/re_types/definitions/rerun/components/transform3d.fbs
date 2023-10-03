@@ -8,8 +8,7 @@ namespace rerun.components;
 
 /// An affine transform between two 3D spaces, represented in a given direction.
 table Transform3D (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   /// Representation of the transform.
   repr: rerun.datatypes.Transform3D (order: 100);

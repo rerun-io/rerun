@@ -2,11 +2,11 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 use pyo3::{
-    exceptions::{PyRuntimeError, PyTypeError},
+    exceptions::PyRuntimeError,
     prelude::*,
     types::{PyBytes, PyDict},
 };
@@ -20,27 +20,23 @@ use re_viewport::{
 
 use re_log_types::{DataRow, StoreKind};
 use rerun::{
-    datatypes::TensorData, log::RowId, sink::MemorySinkStorage, time::TimePoint, EntityPath,
-    RecordingStream, RecordingStreamBuilder, StoreId,
+    log::RowId, sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream,
+    RecordingStreamBuilder, StoreId,
 };
 
 pub use rerun::{
     components::{
-        AnnotationContext, ClassId, Color, DisconnectedSpace, DrawOrder, EncodedMesh3D,
-        InstanceKey, KeypointId, LineStrip2D, LineStrip3D, Mesh3D, MeshFormat, Origin3D, Pinhole,
-        Position2D, Position3D, Quaternion, Radius, RawMesh3D, Scalar, ScalarPlotProps, Text,
-        Transform3D, Vector3D, ViewCoordinates,
+        AnnotationContext, Blob, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey,
+        KeypointId, LineStrip2D, LineStrip3D, Origin3D, OutOfTreeTransform3D, PinholeProjection,
+        Position2D, Position3D, Radius, Text, Transform3D, Vector3D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
-    datatypes::{AnnotationInfo, ClassDescription},
 };
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
-
-use crate::arrow::get_registered_component_names;
 
 // --- FFI ---
 
@@ -100,9 +96,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(main, m)?)?;
 
     // These two components are necessary for imports to work
-    // TODO(jleibs): Refactor import logic so all we need is main
-    m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
-    m.add_class::<TensorDataMeaning>()?;
     m.add_class::<PyMemorySinkStorage>()?;
     m.add_class::<PyRecordingStream>()?;
 
@@ -150,14 +143,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-
-    // legacy log functions not yet ported to pure python
-    m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-    m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
-    m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
-    m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
-    m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
-    m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -546,7 +531,9 @@ struct PyMemorySinkStorage {
 
 #[pymethods]
 impl PyMemorySinkStorage {
-    /// This will do a blocking flush before returning!
+    /// Concatenate the contents of the [`MemorySinkStorage`] as byes.
+    ///
+    /// Note: This will do a blocking flush before returning!
     fn concat_as_bytes<'p>(
         &self,
         concat: Option<&PyMemorySinkStorage>,
@@ -566,6 +553,18 @@ impl PyMemorySinkStorage {
         )
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+
+    /// Count the number of pending messages in the [`MemorySinkStorage`].
+    ///
+    /// This will do a blocking flush before returning!
+    fn num_msgs(&self, py: Python<'_>) -> usize {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            self.rec.flush_blocking();
+        });
+
+        self.inner.num_msgs()
     }
 }
 
@@ -686,384 +685,6 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
     recording.reset_time();
 }
 
-// --- Log view coordinates ---
-
-#[pyfunction]
-#[pyo3(signature = (entity_path, xyz, right_handed = None, timeless = false, recording=None))]
-fn log_view_coordinates_xyz(
-    entity_path: &str,
-    xyz: &str,
-    right_handed: Option<bool>,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let coordinates: ViewCoordinates = xyz.parse().map_err(PyTypeError::new_err)?;
-
-    if let Some(right_handed) = right_handed {
-        let expected_handedness = Handedness::from_right_handed(right_handed);
-        let actual_handedness = coordinates.handedness().unwrap(); // can't fail if we managed to parse
-
-        if actual_handedness != expected_handedness {
-            return Err(PyTypeError::new_err(format!(
-                "Mismatched handedness. {} is {}",
-                coordinates.describe(),
-                actual_handedness.describe(),
-            )));
-        }
-    }
-
-    log_view_coordinates(entity_path, coordinates, timeless, recording)
-}
-
-#[pyfunction]
-fn log_view_coordinates_up_handedness(
-    entity_path: &str,
-    up: &str,
-    right_handed: bool,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
-    let handedness = Handedness::from_right_handed(right_handed);
-    let coordinates = ViewCoordinates::from_up_and_handedness(up, handedness);
-
-    log_view_coordinates(entity_path, coordinates, timeless, recording)
-}
-
-fn log_view_coordinates(
-    entity_path_str: &str,
-    coordinates: ViewCoordinates,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    if coordinates.handedness() == Some(Handedness::Left) {
-        re_log::warn_once!(
-            "Left-handed coordinate systems are not yet fully supported by Rerun (got {})",
-            coordinates.describe_short()
-        );
-    }
-
-    // We normally disallow logging to root, but we make an exception for view_coordinates
-    let entity_path = if entity_path_str == "/" {
-        EntityPath::root()
-    } else {
-        parse_entity_path(entity_path_str)?
-    };
-
-    // We currently log view coordinates from inside the bridge because the code
-    // that does matching and validation on different string representations is
-    // non-trivial. Implementing this functionality on the python side will take
-    // a bit of additional work and testing to ensure we aren't introducing new
-    // conversion errors.
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [coordinates].as_slice(),
-    );
-
-    recording.record_row(row, !timeless);
-
-    Ok(())
-}
-
-// --- Log segmentation ---
-
-#[derive(FromPyObject)]
-struct AnnotationInfoTuple(u16, Option<String>, Option<Vec<u8>>);
-
-impl From<AnnotationInfoTuple> for AnnotationInfo {
-    fn from(tuple: AnnotationInfoTuple) -> Self {
-        let AnnotationInfoTuple(id, label, color) = tuple;
-        Self {
-            id,
-            label: label.map(Into::into),
-            color: color
-                .as_ref()
-                .map(|color| convert_color(color.clone()).unwrap())
-                .map(|bytes| bytes.into()),
-        }
-    }
-}
-
-// --- Log assets ---
-
-#[allow(clippy::too_many_arguments)]
-#[pyfunction]
-fn log_meshes(
-    entity_path_str: &str,
-    position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
-    vertex_color_buffers: Vec<Option<numpy::PyReadonlyArray2<'_, u8>>>,
-    index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
-    normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
-    albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    let entity_path = parse_entity_path(entity_path_str)?;
-
-    // Make sure we have as many position buffers as index buffers, etc.
-    if position_buffers.len() != vertex_color_buffers.len()
-        || position_buffers.len() != index_buffers.len()
-        || position_buffers.len() != normal_buffers.len()
-        || position_buffers.len() != albedo_factors.len()
-    {
-        return Err(PyTypeError::new_err(format!(
-            "Top-level position/index/normal/albedo/id buffer arrays must be same the length, \
-                got positions={}, vertex_colors={}, indices={}, normals={}, albedo={} instead",
-            position_buffers.len(),
-            vertex_color_buffers.len(),
-            index_buffers.len(),
-            normal_buffers.len(),
-            albedo_factors.len(),
-        )));
-    }
-
-    let mut meshes = Vec::with_capacity(position_buffers.len());
-
-    for (vertex_positions, vertex_colors, indices, normals, albedo_factor) in izip!(
-        position_buffers,
-        vertex_color_buffers,
-        index_buffers,
-        normal_buffers,
-        albedo_factors,
-    ) {
-        let albedo_factor =
-            if let Some(v) = albedo_factor.map(|albedo_factor| albedo_factor.as_array().to_vec()) {
-                match v.len() {
-                    3 => re_components::LegacyVec4D([v[0], v[1], v[2], 1.0]),
-                    4 => re_components::LegacyVec4D([v[0], v[1], v[2], v[3]]),
-                    _ => {
-                        return Err(PyTypeError::new_err(format!(
-                            "Albedo factor must be vec3 or vec4, got {v:?} instead",
-                        )));
-                    }
-                }
-                .into()
-            } else {
-                None
-            };
-
-        let vertex_colors = if let Some(vertex_colors) = vertex_colors {
-            match vertex_colors.shape() {
-                [_, 3] => Some(
-                    slice_from_np_array(&vertex_colors)
-                        .chunks_exact(3)
-                        .map(|c| Color::from_rgb(c[0], c[1], c[2]).to_u32())
-                        .collect(),
-                ),
-                [_, 4] => Some(
-                    slice_from_np_array(&vertex_colors)
-                        .chunks_exact(4)
-                        .map(|c| Color::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).to_u32())
-                        .collect(),
-                ),
-                shape => {
-                    return Err(PyTypeError::new_err(format!(
-                        "Expected vertex colors to have a Nx3 or Nx4 shape, got {shape:?} instead",
-                    )));
-                }
-            }
-        } else {
-            None
-        };
-
-        let raw = RawMesh3D {
-            vertex_positions: vertex_positions.as_array().to_vec().into(),
-            vertex_colors,
-            indices: indices.map(|indices| indices.as_array().to_vec().into()),
-            vertex_normals: normals.map(|normals| normals.as_array().to_vec().into()),
-            albedo_factor,
-        };
-        raw.sanity_check()
-            .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-
-        meshes.push(Mesh3D::Raw(raw));
-    }
-
-    // We currently log `Mesh3D` from inside the bridge.
-    //
-    // Pyarrow handling of nested unions was causing more grief that it was
-    // worth fighting with in the short term.
-    //
-    // TODO(jleibs) replace with python-native implementation
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        meshes.len() as _,
-        meshes,
-    );
-
-    recording.record_row(row, !timeless);
-
-    Ok(())
-}
-
-#[pyfunction]
-fn log_mesh_file(
-    entity_path_str: &str,
-    mesh_format: &str,
-    transform: numpy::PyReadonlyArray2<'_, f32>,
-    timeless: bool,
-    mesh_bytes: Option<Vec<u8>>,
-    mesh_path: Option<PathBuf>,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    let entity_path = parse_entity_path(entity_path_str)?;
-
-    let format = match mesh_format {
-        "GLB" => MeshFormat::Glb,
-        "GLTF" => MeshFormat::Gltf,
-        "OBJ" => MeshFormat::Obj,
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Unknown mesh format {mesh_format:?}. \
-                Expected one of: GLB, GLTF, OBJ"
-            )));
-        }
-    };
-
-    let mesh_bytes = match (mesh_bytes, mesh_path) {
-        (Some(mesh_bytes), None) => mesh_bytes,
-        (None, Some(mesh_path)) => std::fs::read(mesh_path)?,
-        (None, None) => Err(PyTypeError::new_err(
-            "log_mesh_file: You must pass either mesh_bytes or mesh_path",
-        ))?,
-        (Some(_), Some(_)) => Err(PyTypeError::new_err(
-            "log_mesh_file: You must pass either mesh_bytes or mesh_path, but not both!",
-        ))?,
-    };
-
-    let transform = if transform.is_empty() {
-        [
-            [1.0, 0.0, 0.0], // col 0
-            [0.0, 1.0, 0.0], // col 1
-            [0.0, 0.0, 1.0], // col 2
-            [0.0, 0.0, 0.0], // col 3 = translation
-        ]
-    } else {
-        if transform.shape() != [3, 4] {
-            return Err(PyTypeError::new_err(format!(
-                "Expected a 3x4 affine transformation matrix, got shape={:?}",
-                transform.shape()
-            )));
-        }
-
-        let get = |row, col| *transform.get([row, col]).unwrap();
-
-        [
-            [get(0, 0), get(1, 0), get(2, 0)], // col 0
-            [get(0, 1), get(1, 1), get(2, 1)], // col 1
-            [get(0, 2), get(1, 2), get(2, 2)], // col 2
-            [get(0, 3), get(1, 3), get(2, 3)], // col 3 = translation
-        ]
-    };
-
-    let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
-        format,
-        bytes: mesh_bytes.into(),
-        transform,
-    });
-
-    // We currently log `Mesh3D` from inside the bridge.
-    //
-    // Pyarrow handling of nested unions was causing more grief that it was
-    // worth fighting with in the short term.
-    //
-    // TODO(jleibs) replace with python-native implementation
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [mesh3d].as_slice(),
-    );
-
-    recording.record_row(row, !timeless);
-
-    Ok(())
-}
-
-/// Log an image file given its contents or path on disk.
-///
-/// If no `img_format` is specified, we will try and guess it.
-#[pyfunction]
-#[pyo3(signature = (entity_path, img_bytes = None, img_path = None, img_format = None, timeless = false, recording=None))]
-fn log_image_file(
-    entity_path: &str,
-    img_bytes: Option<Vec<u8>>,
-    img_path: Option<PathBuf>,
-    img_format: Option<&str>,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    let entity_path = parse_entity_path(entity_path)?;
-
-    let img_bytes = match (img_bytes, img_path) {
-        (Some(img_bytes), None) => img_bytes,
-        (None, Some(img_path)) => std::fs::read(img_path)?,
-        (None, None) => Err(PyTypeError::new_err(
-            "log_image_file: You must pass either img_bytes or img_path",
-        ))?,
-        (Some(_), Some(_)) => Err(PyTypeError::new_err(
-            "log_image_file: You must pass either img_bytes or img_path, but not both!",
-        ))?,
-    };
-
-    let img_format = match img_format {
-        Some(img_format) => image::ImageFormat::from_extension(img_format)
-            .ok_or_else(|| PyTypeError::new_err(format!("Unknown image format {img_format:?}.")))?,
-        None => {
-            image::guess_format(&img_bytes).map_err(|err| PyTypeError::new_err(err.to_string()))?
-        }
-    };
-
-    let tensor = rerun::components::TensorData(
-        TensorData::from_image_bytes(img_bytes, img_format)
-            .map_err(|err| PyTypeError::new_err(err.to_string()))?,
-    );
-
-    recording
-        .log_timeless(
-            entity_path,
-            timeless,
-            &rerun::archetypes::Image::new(tensor),
-        )
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-
-    Ok(())
-}
-
-// TODO(jleibs): This shadows [`re_log_types::TensorDataMeaning`]
-#[pyclass]
-#[derive(Clone, Debug)]
-enum TensorDataMeaning {
-    Unknown,
-    ClassId,
-    Depth,
-}
-
 // --- Log special ---
 
 #[pyfunction]
@@ -1073,25 +694,24 @@ fn set_panels(
     timeline_view_expanded: Option<bool>,
     blueprint: Option<&PyRecordingStream>,
 ) {
-    blueprint_view_expanded
-        .map(|expanded| set_panel(PanelState::BLUEPRINT_VIEW_PATH, expanded, blueprint));
-    selection_view_expanded
-        .map(|expanded| set_panel(PanelState::SELECTION_VIEW_PATH, expanded, blueprint));
-    timeline_view_expanded
-        .map(|expanded| set_panel(PanelState::TIMELINE_VIEW_PATH, expanded, blueprint));
+    if let Some(expanded) = blueprint_view_expanded {
+        set_panel(PanelState::BLUEPRINT_VIEW_PATH, expanded, blueprint);
+    }
+    if let Some(expanded) = selection_view_expanded {
+        set_panel(PanelState::SELECTION_VIEW_PATH, expanded, blueprint);
+    }
+    if let Some(expanded) = timeline_view_expanded {
+        set_panel(PanelState::TIMELINE_VIEW_PATH, expanded, blueprint);
+    }
 }
 
-fn set_panel(
-    entity_path: &str,
-    expanded: bool,
-    blueprint: Option<&PyRecordingStream>,
-) -> PyResult<()> {
+fn set_panel(entity_path: &str, expanded: bool, blueprint: Option<&PyRecordingStream>) {
     let Some(blueprint) = get_blueprint_recording(blueprint) else {
-        return Ok(());
+        return;
     };
 
     // TODO(jleibs): Validation this is a valid blueprint path?
-    let entity_path = parse_entity_path(entity_path)?;
+    let entity_path = parse_entity_path(entity_path);
 
     let panel_state = PanelState { expanded };
 
@@ -1101,18 +721,18 @@ fn set_panel(
         TimePoint::default(),
         1,
         [panel_state].as_slice(),
-    );
+    )
+    .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
     blueprint.record_row(row, !timeless);
-
-    Ok(())
 }
 
 #[pyfunction]
 fn add_space_view(
     name: &str,
+    space_view_class: &str,
     origin: &str,
     entity_paths: Vec<&str>,
     blueprint: Option<&PyRecordingStream>,
@@ -1123,7 +743,7 @@ fn add_space_view(
 
     let entity_paths = entity_paths.into_iter().map(|s| s.into()).collect_vec();
     let mut space_view =
-        SpaceViewBlueprint::new("Spatial".into(), &origin.into(), entity_paths.iter());
+        SpaceViewBlueprint::new(space_view_class.into(), &origin.into(), entity_paths.iter());
 
     // Choose the space-view id deterministically from the name; this means the user
     // can run the application multiple times and get sane behavior.
@@ -1134,8 +754,7 @@ fn add_space_view(
 
     let entity_path = parse_entity_path(
         format!("{}/{}", SpaceViewComponent::SPACEVIEW_PREFIX, space_view.id).as_str(),
-    )
-    .unwrap();
+    );
 
     let space_view = SpaceViewComponent { space_view };
 
@@ -1145,7 +764,8 @@ fn add_space_view(
         TimePoint::default(),
         1,
         [space_view].as_slice(),
-    );
+    )
+    .unwrap();
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
@@ -1166,7 +786,8 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
         TimePoint::default(),
         1,
         [enable_auto_space].as_slice(),
-    );
+    )
+    .unwrap();
 
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
@@ -1190,7 +811,7 @@ fn log_arrow_msg(
         return Ok(());
     };
 
-    let entity_path = parse_entity_path(entity_path)?;
+    let entity_path = parse_entity_path(entity_path);
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
@@ -1337,35 +958,7 @@ authkey = multiprocessing.current_process().authkey
     .map(|authkey: &PyBytes| authkey.as_bytes().to_vec())
 }
 
-fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
-    match &color[..] {
-        [r, g, b] => Ok([*r, *g, *b, 255]),
-        [r, g, b, a] => Ok([*r, *g, *b, *a]),
-        _ => Err(PyTypeError::new_err(format!(
-            "Expected color to be of length 3 or 4, got {color:?}"
-        ))),
-    }
-}
-
-fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
-    array: &'a numpy::PyReadonlyArray<'_, T, D>,
-) -> Cow<'a, [T]> {
-    let array = array.as_array();
-
-    // Numpy has many different memory orderings.
-    // We could/should check that we have the right one here.
-    // But for now, we just check for and optimize the trivial case.
-    if array.shape().len() == 1 {
-        if let Some(slice) = array.to_slice() {
-            return Cow::Borrowed(slice); // common-case optimization
-        }
-    }
-
-    Cow::Owned(array.iter().cloned().collect())
-}
-
-fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
-    let components = re_log_types::parse_entity_path(entity_path)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    Ok(EntityPath::from(components))
+fn parse_entity_path(entity_path: &str) -> EntityPath {
+    // We accept anything!
+    EntityPath::parse_forgiving(entity_path)
 }

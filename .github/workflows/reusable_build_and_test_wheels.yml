@@ -74,7 +74,7 @@ jobs:
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               run_tests="true"
-              container="{'image': 'rerunio/ci_docker:0.9'}"
+              container="{'image': 'rerunio/ci_docker:0.10.0'}"
               ;;
             windows)
               runner="windows-latest-8-cores"
@@ -185,7 +185,7 @@ jobs:
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
         with:
-          maturin-version: "0.14.10"
+          maturin-version: "0.14.17"
           manylinux: manylinux_2_31
           container: off
           command: build
@@ -215,7 +215,7 @@ jobs:
         # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
         shell: bash
         run: |
-          pip install attrs>=23.1.0 deprecated numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2
+          pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2 typing_extensions>=4.5
 
       - name: Get version
         id: get-version

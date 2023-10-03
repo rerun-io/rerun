@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// Optional triangle indices for a mesh.
+table MeshProperties (
+  "attr.rust.derive": "PartialEq, Eq"
+) {
+  // TODO(#3353): this is what this should be.
+  // triangle_indices: [rerun.datatypes.UVec3D] (nullable, order: 100);
+
+  /// If specified, a flattened array of vertex indices that describe the mesh's triangles,
+  /// i.e. its length must be divisible by 3.
+  indices: [uint] (nullable, order: 100);
+}

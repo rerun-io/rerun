@@ -20,12 +20,12 @@ namespace rerun {
         /// A monochrome or color image.
         ///
         /// The shape of the `TensorData` must be mappable to:
-        ///- A `HxW` tensor, treated as a grayscale image.
-        ///- A `HxWx3` tensor, treated as an RGB image.
-        ///- A `HxWx4` tensor, treated as an RGBA image.
+        /// - A `HxW` tensor, treated as a grayscale image.
+        /// - A `HxWx3` tensor, treated as an RGB image.
+        /// - A `HxWx4` tensor, treated as an RGBA image.
         ///
         /// Leading and trailing unit-dimensions are ignored, so that
-        ///`1x640x480x3x1` is treated as a `640x480x3` RGB image.
+        /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
         struct Image {
             /// The image data. Should always be a rank-2 or rank-3 tensor.
             rerun::components::TensorData data;
@@ -54,6 +54,11 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
+
+            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
+            /// allows for associating arbitrary indicator components with arbitrary data. Check out
+            /// the `manual_indicator` API example to see what's possible.
+            static AnonymousComponentBatch indicator();
 
             /// Collections all component lists into a list of component collections. *Attention:*
             /// The returned vector references this instance and does not take ownership of any

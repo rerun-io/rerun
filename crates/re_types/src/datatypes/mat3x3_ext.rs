@@ -9,6 +9,21 @@ impl Mat3x3 {
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
     ]);
+
+    /// Returns the matrix column for the given `index`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is greater than 2.
+    #[inline]
+    pub fn col(&self, index: usize) -> Vec3D {
+        match index {
+            0 => [self.0[0], self.0[1], self.0[2]].into(),
+            1 => [self.0[3], self.0[4], self.0[5]].into(),
+            2 => [self.0[6], self.0[7], self.0[8]].into(),
+            _ => panic!("index out of bounds"),
+        }
+    }
 }
 
 impl<Idx> std::ops::Index<Idx> for Mat3x3

@@ -8,6 +8,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
@@ -87,12 +88,13 @@ impl crate::Loggable for TranslationRotationScale3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -196,7 +198,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         };
                         {
                             _ = rotation_bitmap;
-                            crate::datatypes::Rotation3D::try_to_arrow_opt(rotation)?
+                            crate::datatypes::Rotation3D::to_arrow_opt(rotation)?
                         }
                     },
                     {
@@ -219,7 +221,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         };
                         {
                             _ = scale_bitmap;
-                            crate::datatypes::Scale3D::try_to_arrow_opt(scale)?
+                            crate::datatypes::Scale3D::to_arrow_opt(scale)?
                         }
                     },
                     {
@@ -255,12 +257,13 @@ impl crate::Loggable for TranslationRotationScale3D {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -405,7 +408,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["rotation"];
-                    crate::datatypes::Rotation3D::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::Rotation3D::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.TranslationRotationScale3D#rotation")?
                         .into_iter()
                 };
@@ -418,7 +421,7 @@ impl crate::Loggable for TranslationRotationScale3D {
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["scale"];
-                    crate::datatypes::Scale3D::try_from_arrow_opt(arrow_data)
+                    crate::datatypes::Scale3D::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.TranslationRotationScale3D#scale")?
                         .into_iter()
                 };

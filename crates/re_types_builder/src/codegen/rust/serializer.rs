@@ -595,7 +595,7 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            // TODO(https://github.com/rerun-io/rerun/issues/2993): The inner
+            // TODO(#2993): The inner
             // types of lists shouldn't be nullable, but both the python and C++
             // code-gen end up setting these to null when an outer fixed-sized
             // field does happen to be null. In order to keep everything aligned
@@ -664,7 +664,7 @@ fn quote_arrow_field_serializer(
             let fqname_use = quote_fqname_as_type_path(fqname);
             quote! {{
                 _ = #bitmap_src;
-                #fqname_use::try_to_arrow_opt(#data_src)?
+                #fqname_use::to_arrow_opt(#data_src)?
             }}
         }
 

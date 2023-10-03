@@ -1,0 +1,70 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// Log a double-precision scalar that will be visualized as a time-series plot.
+///
+/// The current simulation time will be used for the time/X-axis, hence scalars
+/// cannot be timeless!
+///
+/// \example scalar_simple
+/// \example scalar_multiple_plots
+table TimeSeriesScalar (
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// The scalar value to log.
+  scalar: rerun.components.Scalar ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// An optional radius for the point.
+  ///
+  /// Points within a single line do not have to share the same radius, the line
+  /// will have differently sized segments as appropriate.
+  ///
+  /// If all points within a single entity path (i.e. a line) share the same
+  /// radius, then this radius will be used as the line width too. Otherwise, the
+  /// line will use the default width of `1.0`.
+  radius: rerun.components.Radius ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Optional color for the scalar entry.
+  ///
+  /// If left unspecified, a pseudo-random color will be used instead. That
+  /// same color will apply to all points residing in the same entity path
+  /// that don't have a color specified.
+  ///
+  /// Points within a single line do not have to share the same color, the line
+  /// will have differently colored segments as appropriate.
+  /// If all points within a single entity path (i.e. a line) share the same
+  /// color, then this color will be used as the line color in the plot legend.
+  /// Otherwise, the line will appear gray in the legend.
+  color: rerun.components.Color ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// An optional label for the point.
+  ///
+  /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
+  /// support displaying labels for individual points.
+  /// If all points within a single entity path (i.e. a line) share the same label, then
+  /// this label will be used as the label for the line itself. Otherwise, the
+  /// line will be named after the entity path. The plot itself is named after
+  /// the space it's in.
+  label: rerun.components.Text ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Specifies whether a point in a scatter plot should form a continuous line.
+  ///
+  /// If set to true, this scalar will be drawn as a point, akin to a scatterplot.
+  /// Otherwise, it will form a continuous line with its neighbors.
+  /// Points within a single line do not have to all share the same scatteredness:
+  /// the line will switch between a scattered and a continuous representation as
+  /// required.
+  scattered: rerun.components.ScalarScattering ("attr.rerun.component_optional", nullable, order: 3100);
+}

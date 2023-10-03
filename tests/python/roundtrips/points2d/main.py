@@ -8,7 +8,6 @@ import argparse
 
 import numpy as np
 import rerun as rr
-import rerun.experimental as rr2
 
 
 def main() -> None:
@@ -27,7 +26,7 @@ def main() -> None:
     keypoint_ids = np.array([2, 3], dtype=np.uint64)
     instance_keys = np.array([66, 666], dtype=np.uint64)
 
-    points2d = rr2.Points2D(
+    points2d = rr.Points2D(
         points,
         radii=radii,
         colors=colors,
@@ -44,9 +43,9 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_points2d")
 
-    rr2.log("points2d", points2d)
+    rr.log("points2d", points2d)
     # Hack to establish 2d view bounds
-    rr2.log("rect", rr2.Boxes2D(half_sizes=[2.0, 3.0], centers=[2.0, 3.0]))
+    rr.log("rect", rr.Boxes2D(half_sizes=[2.0, 3.0], centers=[2.0, 3.0]))
 
     rr.script_teardown(args)
 

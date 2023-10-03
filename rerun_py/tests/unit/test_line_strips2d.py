@@ -5,9 +5,15 @@ from typing import Any, Optional, cast
 
 import numpy as np
 import pytest
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.components import (
+    DrawOrderLike,
+    InstanceKeyArrayLike,
+    LineStrip2DArrayLike,
+    LineStrip2DBatch,
+    RadiusArrayLike,
+)
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2D
 
 from .common_arrays import (
     class_ids_arrays,
@@ -25,12 +31,12 @@ from .common_arrays import (
     radii_expected,
 )
 
-strips_arrays: list[rrc.LineStrip2DArrayLike] = [
+strips_arrays: list[LineStrip2DArrayLike] = [
     [],
     np.array([]),
     [
-        [rrd.Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],  # type: ignore[list-item]
-        [rrd.Vec2D([0, 3]), (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],  # type: ignore[list-item]
+        [Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],  # type: ignore[list-item]
+        [Vec2D([0, 3]), (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],  # type: ignore[list-item]
     ],
     [
         [0, 0, 2, 1, 4, -1, 6, 0],
@@ -61,7 +67,7 @@ def line_strips2d_expected(obj: Any) -> Any:
         ],
     )
 
-    return rrc.LineStrip2DArray.from_similar(expected)
+    return LineStrip2DBatch(expected)
 
 
 def test_line_strips2d() -> None:
@@ -79,26 +85,26 @@ def test_line_strips2d() -> None:
         strips = strips if strips is not None else strips_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        strips = cast(rrc.LineStrip2DArrayLike, strips)
-        radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
-        draw_order = cast(Optional[rrc.DrawOrderArrayLike], draw_order)
-        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
+        strips = cast(LineStrip2DArrayLike, strips)
+        radii = cast(Optional[RadiusArrayLike], radii)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
+        labels = cast(Optional[Utf8ArrayLike], labels)
+        draw_order = cast(Optional[DrawOrderLike], draw_order)
+        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"rr2.LineStrips2D(\n"
+            f"rr.LineStrips2D(\n"
             f"    {strips}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    draw_order={draw_order}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    draw_order={draw_order!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
-        arch = rr2.LineStrips2D(
+        arch = rr.LineStrips2D(
             strips,
             radii=radii,
             colors=colors,
@@ -125,10 +131,10 @@ def test_line_strips2d() -> None:
         np.array([[0, 0], [2, 1], [4, -1], [6, 0]]).reshape([2, 2, 2]),
     ],
 )
-def test_line_segments2d(data: rrc.LineStrip2DArrayLike) -> None:
-    arch = rr2.LineStrips2D(data)
+def test_line_segments2d(data: LineStrip2DArrayLike) -> None:
+    arch = rr.LineStrips2D(data)
 
-    assert arch.strips == rrc.LineStrip2DArray.from_similar(
+    assert arch.strips == LineStrip2DBatch(
         [
             [[0, 0], [2, 1]],
             [[4, -1], [6, 0]],

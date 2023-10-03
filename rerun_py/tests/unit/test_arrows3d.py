@@ -3,9 +3,9 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import rerun as rr
+from rerun.components import InstanceKeyArrayLike, Origin3DBatch, RadiusArrayLike, Vector3DBatch
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec3DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -42,27 +42,27 @@ def test_arrows3d() -> None:
         origins = origins if origins is not None else origins_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        vectors = cast(rrd.Vec3DArrayLike, vectors)
-        origins = cast(Optional[rrd.Vec3DArrayLike], origins)
-        radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
-        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
+        vectors = cast(Vec3DArrayLike, vectors)
+        origins = cast(Optional[Vec3DArrayLike], origins)
+        radii = cast(Optional[RadiusArrayLike], radii)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
+        labels = cast(Optional[Utf8ArrayLike], labels)
+        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"E: rr2.Arrows3D(\n"
-            f"    {vectors}\n"
-            f"    origins={origins}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"E: rr.Arrows3D(\n"
+            f"    vectors={vectors}\n"
+            f"    origins={origins!r}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
-        arch = rr2.Arrows3D(
-            vectors,
+        arch = rr.Arrows3D(
+            vectors=vectors,
             origins=origins,
             radii=radii,
             colors=colors,
@@ -72,8 +72,8 @@ def test_arrows3d() -> None:
         )
         print(f"A: {arch}\n")
 
-        assert arch.vectors == vec3ds_expected(vectors, rrc.Vector3DArray)
-        assert arch.origins == vec3ds_expected(origins, rrc.Origin3DArray)
+        assert arch.vectors == vec3ds_expected(vectors, Vector3DBatch)
+        assert arch.origins == vec3ds_expected(origins, Origin3DBatch)
         assert arch.radii == radii_expected(radii)
         assert arch.colors == colors_expected(colors)
         assert arch.labels == labels_expected(labels)

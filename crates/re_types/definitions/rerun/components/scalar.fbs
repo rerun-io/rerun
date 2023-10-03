@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A double-precision scalar.
+///
+/// Used for time series plots.
+struct Scalar (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float, npt.NDArray[np.float64]",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  value: double (order: 100);
+}

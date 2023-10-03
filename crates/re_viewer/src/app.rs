@@ -2,7 +2,7 @@ use web_time::Instant;
 
 use re_data_source::{DataSource, FileContents};
 use re_data_store::store_db::StoreDb;
-use re_log_types::{LogMsg, StoreKind};
+use re_log_types::{FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
@@ -164,7 +164,7 @@ impl App {
             storage
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
-                    // TODO(https://github.com/rerun-io/rerun/issues/2849): More thorough error-handling.
+                    // TODO(#2849): More thorough error-handling.
                     storage.get_string(eframe::APP_KEY).and_then(|value| {
                         match ron::from_str(&value) {
                             Ok(value) => Some(value),
@@ -390,6 +390,7 @@ impl App {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                            FileSource::FileDialog,
                             file_path,
                         )));
                 }
@@ -506,7 +507,14 @@ impl App {
                 if let Some(ctx) = store_context {
                     if let Some(recording) = ctx.recording {
                         let table = recording.entity_db.data_store.to_data_table();
-                        println!("{table}");
+                        match table {
+                            Ok(table) => {
+                                println!("{table}");
+                            }
+                            Err(err) => {
+                                println!("{err}");
+                            }
+                        }
                     }
                 }
             }
@@ -861,6 +869,7 @@ impl App {
                 // This is what we get on Web.
                 self.command_sender
                     .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                        FileSource::DragAndDrop,
                         FileContents {
                             name: file.name.clone(),
                             bytes: bytes.clone(),
@@ -872,7 +881,10 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
                 self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(path)));
+                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                        FileSource::DragAndDrop,
+                        path,
+                    )));
             }
         }
     }
@@ -943,7 +955,7 @@ impl eframe::App for App {
             eframe::set_value(storage, eframe::APP_KEY, &self.state);
 
             // Save the blueprints
-            // TODO(2579): implement web-storage for blueprints as well
+            // TODO(#2579): implement web-storage for blueprints as well
             if let Some(hub) = &mut self.store_hub {
                 match hub.gc_and_persist_app_blueprints() {
                     Ok(f) => f,
@@ -983,6 +995,7 @@ impl eframe::App for App {
                 for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                            FileSource::FileDialog,
                             file.clone(),
                         )));
                 }

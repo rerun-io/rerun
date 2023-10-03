@@ -25,8 +25,8 @@ namespace rerun {
         /// the attached `AnnotationInfo` to derive labels and colors.
         ///
         /// Keypoints within an annotation class can similarly be annotated with a
-        ///`KeypointId` in which case we should defer to the label and color for the
-        ///`AnnotationInfo` specifically associated with the Keypoint.
+        /// `KeypointId` in which case we should defer to the label and color for the
+        /// `AnnotationInfo` specifically associated with the Keypoint.
         ///
         /// Keypoints within the class can also be decorated with skeletal edges.
         /// Keypoint-connections are pairs of `KeypointId`s. If an edge is

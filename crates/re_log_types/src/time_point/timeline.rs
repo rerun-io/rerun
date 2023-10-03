@@ -37,14 +37,7 @@ impl Default for Timeline {
 }
 
 impl Timeline {
-    #[inline]
-    pub fn new(name: impl Into<TimelineName>, typ: TimeType) -> Self {
-        Self {
-            name: name.into(),
-            typ,
-        }
-    }
-
+    /// For absolute or relative time.
     #[inline]
     pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
         Self {
@@ -53,11 +46,20 @@ impl Timeline {
         }
     }
 
+    /// For things like camera frames or iteration count.
     #[inline]
     pub fn new_sequence(name: impl Into<TimelineName>) -> Self {
         Self {
             name: name.into(),
             typ: TimeType::Sequence,
+        }
+    }
+
+    #[inline]
+    pub fn new(name: impl Into<TimelineName>, typ: TimeType) -> Self {
+        Self {
+            name: name.into(),
+            typ,
         }
     }
 
@@ -126,6 +128,6 @@ impl SizeBytes for Timeline {
 impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.name.hash() | self.typ.hash());
+        state.write_u64(self.name.hash() ^ self.typ.hash());
     }
 }

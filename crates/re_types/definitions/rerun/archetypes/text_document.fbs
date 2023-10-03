@@ -9,10 +9,10 @@ namespace rerun.archetypes;
 
 /// A text element intended to be displayed in its own text-box.
 table TextDocument (
-  "attr.rust.derive": "PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
-  body: rerun.components.Text ("attr.rerun.component_required", order: 100);
+  /// Contents of the text document.
+  text: rerun.components.Text ("attr.rerun.component_required", order: 100);
 
   /// The Media Type of the text.
   ///
@@ -21,5 +21,5 @@ table TextDocument (
   /// * `text/markdown`
   ///
   /// If omitted, `text/plain` is assumed.
-  media_type: rerun.components.MediaType ("attr.rerun.component_optional", nullable, order: 100);
+  media_type: rerun.components.MediaType ("attr.rerun.component_optional", nullable, order: 200);
 }

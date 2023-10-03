@@ -8,14 +8,42 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 #![allow(clippy::needless_question_mark)]
+#![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 4x4 column-major Matrix.
+/// A 4x4 Matrix.
+///
+/// Matrices in Rerun are stored as flat list of coefficients in column-major order:
+/// ```text
+///            column 0         column 1         column 2         column 3
+///        --------------------------------------------------------------------
+/// row 0 | flat_columns[0]  flat_columns[4]  flat_columns[8]  flat_columns[12]
+/// row 1 | flat_columns[1]  flat_columns[5]  flat_columns[9]  flat_columns[13]
+/// row 2 | flat_columns[2]  flat_columns[6]  flat_columns[10] flat_columns[14]
+/// row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
+/// ```
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
-pub struct Mat4x4(pub [f32; 16usize]);
+pub struct Mat4x4(
+    /// Flat list of matrix coefficients in column-major order.
+    pub [f32; 16usize],
+);
+
+impl From<[f32; 16usize]> for Mat4x4 {
+    #[inline]
+    fn from(flat_columns: [f32; 16usize]) -> Self {
+        Self(flat_columns)
+    }
+}
+
+impl From<Mat4x4> for [f32; 16usize] {
+    #[inline]
+    fn from(value: Mat4x4) -> Self {
+        value.0
+    }
+}
 
 impl<'a> From<Mat4x4> for ::std::borrow::Cow<'a, Mat4x4> {
     #[inline]
@@ -55,12 +83,13 @@ impl crate::Loggable for Mat4x4 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_to_arrow_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -116,12 +145,13 @@ impl crate::Loggable for Mat4x4 {
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
-    fn try_from_arrow_opt(
+    fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
     ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -142,7 +172,7 @@ impl crate::Loggable for Mat4x4 {
                         arrow_data.data_type().clone(),
                     )
                 })
-                .with_context("rerun.datatypes.Mat4x4#coeffs")?;
+                .with_context("rerun.datatypes.Mat4x4#flat_columns")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
@@ -160,7 +190,7 @@ impl crate::Loggable for Mat4x4 {
                                 arrow_data_inner.data_type().clone(),
                             )
                         })
-                        .with_context("rerun.datatypes.Mat4x4#coeffs")?
+                        .with_context("rerun.datatypes.Mat4x4#flat_columns")?
                         .into_iter()
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
@@ -195,7 +225,7 @@ impl crate::Loggable for Mat4x4 {
         .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.datatypes.Mat4x4#coeffs")
+        .with_context("rerun.datatypes.Mat4x4#flat_columns")
         .with_context("rerun.datatypes.Mat4x4")?)
     }
 }

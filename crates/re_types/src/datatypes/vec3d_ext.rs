@@ -2,6 +2,7 @@ use super::Vec3D;
 
 impl Vec3D {
     pub const ZERO: Vec3D = Vec3D([0.0; 3]);
+    pub const ONE: Vec3D = Vec3D([1.0; 3]);
 
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
@@ -21,13 +22,6 @@ impl Vec3D {
     #[inline]
     pub fn z(&self) -> f32 {
         self.0[2]
-    }
-}
-
-impl From<[f32; 3]> for Vec3D {
-    #[inline]
-    fn from(v: [f32; 3]) -> Self {
-        Self(v)
     }
 }
 

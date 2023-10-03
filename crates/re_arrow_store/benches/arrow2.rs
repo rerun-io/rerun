@@ -8,8 +8,9 @@ use std::sync::Arc;
 use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
-use re_components::datagen::{build_some_instances, build_some_positions2d};
+
 use re_log_types::{DataCell, SizeBytes as _};
+use re_types::datagen::{build_some_instances, build_some_positions2d};
 use re_types::{
     components::{InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
@@ -103,7 +104,9 @@ fn erased_clone(c: &mut Criterion) {
     ) where
         &'a T: Into<::std::borrow::Cow<'a, T>>,
     {
-        let arrays: Vec<Box<dyn Array>> = (0..NUM_ROWS).map(|_| T::to_arrow(data)).collect_vec();
+        let arrays: Vec<Box<dyn Array>> = (0..NUM_ROWS)
+            .map(|_| T::to_arrow(data).unwrap())
+            .collect_vec();
 
         let total_size_bytes = arrays
             .iter()

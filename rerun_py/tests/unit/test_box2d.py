@@ -3,9 +3,16 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
-import rerun.experimental as rr2
-from rerun.experimental import cmp as rrc
-from rerun.experimental import dt as rrd
+import pytest
+import rerun as rr
+from rerun.components import (
+    DrawOrderLike,
+    HalfSizes2DBatch,
+    InstanceKeyArrayLike,
+    Position2DBatch,
+    RadiusArrayLike,
+)
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -51,28 +58,28 @@ def test_boxes2d() -> None:
         half_sizes = half_sizes if half_sizes is not None else half_sizes_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        half_sizes = cast(rrd.Vec2DArrayLike, half_sizes)
-        centers = cast(rrd.Vec2DArrayLike, centers)
-        radii = cast(Optional[rrc.RadiusArrayLike], radii)
-        colors = cast(Optional[rrd.ColorArrayLike], colors)
-        labels = cast(Optional[rrd.Utf8ArrayLike], labels)
-        draw_order = cast(Optional[rrc.DrawOrderArrayLike], draw_order)
-        class_ids = cast(Optional[rrd.ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[rrc.InstanceKeyArrayLike], instance_keys)
+        half_sizes = cast(Vec2DArrayLike, half_sizes)
+        centers = cast(Vec2DArrayLike, centers)
+        radii = cast(Optional[RadiusArrayLike], radii)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
+        labels = cast(Optional[Utf8ArrayLike], labels)
+        draw_order = cast(Optional[DrawOrderLike], draw_order)
+        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
-            f"rr2.Boxes2D(\n"
+            f"rr.Boxes2D(\n"
             f"    half_sizes={half_sizes}\n"
             f"    centers={centers}\n"
-            f"    radii={radii}\n"
-            f"    colors={colors}\n"
-            f"    labels={labels}\n"
-            f"    draw_order={draw_order}\n"
-            f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
+            f"    radii={radii!r}\n"
+            f"    colors={colors!r}\n"
+            f"    labels={labels!r}\n"
+            f"    draw_order={draw_order!r}\n"
+            f"    class_ids={class_ids!r}\n"
+            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
-        arch = rr2.Boxes2D(
+        arch = rr.Boxes2D(
             half_sizes=half_sizes,
             centers=centers,
             radii=radii,
@@ -84,8 +91,8 @@ def test_boxes2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(half_sizes, rrc.HalfSizes2DArray)
-        assert arch.centers == centers_expected(centers, rrc.Position2DArray)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSizes2DBatch)
+        assert arch.centers == centers_expected(centers, Position2DBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
         assert arch.labels == labels_expected(labels)
@@ -94,5 +101,70 @@ def test_boxes2d() -> None:
         assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
+def test_with_sizes() -> None:
+    assert rr.Boxes2D(sizes=[1, 2]) == rr.Boxes2D(half_sizes=[0.5, 1])
+
+
+def test_with_centers_and_sizes() -> None:
+    assert rr.Boxes2D(centers=[1, 2], sizes=[4, 6]) == rr.Boxes2D(centers=[1, 2], half_sizes=[2, 3])
+
+
+def test_with_mins_and_sizes() -> None:
+    assert rr.Boxes2D(mins=[-1, -1], sizes=[2, 4]) == rr.Boxes2D(centers=[0, 1], half_sizes=[1, 2])
+
+
+def test_with_array_xywh() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[3, 4]) == rr.Boxes2D(array=[1, 2, 3, 4], array_format=rr.Box2DFormat.XYWH)
+
+
+def test_with_array_yxhw() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[3, 4]) == rr.Boxes2D(array=[2, 1, 4, 3], array_format=rr.Box2DFormat.YXHW)
+
+
+def test_with_array_xyxy() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[2, 2]) == rr.Boxes2D(array=[1, 2, 3, 4], array_format=rr.Box2DFormat.XYXY)
+
+
+def test_with_array_yxyx() -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[2, 2]) == rr.Boxes2D(array=[2, 1, 4, 3], array_format=rr.Box2DFormat.YXYX)
+
+
+def test_with_array_xcycwh() -> None:
+    assert rr.Boxes2D(mins=[1, 1], sizes=[2, 4]) == rr.Boxes2D(array=[2, 3, 2, 4], array_format=rr.Box2DFormat.XCYCWH)
+
+
+def test_with_array_xcycw2h2() -> None:
+    assert rr.Boxes2D(mins=[1, 1], sizes=[2, 4]) == rr.Boxes2D(array=[2, 3, 1, 2], array_format=rr.Box2DFormat.XCYCW2H2)
+
+
+def test_invalid_parameter_combinations() -> None:
+    rr.set_strict_mode(True)
+
+    # invalid size/position combinations
+    with pytest.raises(ValueError):
+        rr.Boxes2D(half_sizes=[1, 2], sizes=[3, 4])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(centers=[1, 2], mins=[3, 4])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(mins=[3, 4])
+
+    # with array
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, half_sizes=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, sizes=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, mins=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, centers=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format="bonkers")  # type: ignore[arg-type]
+
+
 if __name__ == "__main__":
     test_boxes2d()
+    test_with_sizes()
+    test_with_centers_and_sizes()
+    test_with_mins_and_sizes()

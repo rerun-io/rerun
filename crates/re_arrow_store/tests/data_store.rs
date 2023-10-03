@@ -15,11 +15,12 @@ use re_arrow_store::{
     DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
     TimeInt, TimeRange,
 };
-use re_components::datagen::{
-    build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
-    build_some_positions2d,
+use re_log_types::{
+    build_frame_nr, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline,
 };
-use re_log_types::{DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
+use re_types::datagen::{
+    build_some_colors, build_some_instances, build_some_instances_from, build_some_positions2d,
+};
 use re_types::{
     components::{Color, InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
@@ -880,13 +881,13 @@ fn gc_impl(store: &mut DataStore) {
 
         let stats = DataStoreStats::from_store(store);
 
-        let (row_ids, stats_diff) = store.gc(GarbageCollectionOptions {
+        let (deleted, stats_diff) = store.gc(GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             gc_timeless: false,
             protect_latest: 0,
             purge_empty_tables: false,
         });
-        for row_id in &row_ids {
+        for row_id in &deleted.row_ids {
             assert!(store.get_msg_metadata(row_id).is_none());
         }
 
