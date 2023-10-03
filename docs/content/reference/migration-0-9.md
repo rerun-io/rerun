@@ -83,7 +83,7 @@ Python docs: [DisconnectedSpace.__init__](https://ref.rerun.io/docs/python/HEAD/
 ### `log_extension_components`
 Replace with `AnyValues`
 
-Python docs: [AnyValues.__init__](https://ref.rerun.io/docs/python/HEAD/common/adhoc_data/#rerun.AnyValues.__init__)
+Python docs: TODO(jleibs): Link pending
 
 Notes:
  - Instead of passing `ext` as a dictionary, `AnyValues` now maps all keyword arguments directly to components.
@@ -108,9 +108,9 @@ Notes:
 
 
 ### `log_line_strip`, `log_line_strips_2d`, `log_line_strips_3d`, `log_line_segments`
-Replace with [Lines2D](data_types/archetypes/lines2d.md) or [Lines3D](data_types/archetypes/lines3d.md)
+Replace with [LineStrips2D](data_types/archetypes/line_strips2d.md) or [LineStrips3D](data_types/archetypes/line_strips3d.md)
 
-Python docs: [Lines2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Lines2D.__init__), [Lines3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Lines3D.__init__)
+Python docs: [LineStrips2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.LineStrips2D.__init__), [LineStrips3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.LineStrips3D.__init__)
 
 Notes:
  - `log_line_segments` used to take an array of shape (2 * num_segments, 2 or 3) (where points were connected in
@@ -125,9 +125,9 @@ line_strips3d=line_segments.reshape(-1, 2, 3)
  - `identifiers` has become `instance_keys`.
 
 ### `log_mesh`, `log_meshes`
-Replace with [Mesh3D](data_types/archetypes/meshes3d.md)
+Replace with [Mesh3D](data_types/archetypes/mesh3d.md)
 
-Python docs: [Mesh3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Meshes3D.__init__)
+Python docs: [Mesh3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Mesh3D.__init__)
 
 Notes:
  - Meshes are no longer batch objects. Instead they are treated as a batch of vertices, as such there is no longer a
@@ -138,7 +138,7 @@ Notes:
  - `identifiers` has become `instance_keys`.
 
 ### `log_mesh_file`
-Replace with [Asset3D](data_types/archetypes/assets3d.md)
+Replace with [Asset3D](data_types/archetypes/asset3d.md)
 
 Python docs: [Asset3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Asset3D.__init__)
 
