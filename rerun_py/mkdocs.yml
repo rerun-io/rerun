@@ -31,9 +31,16 @@ plugins:
             docstring_section_style: spacy # list spacy table
             docstring_style: numpy
             heading_level: 3
+            filters: [
+                "!__attrs_clear__", # For internal use
+                "!^_[^_]", # Hide things starting with a single underscore
+                "!as_component_batches", # Inherited from AsComponents
+                "!indicator", # Inherited from Archetype
+                "!num_instances", # Inherited from AsComponents
+              ]
             inherited_members: true
-            members_order: source # sort members in the order they are defined
-            merge_init_into_class: true # Only works for auto-generated __init__ methods, but for those it's great!
+            members_order: source # The order of class members
+            merge_init_into_class: false # Not compatible with `inherited_members`
             show_if_no_docstring: false # We intentionally hide archetype fields
             show_source: no
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files

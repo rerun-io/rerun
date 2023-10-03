@@ -21,7 +21,7 @@ class Clear(ClearExt, Archetype):
 
     Examples
     --------
-    Flat:
+    ### Flat:
     ```python
 
     import rerun as rr
@@ -41,7 +41,7 @@ class Clear(ClearExt, Archetype):
         rr.log(f"arrows/{i}", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
     ```
 
-    Recursive:
+    ### Recursive:
     ```python
 
     import rerun as rr

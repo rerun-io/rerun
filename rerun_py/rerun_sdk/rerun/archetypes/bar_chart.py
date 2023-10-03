@@ -26,6 +26,7 @@ class BarChart(BarChartExt, Archetype):
 
     Example
     -------
+    ### `bar_chart`:
     ```python
 
     import rerun as rr

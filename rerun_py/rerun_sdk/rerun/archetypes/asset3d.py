@@ -19,9 +19,11 @@ class Asset3D(Asset3DExt, Archetype):
     """
     **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 
+    See also [`Mesh3D`][rerun.archetypes.Mesh3D].
+
     Examples
     --------
-    Simple 3D asset:
+    ### Simple 3D asset:
     ```python
     import sys
 
@@ -37,7 +39,7 @@ class Asset3D(Asset3DExt, Archetype):
     rr.log("world/asset", rr.Asset3D(sys.argv[1]))
     ```
 
-    3D asset with out-of-tree transform:
+    ### 3D asset with out-of-tree transform:
     ```python
     import sys
 

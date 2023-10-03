@@ -17,6 +17,8 @@ use crate::{
     Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
+use super::common::ExampleInfo;
+
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";
 
@@ -89,14 +91,20 @@ impl PythonCodeGenerator {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
-        _reporter: &Reporter,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
-            self.generate_folder(objects, arrow_registry, object_kind, &mut files_to_write);
+            self.generate_folder(
+                reporter,
+                objects,
+                arrow_registry,
+                object_kind,
+                &mut files_to_write,
+            );
         }
 
         {
@@ -120,7 +128,7 @@ impl CodeGenerator for PythonCodeGenerator {
 
         for kind in ObjectKind::ALL {
             let folder_path = self.pkg_path.join(kind.plural_snake_case());
-            super::common::remove_old_files_from_folder(folder_path, &filepaths);
+            super::common::remove_old_files_from_folder(reporter, folder_path, &filepaths);
         }
 
         filepaths
@@ -187,17 +195,32 @@ struct ExtensionClass {
 }
 
 impl ExtensionClass {
-    fn new(base_path: &Utf8Path, obj: &Object) -> ExtensionClass {
+    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object) -> ExtensionClass {
         let file_name = format!("{}_ext.py", obj.snake_case_name());
-        let path = base_path.join(file_name.clone());
-        let module_name = path.file_stem().unwrap().to_owned();
+        let ext_filepath = base_path.join(file_name.clone());
+        let module_name = ext_filepath.file_stem().unwrap().to_owned();
         let mut name = obj.name.clone();
         name.push_str("Ext");
 
-        if path.exists() {
-            let contents = std::fs::read_to_string(&path)
-                .with_context(|| format!("couldn't load overrides module at {path:?}"))
+        if ext_filepath.exists() {
+            let contents = std::fs::read_to_string(&ext_filepath)
+                .with_context(|| format!("couldn't load overrides module at {ext_filepath:?}"))
                 .unwrap();
+
+            let mandatory_docstring = format!(
+                r#""""Extension for [{name}][rerun.{kind}.{name}].""""#,
+                name = obj.name,
+                kind = obj.kind.plural_snake_case()
+            );
+            if !contents.contains(&mandatory_docstring) {
+                reporter.error(
+                    ext_filepath.as_str(),
+                    &obj.fqname,
+                    format!(
+                        "The following docstring should be added to the `class`: {mandatory_docstring}"
+                    ),
+                );
+            }
 
             // Extract all methods
             // TODO(jleibs): Maybe pull in regex_light here
@@ -249,6 +272,7 @@ impl ExtensionClass {
 impl PythonCodeGenerator {
     fn generate_folder(
         &self,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
@@ -270,7 +294,7 @@ impl PythonCodeGenerator {
                 kind_path.join(format!("{}.py", obj.snake_case_name()))
             };
 
-            let ext_class = ExtensionClass::new(&kind_path, obj);
+            let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
 
             let names = match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
@@ -903,13 +927,17 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     let mut examples = examples.into_iter().peekable();
     while let Some(example) = examples.next() {
-        if let Some(title) = example.base.title {
-            lines.push(format!("{title}:"));
+        let ExampleInfo { name, title, image } = &example.base;
+
+        if let Some(title) = title {
+            lines.push(format!("### {title}:"));
+        } else {
+            lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
         lines.extend(example.lines.into_iter());
         lines.push("```".into());
-        if let Some(image) = &example.base.image {
+        if let Some(image) = &image {
             lines.extend(image.image_stack());
         }
         if examples.peek().is_some() {

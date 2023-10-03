@@ -27,6 +27,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// ### `view_coordinates_simple`:
         /// ```cpp,ignore
         /// // Change the view coordinates for the scene.
         ///

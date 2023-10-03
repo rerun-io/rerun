@@ -26,6 +26,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// ### `arrow3d_simple`:
         /// ```cpp,ignore
         /// // Log a batch of 3D arrows.
         ///

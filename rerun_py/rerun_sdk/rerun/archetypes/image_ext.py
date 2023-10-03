@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 
 class ImageExt:
+    """Extension for [Image][rerun.archetypes.Image]."""
+
     JPEG_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("JPEG")
 
     def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:

@@ -27,6 +27,7 @@ namespace rerun {
         ///
         /// ## Examples
         ///
+        /// ### `point2d_simple`:
         /// ```cpp,ignore
         /// // Log some very simple points.
         ///
@@ -45,6 +46,7 @@ namespace rerun {
         /// }
         /// ```
         ///
+        /// ### `point2d_random`:
         /// ```cpp,ignore
         /// // Log some very simple points.
         ///

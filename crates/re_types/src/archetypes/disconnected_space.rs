@@ -23,6 +23,7 @@
 ///
 /// ## Example
 ///
+/// ### `disconnected_space`:
 /// ```ignore
 /// //! Disconnect two spaces.
 ///

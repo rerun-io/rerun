@@ -31,6 +31,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     Example
     -------
+    ### `view_coordinates_simple`:
     ```python
 
     import rerun as rr

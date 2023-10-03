@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 
 class DepthImageExt:
+    """Extension for [DepthImage][rerun.archetypes.DepthImage]."""
+
     @staticmethod
     @catch_and_log_exceptions("DepthImage converter")
     def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
