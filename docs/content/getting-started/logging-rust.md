@@ -112,7 +112,7 @@ _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference]
 
 ### Under the hood
 
-This tiny snippet of code actually holds much more than meets the eye...
+This tiny snippet of code actually holds much more than meets the eye…
 
 `Archetypes`
 
