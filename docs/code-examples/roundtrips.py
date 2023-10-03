@@ -33,6 +33,7 @@ opt_out_entirely = {
     "extra_values": ["cpp", "rust"], # Only implemented for Python
     "image_advanced": ["cpp", "rust"], # Missing example for Rust
     "image_simple": ["cpp"],
+    "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"],
     "scalar_multiple_plots": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
