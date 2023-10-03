@@ -13,7 +13,7 @@ use rayon::prelude::*;
 
 use crate::codegen::common::write_file;
 use crate::{
-    codegen::{autogen_warning, common::collect_examples},
+    codegen::{autogen_warning, common::collect_examples_for_api_docs},
     ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects, Type,
 };
 use crate::{Object, ObjectSpecifics, Reporter, ATTR_CPP_NO_FIELD_CTORS};
@@ -1954,7 +1954,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
     let required = false; // TODO(#2919): `cpp` examples are not required for now
-    let examples = collect_examples(docs, "cpp", required).unwrap_or_default();
+    let examples = collect_examples_for_api_docs(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
         let section_title = if examples.len() == 1 {
@@ -1969,7 +1969,8 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             let ExampleInfo {
                 name,
                 title,
-                image: _,
+                image: _, // TODO(andreas): Include images in doc
+                ..
             } = &example.base;
 
             if let Some(title) = title {

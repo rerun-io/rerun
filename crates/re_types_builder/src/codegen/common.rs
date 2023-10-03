@@ -53,6 +53,9 @@ pub struct ExampleInfo<'a> {
 
     /// A screenshot of the example.
     pub image: Option<ImageUrl<'a>>,
+
+    /// If true, use this example only for the manual, not for documentation embedded in the emitted code.
+    pub exclude_from_api_docs: bool,
 }
 
 impl<'a> ExampleInfo<'a> {
@@ -86,7 +89,7 @@ impl<'a> ExampleInfo<'a> {
                 .split_once(' ')
                 .map_or((tag_content, None), |(a, b)| (a, Some(b)));
 
-            let (mut title, mut image) = (None, None);
+            let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
 
             if let Some(args) = args {
                 let args = args.trim();
@@ -97,10 +100,16 @@ impl<'a> ExampleInfo<'a> {
                     // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
                     title = find_keyed("title", args);
                     image = find_keyed("image", args).map(ImageUrl::parse);
+                    exclude_from_api_docs = args.contains("!api");
                 }
             }
 
-            ExampleInfo { name, title, image }
+            ExampleInfo {
+                name,
+                title,
+                image,
+                exclude_from_api_docs,
+            }
         }
 
         mono(tag_content.as_ref())
@@ -216,7 +225,7 @@ pub struct Example<'a> {
     pub lines: Vec<String>,
 }
 
-pub fn collect_examples<'a>(
+pub fn collect_examples_for_api_docs<'a>(
     docs: &'a Docs,
     extension: &str,
     required: bool,
@@ -226,7 +235,16 @@ pub fn collect_examples<'a>(
     if let Some(examples) = docs.tagged_docs.get("example") {
         let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
-        for base @ ExampleInfo { name, .. } in examples.iter().map(ExampleInfo::parse) {
+        for base @ ExampleInfo {
+            name,
+            exclude_from_api_docs,
+            ..
+        } in examples.iter().map(ExampleInfo::parse)
+        {
+            if exclude_from_api_docs {
+                continue;
+            }
+
             let path = base_path.join(format!("{name}.{extension}"));
             let content = match std::fs::read_to_string(&path) {
                 Ok(content) => content,

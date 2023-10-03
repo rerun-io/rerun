@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples, Example},
+        common::{collect_examples_for_api_docs, Example},
         StringExt as _,
     },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
@@ -927,7 +927,9 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     let mut examples = examples.into_iter().peekable();
     while let Some(example) = examples.next() {
-        let ExampleInfo { name, title, image } = &example.base;
+        let ExampleInfo {
+            name, title, image, ..
+        } = &example.base;
 
         if let Some(title) = title {
             lines.push(format!("### {title}:"));
@@ -966,7 +968,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         }
     }
 
-    let examples = collect_examples(docs, "py", true).unwrap();
+    let examples = collect_examples_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
         lines.push(String::new());
         let (section_title, divider) = if examples.len() == 1 {
@@ -1007,7 +1009,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             }
         }
 
-        let examples = collect_examples(&field.docs, "py", true).unwrap();
+        let examples = collect_examples_for_api_docs(&field.docs, "py", true).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples
             quote_examples(examples, &mut lines);

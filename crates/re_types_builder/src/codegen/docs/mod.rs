@@ -296,7 +296,13 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
     };
     putln!(o);
 
-    for ExampleInfo { name, title, image } in examples {
+    for ExampleInfo {
+        name,
+        title,
+        image,
+        exclude_from_api_docs: _,
+    } in examples
+    {
         let title = title.unwrap_or(name);
         putln!(o, "### {title}");
         putln!(o);
