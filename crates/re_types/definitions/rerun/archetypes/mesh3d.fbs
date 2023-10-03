@@ -13,7 +13,6 @@ namespace rerun.archetypes;
 /// \rs See also [`Asset3D`][crate::archetypes::Asset3D].
 ///
 /// \example mesh3d_indexed "Simple indexed 3D mesh"
-/// \example mesh3d_partial_updates "3D mesh with partial updates"
 table Mesh3D (
   "attr.rust.derive": "PartialEq"
 ) {
