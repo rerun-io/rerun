@@ -68,6 +68,9 @@ class SegmentationImageExt:
             ).cast(tensor_data_type.field("shape").type)
 
         buffer = tensor_data_arrow.storage.field(1)
+       
+        # The viewer only supports u8 and u16 segmentation images at the moment:
+        # TODO(#3609): handle this in the viewer instead
         if buffer[0].type_code not in (SegmentationImageExt.U8_TYPE_ID, SegmentationImageExt.U16_TYPE_ID):
             np_buffer = np.require(buffer[0].value.values.to_numpy(), np.uint16)
             buffer = _build_buffer_array(np_buffer)
