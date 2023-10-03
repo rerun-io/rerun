@@ -8,7 +8,7 @@ A batch of 3D arrows with optional colors, radii, labels, etc.
 
 **Required**: [`Vector3D`](../components/vector3d.md)
 
-**Recommended**: [`Origin3D`](../components/origin3d.md)
+**Recommended**: [`Position3D`](../components/position3d.md)
 
 **Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 

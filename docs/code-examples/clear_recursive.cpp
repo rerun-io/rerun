@@ -17,7 +17,7 @@ int main() {
         {-1.0, 0.0, 0.0},
         {0.0, 1.0, 0.0},
     };
-    std::vector<rr::components::Origin3D> origins = {
+    std::vector<rr::components::Position3D> origins = {
         {-0.5, 0.5, 0.0},
         {0.5, 0.5, 0.0},
         {0.5, -0.5, 0.0},
