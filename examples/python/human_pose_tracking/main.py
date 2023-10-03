@@ -25,19 +25,25 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 DESCRIPTION = """
 # Human Pose Tracking
 
-This example shows (MediaPipe)[https://developers.google.com/mediapipe]-based tracking of a human pose in 2D and 3D.
+This example uses Rerun to visualize the output of [MediaPipe](https://developers.google.com/mediapipe)-based tracking
+of a human pose in 2D and 3D.
 
 ## How it was made
 The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking/main.py).
 
+### Video
+
+The video is logged as a sequence of
+[rr.Image objects](https://www.rerun.io/docs/reference/data_types/archetypes/image) to the [video entity](recording://video).
+
 ### Segmentation
 
 The [segmetation result](recording://video/mask) is logged through a combination of two archetypes. The segmentation
 image itself is logged as an
-(rr.SegmentationImage archetype)[https://www.rerun.io/docs/reference/data_types/archetypes/segmentation_image] and
+[rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/data_types/archetypes/segmentation_image) and
 contains the id for each pixel. The color is determined by the
-(rr.AnnotationContext archetype)[https://www.rerun.io/docs/reference/data_types/archetypes/annotation_context] which is
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/data_types/archetypes/annotation_context) which is
 logged with `rr.log(..., timeless=True` as it should apply to the whole sequence.
 
 ### Skeletons
@@ -46,14 +52,15 @@ The [2D](recording://video/pose/points) and [3D skeletons](recording://person/po
 similar combination of two entities.
 
 First, a timeless
-(rr.ClassDescripton)[https://www.rerun.io/docs/reference/data_types/datatypes/class_description] is logged that contains
-the `keypoint_annotations` and `keypoint_connections`. (note, that this is equivalent to logging an
-`rr.AnnotationContext` archetype as in the segmentation case). These determine the labels and connections of the
-skeleton keypoints.
+[rr.ClassDescripton](https://www.rerun.io/docs/reference/data_types/datatypes/class_description) is logged (note, that
+this is equivalent to logging an
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/data_types/archetypes/annotation_context) as in the
+segmentation case). The class description contains the information which maps keypoint ids to labels and how to connect
+the keypoints to a skeleton.
 
 Second, the actual keypoint positions are logged in 2D
-and 3D as (rr.Points2D)[https://www.rerun.io/docs/reference/data_types/archetypes/points2d] and
-(rr.Points3D)[https://www.rerun.io/docs/reference/data_types/archetypes/points3d] archetypes, respectively.
+nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/data_types/archetypes/points2d) and
+[rr.Points3D](https://www.rerun.io/docs/reference/data_types/archetypes/points3d) archetypes, respectively.
 """.strip()
 
 def track_pose(video_path: str, segment: bool) -> None:
@@ -65,7 +72,7 @@ def track_pose(video_path: str, segment: bool) -> None:
         "/",
         rr.AnnotationContext(
         rr.ClassDescription(
-            info=rr.AnnotationInfo(id=1, label="Person"),
+            info=rr.AnnotationInfo(id=0, label="Person"),
             keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         )),
@@ -104,7 +111,7 @@ def track_pose(video_path: str, segment: bool) -> None:
             if landmark_positions_3d is not None:
                 rr.log(
                     "person/pose/points",
-                    rr.Points3D(landmark_positions_3d, class_ids=0, eypoint_ids=mp_pose.PoseLandmark),
+                    rr.Points3D(landmark_positions_3d, class_ids=0, keypoint_ids=mp_pose.PoseLandmark),
                 )
 
             segmentation_mask = results.segmentation_mask
