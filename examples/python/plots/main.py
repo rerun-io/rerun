@@ -20,35 +20,28 @@ import rerun as rr  # pip install rerun-sdk
 DESCRIPTION = """
 # Plots
 
-This example shows various plot types that you can create using Rerun. Common
-usecases for such plots would be logging losses or metrics over time,
-histograms, or general function plots.
+This example shows various plot types that you can create using Rerun. Common usecases for such plots would be logging
+losses or metrics over time, histograms, or general function plots.
 
 ## How it was made
-The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/plots/main.py).
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/plots/main.py).
 
 ### Bar charts
-The [bar chart](recording://bar_chart) is created by logging the [rr.BarChart 
-archetype](https://www.rerun.io/docs/reference/data_types/archetypes/bar_chart).
+The [bar chart](recording://bar_chart) is created by logging the [rr.BarChart archetype](https://www.rerun.io/docs/reference/data_types/archetypes/bar_chart).
 
 ### Time series
-All other plots are created using the [rr.TimeSeriesScalar archetype]
-(https://www.rerun.io/docs/reference/data_types/archetypes/bar_chart) with
-different settings. Each plot is created by logging scalars at different time
-steps (i.e., the x-axis).
+All other plots are created using the
+[rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/data_types/archetypes/bar_chart)
+with different settings. Each plot is created by logging scalars at different time steps (i.e., the x-axis).
 
-For the [parabola](recording://curves/parabola) the radius and color is changed over
-time.
+For the [parabola](recording://curves/parabola) the radius and color is changed over time.
 
-[sin](recording://trig/sin) and [cos](recording://trig/cos) are logged with the
-same parent entity (i.e., `trig/{cos,sin}`) which will put them in the same
-view by default.
+[sin](recording://trig/sin) and [cos](recording://trig/cos) are logged with the same parent entity (i.e.,
+`trig/{cos,sin}`) which will put them in the same view by default.
 
-For the [classification samples](recording://classification/samples)
-`rr.TimeSeriesScalar(..., scatter=True)` is used to create separate points that
-do not connect over time. Note, that in the other plots the logged scalars are
-connected over time by lines.
+For the [classification samples](recording://classification/samples) `rr.TimeSeriesScalar(..., scatter=True)` is used to
+create separate points that do not connect over time. Note, that in the other plots the logged scalars are connected
+over time by lines.
 """.strip()
 
 
