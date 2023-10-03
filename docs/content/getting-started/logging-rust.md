@@ -24,7 +24,7 @@ For this example in particular, we're going to need all of these:
 ```toml
 [dependencies]
 rerun = "0.9"
-itertools = "0.10"
+itertools = "0.11"
 rand = "0.8"
 ```
 
