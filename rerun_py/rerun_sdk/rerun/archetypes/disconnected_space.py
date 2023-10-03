@@ -28,6 +28,7 @@ class DisconnectedSpace(Archetype):
 
     Example
     -------
+    ### `disconnected_space`:
     ```python
     import rerun as rr
 

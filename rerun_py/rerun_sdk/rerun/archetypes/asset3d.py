@@ -21,7 +21,7 @@ class Asset3D(Asset3DExt, Archetype):
 
     Examples
     --------
-    Simple 3D asset:
+    ### Simple 3D asset:
     ```python
     import sys
 
@@ -37,7 +37,7 @@ class Asset3D(Asset3DExt, Archetype):
     rr.log("world/asset", rr.Asset3D(sys.argv[1]))
     ```
 
-    3D asset with out-of-tree transform:
+    ### 3D asset with out-of-tree transform:
     ```python
     import sys
 

@@ -21,7 +21,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     Examples
     --------
-    Simple indexed 3D mesh:
+    ### Simple indexed 3D mesh:
     ```python
     import rerun as rr
 
@@ -39,7 +39,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
     ```
 
-    3D mesh with partial updates:
+    ### 3D mesh with partial updates:
     ```python
     import numpy as np
     import rerun as rr

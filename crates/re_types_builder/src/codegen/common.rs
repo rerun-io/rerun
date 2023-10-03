@@ -173,6 +173,9 @@ impl RerunImageUrl<'_> {
     pub fn image_stack(&self) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
 
+        // Don't let the images take up too much space on the page.
+        let desired_with = Some(640);
+
         let RerunImageUrl {
             name,
             hash,
@@ -180,7 +183,7 @@ impl RerunImageUrl<'_> {
             extension,
         } = *self;
 
-        let mut stack = vec!["<picture>".into()];
+        let mut stack = vec!["<center>".into(), "<picture>".into()];
         if let Some(max_width) = max_width {
             for width in WIDTHS {
                 if width > max_width {
@@ -191,10 +194,18 @@ impl RerunImageUrl<'_> {
                 ));
             }
         }
-        stack.push(format!(
-            r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
-        ));
+
+        if let Some(desired_with) = desired_with {
+            stack.push(format!(
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_with}">"#
+            ));
+        } else {
+            stack.push(format!(
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
+            ));
+        }
         stack.push("</picture>".into());
+        stack.push("</center>".into());
 
         stack
     }

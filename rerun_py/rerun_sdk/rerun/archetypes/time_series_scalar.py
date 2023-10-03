@@ -26,6 +26,7 @@ class TimeSeriesScalar(Archetype):
 
     Examples
     --------
+    ### `scalar_simple`:
     ```python
     import math
 
@@ -38,6 +39,7 @@ class TimeSeriesScalar(Archetype):
         rr.log("scalar", rr.TimeSeriesScalar(math.sin(step / 10.0)))
     ```
 
+    ### `scalar_multiple_plots`:
     ```python
 
     from math import cos, sin, tau
