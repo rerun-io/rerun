@@ -46,7 +46,7 @@ def _annotation_info__color__special_field_converter_override(
 @define(init=False)
 class AnnotationInfo(AnnotationInfoExt):
     """
-    Annotation info annotating a class id or key-point id.
+    **Datatype**: Annotation info annotating a class id or key-point id.
 
     Color and label will be used to annotate entities/keypoints which reference the id.
     The id refers either to a class or key-point id
@@ -72,23 +72,23 @@ class AnnotationInfo(AnnotationInfoExt):
         self.__attrs_init__(id=id, label=label, color=color)
 
     id: int = field(converter=int)
-    """
-    `ClassId` or `KeypointId` to which this annotation info belongs.
-    """
+    # `ClassId` or `KeypointId` to which this annotation info belongs.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     label: datatypes.Utf8 | None = field(
         default=None, converter=_annotation_info__label__special_field_converter_override
     )
-    """
-    The label that will be shown in the UI.
-    """
+    # The label that will be shown in the UI.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     color: datatypes.Rgba32 | None = field(
         default=None, converter=_annotation_info__color__special_field_converter_override
     )
-    """
-    The color that will be applied to the annotated entity.
-    """
+    # The color that will be applied to the annotated entity.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
@@ -125,11 +125,3 @@ class AnnotationInfoBatch(BaseBatch[AnnotationInfoArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
         return AnnotationInfoExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AnnotationInfoType())
-
-
-if hasattr(AnnotationInfoExt, "deferred_patch_class"):
-    AnnotationInfoExt.deferred_patch_class(AnnotationInfo)

@@ -14,12 +14,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A bar chart.
+/// **Archetype**:  A bar chart.
 ///
 /// The x values will be the indices of the array, and the bar heights will be the provided values.
 ///
 /// ## Example
 ///
+/// ### `bar_chart`:
 /// ```ignore
 /// //! Create and log a bar chart
 ///

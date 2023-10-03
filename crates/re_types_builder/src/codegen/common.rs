@@ -6,7 +6,7 @@ use anyhow::Context as _;
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 
-use crate::Docs;
+use crate::{Docs, Reporter};
 
 fn is_blank<T: AsRef<str>>(line: T) -> bool {
     line.as_ref().chars().all(char::is_whitespace)
@@ -173,6 +173,9 @@ impl RerunImageUrl<'_> {
     pub fn image_stack(&self) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
 
+        // Don't let the images take up too much space on the page.
+        let desired_with = Some(640);
+
         let RerunImageUrl {
             name,
             hash,
@@ -180,7 +183,7 @@ impl RerunImageUrl<'_> {
             extension,
         } = *self;
 
-        let mut stack = vec!["<picture>".into()];
+        let mut stack = vec!["<center>".into(), "<picture>".into()];
         if let Some(max_width) = max_width {
             for width in WIDTHS {
                 if width > max_width {
@@ -191,10 +194,18 @@ impl RerunImageUrl<'_> {
                 ));
             }
         }
-        stack.push(format!(
-            r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
-        ));
+
+        if let Some(desired_with) = desired_with {
+            stack.push(format!(
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_with}">"#
+            ));
+        } else {
+            stack.push(format!(
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
+            ));
+        }
         stack.push("</picture>".into());
+        stack.push("</center>".into());
 
         stack
     }
@@ -260,7 +271,11 @@ impl StringExt for String {
 }
 
 /// Remove all files in the given folder that are not in the given set.
-pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeSet<Utf8PathBuf>) {
+pub fn remove_old_files_from_folder(
+    reporter: &Reporter,
+    folder_path: Utf8PathBuf,
+    filepaths: &BTreeSet<Utf8PathBuf>,
+) {
     re_tracing::profile_function!();
     re_log::debug!("Checking for old files in {folder_path}");
     for entry in std::fs::read_dir(folder_path).unwrap().flatten() {
@@ -271,28 +286,37 @@ pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeS
 
         if let Some(stem) = filepath.as_str().strip_suffix("_ext.rs") {
             let generated_path = Utf8PathBuf::try_from(format!("{stem}.rs")).unwrap();
-            assert!(
-                generated_path.exists(),
-                "Found orphaned {filepath} with no matching {generated_path}"
-            );
+            if !generated_path.exists() {
+                reporter.error(
+                    filepath.as_str(),
+                    "",
+                    format!("Found orphaned {filepath} with no matching {generated_path}"),
+                );
+            }
             continue;
         }
 
         if let Some(stem) = filepath.as_str().strip_suffix("_ext.py") {
             let generated_path = Utf8PathBuf::try_from(format!("{stem}.py")).unwrap();
-            assert!(
-                generated_path.exists(),
-                "Found orphaned {filepath} with no matching {generated_path}"
-            );
+            if !generated_path.exists() {
+                reporter.error(
+                    filepath.as_str(),
+                    "",
+                    format!("Found orphaned {filepath} with no matching {generated_path}"),
+                );
+            }
             continue;
         }
 
         if let Some(stem) = filepath.as_str().strip_suffix("_ext.cpp") {
             let generated_hpp_path = Utf8PathBuf::try_from(format!("{stem}.hpp")).unwrap();
-            assert!(
-                generated_hpp_path.exists(),
-                "Found orphaned {filepath} with no matching {generated_hpp_path}"
-            );
+            if !generated_hpp_path.exists() {
+                reporter.error(
+                    filepath.as_str(),
+                    "",
+                    format!("Found orphaned {filepath} with no matching {generated_hpp_path}"),
+                );
+            }
             continue;
         }
 

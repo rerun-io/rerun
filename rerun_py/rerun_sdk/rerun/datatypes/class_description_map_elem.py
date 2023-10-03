@@ -35,7 +35,7 @@ def _class_description_map_elem__class_id__special_field_converter_override(
 @define(init=False)
 class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     """
-    A helper type for mapping class IDs to class descriptions.
+    **Datatype**: A helper type for mapping class IDs to class descriptions.
 
     This is internal to the `AnnotationContext` structure.
     """
@@ -142,11 +142,3 @@ class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClassDescriptionMapElemExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ClassDescriptionMapElemType())
-
-
-if hasattr(ClassDescriptionMapElemExt, "deferred_patch_class"):
-    ClassDescriptionMapElemExt.deferred_patch_class(ClassDescriptionMapElem)

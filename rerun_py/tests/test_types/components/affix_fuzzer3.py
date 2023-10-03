@@ -25,7 +25,3 @@ class AffixFuzzer3Type(datatypes.AffixFuzzer1Type):
 
 class AffixFuzzer3Batch(datatypes.AffixFuzzer1Batch, ComponentBatchMixin):
     _ARROW_TYPE = AffixFuzzer3Type()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AffixFuzzer3Type())

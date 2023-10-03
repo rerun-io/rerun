@@ -54,7 +54,7 @@ namespace rerun {
             };
         } // namespace detail
 
-        /// A 3D rotation.
+        /// **Datatype**: A 3D rotation.
         struct Rotation3D {
             Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
 

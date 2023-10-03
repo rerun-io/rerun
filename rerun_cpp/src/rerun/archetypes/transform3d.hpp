@@ -15,10 +15,11 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A 3D transform.
+        /// **Archetype**: A 3D transform.
         ///
         /// ## Example
         ///
+        /// ### `transform3d_simple`:
         /// ```cpp,ignore
         /// // Log some transforms.
         ///

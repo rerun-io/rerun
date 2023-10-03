@@ -14,7 +14,9 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+/// **Archetype**:  A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+///
+/// See also [`Mesh3D`][crate::archetypes::Mesh3D].
 ///
 /// ## Examples
 ///

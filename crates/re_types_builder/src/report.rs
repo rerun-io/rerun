@@ -17,22 +17,27 @@ pub fn init() -> (Report, Reporter) {
 /// Used to accumulate errors and warnings.
 #[derive(Clone)]
 pub struct Reporter {
-    errors: mpsc::Sender<anyhow::Error>,
+    errors: mpsc::Sender<String>,
     warnings: mpsc::Sender<String>,
 }
 
 impl Reporter {
-    fn new(errors: mpsc::Sender<anyhow::Error>, warnings: mpsc::Sender<String>) -> Self {
+    fn new(errors: mpsc::Sender<String>, warnings: mpsc::Sender<String>) -> Self {
         Self { errors, warnings }
     }
 
-    pub fn error(&self, error: impl IntoError) {
-        let _ = self.errors.send(error.into_error());
+    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    pub fn error(&self, virtpath: &str, fqname: &str, text: impl ToString) {
+        let _ = self
+            .errors
+            .send(format!("{virtpath} {fqname}: {}", text.to_string()));
     }
 
     #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
-    pub fn warn(&self, text: impl ToString) {
-        let _ = self.warnings.send(text.to_string());
+    pub fn warn(&self, virtpath: &str, fqname: &str, text: impl ToString) {
+        let _ = self
+            .warnings
+            .send(format!("{virtpath} {fqname}: {}", text.to_string()));
     }
 }
 
@@ -40,13 +45,13 @@ impl Reporter {
 ///
 /// This should only exist on the main thread.
 pub struct Report {
-    errors: mpsc::Receiver<anyhow::Error>,
+    errors: mpsc::Receiver<String>,
     warnings: mpsc::Receiver<String>,
     _not_send: std::marker::PhantomData<*mut ()>,
 }
 
 impl Report {
-    fn new(errors: mpsc::Receiver<anyhow::Error>, warnings: mpsc::Receiver<String>) -> Self {
+    fn new(errors: mpsc::Receiver<String>, warnings: mpsc::Receiver<String>) -> Self {
         Self {
             errors,
             warnings,
@@ -67,9 +72,9 @@ impl Report {
             eprintln!("Error: {err}");
         }
 
-        #[allow(clippy::manual_assert)] // we don't want the noise of an assert
         if errored {
-            panic!("Some errors occurred.");
+            println!("Some errors occurred.");
+            std::process::exit(1);
         }
     }
 }
@@ -114,50 +119,3 @@ const _: () = {
     fn assert_send<T: Send>() {}
     let _ = assert_send::<Reporter>;
 };
-
-#[derive(Debug)]
-struct Error {
-    message: String,
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.message)
-    }
-}
-
-impl std::error::Error for Error {}
-
-pub trait IntoError {
-    fn into_error(self) -> anyhow::Error;
-}
-
-impl IntoError for String {
-    fn into_error(self) -> anyhow::Error {
-        Error { message: self }.into()
-    }
-}
-
-impl<'a> IntoError for &'a str {
-    fn into_error(self) -> anyhow::Error {
-        Error {
-            message: self.into(),
-        }
-        .into()
-    }
-}
-
-impl<'a> IntoError for std::borrow::Cow<'a, str> {
-    fn into_error(self) -> anyhow::Error {
-        Error {
-            message: self.into(),
-        }
-        .into()
-    }
-}
-
-impl IntoError for anyhow::Error {
-    fn into_error(self) -> anyhow::Error {
-        self
-    }
-}

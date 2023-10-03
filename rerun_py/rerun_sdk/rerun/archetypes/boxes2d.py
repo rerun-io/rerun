@@ -17,11 +17,11 @@ __all__ = ["Boxes2D"]
 @define(str=False, repr=False, init=False)
 class Boxes2D(Boxes2DExt, Archetype):
     """
-    A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+    **Archetype**: A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
     Example
     -------
-    Simple 2D boxes:
+    ### Simple 2D boxes:
     ```python
     import rerun as rr
 
@@ -60,81 +60,78 @@ class Boxes2D(Boxes2DExt, Archetype):
         metadata={"component": "required"},
         converter=components.HalfSizes2DBatch._required,  # type: ignore[misc]
     )
-    """
-    All half-extents that make up the batch of boxes.
-    """
+    # All half-extents that make up the batch of boxes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     centers: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Position2DBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional center positions of the boxes.
-    """
+    # Optional center positions of the boxes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional colors for the boxes.
-    """
+    # Optional colors for the boxes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional radii for the lines that make up the boxes.
-    """
+    # Optional radii for the lines that make up the boxes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional text labels for the boxes.
-    """
+    # Optional text labels for the boxes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies the 2D drawing order.
-    Objects with higher values are drawn on top of those with lower values.
-
-    The default for 2D boxes is 10.0.
-    """
+    # An optional floating point value that specifies the 2D drawing order.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
+    #
+    # The default for 2D boxes is 10.0.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional `ClassId`s for the boxes.
-
-    The class ID provides colors and labels if not specified explicitly.
-    """
+    # Optional `ClassId`s for the boxes.
+    #
+    # The class ID provides colors and labels if not specified explicitly.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
-    """
-    Unique identifiers for each individual boxes in the batch.
-    """
+    # Unique identifiers for each individual boxes in the batch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Boxes2DExt, "deferred_patch_class"):
-    Boxes2DExt.deferred_patch_class(Boxes2D)

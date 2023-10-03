@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A single-precision 32-bit IEEE 754 floating point number.
+/// **Datatype**:  A single-precision 32-bit IEEE 754 floating point number.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Float32(pub f32);
 

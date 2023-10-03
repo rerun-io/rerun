@@ -20,7 +20,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A string of text, e.g. for labels and text documents
+        /// **Component**: A string of text, e.g. for labels and text documents
         struct Text {
             rerun::datatypes::Utf8 value;
 

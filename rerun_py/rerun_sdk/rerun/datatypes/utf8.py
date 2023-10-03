@@ -18,7 +18,7 @@ __all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like", "Utf8Type"]
 
 @define(init=False)
 class Utf8(Utf8Ext):
-    """A string of text, encoded as UTF-8."""
+    """**Datatype**: A string of text, encoded as UTF-8."""
 
     def __init__(self: Any, value: Utf8Like):
         """Create a new instance of the Utf8 datatype."""
@@ -53,11 +53,3 @@ class Utf8Batch(BaseBatch[Utf8ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Utf8Ext.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Utf8Type())
-
-
-if hasattr(Utf8Ext, "deferred_patch_class"):
-    Utf8Ext.deferred_patch_class(Utf8)

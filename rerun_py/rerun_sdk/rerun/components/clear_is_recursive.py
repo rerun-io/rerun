@@ -26,7 +26,7 @@ __all__ = [
 
 @define(init=False)
 class ClearIsRecursive(ClearIsRecursiveExt):
-    """Configures how a clear operation should behave - recursive or not?."""
+    """**Component**: Configures how a clear operation should behave - recursive or not?."""
 
     def __init__(self: Any, recursive: ClearIsRecursiveLike):
         """
@@ -42,9 +42,9 @@ class ClearIsRecursive(ClearIsRecursiveExt):
         self.__attrs_init__(recursive=recursive)
 
     recursive: bool = field(converter=bool)
-    """
-    If true, also clears all recursive children entities.
-    """
+    # If true, also clears all recursive children entities.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
@@ -68,11 +68,3 @@ class ClearIsRecursiveBatch(BaseBatch[ClearIsRecursiveArrayLike], ComponentBatch
     @staticmethod
     def _native_to_pa_array(data: ClearIsRecursiveArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClearIsRecursiveExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ClearIsRecursiveType())
-
-
-if hasattr(ClearIsRecursiveExt, "deferred_patch_class"):
-    ClearIsRecursiveExt.deferred_patch_class(ClearIsRecursive)

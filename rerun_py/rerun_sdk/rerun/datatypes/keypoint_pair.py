@@ -33,7 +33,7 @@ def _keypoint_pair__keypoint1__special_field_converter_override(x: datatypes.Key
 
 @define(init=False)
 class KeypointPair(KeypointPairExt):
-    """A connection between two `Keypoints`."""
+    """**Datatype**: A connection between two `Keypoints`."""
 
     def __init__(self: Any, keypoint0: datatypes.KeypointIdLike, keypoint1: datatypes.KeypointIdLike):
         """Create a new instance of the KeypointPair datatype."""
@@ -78,11 +78,3 @@ class KeypointPairBatch(BaseBatch[KeypointPairArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
         return KeypointPairExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(KeypointPairType())
-
-
-if hasattr(KeypointPairExt, "deferred_patch_class"):
-    KeypointPairExt.deferred_patch_class(KeypointPair)

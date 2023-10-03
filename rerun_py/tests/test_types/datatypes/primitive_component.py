@@ -60,7 +60,3 @@ class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in primitive_component_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(PrimitiveComponentType())

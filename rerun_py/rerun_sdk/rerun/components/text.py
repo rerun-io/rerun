@@ -12,7 +12,7 @@ __all__ = ["Text", "TextBatch", "TextType"]
 
 
 class Text(datatypes.Utf8):
-    """A string of text, e.g. for labels and text documents."""
+    """**Component**: A string of text, e.g. for labels and text documents."""
 
     # You can define your own __init__ function as a member of TextExt in text_ext.py
 
@@ -26,7 +26,3 @@ class TextType(datatypes.Utf8Type):
 
 class TextBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = TextType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TextType())

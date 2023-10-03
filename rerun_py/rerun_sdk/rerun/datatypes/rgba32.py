@@ -21,7 +21,7 @@ __all__ = ["Rgba32", "Rgba32ArrayLike", "Rgba32Batch", "Rgba32Like", "Rgba32Type
 @define(init=False)
 class Rgba32(Rgba32Ext):
     """
-    An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+    **Datatype**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 
     The color is stored as a 32-bit integer, where the most significant
     byte is `R` and the least significant byte is `A`.
@@ -70,11 +70,3 @@ class Rgba32Batch(BaseBatch[Rgba32ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Rgba32ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Rgba32Ext.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Rgba32Type())
-
-
-if hasattr(Rgba32Ext, "deferred_patch_class"):
-    Rgba32Ext.deferred_patch_class(Rgba32)

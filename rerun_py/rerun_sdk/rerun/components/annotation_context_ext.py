@@ -15,6 +15,8 @@ from ..datatypes.class_description_map_elem_ext import _class_description_map_el
 
 
 class AnnotationContextExt:
+    """Extension for [AnnotationContext][rerun.components.AnnotationContext]."""
+
     @staticmethod
     def class_map__field_converter_override(
         data: Sequence[ClassDescriptionMapElemLike],

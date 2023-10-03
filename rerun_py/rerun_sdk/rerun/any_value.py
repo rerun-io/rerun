@@ -10,7 +10,7 @@ from .error_utils import _send_warning
 
 ANY_VALUE_TYPE_REGISTRY: dict[str, Any] = {}
 
-COMPONENT_PREFIX = "user.components."
+COMPONENT_PREFIX = "any.value."
 
 
 class AnyBatchValue(ComponentBatchLike):

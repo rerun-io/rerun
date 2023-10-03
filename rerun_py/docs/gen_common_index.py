@@ -1,4 +1,5 @@
-r"""
+#!/usr/bin/env python3
+"""
 Generate an index table and rendered pages for the common APIs.
 
 The top-level index file should look like
@@ -36,6 +37,28 @@ import griffe
 import mkdocs_gen_files
 
 
+def all_archetypes() -> list[str]:
+    file_path = Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk/rerun/archetypes/__init__.py")
+
+    # Initialize an empty list to store the quoted strings
+    quoted_strings = []
+
+    # Regular expression pattern to match quoted strings
+    pattern = r'"([^"]*)"'
+
+    # Open the file for reading
+    with open(file_path) as file:
+        # Read the file line by line
+        for line in file:
+            # Use re.findall to find all quoted strings in the line
+            matches = re.findall(pattern, line)
+
+            # Append the matched strings to the list
+            quoted_strings.extend(matches)
+
+    return quoted_strings
+
+
 @dataclass
 class Section:
     title: str
@@ -48,68 +71,16 @@ class Section:
 # for each of them.
 SECTION_TABLE: Final[list[Section]] = [
     Section(
-        title="Initialization",
+        title="Initialization functions",
         module_summary=None,
-        func_list=["init", "connect", "disconnect", "spawn", "serve", "save", "memory_recording"],
+        func_list=["init", "connect", "disconnect", "save", "serve", "spawn", "memory_recording"],
         class_list=[],
     ),
     Section(
-        title="Logging",
+        title="Logging functions",
         module_summary=None,
         func_list=["log", "set_time_sequence", "set_time_seconds", "set_time_nanos"],
         class_list=[],
-    ),
-    Section(
-        title="Spatial Primitives",
-        module_summary=None,
-        func_list=[],
-        class_list=[
-            "Points2D",
-            "Points3D",
-            "Boxes2D",
-            "Boxes3D",
-            "LineStrips2D",
-            "LineStrips3D",
-            "Arrows3D",
-            "Mesh3D",
-            "Asset3D",
-        ],
-    ),
-    Section(
-        title="Images",
-        module_summary=None,
-        func_list=[],
-        class_list=["Image", "ImageEncoded", "SegmentationImage", "DepthImage"],
-    ),
-    Section(
-        title="Tensors",
-        module_summary=None,
-        func_list=[],
-        class_list=["Tensor"],
-    ),
-    Section(
-        title="Annotations",
-        module_summary=None,
-        func_list=[],
-        class_list=["AnnotationContext", "ClassDescription", "AnnotationInfo"],
-    ),
-    Section(
-        title="Plotting",
-        module_summary=None,
-        func_list=[],
-        class_list=["TimeSeriesScalar"],
-    ),
-    Section(
-        title="Transforms",
-        module_summary="log_deprecated.transform",
-        func_list=[],
-        class_list=["Transform3D"],
-    ),
-    Section(
-        title="Text",
-        module_summary=None,
-        func_list=[],
-        class_list=["TextDocument", "TextLog", "LoggingHandler"],
     ),
     Section(
         title="Clearing Entities",
@@ -118,7 +89,59 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["Clear"],
     ),
     Section(
-        title="Helpers",
+        title="Annotations",
+        module_summary=None,
+        func_list=[],
+        class_list=["AnnotationContext", "AnnotationInfo", "ClassDescription"],
+    ),
+    Section(
+        title="Images",
+        module_summary=None,
+        func_list=[],
+        class_list=["DepthImage", "Image", "ImageEncoded", "SegmentationImage"],
+    ),
+    Section(
+        title="Plotting",
+        module_summary=None,
+        func_list=[],
+        class_list=["BarChart", "TimeSeriesScalar"],
+    ),
+    Section(
+        title="Spatial Archetypes",
+        module_summary=None,
+        func_list=[],
+        class_list=[
+            "Arrows3D",
+            "Asset3D",
+            "Boxes2D",
+            "Boxes3D",
+            "LineStrips2D",
+            "LineStrips3D",
+            "Mesh3D",
+            "Points2D",
+            "Points3D",
+        ],
+    ),
+    Section(
+        title="Tensors",
+        module_summary=None,
+        func_list=[],
+        class_list=["Tensor"],
+    ),
+    Section(
+        title="Text",
+        module_summary=None,
+        func_list=[],
+        class_list=["LoggingHandler", "TextDocument", "TextLog"],
+    ),
+    Section(
+        title="Transforms and Coordinate Systems",
+        module_summary="log_deprecated.transform",
+        func_list=[],
+        class_list=["DisconnectedSpace", "Pinhole", "Transform3D", "ViewCoordinates"],
+    ),
+    Section(
+        title="Script Helpers",
         module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
         class_list=[],
@@ -127,10 +150,10 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Experimental",
         module_summary="experimental",
         func_list=[
-            "experimental.new_blueprint",
             "experimental.add_space_view",
-            "experimental.set_panels",
+            "experimental.new_blueprint",
             "experimental.set_auto_space_views",
+            "experimental.set_panels",
         ],
         class_list=[],
     ),
@@ -138,37 +161,49 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Deprecated Logging Methods",
         module_summary=None,
         func_list=[
+            "log_arrow",
+            "log_cleared",
+            "log_depth_image",
+            "log_disconnected_space",
+            "log_image_file",
+            "log_image",
+            "log_line_segments",
+            "log_line_strip",
+            "log_mesh_file",
+            "log_mesh",
+            "log_meshes",
+            "log_obb",
+            "log_pinhole",
             "log_point",
             "log_points",
             "log_rect",
             "log_rects",
-            "log_obb",
-            "log_line_strip",
-            "log_line_segments",
-            "log_arrow",
-            "log_mesh",
-            "log_meshes",
-            "log_mesh_file",
-            "log_image",
-            "log_image_file",
-            "log_depth_image",
+            "log_scalar",
             "log_segmentation_image",
             "log_tensor",
-            "log_scalar",
-            "log_transform3d",
-            "log_pinhole",
-            "log_disconnected_space",
-            "log_view_coordinates",
             "log_text_entry",
-            "log_cleared",
+            "log_transform3d",
+            "log_view_coordinates",
         ],
         class_list=[],
     ),
 ]
 
+
+def is_mentioned(thing: str) -> bool:
+    for section in SECTION_TABLE:
+        if thing in section.func_list or thing in section.class_list:
+            return True
+    return False
+
+
 # Virtual folder where we will generate the md files
 root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
+
+# Make sure all archetypes are included in the index:
+for archetype in all_archetypes():
+    assert is_mentioned(archetype), f"Archetype '{archetype}' is not mentioned in the index of {__file__}"
 
 # We use griffe to access docstrings
 # Lots of other potentially interesting stuff we could pull out in the future
@@ -249,14 +284,14 @@ overview of what's possible and how.
             index_file.write("-------- | -----------\n")
             for func_name in section.func_list:
                 func = rerun_pkg[func_name]
-                index_file.write(f"[`rerun.{func_name}()`]({md_name}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
+                index_file.write(f"[`rerun.{func_name}()`]({md_file}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
         if section.class_list:
             index_file.write("\n")
             index_file.write("Class | Description\n")
             index_file.write("-------- | -----------\n")
             for class_name in section.class_list:
                 cls = rerun_pkg[class_name]
-                index_file.write(f"[`rerun.{class_name}`]({md_name}#rerun.{class_name}) | {cls.docstring.lines[0]}\n")
+                index_file.write(f"[`rerun.{class_name}`]({md_file}#rerun.{class_name}) | {cls.docstring.lines[0]}\n")
 
         index_file.write("\n")
 

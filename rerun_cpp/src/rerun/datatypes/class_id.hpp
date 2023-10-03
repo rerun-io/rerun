@@ -21,7 +21,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A 16-bit ID representing a type of semantic class.
+        /// **Datatype**: A 16-bit ID representing a type of semantic class.
         struct ClassId {
             uint16_t id;
 

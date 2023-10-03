@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class InstanceKeyExt:
+    """Extension for [InstanceKey][rerun.components.InstanceKey]."""
+
     @staticmethod
     def native_to_pa_array_override(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.uint64).flatten()

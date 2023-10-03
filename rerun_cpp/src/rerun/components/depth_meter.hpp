@@ -22,7 +22,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A component indicating how long a meter is, expressed in native units.
+        /// **Component**: A component indicating how long a meter is, expressed in native units.
         struct DepthMeter {
             float value;
 

@@ -16,7 +16,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A vector in 2D space.
+        /// **Datatype**: A vector in 2D space.
         struct Vec2D {
             float xy[2];
 

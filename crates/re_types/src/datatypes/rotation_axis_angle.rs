@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// 3D rotation represented by a rotation around a given axis.
+/// **Datatype**:  3D rotation represented by a rotation around a given axis.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct RotationAxisAngle {
     /// Axis to rotate around.

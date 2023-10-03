@@ -17,11 +17,11 @@ __all__ = ["Clear"]
 @define(str=False, repr=False, init=False)
 class Clear(ClearExt, Archetype):
     """
-    Empties all the components of an entity.
+    **Archetype**: Empties all the components of an entity.
 
     Examples
     --------
-    Flat:
+    ### Flat:
     ```python
 
     import rerun as rr
@@ -41,7 +41,7 @@ class Clear(ClearExt, Archetype):
         rr.log(f"arrows/{i}", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
     ```
 
-    Recursive:
+    ### Recursive:
     ```python
 
     import rerun as rr
@@ -84,5 +84,4 @@ class Clear(ClearExt, Archetype):
     __repr__ = Archetype.__repr__
 
 
-if hasattr(ClearExt, "deferred_patch_class"):
-    ClearExt.deferred_patch_class(Clear)
+ClearExt.deferred_patch_class(Clear)

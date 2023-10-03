@@ -16,6 +16,8 @@ NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
 
 class QuaternionExt:
+    """Extension for [Quaternion][rerun.datatypes.Quaternion]."""
+
     def __init__(self: Any, *, xyzw: npt.ArrayLike) -> None:
         self.__attrs_init__(xyzw=xyzw)
 

@@ -19,8 +19,8 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Half-sizes (extents) of a 3D box along its local axis, starting at its local
-        /// origin/center.
+        /// **Component**: Half-sizes (extents) of a 3D box along its local axis, starting at its
+        /// local origin/center.
         ///
         /// The box extends both in negative and positive direction along each axis.
         /// Negative sizes indicate that the box is flipped along the respective axis, but this has

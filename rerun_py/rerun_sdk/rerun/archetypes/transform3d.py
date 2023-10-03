@@ -17,10 +17,11 @@ __all__ = ["Transform3D"]
 @define(str=False, repr=False, init=False)
 class Transform3D(Transform3DExt, Archetype):
     """
-    A 3D transform.
+    **Archetype**: A 3D transform.
 
     Example
     -------
+    ### `transform3d_simple`:
     ```python
     from math import pi
 
@@ -43,13 +44,15 @@ class Transform3D(Transform3DExt, Archetype):
     )
     rr.log("base/rotated_scaled", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png">
-      <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png">
+      <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png" width="640">
     </picture>
+    </center>
     """
 
     # __init__ can be found in transform3d_ext.py
@@ -71,13 +74,9 @@ class Transform3D(Transform3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
-    """
-    The transform
-    """
+    # The transform
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Transform3DExt, "deferred_patch_class"):
-    Transform3DExt.deferred_patch_class(Transform3D)

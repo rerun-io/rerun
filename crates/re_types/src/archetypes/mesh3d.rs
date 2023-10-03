@@ -14,7 +14,9 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+/// **Archetype**:  A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+///
+/// See also [`Asset3D`][crate::archetypes::Asset3D].
 ///
 /// ## Examples
 ///

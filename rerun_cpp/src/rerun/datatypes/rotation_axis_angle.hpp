@@ -18,7 +18,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// 3D rotation represented by a rotation around a given axis.
+        /// **Datatype**: 3D rotation represented by a rotation around a given axis.
         struct RotationAxisAngle {
             /// Axis to rotate around.
             ///

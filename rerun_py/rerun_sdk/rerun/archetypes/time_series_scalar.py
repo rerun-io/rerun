@@ -19,13 +19,14 @@ __all__ = ["TimeSeriesScalar"]
 @define(str=False, repr=False, init=False)
 class TimeSeriesScalar(Archetype):
     """
-    Log a double-precision scalar that will be visualized as a time-series plot.
+    **Archetype**: Log a double-precision scalar that will be visualized as a time-series plot.
 
     The current simulation time will be used for the time/X-axis, hence scalars
     cannot be timeless!
 
     Examples
     --------
+    ### `scalar_simple`:
     ```python
     import math
 
@@ -38,6 +39,7 @@ class TimeSeriesScalar(Archetype):
         rr.log("scalar", rr.TimeSeriesScalar(math.sin(step / 10.0)))
     ```
 
+    ### `scalar_multiple_plots`:
     ```python
 
     from math import cos, sin, tau
@@ -144,75 +146,75 @@ class TimeSeriesScalar(Archetype):
         metadata={"component": "required"},
         converter=components.ScalarBatch._required,  # type: ignore[misc]
     )
-    """
-    The scalar value to log.
-    """
+    # The scalar value to log.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     radius: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional radius for the point.
-
-    Points within a single line do not have to share the same radius, the line
-    will have differently sized segments as appropriate.
-
-    If all points within a single entity path (i.e. a line) share the same
-    radius, then this radius will be used as the line width too. Otherwise, the
-    line will use the default width of `1.0`.
-    """
+    # An optional radius for the point.
+    #
+    # Points within a single line do not have to share the same radius, the line
+    # will have differently sized segments as appropriate.
+    #
+    # If all points within a single entity path (i.e. a line) share the same
+    # radius, then this radius will be used as the line width too. Otherwise, the
+    # line will use the default width of `1.0`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional color for the scalar entry.
-
-    If left unspecified, a pseudo-random color will be used instead. That
-    same color will apply to all points residing in the same entity path
-    that don't have a color specified.
-
-    Points within a single line do not have to share the same color, the line
-    will have differently colored segments as appropriate.
-    If all points within a single entity path (i.e. a line) share the same
-    color, then this color will be used as the line color in the plot legend.
-    Otherwise, the line will appear gray in the legend.
-    """
+    # Optional color for the scalar entry.
+    #
+    # If left unspecified, a pseudo-random color will be used instead. That
+    # same color will apply to all points residing in the same entity path
+    # that don't have a color specified.
+    #
+    # Points within a single line do not have to share the same color, the line
+    # will have differently colored segments as appropriate.
+    # If all points within a single entity path (i.e. a line) share the same
+    # color, then this color will be used as the line color in the plot legend.
+    # Otherwise, the line will appear gray in the legend.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     label: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional label for the point.
-
-    TODO(#1289): This won't show up on points at the moment, as our plots don't yet
-    support displaying labels for individual points.
-    If all points within a single entity path (i.e. a line) share the same label, then
-    this label will be used as the label for the line itself. Otherwise, the
-    line will be named after the entity path. The plot itself is named after
-    the space it's in.
-    """
+    # An optional label for the point.
+    #
+    # TODO(#1289): This won't show up on points at the moment, as our plots don't yet
+    # support displaying labels for individual points.
+    # If all points within a single entity path (i.e. a line) share the same label, then
+    # this label will be used as the label for the line itself. Otherwise, the
+    # line will be named after the entity path. The plot itself is named after
+    # the space it's in.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     scattered: components.ScalarScatteringBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ScalarScatteringBatch._optional,  # type: ignore[misc]
     )
-    """
-    Specifies whether a point in a scatter plot should form a continuous line.
-
-    If set to true, this scalar will be drawn as a point, akin to a scatterplot.
-    Otherwise, it will form a continuous line with its neighbors.
-    Points within a single line do not have to all share the same scatteredness:
-    the line will switch between a scattered and a continuous representation as
-    required.
-    """
+    # Specifies whether a point in a scatter plot should form a continuous line.
+    #
+    # If set to true, this scalar will be drawn as a point, akin to a scatterplot.
+    # Otherwise, it will form a continuous line with its neighbors.
+    # Points within a single line do not have to all share the same scatteredness:
+    # the line will switch between a scattered and a continuous representation as
+    # required.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

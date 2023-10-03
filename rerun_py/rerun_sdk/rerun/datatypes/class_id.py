@@ -20,7 +20,7 @@ __all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike", "ClassI
 
 @define(init=False)
 class ClassId(ClassIdExt):
-    """A 16-bit ID representing a type of semantic class."""
+    """**Datatype**: A 16-bit ID representing a type of semantic class."""
 
     def __init__(self: Any, id: ClassIdLike):
         """Create a new instance of the ClassId datatype."""
@@ -59,11 +59,3 @@ class ClassIdBatch(BaseBatch[ClassIdArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClassIdExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ClassIdType())
-
-
-if hasattr(ClassIdExt, "deferred_patch_class"):
-    ClassIdExt.deferred_patch_class(ClassId)

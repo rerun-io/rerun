@@ -16,7 +16,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A uint32 vector in 2D space.
+        /// **Datatype**: A uint32 vector in 2D space.
         struct UVec2D {
             uint32_t xy[2];
 

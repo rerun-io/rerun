@@ -18,7 +18,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// If true, a scalar will be shown as individual point in a scatter plot.
+        /// **Component**: If true, a scalar will be shown as individual point in a scatter plot.
         struct ScalarScattering {
             bool scattered;
 

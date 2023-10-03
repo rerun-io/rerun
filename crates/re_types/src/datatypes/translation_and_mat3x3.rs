@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+/// **Datatype**:  Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 ///
 /// First applies the matrix, then the translation.
 #[derive(Clone, Debug, Copy, PartialEq)]
@@ -25,8 +25,10 @@ pub struct TranslationAndMat3x3 {
     /// 3x3 matrix for scale, rotation & shear.
     pub mat3x3: Option<crate::datatypes::Mat3x3>,
 
-    /// If true, the transform maps from the parent space to the space where the transform was logged.
-    /// Otherwise, the transform maps from the space to its parent.
+    /// If true, this transform is from the parent space to the space where the transform was logged.
+    ///
+    /// If false (default), the transform maps from this space to its parent,
+    /// i.e. the translation is the position in the parent space.
     pub from_parent: bool,
 }
 
