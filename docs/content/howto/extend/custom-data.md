@@ -29,9 +29,9 @@ class LabeledPoints:
     def as_component_batches(self) -> Iterable[rr.ComponentBatch]:
         return rr.Points3D(positions=self.points,
                            labels=self.labels).as_component_batches()
-...
+…
 # Somewhere deep in your code
-classified = my_points_classifier(...)  # type: LabeledPoints
+classified = my_points_classifier(…)  # type: LabeledPoints
 rr.log("points/classified", classified)
 ```
 
