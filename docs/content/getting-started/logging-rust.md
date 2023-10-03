@@ -344,7 +344,7 @@ Doing so means you're building the Rerun Viewer itself as part of your project, 
 
 You can now use [`rerun::native_viewer::spawn`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.spawn.html) to spawn
 the native Rerun viewer.
-Since the Viewer's ui thread must be the main thread, this method call will take it over and spawn a new thread for you:
+Since the Viewer's UI thread must be the main thread, this method call will take it over and spawn a new thread for you:
 ```rust
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store_info = rerun::new_store_info("DNA Abacus");
