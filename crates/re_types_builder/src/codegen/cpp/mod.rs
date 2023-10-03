@@ -26,6 +26,8 @@ use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
+use super::common::ExampleInfo;
+
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
 // `TokenStream` ignores whitespace (including comments), but we can insert "quoted strings",
@@ -1959,8 +1961,16 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         lines.push(String::new());
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
-            if let Some(title) = example.base.title {
+            let ExampleInfo {
+                name,
+                title,
+                image: _,
+            } = &example.base;
+
+            if let Some(title) = title {
                 lines.push(format!(" ### {title}"));
+            } else {
+                lines.push(format!("### `{name}`:"));
             }
             lines.push(" ```cpp,ignore".into());
             lines.extend(example.lines.iter().map(|line| format!(" {line}")));

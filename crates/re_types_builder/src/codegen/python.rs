@@ -898,13 +898,17 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     let mut examples = examples.into_iter().peekable();
     while let Some(example) = examples.next() {
-        if let Some(title) = example.base.title {
-            lines.push(format!("{title}:"));
+        let ExampleInfo { name, title, image } = &example.base;
+
+        if let Some(title) = title {
+            lines.push(format!("### {title}:"));
+        } else {
+            lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
         lines.extend(example.lines.into_iter());
         lines.push("```".into());
-        if let Some(image) = &example.base.image {
+        if let Some(image) = &image {
             lines.extend(image.image_stack());
         }
         if examples.peek().is_some() {
@@ -1734,6 +1738,8 @@ fn quote_clear_methods(obj: &Object) -> String {
 
 // --- Arrow registry code generators ---
 use arrow2::datatypes::{DataType, Field, UnionMode};
+
+use super::common::ExampleInfo;
 
 fn quote_arrow_datatype(datatype: &DataType) -> String {
     match datatype {
