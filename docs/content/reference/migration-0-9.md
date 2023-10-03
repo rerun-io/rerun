@@ -236,5 +236,5 @@ Replace with [ViewCoordinates](data_types/archetypes/view_coordinates.md)
 Python docs: [ViewCoordinates.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.ViewCoordinates.__init__)
 
 Notes:
-- Rather than providing `xyz` or `up` as strings, `rr.ViewCoordintes` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
+- Rather than providing `xyz` or `up` as strings, `rr.ViewCoordinates` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
 
