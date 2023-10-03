@@ -48,11 +48,15 @@ Your entity could have any number of additional components as well. This isn't a
 aren't relevant to the scene that the space view is drawing are safely ignored. Also, Rerun even allows you to log your
 own set of components, bypassing archetypes altogether.
 
-In Python, the `rr.AnyValue` helper object can be used to add custom component(s) to an archetype or log an entirely custom set of components:
+In Python, the `rr.AnyValue` helper object can be used to add custom component(s) to an archetype:
+
+code-example: extra_value
+
+It can also be used log an entirely custom set of components:
 
 code-example: any_value
 
-For more complex use-cases, custom object implementing the `rr.AsComponents` protocol can be used. For Rust, the `rerun::AsComponents` trait must be implemented:
+For more complex use-cases, custom objects implementing the `rr.AsComponents` protocol can be used. For Rust, the `rerun::AsComponents` trait must be implemented:
 
 code-example: custom-data
 
