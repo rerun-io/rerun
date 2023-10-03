@@ -47,6 +47,7 @@ the Blueprint settings on the right-hand side. You will see one static frame (i.
 ```
 """.strip()
 
+
 def log_data() -> None:
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 

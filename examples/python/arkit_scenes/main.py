@@ -32,7 +32,6 @@ assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
 
-
 DESCRIPTION = """
 # ARKit Scenes
 This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset 
@@ -84,6 +83,7 @@ The bounding boxes around the furniture is visualized by logging the
 [rr.Boxes3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/boxes3d). In this example, each
 bounding box is logged as a separate entity to the common [world/annotations](recording://world/annotations) parent.
 """.strip()
+
 
 def load_json(js_path: Path) -> dict[str, Any]:
     with open(js_path) as f:

@@ -49,7 +49,6 @@ The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/detect_and_track_objects/main.py).
 
 ### Input Video
-
 The input video is logged as a sequence of
 [rr.Image objects](https://www.rerun.io/docs/reference/data_types/archetypes/image) to the
 [image/rgb entity](recording://image/rgb). Since the detection and segmentation model operates on smaller images the
@@ -57,7 +56,6 @@ resized images are logged to the separate [image_scaled/rgb entity](recording://
 subsequently visualize the segmentation mask on top of the video.
 
 ### Segmentations
-
 The [segmentation result](recording://image_scaled/segmentation) is logged through a combination of two archetypes.
 The segmentation image itself is logged as an
 [rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/data_types/archetypes/segmentation_image) and
@@ -69,7 +67,6 @@ logged to the root entity using `rr.log("/", ..., timeless=True` as it should ap
 entities that have a class id.
 
 ### Detections
-
 The detections and tracked bounding boxes are visualized by logging the
 [rr.Boxes2D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/boxes2d) to Rerun.
 
@@ -82,7 +79,6 @@ Note that it is also possible to log multiple annotation contexts should differe
 The annotation context is resolved by seeking up the entity hierarchy.
 
 ### Text Log
-
 Through the [rr.TextLog archetype] text at different importance level can be logged. Rerun integrates with the
 [Python logging module](https://docs.python.org/3/library/logging.html). After an intial setup that is described on the
 [rr.TextLog page](https://www.rerun.io/docs/reference/data_types/archetypes/text_log#textlogintegration), statements

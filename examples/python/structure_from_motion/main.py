@@ -74,6 +74,7 @@ rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=po
 hover over the points in the 3D view.
 """.strip()
 
+
 def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.NDArray[np.float_]]:
     """Scale the camera intrinsics to match the resized image."""
     assert camera.model == "PINHOLE"

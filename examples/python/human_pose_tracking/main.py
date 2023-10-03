@@ -59,6 +59,7 @@ nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/data_types/archetypes
 [rr.Points3D](https://www.rerun.io/docs/reference/data_types/archetypes/points3d) archetypes, respectively.
 """.strip()
 
+
 def track_pose(video_path: str, segment: bool) -> None:
     mp_pose = mp.solutions.pose
 
@@ -67,11 +68,12 @@ def track_pose(video_path: str, segment: bool) -> None:
     rr.log(
         "/",
         rr.AnnotationContext(
-        rr.ClassDescription(
-            info=rr.AnnotationInfo(id=0, label="Person"),
-            keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
-            keypoint_connections=mp_pose.POSE_CONNECTIONS,
-        )),
+            rr.ClassDescription(
+                info=rr.AnnotationInfo(id=0, label="Person"),
+                keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
+                keypoint_connections=mp_pose.POSE_CONNECTIONS,
+            )
+        ),
         timeless=True,
     )
     # Use a separate annotation context for the segmentation mask.
