@@ -5,7 +5,7 @@ use std::f32::consts::TAU;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 
-    let origins = vec![rerun::Origin3D::ZERO; 100];
+    let origins = vec![rerun::Position3D::ZERO; 100];
     let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
         .map(|i| {
             let angle = TAU * i as f32 * 0.01;

@@ -78,12 +78,12 @@ class Arrows3D(Arrows3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    origins: components.Origin3DBatch | None = field(
+    origins: components.Position3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Origin3DBatch._optional,  # type: ignore[misc]
+        converter=components.Position3DBatch._optional,  # type: ignore[misc]
     )
-    # All the origin points for each arrow in the batch.
+    # All the origin (base) positions for each arrow in the batch.
     #
     # If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     #
