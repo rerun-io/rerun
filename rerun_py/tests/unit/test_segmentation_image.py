@@ -74,7 +74,7 @@ def test_segmentation_image_shapes() -> None:
 
 
 def test_segmentation_coercion() -> None:
-        # TODO(#3609): pass segmentation images unmolested to the viewer
+    # TODO(#3609): pass segmentation images unmolested to the viewer
     seg_img = np.require(RANDOM_IMAGE_SOURCE, np.float32)
 
     seg = rr.SegmentationImage(seg_img)
