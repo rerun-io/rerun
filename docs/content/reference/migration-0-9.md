@@ -27,5 +27,9 @@ batch of size 1.
 For more information on the relationship between Archetypes, Components, and DataTypes, please see our guide to the [Rerun Data Model](../concepts/entity-component.md).
 
 ## Migrating Python Code
-
+The following table summarizes the changes to the Python API:
+| Legacy API  | Archetypes         |
+| ----------- | -------------------|
+| log_point   | Points2D, Points3D |
+| log_points  | Points2D, Points3D |
 ...
