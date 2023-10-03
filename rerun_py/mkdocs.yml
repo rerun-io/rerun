@@ -28,10 +28,11 @@ plugins:
             - https://numpy.org/doc/stable/objects.inv
             - https://ipython.readthedocs.io/en/stable/objects.inv
           options: # https://mkdocstrings.github.io/python/usage/#globallocal-options
+            docstring_section_style: spacy # list spacy table
             docstring_style: numpy
             heading_level: 3
             inherited_members: true
-            members_order: source
+            members_order: source # sort members in the order they are defined
             merge_init_into_class: true # Only works for auto-generated __init__ methods, but for those it's great!
             show_if_no_docstring: false # We intentionally hide archetype fields
             show_source: no
