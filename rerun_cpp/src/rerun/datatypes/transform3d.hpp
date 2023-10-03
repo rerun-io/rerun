@@ -52,7 +52,7 @@ namespace rerun {
             };
         } // namespace detail
 
-        /// Representation of a 3D affine transform.
+        /// **Datatype**: Representation of a 3D affine transform.
         struct Transform3D {
             Transform3D() : _tag(detail::Transform3DTag::NONE) {}
 

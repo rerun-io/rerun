@@ -17,7 +17,7 @@ __all__ = ["Clear"]
 @define(str=False, repr=False, init=False)
 class Clear(ClearExt, Archetype):
     """
-    Empties all the components of an entity.
+    **Archetype**: Empties all the components of an entity.
 
     Examples
     --------

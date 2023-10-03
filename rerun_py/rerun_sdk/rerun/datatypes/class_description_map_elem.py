@@ -35,7 +35,7 @@ def _class_description_map_elem__class_id__special_field_converter_override(
 @define(init=False)
 class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     """
-    A helper type for mapping class IDs to class descriptions.
+    **Datatype**: A helper type for mapping class IDs to class descriptions.
 
     This is internal to the `AnnotationContext` structure.
     """

@@ -14,7 +14,7 @@ __all__ = ["TextLogLevel", "TextLogLevelBatch", "TextLogLevelType"]
 
 class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     """
-    The severity level of a text log message.
+    **Component**: The severity level of a text log message.
 
     Recommended to be one of:
     * `"CRITICAL"`

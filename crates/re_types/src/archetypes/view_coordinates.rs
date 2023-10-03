@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// How we interpret the coordinate system of an entity/space.
+/// **Archetype**:  How we interpret the coordinate system of an entity/space.
 ///
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 ///

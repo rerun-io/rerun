@@ -16,7 +16,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A vector in 3D space.
+        /// **Datatype**: A vector in 3D space.
         struct Vec3D {
             float xyz[3];
 

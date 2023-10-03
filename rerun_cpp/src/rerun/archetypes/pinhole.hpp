@@ -18,7 +18,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// Camera perspective projection (a.k.a. intrinsics).
+        /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
         ///
         /// ## Example
         ///

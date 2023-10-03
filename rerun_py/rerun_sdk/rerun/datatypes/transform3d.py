@@ -19,7 +19,7 @@ __all__ = ["Transform3D", "Transform3DArrayLike", "Transform3DBatch", "Transform
 
 @define
 class Transform3D(Transform3DExt):
-    """Representation of a 3D affine transform."""
+    """**Datatype**: Representation of a 3D affine transform."""
 
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 

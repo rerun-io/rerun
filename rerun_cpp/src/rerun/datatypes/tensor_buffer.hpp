@@ -82,7 +82,7 @@ namespace rerun {
             };
         } // namespace detail
 
-        /// The underlying storage for a `Tensor`.
+        /// **Datatype**: The underlying storage for a `Tensor`.
         ///
         /// Tensor elements are stored in a contiguous buffer of a single type.
         struct TensorBuffer {

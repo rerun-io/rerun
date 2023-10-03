@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 2D point cloud with positions and optional colors, radii, labels, etc.
+/// **Archetype**:  A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
 /// ## Examples
 ///
@@ -88,6 +88,7 @@ pub struct Points2D {
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 

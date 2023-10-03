@@ -249,14 +249,14 @@ overview of what's possible and how.
             index_file.write("-------- | -----------\n")
             for func_name in section.func_list:
                 func = rerun_pkg[func_name]
-                index_file.write(f"[`rerun.{func_name}()`]({md_name}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
+                index_file.write(f"[`rerun.{func_name}()`]({md_file}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
         if section.class_list:
             index_file.write("\n")
             index_file.write("Class | Description\n")
             index_file.write("-------- | -----------\n")
             for class_name in section.class_list:
                 cls = rerun_pkg[class_name]
-                index_file.write(f"[`rerun.{class_name}`]({md_name}#rerun.{class_name}) | {cls.docstring.lines[0]}\n")
+                index_file.write(f"[`rerun.{class_name}`]({md_file}#rerun.{class_name}) | {cls.docstring.lines[0]}\n")
 
         index_file.write("\n")
 

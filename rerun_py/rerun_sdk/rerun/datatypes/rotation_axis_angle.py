@@ -32,25 +32,25 @@ def _rotation_axis_angle__axis__special_field_converter_override(x: datatypes.Ve
 
 @define(init=False)
 class RotationAxisAngle(RotationAxisAngleExt):
-    """3D rotation represented by a rotation around a given axis."""
+    """**Datatype**: 3D rotation represented by a rotation around a given axis."""
 
     # __init__ can be found in rotation_axis_angle_ext.py
 
     axis: datatypes.Vec3D = field(converter=_rotation_axis_angle__axis__special_field_converter_override)
-    """
-    Axis to rotate around.
-
-    This is not required to be normalized.
-    If normalization fails (typically because the vector is length zero), the rotation is silently
-    ignored.
-    """
+    # Axis to rotate around.
+    #
+    # This is not required to be normalized.
+    # If normalization fails (typically because the vector is length zero), the rotation is silently
+    # ignored.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     angle: datatypes.Angle = field(
         converter=RotationAxisAngleExt.angle__field_converter_override,  # type: ignore[misc]
     )
-    """
-    How much to rotate around the axis.
-    """
+    # How much to rotate around the axis.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 RotationAxisAngleLike = RotationAxisAngle

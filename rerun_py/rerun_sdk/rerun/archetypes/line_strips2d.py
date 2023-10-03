@@ -19,7 +19,7 @@ __all__ = ["LineStrips2D"]
 @define(str=False, repr=False, init=False)
 class LineStrips2D(Archetype):
     """
-    A batch of line strips with positions and optional colors, radii, labels, etc.
+    **Archetype**: A batch of line strips with positions and optional colors, radii, labels, etc.
 
     Examples
     --------
@@ -122,6 +122,7 @@ class LineStrips2D(Archetype):
              Optional text labels for the line strips.
         draw_order:
              An optional floating point value that specifies the 2D drawing order of each line strip.
+
              Objects with higher values are drawn on top of those with lower values.
         class_ids:
              Optional `ClassId`s for the lines.
@@ -168,66 +169,67 @@ class LineStrips2D(Archetype):
         metadata={"component": "required"},
         converter=components.LineStrip2DBatch._required,  # type: ignore[misc]
     )
-    """
-    All the actual 2D line strips that make up the batch.
-    """
+    # All the actual 2D line strips that make up the batch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional radii for the line strips.
-    """
+    # Optional radii for the line strips.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional colors for the line strips.
-    """
+    # Optional colors for the line strips.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional text labels for the line strips.
-    """
+    # Optional text labels for the line strips.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies the 2D drawing order of each line strip.
-    Objects with higher values are drawn on top of those with lower values.
-    """
+    # An optional floating point value that specifies the 2D drawing order of each line strip.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional `ClassId`s for the lines.
-
-    The class ID provides colors and labels if not specified explicitly.
-    """
+    # Optional `ClassId`s for the lines.
+    #
+    # The class ID provides colors and labels if not specified explicitly.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
-    """
-    Unique identifiers for each individual line strip in the batch.
-    """
+    # Unique identifiers for each individual line strip in the batch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

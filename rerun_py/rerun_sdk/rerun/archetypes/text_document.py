@@ -18,7 +18,7 @@ __all__ = ["TextDocument"]
 
 @define(str=False, repr=False, init=False)
 class TextDocument(Archetype):
-    """A text element intended to be displayed in its own text-box."""
+    """**Archetype**: A text element intended to be displayed in its own text-box."""
 
     def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
         """
@@ -62,24 +62,24 @@ class TextDocument(Archetype):
         metadata={"component": "required"},
         converter=components.TextBatch._required,  # type: ignore[misc]
     )
-    """
-    Contents of the text document.
-    """
+    # Contents of the text document.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
     )
-    """
-    The Media Type of the text.
-
-    For instance:
-    * `text/plain`
-    * `text/markdown`
-
-    If omitted, `text/plain` is assumed.
-    """
+    # The Media Type of the text.
+    #
+    # For instance:
+    # * `text/plain`
+    # * `text/markdown`
+    #
+    # If omitted, `text/plain` is assumed.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

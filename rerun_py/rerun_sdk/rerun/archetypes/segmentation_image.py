@@ -20,7 +20,7 @@ __all__ = ["SegmentationImage"]
 @define(str=False, repr=False, init=False)
 class SegmentationImage(SegmentationImageExt, Archetype):
     """
-    An image made up of integer class-ids.
+    **Archetype**: An image made up of integer class-ids.
 
     The shape of the `TensorData` must be mappable to an `HxW` tensor.
     Each pixel corresponds to a depth value in units specified by meter.
@@ -66,6 +66,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
              The image data. Should always be a rank-2 tensor.
         draw_order:
              An optional floating point value that specifies the 2D drawing order.
+
              Objects with higher values are drawn on top of those with lower values.
         """
 
@@ -93,19 +94,20 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         metadata={"component": "required"},
         converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The image data. Should always be a rank-2 tensor.
-    """
+    # The image data. Should always be a rank-2 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies the 2D drawing order.
-    Objects with higher values are drawn on top of those with lower values.
-    """
+    # An optional floating point value that specifies the 2D drawing order.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

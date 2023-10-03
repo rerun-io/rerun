@@ -517,11 +517,7 @@ fn code_for_struct(
     assert!(obj.is_struct());
 
     let Object {
-        name,
-        docs,
-        kind,
-        fields,
-        ..
+        name, kind, fields, ..
     } = obj;
 
     let mut code = String::new();
@@ -596,7 +592,7 @@ fn code_for_struct(
     };
     code.push_unindented_text(format!("class {name}{superclass_decl}:"), 1);
 
-    code.push_text(quote_doc_from_docs(docs), 0, 4);
+    code.push_text(quote_obj_docs(obj), 0, 4);
 
     if ext_class.has_init {
         code.push_text(
@@ -649,10 +645,7 @@ fn code_for_struct(
             .chain(fields.iter().filter(|field| field.is_nullable));
         for field in fields_in_order {
             let ObjectField {
-                name,
-                docs,
-                is_nullable,
-                ..
+                name, is_nullable, ..
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
@@ -692,7 +685,25 @@ fn code_for_struct(
 
             code.push_text(format!("{name}: {typ}"), 1, 4);
 
-            code.push_text(quote_doc_from_docs(docs), 0, 4);
+            // Generating docs for all the fields creates A LOT of visual noise in the API docs.
+            let show_fields_in_docs = false;
+            let doc_lines = lines_from_docs(&field.docs);
+            if !doc_lines.is_empty() {
+                if show_fields_in_docs {
+                    code.push_text(quote_doc_lines(&doc_lines), 0, 4);
+                } else {
+                    // Still include it for those that are reading the source file:
+                    for line in doc_lines {
+                        code.push_text(format!("# {line}"), 1, 4);
+                    }
+                    code.push_text("#", 1, 4);
+                    code.push_text(
+                    "# (Docstring intentionally commented out to hide this field from the docs)",
+                        2,
+                        4,
+                    );
+                }
+            }
         }
 
         if *kind == ObjectKind::Archetype {
@@ -732,11 +743,7 @@ fn code_for_union(
     assert_eq!(obj.kind, ObjectKind::Datatype);
 
     let Object {
-        name,
-        docs,
-        kind,
-        fields,
-        ..
+        name, kind, fields, ..
     } = obj;
 
     let mut code = String::new();
@@ -776,7 +783,7 @@ fn code_for_union(
         0,
     );
 
-    code.push_text(quote_doc_from_docs(docs), 0, 4);
+    code.push_text(quote_obj_docs(obj), 0, 4);
 
     if ext_class.has_init {
         code.push_text(
@@ -907,7 +914,18 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     }
 }
 
-fn quote_doc_from_docs(docs: &Docs) -> String {
+fn quote_obj_docs(obj: &Object) -> String {
+    let mut lines = lines_from_docs(&obj.docs);
+
+    if let Some(first_line) = lines.first_mut() {
+        // Prefix with object kind:
+        *first_line = format!("**{}**: {}", obj.kind.singular_name(), first_line);
+    }
+
+    quote_doc_lines(&lines)
+}
+
+fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
     for line in &mut lines {
         if line.starts_with(char::is_whitespace) {
@@ -928,15 +946,18 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
         quote_examples(examples, &mut lines);
     }
 
+    lines
+}
+
+fn quote_doc_lines(lines: &[String]) -> String {
     if lines.is_empty() {
         return String::new();
     }
 
     // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
     let doc = lines
-        .into_iter()
+        .iter()
         .filter(|line| !line.starts_with(r#"""""#))
-        .collect_vec()
         .join("\n");
 
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")

@@ -22,7 +22,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A Radius component.
+        /// **Component**: A Radius component.
         struct Radius {
             float value;
 

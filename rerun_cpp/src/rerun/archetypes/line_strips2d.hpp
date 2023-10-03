@@ -22,7 +22,8 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A batch of line strips with positions and optional colors, radii, labels, etc.
+        /// **Archetype**: A batch of line strips with positions and optional colors, radii, labels,
+        /// etc.
         ///
         /// ## Examples
         ///
@@ -116,7 +117,9 @@ namespace rerun {
             std::optional<std::vector<rerun::components::Text>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order of each line
-            /// strip. Objects with higher values are drawn on top of those with lower values.
+            /// strip.
+            ///
+            /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
             /// Optional `ClassId`s for the lines.
@@ -176,7 +179,9 @@ namespace rerun {
             }
 
             /// An optional floating point value that specifies the 2D drawing order of each line
-            /// strip. Objects with higher values are drawn on top of those with lower values.
+            /// strip.
+            ///
+            /// Objects with higher values are drawn on top of those with lower values.
             LineStrips2D& with_draw_order(rerun::components::DrawOrder _draw_order) {
                 draw_order = std::move(_draw_order);
                 return *this;

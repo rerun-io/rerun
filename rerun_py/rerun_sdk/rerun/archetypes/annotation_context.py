@@ -19,7 +19,7 @@ __all__ = ["AnnotationContext"]
 @define(str=False, repr=False, init=False)
 class AnnotationContext(Archetype):
     """
-    The `AnnotationContext` provides additional information on how to display entities.
+    **Archetype**: The `AnnotationContext` provides additional information on how to display entities.
 
     Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
     the labels and colors will be looked up in the appropriate
@@ -158,9 +158,9 @@ class AnnotationContext(Archetype):
         metadata={"component": "required"},
         converter=components.AnnotationContextBatch._required,  # type: ignore[misc]
     )
-    """
-    List of class descriptions, mapping class indices to class names, colors etc.
-    """
+    # List of class descriptions, mapping class indices to class names, colors etc.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

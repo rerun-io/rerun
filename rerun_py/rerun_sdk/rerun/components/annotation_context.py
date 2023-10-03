@@ -26,7 +26,7 @@ __all__ = [
 @define(init=False)
 class AnnotationContext(AnnotationContextExt):
     """
-    The `AnnotationContext` provides additional information on how to display entities.
+    **Component**: The `AnnotationContext` provides additional information on how to display entities.
 
     Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
     the labels and colors will be looked up in the appropriate
@@ -51,9 +51,9 @@ class AnnotationContext(AnnotationContextExt):
     class_map: list[datatypes.ClassDescriptionMapElem] = field(
         converter=AnnotationContextExt.class_map__field_converter_override,  # type: ignore[misc]
     )
-    """
-    List of class descriptions, mapping class indices to class names, colors etc.
-    """
+    # List of class descriptions, mapping class indices to class names, colors etc.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:

@@ -18,7 +18,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A log entry in a text log, comprised of a text body and its log level.
+        /// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
         struct TextLog {
             rerun::components::Text text;
 

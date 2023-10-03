@@ -17,7 +17,7 @@ __all__ = ["Transform3D"]
 @define(str=False, repr=False, init=False)
 class Transform3D(Transform3DExt, Archetype):
     """
-    A 3D transform.
+    **Archetype**: A 3D transform.
 
     Example
     -------
@@ -71,9 +71,9 @@ class Transform3D(Transform3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
-    """
-    The transform
-    """
+    # The transform
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

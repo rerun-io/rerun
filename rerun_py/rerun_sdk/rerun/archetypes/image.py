@@ -20,7 +20,7 @@ __all__ = ["Image"]
 @define(str=False, repr=False, init=False)
 class Image(ImageExt, Archetype):
     """
-    A monochrome or color image.
+    **Archetype**: A monochrome or color image.
 
     The shape of the `TensorData` must be mappable to:
     - A `HxW` tensor, treated as a grayscale image.
@@ -65,6 +65,7 @@ class Image(ImageExt, Archetype):
              The image data. Should always be a rank-2 or rank-3 tensor.
         draw_order:
              An optional floating point value that specifies the 2D drawing order.
+
              Objects with higher values are drawn on top of those with lower values.
         """
 
@@ -92,19 +93,20 @@ class Image(ImageExt, Archetype):
         metadata={"component": "required"},
         converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The image data. Should always be a rank-2 or rank-3 tensor.
-    """
+    # The image data. Should always be a rank-2 or rank-3 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies the 2D drawing order.
-    Objects with higher values are drawn on top of those with lower values.
-    """
+    # An optional floating point value that specifies the 2D drawing order.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

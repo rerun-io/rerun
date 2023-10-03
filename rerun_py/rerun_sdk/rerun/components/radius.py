@@ -20,7 +20,7 @@ __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType
 
 @define(init=False)
 class Radius(RadiusExt):
-    """A Radius component."""
+    """**Component**: A Radius component."""
 
     def __init__(self: Any, value: RadiusLike):
         """Create a new instance of the Radius component."""

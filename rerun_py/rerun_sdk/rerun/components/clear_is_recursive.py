@@ -26,7 +26,7 @@ __all__ = [
 
 @define(init=False)
 class ClearIsRecursive(ClearIsRecursiveExt):
-    """Configures how a clear operation should behave - recursive or not?."""
+    """**Component**: Configures how a clear operation should behave - recursive or not?."""
 
     def __init__(self: Any, recursive: ClearIsRecursiveLike):
         """
@@ -42,9 +42,9 @@ class ClearIsRecursive(ClearIsRecursiveExt):
         self.__attrs_init__(recursive=recursive)
 
     recursive: bool = field(converter=bool)
-    """
-    If true, also clears all recursive children entities.
-    """
+    # If true, also clears all recursive children entities.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:

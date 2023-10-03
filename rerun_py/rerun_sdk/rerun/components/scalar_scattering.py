@@ -26,7 +26,7 @@ __all__ = [
 
 @define(init=False)
 class ScalarScattering(ScalarScatteringExt):
-    """If true, a scalar will be shown as individual point in a scatter plot."""
+    """**Component**: If true, a scalar will be shown as individual point in a scatter plot."""
 
     def __init__(self: Any, scattered: ScalarScatteringLike):
         """Create a new instance of the ScalarScattering component."""

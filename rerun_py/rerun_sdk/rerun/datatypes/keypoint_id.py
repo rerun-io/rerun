@@ -21,11 +21,11 @@ __all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLi
 @define(init=False)
 class KeypointId(KeypointIdExt):
     """
-    A 16-bit ID representing a type of semantic keypoint within a class.
+    **Datatype**: A 16-bit ID representing a type of semantic keypoint within a class.
 
-    `KeypointId`s are only meaningful within the context of a [`rerun.components.ClassDescription`][].
+    `KeypointId`s are only meaningful within the context of a [`rerun.datatypes.ClassDescription`].
 
-    Used to look up an [`rerun.components.AnnotationInfo`][] for a Keypoint within the
+    Used to look up an [`rerun.datatypes.AnnotationInfo`] for a Keypoint within the
     [`rerun.components.AnnotationContext`].
     """
 

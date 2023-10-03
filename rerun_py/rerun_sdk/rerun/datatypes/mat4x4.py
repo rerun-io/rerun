@@ -24,7 +24,7 @@ __all__ = ["Mat4x4", "Mat4x4ArrayLike", "Mat4x4Batch", "Mat4x4Like", "Mat4x4Type
 @define(init=False)
 class Mat4x4(Mat4x4Ext):
     """
-    A 4x4 Matrix.
+    **Datatype**: A 4x4 Matrix.
 
     Matrices in Rerun are stored as flat list of coefficients in column-major order:
     ```text
@@ -63,9 +63,9 @@ class Mat4x4(Mat4x4Ext):
     # __init__ can be found in mat4x4_ext.py
 
     flat_columns: npt.NDArray[np.float32] = field(converter=to_np_float32)
-    """
-    Flat list of matrix coefficients in column-major order.
-    """
+    # Flat list of matrix coefficients in column-major order.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat4x4Ext in mat4x4_ext.py

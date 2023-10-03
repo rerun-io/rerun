@@ -15,7 +15,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A 3D transform.
+        /// **Archetype**: A 3D transform.
         ///
         /// ## Example
         ///

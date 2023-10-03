@@ -22,7 +22,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A batch of 3D arrows with optional colors, radii, labels, etc.
+        /// **Archetype**: A batch of 3D arrows with optional colors, radii, labels, etc.
         ///
         /// ## Example
         ///

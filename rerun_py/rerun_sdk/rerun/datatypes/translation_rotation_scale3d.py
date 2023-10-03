@@ -47,37 +47,39 @@ def _translation_rotation_scale3d__scale__special_field_converter_override(
 
 @define(init=False)
 class TranslationRotationScale3D(TranslationRotationScale3DExt):
-    """Representation of an affine transform via separate translation, rotation & scale."""
+    """**Datatype**: Representation of an affine transform via separate translation, rotation & scale."""
 
     # __init__ can be found in translation_rotation_scale3d_ext.py
 
     from_parent: bool = field(converter=bool)
-    """
-    If true, the transform maps from the parent space to the space where the transform was logged.
-    Otherwise, the transform maps from the space to its parent.
-    """
+    # If true, this transform is from the parent space to the space where the transform was logged.
+    #
+    # If false (default), the transform maps from this space to its parent,
+    # i.e. the translation is the position in the parent space.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     translation: datatypes.Vec3D | None = field(
         default=None,
         converter=TranslationRotationScale3DExt.translation__field_converter_override,  # type: ignore[misc]
     )
-    """
-    3D translation vector, applied last.
-    """
+    # 3D translation vector, applied last.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     rotation: datatypes.Rotation3D | None = field(
         default=None, converter=_translation_rotation_scale3d__rotation__special_field_converter_override
     )
-    """
-    3D rotation, applied second.
-    """
+    # 3D rotation, applied second.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     scale: datatypes.Scale3D | None = field(
         default=None, converter=_translation_rotation_scale3d__scale__special_field_converter_override
     )
-    """
-    3D scale, applied first.
-    """
+    # 3D scale, applied first.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 TranslationRotationScale3DLike = TranslationRotationScale3D

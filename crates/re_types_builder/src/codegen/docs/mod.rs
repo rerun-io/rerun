@@ -125,7 +125,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
     let top_level_docs = get_documentation(&object.docs, &[]);
 
     if top_level_docs.is_empty() {
-        reporter.error(format!("{:?} is undocumented", object.fqname.as_str()));
+        reporter.error(&object.virtpath, &object.fqname, "Undocumented object");
     }
 
     let examples = object
@@ -227,7 +227,7 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
     }
 
     if used_by.is_empty() {
-        reporter.warn(format!("{:?} is unused", object.fqname.as_str()));
+        reporter.warn(&object.virtpath, &object.fqname, "Unused object");
     } else {
         putln!(o, "## Used by");
         putln!(o);

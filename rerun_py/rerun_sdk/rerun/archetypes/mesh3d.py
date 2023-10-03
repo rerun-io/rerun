@@ -17,7 +17,7 @@ __all__ = ["Mesh3D"]
 @define(str=False, repr=False, init=False)
 class Mesh3D(Mesh3DExt, Archetype):
     """
-    A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+    **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
     Examples
     --------
@@ -93,69 +93,69 @@ class Mesh3D(Mesh3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.Position3DBatch._required,  # type: ignore[misc]
     )
-    """
-    The positions of each vertex.
-
-    If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
-    """
+    # The positions of each vertex.
+    #
+    # If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     mesh_properties: components.MeshPropertiesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MeshPropertiesBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional properties for the mesh as a whole (including indexed drawing).
-    """
+    # Optional properties for the mesh as a whole (including indexed drawing).
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     vertex_normals: components.Vector3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Vector3DBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional normal for each vertex.
-
-    If specified, this must have as many elements as `vertex_positions`.
-    """
+    # An optional normal for each vertex.
+    #
+    # If specified, this must have as many elements as `vertex_positions`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     vertex_colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional color for each vertex.
-    """
+    # An optional color for each vertex.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     mesh_material: components.MaterialBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MaterialBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional material properties for the mesh as a whole.
-    """
+    # Optional material properties for the mesh as a whole.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional class Ids for the vertices.
-
-    The class ID provides colors and labels if not specified explicitly.
-    """
+    # Optional class Ids for the vertices.
+    #
+    # The class ID provides colors and labels if not specified explicitly.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
-    """
-    Unique identifiers for each individual vertex in the mesh.
-    """
+    # Unique identifiers for each individual vertex in the mesh.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

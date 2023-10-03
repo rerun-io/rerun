@@ -23,7 +23,7 @@ __all__ = ["Vec3D", "Vec3DArrayLike", "Vec3DBatch", "Vec3DLike", "Vec3DType"]
 
 @define(init=False)
 class Vec3D(Vec3DExt):
-    """A vector in 3D space."""
+    """**Datatype**: A vector in 3D space."""
 
     def __init__(self: Any, xyz: Vec3DLike):
         """Create a new instance of the Vec3D datatype."""

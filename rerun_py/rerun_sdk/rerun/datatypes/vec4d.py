@@ -23,7 +23,7 @@ __all__ = ["Vec4D", "Vec4DArrayLike", "Vec4DBatch", "Vec4DLike", "Vec4DType"]
 
 @define(init=False)
 class Vec4D(Vec4DExt):
-    """A vector in 4D space."""
+    """**Datatype**: A vector in 4D space."""
 
     def __init__(self: Any, xyzw: Vec4DLike):
         """Create a new instance of the Vec4D datatype."""

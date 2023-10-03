@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A binary blob of data.
+/// **Component**:  A binary blob of data.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Blob(pub crate::ArrowBuffer<u8>);

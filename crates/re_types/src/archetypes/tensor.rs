@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A generic n-dimensional Tensor.
+/// **Archetype**:  A generic n-dimensional Tensor.
 ///
 /// ## Examples
 ///

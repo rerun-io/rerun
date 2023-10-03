@@ -21,7 +21,7 @@ __all__ = ["Scalar", "ScalarArrayLike", "ScalarBatch", "ScalarLike", "ScalarType
 @define(init=False)
 class Scalar(ScalarExt):
     """
-    A double-precision scalar.
+    **Component**: A double-precision scalar.
 
     Used for time series plots.
     """

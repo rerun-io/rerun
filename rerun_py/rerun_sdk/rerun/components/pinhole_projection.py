@@ -13,7 +13,7 @@ __all__ = ["PinholeProjection", "PinholeProjectionBatch", "PinholeProjectionType
 
 class PinholeProjection(datatypes.Mat3x3):
     """
-    Camera projection, from image coordinates to view coordinates.
+    **Component**: Camera projection, from image coordinates to view coordinates.
 
     Child from parent.
     Image coordinates from camera view coordinates.

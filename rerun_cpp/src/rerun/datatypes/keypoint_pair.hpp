@@ -18,7 +18,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A connection between two `Keypoints`.
+        /// **Datatype**: A connection between two `Keypoints`.
         struct KeypointPair {
             rerun::datatypes::KeypointId keypoint0;
 

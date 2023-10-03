@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// 3D scaling factor, part of a transform representation.
+/// **Datatype**:  3D scaling factor, part of a transform representation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Scale3D {
     /// Individual scaling factors for each axis, distorting the original object.

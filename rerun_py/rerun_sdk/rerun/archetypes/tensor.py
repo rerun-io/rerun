@@ -17,7 +17,7 @@ __all__ = ["Tensor"]
 @define(str=False, repr=False, init=False)
 class Tensor(TensorExt, Archetype):
     """
-    A generic n-dimensional Tensor.
+    **Archetype**: A generic n-dimensional Tensor.
 
     Examples
     --------
@@ -87,9 +87,9 @@ class Tensor(TensorExt, Archetype):
         metadata={"component": "required"},
         converter=components.TensorDataBatch._required,  # type: ignore[misc]
     )
-    """
-    The tensor data
-    """
+    # The tensor data
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

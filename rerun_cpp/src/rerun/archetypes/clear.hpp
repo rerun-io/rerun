@@ -15,7 +15,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// Empties all the components of an entity.
+        /// **Archetype**: Empties all the components of an entity.
         ///
         /// ## Examples
         ///

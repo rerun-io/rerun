@@ -20,7 +20,7 @@ __all__ = ["DepthImage"]
 @define(str=False, repr=False, init=False)
 class DepthImage(DepthImageExt, Archetype):
     """
-    A depth image.
+    **Archetype**: A depth image.
 
     The shape of the `TensorData` must be mappable to an `HxW` tensor.
     Each pixel corresponds to a depth value in units specified by `meter`.
@@ -109,6 +109,7 @@ class DepthImage(DepthImageExt, Archetype):
              and a range of up to ~65 meters (2^16 / 1000).
         draw_order:
              An optional floating point value that specifies the 2D drawing order.
+
              Objects with higher values are drawn on top of those with lower values.
         """
 
@@ -137,31 +138,32 @@ class DepthImage(DepthImageExt, Archetype):
         metadata={"component": "required"},
         converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The depth-image data. Should always be a rank-2 tensor.
-    """
+    # The depth-image data. Should always be a rank-2 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     meter: components.DepthMeterBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DepthMeterBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies how long a meter is in the native depth units.
-
-    For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
-    and a range of up to ~65 meters (2^16 / 1000).
-    """
+    # An optional floating point value that specifies how long a meter is in the native depth units.
+    #
+    # For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+    # and a range of up to ~65 meters (2^16 / 1000).
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies the 2D drawing order.
-    Objects with higher values are drawn on top of those with lower values.
-    """
+    # An optional floating point value that specifies the 2D drawing order.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

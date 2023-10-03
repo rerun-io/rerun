@@ -23,7 +23,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A 2D point cloud with positions and optional colors, radii, labels, etc.
+        /// **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
         ///
         /// ## Examples
         ///
@@ -95,6 +95,7 @@ namespace rerun {
             std::optional<std::vector<rerun::components::Text>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
@@ -165,6 +166,7 @@ namespace rerun {
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             Points2D& with_draw_order(rerun::components::DrawOrder _draw_order) {
                 draw_order = std::move(_draw_order);

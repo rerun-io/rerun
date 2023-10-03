@@ -20,7 +20,7 @@ __all__ = ["BarChart"]
 @define(str=False, repr=False, init=False)
 class BarChart(BarChartExt, Archetype):
     """
-    A bar chart.
+    **Archetype**: A bar chart.
 
     The x values will be the indices of the array, and the bar heights will be the provided values.
 
@@ -68,9 +68,9 @@ class BarChart(BarChartExt, Archetype):
         metadata={"component": "required"},
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The values. Should always be a rank-1 tensor.
-    """
+    # The values. Should always be a rank-1 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

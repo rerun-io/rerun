@@ -19,7 +19,7 @@ __all__ = ["Rotation3D", "Rotation3DArrayLike", "Rotation3DBatch", "Rotation3DLi
 
 @define
 class Rotation3D(Rotation3DExt):
-    """A 3D rotation."""
+    """**Datatype**: A 3D rotation."""
 
     # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
 
