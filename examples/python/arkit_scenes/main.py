@@ -45,7 +45,7 @@ The full source code for this example is available
 To log a moving RGB-D camera we need to log four objects: the pinhole camera (intrinsics), the camera pose
 (extrinsics), the color image and the depth image.
 
-An object of the [rr.Pinhole archetype](https://www.rerun.io/docs/reference/data_types/archetypes/pinhole) is logged to
+The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/data_types/archetypes/pinhole) is logged to
 [world/camera_lowres](recording://world/camera_lowres) to define the intrinsics of the camera. This
 determines how to go from the 3D camera frame to the 2D image plane.  The extrinsics are logged as an
 [rr.Transform3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/transform3d) to the
