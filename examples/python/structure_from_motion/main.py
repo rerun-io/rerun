@@ -25,22 +25,45 @@ FILTER_MIN_VISIBLE: Final = 500
 
 DESCRIPTION = """
 # Sparse Reconstruction by COLMAP
+This example was generated from the output of a sparse reconstruction done with COLMAP.
 
-This example was generated from the output of a sparse reconstruction
-done with COLMAP.
+[COLMAP](https://colmap.github.io/index.html) is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo
+(MVS) pipeline with a graphical and command-line interface.
 
-[COLMAP](https://colmap.github.io/index.html) is a general-purpose
-Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline
-with a graphical and command-line interface.
-
-In this example a short video clip has been processed offline by the
-COLMAP pipeline, and we use Rerun to visualize the individual
-camera frames, estimated camera poses, and resulting point clouds over time.
+In this example a short video clip has been processed offline by the COLMAP pipeline, and we use Rerun to visualize the
+individual camera frames, estimated camera poses, and resulting point clouds over time.
 
 ## How it was made
-The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
 
-### Colored 3D Points
+### Images
+The images are logged through the [rr.Image archetype](https://www.rerun.io/docs/reference/data_types/archetypes/image)
+to the [camera/image entity](recording://camera/image).
+
+### Cameras
+The images stem from pinhole cameras located in the 3D world. To visualize the images in 3D, the pinhole projection has
+to be logged and the camera pose (this is often referred to as the intrinsics and extrinsics of the camera,
+respectively).
+
+The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/data_types/archetypes/pinhole) is logged to
+the [camera/image entity](recording://camera/image) and defines the intrinsics of the camera. This defines how to go
+from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
+[rr.Transform3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/transform3d) to the
+[camera entity](recording://camera).
+
+### Reprojection error
+For each image a [rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/data_types/archetypes/bar_chart)
+containing the average reprojection error of the keypoints is logged to the
+[plot/avg_reproj_err entity](recording://plot/avg_reproj_err).
+
+### 2D points
+The 2D image points that are used to triangulate the 3D points are visualized by logging
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points2d)
+to the [camera/image/keypoints entity](recording://camera/image/keypoints). Note that these keypoints are a child of the
+[camera/image entity](recording://camera/image), since the points should show in the image plane.
+
+### Colored 3D points
 The colored 3D points were added to the scene by logging the
 [rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points3d)
 to the [points entity](recording://points):

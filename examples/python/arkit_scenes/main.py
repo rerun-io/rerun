@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path, PosixPath
+from pathlib import Path
 from typing import Any, Tuple
 
 import cv2
@@ -30,6 +30,59 @@ ORIENTATION = {
 }
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
+
+
+DESCRIPTION = """
+# ARKit Scenes
+This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
+contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
+
+## How it was made
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/arkit_scenes/main.py).
+
+### Moving RGB-D camera
+To log a moving RGB-D camera we need to log four objects: the pinhole camera (intrinsics), the camera pose
+(extrinsics), the color image and the depth image.
+
+The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/data_types/archetypes/pinhole) is logged to
+[world/camera_lowres](recording://world/camera_lowres) to define the intrinsics of the camera. This
+determines how to go from the 3D camera frame to the 2D image plane.  The extrinsics are logged as an
+[rr.Transform3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/transform3d) to the
+[same entity world/camera_lowres](recording://world/camera_lowres). Note that we could also log the extrinsics to
+`world/camera` and the intrinsics to `world/camera/image` instead. Here, we log both on the same entity path to keep
+the paths shorter.
+
+The RGB image is logged as an
+[rr.Image archetype](https://www.rerun.io/docs/reference/data_types/archetypes/image) to the
+[world/camera_lowres/rgb entity](recording://world/camera_lowres/rgb) as a child of the intrinsics + extrinsics
+entity described in the previous paragraph. Similarly the depth image is logged as an
+[rr.DepthImage archetype](https://www.rerun.io/docs/reference/data_types/archetypes/depth_image) to
+[world/camera_lowres/depth](recording://world/camera_lowres/depth).
+
+### Ground-truth mesh
+The mesh is logged as an [rr.Mesh3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/mesh3d).
+In this case the mesh is composed of mesh vertices, indices (i.e., which vertices belong to the same face), and vertex
+colors. Given a `trimesh.Trimesh` the following call is used to log it to Rerun
+```python
+rr.log(
+    "world/mesh",
+    rr.Mesh3D(
+        vertex_positions=mesh.vertices,
+        vertex_colors=mesh.visual.vertex_colors,
+        indices=mesh.faces,
+    ),
+    timeless=True,
+)
+```
+Here, the mesh is logged to the [world/mesh entity](recording://world/mesh) and is marked as timeless, since it does not
+change in the context of this visualization.
+
+### 3D bounding boxes
+The bounding boxes around the furniture is visualized by logging the
+[rr.Boxes3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/boxes3d). In this example, each
+bounding box is logged as a separate entity to the common [world/annotations](recording://world/annotations) parent.
+""".strip()
 
 
 def load_json(js_path: Path) -> dict[str, Any]:
@@ -255,8 +308,7 @@ def log_camera(
         log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
 
     # pathlib makes it easy to get the parent, but log methods requires a string
-    camera_path = str(PosixPath(entity_id).parent)
-    rr.log(camera_path, rr.Transform3D(transform=camera_from_world))
+    rr.log(entity_id, rr.Transform3D(transform=camera_from_world))
     rr.log(entity_id, rr.Pinhole(image_from_camera=intrinsic, resolution=[w, h]))
 
 
@@ -327,6 +379,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     -------
     None
     """
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+
     video_id = recording_path.stem
     lowres_image_dir = recording_path / "lowres_wide"
     image_dir = recording_path / "wide"
@@ -359,13 +413,13 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     print(f"Loading {ply_path}…")
     assert os.path.isfile(ply_path), f"Failed to find {ply_path}"
 
-    mesh_ply = trimesh.load(str(ply_path))
+    mesh = trimesh.load(str(ply_path))
     rr.log(
         "world/mesh",
         rr.Mesh3D(
-            vertex_positions=mesh_ply.vertices,
-            vertex_colors=mesh_ply.visual.vertex_colors,
-            indices=mesh_ply.faces,
+            vertex_positions=mesh.vertices,
+            vertex_colors=mesh.visual.vertex_colors,
+            indices=mesh.faces,
         ),
         timeless=True,
     )
@@ -375,8 +429,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     annotation = load_json(bbox_annotations_path)
     bboxes_3d, bbox_labels, colors_list = log_annotated_bboxes(annotation)
 
-    lowres_posed_entity_id = "world/camera_posed_lowres/image_posed_lowres"
-    highres_entity_id = "world/camera_highres/image_highres"
+    lowres_posed_entity_id = "world/camera_lowres"
+    highres_entity_id = "world/camera_highres"
 
     print("Processing frames…")
     for frame_timestamp in tqdm(lowres_frame_ids):
