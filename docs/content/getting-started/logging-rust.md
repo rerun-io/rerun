@@ -340,7 +340,7 @@ This requires the `native_viewer` feature to be enabled in `Cargo.toml`:
 ```toml
 rerun = { version = "0.9", features = ["native_viewer"] }
 ```
-Doing so means you're building the Rerun Viewer itself as part of your project, meaning compilation may take a lot longer.
+Doing so means you're building the Rerun Viewer itself as part of your project, meaning compilation will take a bit longer the first time.
 
 You can now use [`rerun::native_viewer::spawn`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.spawn.html) to spawn
 the native Rerun viewer.
