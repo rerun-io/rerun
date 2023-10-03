@@ -2,6 +2,7 @@
 
 use egui::{NumExt as _, Widget};
 
+use re_log_types::TimeZone;
 use re_ui::{ReUi, UICommand};
 use re_viewer_context::StoreContext;
 
@@ -163,6 +164,35 @@ impl App {
         {
             ui.close_menu();
         }
+
+        ui.horizontal(|ui| {
+            if self
+                .re_ui
+                .radio_value(
+                    ui,
+                    &mut self.state.app_options.time_zone_for_timestamps,
+                    TimeZone::Utc,
+                    "UTC",
+                )
+                .on_hover_text("Display timestamps in UTC")
+                .clicked()
+            {
+                ui.close_menu();
+            }
+            if self
+                .re_ui
+                .radio_value(
+                    ui,
+                    &mut self.state.app_options.time_zone_for_timestamps,
+                    TimeZone::Local,
+                    "Local",
+                )
+                .on_hover_text("Display timestamps in the local timezone")
+                .clicked()
+            {
+                ui.close_menu();
+            }
+        });
 
         #[cfg(not(target_arch = "wasm32"))]
         {

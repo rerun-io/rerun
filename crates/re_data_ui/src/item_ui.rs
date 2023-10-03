@@ -239,7 +239,12 @@ pub fn time_button(
 ) -> egui::Response {
     let is_selected = ctx.rec_cfg.time_ctrl.is_time_selected(timeline, value);
 
-    let response = ui.selectable_label(is_selected, timeline.typ().format(value));
+    let response = ui.selectable_label(
+        is_selected,
+        timeline
+            .typ()
+            .format(value, ctx.app_options.time_zone_for_timestamps),
+    );
     if response.clicked() {
         ctx.rec_cfg
             .time_ctrl
