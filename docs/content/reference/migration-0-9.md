@@ -3,7 +3,7 @@ title: Migration to 0.9
 order: 10
 ---
 
-## Overview
+# Overview
 
 Rerun-0.9 introduces a new set of object-oriented logging APIs built on top of an updated, more concrete,
 [data model](../concepts/entity-component.md).
@@ -26,26 +26,26 @@ batch of size 1.
 
 For more information on the relationship between Archetypes, Components, and DataTypes, please see our guide to the [Rerun Data Model](../concepts/entity-component.md).
 
-## Migrating Python Code
+# Migrating Python Code
 
 All of the previous `log_*` functions have been marked as deprecated and will be removed in `0.10`. We have done our
 best to keep these functions working as thin wrappers on top of the new logging APIs, though there may be subtle
 behavioral differences.
 
-### The log module has become the log function
+## The log module has become the log function
 This is one area where we were forced to make breaking changes.  Rerun previously had an internal `log` module where the
 assorted log-functions and helper classes were implemented. In general, these symbols were all re-exported to the
 top-level `rerun` namespace.  However, in some cases these fully-qualified paths were used for imports. Because
 `rerun.log` is now a function rather than a module, any such imports will result in an import error. Look for the
 corresponding symbol in the top-level `rerun` namespace instead.
 
-### Updating to the log APIs
+## Updating to the log APIs
 
 In most cases migrating your code to the new APIs should be straightforward. The legacy functions have been marked as
 deprecated and the deprecation warning should point you to the correct Archetype to use instead.  Additionally, in most
 cases, the old parameter names match the parameters taken by the new Archetype constructors, though exceptions are noted below.
 
-#### `log_point`, `log_points`
+### `log_point`, `log_points`
 Can be replaced with [Points2D](data_types/archetypes/points2d.md) or [Points3D](data_types/archetypes/points3d.md).
 
 Relevant Python docs:
@@ -56,7 +56,7 @@ Notes:
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`
 
-#### `log_rect`, `log_rects`
+### `log_rect`, `log_rects`
 Can be replaced with [Boxes2D](data_types/archetypes/boxes2d.md)
 
 Relevant Python docs:
