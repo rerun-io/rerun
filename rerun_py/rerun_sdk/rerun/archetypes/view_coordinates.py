@@ -20,7 +20,7 @@ __all__ = ["ViewCoordinates"]
 @define(str=False, repr=False, init=False)
 class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """
-    How we interpret the coordinate system of an entity/space.
+    **Archetype**: How we interpret the coordinate system of an entity/space.
 
     For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 
@@ -31,6 +31,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     Example
     -------
+    ### `view_coordinates_simple`:
     ```python
 
     import rerun as rr
@@ -78,5 +79,4 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     __repr__ = Archetype.__repr__
 
 
-if hasattr(ViewCoordinatesExt, "deferred_patch_class"):
-    ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)
+ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

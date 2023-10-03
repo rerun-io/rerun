@@ -11,7 +11,7 @@ int main() {
     auto rec = rr::RecordingStream("rerun_example_arrow3d");
     rec.connect("127.0.0.1:9876").throw_on_failure();
 
-    std::vector<rr::components::Origin3D> origins;
+    std::vector<rr::components::Position3D> origins;
     std::vector<rr::components::Vector3D> vectors;
     std::vector<rr::components::Color> colors;
 

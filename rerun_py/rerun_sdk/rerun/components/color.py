@@ -13,7 +13,7 @@ __all__ = ["Color", "ColorBatch", "ColorType"]
 
 class Color(datatypes.Rgba32):
     """
-    An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+    **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 
     The color is stored as a 32-bit integer, where the most significant
     byte is `R` and the least significant byte is `A`.
@@ -35,7 +35,3 @@ class ColorType(datatypes.Rgba32Type):
 
 class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
     _ARROW_TYPE = ColorType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ColorType())

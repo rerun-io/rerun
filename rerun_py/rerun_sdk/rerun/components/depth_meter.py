@@ -20,7 +20,7 @@ __all__ = ["DepthMeter", "DepthMeterArrayLike", "DepthMeterBatch", "DepthMeterLi
 
 @define(init=False)
 class DepthMeter(DepthMeterExt):
-    """A component indicating how long a meter is, expressed in native units."""
+    """**Component**: A component indicating how long a meter is, expressed in native units."""
 
     def __init__(self: Any, value: DepthMeterLike):
         """Create a new instance of the DepthMeter component."""
@@ -59,11 +59,3 @@ class DepthMeterBatch(BaseBatch[DepthMeterArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: DepthMeterArrayLike, data_type: pa.DataType) -> pa.Array:
         return DepthMeterExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(DepthMeterType())
-
-
-if hasattr(DepthMeterExt, "deferred_patch_class"):
-    DepthMeterExt.deferred_patch_class(DepthMeter)

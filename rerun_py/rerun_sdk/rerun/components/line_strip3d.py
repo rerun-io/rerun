@@ -22,7 +22,7 @@ __all__ = ["LineStrip3D", "LineStrip3DArrayLike", "LineStrip3DBatch", "LineStrip
 @define(init=False)
 class LineStrip3D(LineStrip3DExt):
     r"""
-    A line strip in 3D space.
+    **Component**: A line strip in 3D space.
 
     A line strip is a list of points connected by line segments. It can be used to draw
     approximations of smooth curves.
@@ -77,11 +77,3 @@ class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return LineStrip3DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(LineStrip3DType())
-
-
-if hasattr(LineStrip3DExt, "deferred_patch_class"):
-    LineStrip3DExt.deferred_patch_class(LineStrip3D)

@@ -3,7 +3,7 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
-    components::{Origin3D, Text, Vector3D},
+    components::{Position3D, Text, Vector3D},
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -47,14 +47,14 @@ impl Arrows3DPart {
         let labels = itertools::izip!(
             annotation_infos.iter(),
             arch_view.iter_required_component::<Vector3D>()?,
-            arch_view.iter_optional_component::<Origin3D>()?,
+            arch_view.iter_optional_component::<Position3D>()?,
             arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
         )
         .filter_map(
             move |(annotation_info, vector, origin, label, color, labeled_instance)| {
-                let origin = origin.unwrap_or(Origin3D::ZERO);
+                let origin = origin.unwrap_or(Position3D::ZERO);
                 let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
                 match (vector, label) {
                     (vector, Some(label)) => {
@@ -124,7 +124,7 @@ impl Arrows3DPart {
             .iter_instance_keys()
             .map(picking_id_from_instance_key);
         let vectors = arch_view.iter_required_component::<Vector3D>()?;
-        let origins = arch_view.iter_optional_component::<Origin3D>()?;
+        let origins = arch_view.iter_optional_component::<Position3D>()?;
 
         let mut bounding_box = macaw::BoundingBox::nothing();
 
@@ -132,7 +132,7 @@ impl Arrows3DPart {
             itertools::izip!(instance_keys, vectors, origins, radii, colors, pick_ids)
         {
             let vector: glam::Vec3 = vector.0.into();
-            let origin: glam::Vec3 = origin.unwrap_or(Origin3D::ZERO).0.into();
+            let origin: glam::Vec3 = origin.unwrap_or(Position3D::ZERO).0.into();
             let end = origin + vector;
 
             let segment = line_batch

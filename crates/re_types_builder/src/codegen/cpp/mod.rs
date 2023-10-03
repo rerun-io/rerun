@@ -26,6 +26,8 @@ use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
+use super::common::ExampleInfo;
+
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
 // `TokenStream` ignores whitespace (including comments), but we can insert "quoted strings",
@@ -102,13 +104,13 @@ pub struct CppCodeGenerator {
 impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
-        _reporter: &Reporter,
+        reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         ObjectKind::ALL
             .par_iter()
-            .map(|object_kind| self.generate_folder(objects, *object_kind))
+            .map(|object_kind| self.generate_folder(reporter, objects, *object_kind))
             .flatten()
             .collect()
     }
@@ -121,7 +123,12 @@ impl CppCodeGenerator {
         }
     }
 
-    fn generate_folder(&self, objects: &Objects, object_kind: ObjectKind) -> BTreeSet<Utf8PathBuf> {
+    fn generate_folder(
+        &self,
+        reporter: &Reporter,
+        objects: &Objects,
+        object_kind: ObjectKind,
+    ) -> BTreeSet<Utf8PathBuf> {
         let folder_name = object_kind.plural_snake_case();
         let folder_path_sdk = self.output_path.join("src/rerun").join(folder_name);
         let folder_path_testing = self.output_path.join("tests/generated").join(folder_name);
@@ -193,7 +200,7 @@ impl CppCodeGenerator {
             filepaths.insert(filepath);
         }
 
-        super::common::remove_old_files_from_folder(folder_path_sdk, &filepaths);
+        super::common::remove_old_files_from_folder(reporter, folder_path_sdk, &filepaths);
 
         filepaths
     }
@@ -333,7 +340,7 @@ impl QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
         let type_name = &obj.name;
         let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
-        let quoted_docs = quote_docstrings(&obj.docs);
+        let quoted_docs = quote_obj_docs(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
         #[allow(unused)]
@@ -642,7 +649,7 @@ impl QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes` or `components`
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
-        let quoted_docs = quote_docstrings(&obj.docs);
+        let quoted_docs = quote_obj_docs(obj);
 
         let tag_typename = format_ident!("{pascal_case_name}Tag");
         let data_typename = format_ident!("{pascal_case_name}Data");
@@ -1803,7 +1810,7 @@ fn quote_variable_with_docstring(
 ) -> TokenStream {
     let quoted = quote_variable(includes, obj_field, name);
 
-    let docstring = quote_docstrings(&obj_field.docs);
+    let docstring = quote_field_docs(obj_field);
 
     let quoted = quote! {
         #docstring
@@ -1927,7 +1934,23 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
-fn quote_docstrings(docs: &Docs) -> TokenStream {
+fn quote_obj_docs(obj: &Object) -> TokenStream {
+    let mut lines = lines_from_docs(&obj.docs);
+
+    if let Some(first_line) = lines.first_mut() {
+        // Prefix with object kind:
+        *first_line = format!(" **{}**:{}", obj.kind.singular_name(), first_line);
+    }
+
+    quote_doc_lines(&lines)
+}
+
+fn quote_field_docs(field: &ObjectField) -> TokenStream {
+    let lines = lines_from_docs(&field.docs);
+    quote_doc_lines(&lines)
+}
+
+fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
     let required = false; // TODO(#2919): `cpp` examples are not required for now
@@ -1943,8 +1966,16 @@ fn quote_docstrings(docs: &Docs) -> TokenStream {
         lines.push(String::new());
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
-            if let Some(title) = example.base.title {
+            let ExampleInfo {
+                name,
+                title,
+                image: _,
+            } = &example.base;
+
+            if let Some(title) = title {
                 lines.push(format!(" ### {title}"));
+            } else {
+                lines.push(format!("### `{name}`:"));
             }
             lines.push(" ```cpp,ignore".into());
             lines.extend(example.lines.iter().map(|line| format!(" {line}")));
@@ -1956,6 +1987,10 @@ fn quote_docstrings(docs: &Docs) -> TokenStream {
         }
     }
 
+    lines
+}
+
+fn quote_doc_lines(lines: &[String]) -> TokenStream {
     let quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN

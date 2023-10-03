@@ -22,7 +22,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A unique numeric identifier for each individual instance within a batch.
+        /// **Component**: A unique numeric identifier for each individual instance within a batch.
         struct InstanceKey {
             uint64_t value;
 

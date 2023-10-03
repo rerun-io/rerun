@@ -26,7 +26,7 @@ __all__ = [
 
 @define(init=False)
 class TensorDimension:
-    """A single dimension within a multi-dimensional tensor."""
+    """**Datatype**: A single dimension within a multi-dimensional tensor."""
 
     def __init__(self: Any, size: int, name: str | None = None):
         """Create a new instance of the TensorDimension datatype."""
@@ -67,7 +67,3 @@ class TensorDimensionBatch(BaseBatch[TensorDimensionArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_dimension_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TensorDimensionType())

@@ -18,10 +18,11 @@
 
 namespace rerun {
     namespace archetypes {
-        /// Camera perspective projection (a.k.a. intrinsics).
+        /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
         ///
         /// ## Example
         ///
+        /// ### `pinhole_simple`:
         /// ```cpp,ignore
         /// // Log a pinhole and a random image.
         ///

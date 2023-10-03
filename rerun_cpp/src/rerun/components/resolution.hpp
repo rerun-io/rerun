@@ -19,7 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Pixel resolution width & height, e.g. of a camera sensor.
+        /// **Component**: Pixel resolution width & height, e.g. of a camera sensor.
         ///
         /// Typically in integer units, but for some use cases floating point may be used.
         struct Resolution {

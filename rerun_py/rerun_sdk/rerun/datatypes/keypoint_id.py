@@ -21,11 +21,11 @@ __all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLi
 @define(init=False)
 class KeypointId(KeypointIdExt):
     """
-    A 16-bit ID representing a type of semantic keypoint within a class.
+    **Datatype**: A 16-bit ID representing a type of semantic keypoint within a class.
 
-    `KeypointId`s are only meaningful within the context of a [`rerun.components.ClassDescription`][].
+    `KeypointId`s are only meaningful within the context of a [`rerun.datatypes.ClassDescription`].
 
-    Used to look up an [`rerun.components.AnnotationInfo`][] for a Keypoint within the
+    Used to look up an [`rerun.datatypes.AnnotationInfo`] for a Keypoint within the
     [`rerun.components.AnnotationContext`].
     """
 
@@ -66,11 +66,3 @@ class KeypointIdBatch(BaseBatch[KeypointIdArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
         return KeypointIdExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(KeypointIdType())
-
-
-if hasattr(KeypointIdExt, "deferred_patch_class"):
-    KeypointIdExt.deferred_patch_class(KeypointId)

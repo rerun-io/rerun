@@ -19,7 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// The description of a semantic Class.
+        /// **Datatype**: The description of a semantic Class.
         ///
         /// If an entity is annotated with a corresponding `ClassId`, rerun will use
         /// the attached `AnnotationInfo` to derive labels and colors.

@@ -16,7 +16,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A vector in 4D space.
+        /// **Datatype**: A vector in 4D space.
         struct Vec4D {
             float xyzw[4];
 

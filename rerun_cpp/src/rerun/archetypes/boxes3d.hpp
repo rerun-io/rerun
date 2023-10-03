@@ -23,8 +23,8 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors
-        /// etc.
+        /// **Archetype**: A batch of 3d boxes with half-extents and optional center, rotations,
+        /// rotations, colors etc.
         ///
         /// ## Examples
         ///

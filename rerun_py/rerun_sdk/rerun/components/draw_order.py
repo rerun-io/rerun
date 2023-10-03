@@ -21,7 +21,7 @@ __all__ = ["DrawOrder", "DrawOrderArrayLike", "DrawOrderBatch", "DrawOrderLike",
 @define(init=False)
 class DrawOrder(DrawOrderExt):
     """
-    Draw order used for the display order of 2D elements.
+    **Component**: Draw order used for the display order of 2D elements.
 
     Higher values are drawn on top of lower values.
     An entity can have only a single draw order component.
@@ -67,11 +67,3 @@ class DrawOrderBatch(BaseBatch[DrawOrderArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
         return DrawOrderExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(DrawOrderType())
-
-
-if hasattr(DrawOrderExt, "deferred_patch_class"):
-    DrawOrderExt.deferred_patch_class(DrawOrder)

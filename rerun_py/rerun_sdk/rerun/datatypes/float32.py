@@ -19,7 +19,7 @@ __all__ = ["Float32", "Float32ArrayLike", "Float32Batch", "Float32Like", "Float3
 
 @define(init=False)
 class Float32:
-    """A single-precision 32-bit IEEE 754 floating point number."""
+    """**Datatype**: A single-precision 32-bit IEEE 754 floating point number."""
 
     def __init__(self: Any, value: Float32Like):
         """Create a new instance of the Float32 datatype."""
@@ -57,7 +57,3 @@ class Float32Batch(BaseBatch[Float32ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Float32ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in float32_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Float32Type())

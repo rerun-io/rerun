@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Arrows3D,
-    components::{ClassId, Color, InstanceKey, Origin3D, Radius, Vector3D},
+    components::{ClassId, Color, InstanceKey, Position3D, Radius, Vector3D},
     datatypes::Vec3D,
     Archetype as _, AsComponents as _,
 };
@@ -15,8 +15,8 @@ fn roundtrip() {
             Vector3D(Vec3D([10.0, 20.0, 30.0])),
         ],
         origins: Some(vec![
-            Origin3D(Vec3D([4.0, 5.0, 6.0])),    //
-            Origin3D(Vec3D([40.0, 50.0, 60.0])), //
+            Position3D(Vec3D([4.0, 5.0, 6.0])),    //
+            Position3D(Vec3D([40.0, 50.0, 60.0])), //
         ]),
         radii: Some(vec![
             Radius(1.0), //

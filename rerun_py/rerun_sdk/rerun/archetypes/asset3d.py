@@ -17,11 +17,13 @@ __all__ = ["Asset3D"]
 @define(str=False, repr=False, init=False)
 class Asset3D(Asset3DExt, Archetype):
     """
-    A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+    **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+
+    See also [`Mesh3D`][rerun.archetypes.Mesh3D].
 
     Examples
     --------
-    Simple 3D asset:
+    ### Simple 3D asset:
     ```python
     import sys
 
@@ -37,7 +39,7 @@ class Asset3D(Asset3DExt, Archetype):
     rr.log("world/asset", rr.Asset3D(sys.argv[1]))
     ```
 
-    3D asset with out-of-tree transform:
+    ### 3D asset with out-of-tree transform:
     ```python
     import sys
 
@@ -92,40 +94,36 @@ class Asset3D(Asset3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.BlobBatch._required,  # type: ignore[misc]
     )
-    """
-    The asset's bytes.
-    """
+    # The asset's bytes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
     )
-    """
-    The Media Type of the asset.
-
-    For instance:
-    * `model/gltf-binary`
-    * `model/obj`
-
-    If omitted, the viewer will try to guess from the data blob.
-    If it cannot guess, it won't be able to render the asset.
-    """
+    # The Media Type of the asset.
+    #
+    # For instance:
+    # * `model/gltf-binary`
+    # * `model/obj`
+    #
+    # If omitted, the viewer will try to guess from the data blob.
+    # If it cannot guess, it won't be able to render the asset.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     transform: components.OutOfTreeTransform3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.OutOfTreeTransform3DBatch._optional,  # type: ignore[misc]
     )
-    """
-    An out-of-tree transform.
-
-    Applies a transformation to the asset itself without impacting its children.
-    """
+    # An out-of-tree transform.
+    #
+    # Applies a transformation to the asset itself without impacting its children.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Asset3DExt, "deferred_patch_class"):
-    Asset3DExt.deferred_patch_class(Asset3D)

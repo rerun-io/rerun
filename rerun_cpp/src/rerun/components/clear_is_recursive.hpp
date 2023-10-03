@@ -18,7 +18,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Configures how a clear operation should behave - recursive or not?
+        /// **Component**: Configures how a clear operation should behave - recursive or not?
         struct ClearIsRecursive {
             /// If true, also clears all recursive children entities.
             bool recursive;

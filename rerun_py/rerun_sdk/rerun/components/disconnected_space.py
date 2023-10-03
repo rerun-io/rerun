@@ -27,7 +27,7 @@ __all__ = [
 @define(init=False)
 class DisconnectedSpace(DisconnectedSpaceExt):
     """
-    Specifies that the entity path at which this is logged is disconnected from its parent.
+    **Component**: Specifies that the entity path at which this is logged is disconnected from its parent.
 
     This is useful for specifying that a subgraph is independent of the rest of the scene.
 
@@ -64,11 +64,3 @@ class DisconnectedSpaceBatch(BaseBatch[DisconnectedSpaceArrayLike], ComponentBat
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
         return DisconnectedSpaceExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(DisconnectedSpaceType())
-
-
-if hasattr(DisconnectedSpaceExt, "deferred_patch_class"):
-    DisconnectedSpaceExt.deferred_patch_class(DisconnectedSpace)

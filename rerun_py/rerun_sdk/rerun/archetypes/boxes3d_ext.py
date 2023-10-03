@@ -9,6 +9,8 @@ from ..error_utils import _send_warning, catch_and_log_exceptions
 
 
 class Boxes3DExt:
+    """Extension for [Boxes3D][rerun.archetypes.Boxes3D]."""
+
     def __init__(
         self: Any,
         *,

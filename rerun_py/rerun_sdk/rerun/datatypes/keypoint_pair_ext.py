@@ -24,6 +24,8 @@ def _keypoint_pair_converter(
 
 
 class KeypointPairExt:
+    """Extension for [KeypointPair][rerun.datatypes.KeypointPair]."""
+
     @staticmethod
     def native_to_pa_array_override(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import KeypointIdBatch, KeypointPair

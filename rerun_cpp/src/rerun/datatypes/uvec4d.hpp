@@ -16,7 +16,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A uint vector in 4D space.
+        /// **Datatype**: A uint vector in 4D space.
         struct UVec4D {
             uint32_t xyzw[4];
 

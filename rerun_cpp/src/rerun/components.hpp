@@ -19,8 +19,6 @@
 #include "components/material.hpp"
 #include "components/media_type.hpp"
 #include "components/mesh_properties.hpp"
-#include "components/origin2d.hpp"
-#include "components/origin3d.hpp"
 #include "components/out_of_tree_transform3d.hpp"
 #include "components/pinhole_projection.hpp"
 #include "components/position2d.hpp"

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A single dimension within a multi-dimensional tensor.
+/// **Datatype**:  A single dimension within a multi-dimensional tensor.
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct TensorDimension {
     pub size: u64,

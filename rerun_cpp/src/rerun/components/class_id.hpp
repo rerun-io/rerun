@@ -23,7 +23,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A 16-bit ID representing a type of semantic class.
+        /// **Component**: A 16-bit ID representing a type of semantic class.
         struct ClassId {
             rerun::datatypes::ClassId id;
 

@@ -19,10 +19,11 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// Optional triangle indices for a mesh.
+        /// **Datatype**: Optional triangle indices for a mesh.
         struct MeshProperties {
-            /// If specified, a flattened array of vertex indices that describe the mesh's
-            /// triangles, i.e. its length must be divisible by 3.
+            /// A flattened array of vertex indices that describe the mesh's triangles.
+            ///
+            /// Its length must be divisible by 3.
             std::optional<std::vector<uint32_t>> indices;
 
           public:

@@ -12,7 +12,7 @@ __all__ = ["TensorData", "TensorDataBatch", "TensorDataType"]
 
 
 class TensorData(datatypes.TensorData):
-    """A multi-dimensional `Tensor` with optionally named arguments."""
+    """**Component**: A multi-dimensional `Tensor` with optionally named arguments."""
 
     # You can define your own __init__ function as a member of TensorDataExt in tensor_data_ext.py
 
@@ -26,7 +26,3 @@ class TensorDataType(datatypes.TensorDataType):
 
 class TensorDataBatch(datatypes.TensorDataBatch, ComponentBatchMixin):
     _ARROW_TYPE = TensorDataType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TensorDataType())

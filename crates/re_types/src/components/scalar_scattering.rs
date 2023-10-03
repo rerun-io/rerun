@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// If true, a scalar will be shown as individual point in a scatter plot.
+/// **Component**:  If true, a scalar will be shown as individual point in a scatter plot.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, Eq)]
 pub struct ScalarScattering(pub bool);
 

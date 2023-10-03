@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// **Archetype**:  A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// ## Example
 ///
@@ -55,6 +55,7 @@ pub struct Boxes2D {
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     ///
     /// The default for 2D boxes is 10.0.

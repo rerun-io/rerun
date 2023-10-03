@@ -12,7 +12,7 @@ __all__ = ["Vector3D", "Vector3DBatch", "Vector3DType"]
 
 
 class Vector3D(datatypes.Vec3D):
-    """A vector in 3D space."""
+    """**Component**: A vector in 3D space."""
 
     # You can define your own __init__ function as a member of Vector3DExt in vector3d_ext.py
 
@@ -26,7 +26,3 @@ class Vector3DType(datatypes.Vec3DType):
 
 class Vector3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Vector3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Vector3DType())

@@ -19,7 +19,7 @@ __all__ = ["AnnotationContext"]
 @define(str=False, repr=False, init=False)
 class AnnotationContext(Archetype):
     """
-    The `AnnotationContext` provides additional information on how to display entities.
+    **Archetype**: The `AnnotationContext` provides additional information on how to display entities.
 
     Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
     the labels and colors will be looked up in the appropriate
@@ -29,7 +29,7 @@ class AnnotationContext(Archetype):
 
     Examples
     --------
-    Rectangles:
+    ### Rectangles:
     ```python
     import rerun as rr
 
@@ -44,15 +44,17 @@ class AnnotationContext(Archetype):
     # Log an extra rect to set the view bounds
     rr.log("bounds", rr.Boxes2D(half_sizes=[2.5, 2.5]))
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png">
-      <img src="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/full.png">
+      <img src="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/full.png" width="640">
     </picture>
+    </center>
 
-    Segmentation:
+    ### Segmentation:
     ```python
     import numpy as np
     import rerun as rr
@@ -69,15 +71,17 @@ class AnnotationContext(Archetype):
 
     rr.log("segmentation/image", rr.SegmentationImage(image))
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/1200w.png">
-      <img src="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/full.png">
+      <img src="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/full.png" width="640">
     </picture>
+    </center>
 
-    Connections:
+    ### Connections:
     ```python
     import rerun as rr
     from rerun.datatypes import ClassDescription
@@ -117,13 +121,15 @@ class AnnotationContext(Archetype):
         ),
     )
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1200w.png">
-      <img src="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/full.png">
+      <img src="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/full.png" width="640">
     </picture>
+    </center>
     """
 
     def __init__(self: Any, context: components.AnnotationContextLike):
@@ -159,9 +165,9 @@ class AnnotationContext(Archetype):
         metadata={"component": "required"},
         converter=components.AnnotationContextBatch._required,  # type: ignore[misc]
     )
-    """
-    List of class descriptions, mapping class indices to class names, colors etc.
-    """
+    # List of class descriptions, mapping class indices to class names, colors etc.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

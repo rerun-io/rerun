@@ -19,53 +19,11 @@ __all__ = ["LineStrips2D"]
 @define(str=False, repr=False, init=False)
 class LineStrips2D(Archetype):
     """
-    A batch of line strips with positions and optional colors, radii, labels, etc.
+    **Archetype**: A batch of line strips with positions and optional colors, radii, labels, etc.
 
-    Examples
-    --------
-    ```python
-    import rerun as rr
-
-    rr.init("rerun_example_line_strip2d", spawn=True)
-
-    rr.log(
-        "strip",
-        rr.LineStrips2D([[[0, 0], [2, 1], [4, -1], [6, 0]]]),
-    )
-
-    # Log an extra rect to set the view bounds
-    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
-    ```
-    <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png">
-      <img src="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/full.png">
-    </picture>
-
-    ```python
-    import numpy as np
-    import rerun as rr
-
-    rr.init("rerun_example_line_segments2d", spawn=True)
-
-    rr.log(
-        "segments",
-        rr.LineStrips2D(np.array([[[0, 0], [2, 1]], [[4, -1], [6, 0]]])),
-    )
-
-    # Log an extra rect to set the view bounds
-    rr.log("bounds", rr.Boxes2D(centers=[3, 0], half_sizes=[4, 3]))
-    ```
-    <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png">
-      <img src="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/full.png">
-    </picture>
-
+    Example
+    -------
+    ### `line_strip2d_batch`:
     ```python
     import rerun as rr
 
@@ -87,13 +45,15 @@ class LineStrips2D(Archetype):
     # Log an extra rect to set the view bounds
     rr.log("bounds", rr.Boxes2D(centers=[3, 1.5], half_sizes=[4.0, 4.5]))
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/1200w.png">
-      <img src="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png">
+      <img src="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png" width="640">
     </picture>
+    </center>
     """
 
     def __init__(
@@ -122,6 +82,7 @@ class LineStrips2D(Archetype):
              Optional text labels for the line strips.
         draw_order:
              An optional floating point value that specifies the 2D drawing order of each line strip.
+
              Objects with higher values are drawn on top of those with lower values.
         class_ids:
              Optional `ClassId`s for the lines.
@@ -168,66 +129,67 @@ class LineStrips2D(Archetype):
         metadata={"component": "required"},
         converter=components.LineStrip2DBatch._required,  # type: ignore[misc]
     )
-    """
-    All the actual 2D line strips that make up the batch.
-    """
+    # All the actual 2D line strips that make up the batch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional radii for the line strips.
-    """
+    # Optional radii for the line strips.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional colors for the line strips.
-    """
+    # Optional colors for the line strips.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional text labels for the line strips.
-    """
+    # Optional text labels for the line strips.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies the 2D drawing order of each line strip.
-    Objects with higher values are drawn on top of those with lower values.
-    """
+    # An optional floating point value that specifies the 2D drawing order of each line strip.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional `ClassId`s for the lines.
-
-    The class ID provides colors and labels if not specified explicitly.
-    """
+    # Optional `ClassId`s for the lines.
+    #
+    # The class ID provides colors and labels if not specified explicitly.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
-    """
-    Unique identifiers for each individual line strip in the batch.
-    """
+    # Unique identifiers for each individual line strip in the batch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
