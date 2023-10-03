@@ -1490,9 +1490,6 @@ fn quote_arrow_support_from_obj(
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
                     {override_}
-
-            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-            # pa.register_extension_type({extension_type}())
             "#
         ))
     } else {
@@ -1504,9 +1501,6 @@ fn quote_arrow_support_from_obj(
 
             class {extension_batch}{batch_superclass_decl}:
                 _ARROW_TYPE = {extension_type}()
-
-            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-            # pa.register_extension_type({extension_type}())
             "#
         ))
     }
