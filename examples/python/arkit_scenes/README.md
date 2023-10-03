@@ -16,7 +16,7 @@ demo: true
   <img src="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/full.png" alt="ARKit Scenes screenshot">
 </picture>
 
-This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset 
+This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
 contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
 
 ```bash
