@@ -176,7 +176,7 @@ impl DataStore {
                         filter_column(col_time, col_row_id.iter(), time_filter).collect();
 
                     // NOTE: Shouldn't ever happen due to check above, but better safe than
-                    // sorry...
+                    // sorry…
                     debug_assert!(!col_row_id.is_empty());
                     if col_row_id.is_empty() {
                         return None;

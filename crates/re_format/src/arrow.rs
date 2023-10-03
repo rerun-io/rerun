@@ -16,7 +16,7 @@ use re_tuid::Tuid;
 // TODO(#1775): Registering custom formatters should be done from other crates:
 // A) Because `re_format` cannot depend on other crates (cyclic deps)
 // B) Because how to deserialize and inspect some type is a private implementation detail of that
-//    type, re_format shouldn't know how to deserialize a TUID...
+//    type, re_format shouldn't know how to deserialize a TUID…
 
 type CustomFormatter<'a, F> = Box<dyn Fn(&mut F, usize) -> std::fmt::Result + 'a>;
 

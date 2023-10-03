@@ -26,7 +26,7 @@ wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
-ellipsis = re.compile(r"[^.]\.\.\.[^\-.0-9a-zA-Z]")
+ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
 
 any_todo_pattern = re.compile(r"TODO\(.*\)")
 legal_todo_inner_pattern = re.compile(
@@ -58,7 +58,7 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if double_the.search(line.lower()):
         return "Found 'the the'"
 
-    if file_extension in ("md", "rs"):
+    if file_extension not in ("py", "txt"):
         if ellipsis.search(line):
             return "Use … instead of ..."
 
@@ -186,6 +186,7 @@ def test_lint_line() -> None:
         "rec_stream",
         "Result<(), anyhow::Error>",
         "The the problem with double words",
+        "More than meets the eye...",
     ]
 
     for line in should_pass:

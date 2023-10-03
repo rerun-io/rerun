@@ -254,7 +254,7 @@ impl App {
                 // We need to know the loop selection _before_ we can even display the
                 // button, as this will determine whether its grayed out or not!
                 // TODO(cmc): In practice the loop (green) selection is always there
-                // at the moment so...
+                // at the moment so…
                 let loop_selection = self.state.loop_selection(store_view);
 
                 if ui
