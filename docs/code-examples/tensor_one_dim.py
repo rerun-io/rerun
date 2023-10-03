@@ -4,9 +4,7 @@ import rerun as rr
 from numpy.random import default_rng
 
 rng = default_rng(12345)
-
-# Create a 1-dimensional tensor
-tensor = rng.laplace(0.0, 1.0, 100)
+tensor = rng.laplace(0.0, 1.0, 100)  # 1-dimensional tensor
 
 rr.init("rerun_example_tensors", spawn=True)
 
