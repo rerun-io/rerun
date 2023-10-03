@@ -26,6 +26,10 @@ const ARRAY_METHOD: &str = "__array__";
 /// The method used to convert a native type into a pyarrow array
 const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
 
+/// The method used for deferred patch class init.
+/// Use this for initialization constants that need to know the child (non-extension) class.
+const DEFERRED_PATCH_CLASS_METHOD: &str = "deferred_patch_class";
+
 /// The common suffix for method used to convert fields to their canonical representation.
 const FIELD_CONVERTER_SUFFIX: &str = "__field_converter_override";
 
@@ -177,6 +181,9 @@ struct ExtensionClass {
 
     /// Whether the `ObjectExt` contains __native_to_pa_array__()
     has_native_to_pa_array: bool,
+
+    /// Whether the `ObjectExt` contains a deferred_patch_class() method
+    has_deferred_patch_class: bool,
 }
 
 impl ExtensionClass {
@@ -205,6 +212,7 @@ impl ExtensionClass {
             let has_init = methods.contains(&INIT_METHOD);
             let has_array = methods.contains(&ARRAY_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
+            let has_deferred_patch_class = methods.contains(&DEFERRED_PATCH_CLASS_METHOD);
             let field_converter_overrides = methods
                 .into_iter()
                 .filter(|l| l.ends_with(FIELD_CONVERTER_SUFFIX))
@@ -220,6 +228,7 @@ impl ExtensionClass {
                 has_init,
                 has_array,
                 has_native_to_pa_array,
+                has_deferred_patch_class,
             }
         } else {
             ExtensionClass {
@@ -231,6 +240,7 @@ impl ExtensionClass {
                 has_init: false,
                 has_array: false,
                 has_native_to_pa_array: false,
+                has_deferred_patch_class: false,
             }
         }
     }
@@ -394,14 +404,9 @@ impl PythonCodeGenerator {
             };
             code.push_text(&obj_code, 1, 0);
 
-            if ext_class.found {
+            if ext_class.has_deferred_patch_class {
                 code.push_unindented_text(
-                    format!("if hasattr({}, 'deferred_patch_class'):", ext_class.name),
-                    1,
-                );
-                code.push_text(
                     format!("{}.deferred_patch_class({})", ext_class.name, obj.name),
-                    1,
                     1,
                 );
             }
