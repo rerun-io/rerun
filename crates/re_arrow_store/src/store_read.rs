@@ -321,7 +321,7 @@ impl DataStore {
         None
     }
 
-    /// Iterates the datastore in order to return the cells of the the specified `components`,
+    /// Iterates the datastore in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///
@@ -528,7 +528,7 @@ impl IndexedTable {
         None // primary component not found
     }
 
-    /// Iterates the table in order to return the cells of the the specified `components`,
+    /// Iterates the table in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///
@@ -791,7 +791,7 @@ impl IndexedBucket {
         Some((col_row_id[secondary_row_nr as usize], cells))
     }
 
-    /// Iterates the bucket in order to return the cells of the the specified `components`,
+    /// Iterates the bucket in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///
@@ -1088,7 +1088,7 @@ impl PersistentIndexedTable {
         Some((self.col_row_id[secondary_row_nr as usize], cells))
     }
 
-    /// Iterates the table in order to return the cells of the the specified `components`,
+    /// Iterates the table in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///

@@ -337,10 +337,10 @@ pub enum StoreSource {
 
     /// The official Rerun Rust Logging SDK
     RustSdk {
-        /// Rust version of the the code compiling the Rust SDK
+        /// Rust version of the code compiling the Rust SDK
         rustc_version: String,
 
-        /// LLVM version of the the code compiling the Rust SDK
+        /// LLVM version of the code compiling the Rust SDK
         llvm_version: String,
     },
 

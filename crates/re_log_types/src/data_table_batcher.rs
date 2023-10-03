@@ -32,7 +32,7 @@ pub type DataTableBatcherResult<T> = Result<T, DataTableBatcherError>;
 
 // ---
 
-/// Defines the the different thresholds of the associated [`DataTableBatcher`].
+/// Defines the different thresholds of the associated [`DataTableBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -425,7 +425,7 @@ impl TimePanel {
             return; // ignore entities that have no data for the current timeline, nor any timeless data.
         }
 
-        // The last part of the the path component
+        // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
             if tree.is_leaf() {
                 last_path_part.to_string()

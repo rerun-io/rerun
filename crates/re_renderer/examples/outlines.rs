@@ -75,9 +75,9 @@ impl framework::Example for Outlines {
 
         let outline_mask_large_mesh = match ((seconds_since_startup * 0.5) as u64) % 5 {
             0 => OutlineMaskPreference::NONE,
-            1 => OutlineMaskPreference::some(1, 0), // Same as the the y spinning mesh.
+            1 => OutlineMaskPreference::some(1, 0), // Same as the y spinning mesh.
             2 => OutlineMaskPreference::some(2, 0), // Different than both meshes, outline A.
-            3 => OutlineMaskPreference::some(0, 1), // Same as the the x spinning mesh.
+            3 => OutlineMaskPreference::some(0, 1), // Same as the x spinning mesh.
             4 => OutlineMaskPreference::some(0, 2), // Different than both meshes, outline B.
             _ => unreachable!(),
         };
