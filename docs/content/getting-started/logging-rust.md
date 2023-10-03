@@ -136,7 +136,7 @@ For more information on how to supply your own components see [Use custom data](
 
 `Entities & hierarchies`
 
-Note the two strings we're passing in: `"dna/structure/left"` & `"dna/structure/right"`.
+Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structure/right"`.
 
 These are [*entity paths*](../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
 [Entity paths typically form a hierarchy](../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
