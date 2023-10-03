@@ -357,6 +357,16 @@ fn run(rec: &rerun::RecordingStream) -> rerun::RecordingStreamResult<()> {
 }
 ```
 
+Another way to spawn the native viewer is [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html). Again, like [`rerun::native_viewer::spawn`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.spawn.html) this has to be called from the main thread and the method call will only return once the Viewer is closed.
+Unlike `spawn` however, it expects a in-memory recording and sends it to the viewer instead of being fed in real-time:
+```rust
+let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
+
+// ... log data to `rec` ...
+
+rerun::native_viewer::show(storage.take())?;
+```
+
 ### Closing
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
