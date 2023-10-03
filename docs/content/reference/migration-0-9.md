@@ -43,37 +43,69 @@ In most cases migrating your code to the new APIs should be straightforward. The
 deprecated and the deprecation warning should point you to the correct Archetype to use instead.  Additionally, in most
 cases, the old parameter names match the parameters taken by the new Archetype constructors, though exceptions are noted below.
 
-### `log_point`, `log_points`
-Replace with [Points2D](data_types/archetypes/points2d.md) or [Points3D](data_types/archetypes/points3d.md).
+### `log_annotation_context`
+Replace with [AnnotationContext](data_types/archetypes/annotation_context.md)
 
-Python docs: [Points2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points2D.__init__), [Points3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points3D.__init__)
-
-Notes:
- - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
- - `identifiers` has become `instance_keys`
-
-### `log_rect`, `log_rects`
-Replace with [Boxes2D](data_types/archetypes/boxes2d.md)
-
-Python docs: [Boxes2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes2D.__init__)
+Python docs: [AnnotationContext.__init__](https://ref.rerun.io/docs/python/HEAD/common/annotations/#rerun.AnnotationContext.__init__)
 
 Notes:
- - Can now be constructed with 2 arrays: `centers`, and either `half_sizes` o `sizes`.
-    - The legacy behavior of a single array can be matched by using the params `array` and `array_format`.
-   `array_format` takes an `rr.Box2DFormat`.
+ - `class_descriptions` has become `context`
+ - `rr.ClassDescription` now requires `info` to be provided rather than defaulting to 0.
+ - `rr.AnnotationInfo` now requires `id` to be provided rather than defaulting to 0.
+
+### `log_arrow`
+Replace with [Arrows3D](data_types/archetypes/arrows3d.md)
+
+Python docs: [Arrows3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Arrows3D.__init__)
+
+Notes:
+ - `with_scale` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`.
 
-### `log_obb`, `log_obbs`
-Replace with [Boxes3D](data_types/archetypes/boxes3d.md)
+### `log_cleared`
+Replace with [Clear](data_types/archetypes/clear.md)
 
-Python docs: [Boxes3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes3D.__init__)
+Python docs: [Clear.__init__](https://ref.rerun.io/docs/python/HEAD/common/clearing_entities/#rerun.Clear.__init__)
+
+### `log_depth_image`
+Replace with [DepthImage](data_types/archetypes/depth_image.md)
+
+Python docs: [DepthImage.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.DepthImage.__init__)
 
 Notes:
- - `positions` has become `centers`.
- - `rotations_q` has become `rotations` and can now take any `Rotation3DArrayLike` such as `rr.Quaternion` or
-   `rr.RotationAxisAngle`.
- - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
- - `identifiers` has become `instance_keys`.
+ * `image` has become `data`
+
+### `log_disconnected_space`
+Replace with [DisconnectedSpace](data_types/archetypes/disconnected_space.md)
+
+Python docs: [DisconnectedSpace.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.DisconnectedSpace.__init__)
+
+### `log_extension_components`
+Replace with `AnyValues`
+
+Python docs: [AnyValues.__init__](https://ref.rerun.io/docs/python/HEAD/common/adhoc_data/#rerun.AnyValues.__init__)
+
+Notes:
+ - Instead of passing `ext` as a dictionary, `AnyValues` now maps all keyword arguments directly to components.
+   - `rr.log_extension_components(..., ext={'mydata': 1})` becomes `rr.log(... rr.AnyValues(mydata=1))`
+
+### `log_image`
+Replace with [Image](data_types/archetypes/image.md)
+
+Python docs: [Image.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.Image.__init__)
+
+Notes:
+ * `image` has become `data`
+ * `jpeg_quality` is now handled by calling `.compress(jpeg_quality=...)` on the image after constructing it.
+
+### `log_image_file`
+Replace with `ImageEncoded`
+
+Python docs: [ImageEncoded.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.ImageEncoded.__init__)
+
+Notes:
+ - `img_bytes` and `img_path`
+
 
 ### `log_line_strip`, `log_line_strips_2d`, `log_line_strips_3d`, `log_line_segments`
 Replace with [Lines2D](data_types/archetypes/lines2d.md) or [Lines3D](data_types/archetypes/lines3d.md)
@@ -90,15 +122,6 @@ line_strips3d=line_segments.reshape(-1, 2, 3)
 ```
  - `positions` has become `strips`.
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
- - `identifiers` has become `instance_keys`.
-
-### `log_arrow`
-Replace with [Arrows3D](data_types/archetypes/arrows3d.md)
-
-Python docs: [Arrows3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Arrows3D.__init__)
-
-Notes:
- - `with_scale` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`.
 
 ### `log_mesh`, `log_meshes`
@@ -125,30 +148,59 @@ Notes:
  - `mesh_format` is now `media_type`.
  - `transform` can now take anything that is compatible with `rr.Transform3D` instead of a 3x4 matrix.
 
+### `log_obb`, `log_obbs`
+Replace with [Boxes3D](data_types/archetypes/boxes3d.md)
 
-
-### `log_image`
-Replace with [Image](data_types/archetypes/image.md)
-
-Python docs: [Image.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.Image)
+Python docs: [Boxes3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes3D.__init__)
 
 Notes:
- * `image` has become `data`
- * `jpeg_quality` is now handled by calling `.compress(jpeg_quality=...)` on the image after constructing it.
+ - `positions` has become `centers`.
+ - `rotations_q` has become `rotations` and can now take any `Rotation3DArrayLike` such as `rr.Quaternion` or
+   `rr.RotationAxisAngle`.
+ - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
+ - `identifiers` has become `instance_keys`.
 
- ### `log_depth_image`
-Replace with [DepthImage](data_types/archetypes/depth_image.md)
+### `log_pinhole`
+Replace with [Pinhole](data_types/archetypes/pinhole.md)
 
-Python docs: [DepthImage.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.DepthImage)
+Python docs: [Pinhole.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Pinhole.__init__)
 
 Notes:
- * `image` has become `data`
- * `image` has become `data`
+ - `child_from_parent` has become `image_from_parent`.
+ - `focal_length_px` has become `focal_length`.
+ - `principal_point_px` has become `principal_point`.
+ - New argument `resolution` to specify width and height using `Vec2D`
+ - `camera_xyz` no longer take a string. Now use one of the constants from `rr.ViewCoordinates`
+
+### `log_point`, `log_points`
+Replace with [Points2D](data_types/archetypes/points2d.md) or [Points3D](data_types/archetypes/points3d.md).
+
+Python docs: [Points2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points2D.__init__), [Points3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points3D.__init__)
+
+Notes:
+ - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
+ - `identifiers` has become `instance_keys`
+
+### `log_rect`, `log_rects`
+Replace with [Boxes2D](data_types/archetypes/boxes2d.md)
+
+Python docs: [Boxes2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes2D.__init__)
+
+Notes:
+ - Can now be constructed with 2 arrays: `centers`, and either `half_sizes` o `sizes`.
+    - The legacy behavior of a single array can be matched by using the params `array` and `array_format`.
+   `array_format` takes an `rr.Box2DFormat`.
+ - `identifiers` has become `instance_keys`.
+
+### `log_scalar`
+Replace with [TimeSeriesScalar](data_types/archetypes/time_series_scalar.md)
+
+Python docs: [TimeSeriesScalar.__init__](https://ref.rerun.io/docs/python/HEAD/common/plotting/#rerun.TimeSeriesScalar.__init__)
 
 ### `log_segmentation_image`
 Replace with [SegmentationImage](data_types/archetypes/segmentation_image.md)
 
-Python docs: [SegmentationImage.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.SegmentationImage)
+Python docs: [SegmentationImage.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.SegmentationImage.__init__)
 
 Notes:
  * `image` has become `data`
@@ -156,10 +208,33 @@ Notes:
 ### `log_tensor`
 Replace with [Tensor](data_types/archetypes/tensor.md)
 
-Python docs: [Tensor.__init__](https://ref.rerun.io/docs/python/HEAD/common/tensors/#rerun.Tensor)
+Python docs: [Tensor.__init__](https://ref.rerun.io/docs/python/HEAD/common/tensors/#rerun.Tensor.__init__)
 
 Notes:
  - `tensor` has become `data`.
  - `names` has become `dim_names`.
  - `meter` is no longer supported -- use `rr.DepthImage` instead.
+ - 1D Tensors can now be logged with [BarChart](data_types/archetypes/bar_chart.md)
+
+
+### `log_text_entry`
+Replace with [TextLog](data_types/archetypes/text_log.md)
+
+Python docs: [TextLog.__init__](https://ref.rerun.io/docs/python/HEAD/common/text/#rerun.TextLog.__init__)
+
+### `log_transform3d`
+Replace with [Transform3D](data_types/archetypes/transform3d.md)
+
+Python docs: [Transform3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Transform3D.__init__)
+
+Notes:
+ - Now takes an optional parameters for `translation`, `rotation`, `scale`, or `mat3x3` to simplify construction.
+
+### `log_view_coordinates`
+Replace with [ViewCoordinates](data_types/archetypes/view_coordinates.md)
+
+Python docs: [ViewCoordinates.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.ViewCoordinates.__init__)
+
+Notes:
+- Rather than providing `xyz` or `up` as strings, `rr.ViewCoordintes` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
 

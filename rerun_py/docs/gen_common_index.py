@@ -83,6 +83,12 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[],
     ),
     Section(
+        title="Adhoc Data",
+        module_summary=None,
+        func_list=[],
+        class_list=["AnyValues"],
+    ),
+    Section(
         title="Clearing Entities",
         module_summary=None,
         func_list=[],
@@ -165,6 +171,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "log_cleared",
             "log_depth_image",
             "log_disconnected_space",
+            "log_extension_components",
             "log_image_file",
             "log_image",
             "log_line_segments",

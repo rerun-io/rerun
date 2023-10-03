@@ -14,4 +14,4 @@ points = [
     [0, 1, 1],
 ]
 
-rr.log("strip", rr.LineStrips3D([points]))
+rr.log("strip", rr.LineStrips3D(points))
