@@ -100,7 +100,6 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/rgbd",
             "examples/python/signed_distance_fields",
             "examples/python/structure_from_motion",
-            "examples/python/text_logging",
         ]
     else:
         examples = []

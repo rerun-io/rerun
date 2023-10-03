@@ -8,7 +8,7 @@ use crate::NeedsRepaint;
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TimeView {
-    /// Where start of the the range.
+    /// Where start of the range.
     pub min: TimeReal,
 
     /// How much time the full view covers.

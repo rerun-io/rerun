@@ -950,7 +950,7 @@ impl RecordingStream {
         let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if inject_time {
             // Get the current time on all timelines, for the current recording, on the current
-            // thread...
+            // thread…
             let mut now = self.now();
             // ...and then also inject the current recording tick into it.
             now.insert(Timeline::log_tick(), tick.into());

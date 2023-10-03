@@ -7,6 +7,8 @@ if TYPE_CHECKING:
 
 
 class TranslationAndMat3x3Ext:
+    """Extension for [TranslationAndMat3x3][rerun.datatypes.TranslationAndMat3x3]."""
+
     # TODO(#2641): this is needed until we support default value for from_parent
     def __init__(
         self: Any,

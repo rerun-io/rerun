@@ -750,7 +750,7 @@ enum IteratorKind {
 /// rules to it, if necessary.
 ///
 /// This can often become a very difficult job due to all the affixes that might be involved:
-/// fallibility, nullability, transparency, tuple structs...
+/// fallibility, nullability, transparency, tuple structs…
 /// This function will just do the right thing.
 ///
 /// If `extra_wrapper` is specified, this will also wrap the resulting data in `$extra_wrapper(data)`.

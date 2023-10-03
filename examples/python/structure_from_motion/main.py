@@ -156,7 +156,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         rr.log(
             "camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True)
         )
-        rr.log("camera", rr.ViewCoordinates.RDF)  # X=Right, Y=Down, Z=Forward
+        rr.log("camera", rr.ViewCoordinates.RDF, timeless=True)  # X=Right, Y=Down, Z=Forward
 
         # Log camera intrinsics
         assert camera.model == "PINHOLE"
@@ -173,7 +173,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
             bgr = cv2.imread(str(image_file))
             bgr = cv2.resize(bgr, resize)
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-            rr.log("camera/image", rr.Image(rr.TensorData(array=rgb, jpeg_quality=75)))
+            rr.log("camera/image", rr.Image(rgb).compress(jpeg_quality=75))
         else:
             rr.log("camera/image", rr.ImageEncoded(path=dataset_path / "images" / image.name))
 

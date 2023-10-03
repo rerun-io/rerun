@@ -19,9 +19,11 @@ class Mesh3D(Mesh3DExt, Archetype):
     """
     **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
+    See also [`Asset3D`][rerun.archetypes.Asset3D].
+
     Examples
     --------
-    Simple indexed 3D mesh:
+    ### Simple indexed 3D mesh:
     ```python
     import rerun as rr
 
@@ -39,7 +41,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
     ```
 
-    3D mesh with partial updates:
+    ### 3D mesh with partial updates:
     ```python
     import numpy as np
     import rerun as rr

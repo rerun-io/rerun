@@ -75,7 +75,7 @@ jobs:
 
       - name: Build via mkdocs
         run: |
-          mkdocs build -f rerun_py/mkdocs.yml
+          mkdocs build --strict -f rerun_py/mkdocs.yml
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes

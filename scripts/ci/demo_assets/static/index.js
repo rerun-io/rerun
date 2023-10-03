@@ -51,7 +51,7 @@ function load_wasm() {
 
   document.getElementById("center_text").innerHTML = `
   <p class="strong">
-      Loading Application Bundle...
+      Loading Application Bundle…
   </p>
   <p class="subdued" id="status">
   </p>`;

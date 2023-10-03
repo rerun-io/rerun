@@ -18,6 +18,7 @@
 ///
 /// ## Example
 ///
+/// ### `text_log_integration`:
 /// ```ignore
 /// //! Shows integration of Rerun's `TextLog` with the native logging interface.
 ///
@@ -46,13 +47,15 @@
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png">
-///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png">
+///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextLog {
     pub text: crate::components::Text,

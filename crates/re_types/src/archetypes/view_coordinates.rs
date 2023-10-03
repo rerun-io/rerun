@@ -25,6 +25,7 @@
 ///
 /// ## Example
 ///
+/// ### `view_coordinates_simple`:
 /// ```ignore
 /// //! Change the view coordinates for the scene.
 ///

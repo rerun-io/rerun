@@ -21,6 +21,7 @@
 ///
 /// ## Examples
 ///
+/// ### `scalar_simple`:
 /// ```ignore
 /// //! Log a scalar over time.
 ///
@@ -40,6 +41,7 @@
 /// }
 /// ```
 ///
+/// ### `scalar_multiple_plots`:
 /// ```ignore
 /// //! Log a scalar over time.
 ///

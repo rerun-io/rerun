@@ -20,6 +20,7 @@
 ///
 /// ## Example
 ///
+/// ### `bar_chart`:
 /// ```ignore
 /// //! Create and log a bar chart
 ///

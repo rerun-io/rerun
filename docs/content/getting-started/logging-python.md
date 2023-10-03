@@ -115,7 +115,7 @@ _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference]
 
 ### Under the hood
 
-This tiny snippet of code actually holds much more than meets the eye...
+This tiny snippet of code actually holds much more than meets the eye…
 
 `Components`
 
@@ -228,7 +228,7 @@ A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/latest/common/ti
 </picture>
 
 
-Enter...
+Enter…
 
 ### Latest At semantics
 

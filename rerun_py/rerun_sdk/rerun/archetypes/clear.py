@@ -21,7 +21,7 @@ class Clear(ClearExt, Archetype):
 
     Examples
     --------
-    Flat:
+    ### Flat:
     ```python
 
     import rerun as rr
@@ -41,7 +41,7 @@ class Clear(ClearExt, Archetype):
         rr.log(f"arrows/{i}", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
     ```
 
-    Recursive:
+    ### Recursive:
     ```python
 
     import rerun as rr
@@ -66,7 +66,7 @@ class Clear(ClearExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            recursive=None,  # type: ignore[arg-type]
+            is_recursive=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -76,12 +76,9 @@ class Clear(ClearExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    recursive: components.ClearIsRecursiveBatch = field(
+    is_recursive: components.ClearIsRecursiveBatch = field(
         metadata={"component": "required"},
         converter=components.ClearIsRecursiveBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-ClearExt.deferred_patch_class(Clear)

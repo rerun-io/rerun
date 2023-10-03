@@ -26,6 +26,8 @@ def _numpy_array_to_u32(data: npt.NDArray[np.uint8 | np.float32 | np.float64]) -
 
 
 class Rgba32Ext:
+    """Extension for [Rgba32][rerun.datatypes.Rgba32]."""
+
     """
     Extension for the `Rgba32` datatype.
 

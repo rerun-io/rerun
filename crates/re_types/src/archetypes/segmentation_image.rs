@@ -24,6 +24,7 @@
 ///
 /// ## Example
 ///
+/// ### `segmentation_image_simple`:
 /// ```ignore
 /// //! Create and log a segmentation image.
 ///
@@ -45,7 +46,7 @@
 ///     ]);
 ///
 ///     // log the annotation and the image
-///     rec.log("/", &annotation)?;
+///     rec.log_timeless("/", &annotation)?;
 ///
 ///     rec.log("image", &rerun::SegmentationImage::try_from(image)?)?;
 ///
@@ -53,13 +54,15 @@
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png">
-///   <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png">
+///   <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct SegmentationImage {
     /// The image data. Should always be a rank-2 tensor.

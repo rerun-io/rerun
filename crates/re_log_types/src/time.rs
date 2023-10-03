@@ -1,5 +1,12 @@
 use std::ops::RangeInclusive;
-use time::OffsetDateTime;
+use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum TimeZone {
+    Local,
+    Utc,
+}
 
 /// A date-time represented as nanoseconds since unix epoch
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -62,8 +69,33 @@ impl Time {
         self.nanos_since_epoch() % (24 * 60 * 60 * 1_000_000_000) == 0
     }
 
+    fn time_string(
+        datetime: OffsetDateTime,
+        parsed_format: &Vec<FormatItem<'_>>,
+        time_zone_for_timestamps: TimeZone,
+    ) -> String {
+        match time_zone_for_timestamps {
+            TimeZone::Local => {
+                if let Ok(local_offset) = UtcOffset::current_local_offset() {
+                    // Return in the local timezone.
+                    let local_datetime = datetime.to_offset(local_offset);
+                    local_datetime.format(&parsed_format).unwrap()
+                } else {
+                    // Fallback to UTC.
+                    // Skipping `err` description from logging because as of writing it doesn't add much, see
+                    // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
+                    re_log::warn_once!("Failed to access local timezone offset to UTC.");
+                    format!("{}Z", datetime.format(&parsed_format).unwrap())
+                }
+            }
+            TimeZone::Utc => {
+                format!("{}Z", datetime.format(&parsed_format).unwrap())
+            }
+        }
+    }
+
     /// Human-readable formatting
-    pub fn format(&self) -> String {
+    pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
 
         if let Some(datetime) = self.to_datetime() {
@@ -71,11 +103,11 @@ impl Time {
             let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
 
             let time_format = if is_whole_second {
-                "[hour]:[minute]:[second]Z"
+                "[hour]:[minute]:[second]"
             } else if is_whole_millisecond {
-                "[hour]:[minute]:[second].[subsecond digits:3]Z"
+                "[hour]:[minute]:[second].[subsecond digits:3]"
             } else {
-                "[hour]:[minute]:[second].[subsecond digits:6]Z"
+                "[hour]:[minute]:[second].[subsecond digits:6]"
             };
 
             let date_is_today = datetime.date() == OffsetDateTime::now_utc().date();
@@ -85,7 +117,8 @@ impl Time {
             } else {
                 time::format_description::parse(&date_format).unwrap()
             };
-            datetime.format(&parsed_format).unwrap()
+
+            Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
         } else {
             // Relative time
             let secs = nanos_since_epoch as f64 * 1e-9;
@@ -104,7 +137,7 @@ impl Time {
     ///
     /// Shows dates when zoomed out, shows times when zoomed in,
     /// shows relative millisecond when really zoomed in.
-    pub fn format_time_compact(&self) -> String {
+    pub fn format_time_compact(&self, time_zone_for_timestamps: TimeZone) -> String {
         let ns = self.nanos_since_epoch();
         let relative_ns = ns % 1_000_000_000;
         let is_whole_second = relative_ns == 0;
@@ -112,14 +145,15 @@ impl Time {
             if let Some(datetime) = self.to_datetime() {
                 let is_whole_minute = ns % 60_000_000_000 == 0;
                 let time_format = if self.is_exactly_midnight() {
-                    "[year]-[month]-[day]Z"
+                    "[year]-[month]-[day]"
                 } else if is_whole_minute {
-                    "[hour]:[minute]Z"
+                    "[hour]:[minute]"
                 } else {
-                    "[hour]:[minute]:[second]Z"
+                    "[hour]:[minute]:[second]"
                 };
                 let parsed_format = time::format_description::parse(time_format).unwrap();
-                return datetime.format(&parsed_format).unwrap();
+
+                return Self::time_string(datetime, &parsed_format, time_zone_for_timestamps);
             }
 
             crate::Duration::from_nanos(ns).to_string()
@@ -146,6 +180,18 @@ impl Time {
         }
     }
 
+    // Human-readable formatting with a custom time_format.
+    pub fn format_time_custom(
+        &self,
+        time_format: &str,
+        time_zone_for_timestamps: TimeZone,
+    ) -> Option<String> {
+        self.to_datetime().map(|datetime| {
+            let parsed_format = time::format_description::parse(time_format).unwrap();
+            Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
+        })
+    }
+
     #[inline]
     pub fn lerp(range: RangeInclusive<Time>, t: f32) -> Time {
         let (min, max) = (range.start().0, range.end().0);
@@ -155,7 +201,7 @@ impl Time {
 
 impl std::fmt::Debug for Time {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.format().fmt(f)
+        self.format(TimeZone::Utc).fmt(f)
     }
 }
 
@@ -231,27 +277,52 @@ mod tests {
 
     #[test]
     fn test_formatting_short_times() {
-        assert_eq!(&Time::from_us_since_epoch(42_000_000).format(), "+42s");
-        assert_eq!(&Time::from_us_since_epoch(69_000).format(), "+0.069s");
-        assert_eq!(&Time::from_us_since_epoch(69_900).format(), "+0.070s");
+        assert_eq!(
+            &Time::from_us_since_epoch(42_000_000).format(TimeZone::Utc),
+            "+42s"
+        );
+        assert_eq!(
+            &Time::from_us_since_epoch(69_000).format(TimeZone::Utc),
+            "+0.069s"
+        );
+        assert_eq!(
+            &Time::from_us_since_epoch(69_900).format(TimeZone::Utc),
+            "+0.070s"
+        );
+
+        assert_eq!(
+            &Time::from_us_since_epoch(42_000_000).format(TimeZone::Local),
+            "+42s"
+        );
+        assert_eq!(
+            &Time::from_us_since_epoch(69_000).format(TimeZone::Local),
+            "+0.069s"
+        );
+        assert_eq!(
+            &Time::from_us_since_epoch(69_900).format(TimeZone::Local),
+            "+0.070s"
+        );
     }
 
     #[test]
     fn test_formatting_whole_second_for_datetime() {
         let datetime = Time::try_from(datetime!(2022-02-28 22:35:42 UTC)).unwrap();
-        assert_eq!(&datetime.format(), "2022-02-28 22:35:42Z");
+        assert_eq!(&datetime.format(TimeZone::Utc), "2022-02-28 22:35:42Z");
     }
 
     #[test]
     fn test_formatting_whole_millisecond_for_datetime() {
         let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069 UTC)).unwrap();
-        assert_eq!(&datetime.format(), "2022-02-28 22:35:42.069Z");
+        assert_eq!(&datetime.format(TimeZone::Utc), "2022-02-28 22:35:42.069Z");
     }
 
     #[test]
     fn test_formatting_many_digits_for_datetime() {
         let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
-        assert_eq!(&datetime.format(), "2022-02-28 22:35:42.069042Z"); // format function is not rounding
+        assert_eq!(
+            &datetime.format(TimeZone::Utc),
+            "2022-02-28 22:35:42.069042Z"
+        ); // format function is not rounding
     }
 
     /// Check that formatting today times doesn't display the date.
@@ -261,7 +332,54 @@ mod tests {
     fn test_formatting_today_omit_date() {
         let today = OffsetDateTime::now_utc().replace_time(time!(22:35:42));
         let datetime = Time::try_from(today).unwrap();
-        assert_eq!(&datetime.format(), "22:35:42Z");
+        assert_eq!(&datetime.format(TimeZone::Utc), "22:35:42Z");
+    }
+
+    #[test]
+    fn test_custom_formatting() {
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
+        assert_eq!(
+            &datetime
+                .format_time_custom("[year]-[month]-[day]", TimeZone::Utc)
+                .unwrap(),
+            "2022-02-28Z"
+        );
+        assert_eq!(
+            &datetime
+                .format_time_custom("[hour]", TimeZone::Utc)
+                .unwrap(),
+            "22Z"
+        );
+        assert_eq!(
+            &datetime
+                .format_time_custom("[hour]:[minute]", TimeZone::Utc)
+                .unwrap(),
+            "22:35Z"
+        );
+        assert_eq!(
+            &datetime
+                .format_time_custom("[hour]:[minute]:[second]", TimeZone::Utc)
+                .unwrap(),
+            "22:35:42Z"
+        );
+        assert_eq!(
+            &datetime
+                .format_time_custom(
+                    "[hour]:[minute]:[second].[subsecond digits:3]",
+                    TimeZone::Utc
+                )
+                .unwrap(),
+            "22:35:42.069Z"
+        );
+        assert_eq!(
+            &datetime
+                .format_time_custom(
+                    "[hour]:[minute]:[second].[subsecond digits:6]",
+                    TimeZone::Utc
+                )
+                .unwrap(),
+            "22:35:42.069042Z"
+        );
     }
 }
 

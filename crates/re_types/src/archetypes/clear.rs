@@ -91,7 +91,7 @@
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clear {
-    pub recursive: crate::components::ClearIsRecursive,
+    pub is_recursive: crate::components::ClearIsRecursive,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
@@ -165,20 +165,20 @@ impl crate::Archetype for Clear {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let recursive = {
+        let is_recursive = {
             let array = arrays_by_name
                 .get("rerun.components.ClearIsRecursive")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#recursive")?;
+                .with_context("rerun.archetypes.Clear#is_recursive")?;
             <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Clear#recursive")?
+                .with_context("rerun.archetypes.Clear#is_recursive")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#recursive")?
+                .with_context("rerun.archetypes.Clear#is_recursive")?
         };
-        Ok(Self { recursive })
+        Ok(Self { is_recursive })
     }
 }
 
@@ -188,7 +188,7 @@ impl crate::AsComponents for Clear {
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.recursive as &dyn crate::ComponentBatch).into()),
+            Some((&self.is_recursive as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -202,9 +202,9 @@ impl crate::AsComponents for Clear {
 }
 
 impl Clear {
-    pub fn new(recursive: impl Into<crate::components::ClearIsRecursive>) -> Self {
+    pub fn new(is_recursive: impl Into<crate::components::ClearIsRecursive>) -> Self {
         Self {
-            recursive: recursive.into(),
+            is_recursive: is_recursive.into(),
         }
     }
 }

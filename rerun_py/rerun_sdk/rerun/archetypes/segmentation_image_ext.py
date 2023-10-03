@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class SegmentationImageExt:
+    """Extension for [SegmentationImage][rerun.archetypes.SegmentationImage]."""
+
     U8_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("U8")
     U16_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("U16")
 

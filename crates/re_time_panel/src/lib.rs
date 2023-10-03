@@ -278,6 +278,7 @@ impl TimePanel {
             &time_area_painter,
             timeline_rect.top()..=timeline_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
+            ctx.app_options.time_zone_for_timestamps,
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
@@ -424,7 +425,7 @@ impl TimePanel {
             return; // ignore entities that have no data for the current timeline, nor any timeless data.
         }
 
-        // The last part of the the path component
+        // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
             if tree.is_leaf() {
                 last_path_part.to_string()
@@ -799,7 +800,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         if is_time_safe_to_show(ctx.store_db, timeline, time_int.into()) {
             let time_type = ctx.rec_cfg.time_ctrl.time_type();
-            ui.monospace(time_type.format(time_int));
+            ui.monospace(time_type.format(time_int, ctx.app_options.time_zone_for_timestamps));
         }
     }
 }

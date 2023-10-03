@@ -21,6 +21,7 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     Example
     -------
+    ### `arrow3d_simple`:
     ```python
     from math import tau
 
@@ -37,13 +38,15 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     rr.log("arrows", rr.Arrows3D(origins=origins, vectors=vectors, colors=colors))
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1200w.png">
-      <img src="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/full.png">
+      <img src="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/full.png" width="640">
     </picture>
+    </center>
     """
 
     # __init__ can be found in arrows3d_ext.py
@@ -75,12 +78,12 @@ class Arrows3D(Arrows3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    origins: components.Origin3DBatch | None = field(
+    origins: components.Position3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Origin3DBatch._optional,  # type: ignore[misc]
+        converter=components.Position3DBatch._optional,  # type: ignore[misc]
     )
-    # All the origin points for each arrow in the batch.
+    # All the origin (base) positions for each arrow in the batch.
     #
     # If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     #

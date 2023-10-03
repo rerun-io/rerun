@@ -23,7 +23,7 @@ impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<latest at {} on {:?} (including timeless)>",
-            self.timeline.typ().format(self.at),
+            self.timeline.typ().format_utc(self.at),
             self.timeline.name(),
         ))
     }
@@ -58,8 +58,8 @@ impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
-            self.timeline.typ().format(self.range.min),
-            self.timeline.typ().format(self.range.max),
+            self.timeline.typ().format_utc(self.range.min),
+            self.timeline.typ().format_utc(self.range.max),
             self.timeline.name(),
             if self.range.min == TimeInt::MIN {
                 "including"
@@ -321,7 +321,7 @@ impl DataStore {
         None
     }
 
-    /// Iterates the datastore in order to return the cells of the the specified `components`,
+    /// Iterates the datastore in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///
@@ -513,11 +513,11 @@ impl IndexedTable {
             trace!(
                 kind = "latest_at",
                 timeline = %timeline.name(),
-                time = timeline.typ().format(time),
+                time = timeline.typ().format_utc(time),
                 %primary,
                 ?components,
                 attempt,
-                bucket_time_range = timeline.typ().format_range(bucket.inner.read().time_range),
+                bucket_time_range = timeline.typ().format_range_utc(bucket.inner.read().time_range),
                 "found candidate bucket"
             );
             if let cells @ Some(_) = bucket.latest_at(time, primary, components) {
@@ -528,7 +528,7 @@ impl IndexedTable {
         None // primary component not found
     }
 
-    /// Iterates the table in order to return the cells of the the specified `components`,
+    /// Iterates the table in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///
@@ -560,7 +560,7 @@ impl IndexedTable {
                     kind = "range",
                     bucket_nr,
                     bucket_time_range =
-                        timeline.typ().format_range(bucket.inner.read().time_range),
+                        timeline.typ().format_range_utc(bucket.inner.read().time_range),
                     timeline = %timeline.name(),
                     ?time_range,
                     ?components,
@@ -715,7 +715,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time),
+            time = self.timeline.typ().format_utc(time),
             "searching for primary & secondary cells…"
         );
 
@@ -736,7 +736,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time),
+            time = self.timeline.typ().format_utc(time),
             %primary_row_nr,
             "found primary row number",
         );
@@ -750,7 +750,7 @@ impl IndexedBucket {
                     %primary,
                     ?components,
                     timeline = %self.timeline.name(),
-                    time = self.timeline.typ().format(time),
+                    time = self.timeline.typ().format_utc(time),
                     %primary_row_nr,
                     "no secondary row number found",
                 );
@@ -764,7 +764,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time),
+            time = self.timeline.typ().format_utc(time),
             %primary_row_nr, %secondary_row_nr,
             "found secondary row number",
         );
@@ -779,7 +779,7 @@ impl IndexedBucket {
                         %primary,
                         %component,
                         timeline = %self.timeline.name(),
-                        time = self.timeline.typ().format(time),
+                        time = self.timeline.typ().format_utc(time),
                         %primary_row_nr, %secondary_row_nr,
                         "found cell",
                     );
@@ -791,7 +791,7 @@ impl IndexedBucket {
         Some((col_row_id[secondary_row_nr as usize], cells))
     }
 
-    /// Iterates the bucket in order to return the cells of the the specified `components`,
+    /// Iterates the bucket in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///
@@ -836,10 +836,10 @@ impl IndexedBucket {
 
         trace!(
             kind = "range",
-            bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+            bucket_time_range = self.timeline.typ().format_range_utc(bucket_time_range),
             ?components,
             timeline = %self.timeline.name(),
-            time_range = self.timeline.typ().format_range(time_range),
+            time_range = self.timeline.typ().format_range_utc(time_range),
             "searching for time & component cell numbers…"
         );
 
@@ -847,10 +847,10 @@ impl IndexedBucket {
 
         trace!(
             kind = "range",
-            bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+            bucket_time_range = self.timeline.typ().format_range_utc(bucket_time_range),
             ?components,
             timeline = %self.timeline.name(),
-            time_range = self.timeline.typ().format_range(time_range),
+            time_range = self.timeline.typ().format_range_utc(time_range),
             %time_row_nr,
             "found time row number",
         );
@@ -896,10 +896,10 @@ impl IndexedBucket {
                 trace!(
                     kind = "range",
                     bucket_time_range =
-                        self.timeline.typ().format_range(bucket_time_range),
+                        self.timeline.typ().format_range_utc(bucket_time_range),
                     ?components,
                     timeline = %self.timeline.name(),
-                    time_range = self.timeline.typ().format_range(time_range),
+                    time_range = self.timeline.typ().format_range_utc(time_range),
                     %row_nr,
                     %row_id,
                     ?cells,
@@ -1088,7 +1088,7 @@ impl PersistentIndexedTable {
         Some((self.col_row_id[secondary_row_nr as usize], cells))
     }
 
-    /// Iterates the table in order to return the cells of the the specified `components`,
+    /// Iterates the table in order to return the cells of the specified `components`,
     /// as seen from the point of view of the so-called `primary` component, for the given time
     /// range.
     ///

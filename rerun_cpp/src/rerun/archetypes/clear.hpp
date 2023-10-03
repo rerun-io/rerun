@@ -40,7 +40,7 @@ namespace rerun {
         ///         {-1.0, 0.0, 0.0},
         ///         {0.0, 1.0, 0.0},
         ///     };
-        ///     std::vector<rr::components::Origin3D> origins = {
+        ///     std::vector<rr::components::Position3D> origins = {
         ///         {-0.5, 0.5, 0.0},
         ///         {0.5, 0.5, 0.0},
         ///         {0.5, -0.5, 0.0},
@@ -90,7 +90,7 @@ namespace rerun {
         ///         {-1.0, 0.0, 0.0},
         ///         {0.0, 1.0, 0.0},
         ///     };
-        ///     std::vector<rr::components::Origin3D> origins = {
+        ///     std::vector<rr::components::Position3D> origins = {
         ///         {-0.5, 0.5, 0.0},
         ///         {0.5, 0.5, 0.0},
         ///         {0.5, -0.5, 0.0},
@@ -116,7 +116,7 @@ namespace rerun {
         /// }
         /// ```
         struct Clear {
-            rerun::components::ClearIsRecursive recursive;
+            rerun::components::ClearIsRecursive is_recursive;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -129,13 +129,14 @@ namespace rerun {
 
             static const Clear RECURSIVE;
 
-            Clear(bool is_recursive = false) : Clear(components::ClearIsRecursive(is_recursive)) {}
+            Clear(bool _is_recursive = false)
+                : Clear(components::ClearIsRecursive(_is_recursive)) {}
 
           public:
             Clear() = default;
 
-            Clear(rerun::components::ClearIsRecursive _recursive)
-                : recursive(std::move(_recursive)) {}
+            Clear(rerun::components::ClearIsRecursive _is_recursive)
+                : is_recursive(std::move(_is_recursive)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

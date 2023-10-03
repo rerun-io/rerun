@@ -298,7 +298,7 @@ Either expand the previous loop to include logging transforms or
 simply add a second loop like this:
 ```rust
 for i in 0..400 {
-    // ...everything else...
+    // …everything else…
 
     rec.log(
         "dna/structure",

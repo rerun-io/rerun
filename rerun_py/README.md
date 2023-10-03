@@ -1,11 +1,9 @@
 # The Rerun Python Log SDK
 
-Rerun is an SDK for logging computer vision and robotics data paired with a visualizer for exploring that data over time.
-It lets you debug and understand the internal state and data of your systems with minimal code.
-
+Use the Rerun SDK to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
 <p align="center">
-  <img width="800" alt="Rerun Viewer" src="https://user-images.githubusercontent.com/1148717/218763490-f6261ecd-e19e-4520-9b25-446ce1ee6328.png">
+  <img width="800" alt="Rerun Viewer" src="https://github.com/rerun-io/rerun/assets/2624717/c4900538-fc3a-43b8-841a-8d226e7b5a2e">
 </p>
 
 ## Install
@@ -27,14 +25,14 @@ rr.init("rerun_example_app", spawn=True)
 positions = np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-5, 5, 10j)]]]).T
 colors = np.vstack([rgb.ravel() for rgb in np.mgrid[3 * [slice(0, 255, 10j)]]]).astype(np.uint8).T
 
-rr.log_points("my_points", positions=positions, colors=colors)
+rr.log("points3d", rr.Points3D(positions, colors=colors))
 ```
 
 ## Resources
-* [Quick start](https://www.rerun.io/docs/getting-started/python)
+* [Examples](https://www.rerun.io/examples)
 * [Python API docs](https://ref.rerun.io/docs/python)
+* [Quick start](https://www.rerun.io/docs/getting-started/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
-* [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
 * [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 * [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
 

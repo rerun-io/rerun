@@ -192,7 +192,7 @@ def project_3d_bboxes_to_2d_keypoints(
     translation, rotation_q = camera_from_world.translation, camera_from_world.rotation
     # We know we stored the rotation as a quaternion, so extract it again.
     # TODO(#3467): This shouldn't directly access rotation.inner
-    rotation = R.from_quat(np.array(rotation_q.inner))  # type: ignore[union-attr]
+    rotation = R.from_quat(rotation_q.inner)  # type: ignore[union-attr]
 
     # Transform 3D keypoints from world to camera frame
     world_to_camera_rotation = rotation.as_matrix()
@@ -402,7 +402,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 colors_list,
             )
 
-            rr.log(f"{lowres_posed_entity_id}/rgb", rr.Image(rr.TensorData(array=rgb, jpeg_quality=95)))
+            rr.log(f"{lowres_posed_entity_id}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
             rr.log(f"{lowres_posed_entity_id}/depth", rr.DepthImage(depth, meter=1000))
 
         # log the high res camera
@@ -427,7 +427,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
 
-            rr.log(f"{highres_entity_id}/rgb", rr.Image(rr.TensorData(array=highres_rgb, jpeg_quality=75)))
+            rr.log(f"{highres_entity_id}/rgb", rr.Image(highres_rgb).compress(jpeg_quality=75))
             rr.log(f"{highres_entity_id}/depth", rr.DepthImage(highres_depth, meter=1000))
 
 

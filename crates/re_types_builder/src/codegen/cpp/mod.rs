@@ -26,6 +26,8 @@ use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
+use super::common::ExampleInfo;
+
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
 // `TokenStream` ignores whitespace (including comments), but we can insert "quoted strings",
@@ -102,13 +104,13 @@ pub struct CppCodeGenerator {
 impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
-        _reporter: &Reporter,
+        reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         ObjectKind::ALL
             .par_iter()
-            .map(|object_kind| self.generate_folder(objects, *object_kind))
+            .map(|object_kind| self.generate_folder(reporter, objects, *object_kind))
             .flatten()
             .collect()
     }
@@ -121,7 +123,12 @@ impl CppCodeGenerator {
         }
     }
 
-    fn generate_folder(&self, objects: &Objects, object_kind: ObjectKind) -> BTreeSet<Utf8PathBuf> {
+    fn generate_folder(
+        &self,
+        reporter: &Reporter,
+        objects: &Objects,
+        object_kind: ObjectKind,
+    ) -> BTreeSet<Utf8PathBuf> {
         let folder_name = object_kind.plural_snake_case();
         let folder_path_sdk = self.output_path.join("src/rerun").join(folder_name);
         let folder_path_testing = self.output_path.join("tests/generated").join(folder_name);
@@ -193,7 +200,7 @@ impl CppCodeGenerator {
             filepaths.insert(filepath);
         }
 
-        super::common::remove_old_files_from_folder(folder_path_sdk, &filepaths);
+        super::common::remove_old_files_from_folder(reporter, folder_path_sdk, &filepaths);
 
         filepaths
     }
@@ -1959,8 +1966,16 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         lines.push(String::new());
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
-            if let Some(title) = example.base.title {
+            let ExampleInfo {
+                name,
+                title,
+                image: _,
+            } = &example.base;
+
+            if let Some(title) = title {
                 lines.push(format!(" ### {title}"));
+            } else {
+                lines.push(format!("### `{name}`:"));
             }
             lines.push(" ```cpp,ignore".into());
             lines.extend(example.lines.iter().map(|line| format!(" {line}")));

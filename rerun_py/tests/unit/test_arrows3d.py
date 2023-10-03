@@ -4,7 +4,7 @@ import itertools
 from typing import Optional, cast
 
 import rerun as rr
-from rerun.components import InstanceKeyArrayLike, Origin3DBatch, RadiusArrayLike, Vector3DBatch
+from rerun.components import InstanceKeyArrayLike, Position3DBatch, RadiusArrayLike, Vector3DBatch
 from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec3DArrayLike
 
 from .common_arrays import (
@@ -73,7 +73,7 @@ def test_arrows3d() -> None:
         print(f"A: {arch}\n")
 
         assert arch.vectors == vec3ds_expected(vectors, Vector3DBatch)
-        assert arch.origins == vec3ds_expected(origins, Origin3DBatch)
+        assert arch.origins == vec3ds_expected(origins, Position3DBatch)
         assert arch.radii == radii_expected(radii)
         assert arch.colors == colors_expected(colors)
         assert arch.labels == labels_expected(labels)

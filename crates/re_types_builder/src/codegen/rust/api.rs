@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{
         autogen_warning,
-        common::collect_examples,
+        common::{collect_examples, ExampleInfo},
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -73,13 +73,17 @@ impl CodeGenerator for RustCodeGenerator {
 
         for kind in ObjectKind::ALL {
             let folder_path = self.crate_path.join("src").join(kind.plural_snake_case());
-            crate::codegen::common::remove_old_files_from_folder(folder_path, &filepaths);
+            crate::codegen::common::remove_old_files_from_folder(reporter, folder_path, &filepaths);
 
             let test_folder_path = self
                 .crate_path
                 .join("src/testing")
                 .join(kind.plural_snake_case());
-            crate::codegen::common::remove_old_files_from_folder(test_folder_path, &filepaths);
+            crate::codegen::common::remove_old_files_from_folder(
+                reporter,
+                test_folder_path,
+                &filepaths,
+            );
         }
 
         filepaths
@@ -529,13 +533,17 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
         lines.push(Default::default());
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
-            if let Some(title) = example.base.title {
+            let ExampleInfo { name, title, image } = &example.base;
+
+            if let Some(title) = title {
                 lines.push(format!(" ### {title}"));
+            } else {
+                lines.push(format!("### `{name}`:"));
             }
             lines.push(" ```ignore".into());
             lines.extend(example.lines.into_iter().map(|line| format!(" {line}")));
             lines.push(" ```".into());
-            if let Some(image) = &example.base.image {
+            if let Some(image) = &image {
                 lines.extend(
                     image
                         .image_stack()

@@ -18,6 +18,7 @@
 ///
 /// ## Example
 ///
+/// ### `arrow3d_simple`:
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
@@ -26,7 +27,7 @@
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
 ///
-///     let origins = vec![rerun::Origin3D::ZERO; 100];
+///     let origins = vec![rerun::Position3D::ZERO; 100];
 ///     let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
 ///         .map(|i| {
 ///             let angle = TAU * i as f32 * 0.01;
@@ -50,22 +51,24 @@
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1200w.png">
-///   <img src="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/full.png">
+///   <img src="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Arrows3D {
     /// All the vectors for each arrow in the batch.
     pub vectors: Vec<crate::components::Vector3D>,
 
-    /// All the origin points for each arrow in the batch.
+    /// All the origin (base) positions for each arrow in the batch.
     ///
     /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-    pub origins: Option<Vec<crate::components::Origin3D>>,
+    pub origins: Option<Vec<crate::components::Position3D>>,
 
     /// Optional radii for the arrows.
     ///
@@ -95,7 +98,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usi
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Arrows3DIndicator".into(),
-            "rerun.components.Origin3D".into(),
+            "rerun.components.Position3D".into(),
         ]
     });
 
@@ -115,7 +118,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
         [
             "rerun.components.Vector3D".into(),
             "rerun.components.Arrows3DIndicator".into(),
-            "rerun.components.Origin3D".into(),
+            "rerun.components.Position3D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
@@ -189,9 +192,9 @@ impl crate::Archetype for Arrows3D {
                 .collect::<crate::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Arrows3D#vectors")?
         };
-        let origins = if let Some(array) = arrays_by_name.get("rerun.components.Origin3D") {
+        let origins = if let Some(array) = arrays_by_name.get("rerun.components.Position3D") {
             Some({
-                <crate::components::Origin3D>::from_arrow_opt(&**array)
+                <crate::components::Position3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#origins")?
                     .into_iter()
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
@@ -328,7 +331,7 @@ impl Arrows3D {
 
     pub fn with_origins(
         mut self,
-        origins: impl IntoIterator<Item = impl Into<crate::components::Origin3D>>,
+        origins: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
     ) -> Self {
         self.origins = Some(origins.into_iter().map(Into::into).collect());
         self

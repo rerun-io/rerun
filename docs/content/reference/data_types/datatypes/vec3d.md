@@ -10,7 +10,6 @@ A vector in 3D space.
 
 * [`HalfSizes3D`](../components/half_sizes3d.md)
 * [`LineStrip3D`](../components/line_strip3d.md)
-* [`Origin3D`](../components/origin3d.md)
 * [`Position3D`](../components/position3d.md)
 * [`Vector3D`](../components/vector3d.md)
 * [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)

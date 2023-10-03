@@ -19,6 +19,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
+        /// ### `transform3d_simple`:
         /// ```cpp,ignore
         /// // Log some transforms.
         ///

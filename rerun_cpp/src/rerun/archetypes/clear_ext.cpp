@@ -16,7 +16,8 @@ namespace rerun {
 
             static const Clear RECURSIVE;
 
-            Clear(bool is_recursive = false) : Clear(components::ClearIsRecursive(is_recursive)) {}
+            Clear(bool _is_recursive = false)
+                : Clear(components::ClearIsRecursive(_is_recursive)) {}
 
             // [CODEGEN COPY TO HEADER END]
         };
