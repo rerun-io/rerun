@@ -76,11 +76,6 @@ impl Time {
     ) -> String {
         match time_zone_for_timestamps {
             TimeZone::Local => {
-                // TODO(paris): Remove, just for testing.
-                re_log::error_once!(
-                    "UtcOffset::current_local_offset() {:?}",
-                    UtcOffset::current_local_offset()
-                );
                 if let Ok(local_offset) = UtcOffset::current_local_offset() {
                     // Return in the local timezone.
                     let local_datetime = datetime.to_offset(local_offset);
@@ -90,8 +85,6 @@ impl Time {
                     // Skipping `err` description from logging because as of writing it doesn't add much, see
                     // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
                     re_log::warn_once!("Failed to access local timezone offset to UTC.");
-                    // TODO(paris): Remove, just for testing.
-                    re_log::error_once!("Failed to access local timezone offset to UTC.");
                     format!("{}Z", datetime.format(&parsed_format).unwrap())
                 }
             }
@@ -387,26 +380,6 @@ mod tests {
                 .unwrap(),
             "22:35:42.069042Z"
         );
-    }
-
-    #[test]
-    fn test_formatting_local_time_zone_no_z() {
-        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
-        // TODO(paris): Remove, just for testing.
-        re_log::error!("{}", datetime.format(TimeZone::Local));
-        re_log::error!("{}", datetime.format_time_compact(TimeZone::Local));
-        re_log::error!(
-            "{}",
-            datetime
-                .format_time_custom("[hour]:[minute]:[second]", TimeZone::Local)
-                .unwrap()
-        );
-        assert!(!&datetime.format(TimeZone::Local).contains('Z'));
-        assert!(!&datetime.format_time_compact(TimeZone::Local).contains('Z'));
-        assert!(!&datetime
-            .format_time_custom("[hour]:[minute]:[second]", TimeZone::Local)
-            .unwrap()
-            .contains('Z'));
     }
 }
 

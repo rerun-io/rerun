@@ -23,8 +23,7 @@ just py-lint
 cargo check --all-targets --all-features
 cargo check -p re_viewer --all-features --target wasm32-unknown-unknown --target-dir target_wasm
 cargo cranky --all-targets --all-features -- --deny warnings
-# TODO(paris): Remove RUST_BACKTRACE=1, just for testing.
-RUST_BACKTRACE=1 cargo test --all-targets --all-features
+cargo test --all-targets --all-features
 cargo test --doc --all-features # checks all doc-tests
 
 cargo doc --no-deps --all-features
