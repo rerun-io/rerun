@@ -120,7 +120,7 @@ This tiny snippet of code actually holds much more than meets the eye...
 `Archetypes`
 
 The easiest way to log geometric primitives is the use the [`rr.log`](https://ref.rerun.io/docs/python/HEAD/common/logging/#rerun.log) function with one of the built-in archetype class, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/HEAD/common/spatial_primitives/#rerun.Points3D). Archetypes take care of building batches
-of components that are recognised and correctly displayed by the Rerun viewer.
+of components that are recognized and correctly displayed by the Rerun viewer.
 
 `Components`
 
