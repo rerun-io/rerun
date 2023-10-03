@@ -18,7 +18,7 @@ demo: true
 
 
 Visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using the Rerun SDK.
-The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.
+The dataset contains color+depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
 
 ```bash
 pip install -r examples/python/arkit_scenes/requirements.txt
