@@ -17,6 +17,8 @@ use crate::{
     Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
+use super::common::ExampleInfo;
+
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";
 
@@ -1738,8 +1740,6 @@ fn quote_clear_methods(obj: &Object) -> String {
 
 // --- Arrow registry code generators ---
 use arrow2::datatypes::{DataType, Field, UnionMode};
-
-use super::common::ExampleInfo;
 
 fn quote_arrow_datatype(datatype: &DataType) -> String {
     match datatype {
