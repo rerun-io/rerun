@@ -29,11 +29,11 @@
 //! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionRadius`):
 //! ```raw
 //!                   ___________________________________________________________________
-//! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
+//! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | …
 //!                   ___________________________________________________________________
 //! (vertex shader)  |             quad 0              |              quad 2             |
 //!                                    ______________________________________________________________
-//!                                   |               quad 1            |              quad 3        | ...
+//!                                   |               quad 1            |              quad 3        | …
 //! ```
 //!
 //! Why not a triangle *strip* instead if *list*?

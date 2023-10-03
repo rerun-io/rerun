@@ -24,7 +24,7 @@ impl WebViewerSink {
         web_port: WebViewerServerPort,
         ws_port: RerunServerPort,
     ) -> anyhow::Result<Self> {
-        // TODO(cmc): the sources here probably don't make much sense...
+        // TODO(cmc): the sources here probably don't make much sense…
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(
             re_smart_channel::SmartMessageSource::Sdk,
             re_smart_channel::SmartChannelSource::Sdk,

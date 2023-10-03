@@ -396,7 +396,7 @@ fn batching_thread(
 
     fn do_push_row(acc: &mut Accumulator, mut row: DataRow) {
         // TODO(#1760): now that we're re doing this here, it really is a massive waste not to send
-        // it over the wire...
+        // it over the wire…
         row.compute_all_size_bytes();
 
         acc.pending_num_rows += 1;

@@ -295,7 +295,7 @@ impl EntityTree {
         depth: usize,
         time_point: &TimePoint,
     ) -> &mut Self {
-        // If the time_point is timeless...
+        // If the time_point is timeless…
         if time_point.is_timeless() {
             self.num_timeless_messages += 1;
         } else {
@@ -446,7 +446,7 @@ impl ComponentStats {
     }
 
     pub fn add(&mut self, time_point: &TimePoint) {
-        // If the `time_point` is timeless...
+        // If the `time_point` is timeless…
         if time_point.is_timeless() {
             self.num_timeless_messages += 1;
         } else {

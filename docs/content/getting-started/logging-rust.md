@@ -229,7 +229,7 @@ You can add as many timelines and timestamps as you want when logging data.
 
 ![logging data - wat](https://static.rerun.io/a396c8aae1cbd717a3f35472594f789e4829b1ae_logging_data7_wat.png)
 
-Enter...
+Enter…
 
 ### Latest At semantics
 
@@ -256,7 +256,7 @@ Now it's just a matter of combining the two: we need to log the transform of the
 Expand the previous loop to also include:
 ```rust
 for i in 0..400 {
-    // ...everything else...
+    // …everything else…
 
     rec.log(
         "dna/structure",
