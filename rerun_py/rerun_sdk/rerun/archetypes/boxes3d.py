@@ -19,26 +19,8 @@ class Boxes3D(Boxes3DExt, Archetype):
     """
     **Archetype**: A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
-    Examples
-    --------
-    ### Simple 3D boxes:
-    ```python
-    import rerun as rr
-
-    rr.init("rerun_example_box3d_simple", spawn=True)
-
-    rr.log("simple", rr.Boxes3D(half_sizes=[2.0, 2.0, 1.0]))
-    ```
-    <center>
-    <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png">
-      <img src="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/full.png" width="640">
-    </picture>
-    </center>
-
+    Example
+    -------
     ### Batch of 3D boxes:
     ```python
     import rerun as rr

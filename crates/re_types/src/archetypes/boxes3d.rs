@@ -16,33 +16,7 @@
 
 /// **Archetype**:  A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
-/// ## Examples
-///
-/// ### Simple 3D boxes
-/// ```ignore
-/// //! Log a single 3D box.
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_box3d").memory()?;
-///
-///     rec.log(
-///         "simple",
-///         &rerun::Boxes3D::from_half_sizes([(2.0, 2.0, 1.0)]),
-///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png">
-///   <img src="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/full.png" width="640">
-/// </picture>
-/// </center>
+/// ## Example
 ///
 /// ### Batch of 3D boxes
 /// ```ignore

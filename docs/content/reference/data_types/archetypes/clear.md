@@ -8,11 +8,7 @@ Empties all the components of an entity.
 
 **Required**: [`ClearIsRecursive`](../components/clear_is_recursive.md)
 
-## Examples
-
-### Flat
-
-code-example: clear_simple
+## Example
 
 ### Recursive
 

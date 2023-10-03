@@ -12,21 +12,7 @@ A batch of 3d boxes with half-extents and optional center, rotations, rotations,
 
 **Optional**: [`Radius`](../components/radius.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
-## Examples
-
-### Simple 3D boxes
-
-code-example: box3d_simple
-
-<center>
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png">
-  <img src="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/full.png" width="640">
-</picture>
-</center>
+## Example
 
 ### Batch of 3D boxes
 
