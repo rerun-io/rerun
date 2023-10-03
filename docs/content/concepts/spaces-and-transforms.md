@@ -72,10 +72,10 @@ Rerun transforms are currently limited to connections between _spatial_ views of
 transforms that can be logged:
 
 - Affine 3D transforms, which can define any combination of translation, rotation, and scale relationship between two paths (see
-  [rr.Transform3D](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Transform3D)).
+  [`rr.Transform3D`](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Transform3D)).
 - Pinhole transforms define a 3D -> 2D camera projection (see
-  [rr.Pinhole](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Pinhole)).
-- A disconnected space specifies that the data cannot be transformed (see [rr.DisconnectedSpace](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.DisconnectedSpace)). In this case it will not be possible to combine the data into a single view, and you will need to create two separate views to explore the data.
+  [`rr.Pinhole`](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Pinhole)).
+- A disconnected space specifies that the data cannot be transformed (see [`rr.DisconnectedSpace`](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.DisconnectedSpace)). In this case it will not be possible to combine the data into a single view, and you will need to create two separate views to explore the data.
   
 
 In the future, Rerun will be adding support for additional types of transforms.
@@ -117,4 +117,4 @@ You can also use this `log_view_coordinates` for pinhole entities, but it is enc
 
 WARNING: unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the `open_photogrammetry_format` example.
 
-For 2D spaces and other entities the view coordinates currently do nothing (https://github.com/rerun-io/rerun/issues/1387).
+For 2D spaces and other entities the view coordinates currently do nothing ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
