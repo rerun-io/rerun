@@ -402,7 +402,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 colors_list,
             )
 
-            rr.log(f"{lowres_posed_entity_id}/rgb", rr.Image(rgb).compress())
+            rr.log(f"{lowres_posed_entity_id}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
             rr.log(f"{lowres_posed_entity_id}/depth", rr.DepthImage(depth, meter=1000))
 
         # log the high res camera
