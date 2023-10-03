@@ -33,7 +33,7 @@ plugins:
             heading_level: 3
             inherited_members: true
             members_order: source # sort members in the order they are defined
-            merge_init_into_class: true # Only works for auto-generated __init__ methods, but for those it's great!
+            merge_init_into_class: false # Not compatible with `inherited_members`
             show_if_no_docstring: false # We intentionally hide archetype fields
             show_source: no
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
