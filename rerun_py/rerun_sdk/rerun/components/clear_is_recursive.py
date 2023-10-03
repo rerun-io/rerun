@@ -26,7 +26,7 @@ __all__ = [
 
 @define(init=False)
 class ClearIsRecursive(ClearIsRecursiveExt):
-    """Configures how a clear operation should behave - recursive or not?."""
+    """**Component**: Configures how a clear operation should behave - recursive or not?."""
 
     def __init__(self: Any, recursive: ClearIsRecursiveLike):
         """

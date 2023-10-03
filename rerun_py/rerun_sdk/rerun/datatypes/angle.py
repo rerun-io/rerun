@@ -18,7 +18,7 @@ __all__ = ["Angle", "AngleArrayLike", "AngleBatch", "AngleLike", "AngleType"]
 
 @define(init=False)
 class Angle(AngleExt):
-    """Angle in either radians or degrees."""
+    """**Datatype**: Angle in either radians or degrees."""
 
     # __init__ can be found in angle_ext.py
 

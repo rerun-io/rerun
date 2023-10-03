@@ -13,7 +13,7 @@ __all__ = ["OutOfTreeTransform3D", "OutOfTreeTransform3DBatch", "OutOfTreeTransf
 
 class OutOfTreeTransform3D(datatypes.Transform3D):
     """
-    An out-of-tree affine transform between two 3D spaces, represented in a given direction.
+    **Component**: An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 
     "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
     """

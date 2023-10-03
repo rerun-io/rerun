@@ -12,7 +12,7 @@ __all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 
 class Material(datatypes.Material):
-    """Material properties of a mesh."""
+    """**Component**: Material properties of a mesh."""
 
     # You can define your own __init__ function as a member of MaterialExt in material_ext.py
 

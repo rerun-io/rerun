@@ -24,7 +24,7 @@ __all__ = ["Mat4x4", "Mat4x4ArrayLike", "Mat4x4Batch", "Mat4x4Like", "Mat4x4Type
 @define(init=False)
 class Mat4x4(Mat4x4Ext):
     """
-    A 4x4 Matrix.
+    **Datatype**: A 4x4 Matrix.
 
     Matrices in Rerun are stored as flat list of coefficients in column-major order:
     ```text

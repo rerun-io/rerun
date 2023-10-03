@@ -13,7 +13,7 @@ __all__ = ["Resolution", "ResolutionBatch", "ResolutionType"]
 
 class Resolution(datatypes.Vec2D):
     """
-    Pixel resolution width & height, e.g. of a camera sensor.
+    **Component**: Pixel resolution width & height, e.g. of a camera sensor.
 
     Typically in integer units, but for some use cases floating point may be used.
     """

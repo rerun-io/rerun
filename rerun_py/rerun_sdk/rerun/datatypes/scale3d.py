@@ -20,7 +20,7 @@ __all__ = ["Scale3D", "Scale3DArrayLike", "Scale3DBatch", "Scale3DLike", "Scale3
 @define
 class Scale3D(Scale3DExt):
     """
-    3D scaling factor, part of a transform representation.
+    **Datatype**: 3D scaling factor, part of a transform representation.
 
     Example
     -------

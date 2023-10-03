@@ -32,7 +32,7 @@ def _rotation_axis_angle__axis__special_field_converter_override(x: datatypes.Ve
 
 @define(init=False)
 class RotationAxisAngle(RotationAxisAngleExt):
-    """3D rotation represented by a rotation around a given axis."""
+    """**Datatype**: 3D rotation represented by a rotation around a given axis."""
 
     # __init__ can be found in rotation_axis_angle_ext.py
 

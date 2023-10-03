@@ -24,7 +24,7 @@ __all__ = ["Quaternion", "QuaternionArrayLike", "QuaternionBatch", "QuaternionLi
 @define(init=False)
 class Quaternion(QuaternionExt):
     """
-    A Quaternion represented by 4 real numbers.
+    **Datatype**: A Quaternion represented by 4 real numbers.
 
     Note: although the x,y,z,w components of the quaternion will be passed through to the
     datastore as provided, when used in the viewer Quaternions will always be normalized.

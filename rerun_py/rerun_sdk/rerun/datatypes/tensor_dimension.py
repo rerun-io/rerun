@@ -26,7 +26,7 @@ __all__ = [
 
 @define(init=False)
 class TensorDimension:
-    """A single dimension within a multi-dimensional tensor."""
+    """**Datatype**: A single dimension within a multi-dimensional tensor."""
 
     def __init__(self: Any, size: int, name: str | None = None):
         """Create a new instance of the TensorDimension datatype."""

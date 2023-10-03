@@ -18,7 +18,7 @@ __all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like", "Utf8Type"]
 
 @define(init=False)
 class Utf8(Utf8Ext):
-    """A string of text, encoded as UTF-8."""
+    """**Datatype**: A string of text, encoded as UTF-8."""
 
     def __init__(self: Any, value: Utf8Like):
         """Create a new instance of the Utf8 datatype."""

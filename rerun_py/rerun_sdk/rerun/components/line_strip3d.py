@@ -22,7 +22,7 @@ __all__ = ["LineStrip3D", "LineStrip3DArrayLike", "LineStrip3DBatch", "LineStrip
 @define(init=False)
 class LineStrip3D(LineStrip3DExt):
     r"""
-    A line strip in 3D space.
+    **Component**: A line strip in 3D space.
 
     A line strip is a list of points connected by line segments. It can be used to draw
     approximations of smooth curves.

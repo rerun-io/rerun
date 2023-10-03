@@ -12,7 +12,7 @@ __all__ = ["MeshProperties", "MeshPropertiesBatch", "MeshPropertiesType"]
 
 
 class MeshProperties(datatypes.MeshProperties):
-    """Optional triangle indices for a mesh."""
+    """**Component**: Optional triangle indices for a mesh."""
 
     # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
 

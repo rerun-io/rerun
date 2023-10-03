@@ -17,7 +17,7 @@ __all__ = ["Tensor"]
 @define(str=False, repr=False, init=False)
 class Tensor(TensorExt, Archetype):
     """
-    A generic n-dimensional Tensor.
+    **Archetype**: A generic n-dimensional Tensor.
 
     Examples
     --------

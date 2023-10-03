@@ -12,7 +12,7 @@ __all__ = ["Transform3D", "Transform3DBatch", "Transform3DType"]
 
 
 class Transform3D(datatypes.Transform3D):
-    """An affine transform between two 3D spaces, represented in a given direction."""
+    """**Component**: An affine transform between two 3D spaces, represented in a given direction."""
 
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 

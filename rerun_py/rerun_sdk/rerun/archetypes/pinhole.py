@@ -17,7 +17,7 @@ __all__ = ["Pinhole"]
 @define(str=False, repr=False, init=False)
 class Pinhole(PinholeExt, Archetype):
     """
-    Camera perspective projection (a.k.a. intrinsics).
+    **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 
     Example
     -------

@@ -22,7 +22,7 @@ __all__ = ["LineStrip2D", "LineStrip2DArrayLike", "LineStrip2DBatch", "LineStrip
 @define(init=False)
 class LineStrip2D(LineStrip2DExt):
     r"""
-    A line strip in 2D space.
+    **Component**: A line strip in 2D space.
 
     A line strip is a list of points connected by line segments. It can be used to draw
     approximations of smooth curves.

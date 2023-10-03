@@ -20,7 +20,7 @@ __all__ = ["Image"]
 @define(str=False, repr=False, init=False)
 class Image(ImageExt, Archetype):
     """
-    A monochrome or color image.
+    **Archetype**: A monochrome or color image.
 
     The shape of the `TensorData` must be mappable to:
     - A `HxW` tensor, treated as a grayscale image.

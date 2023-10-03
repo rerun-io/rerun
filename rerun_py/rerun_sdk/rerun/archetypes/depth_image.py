@@ -20,7 +20,7 @@ __all__ = ["DepthImage"]
 @define(str=False, repr=False, init=False)
 class DepthImage(DepthImageExt, Archetype):
     """
-    A depth image.
+    **Archetype**: A depth image.
 
     The shape of the `TensorData` must be mappable to an `HxW` tensor.
     Each pixel corresponds to a depth value in units specified by `meter`.

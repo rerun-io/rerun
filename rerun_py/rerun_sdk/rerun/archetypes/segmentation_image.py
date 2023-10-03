@@ -20,7 +20,7 @@ __all__ = ["SegmentationImage"]
 @define(str=False, repr=False, init=False)
 class SegmentationImage(SegmentationImageExt, Archetype):
     """
-    An image made up of integer class-ids.
+    **Archetype**: An image made up of integer class-ids.
 
     The shape of the `TensorData` must be mappable to an `HxW` tensor.
     Each pixel corresponds to a depth value in units specified by meter.

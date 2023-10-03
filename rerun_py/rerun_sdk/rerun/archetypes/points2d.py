@@ -17,7 +17,7 @@ __all__ = ["Points2D"]
 @define(str=False, repr=False, init=False)
 class Points2D(Points2DExt, Archetype):
     """
-    A 2D point cloud with positions and optional colors, radii, labels, etc.
+    **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
 
     Examples
     --------

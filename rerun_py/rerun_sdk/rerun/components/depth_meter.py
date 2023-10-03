@@ -20,7 +20,7 @@ __all__ = ["DepthMeter", "DepthMeterArrayLike", "DepthMeterBatch", "DepthMeterLi
 
 @define(init=False)
 class DepthMeter(DepthMeterExt):
-    """A component indicating how long a meter is, expressed in native units."""
+    """**Component**: A component indicating how long a meter is, expressed in native units."""
 
     def __init__(self: Any, value: DepthMeterLike):
         """Create a new instance of the DepthMeter component."""

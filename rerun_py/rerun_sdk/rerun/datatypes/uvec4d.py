@@ -22,7 +22,7 @@ __all__ = ["UVec4D", "UVec4DArrayLike", "UVec4DBatch", "UVec4DLike", "UVec4DType
 
 @define(init=False)
 class UVec4D:
-    """A uint vector in 4D space."""
+    """**Datatype**: A uint vector in 4D space."""
 
     def __init__(self: Any, xyzw: UVec4DLike):
         """Create a new instance of the UVec4D datatype."""

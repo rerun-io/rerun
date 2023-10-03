@@ -17,7 +17,7 @@ __all__ = ["Mesh3D"]
 @define(str=False, repr=False, init=False)
 class Mesh3D(Mesh3DExt, Archetype):
     """
-    A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+    **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
     Examples
     --------

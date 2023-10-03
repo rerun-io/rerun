@@ -20,7 +20,7 @@ __all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike", "ClassI
 
 @define(init=False)
 class ClassId(ClassIdExt):
-    """A 16-bit ID representing a type of semantic class."""
+    """**Datatype**: A 16-bit ID representing a type of semantic class."""
 
     def __init__(self: Any, id: ClassIdLike):
         """Create a new instance of the ClassId datatype."""

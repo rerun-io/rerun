@@ -23,7 +23,7 @@ __all__ = ["Vec2D", "Vec2DArrayLike", "Vec2DBatch", "Vec2DLike", "Vec2DType"]
 
 @define(init=False)
 class Vec2D(Vec2DExt):
-    """A vector in 2D space."""
+    """**Datatype**: A vector in 2D space."""
 
     def __init__(self: Any, xy: Vec2DLike):
         """Create a new instance of the Vec2D datatype."""

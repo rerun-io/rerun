@@ -24,7 +24,7 @@ __all__ = ["Mat3x3", "Mat3x3ArrayLike", "Mat3x3Batch", "Mat3x3Like", "Mat3x3Type
 @define(init=False)
 class Mat3x3(Mat3x3Ext):
     """
-    A 3x3 Matrix.
+    **Datatype**: A 3x3 Matrix.
 
     Matrices in Rerun are stored as flat list of coefficients in column-major order:
     ```text

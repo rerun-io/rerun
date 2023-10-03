@@ -20,7 +20,7 @@ __all__ = ["InstanceKey", "InstanceKeyArrayLike", "InstanceKeyBatch", "InstanceK
 
 @define(init=False)
 class InstanceKey(InstanceKeyExt):
-    """A unique numeric identifier for each individual instance within a batch."""
+    """**Component**: A unique numeric identifier for each individual instance within a batch."""
 
     def __init__(self: Any, value: InstanceKeyLike):
         """Create a new instance of the InstanceKey component."""

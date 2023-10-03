@@ -23,7 +23,7 @@ __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 
 @define(init=False)
 class Blob(BlobExt):
-    """A binary blob of data."""
+    """**Component**: A binary blob of data."""
 
     def __init__(self: Any, data: BlobLike):
         """Create a new instance of the Blob component."""

@@ -20,7 +20,7 @@ __all__ = ["ViewCoordinates"]
 @define(str=False, repr=False, init=False)
 class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """
-    How we interpret the coordinate system of an entity/space.
+    **Archetype**: How we interpret the coordinate system of an entity/space.
 
     For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 

@@ -21,7 +21,7 @@ __all__ = ["DrawOrder", "DrawOrderArrayLike", "DrawOrderBatch", "DrawOrderLike",
 @define(init=False)
 class DrawOrder(DrawOrderExt):
     """
-    Draw order used for the display order of 2D elements.
+    **Component**: Draw order used for the display order of 2D elements.
 
     Higher values are drawn on top of lower values.
     An entity can have only a single draw order component.

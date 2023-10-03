@@ -17,7 +17,7 @@ __all__ = ["Boxes2D"]
 @define(str=False, repr=False, init=False)
 class Boxes2D(Boxes2DExt, Archetype):
     """
-    A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+    **Archetype**: A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
 
     Example
     -------

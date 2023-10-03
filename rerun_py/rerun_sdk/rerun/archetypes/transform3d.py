@@ -17,7 +17,7 @@ __all__ = ["Transform3D"]
 @define(str=False, repr=False, init=False)
 class Transform3D(Transform3DExt, Archetype):
     """
-    A 3D transform.
+    **Archetype**: A 3D transform.
 
     Example
     -------

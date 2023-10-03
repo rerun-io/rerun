@@ -21,7 +21,7 @@ __all__ = ["TensorBuffer", "TensorBufferArrayLike", "TensorBufferBatch", "Tensor
 @define
 class TensorBuffer(TensorBufferExt):
     """
-    The underlying storage for a `Tensor`.
+    **Datatype**: The underlying storage for a `Tensor`.
 
     Tensor elements are stored in a contiguous buffer of a single type.
     """

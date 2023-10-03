@@ -47,7 +47,7 @@ def _translation_rotation_scale3d__scale__special_field_converter_override(
 
 @define(init=False)
 class TranslationRotationScale3D(TranslationRotationScale3DExt):
-    """Representation of an affine transform via separate translation, rotation & scale."""
+    """**Datatype**: Representation of an affine transform via separate translation, rotation & scale."""
 
     # __init__ can be found in translation_rotation_scale3d_ext.py
 

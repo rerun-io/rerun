@@ -29,7 +29,7 @@ __all__ = [
 
 @define(init=False)
 class MeshProperties(MeshPropertiesExt):
-    """Optional triangle indices for a mesh."""
+    """**Datatype**: Optional triangle indices for a mesh."""
 
     def __init__(self: Any, indices: npt.ArrayLike | None = None):
         """

@@ -48,7 +48,7 @@ def _translation_and_mat3x3__mat3x3__special_field_converter_override(
 @define(init=False)
 class TranslationAndMat3x3(TranslationAndMat3x3Ext):
     """
-    Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+    **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 
     First applies the matrix, then the translation.
     """

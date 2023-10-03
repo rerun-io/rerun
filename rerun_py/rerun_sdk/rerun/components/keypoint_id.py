@@ -13,7 +13,7 @@ __all__ = ["KeypointId", "KeypointIdBatch", "KeypointIdType"]
 
 class KeypointId(datatypes.KeypointId):
     """
-    A 16-bit ID representing a type of semantic keypoint within a class.
+    **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 
     `KeypointId`s are only meaningful within the context of a [`rerun.components.ClassDescription`][].
 
