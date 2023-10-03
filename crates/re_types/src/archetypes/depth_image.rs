@@ -41,7 +41,7 @@
 ///         "world/camera",
 ///         &rerun::Pinhole::from_focal_length_and_resolution(
 ///             [20.0, 20.0],
-///             [depth_image.shape()[1] as f32, depth_image.shape()[0] as f32],
+///             [image.shape()[1] as f32, image.shape()[0] as f32],
 ///         ),
 ///     )?;
 ///

@@ -12,9 +12,13 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 
 **Optional**: [`OutOfTreeTransform3D`](../components/out_of_tree_transform3d.md)
 
-## Example
+## Examples
 
 ### Simple 3D asset
 
 code-example: asset3d_simple
+
+### asset3d_out_of_tree
+
+code-example: asset3d_out_of_tree
 

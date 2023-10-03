@@ -12,9 +12,13 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 **Optional**: [`Color`](../components/color.md), [`Material`](../components/material.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
-## Example
+## Examples
 
 ### Simple indexed 3D mesh
 
 code-example: mesh3d_indexed
+
+### mesh3d_partial_updates
+
+code-example: mesh3d_partial_updates
 
