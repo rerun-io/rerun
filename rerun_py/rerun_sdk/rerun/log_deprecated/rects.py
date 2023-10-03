@@ -100,6 +100,9 @@ def log_rect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    if rect is None:
+        rect = []
+
     log_rects(
         entity_path,
         rects=rect,
