@@ -73,13 +73,17 @@ impl CodeGenerator for RustCodeGenerator {
 
         for kind in ObjectKind::ALL {
             let folder_path = self.crate_path.join("src").join(kind.plural_snake_case());
-            crate::codegen::common::remove_old_files_from_folder(folder_path, &filepaths);
+            crate::codegen::common::remove_old_files_from_folder(reporter, folder_path, &filepaths);
 
             let test_folder_path = self
                 .crate_path
                 .join("src/testing")
                 .join(kind.plural_snake_case());
-            crate::codegen::common::remove_old_files_from_folder(test_folder_path, &filepaths);
+            crate::codegen::common::remove_old_files_from_folder(
+                reporter,
+                test_folder_path,
+                &filepaths,
+            );
         }
 
         filepaths

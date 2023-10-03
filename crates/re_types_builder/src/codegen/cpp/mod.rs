@@ -104,13 +104,13 @@ pub struct CppCodeGenerator {
 impl crate::CodeGenerator for CppCodeGenerator {
     fn generate(
         &mut self,
-        _reporter: &Reporter,
+        reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         ObjectKind::ALL
             .par_iter()
-            .map(|object_kind| self.generate_folder(objects, *object_kind))
+            .map(|object_kind| self.generate_folder(reporter, objects, *object_kind))
             .flatten()
             .collect()
     }
@@ -123,7 +123,12 @@ impl CppCodeGenerator {
         }
     }
 
-    fn generate_folder(&self, objects: &Objects, object_kind: ObjectKind) -> BTreeSet<Utf8PathBuf> {
+    fn generate_folder(
+        &self,
+        reporter: &Reporter,
+        objects: &Objects,
+        object_kind: ObjectKind,
+    ) -> BTreeSet<Utf8PathBuf> {
         let folder_name = object_kind.plural_snake_case();
         let folder_path_sdk = self.output_path.join("src/rerun").join(folder_name);
         let folder_path_testing = self.output_path.join("tests/generated").join(folder_name);
@@ -195,7 +200,7 @@ impl CppCodeGenerator {
             filepaths.insert(filepath);
         }
 
-        super::common::remove_old_files_from_folder(folder_path_sdk, &filepaths);
+        super::common::remove_old_files_from_folder(reporter, folder_path_sdk, &filepaths);
 
         filepaths
     }

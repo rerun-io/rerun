@@ -128,7 +128,7 @@ impl CodeGenerator for PythonCodeGenerator {
 
         for kind in ObjectKind::ALL {
             let folder_path = self.pkg_path.join(kind.plural_snake_case());
-            super::common::remove_old_files_from_folder(folder_path, &filepaths);
+            super::common::remove_old_files_from_folder(reporter, folder_path, &filepaths);
         }
 
         filepaths
