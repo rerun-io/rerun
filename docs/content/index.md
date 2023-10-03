@@ -1,5 +1,5 @@
 ---
-title: Documentation
+title: Welcome
 order: 0
 ---
 Welcome to the Rerun documentation page.
