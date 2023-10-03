@@ -46,7 +46,7 @@ The images stem from pinhole cameras located in the 3D world. To visualize the i
 to be logged and the camera pose (this is often referred to as the intrinsics and extrinsics of the camera,
 respectively).
 
-An object of the [rr.Pinhole archetype](https://www.rerun.io/docs/reference/data_types/archetypes/pinhole) is logged to
+The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/data_types/archetypes/pinhole) is logged to
 the [camera/image entity](recording://camera/image) and defines the intrinsics of the camera. This defines how to go
 from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
 [rr.Transform3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/transform3d) to the
