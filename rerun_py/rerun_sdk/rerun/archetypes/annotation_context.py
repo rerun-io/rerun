@@ -36,7 +36,7 @@ class AnnotationContext(Archetype):
     rr.init("rerun_example_annotation_context_rects", spawn=True)
 
     # Log an annotation context to assign a label and color to each class
-    rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
+    rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]), timeless=True)
 
     # Log a batch of 2 rectangles with different `class_ids`
     rr.log("detections", rr.Boxes2D(mins=[[-2, -2], [0, 0]], sizes=[[3, 3], [2, 2]], class_ids=[1, 2]))
@@ -65,9 +65,9 @@ class AnnotationContext(Archetype):
     image[4:8, 6:12] = 2
 
     # Log an annotation context to assign a label and color to each class
-    rr.log("segmentation", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]))
+    rr.log("segmentation", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]), timeless=True)
 
-    rr.log_segmentation_image("segmentation/image", np.array(image))
+    rr.log("segmentation/image", rr.SegmentationImage(image))
     ```
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/480w.png">
@@ -100,6 +100,7 @@ class AnnotationContext(Archetype):
                 )
             ]
         ),
+        timeless=True,
     )
 
     rr.log(
