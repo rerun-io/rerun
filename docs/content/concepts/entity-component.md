@@ -13,7 +13,7 @@ data associated with those entities.
    [*entity path*](entity-path.md) string which is passed as first argument.
  * *Components*, however, are what contains the data that is associated with those "things". For example, position, color,
    pixel data, etc.
- 
+
 Additionally, the Rerun SDKs expose two additional concepts:
  * *Archetypes* are coherent set of components corresponding to primitive such as 2D points or 3d boxes. In the Rerun SDKs, archetypes take the form of builder objects that assist with the creation of such component sets. They are meant as high-level, convenience helpers that can be bypassed entirely if/when required by advanced use-cases.
  * *Datatypes* are regular data structures that components occasionally rely on when fundamental data types (`float`, `uint32`, etc.) are not sufficient.
