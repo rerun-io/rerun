@@ -19,6 +19,8 @@ class Asset3D(Asset3DExt, Archetype):
     """
     **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 
+    See also [`Mesh3D`][rerun.archetypes.Mesh3D].
+
     Examples
     --------
     ### Simple 3D asset:

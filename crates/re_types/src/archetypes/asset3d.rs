@@ -16,6 +16,8 @@
 
 /// **Archetype**:  A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 ///
+/// See also [`Mesh3D`][crate::archetypes::Mesh3D].
+///
 /// ## Examples
 ///
 /// ### Simple 3D asset
