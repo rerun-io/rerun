@@ -28,13 +28,13 @@ but can be used more generally for any kind of reoccurring categorization within
 Rerun allows you to define keypoints *within* a class.
 Each keypoint can define its own properties (colors, labels, etc.) that overwrite its parent class.
 
-A typical example usage of keypoints is annotating the joints of a skeleton within a pose detection:
+A typical example usage of keypoints is annotating the joints of a skeleton within a pose detection.
 In that case, the entire detected pose/skeleton is assigned a Class ID and each joint within gets a Keypoint ID.
 
 To help you more with this (and similar) use-case(s), you can also define connections between keypoints
-as part of your annotation class description:
+as part of your annotation class description.
 The viewer will draw the connecting lines for all connected keypoints whenever that class is used.
-Just as with labels & colors this allows you to use the same connection information on any instance that class in your scene.
+Just as with labels and colors this allows you to use the same connection information on any instance that class in your scene.
 
 Keypoints are currently only applicable to 2D and 3D points.
 
@@ -49,11 +49,11 @@ Keypoints are currently only applicable to 2D and 3D points.
 Annotation Context is typically logged as [timeless](timelines.md#timeless-data) data, but can change over time if needed.
 
 The Annotation Context is defined as a list of Class Descriptions that define how classes are styled
-(as well as optional keypoint style & connection).
+(as well as optional keypoint style and connection).
 
 Annotation contexts are logged with:
 
-* Python: [`log_annotation_context`](https://ref.rerun.io/docs/python/latest/common/annotations/#rerun.log_annotation_context)
+* Python: [`rr.AnnotationContext`](https://ref.rerun.io/docs/python/HEAD/common/annotations/#rerun.AnnotationContext)
 * Rust: [`AnnotationContext`](https://docs.rs/rerun/latest/rerun/components/struct.AnnotationContext.html)
 
 code-example: annotation-context
@@ -71,7 +71,7 @@ Segmentation images are single channel integer images/tensors where each pixel r
 By default, Rerun will automatically assign colors to each class id, but by defining an Annotation Context,
 you can explicitly determine the color of each class.
 
-* Python: [`log_segmentation_image`](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_segmentation_image)
+* Python: [`rr.SegmentationImage`](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.SegmentationImag)
 * Rust: Log a [`Tensor`](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html) with [`TensorDataMeaning::ClassId`](https://docs.rs/rerun/latest/rerun/components/enum.TensorDataMeaning.html#variant.ClassId)
 
 <picture>
@@ -79,5 +79,3 @@ you can explicitly determine the color of each class.
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/768w.png">
   <img src="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/full.png" alt="screenshot of a segmentation image">
 </picture>
-
-
