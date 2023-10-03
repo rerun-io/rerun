@@ -28,7 +28,6 @@ DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dico
 
 DESCRIPTION = """
 # Dicom MRI
-
 This example visualizes an MRI scan using Rerun.
 
 ## How it was made
@@ -49,7 +48,6 @@ In the Rerun viewer you can inspect the data in detail. The `dim_names` provided
 give semantic meaning to each axis. After selecting the tensor view, you can adjust various settings in the Blueprint
 settings on the right-hand side. For example, you can adjust the color map, the brightness, which dimensions to show as
 an image and which to select from, and more.
-
 """
 
 

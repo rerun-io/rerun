@@ -24,7 +24,6 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 
 DESCRIPTION = """
 # Human Pose Tracking
-
 This example uses Rerun to visualize the output of [MediaPipe](https://developers.google.com/mediapipe)-based tracking
 of a human pose in 2D and 3D.
 
@@ -33,12 +32,10 @@ The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking/main.py).
 
 ### Input Video
-
 The input video is logged as a sequence of
 [rr.Image objects](https://www.rerun.io/docs/reference/data_types/archetypes/image) to the [video entity](recording://video).
 
 ### Segmentation
-
 The [segmentation result](recording://video/mask) is logged through a combination of two archetypes. The segmentation
 image itself is logged as an
 [rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/data_types/archetypes/segmentation_image) and
@@ -47,7 +44,6 @@ contains the id for each pixel. The color is determined by the
 logged with `rr.log(..., timeless=True` as it should apply to the whole sequence.
 
 ### Skeletons
-
 The [2D](recording://video/pose/points) and [3D skeletons](recording://person/pose/points) are also logged through a
 similar combination of two entities.
 

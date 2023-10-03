@@ -16,7 +16,6 @@ from rerun_demo.util import bounce_lerp, interleave
 
 DESCRIPTION = """
 # DNA
-
 This is a minimal example that logs synthetic 3D data in the shape of a double helix. The underlying data is generated
 using numpy and visualized using Rerun.
 

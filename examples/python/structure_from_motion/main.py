@@ -25,7 +25,6 @@ FILTER_MIN_VISIBLE: Final = 500
 
 DESCRIPTION = """
 # Sparse Reconstruction by COLMAP
-
 This example was generated from the output of a sparse reconstruction done with COLMAP.
 
 [COLMAP](https://colmap.github.io/index.html) is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo

@@ -88,8 +88,6 @@ Through the [rr.TextLog archetype] text at different importance level can be log
 [rr.TextLog page](https://www.rerun.io/docs/reference/data_types/archetypes/text_log#textlogintegration), statements
 such as `logging.info("...")`, `logging.debug("...")`, etc. will show up in the Rerun viewer. In the viewer you can
 adjust the filter level and look at the messages time-synchronized with respect to other logged data.
-
-
 """.strip()
 
 

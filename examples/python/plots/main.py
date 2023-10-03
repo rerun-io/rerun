@@ -19,7 +19,6 @@ import rerun as rr  # pip install rerun-sdk
 
 DESCRIPTION = """
 # Plots
-
 This example shows various plot types that you can create using Rerun. Common usecases for such plots would be logging
 losses or metrics over time, histograms, or general function plots.
 
