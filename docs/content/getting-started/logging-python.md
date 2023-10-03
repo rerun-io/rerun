@@ -124,11 +124,11 @@ of components that are recognized and correctly displayed by the Rerun viewer.
 
 `Components`
 
-Under the hood, the Rerun [Python SDK](https://ref.rerun.io/docs/python) logs individual *components* like positions, colors, 
+Under the hood, the Rerun [Python SDK](https://ref.rerun.io/docs/python) logs individual *components* like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
- 
+
 For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
 
 Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/latest/package/rerun_demo/data/#rerun_demo.data.build_color_spiral) in this example are vanilla `numpy` arrays.
