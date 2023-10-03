@@ -13,6 +13,7 @@ namespace rerun.archetypes;
 /// cannot be timeless!
 ///
 /// \example scalar_simple
+/// \example scalar_multiple_plots !api
 table TimeSeriesScalar (
   "attr.rust.derive": "PartialEq"
 ) {
