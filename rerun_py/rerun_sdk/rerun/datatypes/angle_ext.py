@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class AngleExt:
-    """Extension methods for [Angle][rerun.datatypes.Angle]."""
+    """Extension for [Angle][rerun.datatypes.Angle]."""
 
     def __init__(self: Any, rad: float | None = None, deg: float | None = None) -> None:
         """

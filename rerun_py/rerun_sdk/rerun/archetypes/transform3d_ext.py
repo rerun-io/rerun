@@ -14,7 +14,7 @@ from ..error_utils import catch_and_log_exceptions
 
 
 class Transform3DExt:
-    """Extension methods for [Transform3D][rerun.archetypes.Transform3D]."""
+    """Extension for [Transform3D][rerun.archetypes.Transform3D]."""
 
     def __init__(
         self: Any,

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class RadiusExt:
-    """Extension methods for [Radius][rerun.components.Radius]."""
+    """Extension for [Radius][rerun.components.Radius]."""
 
     @staticmethod
     def native_to_pa_array_override(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -7,7 +7,7 @@ from ..error_utils import catch_and_log_exceptions
 
 
 class Points2DExt:
-    """Extension methods for [Points2D][rerun.archetypes.Points2D]."""
+    """Extension for [Points2D][rerun.archetypes.Points2D]."""
 
     def __init__(
         self: Any,

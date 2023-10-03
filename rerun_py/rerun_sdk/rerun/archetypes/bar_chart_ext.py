@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class BarChartExt:
-    """Extension methods for [BarChart][rerun.archetypes.BarChart]."""
+    """Extension for [BarChart][rerun.archetypes.BarChart]."""
 
     @staticmethod
     @catch_and_log_exceptions("BarChart converter")

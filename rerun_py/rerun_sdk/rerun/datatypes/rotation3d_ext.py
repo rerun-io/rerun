@@ -12,7 +12,7 @@ from .._unions import union_discriminant_type
 
 
 class Rotation3DExt:
-    """Extension methods for [Rotation3D][rerun.datatypes.Rotation3D]."""
+    """Extension for [Rotation3D][rerun.datatypes.Rotation3D]."""
 
     @staticmethod
     def identity() -> Rotation3D:

@@ -7,7 +7,7 @@ from ..error_utils import catch_and_log_exceptions
 
 
 class Arrows3DExt:
-    """Extension methods for [Arrows3D][rerun.archetypes.Arrows3D]."""
+    """Extension for [Arrows3D][rerun.archetypes.Arrows3D]."""
 
     def __init__(
         self: Any,

@@ -15,7 +15,7 @@ NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
 
 class Vec2DExt:
-    """Extension methods for [Vec2D][rerun.datatypes.Vec2D]."""
+    """Extension for [Vec2D][rerun.datatypes.Vec2D]."""
 
     @staticmethod
     def native_to_pa_array_override(data: Vec2DArrayLike, data_type: pa.DataType) -> pa.Array:

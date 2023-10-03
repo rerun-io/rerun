@@ -7,7 +7,7 @@ import numpy.typing as npt
 
 
 class TensorBufferExt:
-    """Extension methods for [TensorBuffer][rerun.datatypes.TensorBuffer]."""
+    """Extension for [TensorBuffer][rerun.datatypes.TensorBuffer]."""
 
     @staticmethod
     def inner__field_converter_override(inner: npt.ArrayLike) -> npt.NDArray[Any]:

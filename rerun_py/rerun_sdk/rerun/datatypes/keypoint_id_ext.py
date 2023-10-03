@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class KeypointIdExt:
-    """Extension methods for [KeypointId][rerun.datatypes.KeypointId]."""
+    """Extension for [KeypointId][rerun.datatypes.KeypointId]."""
 
     @staticmethod
     def native_to_pa_array_override(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:

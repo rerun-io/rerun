@@ -27,7 +27,7 @@ def _class_description_map_elem_converter(
 
 
 class ClassDescriptionMapElemExt:
-    """Extension methods for [ClassDescriptionMapElem][rerun.datatypes.ClassDescriptionMapElem]."""
+    """Extension for [ClassDescriptionMapElem][rerun.datatypes.ClassDescriptionMapElem]."""
 
     @staticmethod
     def native_to_pa_array_override(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:

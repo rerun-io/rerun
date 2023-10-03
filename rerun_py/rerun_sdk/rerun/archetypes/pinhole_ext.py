@@ -11,7 +11,7 @@ from ..error_utils import _send_warning, catch_and_log_exceptions
 
 
 class PinholeExt:
-    """Extension methods for [Pinhole][rerun.archetypes.Pinhole]."""
+    """Extension for [Pinhole][rerun.archetypes.Pinhole]."""
 
     def __init__(
         self: Any,

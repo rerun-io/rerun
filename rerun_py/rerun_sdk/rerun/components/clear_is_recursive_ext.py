@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class ClearIsRecursiveExt:
-    """Extension methods for [ClearIsRecursive][rerun.components.ClearIsRecursive]."""
+    """Extension for [ClearIsRecursive][rerun.components.ClearIsRecursive]."""
 
     @staticmethod
     def native_to_pa_array_override(data: ClearIsRecursiveArrayLike, data_type: pa.DataType) -> pa.Array:

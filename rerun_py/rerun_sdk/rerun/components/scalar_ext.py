@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class ScalarExt:
-    """Extension methods for [Scalar][rerun.components.Scalar]."""
+    """Extension for [Scalar][rerun.components.Scalar]."""
 
     @staticmethod
     def native_to_pa_array_override(data: ScalarArrayLike, data_type: pa.DataType) -> pa.Array:

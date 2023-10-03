@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class Scale3DExt:
-    """Extension methods for [Scale3D][rerun.datatypes.Scale3D]."""
+    """Extension for [Scale3D][rerun.datatypes.Scale3D]."""
 
     @staticmethod
     def inner__field_converter_override(data: Scale3DLike) -> Vec3D | float:

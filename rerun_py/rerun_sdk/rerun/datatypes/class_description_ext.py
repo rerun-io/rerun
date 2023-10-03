@@ -32,7 +32,7 @@ def _class_description_converter(
 
 
 class ClassDescriptionExt:
-    """Extension methods for [ClassDescription][rerun.datatypes.ClassDescription]."""
+    """Extension for [ClassDescription][rerun.datatypes.ClassDescription]."""
 
     def __init__(
         self: Any,

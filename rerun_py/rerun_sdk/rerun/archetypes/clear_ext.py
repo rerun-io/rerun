@@ -4,7 +4,7 @@ from typing import Any
 
 
 class ClearExt:
-    """Extension methods for [Clear][rerun.archetypes.Clear]."""
+    """Extension for [Clear][rerun.archetypes.Clear]."""
 
     def __init__(
         self: Any,

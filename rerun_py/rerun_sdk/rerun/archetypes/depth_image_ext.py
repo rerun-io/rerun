@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class DepthImageExt:
-    """Extension methods for [DepthImage][rerun.archetypes.DepthImage]."""
+    """Extension for [DepthImage][rerun.archetypes.DepthImage]."""
 
     @staticmethod
     @catch_and_log_exceptions("DepthImage converter")

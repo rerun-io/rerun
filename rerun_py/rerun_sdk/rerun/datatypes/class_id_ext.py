@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class ClassIdExt:
-    """Extension methods for [ClassId][rerun.datatypes.ClassId]."""
+    """Extension for [ClassId][rerun.datatypes.ClassId]."""
 
     @staticmethod
     def native_to_pa_array_override(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class RotationAxisAngleExt:
-    """Extension methods for [RotationAxisAngle][rerun.datatypes.RotationAxisAngle]."""
+    """Extension for [RotationAxisAngle][rerun.datatypes.RotationAxisAngle]."""
 
     def __init__(
         self: Any,

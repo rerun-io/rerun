@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class Utf8Ext:
-    """Extension methods for [Utf8][rerun.datatypes.Utf8]."""
+    """Extension for [Utf8][rerun.datatypes.Utf8]."""
 
     @staticmethod
     def native_to_pa_array_override(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:

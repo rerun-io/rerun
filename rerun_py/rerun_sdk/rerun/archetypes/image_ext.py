@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class ImageExt:
-    """Extension methods for [Image][rerun.archetypes.Image]."""
+    """Extension for [Image][rerun.archetypes.Image]."""
 
     @staticmethod
     @catch_and_log_exceptions("Image converter")

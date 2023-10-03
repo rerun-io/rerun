@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class AnnotationInfoExt:
-    """Extension methods for [AnnotationInfo][rerun.datatypes.AnnotationInfo]."""
+    """Extension for [AnnotationInfo][rerun.datatypes.AnnotationInfo]."""
 
     @staticmethod
     def native_to_pa_array_override(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class InstanceKeyExt:
-    """Extension methods for [InstanceKey][rerun.components.InstanceKey]."""
+    """Extension for [InstanceKey][rerun.components.InstanceKey]."""
 
     @staticmethod
     def native_to_pa_array_override(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
