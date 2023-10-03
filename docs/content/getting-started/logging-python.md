@@ -124,7 +124,7 @@ of components that are recognized and correctly displayed by the Rerun viewer.
 
 `Components`
 
-Under the hood, the Rerun [Python SDK](https://ref.rerun.io/docs/python) logs individual components like positions, colors, 
+Under the hood, the Rerun [Python SDK](https://ref.rerun.io/docs/python) logs individual *components* like positions, colors, 
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
@@ -138,7 +138,7 @@ Rerun takes care of mapping those arrays to actual Rerun components depending on
 
 Note the two strings we're passing in: `"dna/structure/left"` & `"dna/structure/right"`.
 
-These are [*entity paths*](../concepts/entity-component.md), which uniquely identify each *entity* in our scene. Every Entity is made up of a path and one or more Components.
+These are [*entity paths*](../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
 [Entity paths typically form a hierarchy](../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
 `Batches`
