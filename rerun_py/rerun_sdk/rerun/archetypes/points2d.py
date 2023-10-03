@@ -30,8 +30,6 @@ class Points2D(Points2DExt, Archetype):
 
     # Log an extra rect to set the view bounds
     rr.log("bounds", rr.Boxes2D(half_sizes=[2, 1.5]))
-
-    rr.Clear.flat
     ```
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/480w.png">
