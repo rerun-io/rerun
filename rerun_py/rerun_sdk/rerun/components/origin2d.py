@@ -26,7 +26,3 @@ class Origin2DType(datatypes.Vec2DType):
 
 class Origin2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Origin2DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Origin2DType())

@@ -95,9 +95,4 @@ class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike], ComponentBatchMi
         return ViewCoordinatesExt.native_to_pa_array_override(data, data_type)
 
 
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ViewCoordinatesType())
-
-
-if hasattr(ViewCoordinatesExt, "deferred_patch_class"):
-    ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)
+ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

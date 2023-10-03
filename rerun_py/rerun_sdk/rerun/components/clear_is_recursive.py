@@ -68,11 +68,3 @@ class ClearIsRecursiveBatch(BaseBatch[ClearIsRecursiveArrayLike], ComponentBatch
     @staticmethod
     def _native_to_pa_array(data: ClearIsRecursiveArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClearIsRecursiveExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ClearIsRecursiveType())
-
-
-if hasattr(ClearIsRecursiveExt, "deferred_patch_class"):
-    ClearIsRecursiveExt.deferred_patch_class(ClearIsRecursive)

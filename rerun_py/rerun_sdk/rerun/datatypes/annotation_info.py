@@ -125,11 +125,3 @@ class AnnotationInfoBatch(BaseBatch[AnnotationInfoArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
         return AnnotationInfoExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AnnotationInfoType())
-
-
-if hasattr(AnnotationInfoExt, "deferred_patch_class"):
-    AnnotationInfoExt.deferred_patch_class(AnnotationInfo)

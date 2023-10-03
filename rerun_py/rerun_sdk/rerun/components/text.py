@@ -26,7 +26,3 @@ class TextType(datatypes.Utf8Type):
 
 class TextBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = TextType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TextType())

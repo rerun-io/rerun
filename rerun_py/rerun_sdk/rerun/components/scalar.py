@@ -63,11 +63,3 @@ class ScalarBatch(BaseBatch[ScalarArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: ScalarArrayLike, data_type: pa.DataType) -> pa.Array:
         return ScalarExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ScalarType())
-
-
-if hasattr(ScalarExt, "deferred_patch_class"):
-    ScalarExt.deferred_patch_class(Scalar)

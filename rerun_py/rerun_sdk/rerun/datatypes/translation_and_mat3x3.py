@@ -116,11 +116,3 @@ class TranslationAndMat3x3Batch(BaseBatch[TranslationAndMat3x3ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_and_mat3x3_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TranslationAndMat3x3Type())
-
-
-if hasattr(TranslationAndMat3x3Ext, "deferred_patch_class"):
-    TranslationAndMat3x3Ext.deferred_patch_class(TranslationAndMat3x3)

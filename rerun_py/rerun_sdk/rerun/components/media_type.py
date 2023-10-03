@@ -34,9 +34,4 @@ class MediaTypeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = MediaTypeType()
 
 
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MediaTypeType())
-
-
-if hasattr(MediaTypeExt, "deferred_patch_class"):
-    MediaTypeExt.deferred_patch_class(MediaType)
+MediaTypeExt.deferred_patch_class(MediaType)

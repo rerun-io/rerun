@@ -72,11 +72,3 @@ class AngleBatch(BaseBatch[AngleArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
         return AngleExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AngleType())
-
-
-if hasattr(AngleExt, "deferred_patch_class"):
-    AngleExt.deferred_patch_class(Angle)

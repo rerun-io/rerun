@@ -30,7 +30,3 @@ class ResolutionType(datatypes.Vec2DType):
 
 class ResolutionBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = ResolutionType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ResolutionType())

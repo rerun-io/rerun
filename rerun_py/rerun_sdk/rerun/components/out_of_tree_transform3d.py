@@ -30,7 +30,3 @@ class OutOfTreeTransform3DType(datatypes.Transform3DType):
 
 class OutOfTreeTransform3DBatch(datatypes.Transform3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = OutOfTreeTransform3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(OutOfTreeTransform3DType())

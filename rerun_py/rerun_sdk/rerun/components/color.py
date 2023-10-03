@@ -35,7 +35,3 @@ class ColorType(datatypes.Rgba32Type):
 
 class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
     _ARROW_TYPE = ColorType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ColorType())

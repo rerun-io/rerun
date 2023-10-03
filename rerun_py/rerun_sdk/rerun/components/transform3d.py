@@ -26,7 +26,3 @@ class Transform3DType(datatypes.Transform3DType):
 
 class Transform3DBatch(datatypes.Transform3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Transform3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Transform3DType())

@@ -155,7 +155,3 @@ class Points3D(Points3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Points3DExt, "deferred_patch_class"):
-    Points3DExt.deferred_patch_class(Points3D)

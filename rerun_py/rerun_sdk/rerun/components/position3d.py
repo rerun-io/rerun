@@ -26,7 +26,3 @@ class Position3DType(datatypes.Vec3DType):
 
 class Position3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Position3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Position3DType())

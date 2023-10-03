@@ -26,7 +26,3 @@ class Vector3DType(datatypes.Vec3DType):
 
 class Vector3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Vector3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Vector3DType())

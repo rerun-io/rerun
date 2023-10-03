@@ -178,11 +178,3 @@ class TranslationRotationScale3DBatch(BaseBatch[TranslationRotationScale3DArrayL
     @staticmethod
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_rotation_scale3d_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TranslationRotationScale3DType())
-
-
-if hasattr(TranslationRotationScale3DExt, "deferred_patch_class"):
-    TranslationRotationScale3DExt.deferred_patch_class(TranslationRotationScale3D)

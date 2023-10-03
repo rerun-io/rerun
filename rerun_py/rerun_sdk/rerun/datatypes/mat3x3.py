@@ -96,11 +96,3 @@ class Mat3x3Batch(BaseBatch[Mat3x3ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Mat3x3Ext.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Mat3x3Type())
-
-
-if hasattr(Mat3x3Ext, "deferred_patch_class"):
-    Mat3x3Ext.deferred_patch_class(Mat3x3)

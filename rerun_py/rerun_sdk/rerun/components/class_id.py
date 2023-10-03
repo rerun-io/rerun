@@ -26,7 +26,3 @@ class ClassIdType(datatypes.ClassIdType):
 
 class ClassIdBatch(datatypes.ClassIdBatch, ComponentBatchMixin):
     _ARROW_TYPE = ClassIdType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ClassIdType())

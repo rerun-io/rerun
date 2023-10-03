@@ -77,11 +77,3 @@ class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return LineStrip3DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(LineStrip3DType())
-
-
-if hasattr(LineStrip3DExt, "deferred_patch_class"):
-    LineStrip3DExt.deferred_patch_class(LineStrip3D)

@@ -77,7 +77,3 @@ class Transform3D(Transform3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Transform3DExt, "deferred_patch_class"):
-    Transform3DExt.deferred_patch_class(Transform3D)
