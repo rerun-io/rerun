@@ -24,9 +24,9 @@ class ImageExt:
         """
         Converts an `Image` to an `ImageEncoded` using JPEG compression.
 
-        JPEG compression works best for photographs. Only RGB images are
-        supported. Note that compressing to JPEG costs a bit of CPU time, both
-        when logging and later when viewing them.
+        JPEG compression works best for photographs. Only RGB or Mono images are
+        supported, not RGBA. Note that compressing to JPEG costs a bit of CPU time,
+        both when logging and later when viewing them.
 
         Parameters
         ----------
@@ -56,8 +56,12 @@ class ImageExt:
             shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
             non_empty_dims = find_non_empty_dim_indices(shape_dims)
             filtered_shape = shape_dims[non_empty_dims]
-            if filtered_shape[-1] != 3:
-                raise ValueError("Only RGB images are supported for JPEG compression")
+            if len(filtered_shape) == 2:
+                mode = "L"
+            elif len(filtered_shape) == 3 and filtered_shape[-1] == 3:
+                mode = "RGB"
+            else:
+                raise ValueError("Only RGB or Mono images are supported for JPEG compression")
 
             image_array = tensor_data_arrow[0].value["buffer"].value.values.to_numpy().reshape(filtered_shape)
 
@@ -65,7 +69,7 @@ class ImageExt:
                 # Convert to a format supported by Image.fromarray
                 image_array = image_array.astype("float32")
 
-            pil_image = PILImage.fromarray(image_array, mode="RGB")
+            pil_image = PILImage.fromarray(image_array, mode=mode)
             output = BytesIO()
             pil_image.save(output, format="JPEG", quality=jpeg_quality)
             jpeg_bytes = output.getvalue()
