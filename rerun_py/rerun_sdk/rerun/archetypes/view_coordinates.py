@@ -74,6 +74,8 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         metadata={"component": "required"},
         converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]
     )
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
 

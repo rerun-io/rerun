@@ -72,23 +72,17 @@ class AnnotationInfo(AnnotationInfoExt):
         self.__attrs_init__(id=id, label=label, color=color)
 
     id: int = field(converter=int)
-    """
-    `ClassId` or `KeypointId` to which this annotation info belongs.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     label: datatypes.Utf8 | None = field(
         default=None, converter=_annotation_info__label__special_field_converter_override
     )
-    """
-    The label that will be shown in the UI.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     color: datatypes.Rgba32 | None = field(
         default=None, converter=_annotation_info__color__special_field_converter_override
     )
-    """
-    The color that will be applied to the annotated entity.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

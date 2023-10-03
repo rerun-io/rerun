@@ -25,6 +25,7 @@ class AffixFuzzer18:
         self.__attrs_init__(many_optional_unions=many_optional_unions)
 
     many_optional_unions: list[datatypes.AffixFuzzer4] | None = field(default=None)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer18Like = AffixFuzzer18

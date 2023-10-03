@@ -71,9 +71,7 @@ class Transform3D(Transform3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
-    """
-    The transform
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

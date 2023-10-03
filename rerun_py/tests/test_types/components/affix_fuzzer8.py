@@ -28,6 +28,7 @@ class AffixFuzzer8:
         self.__attrs_init__(single_float_optional=single_float_optional)
 
     single_float_optional: float | None = field(default=None, converter=float_or_none)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py

@@ -42,9 +42,7 @@ class ClearIsRecursive(ClearIsRecursiveExt):
         self.__attrs_init__(recursive=recursive)
 
     recursive: bool = field(converter=bool)
-    """
-    If true, also clears all recursive children entities.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

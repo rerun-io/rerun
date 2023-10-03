@@ -40,6 +40,7 @@ class Rgba32(Rgba32Ext):
     rgba: int = field(
         converter=Rgba32Ext.rgba__field_converter_override,  # type: ignore[misc]
     )
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Rgba32Ext in rgba32_ext.py

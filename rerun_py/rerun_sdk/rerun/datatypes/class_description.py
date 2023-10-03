@@ -51,23 +51,17 @@ class ClassDescription(ClassDescriptionExt):
     info: datatypes.AnnotationInfo = field(
         converter=ClassDescriptionExt.info__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The `AnnotationInfo` for the class.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     keypoint_annotations: list[datatypes.AnnotationInfo] = field(
         converter=ClassDescriptionExt.keypoint_annotations__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The `AnnotationInfo` for all of the keypoints.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     keypoint_connections: list[datatypes.KeypointPair] = field(
         converter=ClassDescriptionExt.keypoint_connections__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The connections between keypoints.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

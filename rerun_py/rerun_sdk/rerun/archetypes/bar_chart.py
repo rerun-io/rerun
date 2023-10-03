@@ -68,9 +68,7 @@ class BarChart(BarChartExt, Archetype):
         metadata={"component": "required"},
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The values. Should always be a rank-1 tensor.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

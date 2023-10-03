@@ -92,36 +92,21 @@ class Asset3D(Asset3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.BlobBatch._required,  # type: ignore[misc]
     )
-    """
-    The asset's bytes.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
     )
-    """
-    The Media Type of the asset.
-
-    For instance:
-    * `model/gltf-binary`
-    * `model/obj`
-
-    If omitted, the viewer will try to guess from the data blob.
-    If it cannot guess, it won't be able to render the asset.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     transform: components.OutOfTreeTransform3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.OutOfTreeTransform3DBatch._optional,  # type: ignore[misc]
     )
-    """
-    An out-of-tree transform.
-
-    Applies a transformation to the asset itself without impacting its children.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

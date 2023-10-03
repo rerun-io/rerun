@@ -47,11 +47,7 @@ class MeshProperties(MeshPropertiesExt):
         self.__attrs_init__(indices=indices)
 
     indices: npt.NDArray[np.uint32] | None = field(default=None, converter=to_np_uint32)
-    """
-    A flattened array of vertex indices that describe the mesh's triangles.
-
-    Its length must be divisible by 3.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of MeshPropertiesExt in mesh_properties_ext.py

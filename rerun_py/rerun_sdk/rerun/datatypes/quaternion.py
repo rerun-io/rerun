@@ -33,6 +33,7 @@ class Quaternion(QuaternionExt):
     # __init__ can be found in quaternion_ext.py
 
     xyzw: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of QuaternionExt in quaternion_ext.py

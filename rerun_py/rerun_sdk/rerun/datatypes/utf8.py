@@ -27,6 +27,7 @@ class Utf8(Utf8Ext):
         self.__attrs_init__(value=value)
 
     value: str = field(converter=str)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __str__(self) -> str:
         return str(self.value)

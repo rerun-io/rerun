@@ -38,6 +38,7 @@ class AffixFuzzer5:
     single_optional_union: datatypes.AffixFuzzer4 | None = field(
         default=None, converter=_affix_fuzzer5__single_optional_union__special_field_converter_override
     )
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer5Like = AffixFuzzer5

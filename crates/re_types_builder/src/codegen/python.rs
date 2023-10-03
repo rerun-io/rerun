@@ -685,7 +685,17 @@ fn code_for_struct(
 
             code.push_text(format!("{name}: {typ}"), 1, 4);
 
-            code.push_text(quote_field_docs(field), 0, 4);
+            // Generating docs for all the fields creates A LOT of visual noise in the API docs.
+            let show_fields_in_docs = false;
+            if show_fields_in_docs {
+                code.push_text(quote_field_docs(field), 0, 4);
+            } else {
+                code.push_text(
+                    "# Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.",
+                    2,
+                    4,
+                );
+            }
         }
 
         if *kind == ObjectKind::Archetype {

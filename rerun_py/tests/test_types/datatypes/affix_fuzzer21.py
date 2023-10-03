@@ -28,7 +28,10 @@ class AffixFuzzer21:
         self.__attrs_init__(single_half=single_half, many_halves=many_halves)
 
     single_half: float = field(converter=float)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+
     many_halves: npt.NDArray[np.float16] = field(converter=to_np_float16)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer21Like = AffixFuzzer21

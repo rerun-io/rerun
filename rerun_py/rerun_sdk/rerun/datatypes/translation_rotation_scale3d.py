@@ -52,34 +52,23 @@ class TranslationRotationScale3D(TranslationRotationScale3DExt):
     # __init__ can be found in translation_rotation_scale3d_ext.py
 
     from_parent: bool = field(converter=bool)
-    """
-    If true, this transform is from the parent space to the space where the transform was logged.
-
-    If false (default), the transform maps from this space to its parent,
-    i.e. the translation is the position in the parent space.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     translation: datatypes.Vec3D | None = field(
         default=None,
         converter=TranslationRotationScale3DExt.translation__field_converter_override,  # type: ignore[misc]
     )
-    """
-    3D translation vector, applied last.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     rotation: datatypes.Rotation3D | None = field(
         default=None, converter=_translation_rotation_scale3d__rotation__special_field_converter_override
     )
-    """
-    3D rotation, applied second.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     scale: datatypes.Scale3D | None = field(
         default=None, converter=_translation_rotation_scale3d__scale__special_field_converter_override
     )
-    """
-    3D scale, applied first.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 TranslationRotationScale3DLike = TranslationRotationScale3D

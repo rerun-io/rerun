@@ -31,6 +31,7 @@ class PrimitiveComponent:
         self.__attrs_init__(value=value)
 
     value: int = field(converter=int)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of PrimitiveComponentExt in primitive_component_ext.py

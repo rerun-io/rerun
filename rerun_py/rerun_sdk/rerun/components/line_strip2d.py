@@ -43,6 +43,7 @@ class LineStrip2D(LineStrip2DExt):
         self.__attrs_init__(points=points)
 
     points: list[datatypes.Vec2D] = field()
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

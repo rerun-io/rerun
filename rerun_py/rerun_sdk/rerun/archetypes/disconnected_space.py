@@ -69,5 +69,7 @@ class DisconnectedSpace(Archetype):
         metadata={"component": "required"},
         converter=components.DisconnectedSpaceBatch._required,  # type: ignore[misc]
     )
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

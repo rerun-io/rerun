@@ -23,6 +23,7 @@ class AffixFuzzer13:
         self.__attrs_init__(many_strings_optional=many_strings_optional)
 
     many_strings_optional: list[str] | None = field(default=None)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer13Like = AffixFuzzer13

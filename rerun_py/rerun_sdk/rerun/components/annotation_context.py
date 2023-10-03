@@ -51,9 +51,7 @@ class AnnotationContext(AnnotationContextExt):
     class_map: list[datatypes.ClassDescriptionMapElem] = field(
         converter=AnnotationContextExt.class_map__field_converter_override,  # type: ignore[misc]
     )
-    """
-    List of class descriptions, mapping class indices to class names, colors etc.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

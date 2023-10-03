@@ -94,20 +94,14 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         metadata={"component": "required"},
         converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The image data. Should always be a rank-2 tensor.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional floating point value that specifies the 2D drawing order.
-
-    Objects with higher values are drawn on top of those with lower values.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

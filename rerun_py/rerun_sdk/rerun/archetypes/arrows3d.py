@@ -71,70 +71,49 @@ class Arrows3D(Arrows3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.Vector3DBatch._required,  # type: ignore[misc]
     )
-    """
-    All the vectors for each arrow in the batch.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     origins: components.Origin3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Origin3DBatch._optional,  # type: ignore[misc]
     )
-    """
-    All the origin points for each arrow in the batch.
-
-    If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional radii for the arrows.
-
-    The shaft is rendered as a line with `radius = 0.5 * radius`.
-    The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional colors for the points.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional text labels for the arrows.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional class Ids for the points.
-
-    The class ID provides colors and labels if not specified explicitly.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
-    """
-    Unique identifiers for each individual point in the batch.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

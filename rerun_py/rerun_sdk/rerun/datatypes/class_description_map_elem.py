@@ -49,7 +49,10 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     class_id: datatypes.ClassId = field(
         converter=_class_description_map_elem__class_id__special_field_converter_override
     )
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
+
     class_description: datatypes.ClassDescription = field()
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 if TYPE_CHECKING:

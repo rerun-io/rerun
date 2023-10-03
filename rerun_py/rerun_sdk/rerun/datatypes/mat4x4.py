@@ -63,9 +63,7 @@ class Mat4x4(Mat4x4Ext):
     # __init__ can be found in mat4x4_ext.py
 
     flat_columns: npt.NDArray[np.float32] = field(converter=to_np_float32)
-    """
-    Flat list of matrix coefficients in column-major order.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat4x4Ext in mat4x4_ext.py

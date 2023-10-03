@@ -23,6 +23,7 @@ class AffixFuzzer12:
         self.__attrs_init__(many_strings_required=many_strings_required)
 
     many_strings_required: list[str] = field()
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
 
 AffixFuzzer12Like = AffixFuzzer12

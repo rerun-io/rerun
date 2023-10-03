@@ -93,69 +93,49 @@ class Mesh3D(Mesh3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.Position3DBatch._required,  # type: ignore[misc]
     )
-    """
-    The positions of each vertex.
-
-    If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     mesh_properties: components.MeshPropertiesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MeshPropertiesBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional properties for the mesh as a whole (including indexed drawing).
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     vertex_normals: components.Vector3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Vector3DBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional normal for each vertex.
-
-    If specified, this must have as many elements as `vertex_positions`.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     vertex_colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    An optional color for each vertex.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     mesh_material: components.MaterialBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MaterialBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional material properties for the mesh as a whole.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional class Ids for the vertices.
-
-    The class ID provides colors and labels if not specified explicitly.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
-    """
-    Unique identifiers for each individual vertex in the mesh.
-    """
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

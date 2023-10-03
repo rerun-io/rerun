@@ -31,6 +31,7 @@ class UVec2D:
         self.__attrs_init__(xy=xy)
 
     xy: npt.NDArray[np.uint32] = field(converter=to_np_uint32)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UVec2DExt in uvec2d_ext.py

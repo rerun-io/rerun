@@ -23,6 +23,7 @@ class AffixFuzzer9:
         self.__attrs_init__(single_string_required=single_string_required)
 
     single_string_required: str = field(converter=str)
+    # Docstring intentionally omitted to hide this field from the docs. See the docs for the __init__ method instead.
 
     def __str__(self) -> str:
         return str(self.single_string_required)
