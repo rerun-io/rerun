@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .clear import Clear
 
 
 class ClearExt:
@@ -20,16 +23,29 @@ class ClearExt:
              Whether to recursively clear all children.
         """
 
-        # Enforce named parameter.
-        self.__attrs_init__(recursive=recursive)
+        # Enforce named parameter and rename parameter to just `recursive`.
+        self.__attrs_init__(is_recursive=recursive)
 
     @staticmethod
-    def deferred_patch_class(cls: Any) -> None:
-        def flat() -> cls:
-            return cls(recursive=False)
+    def flat() -> Clear:
+        """
+        Returns a non-recursive clear archetype.
 
-        def recursive() -> cls:
-            return cls(recursive=True)
+        This will empty all components of the associated entity at the logged timepoint.
+        Children will be left untouched.
+        """
+        from .clear import Clear
 
-        cls.flat = flat
-        cls.recursive = recursive
+        return Clear(recursive=False)
+
+    @staticmethod
+    def recursive() -> Clear:
+        """
+        Returns a recursive clear archetype.
+
+        This will empty all components of the associated entity at the logged timepoint, as well as
+        all components of all its recursive children.
+        """
+        from .clear import Clear
+
+        return Clear(recursive=True)

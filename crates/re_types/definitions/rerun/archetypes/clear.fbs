@@ -14,5 +14,5 @@ namespace rerun.archetypes;
 table Clear (
   "attr.rust.derive": "PartialEq, Eq"
 ) {
-  recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
+  is_recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
 }

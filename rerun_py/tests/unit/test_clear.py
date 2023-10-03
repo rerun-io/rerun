@@ -11,7 +11,12 @@ def test_clear() -> None:
     arch = rr.Clear(recursive=recursive)
     print(f"{arch}\n")
 
-    assert arch.recursive == ClearIsRecursiveBatch([True])
+    assert arch.is_recursive == ClearIsRecursiveBatch([True])
+
+
+def test_clear_factory_methods() -> None:
+    assert rr.Clear(recursive=True) == rr.Clear.recursive()
+    assert rr.Clear(recursive=False) == rr.Clear.flat()
 
 
 if __name__ == "__main__":

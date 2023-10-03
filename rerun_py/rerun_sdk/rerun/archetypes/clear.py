@@ -66,7 +66,7 @@ class Clear(ClearExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            recursive=None,  # type: ignore[arg-type]
+            is_recursive=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -76,7 +76,7 @@ class Clear(ClearExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    recursive: components.ClearIsRecursiveBatch = field(
+    is_recursive: components.ClearIsRecursiveBatch = field(
         metadata={"component": "required"},
         converter=components.ClearIsRecursiveBatch._required,  # type: ignore[misc]
     )
