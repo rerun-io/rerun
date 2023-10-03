@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path, PosixPath
+from pathlib import Path
 from typing import Any, Tuple
 
 import cv2
@@ -34,7 +34,7 @@ assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
 DESCRIPTION = """
 # ARKit Scenes
-This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset 
+This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
 contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
 
 ## How it was made

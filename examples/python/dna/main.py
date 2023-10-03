@@ -35,7 +35,7 @@ The 3D line strips connecting the 3D point pairs are logged as an
 [helix/structure/scaffolding entity](recording://helix/structure/scaffolding).
 
 ### Rotation
-The whole structure is rotated over time by logging a 
+The whole structure is rotated over time by logging a
 [rr.Transform3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/transform3d) to the
 [helix/structure entity](recording://helix/structure) that changes over time. This transform determines the rotation of
 the [structure entity](recording://helix/structure) relative to the [helix](recording://helix) entity. Since all other

@@ -48,7 +48,7 @@ The [2D](recording://video/pose/points) and [3D skeletons](recording://person/po
 similar combination of two entities.
 
 First, a timeless
-[rr.ClassDescripton](https://www.rerun.io/docs/reference/data_types/datatypes/class_description) is logged (note, that
+[rr.ClassDescription](https://www.rerun.io/docs/reference/data_types/datatypes/class_description) is logged (note, that
 this is equivalent to logging an
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/data_types/archetypes/annotation_context) as in the
 segmentation case). The class description contains the information which maps keypoint ids to labels and how to connect

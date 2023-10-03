@@ -48,7 +48,7 @@ respectively).
 
 An object of the [rr.Pinhole archetype](https://www.rerun.io/docs/reference/data_types/archetypes/pinhole) is logged to
 the [camera/image entity](recording://camera/image) and defines the intrinsics of the camera. This defines how to go
-from the 3D camera frame to the 2D image plane. The extrinsics are logged as an 
+from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
 [rr.Transform3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/transform3d) to the
 [camera entity](recording://camera).
 
@@ -58,7 +58,7 @@ containing the average reprojection error of the keypoints is logged to the
 [plot/avg_reproj_err entity](recording://plot/avg_reproj_err).
 
 ### 2D points
-The 2D image points that are used to triangulate the 3D points are visualized by logging 
+The 2D image points that are used to triangulate the 3D points are visualized by logging
 [rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points2d)
 to the [camera/image/keypoints entity](recording://camera/image/keypoints). Note that these keypoints are a child of the
 [camera/image entity](recording://camera/image), since the points should show in the image plane.

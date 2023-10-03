@@ -36,11 +36,10 @@ from transformers import (  # noqa: E402 module level import not at top of file
     DetrForSegmentation,
 )
 
-
 DESCRIPTION = """
 # Detect and Track Objects
 
-This is a more elaborate example applying simple object detection and segmentation on a video using the Huggingface 
+This is a more elaborate example applying simple object detection and segmentation on a video using the Huggingface
 `transformers` library. Tracking across frames is performed using [CSRT](https://arxiv.org/abs/1611.08461) from
 OpenCV. The results are visualized using Rerun.
 
@@ -59,11 +58,11 @@ subsequently visualize the segmentation mask on top of the video.
 The [segmentation result](recording://image_scaled/segmentation) is logged through a combination of two archetypes.
 The segmentation image itself is logged as an
 [rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/data_types/archetypes/segmentation_image) and
-contains the id for each pixel. It is logged to the [image_scaled/segmentation entity](recording://image_scaled/segmentation). 
+contains the id for each pixel. It is logged to the [image_scaled/segmentation entity](recording://image_scaled/segmentation).
 
-The color and label for each class is determined by the 
+The color and label for each class is determined by the
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/data_types/archetypes/annotation_context) which is
-logged to the root entity using `rr.log("/", ..., timeless=True` as it should apply to the whole sequence and all 
+logged to the root entity using `rr.log("/", ..., timeless=True` as it should apply to the whole sequence and all
 entities that have a class id.
 
 ### Detections
@@ -80,7 +79,7 @@ The annotation context is resolved by seeking up the entity hierarchy.
 
 ### Text Log
 Through the [rr.TextLog archetype] text at different importance level can be logged. Rerun integrates with the
-[Python logging module](https://docs.python.org/3/library/logging.html). After an intial setup that is described on the
+[Python logging module](https://docs.python.org/3/library/logging.html). After an initial setup that is described on the
 [rr.TextLog page](https://www.rerun.io/docs/reference/data_types/archetypes/text_log#textlogintegration), statements
 such as `logging.info("...")`, `logging.debug("...")`, etc. will show up in the Rerun viewer. In the viewer you can
 adjust the filter level and look at the messages time-synchronized with respect to other logged data.
