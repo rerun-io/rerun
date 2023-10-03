@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class BarChartExt:
+    """Extension methods for [BarChart][rerun.archetypes.BarChart]."""
+
     @staticmethod
     @catch_and_log_exceptions("BarChart converter")
     def values__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:

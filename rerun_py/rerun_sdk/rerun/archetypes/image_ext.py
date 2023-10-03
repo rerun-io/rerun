@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 
 class ImageExt:
+    """Extension methods for [Image][rerun.archetypes.Image]."""
+
     @staticmethod
     @catch_and_log_exceptions("Image converter")
     def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:

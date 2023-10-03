@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 
 class ViewCoordinatesExt:
+    """Extension methods for [ViewCoordinates][rerun.components.ViewCoordinates]."""
+
     class ViewDir(IntEnum):
         Up = 1
         Down = 2

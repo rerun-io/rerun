@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class TensorExt:
+    """Extension methods for [Tensor][rerun.archetypes.Tensor]."""
+
     def __init__(
         self: Any,
         data: TensorDataLike | TensorLike | None = None,

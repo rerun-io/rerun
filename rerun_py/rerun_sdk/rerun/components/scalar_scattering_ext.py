@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class ScalarScatteringExt:
+    """Extension methods for [ScalarScattering][rerun.components.ScalarScattering]."""
+
     @staticmethod
     def native_to_pa_array_override(data: ScalarScatteringArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()

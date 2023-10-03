@@ -33,6 +33,8 @@ class Box2DFormat(Enum):
 
 
 class Boxes2DExt:
+    """Extension methods for [Boxes2D][rerun.archetypes.Boxes2D]."""
+
     def __init__(
         self: Any,
         *,

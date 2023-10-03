@@ -7,6 +7,8 @@ if TYPE_CHECKING:
 
 
 class TranslationRotationScale3DExt:
+    """Extension methods for [TranslationRotationScale3D][rerun.datatypes.TranslationRotationScale3D]."""
+
     # TODO(#2641): this is needed until we support default value for params
     def __init__(
         self: Any,

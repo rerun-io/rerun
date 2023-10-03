@@ -9,6 +9,8 @@ from ..error_utils import catch_and_log_exceptions
 
 
 class Mesh3DExt:
+    """Extension methods for [Mesh3D][rerun.archetypes.Mesh3D]."""
+
     def __init__(
         self: Any,
         *,

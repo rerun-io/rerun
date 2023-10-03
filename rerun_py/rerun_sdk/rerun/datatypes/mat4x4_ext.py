@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 
 class Mat4x4Ext:
+    """Extension methods for [Mat4x4][rerun.datatypes.Mat4x4]."""
+
     def __init__(self: Any, rows: Mat4x4Like | None = None, *, columns: Mat4x4Like | None = None) -> None:
         from . import Mat4x4
 

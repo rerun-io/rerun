@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 
 class Mat3x3Ext:
+    """Extension methods for [Mat3x3][rerun.datatypes.Mat3x3]."""
+
     def __init__(self: Any, rows: Mat3x3Like | None = None, *, columns: Mat3x3Like | None = None) -> None:
         from . import Mat3x3
 

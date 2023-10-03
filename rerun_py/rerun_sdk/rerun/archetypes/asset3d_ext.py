@@ -27,6 +27,8 @@ def guess_media_type(path: str) -> MediaType | None:
 
 
 class Asset3DExt:
+    """Extension methods for [Asset3D][rerun.archetypes.Asset3D]."""
+
     def __init__(
         self: Any,
         data: components.BlobLike | str | pathlib.Path,

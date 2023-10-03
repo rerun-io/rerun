@@ -15,6 +15,8 @@ def next_offset(acc: int, arr: Sized) -> int:
 
 
 class LineStrip3DExt:
+    """Extension methods for [LineStrip3D][rerun.components.LineStrip3D]."""
+
     @staticmethod
     def native_to_pa_array_override(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:
         from ..datatypes import Vec3DBatch

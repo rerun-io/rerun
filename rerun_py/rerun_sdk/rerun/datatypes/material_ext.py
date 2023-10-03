@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 
 class MaterialExt:
+    """Extension methods for [Material][rerun.datatypes.Material]."""
+
     @staticmethod
     def native_to_pa_array_override(data: MaterialArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import Material, Rgba32Type

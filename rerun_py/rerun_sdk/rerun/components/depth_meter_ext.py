@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class DepthMeterExt:
+    """Extension methods for [DepthMeter][rerun.components.DepthMeter]."""
+
     @staticmethod
     def native_to_pa_array_override(data: DepthMeterArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.float32).flatten()

@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 
 class Transform3DExt:
+    """Extension methods for [Transform3D][rerun.datatypes.Transform3D]."""
+
     @staticmethod
     def native_to_pa_array_override(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
         from ..datatypes import Transform3DBatch
