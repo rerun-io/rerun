@@ -3,8 +3,6 @@ title: Migration to 0.9
 order: 10
 ---
 
-# Overview
-
 Rerun-0.9 introduces a new set of object-oriented logging APIs built on top of an updated, more concrete,
 [data model](../concepts/entity-component.md).
 
