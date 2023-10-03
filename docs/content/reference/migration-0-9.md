@@ -44,21 +44,18 @@ deprecated and the deprecation warning should point you to the correct Archetype
 cases, the old parameter names match the parameters taken by the new Archetype constructors, though exceptions are noted below.
 
 ### `log_point`, `log_points`
-Can be replaced with [Points2D](data_types/archetypes/points2d.md) or [Points3D](data_types/archetypes/points3d.md).
+Replace with [Points2D](data_types/archetypes/points2d.md) or [Points3D](data_types/archetypes/points3d.md).
 
-Relevant Python docs:
- - [Points2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points2D.__init__)
- - [Points3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points3D.__init__)
+Relevant Python docs: [Points2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points2D.__init__), [Points3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points3D.__init__)
 
 Notes:
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`
 
 ### `log_rect`, `log_rects`
-Can be replaced with [Boxes2D](data_types/archetypes/boxes2d.md)
+Replace with [Boxes2D](data_types/archetypes/boxes2d.md)
 
-Relevant Python docs:
- - [Boxes2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes2D.__init__)
+Python docs: [Boxes2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes2D.__init__)
 
 Notes:
  - Can now be constructed with 2 arrays: one of `sizes`, and the other of either `half_sizes` o `sizes`
