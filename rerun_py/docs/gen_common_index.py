@@ -71,19 +71,43 @@ class Section:
 # for each of them.
 SECTION_TABLE: Final[list[Section]] = [
     Section(
-        title="Initialization",
+        title="Initialization functions",
         module_summary=None,
         func_list=["init", "connect", "disconnect", "save", "serve", "spawn", "memory_recording"],
         class_list=[],
     ),
     Section(
-        title="Logging",
+        title="Logging functions",
         module_summary=None,
         func_list=["log", "set_time_sequence", "set_time_seconds", "set_time_nanos"],
         class_list=[],
     ),
     Section(
-        title="Spatial Primitives",
+        title="Clearing Entities",
+        module_summary=None,
+        func_list=[],
+        class_list=["Clear"],
+    ),
+    Section(
+        title="Annotations",
+        module_summary=None,
+        func_list=[],
+        class_list=["AnnotationContext", "AnnotationInfo", "ClassDescription"],
+    ),
+    Section(
+        title="Images",
+        module_summary=None,
+        func_list=[],
+        class_list=["DepthImage", "Image", "ImageEncoded", "SegmentationImage"],
+    ),
+    Section(
+        title="Plotting",
+        module_summary=None,
+        func_list=[],
+        class_list=["BarChart", "TimeSeriesScalar"],
+    ),
+    Section(
+        title="Spatial Archetypes",
         module_summary=None,
         func_list=[],
         class_list=[
@@ -99,28 +123,10 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
     ),
     Section(
-        title="Images",
-        module_summary=None,
-        func_list=[],
-        class_list=["DepthImage", "Image", "ImageEncoded", "SegmentationImage"],
-    ),
-    Section(
         title="Tensors",
         module_summary=None,
         func_list=[],
         class_list=["Tensor"],
-    ),
-    Section(
-        title="Annotations",
-        module_summary=None,
-        func_list=[],
-        class_list=["AnnotationContext", "AnnotationInfo", "ClassDescription"],
-    ),
-    Section(
-        title="Plotting",
-        module_summary=None,
-        func_list=[],
-        class_list=["BarChart", "TimeSeriesScalar"],
     ),
     Section(
         title="Text",
@@ -129,25 +135,13 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["LoggingHandler", "TextDocument", "TextLog"],
     ),
     Section(
-        title="Transforms",
+        title="Transforms and Coordinate Systems",
         module_summary="log_deprecated.transform",
         func_list=[],
-        class_list=["DisconnectedSpace", "Pinhole", "Transform3D"],
+        class_list=["DisconnectedSpace", "Pinhole", "Transform3D", "ViewCoordinates"],
     ),
     Section(
-        title="Misc",
-        module_summary=None,
-        func_list=[],
-        class_list=["ViewCoordinates"],
-    ),
-    Section(
-        title="Clearing Entities",
-        module_summary=None,
-        func_list=[],
-        class_list=["Clear"],
-    ),
-    Section(
-        title="Helpers",
+        title="Script Helpers",
         module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
         class_list=[],
