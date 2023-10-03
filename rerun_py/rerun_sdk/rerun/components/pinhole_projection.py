@@ -39,7 +39,3 @@ class PinholeProjectionType(datatypes.Mat3x3Type):
 
 class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):
     _ARROW_TYPE = PinholeProjectionType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(PinholeProjectionType())

@@ -58,11 +58,3 @@ class ScalarScatteringBatch(BaseBatch[ScalarScatteringArrayLike], ComponentBatch
     @staticmethod
     def _native_to_pa_array(data: ScalarScatteringArrayLike, data_type: pa.DataType) -> pa.Array:
         return ScalarScatteringExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ScalarScatteringType())
-
-
-if hasattr(ScalarScatteringExt, "deferred_patch_class"):
-    ScalarScatteringExt.deferred_patch_class(ScalarScattering)

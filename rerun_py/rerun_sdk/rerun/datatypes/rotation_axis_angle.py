@@ -98,11 +98,3 @@ class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
         return RotationAxisAngleExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(RotationAxisAngleType())
-
-
-if hasattr(RotationAxisAngleExt, "deferred_patch_class"):
-    RotationAxisAngleExt.deferred_patch_class(RotationAxisAngle)

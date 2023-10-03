@@ -91,11 +91,3 @@ class MeshPropertiesBatch(BaseBatch[MeshPropertiesArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: MeshPropertiesArrayLike, data_type: pa.DataType) -> pa.Array:
         return MeshPropertiesExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MeshPropertiesType())
-
-
-if hasattr(MeshPropertiesExt, "deferred_patch_class"):
-    MeshPropertiesExt.deferred_patch_class(MeshProperties)

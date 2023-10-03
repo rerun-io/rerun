@@ -84,5 +84,4 @@ class Clear(ClearExt, Archetype):
     __repr__ = Archetype.__repr__
 
 
-if hasattr(ClearExt, "deferred_patch_class"):
-    ClearExt.deferred_patch_class(Clear)
+ClearExt.deferred_patch_class(Clear)

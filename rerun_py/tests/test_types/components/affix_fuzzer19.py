@@ -25,7 +25,3 @@ class AffixFuzzer19Type(datatypes.AffixFuzzer5Type):
 
 class AffixFuzzer19Batch(datatypes.AffixFuzzer5Batch, ComponentBatchMixin):
     _ARROW_TYPE = AffixFuzzer19Type()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AffixFuzzer19Type())

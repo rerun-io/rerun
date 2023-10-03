@@ -87,11 +87,3 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in scale3d_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Scale3DType())
-
-
-if hasattr(Scale3DExt, "deferred_patch_class"):
-    Scale3DExt.deferred_patch_class(Scale3D)

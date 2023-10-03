@@ -62,7 +62,3 @@ class FlattenedScalarBatch(BaseBatch[FlattenedScalarArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in flattened_scalar_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(FlattenedScalarType())

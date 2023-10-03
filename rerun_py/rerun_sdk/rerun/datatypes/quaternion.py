@@ -61,11 +61,3 @@ class QuaternionBatch(BaseBatch[QuaternionArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: QuaternionArrayLike, data_type: pa.DataType) -> pa.Array:
         return QuaternionExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(QuaternionType())
-
-
-if hasattr(QuaternionExt, "deferred_patch_class"):
-    QuaternionExt.deferred_patch_class(Quaternion)

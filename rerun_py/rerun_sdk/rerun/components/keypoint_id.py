@@ -33,7 +33,3 @@ class KeypointIdType(datatypes.KeypointIdType):
 
 class KeypointIdBatch(datatypes.KeypointIdBatch, ComponentBatchMixin):
     _ARROW_TYPE = KeypointIdType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(KeypointIdType())

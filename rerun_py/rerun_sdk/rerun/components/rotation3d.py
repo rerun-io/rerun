@@ -26,7 +26,3 @@ class Rotation3DType(datatypes.Rotation3DType):
 
 class Rotation3DBatch(datatypes.Rotation3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Rotation3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Rotation3DType())

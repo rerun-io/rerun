@@ -110,7 +110,3 @@ class Image(ImageExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(ImageExt, "deferred_patch_class"):
-    ImageExt.deferred_patch_class(Image)

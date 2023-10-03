@@ -26,7 +26,3 @@ class Origin3DType(datatypes.Vec3DType):
 
 class Origin3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Origin3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Origin3DType())
