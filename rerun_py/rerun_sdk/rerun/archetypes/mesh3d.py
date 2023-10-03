@@ -161,7 +161,3 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Mesh3DExt, "deferred_patch_class"):
-    Mesh3DExt.deferred_patch_class(Mesh3D)

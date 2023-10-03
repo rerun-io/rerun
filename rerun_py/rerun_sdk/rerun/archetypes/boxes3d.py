@@ -166,7 +166,3 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Boxes3DExt, "deferred_patch_class"):
-    Boxes3DExt.deferred_patch_class(Boxes3D)

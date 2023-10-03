@@ -179,7 +179,3 @@ class Points2D(Points2DExt, Archetype):
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Points2DExt, "deferred_patch_class"):
-    Points2DExt.deferred_patch_class(Points2D)

@@ -26,7 +26,3 @@ class MeshPropertiesType(datatypes.MeshPropertiesType):
 
 class MeshPropertiesBatch(datatypes.MeshPropertiesBatch, ComponentBatchMixin):
     _ARROW_TYPE = MeshPropertiesType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MeshPropertiesType())

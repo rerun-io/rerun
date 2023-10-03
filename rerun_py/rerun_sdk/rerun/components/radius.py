@@ -59,11 +59,3 @@ class RadiusBatch(BaseBatch[RadiusArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:
         return RadiusExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(RadiusType())
-
-
-if hasattr(RadiusExt, "deferred_patch_class"):
-    RadiusExt.deferred_patch_class(Radius)

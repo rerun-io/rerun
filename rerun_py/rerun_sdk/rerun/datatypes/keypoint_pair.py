@@ -78,11 +78,3 @@ class KeypointPairBatch(BaseBatch[KeypointPairArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
         return KeypointPairExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(KeypointPairType())
-
-
-if hasattr(KeypointPairExt, "deferred_patch_class"):
-    KeypointPairExt.deferred_patch_class(KeypointPair)

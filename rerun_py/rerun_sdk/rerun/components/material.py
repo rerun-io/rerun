@@ -26,7 +26,3 @@ class MaterialType(datatypes.MaterialType):
 
 class MaterialBatch(datatypes.MaterialBatch, ComponentBatchMixin):
     _ARROW_TYPE = MaterialType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MaterialType())

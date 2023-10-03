@@ -191,11 +191,3 @@ class Transform3DBatch(BaseBatch[Transform3DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Transform3DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Transform3DType())
-
-
-if hasattr(Transform3DExt, "deferred_patch_class"):
-    Transform3DExt.deferred_patch_class(Transform3D)

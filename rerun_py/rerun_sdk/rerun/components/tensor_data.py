@@ -26,7 +26,3 @@ class TensorDataType(datatypes.TensorDataType):
 
 class TensorDataBatch(datatypes.TensorDataBatch, ComponentBatchMixin):
     _ARROW_TYPE = TensorDataType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TensorDataType())

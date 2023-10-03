@@ -63,11 +63,3 @@ class Vec3DBatch(BaseBatch[Vec3DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Vec3DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Vec3DType())
-
-
-if hasattr(Vec3DExt, "deferred_patch_class"):
-    Vec3DExt.deferred_patch_class(Vec3D)

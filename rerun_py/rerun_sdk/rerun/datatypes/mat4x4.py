@@ -98,11 +98,3 @@ class Mat4x4Batch(BaseBatch[Mat4x4ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Mat4x4ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Mat4x4Ext.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Mat4x4Type())
-
-
-if hasattr(Mat4x4Ext, "deferred_patch_class"):
-    Mat4x4Ext.deferred_patch_class(Mat4x4)

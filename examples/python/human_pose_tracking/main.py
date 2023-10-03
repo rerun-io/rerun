@@ -52,7 +52,7 @@ def track_pose(video_path: str, segment: bool) -> None:
             rgb = cv2.cvtColor(bgr_frame.data, cv2.COLOR_BGR2RGB)
             rr.set_time_seconds("time", bgr_frame.time)
             rr.set_time_sequence("frame_idx", bgr_frame.idx)
-            rr.log("video/rgb", rr.Image(rr.TensorData(array=rgb, jpeg_quality=75)))
+            rr.log("video/rgb", rr.Image(rgb).compress(jpeg_quality=75))
 
             results = pose.process(rgb)
             h, w, _ = rgb.shape
