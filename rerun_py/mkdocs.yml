@@ -33,6 +33,7 @@ plugins:
             members_order: source
             heading_level: 3
             inherited_members: true
+            merge_init_into_class: true # Only works for auto-generated __init__ methods, but for those it's great!
             show_if_no_docstring: false # We intentionally hide archetype fields
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
