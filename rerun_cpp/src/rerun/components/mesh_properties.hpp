@@ -21,7 +21,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Optional triangle indices for a mesh.
+        /// **Component**: Optional triangle indices for a mesh.
         struct MeshProperties {
             rerun::datatypes::MeshProperties props;
 

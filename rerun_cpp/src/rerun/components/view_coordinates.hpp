@@ -17,7 +17,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// How we interpret the coordinate system of an entity/space.
+        /// **Component**: How we interpret the coordinate system of an entity/space.
         ///
         /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or
         /// left-handed?

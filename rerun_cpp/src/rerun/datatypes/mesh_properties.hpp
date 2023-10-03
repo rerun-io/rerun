@@ -19,7 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// Optional triangle indices for a mesh.
+        /// **Datatype**: Optional triangle indices for a mesh.
         struct MeshProperties {
             /// A flattened array of vertex indices that describe the mesh's triangles.
             ///

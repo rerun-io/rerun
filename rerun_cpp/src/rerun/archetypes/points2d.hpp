@@ -23,7 +23,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A 2D point cloud with positions and optional colors, radii, labels, etc.
+        /// **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
         ///
         /// ## Examples
         ///

@@ -20,7 +20,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// The severity level of a text log message.
+        /// **Component**: The severity level of a text log message.
         ///
         /// Recommended to be one of:
         /// * `"CRITICAL"`

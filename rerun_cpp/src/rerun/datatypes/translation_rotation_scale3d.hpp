@@ -20,7 +20,8 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// Representation of an affine transform via separate translation, rotation & scale.
+        /// **Datatype**: Representation of an affine transform via separate translation, rotation &
+        /// scale.
         struct TranslationRotationScale3D {
             /// 3D translation vector, applied last.
             std::optional<rerun::datatypes::Vec3D> translation;

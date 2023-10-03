@@ -333,7 +333,7 @@ impl QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
         let type_name = &obj.name;
         let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
-        let quoted_docs = quote_docstrings(&obj.docs);
+        let quoted_docs = quote_obj_docs(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
         #[allow(unused)]
@@ -642,7 +642,7 @@ impl QuotedObject {
         let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes` or `components`
         let pascal_case_name = &obj.name;
         let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
-        let quoted_docs = quote_docstrings(&obj.docs);
+        let quoted_docs = quote_obj_docs(obj);
 
         let tag_typename = format_ident!("{pascal_case_name}Tag");
         let data_typename = format_ident!("{pascal_case_name}Data");
@@ -1803,7 +1803,7 @@ fn quote_variable_with_docstring(
 ) -> TokenStream {
     let quoted = quote_variable(includes, obj_field, name);
 
-    let docstring = quote_docstrings(&obj_field.docs);
+    let docstring = quote_field_docs(obj_field);
 
     let quoted = quote! {
         #docstring
@@ -1927,7 +1927,23 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
-fn quote_docstrings(docs: &Docs) -> TokenStream {
+fn quote_obj_docs(obj: &Object) -> TokenStream {
+    let mut lines = lines_from_docs(&obj.docs);
+
+    if let Some(first_line) = lines.first_mut() {
+        // Prefix with object kind:
+        *first_line = format!(" **{}**:{}", obj.kind.singular_name(), first_line);
+    }
+
+    quote_doc_lines(&lines)
+}
+
+fn quote_field_docs(field: &ObjectField) -> TokenStream {
+    let lines = lines_from_docs(&field.docs);
+    quote_doc_lines(&lines)
+}
+
+fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
     let required = false; // TODO(#2919): `cpp` examples are not required for now
@@ -1956,6 +1972,10 @@ fn quote_docstrings(docs: &Docs) -> TokenStream {
         }
     }
 
+    lines
+}
+
+fn quote_doc_lines(lines: &[String]) -> TokenStream {
     let quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
     quote! {
         #NEWLINE_TOKEN

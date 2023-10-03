@@ -15,7 +15,8 @@
 
 namespace rerun {
     namespace archetypes {
-        /// Specifies that the entity path at which this is logged is disconnected from its parent.
+        /// **Archetype**: Specifies that the entity path at which this is logged is disconnected
+        /// from its parent.
         ///
         /// This is useful for specifying that a subgraph is independent of the rest of the scene.
         ///

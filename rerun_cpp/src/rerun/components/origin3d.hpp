@@ -19,7 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A point of origin in 3D space.
+        /// **Component**: A point of origin in 3D space.
         struct Origin3D {
             rerun::datatypes::Vec3D origin;
 

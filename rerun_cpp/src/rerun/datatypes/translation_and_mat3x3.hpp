@@ -19,7 +19,8 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+        /// **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with
+        /// a translation.
         ///
         /// First applies the matrix, then the translation.
         struct TranslationAndMat3x3 {

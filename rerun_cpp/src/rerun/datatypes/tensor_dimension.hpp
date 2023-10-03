@@ -18,7 +18,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A single dimension within a multi-dimensional tensor.
+        /// **Datatype**: A single dimension within a multi-dimensional tensor.
         struct TensorDimension {
             uint64_t size;
 
