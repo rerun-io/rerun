@@ -12,12 +12,12 @@ namespace rerun.components;
 ///
 /// \py `KeypointId`s are only meaningful within the context of a [`rerun.datatypes.ClassDescription`].
 /// \py
-/// \py Used to look up an [`rerun.components.AnnotationInfo`] for a Keypoint within the
+/// \py Used to look up an [`rerun.datatypes.AnnotationInfo`] for a Keypoint within the
 /// \py [`rerun.components.AnnotationContext`].
 ///
-/// \rs `KeypointId`s are only meaningful within the context of a [`crate::components::ClassDescription`].
+/// \rs `KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].
 /// \rs
-/// \rs Used to look up an [`crate::components::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
+/// \rs Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
 struct KeypointId (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",

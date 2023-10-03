@@ -25,7 +25,7 @@ class KeypointId(KeypointIdExt):
 
     `KeypointId`s are only meaningful within the context of a [`rerun.datatypes.ClassDescription`].
 
-    Used to look up an [`rerun.components.AnnotationInfo`] for a Keypoint within the
+    Used to look up an [`rerun.datatypes.AnnotationInfo`] for a Keypoint within the
     [`rerun.components.AnnotationContext`].
     """
 

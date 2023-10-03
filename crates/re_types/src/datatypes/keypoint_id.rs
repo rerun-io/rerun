@@ -16,9 +16,9 @@
 
 /// **Datatype**:  A 16-bit ID representing a type of semantic keypoint within a class.
 ///
-/// `KeypointId`s are only meaningful within the context of a [`crate::components::ClassDescription`].
+/// `KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].
 ///
-/// Used to look up an [`crate::components::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
+/// Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
 #[derive(
     Clone,
     Debug,
