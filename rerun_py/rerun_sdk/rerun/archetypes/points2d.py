@@ -131,6 +131,7 @@ class Points2D(Points2DExt, Archetype):
     )
     """
     An optional floating point value that specifies the 2D drawing order.
+
     Objects with higher values are drawn on top of those with lower values.
     """
 

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of 3D arrows with optional colors, radii, labels, etc.
+/// **Archetype**:  A batch of 3D arrows with optional colors, radii, labels, etc.
 ///
 /// ## Example
 ///

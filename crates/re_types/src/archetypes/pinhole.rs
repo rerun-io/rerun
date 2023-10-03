@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Camera perspective projection (a.k.a. intrinsics).
+/// **Archetype**:  Camera perspective projection (a.k.a. intrinsics).
 ///
 /// ## Example
 ///

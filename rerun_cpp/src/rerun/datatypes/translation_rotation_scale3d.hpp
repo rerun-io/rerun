@@ -31,8 +31,11 @@ namespace rerun {
             /// 3D scale, applied first.
             std::optional<rerun::datatypes::Scale3D> scale;
 
-            /// If true, the transform maps from the parent space to the space where the transform
-            /// was logged. Otherwise, the transform maps from the space to its parent.
+            /// If true, this transform is from the parent space to the space where the transform
+            /// was logged.
+            ///
+            /// If false (default), the transform maps from this space to its parent,
+            /// i.e. the translation is the position in the parent space.
             bool from_parent;
 
           public:

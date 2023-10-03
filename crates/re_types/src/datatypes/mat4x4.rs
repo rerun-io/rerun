@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 4x4 Matrix.
+/// **Datatype**:  A 4x4 Matrix.
 ///
 /// Matrices in Rerun are stored as flat list of coefficients in column-major order:
 /// ```text

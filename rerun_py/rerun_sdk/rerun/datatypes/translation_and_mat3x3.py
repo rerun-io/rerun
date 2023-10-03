@@ -57,8 +57,10 @@ class TranslationAndMat3x3(TranslationAndMat3x3Ext):
 
     from_parent: bool = field(converter=bool)
     """
-    If true, the transform maps from the parent space to the space where the transform was logged.
-    Otherwise, the transform maps from the space to its parent.
+    If true, this transform is from the parent space to the space where the transform was logged.
+
+    If false (default), the transform maps from this space to its parent,
+    i.e. the translation is the position in the parent space.
     """
 
     translation: datatypes.Vec3D | None = field(

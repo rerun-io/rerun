@@ -38,8 +38,9 @@ class MeshProperties(MeshPropertiesExt):
         Parameters
         ----------
         indices:
-             If specified, a flattened array of vertex indices that describe the mesh's triangles,
-             i.e. its length must be divisible by 3.
+             A flattened array of vertex indices that describe the mesh's triangles.
+
+             Its length must be divisible by 3.
         """
 
         # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
@@ -47,8 +48,9 @@ class MeshProperties(MeshPropertiesExt):
 
     indices: npt.NDArray[np.uint32] | None = field(default=None, converter=to_np_uint32)
     """
-    If specified, a flattened array of vertex indices that describe the mesh's triangles,
-    i.e. its length must be divisible by 3.
+    A flattened array of vertex indices that describe the mesh's triangles.
+
+    Its length must be divisible by 3.
     """
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// An out-of-tree affine transform between two 3D spaces, represented in a given direction.
+/// **Component**:  An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 ///
 /// "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
 #[derive(Clone, Debug, PartialEq)]

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// **Archetype**:  A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// ## Examples
 ///

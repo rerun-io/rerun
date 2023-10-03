@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// An image made up of integer class-ids
+/// **Archetype**:  An image made up of integer class-ids
 ///
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by meter.
@@ -66,6 +66,7 @@ pub struct SegmentationImage {
     pub data: crate::components::TensorData,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 }

@@ -66,6 +66,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
              The image data. Should always be a rank-2 tensor.
         draw_order:
              An optional floating point value that specifies the 2D drawing order.
+
              Objects with higher values are drawn on top of those with lower values.
         """
 
@@ -104,6 +105,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     )
     """
     An optional floating point value that specifies the 2D drawing order.
+
     Objects with higher values are drawn on top of those with lower values.
     """
 

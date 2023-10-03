@@ -109,6 +109,7 @@ class DepthImage(DepthImageExt, Archetype):
              and a range of up to ~65 meters (2^16 / 1000).
         draw_order:
              An optional floating point value that specifies the 2D drawing order.
+
              Objects with higher values are drawn on top of those with lower values.
         """
 
@@ -160,6 +161,7 @@ class DepthImage(DepthImageExt, Archetype):
     )
     """
     An optional floating point value that specifies the 2D drawing order.
+
     Objects with higher values are drawn on top of those with lower values.
     """
 

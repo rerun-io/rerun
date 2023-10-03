@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of line strips with positions and optional colors, radii, labels, etc.
+/// **Archetype**:  A batch of line strips with positions and optional colors, radii, labels, etc.
 ///
 /// ## Examples
 ///
@@ -124,6 +124,7 @@ pub struct LineStrips2D {
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 

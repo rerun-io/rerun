@@ -65,6 +65,7 @@ class Image(ImageExt, Archetype):
              The image data. Should always be a rank-2 or rank-3 tensor.
         draw_order:
              An optional floating point value that specifies the 2D drawing order.
+
              Objects with higher values are drawn on top of those with lower values.
         """
 
@@ -103,6 +104,7 @@ class Image(ImageExt, Archetype):
     )
     """
     An optional floating point value that specifies the 2D drawing order.
+
     Objects with higher values are drawn on top of those with lower values.
     """
 

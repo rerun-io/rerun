@@ -122,6 +122,7 @@ class LineStrips2D(Archetype):
              Optional text labels for the line strips.
         draw_order:
              An optional floating point value that specifies the 2D drawing order of each line strip.
+
              Objects with higher values are drawn on top of those with lower values.
         class_ids:
              Optional `ClassId`s for the lines.
@@ -206,6 +207,7 @@ class LineStrips2D(Archetype):
     )
     """
     An optional floating point value that specifies the 2D drawing order of each line strip.
+
     Objects with higher values are drawn on top of those with lower values.
     """
 

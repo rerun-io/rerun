@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A monochrome or color image.
+/// **Archetype**:  A monochrome or color image.
 ///
 /// The shape of the `TensorData` must be mappable to:
 /// - A `HxW` tensor, treated as a grayscale image.
@@ -59,6 +59,7 @@ pub struct Image {
     pub data: crate::components::TensorData,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 }

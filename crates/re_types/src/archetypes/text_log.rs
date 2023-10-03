@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A log entry in a text log, comprised of a text body and its log level.
+/// **Archetype**:  A log entry in a text log, comprised of a text body and its log level.
 ///
 /// ## Example
 ///

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Specifies that the entity path at which this is logged is disconnected from its parent.
+/// **Component**:  Specifies that the entity path at which this is logged is disconnected from its parent.
 ///
 /// This is useful for specifying that a subgraph is independent of the rest of the scene.
 ///

@@ -349,13 +349,11 @@ fn quote_struct(
 ) -> TokenStream {
     assert!(obj.is_struct());
 
-    let Object {
-        name, docs, fields, ..
-    } = obj;
+    let Object { name, fields, .. } = obj;
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_doc_from_docs(reporter, docs);
+    let quoted_doc = quote_obj_docs(reporter, obj);
 
     let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
     let quoted_derive_clone_debug = if derive_only {
@@ -414,13 +412,11 @@ fn quote_union(
 ) -> TokenStream {
     assert!(!obj.is_struct());
 
-    let Object {
-        name, docs, fields, ..
-    } = obj;
+    let Object { name, fields, .. } = obj;
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_doc_from_docs(reporter, docs);
+    let quoted_doc = quote_obj_docs(reporter, obj);
     let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
     let quoted_derive_clone_debug = if derive_only {
         quote!()
@@ -438,7 +434,7 @@ fn quote_union(
     let quoted_fields = fields.iter().map(|obj_field| {
         let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
 
-        let quoted_doc = quote_doc_from_docs(reporter, &obj_field.docs);
+        let quoted_doc = quote_field_docs(reporter, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj_field);
 
         quote! {
@@ -472,7 +468,7 @@ struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
 impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self(reporter, obj, obj_field) = self;
-        let quoted_docs = quote_doc_from_docs(reporter, &obj_field.docs);
+        let quoted_docs = quote_field_docs(reporter, obj_field);
         let name = format_ident!("{}", &obj_field.name);
         let quoted_type = quote_field_type_from_object_field(obj_field);
 
@@ -491,29 +487,46 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
     }
 }
 
-fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
-    struct DocCommentTokenizer<'a>(&'a [String]);
+fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
+    let lines = doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs);
 
-    impl quote::ToTokens for DocCommentTokenizer<'_> {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.extend(self.0.iter().map(|line| quote!(# [doc = #line])));
-        }
+    let require_field_docs = false;
+    if require_field_docs && lines.is_empty() && !field.is_testing() {
+        reporter.warn(&field.virtpath, &field.fqname, "Missing documentation");
     }
 
+    quote_doc_lines(&lines)
+}
+
+fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
+    let mut lines = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs);
+
+    // Prefix first line with `**Datatype**: ` etc:
+    if let Some(first) = lines.first_mut() {
+        *first = format!("**{}**: {}", obj.kind.singular_name(), first);
+    } else if !obj.is_testing() {
+        reporter.error(&obj.virtpath, &obj.fqname, "Missing documentation for");
+    }
+
+    quote_doc_lines(&lines)
+}
+
+fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
     let examples = collect_examples(docs, "rs", true)
-        .map_err(|err| reporter.error(err))
+        .map_err(|err| reporter.error(virtpath, fqname, err))
         .unwrap_or_default();
+
     if !examples.is_empty() {
-        lines.push(" ".into());
+        lines.push(Default::default());
         let section_title = if examples.len() == 1 {
             "Example"
         } else {
             "Examples"
         };
         lines.push(format!(" ## {section_title}"));
-        lines.push(" ".into());
+        lines.push(Default::default());
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             if let Some(title) = example.base.title {
@@ -532,12 +545,36 @@ fn quote_doc_from_docs(reporter: &Reporter, docs: &Docs) -> TokenStream {
             }
             if examples.peek().is_some() {
                 // blank line between examples
-                lines.push(" ".into());
+                lines.push(Default::default());
             }
         }
     }
 
-    let lines = DocCommentTokenizer(&lines);
+    if let Some(second_line) = lines.get(1) {
+        if !second_line.is_empty() {
+            reporter.warn(
+                virtpath,
+                fqname,
+                format!(
+                    "Second line of documentation should be an empty line; found {second_line:?}"
+                ),
+            );
+        }
+    }
+
+    lines
+}
+
+fn quote_doc_lines(lines: &[String]) -> TokenStream {
+    struct DocCommentTokenizer<'a>(&'a [String]);
+
+    impl quote::ToTokens for DocCommentTokenizer<'_> {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.extend(self.0.iter().map(|line| quote!(# [doc = #line])));
+        }
+    }
+
+    let lines = DocCommentTokenizer(lines);
     quote!(#lines)
 }
 

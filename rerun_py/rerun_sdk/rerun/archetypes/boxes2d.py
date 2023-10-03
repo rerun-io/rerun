@@ -107,6 +107,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     )
     """
     An optional floating point value that specifies the 2D drawing order.
+
     Objects with higher values are drawn on top of those with lower values.
 
     The default for 2D boxes is 10.0.

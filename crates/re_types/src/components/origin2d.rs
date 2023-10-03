@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A point of origin in 2D space.
+/// **Component**:  A point of origin in 2D space.
 #[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Origin2D(pub crate::datatypes::Vec2D);

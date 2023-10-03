@@ -219,6 +219,14 @@ impl ObjectKind {
         }
     }
 
+    pub fn singular_name(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Datatype",
+            ObjectKind::Component => "Component",
+            ObjectKind::Archetype => "Archetype",
+        }
+    }
+
     pub fn plural_name(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "Datatypes",
@@ -832,6 +840,11 @@ impl ObjectField {
     /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.
     pub fn pascal_case_name(&self) -> String {
         crate::to_pascal_case(&self.name)
+    }
+
+    /// Returns true if this object is part of testing and not to be used in the production SDK.
+    pub fn is_testing(&self) -> bool {
+        is_testing_fqname(&self.fqname)
     }
 
     pub fn kind(&self) -> Option<FieldKind> {

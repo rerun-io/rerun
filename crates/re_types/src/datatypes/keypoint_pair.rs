@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A connection between two `Keypoints`.
+/// **Datatype**:  A connection between two `Keypoints`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
     pub keypoint0: crate::datatypes::KeypointId,
