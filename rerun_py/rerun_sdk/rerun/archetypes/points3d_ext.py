@@ -51,7 +51,6 @@ class Points3DExt:
              Unique identifiers for each individual point in the batch.
         """
 
-        # You can define your own __init__ function as a member of Points3DExt in points3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if class_ids is None and keypoint_ids is not None:
                 class_ids = 0
