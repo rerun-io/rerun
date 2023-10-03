@@ -32,14 +32,14 @@ of a human pose in 2D and 3D.
 The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking/main.py).
 
-### Video
+### Input Video
 
-The video is logged as a sequence of
+The input video is logged as a sequence of
 [rr.Image objects](https://www.rerun.io/docs/reference/data_types/archetypes/image) to the [video entity](recording://video).
 
 ### Segmentation
 
-The [segmetation result](recording://video/mask) is logged through a combination of two archetypes. The segmentation
+The [segmentation result](recording://video/mask) is logged through a combination of two archetypes. The segmentation
 image itself is logged as an
 [rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/data_types/archetypes/segmentation_image) and
 contains the id for each pixel. The color is determined by the

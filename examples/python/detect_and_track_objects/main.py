@@ -37,6 +37,62 @@ from transformers import (  # noqa: E402 module level import not at top of file
 )
 
 
+DESCRIPTION = """
+# Detect and Track Objects
+
+This is a more elaborate example applying simple object detection and segmentation on a video using the Huggingface 
+`transformers` library. Tracking across frames is performed using [CSRT](https://arxiv.org/abs/1611.08461) from
+OpenCV. The results are visualized using Rerun.
+
+## How it was made
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/detect_and_track_objects/main.py).
+
+### Input Video
+
+The input video is logged as a sequence of
+[rr.Image objects](https://www.rerun.io/docs/reference/data_types/archetypes/image) to the
+[image/rgb entity](recording://image/rgb). Since the detection and segmentation model operates on smaller images the
+resized images are logged to the separate [image_scaled/rgb entity](recording://image_scaled/rgb). This allows us to
+subsequently visualize the segmentation mask on top of the video.
+
+### Segmentations
+
+The [segmentation result](recording://image_scaled/segmentation) is logged through a combination of two archetypes.
+The segmentation image itself is logged as an
+[rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/data_types/archetypes/segmentation_image) and
+contains the id for each pixel. It is logged to the [image_scaled/segmentation entity](recording://image_scaled/segmentation). 
+
+The color and label for each class is determined by the 
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/data_types/archetypes/annotation_context) which is
+logged to the root entity using `rr.log("/", ..., timeless=True` as it should apply to the whole sequence and all 
+entities that have a class id.
+
+### Detections
+
+The detections and tracked bounding boxes are visualized by logging the
+[rr.Boxes2D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/boxes2d) to Rerun.
+
+The color and label of the bounding boxes is determined by their class id, relying on the same
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/data_types/archetypes/annotation_context) as the
+segmentation images. This ensures that a bounding box and a segmentation image with the same class id will also have the
+same color.
+
+Note that it is also possible to log multiple annotation contexts should different colors and / or labels be desired.
+The annotation context is resolved by seeking up the entity hierarchy.
+
+### Text Log
+
+Through the [rr.TextLog archetype] text at different importance level can be logged. Rerun integrates with the
+[Python logging module](https://docs.python.org/3/library/logging.html). After an intial setup that is described on the
+[rr.TextLog page](https://www.rerun.io/docs/reference/data_types/archetypes/text_log#textlogintegration), statements
+such as `logging.info("...")`, `logging.debug("...")`, etc. will show up in the Rerun viewer. In the viewer you can
+adjust the filter level and look at the messages time-synchronized with respect to other logged data.
+
+
+""".strip()
+
+
 @dataclass
 class Detection:
     """Information about a detected object."""
@@ -402,6 +458,8 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_detect_and_track_objects")
 
     setup_logging()
+
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 
     video_path: str = args.video_path
     if not video_path:
