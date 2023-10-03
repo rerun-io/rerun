@@ -1,4 +1,5 @@
-r"""
+#!/usr/bin/env python3
+"""
 Generate an index table and rendered pages for the common APIs.
 
 The top-level index file should look like
@@ -34,6 +35,28 @@ from typing import Final
 
 import griffe
 import mkdocs_gen_files
+
+
+def all_archetypes() -> list[str]:
+    file_path = Path(__file__).parent.parent.parent.joinpath("rerun_py/rerun_sdk/rerun/archetypes/__init__.py")
+
+    # Initialize an empty list to store the quoted strings
+    quoted_strings = []
+
+    # Regular expression pattern to match quoted strings
+    pattern = r'"([^"]*)"'
+
+    # Open the file for reading
+    with open(file_path) as file:
+        # Read the file line by line
+        for line in file:
+            # Use re.findall to find all quoted strings in the line
+            matches = re.findall(pattern, line)
+
+            # Append the matched strings to the list
+            quoted_strings.extend(matches)
+
+    return quoted_strings
 
 
 @dataclass
@@ -97,19 +120,25 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Plotting",
         module_summary=None,
         func_list=[],
-        class_list=["TimeSeriesScalar"],
-    ),
-    Section(
-        title="Transforms",
-        module_summary="log_deprecated.transform",
-        func_list=[],
-        class_list=["Transform3D"],
+        class_list=["BarChart", "TimeSeriesScalar"],
     ),
     Section(
         title="Text",
         module_summary=None,
         func_list=[],
         class_list=["LoggingHandler", "TextDocument", "TextLog"],
+    ),
+    Section(
+        title="Transforms",
+        module_summary="log_deprecated.transform",
+        func_list=[],
+        class_list=["DisconnectedSpace", "Pinhole", "Transform3D"],
+    ),
+    Section(
+        title="Misc",
+        module_summary=None,
+        func_list=[],
+        class_list=["ViewCoordinates"],
     ),
     Section(
         title="Clearing Entities",
@@ -166,9 +195,21 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
 ]
 
+
+def is_mentioned(thing: str) -> bool:
+    for section in SECTION_TABLE:
+        if thing in section.func_list or thing in section.class_list:
+            return True
+    return False
+
+
 # Virtual folder where we will generate the md files
 root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
+
+# Make sure all archetypes are included in the index:
+for archetype in all_archetypes():
+    assert is_mentioned(archetype), f"Archetype '{archetype}' is not mentioned in the index of {__file__}"
 
 # We use griffe to access docstrings
 # Lots of other potentially interesting stuff we could pull out in the future
