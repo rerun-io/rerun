@@ -235,7 +235,7 @@ impl TextureManager2D {
         //     );
         // }
 
-        // Currently we don't store any data in the the texture manager.
+        // Currently we don't store any data in the texture manager.
         // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
         Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc)

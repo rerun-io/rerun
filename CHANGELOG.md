@@ -73,7 +73,7 @@
  - In Rust, the `RecordingStream` now offers a stateful time API, similar to the Python APIs. [#2506](https://github.com/rerun-io/rerun/pull/2506)
    - You can now call `set_time_sequence`, `set_time_seconds`, and `set_time_nanos` directly on the `RecordingStream`,
      which will set the time for all subsequent logs using that stream.
-   - This can be used as an alternative to the the previous `MsgSender::with_time` APIs.
+   - This can be used as an alternative to the previous `MsgSender::with_time` APIs.
  - The Rerun SDK now defaults to 8ms long microbatches instead of 50ms. This makes the default behavior more suitable
 for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/rerun/pull/2220)
    - Check out [the microbatching docs](https://www.rerun.io/docs/reference/sdk-micro-batching) for more information

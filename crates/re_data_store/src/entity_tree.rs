@@ -209,7 +209,7 @@ impl EntityTree {
         pending_clears
     }
 
-    /// Add a path operation into the the entity tree.
+    /// Add a path operation into the entity tree.
     ///
     /// Returns a collection of paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future

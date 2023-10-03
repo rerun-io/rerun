@@ -35,6 +35,8 @@ legal_todo_inner_pattern = re.compile(
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 
+double_the = re.compile(r"\bthe the\b")
+
 
 def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if line == "":
@@ -52,6 +54,9 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
 
         if " github " in line:
             return "It's 'GitHub', not 'github'"
+
+    if double_the.search(line.lower()):
+        return "Found 'the the'"
 
     if file_extension in ("md", "rs"):
         if ellipsis.search(line):
@@ -148,6 +153,7 @@ def test_lint_line() -> None:
         "{foo:?}",
         "rec",
         "anyhow::Result<()>",
+        "The theme is great",
     ]
 
     should_error = [
@@ -179,6 +185,7 @@ def test_lint_line() -> None:
         "rr_stream",
         "rec_stream",
         "Result<(), anyhow::Error>",
+        "The the problem with double words",
     ]
 
     for line in should_pass:

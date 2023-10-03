@@ -101,7 +101,7 @@ impl framework::Example for Picking {
         while let Some(picking_result) =
             PickingLayerProcessor::next_readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
         {
-            // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
+            // Grab the middle pixel. usually we'd want to do something clever that snaps the closest object of interest.
             let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
             //let picked_position =
             //    picking_result.picked_world_position(picking_result.rect.extent / 2);
