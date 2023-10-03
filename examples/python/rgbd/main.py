@@ -72,7 +72,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rr.log("world/camera/image/rgb", rr.Image(rr.TensorData(array=img_rgb, jpeg_quality=95)))
+                rr.log("world/camera/image/rgb", rr.Image(img_rgb).compress(jpeg_quality=95))
 
             elif f.filename.endswith(".pgm"):
                 buf = archive.read(f)
