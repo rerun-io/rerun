@@ -4,7 +4,7 @@ order: 0
 ---
 Welcome to the Rerun documentation page.
 
-To get a feeling of what you can do, browse the [example gallery](/examples) or try Rerun directly [in your browser](https://app.rerun.io/).
+To get a feeling of what you can do, browse the [example gallery](/examples) or try Rerun directly [in your browser](https://demo.rerun.io/).
 
 ## What is Rerun?
 
