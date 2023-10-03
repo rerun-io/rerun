@@ -129,7 +129,7 @@ and radii. Archetypes are just one high-level, convenient way of building such c
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
  
-For more information on how the rerun data model works, refer to our section on [entities and components](../concepts/entity-component.md).
+For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
 
 Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/latest/package/rerun_demo/data/#rerun_demo.data.build_color_spiral) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`log_points`](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_points) in this case).
