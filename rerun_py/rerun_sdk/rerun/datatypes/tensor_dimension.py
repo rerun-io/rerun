@@ -29,13 +29,29 @@ class TensorDimension:
     """**Datatype**: A single dimension within a multi-dimensional tensor."""
 
     def __init__(self: Any, size: int, name: str | None = None):
-        """Create a new instance of the TensorDimension datatype."""
+        """
+        Create a new instance of the TensorDimension datatype.
+
+        Parameters
+        ----------
+        size:
+             The length of this dimension.
+        name:
+             The name of this dimension, e.g. "width", "height", "channel", "batch', ….
+        """
 
         # You can define your own __init__ function as a member of TensorDimensionExt in tensor_dimension_ext.py
         self.__attrs_init__(size=size, name=name)
 
     size: int = field(converter=int)
+    # The length of this dimension.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     name: str | None = field(default=None, converter=str_or_none)
+    # The name of this dimension, e.g. "width", "height", "channel", "batch', ….
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 TensorDimensionLike = TensorDimension
