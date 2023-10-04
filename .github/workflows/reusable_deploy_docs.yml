@@ -81,7 +81,7 @@ jobs:
         if: ${{ inputs.UPDATE_LATEST }}
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_DOCS_VERSION_NAME}} latest
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_DOCS_VERSION_NAME}} stable
           git checkout gh-pages
           git checkout --orphan gh-pages-orphan
           git commit -m "Update docs for ${GITHUB_SHA}"
