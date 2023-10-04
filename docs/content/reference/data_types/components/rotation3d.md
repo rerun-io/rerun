@@ -9,8 +9,8 @@ A 3D rotation, represented either by a quaternion or a rotation around axis.
 * repr: [`Rotation3D`](../datatypes/rotation3d.md)
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/rotation3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Rotation3D.html
+ * 🐍 [Python API docs for `Rotation3D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/components/rotation3d/)
+ * 🦀 [Rust API docs for `Rotation3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Rotation3D.html)
 
 
 ## Used by

@@ -16,7 +16,7 @@ row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
 
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/mat4x4/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Mat4x4.html
+ * 🐍 [Python API docs for `Mat4x4`](https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/mat4x4/)
+ * 🦀 [Rust API docs for `Mat4x4`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Mat4x4.html)
 
 

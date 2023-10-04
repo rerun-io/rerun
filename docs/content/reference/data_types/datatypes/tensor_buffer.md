@@ -8,8 +8,8 @@ Tensor elements are stored in a contiguous buffer of a single type.
 
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/tensor_buffer/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/enum.TensorBuffer.html
+ * 🐍 [Python API docs for `TensorBuffer`](https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/tensor_buffer/)
+ * 🦀 [Rust API docs for `TensorBuffer`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/enum.TensorBuffer.html)
 
 
 ## Used by

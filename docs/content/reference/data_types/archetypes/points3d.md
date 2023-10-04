@@ -13,8 +13,8 @@ A 3D point cloud with positions and optional colors, radii, labels, etc.
 **Optional**: [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/points3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Points3D.html
+ * 🐍 [Python API docs for `Points3D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/points3d/)
+ * 🦀 [Rust API docs for `Points3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Points3D.html)
 
 ## Examples
 

@@ -163,14 +163,16 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         // TODO(#3647): not HEAD, but `latest`: https://github.com/rerun-io/rerun/issues/3647
         putln!(
             page,
-            " * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/{}/{}/",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/HEAD/package/rerun/{}/{}/)",
+            object.name,
             object.kind.plural_snake_case(),
             object.snake_case_name()
         );
         // TODO(#3651): update this to `latest`
         putln!(
             page,
-            " * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/{}/{}.{}.html",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/{}/{}.{}.html)",
+            object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },
             object.name

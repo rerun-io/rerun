@@ -9,8 +9,8 @@ A position in 3D space.
 * xyz: [`Vec3D`](../datatypes/vec3d.md)
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/position3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Position3D.html
+ * 🐍 [Python API docs for `Position3D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/components/position3d/)
+ * 🦀 [Rust API docs for `Position3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Position3D.html)
 
 
 ## Used by

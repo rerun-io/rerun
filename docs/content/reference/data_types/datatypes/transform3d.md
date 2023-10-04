@@ -10,8 +10,8 @@ Representation of a 3D affine transform.
 * TranslationRotationScale: [`TranslationRotationScale3D`](../datatypes/translation_rotation_scale3d.md)
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/transform3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/enum.Transform3D.html
+ * 🐍 [Python API docs for `Transform3D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/transform3d/)
+ * 🦀 [Rust API docs for `Transform3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/enum.Transform3D.html)
 
 
 ## Used by

@@ -13,8 +13,8 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 **Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/line_strips2d/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.LineStrips2D.html
+ * 🐍 [Python API docs for `LineStrips2D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/line_strips2d/)
+ * 🦀 [Rust API docs for `LineStrips2D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.LineStrips2D.html)
 
 ## Example
 

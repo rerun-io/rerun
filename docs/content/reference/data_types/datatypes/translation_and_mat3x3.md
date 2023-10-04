@@ -12,8 +12,8 @@ First applies the matrix, then the translation.
 * mat3x3: [`Mat3x3`](../datatypes/mat3x3.md)
 
 ## Links
- * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/translation_and_mat3x3/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.TranslationAndMat3x3.html
+ * 🐍 [Python API docs for `TranslationAndMat3x3`](https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/translation_and_mat3x3/)
+ * 🦀 [Rust API docs for `TranslationAndMat3x3`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.TranslationAndMat3x3.html)
 
 
 ## Used by
