@@ -147,7 +147,8 @@ Notes:
  - `mesh_bytes` and `mesh_path` are both now jut `data`. Strings and paths will be opened as files, while
    file-descriptors or bytes objects will be read.
  - `mesh_format` is now `media_type`.
- - `transform` can now take anything that is compatible with `rr.Transform3D` instead of a 3x4 matrix.
+ - `transform` can now take anything that is compatible with `rr.Transform3D` instead of an affine 3x4 matrix.
+   - To convert an existing affine 3x4 matrix to an `rr.Transform3D`, you can use, `rr.Transform3D(translation=transform[:,3], mat3x3=transform[:,0:3])`
 
 ### `log_obb`, `log_obbs`
 Replace with [Boxes3D](data_types/archetypes/boxes3d.md)
