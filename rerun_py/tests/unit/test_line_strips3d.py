@@ -156,7 +156,7 @@ def test_single_line_strip2d() -> None:
 def test_line_strip2d_invalid_shapes() -> None:
     rr.set_strict_mode(True)
 
-    # We used to support flat arrays but this becomes too ambigious when passing a single strip.
+    # We used to support flat arrays but this becomes too ambiguous when passing a single strip.
     with pytest.raises(ValueError):
         rr.LineStrips3D(
             [
