@@ -11,8 +11,8 @@
       "object-detection",
       "pinhole-camera"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/arkit_scenes/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/arkit_scenes/data.rrd",
+    "demo_url": "https://demo.rerun.io/commit/734682d/examples/arkit_scenes/",
+    "rrd_url": "https://demo.rerun.io/commit/734682d/examples/arkit_scenes/data.rrd",
     "thumbnail": {
       "url": "https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png",
       "width": 480,
@@ -30,8 +30,8 @@
       "object-tracking",
       "opencv"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/detect_and_track_objects/data.rrd",
+    "demo_url": "https://demo.rerun.io/commit/734682d/examples/detect_and_track_objects/",
+    "rrd_url": "https://demo.rerun.io/commit/734682d/examples/detect_and_track_objects/data.rrd",
     "thumbnail": {
       "url": "https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png",
       "width": 480,
@@ -47,8 +47,8 @@
       "mri",
       "dicom"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/dicom_mri/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dicom_mri/data.rrd",
+    "demo_url": "https://demo.rerun.io/commit/734682d/examples/dicom_mri/",
+    "rrd_url": "https://demo.rerun.io/commit/734682d/examples/dicom_mri/data.rrd",
     "thumbnail": {
       "url": "https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/480w.png",
       "width": 480,
@@ -63,8 +63,8 @@
       "3d",
       "api-example"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/dna/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/dna/data.rrd",
+    "demo_url": "https://demo.rerun.io/commit/734682d/examples/dna/",
+    "rrd_url": "https://demo.rerun.io/commit/734682d/examples/dna/data.rrd",
     "thumbnail": {
       "url": "https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/480w.png",
       "width": 480,
@@ -81,8 +81,8 @@
       "2D",
       "3D"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/human_pose_tracking/data.rrd",
+    "demo_url": "https://demo.rerun.io/commit/734682d/examples/human_pose_tracking/",
+    "rrd_url": "https://demo.rerun.io/commit/734682d/examples/human_pose_tracking/data.rrd",
     "thumbnail": {
       "url": "https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/480w.png",
       "width": 480,
@@ -98,8 +98,8 @@
       "plots",
       "api-example"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/plots/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/plots/data.rrd",
+    "demo_url": "https://demo.rerun.io/commit/734682d/examples/plots/",
+    "rrd_url": "https://demo.rerun.io/commit/734682d/examples/plots/data.rrd",
     "thumbnail": {
       "url": "https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/480w.png",
       "width": 480,
@@ -117,8 +117,8 @@
       "pinhole-camera",
       "time-series"
     ],
-    "demo_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/",
-    "rrd_url": "https://demo.rerun.io/version/nightly/examples/structure_from_motion/data.rrd",
+    "demo_url": "https://demo.rerun.io/commit/734682d/examples/structure_from_motion/",
+    "rrd_url": "https://demo.rerun.io/commit/734682d/examples/structure_from_motion/data.rrd",
     "thumbnail": {
       "url": "https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/480w.png",
       "width": 480,
