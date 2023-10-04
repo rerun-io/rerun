@@ -127,9 +127,6 @@ root:
         - name: plots
           python: python/plots
 
-        - name: text-logging
-          python: python/text_logging
-
     - name: paper-visualizations
       title: Paper Visualizations
       prelude: |
