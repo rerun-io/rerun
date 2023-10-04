@@ -103,17 +103,17 @@ the environment.
 If you are familiar with the turtlebot nav example and rviz, this view will likely be familiar:
 
  * `map/box` is a placeholder for the map. (This will eventually be a map: [#1531](https://github.com/rerun-io/rerun/issues/1531).)
- * `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../reference/data_types/archetypes/transform3d.md).
- * `map/robot/urdf` contains the `URDF` logged as a [mesh](../reference/data_types/archetypes/mesh3d.md).
- * `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/data_types/archetypes/line_strips3d.md). (This will eventually be a
+ * `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../reference/types/archetypes/transform3d.md).
+ * `map/robot/urdf` contains the `URDF` logged as a [mesh](../reference/types/archetypes/mesh3d.md).
+ * `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/types/archetypes/line_strips3d.md). (This will eventually be a
    native type: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
- * `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../reference/data_types/archetypes/pinhole.md) transform.
- * `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/data_types/archetypes/image.md).
- * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/data_types/archetypes/points3d.md).
+ * `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../reference/types/archetypes/pinhole.md) transform.
+ * `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/types/archetypes/image.md).
+ * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/types/archetypes/points3d.md).
  * `map/points` contains a second copy of `PointCloud2` with a different transform.  (This is a workaround until Rerun
    has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
- * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/data_types/archetypes/time_series_scalar.md).
- * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/data_types/archetypes/time_series_scalar.md).
+ * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/types/archetypes/time_series_scalar.md).
+ * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/types/archetypes/time_series_scalar.md).
 
 ## Code Explanation
 
