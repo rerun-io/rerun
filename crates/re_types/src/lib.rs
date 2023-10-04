@@ -119,6 +119,7 @@
 //! - `title`: a short description of the example which will be shown before the source code
 //! - `image`: a link to an image, with special handling for images uploaded
 //!            using `scripts/upload_image.py` to `static.rerun.io`
+//! - `!api`: if present, the example will *not* be included in comments embedded in the generated code
 //!
 //! ```text,ignore
 //! \example example_file_name title="Some title" image="https://link.to/any_image.png"

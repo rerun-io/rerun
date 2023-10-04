@@ -18,7 +18,7 @@
 ///
 /// ## Example
 ///
-/// ### `transform3d_simple`:
+/// ### Variety of 3D transforms
 /// ```ignore
 /// //! Log some transforms.
 ///
