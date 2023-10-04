@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  Representation of a 3D affine transform.
+/// **Datatype**: Representation of a 3D affine transform.
 ///
 /// Rarely used directly, prefer using the underlying representation classes and pass them
 /// directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`.

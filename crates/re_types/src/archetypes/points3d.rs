@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Archetype**:  A 3D point cloud with positions and optional colors, radii, labels, etc.
+/// **Archetype**: A 3D point cloud with positions and optional colors, radii, labels, etc.
 ///
 /// ## Example
 ///

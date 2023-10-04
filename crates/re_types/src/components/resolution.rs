@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Component**:  Pixel resolution width & height, e.g. of a camera sensor.
+/// **Component**: Pixel resolution width & height, e.g. of a camera sensor.
 ///
 /// Typically in integer units, but for some use cases floating point may be used.
 #[derive(Clone, Debug, Copy, PartialEq)]

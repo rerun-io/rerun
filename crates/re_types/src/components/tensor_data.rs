@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Component**:  A multi-dimensional `Tensor` with optionally named arguments.
+/// **Component**: A multi-dimensional `Tensor` with optionally named arguments.
 #[derive(Clone, Debug, PartialEq)]
 #[repr(transparent)]
 pub struct TensorData(pub crate::datatypes::TensorData);

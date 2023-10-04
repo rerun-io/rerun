@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Archetype**:  2D boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// ## Example
 ///

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  Representation of an affine transform via separate translation, rotation & scale.
+/// **Datatype**: Representation of an affine transform via separate translation, rotation & scale.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct TranslationRotationScale3D {
     /// 3D translation vector, applied last.

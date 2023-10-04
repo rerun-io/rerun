@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  The underlying storage for a `Tensor`.
+/// **Datatype**: The underlying storage for a `Tensor`.
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
 #[derive(Clone, PartialEq)]

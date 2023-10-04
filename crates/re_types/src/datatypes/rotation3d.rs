@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  A 3D rotation.
+/// **Datatype**: A 3D rotation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Rotation3D {
     /// Rotation defined by a quaternion.

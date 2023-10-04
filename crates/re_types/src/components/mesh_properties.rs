@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Component**:  Optional triangle indices for a mesh.
+/// **Component**: Optional triangle indices for a mesh.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MeshProperties(pub crate::datatypes::MeshProperties);
 

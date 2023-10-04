@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Component**:  A string of text, e.g. for labels and text documents
+/// **Component**: A string of text, e.g. for labels and text documents
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Text(pub crate::datatypes::Utf8);

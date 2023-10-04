@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  A connection between two `Keypoints`.
+/// **Datatype**: A connection between two `Keypoints`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
     /// The first point of the pair.

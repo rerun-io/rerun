@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  Material properties of a mesh.
+/// **Datatype**: Material properties of a mesh.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct Material {
     /// Optional color multiplier.
