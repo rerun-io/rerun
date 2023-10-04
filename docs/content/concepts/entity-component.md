@@ -28,14 +28,14 @@ rr.log("my_point", rr.Points2D([32.7, 45.9], color=[255, 0, 0]))
 ```
 
 This statement uses the [`rr.Points2D`](https://ref.rerun.io/docs/python/HEAD/common/spatial_primitives/#rerun.Points2D) archetype.
-Internally, this archetype builds a set of, in this case, two components: [`Position2D`](../reference/loggable-types/components/position2d.md) and [`Color`](../reference/loggable-types/components/color.md). Then, the
+Internally, this archetype builds a set of, in this case, two components: [`Position2D`](../reference/types/components/position2d.md) and [`Color`](../reference/types/components/color.md). Then, the
 `rr.log()` function records these two components and associate them with the `"my_point"` entity.
 
 Later, the Space View for spatial types queries the data store for all the entities that have a `Position2D` component.
 In this case it would find the "my_point" entity. This query additionally returns the `Color` component because that
 component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype, which informs the viewer on how to display the corresponding entity.
 
-See the [Loggable Types](../reference/loggable-types.md) reference for a list of archetypes, components, and datatypes.
+See the [Types](../reference/types.md) reference for a list of archetypes, components, and datatypes.
 
 ### Extension Components
 

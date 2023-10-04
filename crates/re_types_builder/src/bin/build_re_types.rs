@@ -15,7 +15,7 @@ const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = "crates/re_types/.";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";
 const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "rerun_py/tests/test_types";
-const DOCS_CONTENT_DIR_PATH: &str = "docs/content/reference/loggable-types";
+const DOCS_CONTENT_DIR_PATH: &str = "docs/content/reference/types";
 
 /// This uses [`rayon::scope`] to spawn all closures as tasks
 /// running in parallel. It blocks until all tasks are done.

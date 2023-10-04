@@ -38,7 +38,7 @@ The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
 
 ### Images
-The images are logged through the [rr.Image archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/image)
+The images are logged through the [rr.Image archetype](https://www.rerun.io/docs/reference/types/archetypes/image)
 to the [camera/image entity](recording://camera/image).
 
 ### Cameras
@@ -46,26 +46,26 @@ The images stem from pinhole cameras located in the 3D world. To visualize the i
 to be logged and the camera pose (this is often referred to as the intrinsics and extrinsics of the camera,
 respectively).
 
-The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/pinhole) is logged to
+The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/types/archetypes/pinhole) is logged to
 the [camera/image entity](recording://camera/image) and defines the intrinsics of the camera. This defines how to go
 from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
-[rr.Transform3D archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/transform3d) to the
+[rr.Transform3D archetype](https://www.rerun.io/docs/reference/types/archetypes/transform3d) to the
 [camera entity](recording://camera).
 
 ### Reprojection error
-For each image a [rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/bar_chart)
+For each image a [rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)
 containing the average reprojection error of the keypoints is logged to the
 [plot/avg_reproj_err entity](recording://plot/avg_reproj_err).
 
 ### 2D points
 The 2D image points that are used to triangulate the 3D points are visualized by logging
-[rr.Points3D archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/points2d)
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/types/archetypes/points2d)
 to the [camera/image/keypoints entity](recording://camera/image/keypoints). Note that these keypoints are a child of the
 [camera/image entity](recording://camera/image), since the points should show in the image plane.
 
 ### Colored 3D points
 The colored 3D points were added to the scene by logging the
-[rr.Points3D archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/points3d)
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/types/archetypes/points3d)
 to the [points entity](recording://points):
 ```python
 rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))

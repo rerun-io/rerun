@@ -8,7 +8,7 @@ As mentioned in the [Entity Component](entity-component.md) overview, all entiti
 
 The first argument to the [`rr.log()`](https://ref.rerun.io/docs/python/HEAD/common/logging/#rerun.log) function is this path. Each time you log to a specific entity path you will update the entity, i.e. log a new instance of it along the timeline.
 
-Note that although it is technically possible to log multiple types of archetypes on the same entity path, it's almost certainly not what you want. For example, logging a [`Points3D`](../reference/loggable-types/archetypes/points3d.md) point cloud on an entity path where a [`Mesh3D`](../reference/loggable-types/archetypes/mesh3d.md) was previously logged would overwrite the mesh's [`Position3D`](../reference/loggable-types/components/position3d.md) component with the point cloud's, but would leave the [`MeshProperties`](../reference/loggable-types/components/mesh_properties.md) component untouched. The Rerun viewer would likely be unable to display the result. See the [Entity Component](entity-component.md) section for more information.
+Note that although it is technically possible to log multiple types of archetypes on the same entity path, it's almost certainly not what you want. For example, logging a [`Points3D`](../reference/types/archetypes/points3d.md) point cloud on an entity path where a [`Mesh3D`](../reference/types/archetypes/mesh3d.md) was previously logged would overwrite the mesh's [`Position3D`](../reference/types/components/position3d.md) component with the point cloud's, but would leave the [`MeshProperties`](../reference/types/components/mesh_properties.md) component untouched. The Rerun viewer would likely be unable to display the result. See the [Entity Component](entity-component.md) section for more information.
 
 Rerun treats entity paths as being arranged in a hierarchy with the `/` character acting as a separator between path
 elements. The conventional path semantics including concepts of *root* and *parent*/*child* generally apply.
@@ -47,7 +47,7 @@ Path hierarchy plays an important role in a number of different functions within
 
  * With the [Transform System](spaces-and-transforms.md) the `transform` component logged to any entity always describes
 the relationship between that entity and its direct parent.
- * When resolving the meaning of [`ClassId`](../reference/loggable-types/components/class_id.md) and [`KeypointId`](../reference/loggable-types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](annotation-context.md) from the nearest ancestor in the hierarchy.
+ * When resolving the meaning of [`ClassId`](../reference/types/components/class_id.md) and [`KeypointId`](../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](annotation-context.md) from the nearest ancestor in the hierarchy.
  * When adding data to [Blueprints](../reference/viewer/blueprint.md), it is common to add a path and all of its descendants.
  * When using `rr.log("entity/path", rr.Clear(recursive=True))`, it marks an entity *and all of its descendants* as being cleared.
  * In the future, it will also be possible to use path-hierarchy to set default-values for descendants

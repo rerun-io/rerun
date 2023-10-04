@@ -33,14 +33,14 @@ The full source code for this example is available
 
 ### Input Video
 The input video is logged as a sequence of
-[rr.Image objects](https://www.rerun.io/docs/reference/loggable-types/archetypes/image) to the [video entity](recording://video).
+[rr.Image objects](https://www.rerun.io/docs/reference/types/archetypes/image) to the [video entity](recording://video).
 
 ### Segmentation
 The [segmentation result](recording://video/mask) is logged through a combination of two archetypes. The segmentation
 image itself is logged as an
-[rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/segmentation_image) and
+[rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
 contains the id for each pixel. The color is determined by the
-[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/annotation_context) which is
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
 logged with `rr.log(..., timeless=True` as it should apply to the whole sequence.
 
 ### Skeletons
@@ -48,15 +48,15 @@ The [2D](recording://video/pose/points) and [3D skeletons](recording://person/po
 similar combination of two entities.
 
 First, a timeless
-[rr.ClassDescription](https://www.rerun.io/docs/reference/loggable-types/datatypes/class_description) is logged (note, that
+[rr.ClassDescription](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged (note, that
 this is equivalent to logging an
-[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/annotation_context) as in the
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) as in the
 segmentation case). The class description contains the information which maps keypoint ids to labels and how to connect
 the keypoints to a skeleton.
 
 Second, the actual keypoint positions are logged in 2D
-nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/loggable-types/archetypes/points2d) and
-[rr.Points3D](https://www.rerun.io/docs/reference/loggable-types/archetypes/points3d) archetypes, respectively.
+nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/types/archetypes/points2d) and
+[rr.Points3D](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
 """.strip()
 
 

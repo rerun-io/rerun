@@ -327,4 +327,4 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Loggable Types](../reference/loggable-types.md) section for more simple examples of how to use the main datatypes.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.

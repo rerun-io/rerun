@@ -3,7 +3,7 @@ title: Use custom data
 order: 2
 description: How to use Rerun with custom data
 ---
-Rerun comes with many pre-built [Loggable Types](../../reference/loggable-types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/loggable-types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
+Rerun comes with many pre-built [Types](../../reference/types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
 
 All you need to do is implement the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/prerelease/package/rerun/__init__/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/0.9.0-alpha.6/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
 
