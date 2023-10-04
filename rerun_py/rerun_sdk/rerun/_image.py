@@ -58,11 +58,11 @@ class ImageEncoded(AsComponents):
         Parameters
         ----------
         path:
-            A path to an image file stored on the local filesystem. Mutually
-            exclusive with contents.
+            A path to an file stored on the local filesystem. Mutually
+            exclusive with `contents`.
         contents:
-            The contents of the image file. Can be a BufferedReader, BytesIO, or
-            bytes. Mutually exclusive with contents.
+            The contents of the file. Can be a BufferedReader, BytesIO, or
+            bytes. Mutually exclusive with `path`.
         format:
             The format of the image file. If not provided, it will be inferred
             from the file extension.
@@ -71,13 +71,8 @@ class ImageEncoded(AsComponents):
             order. Objects with higher values are drawn on top of those with
             lower values.
         """
-        if len([x for x in (path, contents) if x is not None]) != 1:
+        if (path is None) == (contents is None):
             raise ValueError("Must provide exactly one of 'path' or 'contents'")
-
-        if format is not None:
-            formats = (str(format),)
-        else:
-            formats = None
 
         buffer: IO[bytes] | None = None
         if path is not None:
@@ -89,6 +84,11 @@ class ImageEncoded(AsComponents):
 
         if buffer is None:
             raise ValueError("Input data could not be coerced to IO[bytes]")
+
+        if format is not None:
+            formats = (str(format),)
+        else:
+            formats = None
 
         # Note that PIL loading is lazy. This will only identify the type of file
         # and not decode the whole jpeg.
