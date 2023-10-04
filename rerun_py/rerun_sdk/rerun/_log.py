@@ -62,7 +62,7 @@ def log(
     strict: bool | None = None,
 ) -> None:
     """
-    Log an entity.
+    Log data to Rerun.
 
     This is the main entry point for logging data to rerun. It can be used to log anything
     that implements the `AsComponents` interface, or a collection of `ComponentBatchLike`
@@ -73,11 +73,20 @@ def log(
 
     For example, to log a 3D point:
     ```
-    rr.log("my_point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+    rr.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
     ```
 
     The `log` function can flexibly accept an arbitrary number of additional objects which will
-    be merged into the first entity so long as they don't expose conflicting components.
+    be merged into the first entity so long as they don't expose conflicting components, for instance:
+    ```
+    rr.log(
+        "my/points",
+        rr.Points2D([[-1, -1], [-1, 1], [1, -1], [1, 1]]),
+        rr.AnyValues(
+            confidence=[0.3, 0.4, 0.5, 0.6],
+        ),
+    )
+    ```
 
     Parameters
     ----------
@@ -86,9 +95,13 @@ def log(
     entity:
         Anything that can be converted into a rerun Archetype.
     *extra:
-        An arbitrary number of additional component bundles.
+        An arbitrary number of additional component bundles, usually constructed with [`rerun.AnyValues`][].
     timeless:
-        If true, the entity will be timeless (default: False).
+        If true, the entity will be timeless.
+
+        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+        [`rerun.set_time_nanos`][] will also be included.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -97,6 +110,8 @@ def log(
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
+
+    See also: [`rerun.log_components`][].
     """
     # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
     # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
@@ -166,6 +181,8 @@ def log_components(
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
+
+    See also: [`rerun.log`][].
     """
     instanced: dict[str, pa.Array] = {}
     splats: dict[str, pa.Array] = {}
