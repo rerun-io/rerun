@@ -58,8 +58,15 @@
 /// </center>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextLog {
+    /// The body of the message.
     pub text: crate::components::Text,
+
+    /// The verbosity level of the message.
+    ///
+    /// This can be used to filter the log messages in the Rerun Viewer.
     pub level: Option<crate::components::TextLogLevel>,
+
+    /// Optional color to use for the log line in the Rerun Viewer.
     pub color: Option<crate::components::Color>,
 }
 
