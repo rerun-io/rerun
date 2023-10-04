@@ -5,25 +5,23 @@ import pathlib
 import numpy as np
 import rerun as rr
 
-CUBE_FILE = pathlib.Path(__file__).parent.parent.parent.parent / "docs" / "assets" / "cube.glb"
-assert CUBE_FILE.is_file()
+CUBE_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "docs" / "assets" / "cube.glb"
+assert CUBE_FILEPATH.is_file()
 
 
 def test_asset3d() -> None:
-    blob_bytes = CUBE_FILE.read_bytes()
+    blob_bytes = CUBE_FILEPATH.read_bytes()
     blob_comp = rr.components.Blob(blob_bytes)
-
-    all_input: list[tuple[rr.components.BlobLike | str | pathlib.Path, rr.components.MediaType | None]] = [
-        (CUBE_FILE, None),
-        (str(CUBE_FILE), None),
-        (blob_bytes, rr.components.MediaType.GLB),
-        (np.frombuffer(blob_bytes, dtype=np.uint8), rr.components.MediaType.GLB),
-        (blob_comp, rr.components.MediaType.GLB),
-    ]
 
     rr.set_strict_mode(True)
 
-    assets = [rr.Asset3D(blob, media_type=typ) for blob, typ in all_input]
+    assets = [
+        rr.Asset3D(path=CUBE_FILEPATH),
+        rr.Asset3D(path=str(CUBE_FILEPATH)),
+        rr.Asset3D(contents=blob_bytes, media_type=rr.components.MediaType.GLB),
+        rr.Asset3D(contents=np.frombuffer(blob_bytes, dtype=np.uint8), media_type=rr.components.MediaType.GLB),
+        rr.Asset3D(contents=blob_comp, media_type=rr.components.MediaType.GLB),
+    ]
 
     for asset in assets:
         assert asset.blob.as_arrow_array() == rr.components.BlobBatch(blob_comp).as_arrow_array()
@@ -32,7 +30,7 @@ def test_asset3d() -> None:
 
 
 def test_asset3d_transform() -> None:
-    asset = rr.Asset3D(CUBE_FILE, transform=rr.datatypes.TranslationRotationScale3D(translation=[1, 2, 3]))
+    asset = rr.Asset3D(path=CUBE_FILEPATH, transform=rr.datatypes.TranslationRotationScale3D(translation=[1, 2, 3]))
 
     assert asset.transform is not None
     assert (

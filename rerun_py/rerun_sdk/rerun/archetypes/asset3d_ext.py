@@ -31,8 +31,9 @@ class Asset3DExt:
 
     def __init__(
         self: Any,
-        data: components.BlobLike | str | pathlib.Path,
         *,
+        path: str | pathlib.Path | None = None,
+        contents: components.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
         transform: datatypes.Transform3DLike | None = None,
     ):
@@ -41,33 +42,41 @@ class Asset3DExt:
 
         Parameters
         ----------
-        data:
-             The asset's data (either a [`rerun.components.Blob`][] or compatible type, including `bytes`, or a file
-             path).
-        media_type:
-             The Media Type of the asset.
+        path:
+            A path to an file stored on the local filesystem. Mutually
+            exclusive with `contents`.
 
-             For instance:
+        contents:
+            The contents of the file. Can be a BufferedReader, BytesIO, or
+            bytes. Mutually exclusive with `path`.
+
+        media_type:
+            The Media Type of the asset.
+
+            For instance:
              * `model/gltf-binary`
              * `model/obj`
 
-             If omitted, the viewer will try to guess from the data blob.
-             If it cannot guess, it won't be able to render the asset.
-        transform:
-             An out-of-tree transform.
+            If omitted, it will be guessed from the `path` (if any),
+            or the viewer will try to guess from the contents (magic header).
+            If the media type cannot be guessed, the viewer won't be able to render the asset.
 
-             Applies a transformation to the asset itself without impacting its children.
+        transform:
+            An out-of-tree transform.
+
+            Applies a transformation to the asset itself without impacting its children.
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            if isinstance(data, (str, pathlib.Path)):
-                path = str(data)
-                with open(path, "rb") as file:
-                    blob: components.BlobLike = file.read()
-                if media_type is None:
-                    media_type = guess_media_type(path)
+            if (path is None) == (contents is None):
+                raise ValueError("Must provide exactly one of 'path' or 'contents'")
+
+            if path is None:
+                blob = contents
             else:
-                blob = data
+                blob = open(path, "rb").read()
+                if media_type is None:
+                    media_type = guess_media_type(str(path))
 
             self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
             return
