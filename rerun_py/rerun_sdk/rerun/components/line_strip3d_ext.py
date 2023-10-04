@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import numbers
 from collections.abc import Sized
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import pyarrow as pa
@@ -42,15 +43,38 @@ class LineStrip3DExt:
         elif isinstance(data, Sequence):
             if len(data) == 0:
                 inners = []
-            elif isinstance(data[0], np.ndarray):
-                inners = [Vec3DBatch(datum).as_arrow_array().storage for datum in data]  # type: ignore[arg-type]
-            elif isinstance(data[0], LineStrip3D):
-                inners = [Vec3DBatch(datum.points).as_arrow_array().storage for datum in data]  # type: ignore[union-attr]
             else:
-                inners = [Vec3DBatch(datum).as_arrow_array().storage for datum in data]  # type: ignore[arg-type]
+                # Is it a single strip or several?
+                # It could be a sequence of the style `[[0, 0, 0], [1, 1, 1]]` which is a single strip.
+                if all(
+                    isinstance(elem, Sequence) and len(elem) > 0 and isinstance(elem[0], numbers.Number)
+                    for elem in data
+                ):
+                    if all(len(elem) == 3 for elem in data):  # type: ignore[arg-type]
+                        inners = [Vec3DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                    else:
+                        raise ValueError(
+                            "Expected a sequence of sequences of 3D vectors, but the inner sequence length was not equal to 2."
+                        )
+                # It could be a sequence of the style `[np.array([0, 0, 0]), np.array([1, 1, 1])]` which is a single strip.
+                elif all(isinstance(elem, np.ndarray) and elem.shape == (3,) for elem in data):
+                    inners = [Vec3DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                # .. otherwise assume that it's several strips.
+                else:
 
+                    def to_vec3d_batch(strip: Any) -> Vec3DBatch:
+                        if isinstance(strip, LineStrip3D):
+                            return Vec3DBatch(strip.points)
+                        else:
+                            if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 3):
+                                raise ValueError(
+                                    "Expected a sequence of 3D vectors, instead got array with shape {strip.shape}."
+                                )
+                            return Vec3DBatch(strip)
+
+                    inners = [to_vec3d_batch(strip).as_arrow_array().storage for strip in data]
         else:
-            inners = [Vec3DBatch(data).as_arrow_array().storage]
+            inners = [Vec3DBatch(data).storage]
 
         if len(inners) == 0:
             offsets = pa.array([0], type=pa.int32())

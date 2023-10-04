@@ -31,21 +31,20 @@ from .common_arrays import (
 # fmt: off
 strips_arrays: list[LineStrip3DArrayLike] = [
     [],
+    np.array([]),
+    [
+        [[0, 0, 2], [1, 0, 2], [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
+        [[0, 0, 0], [0, 0, 1], [1, 0, 0], (1, 0, 1),
+                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], # type: ignore[list-item]
+    ],
     [
         [Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
         [Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),
-                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)]], # type: ignore[list-item]
-    [
-        [0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2],
-        [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1],
+                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], # type: ignore[list-item]
     ],
     [
         np.array([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=np.float32),
         np.array([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], dtype=np.float32), # noqa
-    ],
-    [
-        np.array([0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2], dtype=np.float32),
-        np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, ], dtype=np.float32),
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([
@@ -140,6 +139,62 @@ def test_line_segments3d(data: LineStrip3DArrayLike) -> None:
     assert arch.strips == LineStrip3DBatch(
         [[[0, 0, 0], [0, 0, 1]], [[1, 0, 0], [1, 0, 1]], [[1, 1, 0], [1, 1, 1]], [[0, 1, 0], [0, 1, 1]]],
     )
+
+
+def test_single_line_strip2d() -> None:
+    # Regression test for #3643
+    # Single linestrip can be passed and is not interpreted as batch of zero sized line strips.
+    reference = rr.LineStrips3D([rr.components.LineStrip3D([[0, 0, 0], [1, 1, 1]])])
+    assert len(reference.strips) == 1
+    assert reference == rr.LineStrips3D(rr.components.LineStrip3D([[0, 0, 0], [1, 1, 1]]))
+    assert reference == rr.LineStrips3D([[[0, 0, 0], [1, 1, 1]]])
+    assert reference == rr.LineStrips3D([[0, 0, 0], [1, 1, 1]])
+    assert reference == rr.LineStrips3D(np.array([[0, 0, 0], [1, 1, 1]]))
+    assert reference == rr.LineStrips3D([np.array([0, 0, 0]), np.array([1, 1, 1])])
+
+
+def test_line_strip2d_invalid_shapes() -> None:
+    rr.set_strict_mode(True)
+
+    # We used to support flat arrays but this becomes too ambigious when passing a single strip.
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            [
+                [0, 0, 2, 1, 4, -1, 6, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1],
+            ],
+        )
+    # fmt: off
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            [
+                np.array([0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2], dtype=np.float32),
+                np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, ], dtype=np.float32),
+            ],
+        )
+    # fmt: on
+
+    # not homogenous numpy arrays
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            np.array(
+                np.array(
+                    [
+                        [([0, 0, 2]), [1, 0, 2], [1, 1, 2], [0, 1, 2]],
+                        [([0, 0, 0]), [0, 0, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1], [0, 1, 0], [0, 1, 1]],
+                    ]
+                ),
+            )
+        )
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            np.array(
+                [
+                    [0, 0, 2, 1, 4, -1, 6, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1],
+                ]
+            ),
+        )
 
 
 if __name__ == "__main__":
