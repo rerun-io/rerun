@@ -174,7 +174,7 @@ def test_line_strip2d_invalid_shapes() -> None:
         )
     # fmt: on
 
-    # not homogenous numpy arrays
+    # not homogeneous numpy arrays
     with pytest.raises(ValueError):
         rr.LineStrips3D(
             np.array(
