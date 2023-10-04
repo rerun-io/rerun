@@ -18,7 +18,7 @@
 ///
 /// ## Example
 ///
-/// ### `tensor_simple`:
+/// ### Simple Tensor
 /// ```ignore
 /// //! Create and log a tensor.
 ///

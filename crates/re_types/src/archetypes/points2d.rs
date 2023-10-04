@@ -18,7 +18,7 @@
 ///
 /// ## Example
 ///
-/// ### `point2d_random`:
+/// ### Randomly distributed 2D points with varying color and radius
 /// ```ignore
 /// //! Log some random points with color and radii.
 ///

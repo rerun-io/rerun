@@ -27,7 +27,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// ### `point2d_random`:
+        /// ### Randomly distributed 2D points with varying color and radius
         /// ```cpp,ignore
         /// // Log some very simple points.
         ///

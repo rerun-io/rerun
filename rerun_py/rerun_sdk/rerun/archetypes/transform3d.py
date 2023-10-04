@@ -21,7 +21,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     Example
     -------
-    ### `transform3d_simple`:
+    ### Variety of 3D transforms:
     ```python
     from math import pi
 

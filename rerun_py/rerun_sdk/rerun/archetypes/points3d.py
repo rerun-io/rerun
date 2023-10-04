@@ -21,7 +21,7 @@ class Points3D(Points3DExt, Archetype):
 
     Example
     -------
-    ### `point3d_random`:
+    ### Randomly distributed 3D points with varying color and radius:
     ```python
     import rerun as rr
     from numpy.random import default_rng

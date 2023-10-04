@@ -10,7 +10,7 @@ A 3D transform.
 
 ## Example
 
-### transform3d_simple
+### Variety of 3D transforms
 
 code-example: transform3d_simple
 

@@ -8,8 +8,7 @@ namespace rerun.archetypes;
 
 /// A generic n-dimensional Tensor.
 ///
-/// \example tensor_simple image="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png"
-/// \example tensor_one_dim !api image="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1200w.png"
+/// \example tensor_simple title="Simple Tensor" image="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png"
 table Tensor (
   "attr.rust.derive": "PartialEq"
 ) {

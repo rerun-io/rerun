@@ -21,7 +21,7 @@ class Points2D(Points2DExt, Archetype):
 
     Example
     -------
-    ### `point2d_random`:
+    ### Randomly distributed 2D points with varying color and radius:
     ```python
     import rerun as rr
     from numpy.random import default_rng

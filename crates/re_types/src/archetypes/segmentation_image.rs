@@ -26,7 +26,7 @@
 ///
 /// ## Example
 ///
-/// ### `segmentation_image_simple`:
+/// ### Simple segmentation image
 /// ```ignore
 /// //! Create and log a segmentation image.
 ///

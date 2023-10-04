@@ -32,7 +32,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
     Example
     -------
-    ### `segmentation_image_simple`:
+    ### Simple segmentation image:
     ```python
 
     import numpy as np
