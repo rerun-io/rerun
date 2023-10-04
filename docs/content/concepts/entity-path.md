@@ -29,8 +29,7 @@ However, it is also acceptable to leave implicitly "empty" elements in your path
 rr.log("camera/image", rr.Image(img))
 rr.log("camera/image/detections/points", rr.Points2D(points))
 ```
-Nothing needs to be explicitly logged to `"camera"` or `"camera/image/detection"` to make the above valid. The examples
-above are using the Python SDK, the
+Nothing needs to be explicitly logged to `"camera"` or `"camera/image/detection"` to make the above valid.
 
 #### Path parts
 
