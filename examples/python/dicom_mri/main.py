@@ -41,7 +41,7 @@ rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"])
 
 `voxels_volume_u16` is a `numpy.array` of shape `(512, 512, 512)` containing volumetric MRI intensities. We can
 visualize such information in Rerun by logging the `numpy.array` as an
-[rr.Tensor archetype](https://www.rerun.io/docs/reference/data_types/archetypes/tensor). Here the tensor is logged to
+[rr.Tensor archetype](https://www.rerun.io/docs/reference/types/archetypes/tensor). Here the tensor is logged to
 the [tensor entity](recording://tensor), however any other name for the entity could have been chosen.
 
 In the Rerun viewer you can inspect the data in detail. The `dim_names` provided in the above call to `rr.log` help to
