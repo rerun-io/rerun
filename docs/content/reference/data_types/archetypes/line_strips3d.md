@@ -12,6 +12,10 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 
 **Optional**: [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/line_strips3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.LineStrips3D.html
+
 ## Example
 
 ### Many strips

@@ -10,6 +10,10 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/bar_chart/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.BarChart.html
+
 ## Example
 
 ### bar_chart

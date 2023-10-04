@@ -9,6 +9,10 @@ A 3D rotation.
 * Quaternion: [`Quaternion`](../datatypes/quaternion.md)
 * AxisAngle: [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/rotation3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.Rotation3D.html
+
 
 ## Used by
 

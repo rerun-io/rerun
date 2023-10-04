@@ -12,6 +12,10 @@ The id refers either to a class or key-point id
 * label: [`Utf8`](../datatypes/utf8.md)
 * color: [`Rgba32`](../datatypes/rgba32.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/annotation_info/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.AnnotationInfo.html
+
 
 ## Used by
 

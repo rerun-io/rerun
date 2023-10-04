@@ -12,6 +12,10 @@ A batch of 3D arrows with optional colors, radii, labels, etc.
 
 **Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/arrows3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Arrows3D.html
+
 ## Example
 
 ### arrow3d_simple

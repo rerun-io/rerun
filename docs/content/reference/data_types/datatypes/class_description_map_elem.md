@@ -11,6 +11,10 @@ This is internal to the `AnnotationContext` structure.
 * class_id: [`ClassId`](../datatypes/class_id.md)
 * class_description: [`ClassDescription`](../datatypes/class_description.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/class_description_map_elem/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.ClassDescriptionMapElem.html
+
 
 ## Used by
 

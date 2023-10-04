@@ -12,6 +12,10 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 
 **Optional**: [`OutOfTreeTransform3D`](../components/out_of_tree_transform3d.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/asset3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Asset3D.html
+
 ## Examples
 
 ### Simple 3D asset

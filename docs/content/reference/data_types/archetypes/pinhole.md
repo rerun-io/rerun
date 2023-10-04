@@ -12,6 +12,10 @@ Camera perspective projection (a.k.a. intrinsics).
 
 **Optional**: [`ViewCoordinates`](../components/view_coordinates.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/pinhole/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Pinhole.html
+
 ## Example
 
 ### pinhole_simple

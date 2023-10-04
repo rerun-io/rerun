@@ -14,6 +14,10 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 ```
 
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/mat3x3/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.Mat3x3.html
+
 
 ## Used by
 

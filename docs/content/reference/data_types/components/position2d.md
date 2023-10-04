@@ -8,6 +8,10 @@ A position in 2D space.
 
 * xy: [`Vec2D`](../datatypes/vec2d.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/position2d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Position2D.html
+
 
 ## Used by
 

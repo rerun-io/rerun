@@ -19,6 +19,10 @@ The points will be connected in order, like so:
 
 * points: [`Vec2D`](../datatypes/vec2d.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/line_strip2d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.LineStrip2D.html
+
 
 ## Used by
 

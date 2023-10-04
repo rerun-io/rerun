@@ -15,6 +15,10 @@ cannot be timeless!
 
 **Optional**: [`Text`](../components/text.md), [`ScalarScattering`](../components/scalar_scattering.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/time_series_scalar/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.TimeSeriesScalar.html
+
 ## Examples
 
 ### scalar_simple

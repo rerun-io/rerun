@@ -12,6 +12,10 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 **Optional**: [`Color`](../components/color.md), [`Material`](../components/material.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/mesh3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Mesh3D.html
+
 ## Examples
 
 ### Simple indexed 3D mesh

@@ -11,6 +11,10 @@ byte is `R` and the least significant byte is `A`.
 
 * rgba: [`Rgba32`](../datatypes/rgba32.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/color/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Color.html
+
 
 ## Used by
 

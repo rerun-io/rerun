@@ -156,6 +156,25 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
     }
 
+    {
+        putln!(page);
+        putln!(page, "## Links");
+        // TODO(#2919): link to C++ docs
+        // TODO( #3647): not HEAD, but `latest`: https://github.com/rerun-io/rerun/issues/3647
+        putln!(
+            page,
+            " * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/{}/{}/",
+            object.kind.plural_snake_case(),
+            object.snake_case_name()
+        );
+        putln!(
+            page,
+            " * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/{}/struct.{}.html",
+            object.kind.plural_snake_case(),
+            object.name
+        );
+    }
+
     putln!(page);
     write_example_list(&mut page, &examples);
 

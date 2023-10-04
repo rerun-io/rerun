@@ -8,6 +8,10 @@ title: "Scale3D"
 
 * ThreeD: [`Vec3D`](../datatypes/vec3d.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/scale3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.Scale3D.html
+
 
 ## Used by
 

@@ -8,6 +8,10 @@ A generic n-dimensional Tensor.
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/tensor/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Tensor.html
+
 ## Examples
 
 ### tensor_simple

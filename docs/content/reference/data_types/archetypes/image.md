@@ -18,6 +18,10 @@ Leading and trailing unit-dimensions are ignored, so that
 
 **Optional**: [`DrawOrder`](../components/draw_order.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/image/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Image.html
+
 ## Example
 
 ### image_simple

@@ -9,6 +9,10 @@ A connection between two `Keypoints`.
 * keypoint0: [`KeypointId`](../datatypes/keypoint_id.md)
 * keypoint1: [`KeypointId`](../datatypes/keypoint_id.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/keypoint_pair/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.KeypointPair.html
+
 
 ## Used by
 

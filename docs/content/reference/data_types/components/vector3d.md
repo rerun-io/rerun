@@ -8,6 +8,10 @@ A vector in 3D space.
 
 * vector: [`Vec3D`](../datatypes/vec3d.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/vector3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Vector3D.html
+
 
 ## Used by
 

@@ -11,6 +11,10 @@ First applies the matrix, then the translation.
 * translation: [`Vec3D`](../datatypes/vec3d.md)
 * mat3x3: [`Mat3x3`](../datatypes/mat3x3.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/translation_and_mat3x3/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.TranslationAndMat3x3.html
+
 
 ## Used by
 

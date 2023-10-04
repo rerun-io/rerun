@@ -14,6 +14,10 @@ path.
 
 * class_map: [`ClassDescriptionMapElem`](../datatypes/class_description_map_elem.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/annotation_context/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.AnnotationContext.html
+
 
 ## Used by
 

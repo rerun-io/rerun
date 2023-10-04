@@ -8,6 +8,10 @@ A position in 3D space.
 
 * xyz: [`Vec3D`](../datatypes/vec3d.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/position3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Position3D.html
+
 
 ## Used by
 

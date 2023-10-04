@@ -10,6 +10,10 @@ An out-of-tree affine transform between two 3D spaces, represented in a given di
 
 * repr: [`Transform3D`](../datatypes/transform3d.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/out_of_tree_transform3d/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.OutOfTreeTransform3D.html
+
 
 ## Used by
 

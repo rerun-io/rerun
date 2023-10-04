@@ -15,6 +15,10 @@ down, and the Z axis points forward.
 
 **Required**: [`ViewCoordinates`](../components/view_coordinates.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/view_coordinates/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.ViewCoordinates.html
+
 ## Example
 
 ### view_coordinates_simple

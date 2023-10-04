@@ -5,6 +5,10 @@ title: "Radius"
 A Radius component.
 
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/radius/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Radius.html
+
 
 ## Used by
 

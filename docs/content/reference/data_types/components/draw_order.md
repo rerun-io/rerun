@@ -11,6 +11,10 @@ Within an entity draw order is governed by the order of the components.
 Draw order for entities with the same draw order is generally undefined.
 
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/draw_order/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.DrawOrder.html
+
 
 ## Used by
 

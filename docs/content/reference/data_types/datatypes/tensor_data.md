@@ -16,6 +16,10 @@ which stores a contiguous array of typed values.
 * shape: [`TensorDimension`](../datatypes/tensor_dimension.md)
 * buffer: [`TensorBuffer`](../datatypes/tensor_buffer.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/tensor_data/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.TensorData.html
+
 
 ## Used by
 

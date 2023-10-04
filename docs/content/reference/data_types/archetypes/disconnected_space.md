@@ -13,6 +13,10 @@ will be ignored.
 
 **Required**: [`DisconnectedSpace`](../components/disconnected_space.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/disconnected_space/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.DisconnectedSpace.html
+
 ## Example
 
 ### disconnected_space

@@ -11,6 +11,10 @@ consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 
 * value: [`Utf8`](../datatypes/utf8.md)
 
+## Links
+ * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/media_type/
+ * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.MediaType.html
+
 
 ## Used by
 
