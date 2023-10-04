@@ -593,6 +593,7 @@ impl RecordingStream {
     ///
     /// # Example:
     /// ```
+    /// # use re_sdk as rerun;
     /// # let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple").memory()?;
     /// rec.log(
     ///     "my/points",
