@@ -65,7 +65,7 @@ def log(
     Log data to Rerun.
 
     This is the main entry point for logging data to rerun. It can be used to log anything
-    that implements the `AsComponents` interface, or a collection of `ComponentBatchLike`
+    that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike`
     objects.
 
     The most common way to log is with one of the rerun archetypes, all of which implement
@@ -94,9 +94,9 @@ def log(
     entity_path:
         Path to the entity in the space hierarchy.
     entity:
-        Anything that can be converted into a rerun Archetype.
+        Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
     *extra:
-        An arbitrary number of additional component bundles, usually constructed with [`rerun.AnyValues`][].
+        An arbitrary number of additional component bundles implementing the [`rerun.AsComponents`][] interface, that are logged to the same entity path.
     timeless:
         If true, the entity will be timeless.
 
