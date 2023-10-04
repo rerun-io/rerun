@@ -18,7 +18,7 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 
 code-example: asset3d_simple
 
-### asset3d_out_of_tree
+### 3D asset with out-of-tree transform
 
 code-example: asset3d_out_of_tree
 

@@ -10,7 +10,7 @@ Empties all the components of an entity.
 
 ## Examples
 
-### clear_simple
+### Flat
 
 code-example: clear_simple
 

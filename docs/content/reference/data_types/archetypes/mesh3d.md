@@ -18,7 +18,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 code-example: mesh3d_indexed
 
-### mesh3d_partial_updates
+### 3D mesh with partial updates
 
 code-example: mesh3d_partial_updates
 

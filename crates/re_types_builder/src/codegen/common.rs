@@ -93,6 +93,14 @@ impl<'a> ExampleInfo<'a> {
 
             if let Some(args) = args {
                 let args = args.trim();
+
+                exclude_from_api_docs = args.contains("!api");
+                let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
+                    args_without_api_prefix.trim()
+                } else {
+                    args
+                };
+
                 if args.starts_with('"') {
                     // \example example_name "Example Title"
                     title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
@@ -100,7 +108,6 @@ impl<'a> ExampleInfo<'a> {
                     // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
                     title = find_keyed("title", args);
                     image = find_keyed("image", args).map(ImageUrl::parse);
-                    exclude_from_api_docs = args.contains("!api");
                 }
             }
 
