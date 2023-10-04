@@ -9,7 +9,7 @@ A string of text, e.g. for labels and text documents
 * value: [`Utf8`](../datatypes/utf8.md)
 
 ## Links
- * 🐍 [Python API docs for `Text`](https://ref.rerun.io/docs/python/HEAD/package/rerun/components/text/)
+ * 🐍 [Python API docs for `Text`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/text/)
  * 🦀 [Rust API docs for `Text`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Text.html)
 
 

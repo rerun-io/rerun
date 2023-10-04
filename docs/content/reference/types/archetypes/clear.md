@@ -9,7 +9,7 @@ Empties all the components of an entity.
 **Required**: [`ClearIsRecursive`](../components/clear_is_recursive.md)
 
 ## Links
- * 🐍 [Python API docs for `Clear`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/clear/)
+ * 🐍 [Python API docs for `Clear`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/clear/)
  * 🦀 [Rust API docs for `Clear`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Clear.html)
 
 ## Examples

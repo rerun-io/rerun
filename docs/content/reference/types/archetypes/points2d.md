@@ -13,7 +13,7 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 **Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
- * 🐍 [Python API docs for `Points2D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/points2d/)
+ * 🐍 [Python API docs for `Points2D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/points2d/)
  * 🦀 [Rust API docs for `Points2D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Points2D.html)
 
 ## Examples

@@ -10,7 +10,7 @@ A connection between two `Keypoints`.
 * keypoint1: [`KeypointId`](../datatypes/keypoint_id.md)
 
 ## Links
- * 🐍 [Python API docs for `KeypointPair`](https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/keypoint_pair/)
+ * 🐍 [Python API docs for `KeypointPair`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/keypoint_pair/)
  * 🦀 [Rust API docs for `KeypointPair`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.KeypointPair.html)
 
 

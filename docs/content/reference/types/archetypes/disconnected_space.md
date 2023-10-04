@@ -14,7 +14,7 @@ will be ignored.
 **Required**: [`DisconnectedSpace`](../components/disconnected_space.md)
 
 ## Links
- * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/disconnected_space/)
+ * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/disconnected_space/)
  * 🦀 [Rust API docs for `DisconnectedSpace`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.DisconnectedSpace.html)
 
 ## Example

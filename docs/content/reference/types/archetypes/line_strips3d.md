@@ -13,7 +13,7 @@ title: "LineStrips3D"
 **Optional**: [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
- * 🐍 [Python API docs for `LineStrips3D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/line_strips3d/)
+ * 🐍 [Python API docs for `LineStrips3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/line_strips3d/)
  * 🦀 [Rust API docs for `LineStrips3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.LineStrips3D.html)
 
 ## Examples

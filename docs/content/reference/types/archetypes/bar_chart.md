@@ -11,7 +11,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 **Required**: [`TensorData`](../components/tensor_data.md)
 
 ## Links
- * 🐍 [Python API docs for `BarChart`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/bar_chart/)
+ * 🐍 [Python API docs for `BarChart`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/bar_chart/)
  * 🦀 [Rust API docs for `BarChart`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.BarChart.html)
 
 ## Example

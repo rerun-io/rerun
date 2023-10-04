@@ -12,7 +12,7 @@ This is internal to the `AnnotationContext` structure.
 * class_description: [`ClassDescription`](../datatypes/class_description.md)
 
 ## Links
- * 🐍 [Python API docs for `ClassDescriptionMapElem`](https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/class_description_map_elem/)
+ * 🐍 [Python API docs for `ClassDescriptionMapElem`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/class_description_map_elem/)
  * 🦀 [Rust API docs for `ClassDescriptionMapElem`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.ClassDescriptionMapElem.html)
 
 

@@ -6,7 +6,7 @@ A vector in 2D space.
 
 
 ## Links
- * 🐍 [Python API docs for `Vec2D`](https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/vec2d/)
+ * 🐍 [Python API docs for `Vec2D`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/vec2d/)
  * 🦀 [Rust API docs for `Vec2D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Vec2D.html)
 
 
