@@ -83,7 +83,7 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[],
     ),
     Section(
-        title="Adhoc Data",
+        title="Custom Data",
         module_summary=None,
         func_list=[],
         class_list=["AnyValues"],

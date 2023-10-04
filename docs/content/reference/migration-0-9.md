@@ -3,7 +3,7 @@ title: Migration to 0.9
 order: 10
 ---
 
-Rerun-0.9 introduces a new set of object-oriented logging APIs built on top of an updated, more concrete,
+Rerun-0.9 introduces a new set of type-oriented logging APIs built on top of an updated, more concrete,
 [data model](../concepts/entity-component.md).
 
 Rather than using different functions to log different kinds of data, all data logging now goes through a singular `log`
@@ -35,7 +35,7 @@ This is one area where we were forced to make breaking changes.  Rerun previousl
 assorted log-functions and helper classes were implemented. In general, these symbols were all re-exported to the
 top-level `rerun` namespace.  However, in some cases these fully-qualified paths were used for imports. Because
 `rerun.log` is now a function rather than a module, any such imports will result in an import error. Look for the
-corresponding symbol in the top-level `rerun` namespace instead.
+corresponding symbol in the top-level `rerun` namespace instead.  For instance: `rr.log.text.LoggingHandler` → `rr.LoggingHandler`
 
 ## Updating to the log APIs
 
@@ -46,7 +46,7 @@ cases, the old parameter names match the parameters taken by the new Archetype c
 ### `log_annotation_context`
 Replace with [AnnotationContext](data_types/archetypes/annotation_context.md)
 
-Python docs: [AnnotationContext.__init__](https://ref.rerun.io/docs/python/HEAD/common/annotations/#rerun.AnnotationContext.__init__)
+Python docs: [AnnotationContext](https://ref.rerun.io/docs/python/HEAD/common/annotations/#rerun.AnnotationContext.__init__)
 
 Notes:
  - `class_descriptions` has become `context`
@@ -56,7 +56,7 @@ Notes:
 ### `log_arrow`
 Replace with [Arrows3D](data_types/archetypes/arrows3d.md)
 
-Python docs: [Arrows3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Arrows3D.__init__)
+Python docs: [Arrows3D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Arrows3D.__init__)
 
 Notes:
  - `with_scale` has become `radii`, which entails dividing by 2 as necessary.
@@ -65,12 +65,12 @@ Notes:
 ### `log_cleared`
 Replace with [Clear](data_types/archetypes/clear.md)
 
-Python docs: [Clear.__init__](https://ref.rerun.io/docs/python/HEAD/common/clearing_entities/#rerun.Clear.__init__)
+Python docs: [Clear](https://ref.rerun.io/docs/python/HEAD/common/clearing_entities/#rerun.Clear.__init__)
 
 ### `log_depth_image`
 Replace with [DepthImage](data_types/archetypes/depth_image.md)
 
-Python docs: [DepthImage.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.DepthImage.__init__)
+Python docs: [DepthImage](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.DepthImage.__init__)
 
 Notes:
  * `image` has become `data`
@@ -78,7 +78,7 @@ Notes:
 ### `log_disconnected_space`
 Replace with [DisconnectedSpace](data_types/archetypes/disconnected_space.md)
 
-Python docs: [DisconnectedSpace.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.DisconnectedSpace.__init__)
+Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.DisconnectedSpace.__init__)
 
 ### `log_extension_components`
 Replace with `AnyValues`
@@ -92,7 +92,7 @@ Notes:
 ### `log_image`
 Replace with [Image](data_types/archetypes/image.md)
 
-Python docs: [Image.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.Image.__init__)
+Python docs: [Image](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.Image.__init__)
 
 Notes:
  * `image` has become `data`
@@ -101,7 +101,7 @@ Notes:
 ### `log_image_file`
 Replace with `ImageEncoded`
 
-Python docs: [ImageEncoded.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.ImageEncoded.__init__)
+Python docs: [ImageEncoded](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.ImageEncoded.__init__)
 
 Notes:
  - `img_bytes` and `img_path`
@@ -110,12 +110,13 @@ Notes:
 ### `log_line_strip`, `log_line_strips_2d`, `log_line_strips_3d`, `log_line_segments`
 Replace with [LineStrips2D](data_types/archetypes/line_strips2d.md) or [LineStrips3D](data_types/archetypes/line_strips3d.md)
 
-Python docs: [LineStrips2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.LineStrips2D.__init__), [LineStrips3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.LineStrips3D.__init__)
+Python docs: [LineStrips2D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.LineStrips2D.__init__), [LineStrips3D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.LineStrips3D.__init__)
 
 Notes:
  - `log_line_segments` used to take an array of shape (2 * num_segments, 2 or 3) (where points were connected in
 even-odd pairs). Instead this is now handled by a batch of `LineStrips` all of length 2. Note that `LineStrips` now
-takes an array of shape (num_strips, num_points_per_strip, 2 or 3). You can use convert to the new format using the snippets:
+takes any sequence of arrays of shape (num_points_per_strip, 2 or 3). You can use convert to the new format using the
+snippets:
 ```
 line_strips2d=line_segments.reshape(-1, 2, 2)
 line_strips3d=line_segments.reshape(-1, 2, 3)
@@ -127,7 +128,7 @@ line_strips3d=line_segments.reshape(-1, 2, 3)
 ### `log_mesh`, `log_meshes`
 Replace with [Mesh3D](data_types/archetypes/mesh3d.md)
 
-Python docs: [Mesh3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Mesh3D.__init__)
+Python docs: [Mesh3D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Mesh3D.__init__)
 
 Notes:
  - Meshes are no longer batch objects. Instead they are treated as a batch of vertices, as such there is no longer a
@@ -140,7 +141,7 @@ Notes:
 ### `log_mesh_file`
 Replace with [Asset3D](data_types/archetypes/asset3d.md)
 
-Python docs: [Asset3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Asset3D.__init__)
+Python docs: [Asset3D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Asset3D.__init__)
 
 Notes:
  - `mesh_bytes` and `mesh_path` are both now jut `data`. Strings and paths will be opened as files, while
@@ -151,7 +152,7 @@ Notes:
 ### `log_obb`, `log_obbs`
 Replace with [Boxes3D](data_types/archetypes/boxes3d.md)
 
-Python docs: [Boxes3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes3D.__init__)
+Python docs: [Boxes3D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes3D.__init__)
 
 Notes:
  - `positions` has become `centers`.
@@ -163,7 +164,7 @@ Notes:
 ### `log_pinhole`
 Replace with [Pinhole](data_types/archetypes/pinhole.md)
 
-Python docs: [Pinhole.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Pinhole.__init__)
+Python docs: [Pinhole](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Pinhole.__init__)
 
 Notes:
  - `child_from_parent` has become `image_from_parent`.
@@ -175,7 +176,7 @@ Notes:
 ### `log_point`, `log_points`
 Replace with [Points2D](data_types/archetypes/points2d.md) or [Points3D](data_types/archetypes/points3d.md).
 
-Python docs: [Points2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points2D.__init__), [Points3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points3D.__init__)
+Python docs: [Points2D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points2D.__init__), [Points3D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Points3D.__init__)
 
 Notes:
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
@@ -184,7 +185,7 @@ Notes:
 ### `log_rect`, `log_rects`
 Replace with [Boxes2D](data_types/archetypes/boxes2d.md)
 
-Python docs: [Boxes2D.__init__](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes2D.__init__)
+Python docs: [Boxes2D](https://ref.rerun.io/docs/python/HEAD/common/spatial_archetypes/#rerun.Boxes2D.__init__)
 
 Notes:
  - Can now be constructed with 2 arrays: `centers`, and either `half_sizes` o `sizes`.
@@ -195,12 +196,12 @@ Notes:
 ### `log_scalar`
 Replace with [TimeSeriesScalar](data_types/archetypes/time_series_scalar.md)
 
-Python docs: [TimeSeriesScalar.__init__](https://ref.rerun.io/docs/python/HEAD/common/plotting/#rerun.TimeSeriesScalar.__init__)
+Python docs: [TimeSeriesScalar](https://ref.rerun.io/docs/python/HEAD/common/plotting/#rerun.TimeSeriesScalar.__init__)
 
 ### `log_segmentation_image`
 Replace with [SegmentationImage](data_types/archetypes/segmentation_image.md)
 
-Python docs: [SegmentationImage.__init__](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.SegmentationImage.__init__)
+Python docs: [SegmentationImage](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.SegmentationImage.__init__)
 
 Notes:
  * `image` has become `data`
@@ -208,7 +209,7 @@ Notes:
 ### `log_tensor`
 Replace with [Tensor](data_types/archetypes/tensor.md)
 
-Python docs: [Tensor.__init__](https://ref.rerun.io/docs/python/HEAD/common/tensors/#rerun.Tensor.__init__)
+Python docs: [Tensor](https://ref.rerun.io/docs/python/HEAD/common/tensors/#rerun.Tensor.__init__)
 
 Notes:
  - `tensor` has become `data`.
@@ -220,20 +221,20 @@ Notes:
 ### `log_text_entry`
 Replace with [TextLog](data_types/archetypes/text_log.md)
 
-Python docs: [TextLog.__init__](https://ref.rerun.io/docs/python/HEAD/common/text/#rerun.TextLog.__init__)
+Python docs: [TextLog](https://ref.rerun.io/docs/python/HEAD/common/text/#rerun.TextLog.__init__)
 
 ### `log_transform3d`
 Replace with [Transform3D](data_types/archetypes/transform3d.md)
 
-Python docs: [Transform3D.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Transform3D.__init__)
+Python docs: [Transform3D](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.Transform3D.__init__)
 
 Notes:
- - Now takes an optional parameters for `translation`, `rotation`, `scale`, or `mat3x3` to simplify construction.
+ - Now takes optional parameters for `translation`, `rotation`, `scale`, or `mat3x3` to simplify construction.
 
 ### `log_view_coordinates`
 Replace with [ViewCoordinates](data_types/archetypes/view_coordinates.md)
 
-Python docs: [ViewCoordinates.__init__](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.ViewCoordinates.__init__)
+Python docs: [ViewCoordinates](https://ref.rerun.io/docs/python/HEAD/common/transforms_and_coordinate_systems/#rerun.ViewCoordinates.__init__)
 
 Notes:
 - Rather than providing `xyz` or `up` as strings, `rr.ViewCoordinates` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
