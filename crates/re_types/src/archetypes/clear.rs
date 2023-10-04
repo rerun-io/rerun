@@ -18,7 +18,7 @@
 ///
 /// ## Example
 ///
-/// ### Recursive
+/// ### Flat
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
@@ -26,7 +26,7 @@
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_clear_recursive").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_clear_simple").memory()?;
 ///
 ///     #[rustfmt::skip]
 ///     let (vectors, origins, colors) = (
@@ -45,13 +45,24 @@
 ///         )?;
 ///     }
 ///
-///     // Now clear all of them at once.
-///     rec.log("arrows", &rerun::Clear::recursive())?;
+///     // Now clear them, one by one on each tick.
+///     for i in 0..vectors.len() {
+///         rec.log(format!("arrows/{i}"), &rerun::Clear::flat())?;
+///     }
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png">
+///   <img src="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clear {
     pub is_recursive: crate::components::ClearIsRecursive,

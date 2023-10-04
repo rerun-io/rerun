@@ -21,7 +21,7 @@ class Clear(ClearExt, Archetype):
 
     Example
     -------
-    ### Recursive:
+    ### Flat:
     ```python
 
     import rerun as rr
@@ -36,9 +36,19 @@ class Clear(ClearExt, Archetype):
     for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
         rr.log(f"arrows/{i}", rr.Arrows3D(vectors=vector, origins=origin, colors=color))
 
-    # Now clear all of them at once.
-    rr.log("arrows", rr.Clear(recursive=True))  # or `rr.Clear.recursive()`
+    # Now clear them, one by one on each tick.
+    for i in range(len(vectors)):
+        rr.log(f"arrows/{i}", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png">
+      <img src="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png" width="640">
+    </picture>
+    </center>
     """
 
     # __init__ can be found in clear_ext.py

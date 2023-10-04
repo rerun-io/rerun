@@ -19,7 +19,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// ### Recursive
+        /// ### Flat
         /// ```cpp,ignore
         /// // Log a batch of 3D arrows.
         ///
@@ -31,7 +31,7 @@ namespace rerun {
         /// namespace rr = rerun;
         ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_clear_recursive");
+        ///     auto rec = rr::RecordingStream("rerun_example_clear_simple");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///     std::vector<rr::components::Vector3D> vectors = {
@@ -61,8 +61,11 @@ namespace rerun {
         ///         );
         ///     }
         ///
-        ///     // Now clear all of them at once.
-        ///     rec.log("arrows", rr::Clear::RECURSIVE);
+        ///     // Now clear them, one by one on each tick.
+        ///     for (int i = 0; i <vectors.size(); ++i) {
+        ///         auto entity_path = "arrows/" + std::to_string(i);
+        ///         rec.log(entity_path.c_str(), rr::Clear::FLAT);
+        ///     }
         /// }
         /// ```
         struct Clear {
