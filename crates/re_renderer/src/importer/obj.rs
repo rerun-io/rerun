@@ -15,7 +15,7 @@ use crate::{
 pub fn load_obj_from_buffer(
     buffer: &[u8],
     lifetime: ResourceLifeTime,
-    ctx: &mut RenderContext,
+    ctx: &RenderContext,
 ) -> anyhow::Result<Vec<MeshInstance>> {
     re_tracing::profile_function!();
 
