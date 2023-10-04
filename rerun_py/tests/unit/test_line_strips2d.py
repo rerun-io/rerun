@@ -35,20 +35,16 @@ strips_arrays: list[LineStrip2DArrayLike] = [
     [],
     np.array([]),
     [
+        [[0, 0], [2, 1], [4, -1], [6, 0]],  # type: ignore[list-item]
+        [[0, 3], [1, 4], [2, 2], [3, 4], [4, 2], [5, 4], [6, 3]],  # type: ignore[list-item]
+    ],
+    [
         [Vec2D([0, 0]), (2, 1), [4, -1], (6, 0)],  # type: ignore[list-item]
         [Vec2D([0, 3]), (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],  # type: ignore[list-item]
     ],
     [
-        [0, 0, 2, 1, 4, -1, 6, 0],
-        [0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3],
-    ],
-    [
         np.array([[0, 0], (2, 1), [4, -1], (6, 0)], dtype=np.float32),
         np.array([[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]], dtype=np.float32),
-    ],
-    [
-        np.array([0, 0, 2, 1, 4, -1, 6, 0], dtype=np.float32),
-        np.array([0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3], dtype=np.float32),
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([
@@ -140,6 +136,58 @@ def test_line_segments2d(data: LineStrip2DArrayLike) -> None:
             [[4, -1], [6, 0]],
         ]
     )
+
+
+def test_single_line_strip2d() -> None:
+    # Regression test for #3643
+    # Single linestrip can be passed and is not interpreted as batch of zero sized line strips.
+    reference = rr.LineStrips2D([rr.components.LineStrip2D([[0, 0], [1, 1]])])
+    assert len(reference.strips) == 1
+    assert reference == rr.LineStrips2D(rr.components.LineStrip2D([[0, 0], [1, 1]]))
+    assert reference == rr.LineStrips2D([[[0, 0], [1, 1]]])
+    assert reference == rr.LineStrips2D([[0, 0], [1, 1]])
+    assert reference == rr.LineStrips2D(np.array([[0, 0], [1, 1]]))
+    assert reference == rr.LineStrips2D([np.array([0, 0]), np.array([1, 1])])
+
+
+def test_line_strip2d_invalid_shapes() -> None:
+    rr.set_strict_mode(True)
+
+    # We used to support flat arrays but this becomes too ambiguous when passing a single strip.
+    with pytest.raises(ValueError):
+        rr.LineStrips2D(
+            [
+                [0, 0, 2, 1, 4, -1, 6, 0],
+                [0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3],
+            ],
+        )
+    with pytest.raises(ValueError):
+        rr.LineStrips2D(
+            [
+                np.array([0, 0, 2, 1, 4, -1, 6, 0], dtype=np.float32),
+                np.array([0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3], dtype=np.float32),
+            ],
+        )
+
+    # not homogeneous numpy arrays
+    with pytest.raises(ValueError):
+        rr.LineStrips2D(
+            np.array(
+                [
+                    [[0, 0], (2, 1), [4, -1], (6, 0)],
+                    [[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
+                ]
+            )
+        )
+    with pytest.raises(ValueError):
+        rr.LineStrips2D(
+            np.array(
+                [
+                    [0, 0, 2, 1, 4, -1, 6, 0],
+                    [0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3],
+                ]
+            ),
+        )
 
 
 if __name__ == "__main__":
