@@ -25,11 +25,11 @@ losses or metrics over time, histograms, or general function plots.
 The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/plots/main.py).
 
 ### Bar charts
-The [bar chart](recording://bar_chart) is created by logging the [rr.BarChart archetype](https://www.rerun.io/docs/reference/data_types/archetypes/bar_chart).
+The [bar chart](recording://bar_chart) is created by logging the [rr.BarChart archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/bar_chart).
 
 ### Time series
 All other plots are created using the
-[rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/data_types/archetypes/bar_chart)
+[rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/bar_chart)
 with different settings. Each plot is created by logging scalars at different time steps (i.e., the x-axis).
 
 For the [parabola](recording://curves/parabola) the radius and color is changed over time.

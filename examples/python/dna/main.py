@@ -25,18 +25,18 @@ The full source code for this example is available
 
 ### Colored 3D points
 The colored 3D points were added to the scene by logging the
-[rr.Points3D archetype](https://www.rerun.io/docs/reference/data_types/points3d) to the
+[rr.Points3D archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/points3d) to the
 [helix/structure/left](recording://helix/structure/left) and [helix/structure/right](recording://helix/structure/right)
 entities.
 
 ### 3D line strips
 The 3D line strips connecting the 3D point pairs are logged as an
-[rr.LineStrips3D archetype](https://www.rerun.io/docs/reference/data_types/line_strips3d) to the
+[rr.LineStrips3D archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/line_strips3d) to the
 [helix/structure/scaffolding entity](recording://helix/structure/scaffolding).
 
 ### Rotation
 The whole structure is rotated over time by logging a
-[rr.Transform3D archetype](https://www.rerun.io/docs/reference/data_types/archetypes/transform3d) to the
+[rr.Transform3D archetype](https://www.rerun.io/docs/reference/loggable-types/archetypes/transform3d) to the
 [helix/structure entity](recording://helix/structure.Transform3D) that changes over time. This transform determines the rotation of
 the [structure entity](recording://helix/structure) relative to the [helix](recording://helix) entity. Since all other
 entities are children of [helix/structure](recording://helix/structure) they will also rotate based on this transform.
