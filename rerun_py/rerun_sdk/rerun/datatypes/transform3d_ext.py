@@ -105,12 +105,15 @@ def _optional_mat3x3_to_arrow(mat: Mat3x3 | None) -> pa.Array:
 
 
 def _optional_translation_to_arrow(translation: Vec3D | None) -> pa.Array:
-    from . import Vec3DType
+    from . import Vec3DBatch, Vec3DType
 
     if translation is None:
         return pa.nulls(1, Vec3DType().storage_type)
     else:
-        return pa.FixedSizeListArray.from_arrays(translation.xyz, type=Vec3DType().storage_type)
+        try:
+            return Vec3DBatch._native_to_pa_array(translation.xyz, Vec3DType().storage_type)
+        except ValueError as err:
+            raise ValueError(f"translation must be compatible with Vec3D: {err}")
 
 
 def _optional_rotation_to_arrow(rotation: Rotation3D | None, storage_type: pa.DataType) -> pa.Array:
@@ -119,7 +122,10 @@ def _optional_rotation_to_arrow(rotation: Rotation3D | None, storage_type: pa.Da
     if rotation is None:
         return pa.nulls(1, storage_type)
     else:
-        return Rotation3DBatch._native_to_pa_array(rotation, storage_type)
+        try:
+            return Rotation3DBatch._native_to_pa_array(rotation, storage_type)
+        except ValueError as err:
+            raise ValueError(f"rotation must be compatible with Rotation3D: {err}")
 
 
 def _build_struct_array_from_translation_mat3x3(
