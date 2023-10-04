@@ -131,16 +131,23 @@ class catch_and_log_exceptions:
     """
 
     def __init__(
-        self, context: str | None = None, depth_to_user_code: int = 1, exception_return_value: Any = None
+        self,
+        context: str | None = None,
+        depth_to_user_code: int = 1,
+        exception_return_value: Any = None,
+        strict: bool | None = None,
     ) -> None:
         self.depth_to_user_code = depth_to_user_code
         self.context = context
         self.exception_return_value = exception_return_value
+        self.strict = strict
 
     def __enter__(self) -> catch_and_log_exceptions:
         # Track the original strict_mode setting in case it's being
         # overridden locally in this stack
         self.original_strict = getattr(_rerun_exception_ctx, "strict_mode", None)
+        if self.strict is not None:
+            _rerun_exception_ctx.strict_mode = self.strict
         if getattr(_rerun_exception_ctx, "depth", None) is None:
             _rerun_exception_ctx.depth = 1
         else:
