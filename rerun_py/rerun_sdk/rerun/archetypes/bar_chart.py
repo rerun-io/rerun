@@ -26,7 +26,7 @@ class BarChart(BarChartExt, Archetype):
 
     Example
     -------
-    ### `bar_chart`:
+    ### Simple bar chart:
     ```python
 
     import rerun as rr
@@ -34,6 +34,15 @@ class BarChart(BarChartExt, Archetype):
     rr.init("rerun_example_bar_chart", spawn=True)
     rr.log("bar_chart", rr.BarChart([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/Simple Bar Chart/40a1deb895d467514214516e54c809ce788d4f5a/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/Simple Bar Chart/40a1deb895d467514214516e54c809ce788d4f5a/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/Simple Bar Chart/40a1deb895d467514214516e54c809ce788d4f5a/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/Simple Bar Chart/40a1deb895d467514214516e54c809ce788d4f5a/1200w.png">
+      <img src="https://static.rerun.io/Simple Bar Chart/40a1deb895d467514214516e54c809ce788d4f5a/full.png" width="640">
+    </picture>
+    </center>
     """
 
     def __init__(self: Any, values: datatypes.TensorDataLike):
