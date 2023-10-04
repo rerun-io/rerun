@@ -11,7 +11,7 @@ function. The easiest way to use the `log` function is with the Rerun-provided "
 
 Archetypes are a newly introduced concept in the data model to go alongside "Components" and "DataTypes." Archetypes
 represent common objects that are natively understood by the viewer, e.g. `Image` or `Points3D`. Every legacy logging
-API has been replaced by one (or more) new Archetypes. You can find all of the available archetypes in the
+API has been replaced by one (or more) new Archetypes. You can find more information in the [Entity Component](../concepts/entity-component.md) section, and a list of available archetypes in the
 [Archetype Overview](data_types/archetypes.md). All Archetypes are part of the top-level `rerun` namespace.
 
 In practice, the changes are mostly demonstrated in the following example:
