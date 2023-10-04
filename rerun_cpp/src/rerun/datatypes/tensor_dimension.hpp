@@ -20,8 +20,10 @@ namespace rerun {
     namespace datatypes {
         /// **Datatype**: A single dimension within a multi-dimensional tensor.
         struct TensorDimension {
+            /// The length of this dimension.
             uint64_t size;
 
+            /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
             std::optional<std::string> name;
 
           public:

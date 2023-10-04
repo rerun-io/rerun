@@ -36,13 +36,29 @@ class KeypointPair(KeypointPairExt):
     """**Datatype**: A connection between two `Keypoints`."""
 
     def __init__(self: Any, keypoint0: datatypes.KeypointIdLike, keypoint1: datatypes.KeypointIdLike):
-        """Create a new instance of the KeypointPair datatype."""
+        """
+        Create a new instance of the KeypointPair datatype.
+
+        Parameters
+        ----------
+        keypoint0:
+             The first point of the pair.
+        keypoint1:
+             The second point of the pair.
+        """
 
         # You can define your own __init__ function as a member of KeypointPairExt in keypoint_pair_ext.py
         self.__attrs_init__(keypoint0=keypoint0, keypoint1=keypoint1)
 
     keypoint0: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint0__special_field_converter_override)
+    # The first point of the pair.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     keypoint1: datatypes.KeypointId = field(converter=_keypoint_pair__keypoint1__special_field_converter_override)
+    # The second point of the pair.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:

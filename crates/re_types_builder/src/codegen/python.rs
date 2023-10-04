@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples, Example},
+        common::{collect_examples_for_api_docs, Example},
         StringExt as _,
     },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
@@ -422,7 +422,7 @@ impl PythonCodeGenerator {
             );
 
             let obj_code = if obj.is_struct() {
-                code_for_struct(arrow_registry, &ext_class, objects, obj)
+                code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
             } else {
                 code_for_union(arrow_registry, &ext_class, objects, obj)
             };
@@ -538,6 +538,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 // --- Codegen core loop ---
 
 fn code_for_struct(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
@@ -641,7 +642,7 @@ fn code_for_struct(
     } else {
         // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
         // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
-        code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
+        code.push_text(quote_init_method(reporter, obj, ext_class, objects), 2, 4);
     }
 
     if obj.kind == ObjectKind::Archetype {
@@ -927,7 +928,9 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     let mut examples = examples.into_iter().peekable();
     while let Some(example) = examples.next() {
-        let ExampleInfo { name, title, image } = &example.base;
+        let ExampleInfo {
+            name, title, image, ..
+        } = &example.base;
 
         if let Some(title) = title {
             lines.push(format!("### {title}:"));
@@ -966,7 +969,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         }
     }
 
-    let examples = collect_examples(docs, "py", true).unwrap();
+    let examples = collect_examples_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
         lines.push(String::new());
         let (section_title, divider) = if examples.len() == 1 {
@@ -1007,7 +1010,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             }
         }
 
-        let examples = collect_examples(&field.docs, "py", true).unwrap();
+        let examples = collect_examples_for_api_docs(&field.docs, "py", true).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples
             quote_examples(examples, &mut lines);
@@ -1604,7 +1607,12 @@ fn quote_init_parameter_from_field(
     }
 }
 
-fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects) -> String {
+fn quote_init_method(
+    reporter: &Reporter,
+    obj: &Object,
+    ext_class: &ExtensionClass,
+    objects: &Objects,
+) -> String {
     // If the type is fully transparent (single non-nullable field and not an archetype),
     // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
     // -> Whatever type aliases there are for this type, we need to pick them up.
@@ -1659,6 +1667,13 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
             .iter()
             .filter_map(|field| {
                 if field.docs.doc.is_empty() {
+                    if !field.is_testing() && obj.fields.len() > 1 {
+                        reporter.error(
+                            &field.virtpath,
+                            &field.fqname,
+                            format!("Field {} is missing documentation", field.name),
+                        );
+                    }
                     None
                 } else {
                     let doc_content =

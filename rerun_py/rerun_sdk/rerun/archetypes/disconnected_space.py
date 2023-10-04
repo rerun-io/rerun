@@ -28,7 +28,7 @@ class DisconnectedSpace(Archetype):
 
     Example
     -------
-    ### `disconnected_space`:
+    ### Disconnected Space:
     ```python
     import rerun as rr
 
@@ -42,6 +42,15 @@ class DisconnectedSpace(Archetype):
     rr.log("world/wormhole", rr.DisconnectedSpace(True))
     rr.log("world/wormhole/point", rr.Points3D([[2, 2, 2]]))
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1200w.png">
+      <img src="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png" width="640">
+    </picture>
+    </center>
     """
 
     def __init__(self: Any, disconnected_space: components.DisconnectedSpaceLike):

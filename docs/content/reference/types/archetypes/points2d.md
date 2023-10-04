@@ -18,7 +18,7 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 
 ## Examples
 
-### point2d_simple
+### Simple 2D points
 
 code-example: point2d_simple
 
@@ -32,7 +32,7 @@ code-example: point2d_simple
 </picture>
 </center>
 
-### point2d_random
+### Randomly distributed 2D points with varying color and radius
 
 code-example: point2d_random
 

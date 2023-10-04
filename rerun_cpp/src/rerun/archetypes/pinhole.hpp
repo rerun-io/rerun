@@ -22,7 +22,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// ### `pinhole_simple`:
+        /// ### Simple Pinhole Camera
         /// ```cpp,ignore
         /// // Log a pinhole and a random image.
         ///

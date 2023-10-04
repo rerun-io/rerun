@@ -18,7 +18,7 @@ A 3D point cloud with positions and optional colors, radii, labels, etc.
 
 ## Examples
 
-### point3d_simple
+### Simple 3D points
 
 code-example: point3d_simple
 
@@ -32,7 +32,7 @@ code-example: point3d_simple
 </picture>
 </center>
 
-### point3d_random
+### Randomly distributed 3D points with varying color and radius
 
 code-example: point3d_random
 

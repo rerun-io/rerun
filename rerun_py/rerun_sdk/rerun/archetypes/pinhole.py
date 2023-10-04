@@ -21,7 +21,7 @@ class Pinhole(PinholeExt, Archetype):
 
     Example
     -------
-    ### `pinhole_simple`:
+    ### Simple Pinhole Camera:
     ```python
     import numpy as np
     import rerun as rr

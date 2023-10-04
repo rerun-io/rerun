@@ -1,0 +1,34 @@
+---
+title: "TextDocument"
+---
+
+A text element intended to be displayed in its own text-box.
+
+Supports raw text and markdown.
+
+## Components
+
+**Required**: [`Text`](../components/text.md)
+
+**Optional**: [`MediaType`](../components/media_type.md)
+
+## Links
+ * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/text_document/)
+ * 🦀 [Rust API docs for `TextDocument`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.TextDocument.html)
+
+## Example
+
+### Markdown text document
+
+code-example: text_document
+
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png">
+  <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png" width="640">
+</picture>
+</center>
+

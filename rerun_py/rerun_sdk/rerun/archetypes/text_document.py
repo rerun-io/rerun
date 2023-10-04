@@ -18,7 +18,11 @@ __all__ = ["TextDocument"]
 
 @define(str=False, repr=False, init=False)
 class TextDocument(Archetype):
-    """**Archetype**: A text element intended to be displayed in its own text-box."""
+    """
+    **Archetype**: A text element intended to be displayed in its own text-box.
+
+    Supports raw text and markdown.
+    """
 
     def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
         """

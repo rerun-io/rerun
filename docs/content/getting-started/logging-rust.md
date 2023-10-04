@@ -5,7 +5,7 @@ order: 5
 
 In this section we'll log and visualize our first non-trivial dataset, putting many of Rerun's core concepts and features to use.
 
-In a few lines of code, we'll go from a blank sheet to something you don't see everyday: an animated, interactive, DNA-shaped abacus:
+In a few lines of code, we'll go from a blank sheet to something you don't see every day: an animated, interactive, DNA-shaped abacus:
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
 </video>
@@ -14,6 +14,7 @@ This guide aims to go wide instead of deep.
 There are links to other doc pages where you can learn more about specific topics.
 
 At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/rust/dna/src/main.rs) to better keep track of the overall picture.
+To run the example from the repository, run `cargo run -p dna`.
 
 ## Prerequisites
 
@@ -22,8 +23,8 @@ We assume you have a working Rust environment and have started a new project wit
 For this example in particular, we're going to need all of these:
 ```toml
 [dependencies]
-rerun = "0.7.0"
-itertools = "0.10"
+rerun = "0.9"
+itertools = "0.11"
 rand = "0.8"
 ```
 
@@ -34,32 +35,34 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    archetypes::{LineStrips3D, Points3D, Transform3D},
-    components::{Color, Position3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
-    RecordingStream, RecordingStreamResult,
 };
 ```
-
-Already you can see the most important type we'll interact with: [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html), our entrypoint into the logging SDK.
 
 ## Starting the viewer
 Just run `rerun` to start the [Rerun Viewer](../reference/viewer/overview.md). It will wait for your application to log some data to it. This viewer is in fact a server that's ready to accept data over TCP (it's listening on `0.0.0.0:9876` by default).
 
 Checkout `rerun --help` for more options.
 
-![logging data - waiting for data](https://static.rerun.io/4f83e588d7ca4ba6d09390d6d445f63bb4a73b4e_logging_data2_waiting.png)
+<picture>
+  <img src="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/1200w.png">
+</picture>
 
 ## Initializing the SDK
 
 To get going we want to create a [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html):
-We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new) function which allows us to name the dataset we're working on by setting its [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html):
+We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new) function which allows us to name the dataset we're working on by setting its [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html).
+We then connect it to the already running viewer via [`connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect), returning the `RecordingStream` upon success.
 
 ```rust
-fn main() {
-    let recording =
-        rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus").connect(rerun::default_server_addr())?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
+        .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
 
     Ok(())
 }
@@ -82,13 +85,13 @@ let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
 rec.log(
     "dna/structure/left",
-    &Points3D::new(points1.iter().copied())
+    &rerun::Points3D::new(points1.iter().copied())
         .with_colors(colors1)
         .with_radii([0.08]),
 )?;
 rec.log(
     "dna/structure/right",
-    &Points3D::new(points2.iter().copied())
+    &rerun::Points3D::new(points2.iter().copied())
         .with_colors(colors2)
         .with_radii([0.08]),
 )?;
@@ -96,42 +99,58 @@ rec.log(
 
 Run your program with `cargo run` and you should now see this scene in the viewer:
 
-![logging data - first points](https://static.rerun.io/46140c891a60026b3ef9fb0c34fcf63e23199ec7_logging_data3_first_points.png)
+<picture>
+  <img src="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/1200w.png">
+</picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
 _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
 ### Under the hood
 
-Although there's not that much code yet, there's already quite a lot that's happening under the hood.
+This tiny snippet of code actually holds much more than meets the eye…
 
-#### `Entities & hierarchies`
+`Archetypes`
 
-Note the two strings we're passing in when logging our data: `"dna/structure/left"` & `"dna/structure/right"`.
+<!-- TODO(andreas): UPDATE DOC LINKS -->
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.6/struct.Points3D.html). Archetypes take care of building batches
+of components that are recognized and correctly displayed by the Rerun viewer.
 
-These are [Entity Paths](../concepts/entity-component.md), which uniquely identify each Entity in our scene. Every Entity is made up of a path and one or more Components.
+`Components`
+
+Under the hood, the Rerun [Rust SDK](https://ref.rerun.io/docs/rust) logs individual *components* like positions, colors,
+and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
+cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
+archetypes altogether.
+For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
+
+Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method
+<!-- TODO(andreas): UPDATE DOC LINKS -->
+will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
+For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
+
+
+`Entities & hierarchies`
+
+Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structure/right"`.
+
+These are [*entity paths*](../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
 [Entity paths typically form a hierarchy](../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
-#### `Components`
-
-The Rerun [Rust SDK](https://rerun-io.github.io/rerun/docs/rust) works at a lower-level of abstraction than the [Python one](https://ref.rerun.io/docs/python).
-In particular, when using the Rust SDK, you work directly with [`components`](https://docs.rs/rerun/latest/rerun/components) instead of higher-level primitives.
-
-By logging multiple components to an Entity, one can build up Primitives that can later be visualized in the viewer.
-For more information on how the rerun data model works, refer to our section on [entities and components](../concepts/entity-component.md).
-
-Logging components is a only a matter of calling [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) using any type that implements the [`Component` trait](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html). We provide [a few of those](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html#implementors)).
-
-#### `Batches`
+`Batches`
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
 [Batches of data](../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
-You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them.
+You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this *splatting*.
 
 ---
 
 A _lot_ is happening in these two simple function calls.
-Good news is: once you've digested all of the above, logging any other Component will simply be more of the same. In fact, let's log everything else in the scene right now.
+Good news is: once you've digested all of the above, logging any other Entity will simply be more of the same. In fact, let's go ahead and log everything else in the scene now.
 
 ## Adding the missing pieces
 
@@ -147,8 +166,8 @@ let points_interleaved: Vec<[glam::Vec3; 2]> = points1
 
 rec.log(
     "dna/structure/scaffolding",
-    &LineStrips3D::new(points_interleaved.iter().cloned())
-        .with_colors([Color::from([128, 128, 128, 255])]),
+    &rerun::LineStrips3D::new(points_interleaved.iter().cloned())
+        .with_colors([rerun::Color::from([128, 128, 128, 255])]),
 )?;
 ```
 
@@ -164,21 +183,29 @@ let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
     .map(|(n, &[p1, p2])| {
         let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
         (
-            Position3D::from(bounce_lerp(p1, p2, times[n])),
-            Color::from_rgb(c, c, c),
+            rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
+            rerun::Color::from_rgb(c, c, c),
         )
     })
     .unzip();
-
 rec.log(
     "dna/structure/scaffolding/beads",
-    &Points3D::new(beads).with_colors(colors).with_radii([0.06]),
+    &rerun::Points3D::new(beads)
+        .with_colors(colors)
+        .with_radii([0.06]),
 )?;
 ```
 
-Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about building out vectors of [`Component`s](https://docs.rs/rerun/latest/rerun/experimental/trait.Component.html) and feeding them to the Rerun API.
+Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about populating archetypes and feeding them to the Rerun API.
 
-![logging data - beads](https://static.rerun.io/60c3c762448f68da3f5fdd7927a6e65e11f5385f_logging_data5_beads.png)
+<picture>
+  <img src="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/1200w.png">
+</picture>
+
 
 ## Animating the beads
 
@@ -186,14 +213,20 @@ Once again, although we are getting fancier and fancier with our iterator mappin
 
 Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../concepts/timelines.md).
 
-Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyways by memorizing when each log call occurred.
+Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
 
-![logging data - timeline closeup](https://static.rerun.io/f6dbc83f555597e2bfe946e8228301da82ad4611_logging_data6_timeline.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/1200w.png">
+  <img src="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/full.png" alt="screenshot of the beads with the timeline">
+</picture>
 
 Unfortunately, the logging time isn't particularly helpful to us in this case: we can't have our beads animate depending on the logging time, else they would move at different speeds depending on the performance of the logging process!
 For that, we need to introduce our own custom timeline that uses a deterministic clock which we control.
 
-Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ of the timeline(s)… you'll find a lot of flexibility in there.
+Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ the timeline(s). You will find a lot of flexibility in there.
 
 Let's add our custom timeline:
 ```rust
@@ -209,15 +242,17 @@ for i in 0..400 {
         .map(|(n, &[p1, p2])| {
             let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
             (
-                Position3D::from(bounce_lerp(p1, p2, times[n])),
-                Color::from_rgb(c, c, c),
+                rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
+                rerun::Color::from_rgb(c, c, c),
             )
         })
         .unzip();
 
     rec.log(
         "dna/structure/scaffolding/beads",
-        &Points3D::new(beads).with_colors(colors).with_radii([0.06]),
+        &rerun::Points3D::new(beads)
+            .with_colors(colors)
+            .with_radii([0.06]),
     )?;
 }
 ```
@@ -239,10 +274,16 @@ To fix this, add this at the beginning of the main function:
 rec.set_time_seconds("stable_time", 0f64);
 ```
 
-![logging data - latest at](https://static.rerun.io/0182b4795ca2fed2f2097cfa5f5271115dee0aaf_logging_data8_latest_at.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/1200w.png">
+  <img src="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/full.png" alt="screenshot after using latest at">
+</picture>
 
 This fix actually introduces yet another very important concept in Rerun: "latest at" semantics.
-Notice how, with our latest fix, entities `"dna/structure/left"` & `"dna/structure/right"` have only ever been logged at time zero, and yet they are still visible when querying times far beyond that point.
+Notice how entities `"dna/structure/left"` & `"dna/structure/right"` have only ever been logged at time zero, and yet they are still visible when querying times far beyond that point.
 
 _Rerun always reasons in terms of "latest" data: for a given entity, it retrieves all of its most recent components at a given time._
 
@@ -253,16 +294,17 @@ There's only one thing left: our original scene had the abacus rotate along its 
 As was the case with time, (hierarchical) space transformations are first class-citizens in Rerun.
 Now it's just a matter of combining the two: we need to log the transform of the scaffolding at each timestamp.
 
-Expand the previous loop to also include:
+Either expand the previous loop to include logging transforms or
+simply add a second loop like this:
 ```rust
 for i in 0..400 {
     // …everything else…
 
     rec.log(
         "dna/structure",
-        &Transform3D::new(rerun::transform::RotationAxisAngle::new(
+        &rerun::archetypes::Transform3D::new(rerun::RotationAxisAngle::new(
             glam::Vec3::Z,
-            rerun::transform::Angle::Radians(time / 4.0 * TAU),
+            rerun::Angle::Radians(time / 4.0 * TAU),
         )),
     )?;
 }
@@ -289,9 +331,47 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 ⚠️  [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
 
+### Spawning the Viewer from your process
+
+Instead of connecting to an external Viewer process, you can also spawn it from your own process.
+The main advantage of this is that you no longer need to open up the viewer as a separate process.
+
+This requires the `native_viewer` feature to be enabled in `Cargo.toml`:
+```toml
+rerun = { version = "0.9", features = ["native_viewer"] }
+```
+Doing so means you're building the Rerun Viewer itself as part of your project, meaning compilation will take a bit longer the first time.
+
+You can now use [`rerun::native_viewer::spawn`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.spawn.html) to spawn
+the native Rerun viewer.
+Since the Viewer's UI thread must be the main thread, this method call will take it over and spawn a new thread for you:
+```rust
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let store_info = rerun::new_store_info("DNA Abacus");
+    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
+        run(&rec).unwrap();
+    })?;
+    Ok(())
+}
+
+fn run(rec: &rerun::RecordingStream) -> rerun::RecordingStreamResult<()> {
+    // All your code (logging and otherwise) goes in here.
+}
+```
+
+Another way to spawn the native viewer is [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html). Again, like [`rerun::native_viewer::spawn`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.spawn.html) this has to be called from the main thread and the method call will only return once the Viewer is closed.
+Unlike `spawn` however, it expects a in-memory recording and sends it to the viewer instead of being fed in real-time:
+```rust
+let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
+
+// … log data to `rec` …
+
+rerun::native_viewer::show(storage.take())?;
+```
+
 ### Closing
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Loggable Data Types](../reference/data_types.md) section for more simple examples of how to use the main data types.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main data types.
 

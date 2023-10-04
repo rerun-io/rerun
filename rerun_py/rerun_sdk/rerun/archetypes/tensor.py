@@ -19,18 +19,16 @@ class Tensor(TensorExt, Archetype):
     """
     **Archetype**: A generic n-dimensional Tensor.
 
-    Examples
-    --------
-    ### `tensor_simple`:
+    Example
+    -------
+    ### Simple Tensor:
     ```python
 
     import rerun as rr
     from numpy.random import default_rng
 
     rng = default_rng(12345)
-
-    # Create a 4-dimensional tensor
-    tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
+    tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))  # 4-dimensional tensor
 
     rr.init("rerun_example_tensors", spawn=True)
 
@@ -44,32 +42,6 @@ class Tensor(TensorExt, Archetype):
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png">
       <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png" width="640">
-    </picture>
-    </center>
-
-    ### `tensor_one_dim`:
-    ```python
-
-    import rerun as rr
-    from numpy.random import default_rng
-
-    rng = default_rng(12345)
-
-    # Create a 1-dimensional tensor
-    tensor = rng.laplace(0.0, 1.0, 100)
-
-    rr.init("rerun_example_tensors", spawn=True)
-
-    # Log the tensor, assigning names to each dimension
-    rr.log_tensor("tensor", tensor)
-    ```
-    <center>
-    <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1200w.png">
-      <img src="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/full.png" width="640">
     </picture>
     </center>
     """

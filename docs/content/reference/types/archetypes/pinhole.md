@@ -18,7 +18,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 ## Example
 
-### pinhole_simple
+### Simple Pinhole Camera
 
 code-example: pinhole_simple
 

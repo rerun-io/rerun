@@ -2,7 +2,7 @@
 title: "Boxes3D"
 ---
 
-A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
+3D boxes with half-extents and optional center, rotations, rotations, colors etc.
 
 ## Components
 

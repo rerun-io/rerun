@@ -53,6 +53,9 @@ pub struct ExampleInfo<'a> {
 
     /// A screenshot of the example.
     pub image: Option<ImageUrl<'a>>,
+
+    /// If true, use this example only for the manual, not for documentation embedded in the emitted code.
+    pub exclude_from_api_docs: bool,
 }
 
 impl<'a> ExampleInfo<'a> {
@@ -86,10 +89,18 @@ impl<'a> ExampleInfo<'a> {
                 .split_once(' ')
                 .map_or((tag_content, None), |(a, b)| (a, Some(b)));
 
-            let (mut title, mut image) = (None, None);
+            let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
 
             if let Some(args) = args {
                 let args = args.trim();
+
+                exclude_from_api_docs = args.contains("!api");
+                let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
+                    args_without_api_prefix.trim()
+                } else {
+                    args
+                };
+
                 if args.starts_with('"') {
                     // \example example_name "Example Title"
                     title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
@@ -100,7 +111,12 @@ impl<'a> ExampleInfo<'a> {
                 }
             }
 
-            ExampleInfo { name, title, image }
+            ExampleInfo {
+                name,
+                title,
+                image,
+                exclude_from_api_docs,
+            }
         }
 
         mono(tag_content.as_ref())
@@ -216,7 +232,7 @@ pub struct Example<'a> {
     pub lines: Vec<String>,
 }
 
-pub fn collect_examples<'a>(
+pub fn collect_examples_for_api_docs<'a>(
     docs: &'a Docs,
     extension: &str,
     required: bool,
@@ -226,7 +242,16 @@ pub fn collect_examples<'a>(
     if let Some(examples) = docs.tagged_docs.get("example") {
         let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
-        for base @ ExampleInfo { name, .. } in examples.iter().map(ExampleInfo::parse) {
+        for base @ ExampleInfo {
+            name,
+            exclude_from_api_docs,
+            ..
+        } in examples.iter().map(ExampleInfo::parse)
+        {
+            if exclude_from_api_docs {
+                continue;
+            }
+
             let path = base_path.join(format!("{name}.{extension}"));
             let content = match std::fs::read_to_string(&path) {
                 Ok(content) => content,

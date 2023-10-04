@@ -250,6 +250,10 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
     }
 
     if used_by.is_empty() {
+        // NOTE: there are some false positives here, because unions can only
+        // reference other tables, but they are unwrapped in the codegen.
+        // So for instance: `union Angle` uses `rerun.datatypes.Float32` in
+        // `angle.fbs`, but in the generated code that datatype is unused.
         reporter.warn(&object.virtpath, &object.fqname, "Unused object");
     } else {
         putln!(o, "## Used by");
@@ -319,7 +323,13 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
     };
     putln!(o);
 
-    for ExampleInfo { name, title, image } in examples {
+    for ExampleInfo {
+        name,
+        title,
+        image,
+        exclude_from_api_docs: _,
+    } in examples
+    {
         let title = title.unwrap_or(name);
         putln!(o, "### {title}");
         putln!(o);

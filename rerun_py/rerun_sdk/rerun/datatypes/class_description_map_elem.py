@@ -41,7 +41,16 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     """
 
     def __init__(self: Any, class_id: datatypes.ClassIdLike, class_description: datatypes.ClassDescriptionLike):
-        """Create a new instance of the ClassDescriptionMapElem datatype."""
+        """
+        Create a new instance of the ClassDescriptionMapElem datatype.
+
+        Parameters
+        ----------
+        class_id:
+             The key: the class ID.
+        class_description:
+             The value: class name, color, etc.
+        """
 
         # You can define your own __init__ function as a member of ClassDescriptionMapElemExt in class_description_map_elem_ext.py
         self.__attrs_init__(class_id=class_id, class_description=class_description)
@@ -49,7 +58,14 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
     class_id: datatypes.ClassId = field(
         converter=_class_description_map_elem__class_id__special_field_converter_override
     )
+    # The key: the class ID.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     class_description: datatypes.ClassDescription = field()
+    # The value: class name, color, etc.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:

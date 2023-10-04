@@ -47,7 +47,7 @@ root:
         They all require additional data to be downloaded, so an internet connection is needed at least once.
         Each example downloads it's own data, so no additional steps are needed.
         For the simplest possible examples showing how to use each api,
-        check out [Loggable Data Types](/docs/reference/data_types).
+        check out [Types](/docs/reference/types).
       children:
         - name: arkit_scenes
           python: python/arkit_scenes
@@ -105,7 +105,7 @@ root:
         The following examples serve to illustrate various uses of the Rerun logging SDK.
         They should not require any additional data downloads, and should run offline.
         For the simplest possible examples showing how to use each api,
-        check out [Loggable Data Types](/docs/reference/data_types).
+        check out [Types](/docs/reference/types).
       children:
         - name: minimal
           python: python/minimal
@@ -127,9 +127,6 @@ root:
         - name: plots
           python: python/plots
 
-        - name: text-logging
-          python: python/text_logging
-
     - name: paper-visualizations
       title: Paper Visualizations
       prelude: |
@@ -137,7 +134,7 @@ root:
         from the official open-source implementations adding Rerun as the visualizer.
         Check out the respective READMEs for installation instructions.
         For the simplest possible examples showing how to use each api,
-        check out [Loggable Data Types](/docs/reference/data_types).
+        check out [Types](/docs/reference/types).
       children:
         - name: differentiable_blocks_world
           python: python/differentiable_blocks_world

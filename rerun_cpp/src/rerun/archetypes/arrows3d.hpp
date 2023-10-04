@@ -22,11 +22,11 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: A batch of 3D arrows with optional colors, radii, labels, etc.
+        /// **Archetype**: 3D arrows with optional colors, radii, labels, etc.
         ///
         /// ## Example
         ///
-        /// ### `arrow3d_simple`:
+        /// ### Simple batch of 3D Arrows
         /// ```cpp,ignore
         /// // Log a batch of 3D arrows.
         ///
