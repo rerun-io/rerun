@@ -54,17 +54,25 @@ fn git_short_hash(sh: &Shell) -> Result<String> {
 }
 
 fn parse_release_version(branch: &str) -> Option<&str> {
-    // release-\d+.\d+.\d+
+    // release-\d+.\d+.\d+(-alpha.\d+)?
 
     let version = branch.strip_prefix("release-")?;
 
-    let mut version_parts = version.split('.');
-    version_parts.next()?.parse::<u8>().ok()?;
-    version_parts.next()?.parse::<u8>().ok()?;
-    version_parts.next()?.parse::<u8>().ok()?;
+    let (major, rest) = version.split_once('.')?;
+    major.parse::<u8>().ok()?;
+    let (minor, rest) = rest.split_once('.')?;
+    minor.parse::<u8>().ok()?;
+    let (patch, meta) = rest
+        .split_once('-')
+        .map_or((rest, None), |(p, m)| (p, Some(m)));
+    patch.parse::<u8>().ok()?;
 
-    if version_parts.next().is_some() {
-        return None;
+    if let Some(meta) = meta {
+        let (kind, n) = meta.split_once('.')?;
+        if kind != "alpha" && kind != "rc" {
+            return None;
+        }
+        n.parse::<u8>().ok()?;
     }
 
     Some(version)
