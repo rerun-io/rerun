@@ -46,18 +46,17 @@ class LineStrip2DExt:
             else:
                 # Is it a single strip or several?
                 # It could be a sequence of the style `[[0, 0], [1, 1]]` which is a single strip.
-                if all(
-                    isinstance(elem, Sequence) and len(elem) > 0 and isinstance(elem[0], numbers.Number)
-                    for elem in data
-                ):
-                    if all(len(elem) == 2 for elem in data):  # type: ignore[arg-type]
+                if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
+                    if len(data[0]) == 2:  # type: ignore[arg-type]
+                        # If any of the following elements are not sequence of length 2, Vec2DBatch should raise an error.
                         inners = [Vec2DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
                     else:
                         raise ValueError(
                             "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2."
                         )
                 # It could be a sequence of the style `[np.array([0, 0]), np.array([1, 1])]` which is a single strip.
-                elif all(isinstance(elem, np.ndarray) and elem.shape == (2,) for elem in data):
+                elif isinstance(data[0], np.ndarray) and data[0].shape == (2,):
+                    # If any of the following elements are not np arrays of shape 2, Vec2DBatch should raise an error.
                     inners = [Vec2DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
                 # .. otherwise assume that it's several strips.
                 else:
