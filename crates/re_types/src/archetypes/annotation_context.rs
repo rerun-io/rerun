@@ -36,7 +36,7 @@
 ///             .memory()?;
 ///
 ///     // create an annotation context to describe the classes
-///     rec.log(
+///     rec.log_timeless(
 ///         "segmentation",
 ///         &rerun::AnnotationContext::new([
 ///             (1, "red", rerun::Rgba32::from(0xFF0000FF)),

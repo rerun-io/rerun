@@ -127,7 +127,7 @@
 //! path for all platforms at run-time.
 //!
 //! There are many issues to deal with along the way though: paths comparisons across
-//! environments and build-time/run-time, hermeticism, etc...
+//! environments and build-time/run-time, hermeticism, etc…
 //! We won't cover those here: please refer to the code if you're curious.
 //!
 //! ## For developers

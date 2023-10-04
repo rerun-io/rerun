@@ -49,7 +49,7 @@ To swap it out with a no-op recording call `set_global_data_recording` with `Non
 # Disabling logging
 prev_rec = rr.set_global_data_recording(None)
 
-# ...
+# …
 
 # Re-enabling logging
 rr.set_global_data_recording(prev_rec)

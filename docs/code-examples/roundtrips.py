@@ -22,6 +22,7 @@ from os.path import isfile, join
 opt_out_entirely = {
     "annotation_context_connections": ["cpp"],
     "annotation_context_segmentation": ["cpp"],
+    "annotation_context_rects": ["cpp"], # TODO(#2919): Needs support for log_timeless
     "any_values": ["cpp", "rust"], # Only implemented for Python
     "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "asset3d_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
@@ -32,6 +33,7 @@ opt_out_entirely = {
     "extra_values": ["cpp", "rust"], # Only implemented for Python
     "image_advanced": ["cpp", "rust"], # Missing example for Rust
     "image_simple": ["cpp"],
+    "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"],
     "scalar_multiple_plots": ["cpp"], # TODO(#3394): Need to implement time in C++ first.

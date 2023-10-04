@@ -989,7 +989,7 @@ fn quote_doc_lines(lines: &[String]) -> String {
         return String::new();
     }
 
-    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
     let doc = lines
         .iter()
         .filter(|line| !line.starts_with(r#"""""#))
@@ -1030,7 +1030,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
         lines.pop();
     }
 
-    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
     let doc = lines
         .into_iter()
         .filter(|line| !line.starts_with(r#"""""#))
@@ -1210,14 +1210,14 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     };
 
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
-    // nasty lazy circular dependencies in weird edge cases...
+    // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
     fqname.map(|fqname| quote_import_clauses_from_fqname(fqname))
 }
 
 fn quote_import_clauses_from_fqname(fqname: &str) -> String {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
-    // nasty lazy circular dependencies in weird edge cases...
+    // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
 
     let fqname = fqname.replace(".testing", "");

@@ -142,7 +142,7 @@ def run_2d_layering(experimental_api: bool) -> None:
 
 
 def transforms(experimental_api: bool) -> None:
-    rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP)
+    rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
 
     # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
     rr.log("transforms/disconnected", rr.DisconnectedSpace(True))

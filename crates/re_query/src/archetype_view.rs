@@ -177,7 +177,7 @@ where
         if let Some(primary_key) = self.primary_instance_key_iter.next() {
             loop {
                 match &self.next_component_instance_key {
-                    // If we have a next component key, we either...
+                    // If we have a next component key, we either…
                     Some(instance_key) => {
                         if instance_key.is_splat() {
                             if self.splatted_component_value.is_none() {

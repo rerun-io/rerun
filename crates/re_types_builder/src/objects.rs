@@ -979,7 +979,7 @@ impl Type {
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
                 unimplemented!("{typ:#?}")
             }
-            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants...
+            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
         }
     }
@@ -1125,7 +1125,7 @@ impl ElementType {
             | FbsBaseType::Array
             | FbsBaseType::Vector
             | FbsBaseType::Vector64 => unreachable!("{outer_type:#?} into {inner_type:#?}"),
-            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants...
+            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{inner_type:#?}"),
         }
     }

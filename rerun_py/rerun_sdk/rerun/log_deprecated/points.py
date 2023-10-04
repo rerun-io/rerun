@@ -226,6 +226,15 @@ def log_points(
 
     positions = np.require(positions, dtype="float32")
 
+    if positions.shape[0] == 0:
+        # We used to support sending zero points and a long list of radii, but no more
+        radii = None
+        colors = None
+        labels = None
+        class_ids = None
+        keypoint_ids = None
+        identifiers = None
+
     identifiers_np = None
     if identifiers is not None:
         try:

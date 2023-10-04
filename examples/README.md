@@ -35,7 +35,7 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and
 tags: [2D, huggingface, object-detection, object-tracking, opencv]
 ---
 
-...
+…
 ```
 
 The contents of this `README.md` file and its frontmatter are used to render the examples in [the documentation](https://rerun.io/examples). Individual examples are currently "stitched together" to form one large markdown file for every category of examples (`artificial-data`, `real-data`).

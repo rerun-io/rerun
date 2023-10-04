@@ -233,7 +233,7 @@ Fortunately, the `image_geometry` package has a `PinholeCameraModel` that expose
 the intrinsic matrix in the same structure used by Rerun `rr.log_pinhole`:
 ```python
 def __init__(self) -> None:
-    # ...
+    # …
     self.model = PinholeCameraModel()
 
 def cam_info_callback(self, info: CameraInfo) -> None:
@@ -256,7 +256,7 @@ ROS Images can also be mapped to Rerun very easily, using the `cv_bridge` packag
 The output of `cv_bridge.imgmsg_to_cv2` can be fed directly into `rr.log_image`:
 ```python
 def __init__(self) -> None:
-    # ...
+    # …
     self.cv_bridge = cv_bridge.CvBridge()
 
 def image_callback(self, img: Image) -> None:
@@ -329,7 +329,7 @@ This results in a set of alternating points defining rays from the origin to eac
 laser scan result, which is the format expected by `rr.log_line_segments`:
 ```python
 def __init__(self) -> None:
-    # ...
+    # …
     self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
 
 def scan_callback(self, scan: LaserScan) -> None:

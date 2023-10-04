@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     // log the annotation and the image
-    rec.log("/", &annotation)?;
+    rec.log_timeless("/", &annotation)?;
 
     rec.log("image", &rerun::SegmentationImage::try_from(image)?)?;
 

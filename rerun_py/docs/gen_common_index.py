@@ -7,10 +7,10 @@ The top-level index file should look like
 ## Initialization
 Function | Description
 -------- | -----------
-[rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK ...
-[rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the ...
-[rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer ...
-...
+[rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK …
+[rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the …
+[rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer …
+…
 
 The Summary should look like:
 ```
@@ -81,6 +81,12 @@ SECTION_TABLE: Final[list[Section]] = [
         module_summary=None,
         func_list=["log", "set_time_sequence", "set_time_seconds", "set_time_nanos"],
         class_list=[],
+    ),
+    Section(
+        title="Custom Data",
+        module_summary=None,
+        func_list=[],
+        class_list=["AnyValues"],
     ),
     Section(
         title="Clearing Entities",
@@ -165,6 +171,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "log_cleared",
             "log_depth_image",
             "log_disconnected_space",
+            "log_extension_components",
             "log_image_file",
             "log_image",
             "log_line_segments",

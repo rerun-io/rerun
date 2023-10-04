@@ -75,7 +75,7 @@ impl std::ops::Deref for DataCellColumn {
     }
 }
 
-// TODO(cmc): Those Deref don't actually do their job most of the time for some reason...
+// TODO(cmc): Those Deref don't actually do their job most of the time for some reason…
 
 impl std::ops::DerefMut for DataCellColumn {
     #[inline]
@@ -210,7 +210,7 @@ impl std::ops::DerefMut for TableId {
 ///   [[C1, C1, C1], [], [C3], [C4, C4, C4], …],
 ///   [None, [C2, C2], [], [C4], …],
 ///   [None, [C2, C2], [], None, …],
-///   ...
+///   …
 /// ]
 /// ```
 ///
@@ -835,7 +835,7 @@ impl DataTable {
         }
 
         // TODO(cmc): All we're doing here is allocating and filling a nice contiguous array so
-        // our `ListArray`s can compute their indices and for the serializer to work with...
+        // our `ListArray`s can compute their indices and for the serializer to work with…
         // In a far enough future, we could imagine having much finer grain control over the
         // serializer and doing all of this at once, bypassing all the mem copies and
         // allocations.
@@ -926,7 +926,7 @@ impl DataTable {
             (&**chunk.get(control_index(COLUMN_ROW_ID)?).unwrap()).try_into_collection()?;
         let col_entity_path =
             (&**chunk.get(control_index(COLUMN_ENTITY_PATH)?).unwrap()).try_into_collection()?;
-        // TODO(#1712): This is unnecessarily slow...
+        // TODO(#1712): This is unnecessarily slow…
         let col_num_instances =
             (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
 
