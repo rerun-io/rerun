@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/rerun", features = ["native_viewer"] }
+rerun = { path = "../../../crates/rerun" }
 
 itertools = "0.11"
 rand = "0.8"
