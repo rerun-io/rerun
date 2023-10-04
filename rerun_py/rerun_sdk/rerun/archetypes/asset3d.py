@@ -81,9 +81,9 @@ class Asset3D(Asset3DExt, Archetype):
     )
     # The Media Type of the asset.
     #
-    # For instance:
+    # Supported values:
     # * `model/gltf-binary`
-    # * `model/obj`
+    # * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
     #
     # If omitted, the viewer will try to guess from the data blob.
     # If it cannot guess, it won't be able to render the asset.
