@@ -14,7 +14,7 @@ title: "Arrows3D"
 
 ## Example
 
-### arrow3d_simple
+### Simple batch of 3D Arrows
 
 code-example: arrow3d_simple
 

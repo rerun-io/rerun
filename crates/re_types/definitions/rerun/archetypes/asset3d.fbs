@@ -12,8 +12,8 @@ namespace rerun.archetypes;
 /// \py See also [`Mesh3D`][rerun.archetypes.Mesh3D].
 /// \rs See also [`Mesh3D`][crate::archetypes::Mesh3D].
 ///
-/// \example asset3d_simple "Simple 3D asset"
-/// \example asset3d_out_of_tree !api "3D asset with out-of-tree transform"
+/// \example asset3d_simple title="Simple 3D asset"
+/// \example asset3d_out_of_tree !api title="3D asset with out-of-tree transform"
 table Asset3D (
   "attr.rust.derive": "PartialEq"
 ) {

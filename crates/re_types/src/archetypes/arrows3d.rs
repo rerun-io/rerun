@@ -18,7 +18,7 @@
 ///
 /// ## Example
 ///
-/// ### `arrow3d_simple`:
+/// ### Simple batch of 3D Arrows
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
