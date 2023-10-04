@@ -87,7 +87,7 @@ Python docs: TODO(jleibs): Link pending
 
 Notes:
  - Instead of passing `ext` as a dictionary, `AnyValues` now maps all keyword arguments directly to components.
-   - `rr.log_extension_components(..., ext={'mydata': 1})` becomes `rr.log(... rr.AnyValues(mydata=1))`
+   - `rr.log_extension_components(…, ext={'mydata': 1})` becomes `rr.log(… rr.AnyValues(mydata=1))`
 
 ### `log_image`
 Replace with [Image](data_types/archetypes/image.md)
@@ -96,7 +96,7 @@ Python docs: [Image](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.
 
 Notes:
  * `image` has become `data`
- * `jpeg_quality` is now handled by calling `.compress(jpeg_quality=...)` on the image after constructing it.
+ * `jpeg_quality` is now handled by calling `.compress(jpeg_quality=…)` on the image after constructing it.
 
 ### `log_image_file`
 Replace with `ImageEncoded`
@@ -135,7 +135,7 @@ Notes:
    direct equivalent of `log_meshes`.
  - `positions` has become `vertex_positions`.
  - `normals` has become `vertex_normals`.
- - `albedo_factor` has become `mesh_material`, and can be logged using `rr.Material(albedo_factor=...)`.
+ - `albedo_factor` has become `mesh_material`, and can be logged using `rr.Material(albedo_factor=…)`.
  - `identifiers` has become `instance_keys`.
 
 ### `log_mesh_file`
