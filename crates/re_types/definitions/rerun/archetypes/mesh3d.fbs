@@ -12,8 +12,8 @@ namespace rerun.archetypes;
 /// \py See also [`Asset3D`][rerun.archetypes.Asset3D].
 /// \rs See also [`Asset3D`][crate::archetypes::Asset3D].
 ///
-/// \example mesh3d_indexed "Simple indexed 3D mesh"
-/// \example mesh3d_partial_updates !api "3D mesh with partial updates"
+/// \example mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png"
+/// \example mesh3d_partial_updates !api title="3D mesh with partial updates" image="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1200w.png"
 table Mesh3D (
   "attr.rust.derive": "PartialEq"
 ) {
