@@ -15,7 +15,7 @@ data associated with those entities.
    pixel data, etc.
 
 Additionally, the Rerun SDKs expose two additional concepts:
- * *Archetypes* are coherent set of components corresponding to primitive such as 2D points or 3d boxes. In the Rerun SDKs, archetypes take the form of builder objects that assist with the creation of such component sets. They are meant as high-level, convenience helpers that can be bypassed entirely if/when required by advanced use-cases.
+ * *Archetypes* are coherent set of components corresponding to primitive such as 2D points or 3D boxes. In the Rerun SDKs, archetypes take the form of builder objects that assist with the creation of such component sets. They are meant as high-level, convenience helpers that can be bypassed entirely if/when required by advanced use-cases.
  * *Datatypes* are regular data structures that components occasionally rely on when fundamental data types (`float`, `uint32`, etc.) are not sufficient.
 
 ### Logging and viewing data
@@ -68,6 +68,5 @@ of one or more components associated with that entity.
 
 ## ECS Systems
 
-In most ECS architectures, there is a third concept we haven't touched on: *systems* are processes which operate on the
-entities based on the components they possess. Rerun does not currently have formalized systems, although the patterns employed by the space views are very much "System like" in their operation. Proper Systems may be a feature investigated in the future
-([#1155](https://github.com/rerun-io/rerun/issues/1155)).
+There is a third concept we haven't touched on: *systems* are processes which operate on the entities based on the components they possess.
+Rerun is still settling on the exact form of formalized systems and outside of Rust viewer code it is not yet possible to write your own systems. However, space views work under the hood using a variety of systems. For more information see the [Extend the Viewer in Rust](../howto/extend/extend-ui.md) section.
