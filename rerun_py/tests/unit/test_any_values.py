@@ -14,8 +14,8 @@ def test_any_value() -> None:
     foo_batch = batches[0]
     bar_batch = batches[1]
 
-    assert foo_batch.component_name() == "any.value.foo"
-    assert bar_batch.component_name() == "any.value.bar"
+    assert foo_batch.component_name() == "foo"
+    assert bar_batch.component_name() == "bar"
     assert len(foo_batch.as_arrow_array()) == 3
     assert len(bar_batch.as_arrow_array()) == 1
     assert np.all(foo_batch.as_arrow_array().to_numpy() == np.array([1.0, 2.0, 3.0]))
@@ -28,7 +28,7 @@ def test_any_value_datatypes() -> None:
 
     foo_batch = batches[0]
 
-    assert foo_batch.component_name() == "any.value.my_points"
+    assert foo_batch.component_name() == "my_points"
     assert len(foo_batch.as_arrow_array()) == 3
 
 

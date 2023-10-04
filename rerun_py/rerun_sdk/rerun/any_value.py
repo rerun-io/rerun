@@ -10,8 +10,6 @@ from .error_utils import _send_warning
 
 ANY_VALUE_TYPE_REGISTRY: dict[str, Any] = {}
 
-COMPONENT_PREFIX = "any.value."
-
 
 class AnyBatchValue(ComponentBatchLike):
     """
@@ -26,8 +24,6 @@ class AnyBatchValue(ComponentBatchLike):
     def __init__(self, name: str, value: Any) -> None:
         """
         Construct a new AnyBatchValue.
-
-        The component will be named "user.components.<NAME>".
 
         The value will be attempted to be converted into an arrow array by first calling
         the `as_arrow_array()` method if it's defined. All Rerun Batch datatypes implement
@@ -90,7 +86,7 @@ class AnyBatchValue(ComponentBatchLike):
         return self.pa_array is not None
 
     def component_name(self) -> str:
-        return COMPONENT_PREFIX + self.name
+        return self.name
 
     def as_arrow_array(self) -> pa.Array | None:
         return self.pa_array
