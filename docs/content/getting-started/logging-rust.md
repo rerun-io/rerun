@@ -117,7 +117,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 `Archetypes`
 
 <!-- TODO(andreas): UPDATE DOC LINKS -->
-The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.6/struct.Points3D.html). Archetypes take care of building batches
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.10/struct.Points3D.html). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
 `Components`
@@ -130,7 +130,7 @@ For more information on how the rerun data model works, refer to our section on 
 
 Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method
 <!-- TODO(andreas): UPDATE DOC LINKS -->
-will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
+will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
 
 

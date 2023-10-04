@@ -10,6 +10,10 @@ A log entry in a text log, comprised of a text body and its log level.
 
 **Recommended**: [`TextLogLevel`](../components/text_log_level.md)
 
+## Links
+ * 🐍 [Python API docs for `TextLog`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/text_log/)
+ * 🦀 [Rust API docs for `TextLog`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.TextLog.html)
+
 ## Example
 
 ### text_log_integration

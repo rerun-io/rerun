@@ -18,6 +18,10 @@ Example:
 
 * image_from_camera: [`Mat3x3`](../datatypes/mat3x3.md)
 
+## Links
+ * 🐍 [Python API docs for `PinholeProjection`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/pinhole_projection/)
+ * 🦀 [Rust API docs for `PinholeProjection`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.PinholeProjection.html)
+
 
 ## Used by
 

@@ -5,6 +5,10 @@ title: "InstanceKey"
 A unique numeric identifier for each individual instance within a batch.
 
 
+## Links
+ * 🐍 [Python API docs for `InstanceKey`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/instance_key/)
+ * 🦀 [Rust API docs for `InstanceKey`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.InstanceKey.html)
+
 
 ## Used by
 

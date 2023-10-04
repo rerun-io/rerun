@@ -10,6 +10,10 @@ Representation of an affine transform via separate translation, rotation & scale
 * rotation: [`Rotation3D`](../datatypes/rotation3d.md)
 * scale: [`Scale3D`](../datatypes/scale3d.md)
 
+## Links
+ * 🐍 [Python API docs for `TranslationRotationScale3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/translation_rotation_scale3d/)
+ * 🦀 [Rust API docs for `TranslationRotationScale3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/datatypes/struct.TranslationRotationScale3D.html)
+
 
 ## Used by
 

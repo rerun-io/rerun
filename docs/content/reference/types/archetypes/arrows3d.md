@@ -12,6 +12,10 @@ title: "Arrows3D"
 
 **Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
+## Links
+ * 🐍 [Python API docs for `Arrows3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/arrows3d/)
+ * 🦀 [Rust API docs for `Arrows3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.Arrows3D.html)
+
 ## Example
 
 ### Simple batch of 3D Arrows

@@ -156,6 +156,29 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
     }
 
+    {
+        putln!(page);
+        putln!(page, "## Links");
+        // TODO(#2919): link to C++ docs
+        // TODO(#3651): s/nightly/stable
+        putln!(
+            page,
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/nightly/package/rerun/{}/{}/)",
+            object.name,
+            object.kind.plural_snake_case(),
+            object.snake_case_name()
+        );
+        // TODO(#3651): s/0.9.0-alpha.10/latest
+        putln!(
+            page,
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/{}/{}.{}.html)",
+            object.name,
+            object.kind.plural_snake_case(),
+            if object.is_struct() { "struct" } else { "enum" },
+            object.name
+        );
+    }
+
     putln!(page);
     write_example_list(&mut page, &examples);
 

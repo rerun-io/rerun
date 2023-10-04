@@ -12,6 +12,10 @@ title: "Boxes3D"
 
 **Optional**: [`Radius`](../components/radius.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
+## Links
+ * 🐍 [Python API docs for `Boxes3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/boxes3d/)
+ * 🦀 [Rust API docs for `Boxes3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.Boxes3D.html)
+
 ## Examples
 
 ### Simple 3D boxes

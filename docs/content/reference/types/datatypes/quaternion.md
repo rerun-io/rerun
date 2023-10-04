@@ -8,6 +8,10 @@ Note: although the x,y,z,w components of the quaternion will be passed through t
 datastore as provided, when used in the viewer Quaternions will always be normalized.
 
 
+## Links
+ * 🐍 [Python API docs for `Quaternion`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/quaternion/)
+ * 🦀 [Rust API docs for `Quaternion`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/datatypes/struct.Quaternion.html)
+
 
 ## Used by
 

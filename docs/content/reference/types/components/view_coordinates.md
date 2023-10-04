@@ -20,6 +20,10 @@ The following constants are used to represent the different directions.
  Back = 6
 
 
+## Links
+ * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/view_coordinates/)
+ * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.ViewCoordinates.html)
+
 
 ## Used by
 
