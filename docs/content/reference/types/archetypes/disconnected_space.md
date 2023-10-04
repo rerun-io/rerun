@@ -15,7 +15,7 @@ will be ignored.
 
 ## Links
  * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/disconnected_space/)
- * 🦀 [Rust API docs for `DisconnectedSpace`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.DisconnectedSpace.html)
+ * 🦀 [Rust API docs for `DisconnectedSpace`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.DisconnectedSpace.html)
 
 ## Example
 

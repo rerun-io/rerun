@@ -10,7 +10,7 @@ A string of text, e.g. for labels and text documents
 
 ## Links
  * 🐍 [Python API docs for `Text`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/text/)
- * 🦀 [Rust API docs for `Text`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Text.html)
+ * 🦀 [Rust API docs for `Text`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.Text.html)
 
 
 ## Used by

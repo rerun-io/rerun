@@ -15,7 +15,7 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 
 ## Links
  * 🐍 [Python API docs for `DepthImage`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/depth_image/)
- * 🦀 [Rust API docs for `DepthImage`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.DepthImage.html)
+ * 🦀 [Rust API docs for `DepthImage`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.DepthImage.html)
 
 ## Examples
 

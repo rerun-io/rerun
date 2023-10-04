@@ -13,7 +13,7 @@ consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 
 ## Links
  * 🐍 [Python API docs for `MediaType`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/media_type/)
- * 🦀 [Rust API docs for `MediaType`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.MediaType.html)
+ * 🦀 [Rust API docs for `MediaType`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.MediaType.html)
 
 
 ## Used by

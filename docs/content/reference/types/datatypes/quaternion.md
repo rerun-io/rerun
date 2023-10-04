@@ -10,7 +10,7 @@ datastore as provided, when used in the viewer Quaternions will always be normal
 
 ## Links
  * 🐍 [Python API docs for `Quaternion`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/quaternion/)
- * 🦀 [Rust API docs for `Quaternion`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Quaternion.html)
+ * 🦀 [Rust API docs for `Quaternion`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/datatypes/struct.Quaternion.html)
 
 
 ## Used by

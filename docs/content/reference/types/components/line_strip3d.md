@@ -21,7 +21,7 @@ The points will be connected in order, like so:
 
 ## Links
  * 🐍 [Python API docs for `LineStrip3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/line_strip3d/)
- * 🦀 [Rust API docs for `LineStrip3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.LineStrip3D.html)
+ * 🦀 [Rust API docs for `LineStrip3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.LineStrip3D.html)
 
 
 ## Used by

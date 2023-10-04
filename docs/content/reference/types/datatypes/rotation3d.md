@@ -11,7 +11,7 @@ A 3D rotation.
 
 ## Links
  * 🐍 [Python API docs for `Rotation3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/rotation3d/)
- * 🦀 [Rust API docs for `Rotation3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/enum.Rotation3D.html)
+ * 🦀 [Rust API docs for `Rotation3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/datatypes/enum.Rotation3D.html)
 
 
 ## Used by

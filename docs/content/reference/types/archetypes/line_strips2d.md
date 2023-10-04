@@ -14,7 +14,7 @@ title: "LineStrips2D"
 
 ## Links
  * 🐍 [Python API docs for `LineStrips2D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/line_strips2d/)
- * 🦀 [Rust API docs for `LineStrips2D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.LineStrips2D.html)
+ * 🦀 [Rust API docs for `LineStrips2D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.LineStrips2D.html)
 
 ## Examples
 

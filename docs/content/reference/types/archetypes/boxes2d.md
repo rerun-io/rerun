@@ -14,7 +14,7 @@ title: "Boxes2D"
 
 ## Links
  * 🐍 [Python API docs for `Boxes2D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/boxes2d/)
- * 🦀 [Rust API docs for `Boxes2D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Boxes2D.html)
+ * 🦀 [Rust API docs for `Boxes2D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.Boxes2D.html)
 
 ## Example
 

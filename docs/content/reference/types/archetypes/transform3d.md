@@ -10,7 +10,7 @@ A 3D transform.
 
 ## Links
  * 🐍 [Python API docs for `Transform3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/transform3d/)
- * 🦀 [Rust API docs for `Transform3D`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Transform3D.html)
+ * 🦀 [Rust API docs for `Transform3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.Transform3D.html)
 
 ## Example
 

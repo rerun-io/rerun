@@ -14,7 +14,7 @@ The id refers either to a class or key-point id
 
 ## Links
  * 🐍 [Python API docs for `AnnotationInfo`](https://ref.rerun.io/docs/python/nightly/package/rerun/datatypes/annotation_info/)
- * 🦀 [Rust API docs for `AnnotationInfo`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.AnnotationInfo.html)
+ * 🦀 [Rust API docs for `AnnotationInfo`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/datatypes/struct.AnnotationInfo.html)
 
 
 ## Used by

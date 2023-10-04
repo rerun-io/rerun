@@ -10,7 +10,7 @@ A multi-dimensional `Tensor` with optionally named arguments.
 
 ## Links
  * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/tensor_data/)
- * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.TensorData.html)
+ * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.TensorData.html)
 
 
 ## Used by

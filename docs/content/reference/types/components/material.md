@@ -10,7 +10,7 @@ Material properties of a mesh.
 
 ## Links
  * 🐍 [Python API docs for `Material`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/material/)
- * 🦀 [Rust API docs for `Material`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Material.html)
+ * 🦀 [Rust API docs for `Material`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.Material.html)
 
 
 ## Used by

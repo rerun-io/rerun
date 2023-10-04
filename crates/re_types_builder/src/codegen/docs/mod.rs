@@ -168,10 +168,10 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             object.kind.plural_snake_case(),
             object.snake_case_name()
         );
-        // TODO(#3651): s/0.9.0-alpha.6/latest
+        // TODO(#3651): s/0.9.0-alpha.10/latest
         putln!(
             page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/{}/{}.{}.html)",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/{}/{}.{}.html)",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },
