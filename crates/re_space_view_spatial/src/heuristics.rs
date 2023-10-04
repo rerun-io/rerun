@@ -223,14 +223,16 @@ fn update_transform3d_lines_heuristics(
 
         let mut properties = entity_properties.get(ent_path);
         if properties.transform_3d_visible.is_auto() {
-            // By default show the transform if it is a camera extrinsic or if it's the only component on this entity path.
-            let single_component = ctx
-                .store_db
-                .store()
-                .all_components(&ctx.current_query().timeline, ent_path)
-                .map_or(false, |c| c.len() == 1);
+            // By default show the transform if it is a camera extrinsic
+            // or if it has the indicator component for the `Transform3D` archetype
+            use re_types::Archetype as _;
+            let has_transform3d_indicator = ctx.store_db.store().entity_has_component(
+                &ctx.current_query().timeline,
+                ent_path,
+                &re_types::archetypes::Transform3D::indicator().name(),
+            );
             properties.transform_3d_visible = EditableAutoValue::Auto(
-                single_component
+                has_transform3d_indicator
                     || is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx).is_some(),
             );
         }
