@@ -11,7 +11,7 @@ Representation of a 3D affine transform.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/transform3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Transform3D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/enum.Transform3D.html
 
 
 ## Used by

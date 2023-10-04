@@ -170,8 +170,9 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         // TODO(#3651): update this to `latest`
         putln!(
             page,
-            " * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/{}/struct.{}.html",
+            " * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/{}/{}.{}.html",
             object.kind.plural_snake_case(),
+            if object.is_struct() { "struct" } else { "enum" },
             object.name
         );
     }
