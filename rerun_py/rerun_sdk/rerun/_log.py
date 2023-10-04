@@ -72,19 +72,20 @@ def log(
     the `AsComponents` interface.
 
     For example, to log a 3D point:
-    ```
+    ```py
     rr.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
     ```
 
     The `log` function can flexibly accept an arbitrary number of additional objects which will
     be merged into the first entity so long as they don't expose conflicting components, for instance:
-    ```
+    ```py
+    # Log three points with arrows sticking out of them,
+    # and a custom "confidence" component.
     rr.log(
         "my/points",
-        rr.Points2D([[-1, -1], [-1, 1], [1, -1], [1, 1]]),
-        rr.AnyValues(
-            confidence=[0.3, 0.4, 0.5, 0.6],
-        ),
+        rr.Points2D([[0.2, 0.5], [0.9, 1.2], [1.0, 4.2]], radii=[0.1, 0.2, 0.3]),
+        rr.Arrows3D(vectors=[[0.3, 2.1], [0.2, -1.1], [-0.4, 0.1]]),
+        rr.AnyValues(confidence=[0.3, 0.4, 0.9]),
     )
     ```
 
