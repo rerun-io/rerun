@@ -23,8 +23,10 @@ namespace rerun {
         ///
         /// This is internal to the `AnnotationContext` structure.
         struct ClassDescriptionMapElem {
+            /// The key: the class ID.
             rerun::datatypes::ClassId class_id;
 
+            /// The value: class name, color, etc.
             rerun::datatypes::ClassDescription class_description;
 
           public:

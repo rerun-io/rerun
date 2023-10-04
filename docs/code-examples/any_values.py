@@ -1,4 +1,4 @@
-"""Log a arbitrary data."""
+"""Log arbitrary data."""
 import rerun as rr
 
 rr.init("rerun_example_any_values", spawn=True)

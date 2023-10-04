@@ -10,7 +10,7 @@ To use Rerun, you need to install the `rerun` binary with `cargo install rerun-c
 
 Let's try it out in a brand new Rust project:
 ```bash
-$ cargo init cube && cd cube && cargo add rerun
+$ cargo init cube && cd cube && cargo add rerun --features native_viewer
 ```
 
 ## Starting the viewer
@@ -20,21 +20,20 @@ Just run `rerun` to start the [Rerun Viewer](../reference/viewer/overview.md). I
 Add the following code to your `main.rs`
 (This example also lives in the `rerun` source tree [example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/minimal/src/main.rs))
 ```rust
-use rerun::{
-    archetypes::Points3D, components::Color, demo_util::grid, external::glam,
-    RecordingStreamBuilder,
-};
+use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
+    let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
 
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
     let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)
-        .map(|v| Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
+        .map(|v| rerun::Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
 
     rec.log(
         "my_points",
-        &Points3D::new(points).with_colors(colors).with_radii([0.5]),
+        &rerun::Points3D::new(points)
+            .with_colors(colors)
+            .with_radii([0.5]),
     )?;
 
     rerun::native_viewer::show(storage.take())?;
@@ -50,11 +49,11 @@ cargo run
 Once everything finishes compiling, you will see the points in the Rerun Viewer:
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/1200w.png">
-  <img src="https://static.rerun.io/intro_users1_result/40dca5343e79c4a214fdac277dc601c3da8fb491/full.png" alt="Rust getting started result">
+  <img src="https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/1200w.png">
 </picture>
 
 
@@ -74,4 +73,4 @@ If you're ready to move on to more advanced topics, check out the [Viewer Walkth
 more advanced guide for [Logging Data in Rust](logging-rust.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
-If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Loggable Data Types](../reference/data_types.md) section for more simple examples of how to use the main data types.
+If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Loggable Data Types](../reference/data_types.md) section for more simple examples of how to use the main datatypes.

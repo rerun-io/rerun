@@ -57,7 +57,20 @@ class TextLog(Archetype):
         level: datatypes.Utf8Like | None = None,
         color: datatypes.Rgba32Like | None = None,
     ):
-        """Create a new instance of the TextLog archetype."""
+        """
+        Create a new instance of the TextLog archetype.
+
+        Parameters
+        ----------
+        text:
+             The body of the message.
+        level:
+             The verbosity level of the message.
+
+             This can be used to filter the log messages in the Rerun Viewer.
+        color:
+             Optional color to use for the log line in the Rerun Viewer.
+        """
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -84,15 +97,29 @@ class TextLog(Archetype):
         metadata={"component": "required"},
         converter=components.TextBatch._required,  # type: ignore[misc]
     )
+    # The body of the message.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     level: components.TextLogLevelBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextLogLevelBatch._optional,  # type: ignore[misc]
     )
+    # The verbosity level of the message.
+    #
+    # This can be used to filter the log messages in the Rerun Viewer.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
+    # Optional color to use for the log line in the Rerun Viewer.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

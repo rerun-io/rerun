@@ -12,14 +12,9 @@ use rerun::{
 const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let store_info = rerun::new_store_info("DNA Abacus");
-    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
-        run(&rec).unwrap();
-    })?;
-    Ok(())
-}
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
+        .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
 
-fn run(rec: &rerun::RecordingStream) -> rerun::RecordingStreamResult<()> {
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
