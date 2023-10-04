@@ -577,16 +577,30 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Logs the contents of a [component bundle] into Rerun.
+    /// Log data to Rerun.
+    ///
+    /// This is the main entry point for logging data to rerun. It can be used to log anything
+    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
-    /// See `RecordingStream::set_time_*` family of methods for more information.
+    /// See [`RecordingStream::set_time_sequence`] etc for more information.
+    ///
+    /// See also: [`Self::log_timeless`] for logging timeless data.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// See also: [`Self::log_timeless`].
+    /// # Example:
+    /// ```
+    /// # use re_sdk as rerun;
+    /// # let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple").memory()?;
+    /// rec.log(
+    ///     "my/points",
+    ///     &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
+    /// )?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
@@ -599,7 +613,10 @@ impl RecordingStream {
         self.log_with_timeless(ent_path, false, arch)
     }
 
-    /// Logs the contents of a [component bundle] into Rerun as timeless data.
+    /// Log data to Rerun.
+    ///
+    /// It can be used to log anything
+    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
     ///
     /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
     /// into the past.
@@ -611,6 +628,8 @@ impl RecordingStream {
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
+    ///
+    /// See also [`Self::log`].
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
