@@ -507,7 +507,7 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
 
     // Prefix first line with `**Datatype**: ` etc:
     if let Some(first) = lines.first_mut() {
-        *first = format!("**{}**: {}", obj.kind.singular_name(), first);
+        *first = format!("**{}**: {}", obj.kind.singular_name(), first.trim());
     } else if !obj.is_testing() {
         reporter.error(&obj.virtpath, &obj.fqname, "Missing documentation for");
     }

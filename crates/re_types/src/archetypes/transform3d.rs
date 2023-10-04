@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Archetype**:  A 3D transform.
+/// **Archetype**: A 3D transform.
 ///
 /// ## Example
 ///

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  A 16-bit ID representing a type of semantic class.
+/// **Datatype**: A 16-bit ID representing a type of semantic class.
 ///
 /// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
 #[derive(

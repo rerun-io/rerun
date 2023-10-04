@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Archetype**:  An image made up of integer class-ids
+/// **Archetype**: An image made up of integer class-ids
 ///
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by meter.

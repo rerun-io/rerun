@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Component**:  A 3D rotation, represented either by a quaternion or a rotation around axis.
+/// **Component**: A 3D rotation, represented either by a quaternion or a rotation around axis.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rotation3D(
     /// Representation of the rotation.

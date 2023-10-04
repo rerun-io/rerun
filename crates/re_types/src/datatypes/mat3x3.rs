@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  A 3x3 Matrix.
+/// **Datatype**: A 3x3 Matrix.
 ///
 /// Matrices in Rerun are stored as flat list of coefficients in column-major order:
 /// ```text

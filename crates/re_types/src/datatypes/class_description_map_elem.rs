@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  A helper type for mapping class IDs to class descriptions.
+/// **Datatype**: A helper type for mapping class IDs to class descriptions.
 ///
 /// This is internal to the `AnnotationContext` structure.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

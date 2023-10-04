@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Archetype**:  A depth image.
+/// **Archetype**: A depth image.
 ///
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.

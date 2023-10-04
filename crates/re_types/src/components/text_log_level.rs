@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Component**:  The severity level of a text log message.
+/// **Component**: The severity level of a text log message.
 ///
 /// Recommended to be one of:
 /// * `"CRITICAL"`

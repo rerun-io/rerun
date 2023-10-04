@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Archetype**:  A bar chart.
+/// **Archetype**: A bar chart.
 ///
 /// The x values will be the indices of the array, and the bar heights will be the provided values.
 ///

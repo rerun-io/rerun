@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Datatype**:  Optional triangle indices for a mesh.
+/// **Datatype**: Optional triangle indices for a mesh.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MeshProperties {
     /// A flattened array of vertex indices that describe the mesh's triangles.

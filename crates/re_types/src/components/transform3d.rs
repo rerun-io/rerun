@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Component**:  An affine transform between two 3D spaces, represented in a given direction.
+/// **Component**: An affine transform between two 3D spaces, represented in a given direction.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transform3D(
     /// Representation of the transform.
