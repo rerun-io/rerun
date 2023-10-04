@@ -65,7 +65,7 @@
  - The visualizer can now show coordinate arrows for all affine transforms within the view. [#2577](https://github.com/rerun-io/rerun/pull/2577)
  - Linestrips and oriented bounding boxes can now be logged via batch APIs in python.
    - See: `log_linestrips_2d`, `log_linestrips_3d`, [#2822](https://github.com/rerun-io/rerun/pull/2822) and `log_obbs` [#2823](https://github.com/rerun-io/rerun/pull/2823)
- - Rust users that build their own Viewer applications can now add fully custom Space Views. Find more information [here](https://www.rerun.io/docs/howto/extend-ui#custom-space-views-classes).
+ - Rust users that build their own Viewer applications can now add fully custom Space Views. Find more information [here](https://www.rerun.io/docs/howto/extend/extend-ui#custom-space-views-classes).
  - New optional `flush_timeout` specifies how long Rerun will wait if a TCP stream is disconnected during a flush. [#2821](https://github.com/rerun-io/rerun/pull/2821)
    - In Rust, `RecordingStream::connect` now requires `flush_timeout` specified as an `Option<Duration>`.
      - To keep default behavior, this can be specified using the `rerun::default_flush_time()` helper.
