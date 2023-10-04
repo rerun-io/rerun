@@ -11,7 +11,7 @@ A 3D rotation.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/rotation3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.Rotation3D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Rotation3D.html
 
 
 ## Used by

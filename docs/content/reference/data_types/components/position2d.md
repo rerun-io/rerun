@@ -10,7 +10,7 @@ A position in 2D space.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/position2d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Position2D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Position2D.html
 
 
 ## Used by

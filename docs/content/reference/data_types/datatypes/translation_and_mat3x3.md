@@ -13,7 +13,7 @@ First applies the matrix, then the translation.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/translation_and_mat3x3/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.TranslationAndMat3x3.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.TranslationAndMat3x3.html
 
 
 ## Used by

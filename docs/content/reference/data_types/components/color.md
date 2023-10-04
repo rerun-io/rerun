@@ -13,7 +13,7 @@ byte is `R` and the least significant byte is `A`.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/color/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Color.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Color.html
 
 
 ## Used by

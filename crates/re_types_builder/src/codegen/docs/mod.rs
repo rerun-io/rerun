@@ -160,16 +160,17 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         putln!(page);
         putln!(page, "## Links");
         // TODO(#2919): link to C++ docs
-        // TODO( #3647): not HEAD, but `latest`: https://github.com/rerun-io/rerun/issues/3647
+        // TODO(#3647): not HEAD, but `latest`: https://github.com/rerun-io/rerun/issues/3647
         putln!(
             page,
             " * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/{}/{}/",
             object.kind.plural_snake_case(),
             object.snake_case_name()
         );
+        // TODO(#3651): update this to `latest`
         putln!(
             page,
-            " * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/{}/struct.{}.html",
+            " * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/{}/struct.{}.html",
             object.kind.plural_snake_case(),
             object.name
         );

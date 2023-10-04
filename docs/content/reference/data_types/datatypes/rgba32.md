@@ -10,7 +10,7 @@ byte is `R` and the least significant byte is `A`.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/rgba32/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.Rgba32.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Rgba32.html
 
 
 ## Used by

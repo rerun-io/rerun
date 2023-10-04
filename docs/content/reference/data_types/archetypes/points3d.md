@@ -14,7 +14,7 @@ A 3D point cloud with positions and optional colors, radii, labels, etc.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/points3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Points3D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Points3D.html
 
 ## Examples
 

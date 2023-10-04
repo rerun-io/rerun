@@ -7,7 +7,7 @@ A unique numeric identifier for each individual instance within a batch.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/instance_key/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.InstanceKey.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.InstanceKey.html
 
 
 ## Used by

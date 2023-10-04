@@ -12,5 +12,5 @@ A text element intended to be displayed in its own text-box.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/text_document/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.TextDocument.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.TextDocument.html
 

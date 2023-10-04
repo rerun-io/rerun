@@ -13,7 +13,7 @@ Draw order for entities with the same draw order is generally undefined.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/draw_order/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.DrawOrder.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.DrawOrder.html
 
 
 ## Used by

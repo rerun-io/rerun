@@ -20,7 +20,7 @@ Example:
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/pinhole_projection/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.PinholeProjection.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.PinholeProjection.html
 
 
 ## Used by

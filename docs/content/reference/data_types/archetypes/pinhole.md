@@ -14,7 +14,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/pinhole/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Pinhole.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Pinhole.html
 
 ## Example
 

@@ -20,7 +20,7 @@ Leading and trailing unit-dimensions are ignored, so that
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/image/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Image.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Image.html
 
 ## Example
 

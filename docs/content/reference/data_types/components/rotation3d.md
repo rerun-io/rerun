@@ -10,7 +10,7 @@ A 3D rotation, represented either by a quaternion or a rotation around axis.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/rotation3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.Rotation3D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.Rotation3D.html
 
 
 ## Used by

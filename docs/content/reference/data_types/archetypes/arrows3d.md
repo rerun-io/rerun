@@ -14,7 +14,7 @@ A batch of 3D arrows with optional colors, radii, labels, etc.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/arrows3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Arrows3D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Arrows3D.html
 
 ## Example
 

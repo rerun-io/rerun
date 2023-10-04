@@ -22,7 +22,7 @@ The following constants are used to represent the different directions.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/view_coordinates/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.ViewCoordinates.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.ViewCoordinates.html
 
 
 ## Used by

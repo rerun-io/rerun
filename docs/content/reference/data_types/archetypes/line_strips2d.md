@@ -14,7 +14,7 @@ A batch of line strips with positions and optional colors, radii, labels, etc.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/line_strips2d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.LineStrips2D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.LineStrips2D.html
 
 ## Example
 

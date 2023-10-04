@@ -7,7 +7,7 @@ A string of text, encoded as UTF-8.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/utf8/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.Utf8.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.Utf8.html
 
 
 ## Used by

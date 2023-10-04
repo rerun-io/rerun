@@ -14,7 +14,7 @@ A batch of 3d boxes with half-extents and optional center, rotations, rotations,
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/archetypes/boxes3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/archetypes/struct.Boxes3D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.Boxes3D.html
 
 ## Examples
 

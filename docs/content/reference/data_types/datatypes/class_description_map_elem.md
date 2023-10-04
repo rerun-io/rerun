@@ -13,7 +13,7 @@ This is internal to the `AnnotationContext` structure.
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/datatypes/class_description_map_elem/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/datatypes/struct.ClassDescriptionMapElem.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/datatypes/struct.ClassDescriptionMapElem.html
 
 
 ## Used by

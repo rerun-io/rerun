@@ -12,7 +12,7 @@ An out-of-tree affine transform between two 3D spaces, represented in a given di
 
 ## Links
  * 🐍 Python API docs: https://ref.rerun.io/docs/python/HEAD/package/rerun/components/out_of_tree_transform3d/
- * 🦀 Rust API docs: https://docs.rs/rerun/latest/rerun/components/struct.OutOfTreeTransform3D.html
+ * 🦀 Rust API docs: https://docs.rs/rerun/0.9.0-alpha.6/rerun/components/struct.OutOfTreeTransform3D.html
 
 
 ## Used by
