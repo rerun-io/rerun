@@ -18,7 +18,7 @@
 ///
 /// ## Example
 ///
-/// ### `pinhole_simple`:
+/// ### Simple Pinhole Camera
 /// ```ignore
 /// //! Log a pinhole and a random image.
 ///
