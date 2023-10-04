@@ -10,4 +10,4 @@ if len(sys.argv) < 2:
 rr.init("rerun_example_asset3d_simple", spawn=True)
 
 rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
-rr.log("world/asset", rr.Asset3D(sys.argv[1]))
+rr.log("world/asset", rr.Asset3D(path=sys.argv[1]))
