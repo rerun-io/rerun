@@ -3,7 +3,7 @@ title: Extend Rerun
 order: 6
 ---
 
-There are currently two major ways of extending Rerun. You can use Rerun with [your own custom data](extend/custom-data.md), or [extend the the Rerun Viewer](extend/extend-ui.md) (currently Rust only).
+There are currently two major ways of extending Rerun. You can use Rerun with [your own custom data](extend/custom-data.md), or [extend the Rerun Viewer](extend/extend-ui.md) (currently Rust only).
 
 The goal is for Rerun to become easy to extend at every level. For example, with plugins for
 - data sources

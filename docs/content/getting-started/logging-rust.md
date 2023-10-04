@@ -116,7 +116,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 `Archetypes`
 
-<!-- TODO UPDATE DOC LINKS -->
+<!-- TODO(andreas): UPDATE DOC LINKS -->
 The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.6/struct.Points3D.html). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
@@ -125,12 +125,12 @@ of components that are recognized and correctly displayed by the Rerun viewer.
 Under the hood, the Rerun [Rust SDK](https://ref.rerun.io/docs/rust) logs individual *components* like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
-archetypes altogether.  
+archetypes altogether.
 For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
 
 Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method
-<!-- TODO UPDATE DOC LINKS -->
-will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/trait.AsComponents.html) trait, making it easy to add your own data.  
+<!-- TODO(andreas): UPDATE DOC LINKS -->
+will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
 
 
@@ -364,7 +364,7 @@ Unlike `spawn` however, it expects a in-memory recording and sends it to the vie
 ```rust
 let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
 
-// ... log data to `rec` ...
+// … log data to `rec` …
 
 rerun::native_viewer::show(storage.take())?;
 ```
