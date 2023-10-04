@@ -2,7 +2,7 @@
 title: "Arrows3D"
 ---
 
-A batch of 3D arrows with optional colors, radii, labels, etc.
+3D arrows with optional colors, radii, labels, etc.
 
 ## Components
 

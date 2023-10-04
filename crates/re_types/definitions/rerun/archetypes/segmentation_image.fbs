@@ -14,6 +14,9 @@ namespace rerun.archetypes;
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
+/// \py See also [`AnnotationContext`][rerun.archetypes.AnnotationContext] to associate each class with a color and a label.
+/// \rs See also [`AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
+///
 /// \example segmentation_image_simple image="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png"
 table SegmentationImage (
   "attr.rust.derive": "PartialEq"

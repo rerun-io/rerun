@@ -2,7 +2,7 @@
 title: "LineStrips3D"
 ---
 
-A batch of line strips with positions and optional colors, radii, labels, etc.
+3D line strips with positions and optional colors, radii, labels, etc.
 
 ## Components
 

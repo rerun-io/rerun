@@ -7,7 +7,6 @@ namespace rerun.archetypes;
 
 // ---
 
-// TODO(#2373): `attr.rerun.component_required` implies `required`
 // TODO(#2427): distinguish optional vs. recommended in language backends
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.

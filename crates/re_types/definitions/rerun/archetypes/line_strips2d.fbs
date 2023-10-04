@@ -7,7 +7,7 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A batch of line strips with positions and optional colors, radii, labels, etc.
+/// 2D line strips with positions and optional colors, radii, labels, etc.
 ///
 /// \example line_strip2d_simple !api image="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png"
 /// \example line_segments2d_simple !api image="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png"

@@ -2,7 +2,7 @@
 title: "LineStrips2D"
 ---
 
-A batch of line strips with positions and optional colors, radii, labels, etc.
+2D line strips with positions and optional colors, radii, labels, etc.
 
 ## Components
 

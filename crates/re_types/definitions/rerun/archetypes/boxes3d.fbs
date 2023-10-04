@@ -9,7 +9,7 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// \example box3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
 /// \example box3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/1200w.png"

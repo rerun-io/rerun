@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// **Archetype**:  A batch of line strips with positions and optional colors, radii, labels, etc.
+/// **Archetype**:  3D line strips with positions and optional colors, radii, labels, etc.
 ///
 /// ## Example
 ///

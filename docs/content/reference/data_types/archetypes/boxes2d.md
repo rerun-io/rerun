@@ -2,7 +2,7 @@
 title: "Boxes2D"
 ---
 
-A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+2D boxes with half-extents and optional center, rotations, rotations, colors etc.
 
 ## Components
 
