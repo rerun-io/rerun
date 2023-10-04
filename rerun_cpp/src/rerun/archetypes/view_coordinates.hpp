@@ -27,7 +27,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// ### `view_coordinates_simple`:
+        /// ### View coordinates for adjusting the eye camera
         /// ```cpp,ignore
         /// // Change the view coordinates for the scene.
         ///

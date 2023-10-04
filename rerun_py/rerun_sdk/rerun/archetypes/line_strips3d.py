@@ -19,7 +19,7 @@ __all__ = ["LineStrips3D"]
 @define(str=False, repr=False, init=False)
 class LineStrips3D(Archetype):
     """
-    **Archetype**: A batch of line strips with positions and optional colors, radii, labels, etc.
+    **Archetype**: 3D line strips with positions and optional colors, radii, labels, etc.
 
     Example
     -------

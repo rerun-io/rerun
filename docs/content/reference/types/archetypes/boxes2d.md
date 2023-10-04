@@ -2,7 +2,7 @@
 title: "Boxes2D"
 ---
 
-A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+2D boxes with half-extents and optional center, rotations, rotations, colors etc.
 
 ## Components
 
@@ -17,4 +17,14 @@ A batch of 2d boxes with half-extents and optional center, rotations, rotations,
 ### Simple 2D boxes
 
 code-example: box2d_simple
+
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1200w.png">
+  <img src="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png" width="640">
+</picture>
+</center>
 

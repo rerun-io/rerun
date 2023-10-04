@@ -22,9 +22,11 @@
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
+/// See also [`AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
+///
 /// ## Example
 ///
-/// ### `segmentation_image_simple`:
+/// ### Simple segmentation image
 /// ```ignore
 /// //! Create and log a segmentation image.
 ///

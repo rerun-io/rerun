@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples, ExampleInfo},
+        common::{collect_examples_for_api_docs, ExampleInfo},
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -518,7 +518,7 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
 fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
-    let examples = collect_examples(docs, "rs", true)
+    let examples = collect_examples_for_api_docs(docs, "rs", true)
         .map_err(|err| reporter.error(virtpath, fqname, err))
         .unwrap_or_default();
 
@@ -533,7 +533,9 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
         lines.push(Default::default());
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
-            let ExampleInfo { name, title, image } = &example.base;
+            let ExampleInfo {
+                name, title, image, ..
+            } = &example.base;
 
             if let Some(title) = title {
                 lines.push(format!(" ### {title}"));

@@ -22,8 +22,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: A batch of line strips with positions and optional colors, radii, labels,
-        /// etc.
+        /// **Archetype**: 2D line strips with positions and optional colors, radii, labels, etc.
         ///
         /// ## Example
         ///

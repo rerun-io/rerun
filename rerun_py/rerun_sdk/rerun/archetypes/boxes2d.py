@@ -17,7 +17,7 @@ __all__ = ["Boxes2D"]
 @define(str=False, repr=False, init=False)
 class Boxes2D(Boxes2DExt, Archetype):
     """
-    **Archetype**: A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+    **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
 
     Example
     -------
@@ -32,6 +32,15 @@ class Boxes2D(Boxes2DExt, Archetype):
     # Log an extra rect to set the view bounds
     rr.log("bounds", rr.Boxes2D(sizes=[4.0, 3.0]))
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1200w.png">
+      <img src="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png" width="640">
+    </picture>
+    </center>
     """
 
     # __init__ can be found in boxes2d_ext.py

@@ -4,9 +4,7 @@ import rerun as rr
 from numpy.random import default_rng
 
 rng = default_rng(12345)
-
-# Create a 4-dimensional tensor
-tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
+tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))  # 4-dimensional tensor
 
 rr.init("rerun_example_tensors", spawn=True)
 

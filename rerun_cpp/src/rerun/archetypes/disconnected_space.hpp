@@ -25,7 +25,7 @@ namespace rerun {
         ///
         /// ## Example
         ///
-        /// ### `disconnected_space`:
+        /// ### Disconnected Space
         /// ```cpp,ignore
         /// // Disconnect two spaces.
         ///

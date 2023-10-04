@@ -18,7 +18,7 @@ Leading and trailing unit-dimensions are ignored, so that
 
 ## Example
 
-### segmentation_image_simple
+### Simple segmentation image
 
 code-example: segmentation_image_simple
 

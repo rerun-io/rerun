@@ -21,8 +21,8 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     See also [`Asset3D`][rerun.archetypes.Asset3D].
 
-    Examples
-    --------
+    Example
+    -------
     ### Simple indexed 3D mesh:
     ```python
     import rerun as rr
@@ -40,34 +40,15 @@ class Mesh3D(Mesh3DExt, Archetype):
         ),
     )
     ```
-
-    ### 3D mesh with partial updates:
-    ```python
-    import numpy as np
-    import rerun as rr
-    from rerun.components import Position3DBatch
-
-    rr.init("rerun_example_mesh3d_partial_updates", spawn=True)
-
-    vertex_positions = np.array([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=np.float32)
-
-    # Log the initial state of our triangle
-    rr.set_time_sequence("frame", 0)
-    rr.log(
-        "triangle",
-        rr.Mesh3D(
-            vertex_positions=vertex_positions,
-            vertex_normals=[0.0, 0.0, 1.0],
-            vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
-        ),
-    )
-
-    # Only update its vertices' positions each frame
-    factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
-    for i, factor in enumerate(factors):
-        rr.set_time_sequence("frame", i)
-        rr.log_components("triangle", [Position3DBatch(vertex_positions * factor)])
-    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png">
+      <img src="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png" width="640">
+    </picture>
+    </center>
     """
 
     # __init__ can be found in mesh3d_ext.py
