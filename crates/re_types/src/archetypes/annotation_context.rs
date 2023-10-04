@@ -22,6 +22,8 @@
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
+/// See also [`ClassDescription`][crate::datatypes::ClassDescription].
+///
 /// ## Example
 ///
 /// ### Segmentation
