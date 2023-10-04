@@ -2,9 +2,9 @@
 title: Welcome
 order: 0
 ---
-Welcome to the Rerun documentation page.
-
-To get a feeling of what you can do, browse the [example gallery](/examples) or try Rerun directly [in your browser](https://demo.rerun.io/).
+To get a feeling of what you can do with Rerun
+- browse the [example gallery](/examples) or
+- try Rerun directly [in your browser](https://app.rerun.io/).
 
 ## What is Rerun?
 
@@ -20,7 +20,7 @@ Rerun is
 Rerun is used by engineers and researchers in fields like computer vision and robotics
 to verify, debug, and demo.
 
-For a list of built-in data types, see [Types](reference/types.md).
+For a list of built-in data types, see [Loggable Types](reference/types.md).
 
 ## How do you use it?
 <picture>
