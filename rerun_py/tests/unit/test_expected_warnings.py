@@ -34,6 +34,11 @@ def test_expected_warnings() -> None:
                 rr.log("test_transform", rr.Transform3D(rotation=[1, 2, 3, 4, 5])),
                 "rotation must be compatible with Rotation3D",
             ),
+            (
+                # TODO(jleibs): This should ideally capture the field name as mat3x3 as above
+                rr.log("test_transform", rr.Transform3D(mat3x3=[1, 2, 3, 4, 5])),
+                "cannot reshape array of size 5 into shape (3,3))",
+            ),
         ]
 
         assert len(warnings) == len(expected_warnings)
