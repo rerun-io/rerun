@@ -53,6 +53,26 @@ package:
   license_family: BSD
   size: 23621
   timestamp: 1650670423406
+- name: arrow-cpp
+  version: 10.0.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libarrow: ==10.0.1 h1935d02_43_cpu
+  url: https://conda.anaconda.org/conda-forge/linux-64/arrow-cpp-10.0.1-ha770c72_43_cpu.conda
+  hash:
+    md5: 0b8b77aba55ff9d44a03fbb59ba0a2b1
+    sha256: dcbf6d7a17f79187bd6e540146d416cb5fee07bab43b425ded63c2e7cda2352b
+  optional: false
+  category: main
+  build: ha770c72_43_cpu
+  arch: x86_64
+  subdir: linux-64
+  build_number: 43
+  license: Apache-2.0
+  license_family: APACHE
+  size: 34161
+  timestamp: 1696001260754
 - name: attrs
   version: 23.1.0
   manager: conda
@@ -646,6 +666,36 @@ package:
   noarch: python
   size: 84437
   timestamp: 1692311973840
+- name: cmake
+  version: 3.27.6
+  manager: conda
+  platform: linux-64
+  dependencies:
+    bzip2: '>=1.0.8,<2.0a0'
+    libcurl: '>=8.3.0,<9.0a0'
+    libexpat: '>=2.5.0,<3.0a0'
+    libgcc-ng: '>=12'
+    libstdcxx-ng: '>=12'
+    libuv: '>=1.46.0,<2.0a0'
+    libzlib: '>=1.2.13,<1.3.0a0'
+    ncurses: '>=6.4,<7.0a0'
+    rhash: '>=1.4.4,<2.0a0'
+    xz: '>=5.2.6,<6.0a0'
+    zstd: '>=1.5.5,<1.6.0a0'
+  url: https://conda.anaconda.org/conda-forge/linux-64/cmake-3.27.6-hcfe8598_0.conda
+  hash:
+    md5: 4c0101485c452ea86f846523c4fae698
+    sha256: 64e08c246195d6956f7a04fa7d96a53de696b26b1dae8b08cfe716950f696e12
+  optional: false
+  category: main
+  build: hcfe8598_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 18494905
+  timestamp: 1695269729661
 - name: colorama
   version: 0.4.6
   manager: conda
@@ -1793,6 +1843,26 @@ package:
   license_family: BSD
   size: 33601
   timestamp: 1680112270483
+- name: libuv
+  version: 1.46.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libgcc-ng: '>=12'
+  url: https://conda.anaconda.org/conda-forge/linux-64/libuv-1.46.0-hd590300_0.conda
+  hash:
+    md5: d23c76f7e6dcd6243d1b6ef5e62d17d2
+    sha256: 4bc4c946e9a532c066442714eeeeb1ffbd03cd89789c4047293f5e782b5fedd7
+  optional: false
+  category: main
+  build: hd590300_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 893348
+  timestamp: 1693539405436
 - name: libxml2
   version: 2.11.5
   manager: conda
@@ -1923,6 +1993,27 @@ package:
   license: X11 AND BSD-3-Clause
   size: 880967
   timestamp: 1686076725450
+- name: ninja
+  version: 1.11.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libgcc-ng: '>=12'
+    libstdcxx-ng: '>=12'
+  url: https://conda.anaconda.org/conda-forge/linux-64/ninja-1.11.1-h924138e_0.conda
+  hash:
+    md5: 73a4953a2d9c115bdc10ff30a52f675f
+    sha256: b555247ac8859b4ff311e3d708a0640f1bfe9fae7125c485b444072474a84c41
+  optional: false
+  category: main
+  build: h924138e_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: Apache
+  size: 2251263
+  timestamp: 1676837602636
 - name: numpy
   version: 1.26.0
   manager: conda
@@ -2306,6 +2397,26 @@ package:
   license_family: GPL
   size: 281456
   timestamp: 1679532220005
+- name: rhash
+  version: 1.4.4
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libgcc-ng: '>=12'
+  url: https://conda.anaconda.org/conda-forge/linux-64/rhash-1.4.4-hd590300_0.conda
+  hash:
+    md5: ec972a9a2925ac8d7a19eb9606561fff
+    sha256: 12711d2d4a808a503c2e49b25d26ecb351435521e814c154e682dd2be71c2611
+  optional: false
+  category: main
+  build: hd590300_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 185144
+  timestamp: 1693455923632
 - name: ruff
   version: 0.0.276
   manager: conda

@@ -7,19 +7,33 @@ channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tasks]
+
 codegen = "cargo codegen"
+
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
 
+cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-build = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
+  "cpp-prepare",
+] }
+cpp-test = { cmd = "./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+  "cpp-build",
+] }
+
+
 [dependencies]
+arrow-cpp = "10.0.1"
 attrs = ">=23.1.0"
 black = "23.3.0"
 clang = ">=15,<16"
 clang-tools = ">=15,<16"
+cmake = "3.27.6"
 flatbuffers = ">=23"
 maturin = ">=0.14,<0.15"
+ninja = "1.11.1"
 patchelf = ">=0.17"
 pip = ">=23"
 pyarrow = "10.0.1"
