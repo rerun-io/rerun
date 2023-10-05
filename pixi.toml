@@ -4,7 +4,7 @@ version = "0.9.0"
 description = "Add a short description here"
 authors = ["Jeremy Leibs <jeremy@rerun.io>"]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
 
 [tasks]
 
@@ -34,7 +34,6 @@ cmake = "3.27.6"
 flatbuffers = ">=23"
 maturin = ">=0.14,<0.15"
 ninja = "1.11.1"
-patchelf = ">=0.17"
 pip = ">=23"
 pyarrow = "10.0.1"
 pytest = ">=7"
@@ -43,3 +42,6 @@ ruff = "0.0.276"
 semver = ">=2.13,<2.14"
 typing_extensions = ">4.5"
 wheel = ">=0.38,<0.39"
+
+[target.linux-64.dependencies]
+patchelf = ">=0.17"
