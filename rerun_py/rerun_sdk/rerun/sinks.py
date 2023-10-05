@@ -152,9 +152,9 @@ def _check_for_existing_viewer(port: int) -> bool:
         # Try opening a connection to the port to see if something is there
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
-        s.connect(("0.0.0.0", port))
+        s.connect(("127.0.0.1", port))
         return True
-    except (socket.timeout, ConnectionRefusedError):
+    except Exception:
         # If the connection times out or is refused, the port is not open
         return False
     finally:
