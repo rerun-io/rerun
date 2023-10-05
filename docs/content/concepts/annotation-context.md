@@ -53,8 +53,8 @@ The Annotation Context is defined as a list of Class Descriptions that define ho
 
 Annotation contexts are logged with:
 
-* Python: [`rr.AnnotationContext`](https://ref.rerun.io/docs/python/HEAD/common/annotations/#rerun.AnnotationContext)
-* Rust: [`AnnotationContext`](https://docs.rs/rerun/latest/rerun/components/struct.AnnotationContext.html)
+* Python: 🐍[`rr.AnnotationContext`](https://ref.rerun.io/docs/python/HEAD/common/annotations/#rerun.AnnotationContext)
+* Rust: 🦀[`rerun::AnnotationContext`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.AnnotationContext.html#)
 
 code-example: annotation-context
 
@@ -72,7 +72,7 @@ By default, Rerun will automatically assign colors to each class id, but by defi
 you can explicitly determine the color of each class.
 
 * Python: [`rr.SegmentationImage`](https://ref.rerun.io/docs/python/HEAD/common/images/#rerun.SegmentationImag)
-* Rust: Log a [`Tensor`](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html) with [`TensorDataMeaning::ClassId`](https://docs.rs/rerun/latest/rerun/components/enum.TensorDataMeaning.html#variant.ClassId)
+* Rust: Log a [`rerun::SegmentationImage`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.SegmentationImage.html)
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/480w.png">

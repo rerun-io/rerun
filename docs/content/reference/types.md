@@ -11,10 +11,6 @@ The top-level types are called [**archetypes**](types/archetypes.md) to differen
 For more information on the relationship between **archetypes** and **components**, check out the concept page
 on [Entities and Components](../concepts/entity-component.md).
 
-In [Python](https://ref.rerun.io) every **archetype** is typically backed by one or more function calls. In
-contrast, the [Rust API](https://docs.rs/rerun/) works by building up entities of a given archetype explicitly by
-assembling the required components.
-
 ## Spatial **Archetypes**
 The spatial archetypes represent 2d and 3d spatial data. These types have some notion of a coordinate system and
 generally support spatial transformations. All of these types can be visualized by the `Spatial` space view.
