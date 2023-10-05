@@ -73,6 +73,7 @@ class Section:
 # This is the list of sections and functions that will be included in the index
 # for each of them.
 SECTION_TABLE: Final[list[Section]] = [
+    ################################################################################
     Section(
         title="Initialization functions",
         func_list=["init", "connect", "disconnect", "save", "serve", "spawn", "memory_recording"],
@@ -81,6 +82,8 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Logging functions",
         func_list=["log", "set_time_sequence", "set_time_seconds", "set_time_nanos"],
     ),
+    ################################################################################
+    # These sections don't have tables, but generate pages containing all the archetypes, components, datatypes
     Section(
         title="Archetypes",
         mod_path="rerun.archetypes",
@@ -97,19 +100,12 @@ SECTION_TABLE: Final[list[Section]] = [
         show_tables=False,
     ),
     Section(
-        title="Enums",
-        mod_path="rerun",
-        class_list=[
-            "Box2DFormat",
-            "ImageFormat",
-            "MeshFormat",
-        ],
-        show_tables=False,
-    ),
-    Section(
         title="Custom Data",
         class_list=["AnyValues"],
     ),
+    ################################################################################
+    # These are tables but don't need their own pages since they refer to types that
+    # were added in the pages up above
     Section(
         title="Clearing Entities",
         class_list=["archetypes.Clear"],
@@ -135,8 +131,8 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     Section(
-        title="Image Helpers",
-        class_list=["ImageFormat", "ImageEncoded"],
+        title="Image Compression",
+        class_list=["ImageEncoded"],
         show_tables=False,
     ),
     Section(
@@ -184,6 +180,18 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
         gen_page=False,
     ),
+    ################################################################################
+    # Remaining sections of other referenced things
+    Section(
+        title="Enums",
+        mod_path="rerun",
+        class_list=[
+            "Box2DFormat",
+            "ImageFormat",
+            "MeshFormat",
+        ],
+        show_tables=False,
+    ),
     Section(
         title="Interfaces",
         mod_path="rerun",
@@ -206,6 +214,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "get_recording_id",
             "get_thread_local_data_recording",
             "set_thread_local_data_recording",
+            "start_web_viewer_server",
             "new_recording",
         ],
         class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
@@ -213,10 +222,10 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Experimental",
         func_list=[
-            "experimental.add_space_view",
-            "experimental.new_blueprint",
-            "experimental.set_auto_space_views",
-            "experimental.set_panels",
+            "add_space_view",
+            "new_blueprint",
+            "set_auto_space_views",
+            "set_panels",
         ],
         show_tables=False,
         mod_path="rerun.experimental",
