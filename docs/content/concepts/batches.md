@@ -10,7 +10,7 @@ significant benefits in terms of storage and compute.
 Some examples of batched data include points in a point cloud, bounding boxes for detected objects, tracked keypoints
 in a skeleton, or a collection of line strips.
 
-In the Python APIs, the majority of archetypes are named with the plural form, for example [`rr.Points3D`](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.nightly/common/archetypes/#rerun.archetypes.Points3D). They accept both single elements (internally treated as an N=1 batch) or arrays corresponding to the batches.
+In the Python APIs, the majority of archetypes are named with the plural form, for example [`rr.Points3D`](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points3D). They accept both single elements (internally treated as an N=1 batch) or arrays corresponding to the batches.
 
 ## Terminology
 

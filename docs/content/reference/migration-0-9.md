@@ -56,7 +56,7 @@ Notes:
 ### `log_arrow`
 Replace with [Arrows3D](types/archetypes/arrows3d.md)
 
-Python docs: [Arrows3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Arrows3D.__init__)
+Python docs: [Arrows3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Arrows3D)
 
 Notes:
  - `with_scale` has become `radii`, which entails dividing by 2 as necessary.
@@ -78,7 +78,7 @@ Notes:
 ### `log_disconnected_space`
 Replace with [DisconnectedSpace](types/archetypes/disconnected_space.md)
 
-Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.DisconnectedSpace.__init__)
+Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.DisconnectedSpace)
 
 ### `log_extension_components`
 Replace with `AnyValues`
@@ -110,7 +110,7 @@ Notes:
 ### `log_line_strip`, `log_line_strips_2d`, `log_line_strips_3d`, `log_line_segments`
 Replace with [LineStrips2D](types/archetypes/line_strips2d.md) or [LineStrips3D](types/archetypes/line_strips3d.md)
 
-Python docs: [LineStrips2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips2D.__init__), [LineStrips3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips3D.__init__)
+Python docs: [LineStrips2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips2D), [LineStrips3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips3D)
 
 Notes:
  - `log_line_segments` used to take an array of shape (2 * num_segments, 2 or 3) (where points were connected in
@@ -128,7 +128,7 @@ line_strips3d=line_segments.reshape(-1, 2, 3)
 ### `log_mesh`, `log_meshes`
 Replace with [Mesh3D](types/archetypes/mesh3d.md)
 
-Python docs: [Mesh3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Mesh3D.__init__)
+Python docs: [Mesh3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Mesh3D)
 
 Notes:
  - Meshes are no longer batch objects. Instead they are treated as a batch of vertices, as such there is no longer a
@@ -141,7 +141,7 @@ Notes:
 ### `log_mesh_file`
 Replace with [Asset3D](types/archetypes/asset3d.md)
 
-Python docs: [Asset3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Asset3D.__init__)
+Python docs: [Asset3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Asset3D)
 
 Notes:
  - `mesh_bytes` and `mesh_path` are both now jut `data`. Strings and paths will be opened as files, while
@@ -153,7 +153,7 @@ Notes:
 ### `log_obb`, `log_obbs`
 Replace with [Boxes3D](types/archetypes/boxes3d.md)
 
-Python docs: [Boxes3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes3D.__init__)
+Python docs: [Boxes3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes3D)
 
 Notes:
  - `positions` has become `centers`.
@@ -165,7 +165,7 @@ Notes:
 ### `log_pinhole`
 Replace with [Pinhole](types/archetypes/pinhole.md)
 
-Python docs: [Pinhole](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Pinhole.__init__)
+Python docs: [Pinhole](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Pinhole)
 
 Notes:
  - `child_from_parent` has become `image_from_parent`.
@@ -177,7 +177,7 @@ Notes:
 ### `log_point`, `log_points`
 Replace with [Points2D](types/archetypes/points2d.md) or [Points3D](types/archetypes/points3d.md).
 
-Python docs: [Points2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points2D.__init__), [Points3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points3D.__init__)
+Python docs: [Points2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points2D), [Points3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points3D)
 
 Notes:
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
@@ -186,7 +186,7 @@ Notes:
 ### `log_rect`, `log_rects`
 Replace with [Boxes2D](types/archetypes/boxes2d.md)
 
-Python docs: [Boxes2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes2D.__init__)
+Python docs: [Boxes2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes2D)
 
 Notes:
  - Can now be constructed with 2 arrays: `centers`, and either `half_sizes` o `sizes`.
@@ -235,7 +235,7 @@ Notes:
 ### `log_view_coordinates`
 Replace with [ViewCoordinates](types/archetypes/view_coordinates.md)
 
-Python docs: [ViewCoordinates](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.ViewCoordinates.__init__)
+Python docs: [ViewCoordinates](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.ViewCoordinates)
 
 Notes:
 - Rather than providing `xyz` or `up` as strings, `rr.ViewCoordinates` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
