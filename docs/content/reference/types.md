@@ -1,5 +1,5 @@
 ---
-title: Loggable Types
+title: Types
 order: 2
 ---
 
