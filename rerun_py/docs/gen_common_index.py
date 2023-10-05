@@ -131,7 +131,7 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     Section(
-        title="Image Compression",
+        title="Image Helpers",
         class_list=["ImageEncoded"],
         show_tables=False,
     ),
@@ -353,9 +353,7 @@ overview of what's possible and how.
                 index_file.write("-------- | -----------\n")
                 for func_name in section.func_list:
                     func = rerun_pkg[func_name]
-                    index_file.write(
-                        f"[`rerun.{func_name}()`]({md_file}#rerun.{func_name}) | {func.docstring.lines[0]}\n"
-                    )
+                    index_file.write(f"[`rerun.{func_name}()`][rerun.{func_name}] | {func.docstring.lines[0]}\n")
             if section.class_list:
                 index_file.write("\n")
                 index_file.write("Class | Description\n")
