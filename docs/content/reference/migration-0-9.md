@@ -267,6 +267,6 @@ For continuing to log collections of components without implementing the [`AsCom
 
 ## Splatting
 
-Splatting is no longer done explicitly (before `MsgSender::splat`), but automatically inferred whenever 
+Splatting is no longer done explicitly (before `MsgSender::splat`), but automatically inferred whenever
 there is a single component together with larger component batches on the same entity path.
 See also [`RecordingStream::log_component_batches`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_component_batches) for more information.
