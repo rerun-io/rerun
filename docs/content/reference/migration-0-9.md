@@ -252,8 +252,7 @@ using its [`log`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStr
 
 ## Logging time
 
-Other than timeless on/off, time is not logged with these new logging functions.
-Instead, the time used for all subsequent logging functions is set using [`RecordingStream::set_timepoint`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_timepoint), or one of the shorthands [`RecordingStream::set_time_sequence`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_sequence)/[`RecordingStream::set_time_seconds`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_seconds)/[`RecordingStream::set_time_nanos`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_nanos)
+The new `log` function logs time implicitly. `log_time` and `log_tick` are always included, as well as any custom timeline set using [`RecordingStream::set_timepoint`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_timepoint), or one of the shorthands [`RecordingStream::set_time_sequence`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_sequence)/[`RecordingStream::set_time_seconds`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_seconds)/[`RecordingStream::set_time_nanos`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_nanos)
 
 ## Components -> Archetypes
 
