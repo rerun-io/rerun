@@ -24,7 +24,7 @@ class ImageExt:
 
     def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:
         """
-        Converts an `Image` to an `ImageEncoded` using JPEG compression.
+        Converts an `Image` to an [`rerun.ImageEncoded`][] using JPEG compression.
 
         JPEG compression works best for photographs. Only RGB or Mono images are
         supported, not RGBA. Note that compressing to JPEG costs a bit of CPU time,
