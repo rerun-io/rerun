@@ -20,7 +20,7 @@ Rerun is
 Rerun is used by engineers and researchers in fields like computer vision and robotics
 to verify, debug, and demo.
 
-For a list of built-in data types, see [Loggable Types](reference/types.md).
+For a list of built-in data types, see the [Types](reference/types.md) section.
 
 ## How do you use it?
 <picture>
