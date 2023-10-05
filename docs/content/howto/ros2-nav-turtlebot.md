@@ -413,7 +413,7 @@ if node_data:
         world_from_mesh = node_data[0]
         rr.log(
             path,
-            rr.Translation3D(
+            rr.Transform3D(
                 translation=world_from_mesh[3, 0:3],
                 mat3x3=world_from_mesh[0:3, 0:3],
             ),
