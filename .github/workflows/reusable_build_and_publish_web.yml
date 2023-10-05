@@ -98,17 +98,11 @@ jobs:
         shell: bash
         run: ./scripts/setup_web.sh
 
-      - name: Build app.rerun.io (release)
+      - name: Build app.rerun.io
         uses: actions-rs/cargo@v1
         with:
           command: run
           args: --locked -p re_build_web_viewer -- --release
-
-      - name: Build app.rerun.io (debug)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked -p re_build_web_viewer -- --debug
 
       - name: Build web demo
         env:
