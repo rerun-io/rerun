@@ -16,7 +16,7 @@ Rerun has been tested with:
 ## Basic Concept
 
 Rather than logging to a file or a remote server, you can also configure the Rerun SDK to store data in a local
-[MemoryRecording](https://ref.rerun.io/docs/python/latest/package/rerun/recording/#rerun.recording.MemoryRecording).
+[MemoryRecording](https://ref.rerun.io/docs/python/nightly/common/other_classes_and_functions/#rerun.MemoryRecording).
 
 This `MemoryRecording` can then used to produce an inline HTML snippet to be directly displayed in most notebook
 environments. The snippet includes an embedded copy of an RRD file and some javascript that loads that RRD file into an
@@ -35,7 +35,7 @@ This is similar to calling `rr.connect()` or `rr.save()` in that it configures t
 recording as a target for future API calls.
 
 After logging data to the recording you can display it in a cell by calling the
-[show()](https://ref.rerun.io/docs/python/latest/package/rerun/recording/#rerun.recording.MemoryRecording.show) method
+[show()](https://ref.rerun.io/docs/python/nightly/common/other_classes_and_functions/#rerun.MemoryRecording.show) method
 on the `MemoryRecording`. The `show()` method also takes optional arguments for specifying the width and height of the IFrame. For example:
 ```python
 rec.show(width=400, height=400)
