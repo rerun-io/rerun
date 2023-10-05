@@ -23,20 +23,26 @@ The maximize button makes a single Space View fill the entire viewport.
 Only one Space view can be maximized at a time.
 
 
-Categories of Space Views
+Space View Classes
 ---------------------------
-Rerun distinguishes various categories of Space Views:
-* Spatial
-  * Generic 2D & 3D data.
+Rerun distinguishes various Space Views classes:
+
+* 2D
+  * General 2D content like images, lines, points, boxes, etc.
+* 3D
+  * 3D scene with cameras, meshes, points, lines etc.
 * Tensor
   * Tensor view with support for arbitrary dimensionality.
 * Text log
   * Text over time.
+* Text Document
+  * Shows a single markdown or raw text document.
 * Time series plot
   * Scalars over time.
 * Bar chart
   * Bar-chart lots made from 1D tensor data.
 
-Which category is used is determined upon creation of a Space View.
+Which class is used is determined upon creation of a Space View.
 
-The kind of Space View determines which Entities it can display, how it displays them and the way they can be interacted with.
+The Space View class determines which Entities it can display, how it displays them and the way they can be interacted with.
+To learn more about the _internals_ of how Space View classes work, check the [guide on viewer extensions](../../howto/extend.md).
