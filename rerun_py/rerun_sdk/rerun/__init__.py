@@ -1,4 +1,3 @@
-"""The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 from __future__ import annotations
 
 import functools
@@ -62,6 +61,7 @@ __all__ = [
     "TranslationAndMat3x3",
     "TranslationRotationScale3D",
     "ViewCoordinates",
+    "archetypes",
     "bindings",
     "components",
     "connect",

@@ -44,7 +44,7 @@ def all_archetypes() -> list[str]:
     quoted_strings = []
 
     # Regular expression pattern to match quoted strings
-    pattern = r'"([^"]*)"'
+    pattern = r'"(archetype.[^"]*)"'
 
     # Open the file for reading
     with open(file_path) as file:
@@ -62,9 +62,12 @@ def all_archetypes() -> list[str]:
 @dataclass
 class Section:
     title: str
-    module_summary: str | None
-    func_list: list[str]
-    class_list: list[str]
+    func_list: list[str] | None = None
+    class_list: list[str] | None = None
+    gen_page: bool = True
+    mod_path: str = "rerun"
+    show_tables: bool = True
+    default_filters: bool = True
 
 
 # This is the list of sections and functions that will be included in the index
@@ -72,100 +75,134 @@ class Section:
 SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Initialization functions",
-        module_summary=None,
         func_list=["init", "connect", "disconnect", "save", "serve", "spawn", "memory_recording"],
-        class_list=[],
     ),
     Section(
         title="Logging functions",
-        module_summary=None,
         func_list=["log", "set_time_sequence", "set_time_seconds", "set_time_nanos"],
-        class_list=[],
+    ),
+    Section(
+        title="Archetypes",
+        mod_path="rerun.archetypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Components",
+        mod_path="rerun.components",
+        show_tables=False,
+    ),
+    Section(
+        title="DataTypes",
+        mod_path="rerun.datatypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Enums",
+        mod_path="rerun",
+        class_list=[
+            "Box2DFormat",
+            "ImageFormat",
+            "MeshFormat",
+        ],
+        show_tables=False,
     ),
     Section(
         title="Custom Data",
-        module_summary=None,
-        func_list=[],
         class_list=["AnyValues"],
+        gen_page=False,
     ),
     Section(
         title="Clearing Entities",
-        module_summary=None,
-        func_list=[],
-        class_list=["Clear"],
+        class_list=["archetypes.Clear"],
+        gen_page=False,
     ),
     Section(
         title="Annotations",
-        module_summary=None,
-        func_list=[],
-        class_list=["AnnotationContext", "AnnotationInfo", "ClassDescription"],
+        class_list=[
+            "archetypes.AnnotationContext",
+            "datatypes.AnnotationInfo",
+            "datatypes.ClassDescription",
+        ],
+        gen_page=False,
     ),
     Section(
         title="Images",
-        module_summary=None,
-        func_list=[],
-        class_list=["DepthImage", "Image", "ImageEncoded", "SegmentationImage"],
+        class_list=[
+            "archetypes.DepthImage",
+            "archetypes.Image",
+            "ImageEncoded",
+            "archetypes.SegmentationImage",
+        ],
+        gen_page=False,
     ),
     Section(
         title="Plotting",
-        module_summary=None,
-        func_list=[],
-        class_list=["BarChart", "TimeSeriesScalar"],
+        class_list=["archetypes.BarChart", "archetypes.TimeSeriesScalar"],
+        gen_page=False,
     ),
     Section(
         title="Spatial Archetypes",
-        module_summary=None,
-        func_list=[],
         class_list=[
-            "Arrows3D",
-            "Asset3D",
-            "Boxes2D",
-            "Boxes3D",
-            "LineStrips2D",
-            "LineStrips3D",
-            "Mesh3D",
-            "Points2D",
-            "Points3D",
+            "archetypes.Arrows3D",
+            "archetypes.Asset3D",
+            "archetypes.Boxes2D",
+            "archetypes.Boxes3D",
+            "archetypes.LineStrips2D",
+            "archetypes.LineStrips3D",
+            "archetypes.Mesh3D",
+            "archetypes.Points2D",
+            "archetypes.Points3D",
         ],
+        gen_page=False,
     ),
     Section(
         title="Tensors",
-        module_summary=None,
-        func_list=[],
-        class_list=["Tensor"],
+        class_list=["archetypes.Tensor"],
+        gen_page=False,
     ),
     Section(
         title="Text",
-        module_summary=None,
-        func_list=[],
-        class_list=["LoggingHandler", "TextDocument", "TextLog"],
+        class_list=["LoggingHandler", "archetypes.TextDocument", "archetypes.TextLog"],
+        gen_page=False,
     ),
     Section(
         title="Transforms and Coordinate Systems",
-        module_summary="log_deprecated.transform",
-        func_list=[],
-        class_list=["DisconnectedSpace", "Pinhole", "Transform3D", "ViewCoordinates"],
+        class_list=[
+            "archetypes.DisconnectedSpace",
+            "archetypes.Pinhole",
+            "archetypes.Transform3D",
+            "archetypes.ViewCoordinates",
+            "datatypes.Quaternion",
+            "datatypes.RotationAxisAngle",
+            "datatypes.Scale3D",
+            "datatypes.TranslationAndMat3x3",
+            "datatypes.TranslationRotationScale3D",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Interfaces",
+        mod_path="rerun",
+        class_list=["AsComponents", "ComponentBatchLike"],
+        default_filters=False,
     ),
     Section(
         title="Script Helpers",
-        module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
-        class_list=[],
     ),
     Section(
         title="Experimental",
-        module_summary="experimental",
         func_list=[
             "experimental.add_space_view",
             "experimental.new_blueprint",
             "experimental.set_auto_space_views",
             "experimental.set_panels",
         ],
-        class_list=[],
+        show_tables=False,
+        mod_path="rerun.experimental",
     ),
     Section(
         title="Deprecated Logging Methods",
-        module_summary=None,
         func_list=[
             "log_arrow",
             "log_cleared",
@@ -192,7 +229,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "log_transform3d",
             "log_view_coordinates",
         ],
-        class_list=[],
+        show_tables=False,
     ),
 ]
 
@@ -223,6 +260,7 @@ rerun_pkg = griffe.load("rerun", search_paths=search_paths)
 nav = mkdocs_gen_files.Nav()
 nav["index"] = "index.md"
 
+
 # This is the top-level index which will include a table-view of each sub-section
 index_path = common_dir.joinpath("index.md")
 
@@ -234,13 +272,9 @@ def make_slug(s: str) -> str:
 
 
 with mkdocs_gen_files.open(index_path, "w") as index_file:
-    # Hide the TOC for the index since it's identical to the left nav-bar
     index_file.write(
-        """---
-hide:
-    - toc
----
-# Getting Started
+        """
+## Getting Started
 * [Quick start](https://www.rerun.io/docs/getting-started/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
@@ -253,52 +287,58 @@ or even as a separate web application.
 Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
 overview of what's possible and how.
 
-# APIs
+## APIs
 """
     )
 
     for section in SECTION_TABLE:
-        # Turn the heading into a slug and add it to the nav
-        md_name = make_slug(section.title)
-        md_file = md_name + ".md"
-        nav[section.title] = md_file
+        if section.gen_page:
+            # Turn the heading into a slug and add it to the nav
+            md_name = make_slug(section.title)
+            md_file = md_name + ".md"
+            nav[section.title] = md_file
 
-        # Write out the contents of this section
-        write_path = common_dir.joinpath(md_file)
-        with mkdocs_gen_files.open(write_path, "w") as fd:
-            if section.module_summary is not None:
-                fd.write(f"::: rerun.{section.module_summary}\n")
+            # Write out the contents of this section
+            write_path = common_dir.joinpath(md_file)
+            with mkdocs_gen_files.open(write_path, "w") as fd:
+                fd.write(f"::: {section.mod_path}\n")
                 fd.write("    options:\n")
-                fd.write("      show_root_heading: False\n")
-                fd.write("      members: []\n")
-                fd.write("----\n")
-            for func_name in section.func_list:
-                fd.write(f"::: rerun.{func_name}\n")
-                fd.write("    options:\n")
-                fd.write("      heading_level: 4\n")
-            for class_name in section.class_list:
-                # fd.write(f"::: rerun.{class_name}\n")
-                fd.write(f"::: rerun.{class_name}\n")
-                fd.write("    options:\n")
-                fd.write("      show_root_heading: true\n")
-                fd.write("      heading_level: 4\n")
-                fd.write("      inherited_members: true\n")
+                fd.write("      show_root_heading: True\n")
+                fd.write("      heading_level: 3\n")
+                # fd.write("      show_object_full_path: True\n")
+                if section.func_list or section.class_list:
+                    fd.write("      members:\n")
+                    for func_name in section.func_list or []:
+                        fd.write(f"        - {func_name}\n")
+                    for class_name in section.class_list or []:
+                        fd.write(f"        - {class_name}\n")
+                if not section.default_filters:
+                    fd.write("      filters: []\n")
 
         # Write out a table for the section in the index_file
-        index_file.write(f"## {section.title}\n")
-        if section.func_list:
-            index_file.write("Function | Description\n")
-            index_file.write("-------- | -----------\n")
-            for func_name in section.func_list:
-                func = rerun_pkg[func_name]
-                index_file.write(f"[`rerun.{func_name}()`]({md_file}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
-        if section.class_list:
-            index_file.write("\n")
-            index_file.write("Class | Description\n")
-            index_file.write("-------- | -----------\n")
-            for class_name in section.class_list:
-                cls = rerun_pkg[class_name]
-                index_file.write(f"[`rerun.{class_name}`]({md_file}#rerun.{class_name}) | {cls.docstring.lines[0]}\n")
+        if section.show_tables:
+            index_file.write(f"### {section.title}\n")
+            if section.func_list:
+                index_file.write("Function | Description\n")
+                index_file.write("-------- | -----------\n")
+                for func_name in section.func_list:
+                    func = rerun_pkg[func_name]
+                    index_file.write(
+                        f"[`rerun.{func_name}()`]({md_file}#rerun.{func_name}) | {func.docstring.lines[0]}\n"
+                    )
+            if section.class_list:
+                index_file.write("\n")
+                index_file.write("Class | Description\n")
+                index_file.write("-------- | -----------\n")
+                for class_name in section.class_list:
+                    cls = rerun_pkg[class_name]
+                    show_class = class_name
+                    for maybe_strip in ["archetypes.", "components.", "datatypes."]:
+                        if class_name.startswith(maybe_strip):
+                            stripped = class_name.replace(maybe_strip, "")
+                            if stripped in rerun_pkg.classes:
+                                show_class = stripped
+                    index_file.write(f"[`rerun.{show_class}`][rerun.{class_name}] | {cls.docstring.lines[0]}\n")
 
         index_file.write("\n")
 
