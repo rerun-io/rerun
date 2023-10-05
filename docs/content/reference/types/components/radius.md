@@ -6,8 +6,8 @@ A Radius component.
 
 
 ## Links
- * 🐍 [Python API docs for `Radius`](https://ref.rerun.io/docs/python/nightly/common/components#rerun.components.Radius)
- * 🦀 [Rust API docs for `Radius`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.Radius.html)
+ * 🐍 [Python API docs for `Radius`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Radius)
+ * 🦀 [Rust API docs for `Radius`](https://docs.rs/rerun/latest/rerun/components/struct.Radius.html)
 
 
 ## Used by
