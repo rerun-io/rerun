@@ -171,6 +171,7 @@ fn examples() -> Result<Vec<Example>> {
 fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
     let path = path.as_ref();
     let content = std::fs::read_to_string(path)?;
+    let content = content.replace('\r', ""); // Windows, god damn you
     re_build_tools::rerun_if_changed(path);
     let Some(content) = content.strip_prefix("---\n") else {
         return Ok(None);
