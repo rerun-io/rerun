@@ -69,6 +69,7 @@ class Section:
     mod_path: str = "rerun"
     show_tables: bool = True
     default_filters: bool = True
+    show_submodules: bool = False
 
 
 # This is the list of sections and functions that will be included in the index
@@ -238,7 +239,8 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Demo utilities",
         show_tables=False,
-        mod_path="rerun_demo.data",
+        mod_path="rerun_demo",
+        show_submodules=True,
     ),
     Section(
         title="Experimental",
@@ -367,6 +369,8 @@ overview of what's possible and how.
                         fd.write(f"        - {class_name}\n")
                 if not section.default_filters:
                     fd.write("      filters: []\n")
+                if section.show_submodules:
+                    fd.write("      show_submodules: True\n")
 
         # Write out a table for the section in the index_file
         if section.show_tables:
