@@ -88,6 +88,11 @@ jobs:
             python3 scripts/ci/crates.py version --exact $(python3 scripts/ci/crates.py get-version --from-git)
           fi
 
+          # if this is a `final`, set the version to the final release version
+          if [ ${{ inputs.release-type }} = "final" ]; then
+            python3 scripts/ci/crates.py version --exact $release-version
+          fi
+
           # store version after the update, and the expected "final" release version
           current=$(python3 scripts/ci/crates.py get-version)
           final=$(python3 scripts/ci/crates.py get-version --finalize)
