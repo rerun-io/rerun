@@ -46,7 +46,6 @@ plugins:
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_common_index.py
-        #- docs/gen_package_index.py
   - literate-nav: # https://oprypin.github.io/mkdocs-literate-nav
       nav_file: SUMMARY.txt
   - redirects: # https://github.com/mkdocs/mkdocs-redirects
