@@ -8,7 +8,7 @@ Used for time series plots.
 
 
 ## Links
- * 🐍 [Python API docs for `Scalar`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/scalar/)
+ * 🐍 [Python API docs for `Scalar`](https://ref.rerun.io/docs/python/nightly/common/components#rerun.components.Scalar)
  * 🦀 [Rust API docs for `Scalar`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.Scalar.html)
 
 

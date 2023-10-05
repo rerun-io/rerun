@@ -21,7 +21,7 @@ The following constants are used to represent the different directions.
 
 
 ## Links
- * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/view_coordinates/)
+ * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/nightly/common/components#rerun.components.ViewCoordinates)
  * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.ViewCoordinates.html)
 
 
