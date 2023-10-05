@@ -1,4 +1,3 @@
-"""The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 from __future__ import annotations
 
 import functools
@@ -35,6 +34,7 @@ __all__ = [
     "LoggingHandler",
     "Material",
     "MediaType",
+    "MemoryRecording",
     "Mesh3D",
     "MeshFormat",
     "MeshProperties",
@@ -62,6 +62,7 @@ __all__ = [
     "TranslationAndMat3x3",
     "TranslationRotationScale3D",
     "ViewCoordinates",
+    "archetypes",
     "bindings",
     "components",
     "connect",
@@ -191,6 +192,7 @@ from .log_deprecated.transform import (
     log_view_coordinates,
 )
 from .logging_handler import LoggingHandler
+from .recording import MemoryRecording
 from .recording_stream import (
     RecordingStream,
     get_application_id,
