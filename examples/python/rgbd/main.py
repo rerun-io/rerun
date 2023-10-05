@@ -107,7 +107,7 @@ def ensure_recording_downloaded(name: str) -> Path:
             print(f"downloading {url} to {recording_path}")
             download_progress(url, recording_path)
         except ValueError:
-            print(f"retry: downloading {url} to {recording_path}")
+            print(f"Failed to download from {url}, trying backup URL {alternate_url} instead")
             download_progress(alternate_url, recording_path)
     except BaseException as e:
         recording_path.unlink(missing_ok=True)
