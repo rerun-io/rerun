@@ -236,6 +236,11 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
     ),
     Section(
+        title="Demo utilities",
+        show_tables=False,
+        mod_path="rerun_demo.data",
+    ),
+    Section(
         title="Experimental",
         func_list=[
             "add_space_view",
