@@ -145,7 +145,7 @@ This timestamp will apply to all subsequent log calls on in this callback (on th
 again.
 
 
-### TF to `log_transform3d`
+### TF to log_transform3d
 Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/About-Tf2.html) transforms to the
 corresponding [Rerun Transforms](../concepts/spaces-and-transforms.md#space-transformations).
 
@@ -207,7 +207,7 @@ Note that because we previously called `set_time_nanos` in this callback, this t
 be logged to the same point on the timeline as the data, using a timestamp looked up from TF at the
 matching timepoint.
 
-### Odometry to `log_scalar` and `log_transform3d`
+### Odometry to log_scalar and log_transform3d
 When receiving odometry messages, we log the linear and angular velocities using `rr.log_scalar`.
 Additionally, since we know that odometry will also update the `map/robot` transform, we use
 this as a cue to look up the corresponding transform and log it.
@@ -225,7 +225,7 @@ def odom_callback(self, odom: Odometry) -> None:
     self.log_tf_as_transform3d("map/robot", time)
 ```
 
-### CameraInfo to `log_pinhole`
+### CameraInfo to log_pinhole
 Not all Transforms are rigid as defined in TF. The other transform we want to log
 is the pinhole projection that is stored in the `CameraInfo` msg.
 
@@ -251,7 +251,7 @@ def cam_info_callback(self, info: CameraInfo) -> None:
     )
 ```
 
-### Image to `log_image`
+### Image to log_image
 ROS Images can also be mapped to Rerun very easily, using the `cv_bridge` package.
 The output of `cv_bridge.imgmsg_to_cv2` can be fed directly into `rr.log_image`:
 ```python
@@ -268,7 +268,7 @@ def image_callback(self, img: Image) -> None:
     self.log_tf_as_transform3d("map/robot/camera", time)
 ```
 
-### PointCloud2 to `log_points`
+### PointCloud2 to log_points
 The ROS [PointCloud2](https://github.com/ros2/common_interfaces/blob/humble/sensor_msgs/msg/PointCloud2.msg) message
 is stored as a binary blob that needs to be reinterpreted using the details about its fields. Each field is
 a named collection of offsets into the data buffer, and datatypes. The `sensor_msgs_py` package includes a `point_cloud2`
@@ -312,7 +312,7 @@ def points_callback(self, points: PointCloud2) -> None:
     self.log_tf_as_transform3d("map/robot/camera/points", time)
 ```
 
-### LaserScan to `log_line_segments`
+### LaserScan to log_line_segments
 Rerun does not yet have native support for a `LaserScan` style primitive so we need
 to do a bit of additional transformation logic (see: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
 
@@ -350,7 +350,7 @@ def scan_callback(self, scan: LaserScan) -> None:
     self.log_tf_as_transform3d("map/robot/scan", time)
 ```
 
-### URDF to `log_mesh`
+### URDF to log_mesh
 The URDF conversion is actually the most complex operation in this example. As such the functionality
 is split out into a separate [rerun/examples/python/ros_node/rerun_urdf.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/rerun_urdf.py)
 helper.

@@ -43,7 +43,7 @@ In most cases migrating your code to the new APIs should be straightforward. The
 deprecated and the deprecation warning should point you to the correct Archetype to use instead.  Additionally, in most
 cases, the old parameter names match the parameters taken by the new Archetype constructors, though exceptions are noted below.
 
-### `log_annotation_context`
+### log_annotation_context
 Replace with [AnnotationContext](types/archetypes/annotation_context.md)
 
 Python docs: [AnnotationContext](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.AnnotationContext)
@@ -53,7 +53,7 @@ Notes:
  - `rr.ClassDescription` now requires `info` to be provided rather than defaulting to 0.
  - `rr.AnnotationInfo` now requires `id` to be provided rather than defaulting to 0.
 
-### `log_arrow`
+### log_arrow
 Replace with [Arrows3D](types/archetypes/arrows3d.md)
 
 Python docs: [Arrows3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Arrows3D)
@@ -62,12 +62,12 @@ Notes:
  - `with_scale` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`.
 
-### `log_cleared`
+### log_cleared
 Replace with [Clear](types/archetypes/clear.md)
 
 Python docs: [Clear](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Clear)
 
-### `log_depth_image`
+### log_depth_image
 Replace with [DepthImage](types/archetypes/depth_image.md)
 
 Python docs: [DepthImage](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Clear)
@@ -75,21 +75,21 @@ Python docs: [DepthImage](https://ref.rerun.io/docs/python/nightly/common/archet
 Notes:
  * `image` has become `data`
 
-### `log_disconnected_space`
+### log_disconnected_space
 Replace with [DisconnectedSpace](types/archetypes/disconnected_space.md)
 
 Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.DisconnectedSpace)
 
-### `log_extension_components`
+### log_extension_components
 Replace with `AnyValues`
 
-Python docs: TODO(jleibs): Link pending
+Python docs: [AnyValues](https://ref.rerun.io/docs/python/nightly/common/custom_data/#rerun.AnyValues)
 
 Notes:
  - Instead of passing `ext` as a dictionary, `AnyValues` now maps all keyword arguments directly to components.
    - `rr.log_extension_components(…, ext={'mydata': 1})` becomes `rr.log(… rr.AnyValues(mydata=1))`
 
-### `log_image`
+### log_image
 Replace with [Image](types/archetypes/image.md)
 
 Python docs: [Image](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Image)
@@ -98,7 +98,7 @@ Notes:
  * `image` has become `data`
  * `jpeg_quality` is now handled by calling `.compress(jpeg_quality=…)` on the image after constructing it.
 
-### `log_image_file`
+### log_image_file
 Replace with `ImageEncoded`
 
 Python docs: [ImageEncoded](https://ref.rerun.io/docs/python/nightly/common/image_helpers/#rerun.ImageEncoded)
@@ -107,7 +107,7 @@ Notes:
  - `img_bytes` and `img_path`
 
 
-### `log_line_strip`, `log_line_strips_2d`, `log_line_strips_3d`, `log_line_segments`
+### log_line_strip, log_line_strips_2d, log_line_strips_3d, log_line_segments
 Replace with [LineStrips2D](types/archetypes/line_strips2d.md) or [LineStrips3D](types/archetypes/line_strips3d.md)
 
 Python docs: [LineStrips2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips2D), [LineStrips3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips3D)
@@ -125,7 +125,7 @@ line_strips3d=line_segments.reshape(-1, 2, 3)
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`.
 
-### `log_mesh`, `log_meshes`
+### log_mesh, log_meshes
 Replace with [Mesh3D](types/archetypes/mesh3d.md)
 
 Python docs: [Mesh3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Mesh3D)
@@ -138,7 +138,7 @@ Notes:
  - `albedo_factor` has become `mesh_material`, and can be logged using `rr.Material(albedo_factor=…)`.
  - `identifiers` has become `instance_keys`.
 
-### `log_mesh_file`
+### log_mesh_file
 Replace with [Asset3D](types/archetypes/asset3d.md)
 
 Python docs: [Asset3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Asset3D)
@@ -150,7 +150,7 @@ Notes:
  - `transform` can now take anything that is compatible with `rr.Transform3D` instead of an affine 3x4 matrix.
    - To convert an existing affine 3x4 matrix to an `rr.Transform3D`, you can use, `rr.Transform3D(translation=transform[:,3], mat3x3=transform[:,0:3])`
 
-### `log_obb`, `log_obbs`
+### log_obb, log_obbs
 Replace with [Boxes3D](types/archetypes/boxes3d.md)
 
 Python docs: [Boxes3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes3D)
@@ -162,7 +162,7 @@ Notes:
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`.
 
-### `log_pinhole`
+### log_pinhole
 Replace with [Pinhole](types/archetypes/pinhole.md)
 
 Python docs: [Pinhole](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Pinhole)
@@ -174,7 +174,7 @@ Notes:
  - New argument `resolution` to specify width and height using `Vec2D`
  - `camera_xyz` no longer take a string. Now use one of the constants from `rr.ViewCoordinates`
 
-### `log_point`, `log_points`
+### log_point, log_points
 Replace with [Points2D](types/archetypes/points2d.md) or [Points3D](types/archetypes/points3d.md).
 
 Python docs: [Points2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points2D), [Points3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points3D)
@@ -183,7 +183,7 @@ Notes:
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
  - `identifiers` has become `instance_keys`
 
-### `log_rect`, `log_rects`
+### log_rect, log_rects
 Replace with [Boxes2D](types/archetypes/boxes2d.md)
 
 Python docs: [Boxes2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes2D)
@@ -194,12 +194,12 @@ Notes:
    `array_format` takes an `rr.Box2DFormat`.
  - `identifiers` has become `instance_keys`.
 
-### `log_scalar`
+### log_scalar
 Replace with [TimeSeriesScalar](types/archetypes/time_series_scalar.md)
 
 Python docs: [TimeSeriesScalar](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.TimeSeriesScalar)
 
-### `log_segmentation_image`
+### log_segmentation_image
 Replace with [SegmentationImage](types/archetypes/segmentation_image.md)
 
 Python docs: [SegmentationImage](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.SegmentationImage)
@@ -207,7 +207,7 @@ Python docs: [SegmentationImage](https://ref.rerun.io/docs/python/nightly/common
 Notes:
  * `image` has become `data`
 
-### `log_tensor`
+### log_tensor
 Replace with [Tensor](types/archetypes/tensor.md)
 
 Python docs: [Tensor](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Tensor)
@@ -219,12 +219,12 @@ Notes:
  - 1D Tensors can now be logged with [BarChart](types/archetypes/bar_chart.md)
 
 
-### `log_text_entry`
+### log_text_entry
 Replace with [TextLog](types/archetypes/text_log.md)
 
 Python docs: [TextLog](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.TextLog)
 
-### `log_transform3d`
+### log_transform3d
 Replace with [Transform3D](types/archetypes/transform3d.md)
 
 Python docs: [Transform3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Transform3D)
@@ -232,7 +232,7 @@ Python docs: [Transform3D](https://ref.rerun.io/docs/python/nightly/common/arche
 Notes:
  - Now takes optional parameters for `translation`, `rotation`, `scale`, or `mat3x3` to simplify construction.
 
-### `log_view_coordinates`
+### log_view_coordinates
 Replace with [ViewCoordinates](types/archetypes/view_coordinates.md)
 
 Python docs: [ViewCoordinates](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.ViewCoordinates)
@@ -245,7 +245,7 @@ Notes:
 
 Rust already used a more type oriented interface, so the changes are not as drastic as to the Python API.
 
-## Removal of `MsgSender`
+## Removal of MsgSender
 
 The biggest change that `MsgSender` is gone and all logging happens instead directly on the [`RecordingStream::RecordingStream`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html)
 using its [`log`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log) and [`RecordingStream::log_timeless`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_timeless) functions.

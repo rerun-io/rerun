@@ -37,7 +37,7 @@ component is associated with the same entity. These two components are recognize
 
 See the [Types](../reference/types.md) reference for a list of archetypes, components, and datatypes.
 
-### Extension Components
+### Adding custom data
 
 Although both the SDKs' archetype objects and the space view are based on the same archetype definition (and are actually implemented using code that is automatically generated based that definition), they both operate on arbitrary collection
 of components. Neither the SDKs nor the viewer enforce or require that an entity should contain a *specific* set of component.
@@ -48,7 +48,7 @@ Your entity could have any number of additional components as well. This isn't a
 aren't relevant to the scene that the space view is drawing are safely ignored. Also, Rerun even allows you to log your
 own set of components, bypassing archetypes altogether.
 
-In Python, the `rr.AnyValue` helper object can be used to add custom component(s) to an archetype:
+In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/nightly/common/custom_data/#rerun.AnyValues) helper object can be used to add custom component(s) to an archetype:
 
 code-example: extra_values
 
