@@ -33,9 +33,16 @@ def task(child_index: int) -> None:
         ),  # noqa: E501 line too long
     )
     if child_index == 0:
-        rr.log(title, rr.Boxes2D(array=[5, 5, 80, 80], labels=title))
+        rr.log(title, rr.Boxes2D(array=[5, 5, 80, 80], array_format=rr.Box2DFormat.XYWH, labels=title))
     else:
-        rr.log(title, rr.Boxes2D(array=[10 + child_index * 10, 20 + child_index * 5, 30, 40], labels=title))
+        rr.log(
+            title,
+            rr.Boxes2D(
+                array=[10 + child_index * 10, 20 + child_index * 5, 30, 40],
+                array_format=rr.Box2DFormat.XYWH,
+                labels=title,
+            ),
+        )
 
 
 def main() -> None:

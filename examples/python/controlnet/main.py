@@ -6,7 +6,7 @@ Based on https://huggingface.co/docs/diffusers/using-diffusers/controlnet.
 
 Run
 ```sh
-python 3 examples/python/controlnet/main.py
+examples/python/controlnet/main.py
 ```
 """
 from __future__ import annotations

@@ -28,6 +28,7 @@ HAS_NO_RERUN_ARGS = {
 }
 
 MIN_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
+    "examples/python/controlnet": (3, 10),
     # pyopf requires Python 3.10
     "examples/python/open_photogrammetry_format": (3, 10),
 }
