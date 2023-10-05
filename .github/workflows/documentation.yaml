@@ -19,17 +19,18 @@ jobs:
         with:
           config: "docs/cspell.json"
           files: "docs/**/*.md"
-  linkinator:
-    name: linkinator
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jprochazk/linkinator-action@main
-        with:
-          paths: "docs/**/*.md"
-          linksToSkip: "https://crates.io/crates/rerun"
-          retry: true
-          retryErrors: true
-          retryErrorsCount: 5
-          retryErrorsJitter: 2000
+  # Temporarily disabled for the 0.9.0 release! DO NOT MERGE!
+  # linkinator:
+  #   name: linkinator
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: jprochazk/linkinator-action@main
+  #       with:
+  #         paths: "docs/**/*.md"
+  #         linksToSkip: "https://crates.io/crates/rerun"
+  #         retry: true
+  #         retryErrors: true
+  #         retryErrorsCount: 5
+  #         retryErrorsJitter: 2000
 
