@@ -4,9 +4,10 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::EntityPath;
-use re_types::archetypes::Image;
-use re_types::components::{DisconnectedSpace, TensorData};
-use re_types::{Archetype, ComponentNameSet};
+use re_types::{
+    components::{DisconnectedSpace, TensorData},
+    ComponentNameSet, Loggable as _,
+};
 use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
     ViewSystemName, ViewerContext,
@@ -124,12 +125,12 @@ pub fn all_possible_space_views(
         .collect_vec()
 }
 
-fn contains_any_image(ent_path: &EntityPath, store: &re_arrow_store::DataStore) -> bool {
+fn contains_tensor_data(ent_path: &EntityPath, store: &re_arrow_store::DataStore) -> bool {
     store
         .all_components(&Timeline::log_time(), ent_path)
         .unwrap_or_default()
         .iter()
-        .any(|comp| *comp == Image::indicator().name())
+        .any(|comp| *comp == TensorData::name())
 }
 
 fn is_interesting_space_view_at_root(
@@ -142,10 +143,12 @@ fn is_interesting_space_view_at_root(
         return false;
     }
 
+    // TODO(andreas): We have to figure out how to do this kind of heuristic in a more generic way without deep knowledge of re_types.
+    //
     // If there are any images directly under the root, don't create root space either.
     // -> For images we want more fine grained control and resort to child-of-root spaces only.
     for entity_path in &candidate.contents.root_group().entities {
-        if contains_any_image(entity_path, data_store) {
+        if contains_tensor_data(entity_path, data_store) {
             return false;
         }
     }
