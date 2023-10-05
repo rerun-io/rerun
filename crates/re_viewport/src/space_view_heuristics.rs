@@ -5,8 +5,9 @@ use nohash_hasher::{IntMap, IntSet};
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::EntityPath;
 use re_types::{
+    archetypes::{Image, SegmentationImage},
     components::{DisconnectedSpace, TensorData},
-    ComponentNameSet, Loggable as _,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
@@ -130,7 +131,9 @@ fn contains_tensor_data(ent_path: &EntityPath, store: &re_arrow_store::DataStore
         .all_components(&Timeline::log_time(), ent_path)
         .unwrap_or_default()
         .iter()
-        .any(|comp| *comp == TensorData::name())
+        .any(|comp| {
+            *comp == SegmentationImage::indicator().name() || *comp == Image::indicator().name()
+        })
 }
 
 fn is_interesting_space_view_at_root(
