@@ -46,7 +46,7 @@ cases, the old parameter names match the parameters taken by the new Archetype c
 ### `log_annotation_context`
 Replace with [AnnotationContext](types/archetypes/annotation_context.md)
 
-Python docs: [AnnotationContext](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.AnnotationContext)
+Python docs: [AnnotationContext](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.AnnotationContext)
 
 Notes:
  - `class_descriptions` has become `context`
@@ -56,7 +56,7 @@ Notes:
 ### `log_arrow`
 Replace with [Arrows3D](types/archetypes/arrows3d.md)
 
-Python docs: [Arrows3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Arrows3D)
+Python docs: [Arrows3D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Arrows3D)
 
 Notes:
  - `with_scale` has become `radii`, which entails dividing by 2 as necessary.
@@ -65,12 +65,12 @@ Notes:
 ### `log_cleared`
 Replace with [Clear](types/archetypes/clear.md)
 
-Python docs: [Clear](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Clear)
+Python docs: [Clear](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Clear)
 
 ### `log_depth_image`
 Replace with [DepthImage](types/archetypes/depth_image.md)
 
-Python docs: [DepthImage](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Clear)
+Python docs: [DepthImage](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Clear)
 
 Notes:
  * `image` has become `data`
@@ -78,7 +78,7 @@ Notes:
 ### `log_disconnected_space`
 Replace with [DisconnectedSpace](types/archetypes/disconnected_space.md)
 
-Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.DisconnectedSpace)
+Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.DisconnectedSpace)
 
 ### `log_extension_components`
 Replace with `AnyValues`
@@ -92,7 +92,7 @@ Notes:
 ### `log_image`
 Replace with [Image](types/archetypes/image.md)
 
-Python docs: [Image](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Image)
+Python docs: [Image](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Image)
 
 Notes:
  * `image` has become `data`
@@ -101,7 +101,7 @@ Notes:
 ### `log_image_file`
 Replace with `ImageEncoded`
 
-Python docs: [ImageEncoded](https://ref.rerun.io/docs/python/nightly/common/image_helpers/#rerun.ImageEncoded)
+Python docs: [ImageEncoded](https://ref.rerun.io/docs/python/stable/common/image_helpers/#rerun.ImageEncoded)
 
 Notes:
  - `img_bytes` and `img_path`
@@ -110,7 +110,7 @@ Notes:
 ### `log_line_strip`, `log_line_strips_2d`, `log_line_strips_3d`, `log_line_segments`
 Replace with [LineStrips2D](types/archetypes/line_strips2d.md) or [LineStrips3D](types/archetypes/line_strips3d.md)
 
-Python docs: [LineStrips2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips2D), [LineStrips3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.LineStrips3D)
+Python docs: [LineStrips2D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.LineStrips2D), [LineStrips3D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.LineStrips3D)
 
 Notes:
  - `log_line_segments` used to take an array of shape (2 * num_segments, 2 or 3) (where points were connected in
@@ -128,7 +128,7 @@ line_strips3d=line_segments.reshape(-1, 2, 3)
 ### `log_mesh`, `log_meshes`
 Replace with [Mesh3D](types/archetypes/mesh3d.md)
 
-Python docs: [Mesh3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Mesh3D)
+Python docs: [Mesh3D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Mesh3D)
 
 Notes:
  - Meshes are no longer batch objects. Instead they are treated as a batch of vertices, as such there is no longer a
@@ -141,7 +141,7 @@ Notes:
 ### `log_mesh_file`
 Replace with [Asset3D](types/archetypes/asset3d.md)
 
-Python docs: [Asset3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Asset3D)
+Python docs: [Asset3D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Asset3D)
 
 Notes:
  - `mesh_bytes` and `mesh_path` are both now jut `data`. Strings and paths will be opened as files, while
@@ -153,7 +153,7 @@ Notes:
 ### `log_obb`, `log_obbs`
 Replace with [Boxes3D](types/archetypes/boxes3d.md)
 
-Python docs: [Boxes3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes3D)
+Python docs: [Boxes3D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Boxes3D)
 
 Notes:
  - `positions` has become `centers`.
@@ -165,7 +165,7 @@ Notes:
 ### `log_pinhole`
 Replace with [Pinhole](types/archetypes/pinhole.md)
 
-Python docs: [Pinhole](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Pinhole)
+Python docs: [Pinhole](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Pinhole)
 
 Notes:
  - `child_from_parent` has become `image_from_parent`.
@@ -177,7 +177,7 @@ Notes:
 ### `log_point`, `log_points`
 Replace with [Points2D](types/archetypes/points2d.md) or [Points3D](types/archetypes/points3d.md).
 
-Python docs: [Points2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points2D), [Points3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points3D)
+Python docs: [Points2D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points2D), [Points3D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D)
 
 Notes:
  - `stroke_width` has become `radii`, which entails dividing by 2 as necessary.
@@ -186,7 +186,7 @@ Notes:
 ### `log_rect`, `log_rects`
 Replace with [Boxes2D](types/archetypes/boxes2d.md)
 
-Python docs: [Boxes2D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Boxes2D)
+Python docs: [Boxes2D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Boxes2D)
 
 Notes:
  - Can now be constructed with 2 arrays: `centers`, and either `half_sizes` o `sizes`.
@@ -197,12 +197,12 @@ Notes:
 ### `log_scalar`
 Replace with [TimeSeriesScalar](types/archetypes/time_series_scalar.md)
 
-Python docs: [TimeSeriesScalar](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.TimeSeriesScalar)
+Python docs: [TimeSeriesScalar](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.TimeSeriesScalar)
 
 ### `log_segmentation_image`
 Replace with [SegmentationImage](types/archetypes/segmentation_image.md)
 
-Python docs: [SegmentationImage](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.SegmentationImage)
+Python docs: [SegmentationImage](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.SegmentationImage)
 
 Notes:
  * `image` has become `data`
@@ -210,7 +210,7 @@ Notes:
 ### `log_tensor`
 Replace with [Tensor](types/archetypes/tensor.md)
 
-Python docs: [Tensor](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Tensor)
+Python docs: [Tensor](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Tensor)
 
 Notes:
  - `tensor` has become `data`.
@@ -222,12 +222,12 @@ Notes:
 ### `log_text_entry`
 Replace with [TextLog](types/archetypes/text_log.md)
 
-Python docs: [TextLog](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.TextLog)
+Python docs: [TextLog](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.TextLog)
 
 ### `log_transform3d`
 Replace with [Transform3D](types/archetypes/transform3d.md)
 
-Python docs: [Transform3D](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Transform3D)
+Python docs: [Transform3D](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Transform3D)
 
 Notes:
  - Now takes optional parameters for `translation`, `rotation`, `scale`, or `mat3x3` to simplify construction.
@@ -235,7 +235,7 @@ Notes:
 ### `log_view_coordinates`
 Replace with [ViewCoordinates](types/archetypes/view_coordinates.md)
 
-Python docs: [ViewCoordinates](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.ViewCoordinates)
+Python docs: [ViewCoordinates](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.ViewCoordinates)
 
 Notes:
 - Rather than providing `xyz` or `up` as strings, `rr.ViewCoordinates` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
@@ -247,21 +247,21 @@ Rust already used a more type oriented interface, so the changes are not as dras
 
 ## Removal of `MsgSender`
 
-The biggest change that `MsgSender` is gone and all logging happens instead directly on the [`RecordingStream::RecordingStream`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html)
-using its [`log`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log) and [`RecordingStream::log_timeless`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_timeless) functions.
+The biggest change that `MsgSender` is gone and all logging happens instead directly on the [`RecordingStream::RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html)
+using its [`log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) and [`RecordingStream::log_timeless`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_timeless) functions.
 
 ## Logging time
 
-The new `log` function logs time implicitly. `log_time` and `log_tick` are always included, as well as any custom timeline set using [`RecordingStream::set_timepoint`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_timepoint), or one of the shorthands [`RecordingStream::set_time_sequence`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_sequence)/[`RecordingStream::set_time_seconds`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_seconds)/[`RecordingStream::set_time_nanos`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_nanos)
+The new `log` function logs time implicitly. `log_time` and `log_tick` are always included, as well as any custom timeline set using [`RecordingStream::set_timepoint`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_timepoint), or one of the shorthands [`RecordingStream::set_time_sequence`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_sequence)/[`RecordingStream::set_time_seconds`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_seconds)/[`RecordingStream::set_time_nanos`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_nanos)
 
 ## Components -> Archetypes
 
-The new log messages consume any type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html) trait
-which is [implemented by](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html#implementors) all archetypes.
+The new log messages consume any type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait
+which is [implemented by](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html#implementors) all archetypes.
 All previously separately logged components have corresponding types and are used in one or more archetypes.
 See the respective API docs as well as the [Archetype Overview](types/archetypes.md) to learn more and find self-contained code examples.
 
-For continuing to log collections of components without implementing the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html) trait, use [`RecordingStream::log_component_batches`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_component_batches)
+For continuing to log collections of components without implementing the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait, use [`RecordingStream::log_component_batches`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_component_batches)
 
 
 
@@ -269,4 +269,4 @@ For continuing to log collections of components without implementing the [`AsCom
 
 Splatting is no longer done explicitly (before `MsgSender::splat`), but automatically inferred whenever
 there is a single component together with larger component batches on the same entity path.
-See also [`RecordingStream::log_component_batches`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_component_batches) for more information.
+See also [`RecordingStream::log_component_batches`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_component_batches) for more information.
