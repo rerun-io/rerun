@@ -145,7 +145,7 @@ This timestamp will apply to all subsequent log calls on in this callback (on th
 again.
 
 
-### TF to `log_transform3d`
+### TF to rr.Transform3D
 Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/About-Tf2.html) transforms to the
 corresponding [Rerun Transforms](../concepts/spaces-and-transforms.md#space-transformations).
 
@@ -184,17 +184,12 @@ def log_tf_as_transform3d(self, path: str, time: Time) -> None:
 
     # Do the TF lookup to get transform from child (source) -> parent (target)
     try:
-        tf = self.tf_buffer.lookup_transform(parent_frame,
-                                             child_frame,
-                                             time,
-                                             timeout=Duration(seconds=0.1))
+        tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
         t = tf.transform.translation
         q = tf.transform.rotation
-        rr.log_transform3d(
-            path, rr.TranslationRotationScale3D([t.x, t.y, t.z], rr.Quaternion(xyzw=[q.x, q.y, q.z, q.w]))
-        )
+        rr.log(path, rr.Transform3D(translation=[t.x, t.y, t.z], rotation=rr.Quaternion(xyzw=[q.x, q.y, q.z, q.w])))
     except TransformException as ex:
-        print("Failed to get transform: {}".format(ex))
+        print(f"Failed to get transform: {ex}")
 ```
 
 As an example of logging points in the map frame, we simply call:
@@ -207,25 +202,25 @@ Note that because we previously called `set_time_nanos` in this callback, this t
 be logged to the same point on the timeline as the data, using a timestamp looked up from TF at the
 matching timepoint.
 
-### Odometry to `log_scalar` and `log_transform3d`
+### Odometry to rr.TimeSeriesScalar and rr.Transform3D
 When receiving odometry messages, we log the linear and angular velocities using `rr.log_scalar`.
 Additionally, since we know that odometry will also update the `map/robot` transform, we use
 this as a cue to look up the corresponding transform and log it.
-```
+```python
 def odom_callback(self, odom: Odometry) -> None:
     """Update transforms when odom is updated."""
     time = Time.from_msg(odom.header.stamp)
     rr.set_time_nanos("ros_time", time.nanoseconds)
 
     # Capture time-series data for the linear and angular velocities
-    rr.log_scalar("odometry/vel", odom.twist.twist.linear.x)
-    rr.log_scalar("odometry/ang_vel", odom.twist.twist.angular.z)
+    rr.log("odometry/vel", rr.TimeSeriesScalar(odom.twist.twist.linear.x))
+    rr.log("odometry/ang_vel", rr.TimeSeriesScalar(odom.twist.twist.angular.z))
 
     # Update the robot pose itself via TF
     self.log_tf_as_transform3d("map/robot", time)
 ```
 
-### CameraInfo to `log_pinhole`
+### CameraInfo to rr.Pinhole
 Not all Transforms are rigid as defined in TF. The other transform we want to log
 is the pinhole projection that is stored in the `CameraInfo` msg.
 
@@ -243,15 +238,16 @@ def cam_info_callback(self, info: CameraInfo) -> None:
 
     self.model.fromCameraInfo(info)
 
-    rr.log_pinhole(
+    rr.log(
         "map/robot/camera/img",
-        child_from_parent=self.model.intrinsicMatrix(),
-        width=self.model.width,
-        height=self.model.height,
+        rr.Pinhole(
+            resolution=[self.model.width, self.model.height],
+            image_from_camera=self.model.intrinsicMatrix(),
+        ),
     )
 ```
 
-### Image to `log_image`
+### Image to rr.Image
 ROS Images can also be mapped to Rerun very easily, using the `cv_bridge` package.
 The output of `cv_bridge.imgmsg_to_cv2` can be fed directly into `rr.log_image`:
 ```python
@@ -264,11 +260,11 @@ def image_callback(self, img: Image) -> None:
     time = Time.from_msg(img.header.stamp)
     rr.set_time_nanos("ros_time", time.nanoseconds)
 
-    rr.log_image("map/robot/camera/img", self.cv_bridge.imgmsg_to_cv2(img))
+    rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
     self.log_tf_as_transform3d("map/robot/camera", time)
 ```
 
-### PointCloud2 to `log_points`
+### PointCloud2 to rr.Points3D
 The ROS [PointCloud2](https://github.com/ros2/common_interfaces/blob/humble/sensor_msgs/msg/PointCloud2.msg) message
 is stored as a binary blob that needs to be reinterpreted using the details about its fields. Each field is
 a named collection of offsets into the data buffer, and datatypes. The `sensor_msgs_py` package includes a `point_cloud2`
@@ -308,11 +304,11 @@ def points_callback(self, points: PointCloud2) -> None:
 
     # Log points once rigidly under robot/camera/points. This is a robot-centric
     # view of the world.
-    rr.log_points("map/robot/camera/points", positions=pts, colors=colors)
+    rr.log("map/robot/camera/points", rr.Points3D(pts, colors=colors))
     self.log_tf_as_transform3d("map/robot/camera/points", time)
 ```
 
-### LaserScan to `log_line_segments`
+### LaserScan to rr.LineStrips3D
 Rerun does not yet have native support for a `LaserScan` style primitive so we need
 to do a bit of additional transformation logic (see: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
 
@@ -346,11 +342,11 @@ def scan_callback(self, scan: LaserScan) -> None:
     origin = (pts / np.linalg.norm(pts, axis=1).reshape(-1, 1)) * 0.3
     segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
-    rr.log_line_segments("map/robot/scan", segs, stroke_width=0.005)
+    rr.log("map/robot/scan", rr.LineStrips3D(segs, radii=0.0025))
     self.log_tf_as_transform3d("map/robot/scan", time)
 ```
 
-### URDF to `log_mesh`
+### URDF to rr.Mesh3D
 The URDF conversion is actually the most complex operation in this example. As such the functionality
 is split out into a separate [rerun/examples/python/ros_node/rerun_urdf.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/rerun_urdf.py)
 helper.
@@ -405,7 +401,7 @@ def urdf_callback(self, urdf_msg: String) -> None:
 
 Back in `rerun_urdf.log_scene` all the code is doing is recursively walking through
 the trimesh scene graph. For each node, it extracts the transform to the parent,
-which it logs via `rr.log_transform3d` before then using `rr.log_mesh` to send the vertices,
+which it logs via `rr.Transform3D` before then using `rr.Mesh3D` to send the vertices,
 indices, and normals from the trimesh geometry. This code is almost entirely
 URDF-independent and is a good candidate for a future Python API ([#1536](https://github.com/rerun-io/rerun/issues/1536).)
 ```python
@@ -415,14 +411,13 @@ if node_data:
     # Log the transform between this node and its direct parent (if it has one!).
     if parent:
         world_from_mesh = node_data[0]
-        t = trimesh.transformations.translation_from_matrix(world_from_mesh)
-        q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
-        # `trimesh` stores quaternions in `wxyz` format, rerun needs `xyzw`
-        # TODO(jleibs): Remove conversion once
-        # [#883](https://github.com/rerun-io/rerun/issues/883) is closed
-        q = np.array([q[1], q[2], q[3], q[0]])
-        rr.log_transform3d(path,
-            rr.TranslationRotationScale3D([t.x, t.y, t.z], rr.Quaternion(xyzw=q), timeless=timeless)
+        rr.log(
+            path,
+            rr.Transform3D(
+                translation=world_from_mesh[3, 0:3],
+                mat3x3=world_from_mesh[0:3, 0:3],
+            ),
+            timeless=timeless,
         )
 
 
@@ -430,12 +425,14 @@ if node_data:
     mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
     if mesh:
         # … extract some color information
-        rr.log_mesh(
+        rr.log(
             path,
-            mesh.vertices,
-            indices=mesh.faces,
-            normals=mesh.vertex_normals,
-            albedo_factor=albedo_factor,
+            rr.Mesh3D(
+                vertex_positions=mesh.vertices,
+                indices=mesh.faces,
+                vertex_normals=mesh.vertex_normals,
+                mesh_material=rr.Material(albedo_factor=albedo_factor),
+            ),
             timeless=timeless,
         )
 ```
