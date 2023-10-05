@@ -138,7 +138,13 @@ struct Example {
 
 fn examples() -> Result<Vec<Example>> {
     let mut examples = vec![];
-    for folder in std::fs::read_dir("../../examples/python")? {
+    let dir = "../../examples/python";
+    assert!(std::path::Path::new(dir).exists(), "Failed to find {dir}");
+    assert!(
+        std::path::Path::new(dir).is_dir(),
+        "{dir} is not a directory"
+    );
+    for folder in std::fs::read_dir(dir)? {
         let folder = folder?;
         let metadata = folder.metadata()?;
         let name = folder.file_name().to_string_lossy().to_string();
@@ -152,6 +158,8 @@ fn examples() -> Result<Vec<Example>> {
             examples.push(Example { name, readme });
         }
     }
+    println!("examples: {}", examples.len());
+    assert!(!examples.is_empty(), "No examples found in {dir}");
     examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(examples)
 }
@@ -209,6 +217,7 @@ fn write_examples_manifest() -> Result<()> {
     for example in examples()? {
         manifest.push(ManifestEntry::new(example, &base_url));
     }
+    assert!(!manifest.is_empty(), "No examples found!");
     re_build_tools::write_file_if_necessary(
         MANIFEST_PATH,
         serde_json::to_string_pretty(&manifest)?.as_bytes(),
