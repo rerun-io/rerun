@@ -11,7 +11,7 @@ Typically in integer units, but for some use cases floating point may be used.
 * resolution: [`Vec2D`](../datatypes/vec2d.md)
 
 ## Links
- * 🐍 [Python API docs for `Resolution`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/resolution/)
+ * 🐍 [Python API docs for `Resolution`](https://ref.rerun.io/docs/python/nightly/common/components#rerun.components.Resolution)
  * 🦀 [Rust API docs for `Resolution`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.Resolution.html)
 
 

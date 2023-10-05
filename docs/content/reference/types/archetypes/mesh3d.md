@@ -13,7 +13,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 **Optional**: [`Color`](../components/color.md), [`Material`](../components/material.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
- * 🐍 [Python API docs for `Mesh3D`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/mesh3d/)
+ * 🐍 [Python API docs for `Mesh3D`](https://ref.rerun.io/docs/python/nightly/common/archetypes#rerun.archetypes.Mesh3D)
  * 🦀 [Rust API docs for `Mesh3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.Mesh3D.html)
 
 ## Examples

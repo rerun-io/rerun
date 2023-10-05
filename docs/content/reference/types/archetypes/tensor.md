@@ -9,7 +9,7 @@ A generic n-dimensional Tensor.
 **Required**: [`TensorData`](../components/tensor_data.md)
 
 ## Links
- * 🐍 [Python API docs for `Tensor`](https://ref.rerun.io/docs/python/nightly/package/rerun/archetypes/tensor/)
+ * 🐍 [Python API docs for `Tensor`](https://ref.rerun.io/docs/python/nightly/common/archetypes#rerun.archetypes.Tensor)
  * 🦀 [Rust API docs for `Tensor`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.Tensor.html)
 
 ## Example

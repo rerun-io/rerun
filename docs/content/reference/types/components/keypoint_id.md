@@ -9,7 +9,7 @@ A 16-bit ID representing a type of semantic keypoint within a class.
 * id: [`KeypointId`](../datatypes/keypoint_id.md)
 
 ## Links
- * 🐍 [Python API docs for `KeypointId`](https://ref.rerun.io/docs/python/nightly/package/rerun/components/keypoint_id/)
+ * 🐍 [Python API docs for `KeypointId`](https://ref.rerun.io/docs/python/nightly/common/components#rerun.components.KeypointId)
  * 🦀 [Rust API docs for `KeypointId`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.KeypointId.html)
 
 
