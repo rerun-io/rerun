@@ -21,6 +21,13 @@ It is also the basis for our C++ API, which is coming in Rerun 0.10.0.
 
 Read [the migration guide](https://www.rerun.io/docs/reference/migration-0-9.md) for details!
 
+<picture>
+  <img src="https://static.rerun.io/0.9.0-start-screen/ee485acc4bf50519102180d01ae6338aef07e88e/full.png" alt="0.9.0 Welcome Screen">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/0.9.0-start-screen/ee485acc4bf50519102180d01ae6338aef07e88e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/0.9.0-start-screen/ee485acc4bf50519102180d01ae6338aef07e88e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/0.9.0-start-screen/ee485acc4bf50519102180d01ae6338aef07e88e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/0.9.0-start-screen/ee485acc4bf50519102180d01ae6338aef07e88e/1200w.png">
+</picture>
 
 ### In Detail
 #### 🐍 Python SDK
