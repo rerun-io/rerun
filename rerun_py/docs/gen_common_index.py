@@ -140,6 +140,11 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     Section(
+        title="Image Helpers",
+        class_list=["ImageEncoded"],
+        show_tables=False,
+    ),
+    Section(
         title="Plotting",
         class_list=[
             "archetypes.BarChart",
