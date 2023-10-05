@@ -140,7 +140,9 @@ class FaceDetectorLogger:
             # log bounding box
             rr.log(
                 f"video/detector/faces/{i}/bbox",
-                rr.Boxes2D(array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height]),
+                rr.Boxes2D(
+                    array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height], array_format=rr.Box2DFormat.XYWH
+                ),
                 rr.AnyValues(index=index, score=score),
             )
 

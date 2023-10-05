@@ -116,7 +116,10 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
     rr.log("image/masks", rr.SegmentationImage(segmentation_img.astype(np.uint8)))
 
     mask_bbox = np.array([m["bbox"] for _, m in masks_with_ids])
-    rr.log("image/boxes", rr.Boxes2D(array=mask_bbox, class_ids=[id for id, _ in masks_with_ids]))
+    rr.log(
+        "image/boxes",
+        rr.Boxes2D(array=mask_bbox, array_format=rr.Box2DFormat.XYWH, class_ids=[id for id, _ in masks_with_ids]),
+    )
 
 
 def is_url(path: str) -> bool:
