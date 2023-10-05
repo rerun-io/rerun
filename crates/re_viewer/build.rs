@@ -151,14 +151,18 @@ fn examples() -> Result<Vec<Example>> {
         let readme = folder.path().join("README.md");
         if metadata.is_dir() && readme.exists() {
             let readme = parse_frontmatter(readme)?;
-            let Some(readme) = readme else { continue };
-            if !readme.demo {
-                continue;
+            if let Some(readme) = readme {
+                if readme.demo {
+                    eprintln!("Adding example {name:?}");
+                    examples.push(Example { name, readme });
+                } else {
+                    eprintln!("Skipping example {name:?} because 'demo' is set to 'false'");
+                }
+            } else {
+                eprintln!("Skipping example {name:?} because it has no frontmatter");
             }
-            examples.push(Example { name, readme });
         }
     }
-    println!("examples: {}", examples.len());
     assert!(!examples.is_empty(), "No examples found in {dir}");
     examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(examples)
