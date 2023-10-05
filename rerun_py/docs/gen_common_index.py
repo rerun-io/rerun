@@ -109,7 +109,6 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Custom Data",
         class_list=["AnyValues"],
-        gen_page=False,
     ),
     Section(
         title="Clearing Entities",
@@ -134,6 +133,11 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.SegmentationImage",
         ],
         gen_page=False,
+    ),
+    Section(
+        title="Image Helpers",
+        class_list=["ImageFormat", "ImageEncoded"],
+        show_tables=False,
     ),
     Section(
         title="Plotting",
@@ -191,6 +195,22 @@ SECTION_TABLE: Final[list[Section]] = [
         func_list=["script_add_args", "script_setup", "script_teardown"],
     ),
     Section(
+        title="Other classes and functions",
+        show_tables=False,
+        func_list=[
+            "log_components",
+            "is_enabled",
+            "get_data_recording",
+            "get_global_data_recording",
+            "set_global_data_recording",
+            "get_recording_id",
+            "get_thread_local_data_recording",
+            "set_thread_local_data_recording",
+            "new_recording",
+        ],
+        class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
+    ),
+    Section(
         title="Experimental",
         func_list=[
             "experimental.add_space_view",
@@ -205,6 +225,7 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Deprecated Logging Methods",
         func_list=[
             "log_arrow",
+            "log_annotation_context",
             "log_cleared",
             "log_depth_image",
             "log_disconnected_space",

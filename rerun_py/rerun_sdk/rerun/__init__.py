@@ -34,6 +34,7 @@ __all__ = [
     "LoggingHandler",
     "Material",
     "MediaType",
+    "MemoryRecording",
     "Mesh3D",
     "MeshFormat",
     "MeshProperties",
@@ -191,6 +192,7 @@ from .log_deprecated.transform import (
     log_view_coordinates,
 )
 from .logging_handler import LoggingHandler
+from .recording import MemoryRecording
 from .recording_stream import (
     RecordingStream,
     get_application_id,

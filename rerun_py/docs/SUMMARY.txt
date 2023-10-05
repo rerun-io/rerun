@@ -1,3 +1,2 @@
 * [Common APIs](common/)
-* [Package Listing](package/)
 * [Writing Docs](writing_docs.md)

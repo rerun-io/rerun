@@ -15,6 +15,8 @@ DEFAULT_TIMEOUT = 2000
 
 
 class MemoryRecording:
+    """A recording that stores data in memory."""
+
     def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
 
