@@ -126,7 +126,7 @@ pub fn all_possible_space_views(
         .collect_vec()
 }
 
-fn contains_tensor_data(ent_path: &EntityPath, store: &re_arrow_store::DataStore) -> bool {
+fn contains_any_image(ent_path: &EntityPath, store: &re_arrow_store::DataStore) -> bool {
     store
         .all_components(&Timeline::log_time(), ent_path)
         .unwrap_or_default()
@@ -151,7 +151,7 @@ fn is_interesting_space_view_at_root(
     // If there are any images directly under the root, don't create root space either.
     // -> For images we want more fine grained control and resort to child-of-root spaces only.
     for entity_path in &candidate.contents.root_group().entities {
-        if contains_tensor_data(entity_path, data_store) {
+        if contains_any_image(entity_path, data_store) {
             return false;
         }
     }
