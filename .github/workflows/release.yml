@@ -90,7 +90,7 @@ jobs:
 
           # if this is a `final`, set the version to the final release version
           if [ ${{ inputs.release-type }} = "final" ]; then
-            python3 scripts/ci/crates.py version --exact $release-version
+            python3 scripts/ci/crates.py version --exact $release_version
           fi
 
           # store version after the update, and the expected "final" release version
