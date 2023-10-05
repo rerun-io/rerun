@@ -9,8 +9,8 @@ Material properties of a mesh.
 * material: [`Material`](../datatypes/material.md)
 
 ## Links
- * 🐍 [Python API docs for `Material`](https://ref.rerun.io/docs/python/nightly/common/components#rerun.components.Material)
- * 🦀 [Rust API docs for `Material`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.Material.html)
+ * 🐍 [Python API docs for `Material`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Material)
+ * 🦀 [Rust API docs for `Material`](https://docs.rs/rerun/latest/rerun/components/struct.Material.html)
 
 
 ## Used by
