@@ -92,9 +92,9 @@ only showing a simple line of red points.
 
 
 
-The [`rr.log`](https://ref.rerun.io/docs/python/HEAD/common/logging/#rerun.log) is the primary way to log data. It's a flexible
+The [`rr.log`](https://ref.rerun.io/docs/python/nightly/common/logging_functions/#rerun.log) is the primary way to log data. It's a flexible
 call that can accept a variety of correctly-formatted data—including your own. The easiest way to use it is to use an instance of
-one of the built-in *archetype* class, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/HEAD/common/spatial_primitives/#rerun.Points3D). Archetypes take care of gathering the various
+one of the built-in *archetype* class, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.Points3D). Archetypes take care of gathering the various
 components representing, in this case, a batch of 3D points such that it is recognized and correctly displayed by the Rerun viewer. The `rr.Points3D` archetype accepts any collection of positions that can be converted to a Nx3 Numpy array, along with other components such as colors, radii, etc.
 
 Feel free to modify the code to log a different set of points. If you want to generate the colored cube from the
