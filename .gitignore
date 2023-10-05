@@ -29,6 +29,9 @@ __pycache__
 *.pyc
 *.so
 
+# Pixi environment
+.pixi
+
 .gdb_history
 perf.data*
 
