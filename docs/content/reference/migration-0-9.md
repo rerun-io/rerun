@@ -262,7 +262,7 @@ which is [implemented by](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsCom
 All previously separately logged components have corresponding types and are used in one or more archetypes.
 See the respective API docs as well as the [Archetype Overview](types/archetypes.md) to learn more and find self-contained code examples.
 
-For continuing to log collections of components without implementing the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html)  trait, use [`RecordingStream::log_component_batches`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_component_batches)
+For continuing to log collections of components without implementing the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html) trait, use [`RecordingStream::log_component_batches`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_component_batches)
 
 
 
