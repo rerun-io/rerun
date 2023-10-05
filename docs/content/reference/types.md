@@ -1,5 +1,5 @@
 ---
-title: Loggable Types
+title: Types
 order: 2
 ---
 
@@ -10,10 +10,6 @@ The top-level types are called [**archetypes**](types/archetypes.md) to differen
 [**data types**](types/datatypes.md) that make up the individual [**components**](types/components.md).
 For more information on the relationship between **archetypes** and **components**, check out the concept page
 on [Entities and Components](../concepts/entity-component.md).
-
-In [Python](https://ref.rerun.io) every **archetype** is typically backed by one or more function calls. In
-contrast, the [Rust API](https://docs.rs/rerun/) works by building up entities of a given archetype explicitly by
-assembling the required components.
 
 ## Spatial **Archetypes**
 The spatial archetypes represent 2d and 3d spatial data. These types have some notion of a coordinate system and

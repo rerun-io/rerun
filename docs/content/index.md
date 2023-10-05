@@ -2,9 +2,9 @@
 title: Welcome
 order: 0
 ---
-Welcome to the Rerun documentation page.
-
-To get a feeling of what you can do, browse the [example gallery](/examples) or try Rerun directly [in your browser](https://demo.rerun.io/).
+To get a feeling of what you can do with Rerun
+- browse the [example gallery](/examples) or
+- try Rerun directly [in your browser](https://app.rerun.io/).
 
 ## What is Rerun?
 
@@ -20,9 +20,17 @@ Rerun is
 Rerun is used by engineers and researchers in fields like computer vision and robotics
 to verify, debug, and demo.
 
-For a list of built-in data types, see [Types](reference/types.md).
+For a list of built-in data types, see the [Types](reference/types.md) section.
 
 ## How do you use it?
+<picture>
+  <img src="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/1200w.png">
+</picture>
+
 1. Stream multimodal data from your code by logging it with the Rerun SDK
 2. Visualize and interact with live or recorded streams, whether local or remote
 3. Interactively build layouts and customize visualizations
