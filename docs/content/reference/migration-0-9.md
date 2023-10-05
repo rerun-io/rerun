@@ -240,3 +240,34 @@ Python docs: [ViewCoordinates](https://ref.rerun.io/docs/python/HEAD/common/tran
 Notes:
 - Rather than providing `xyz` or `up` as strings, `rr.ViewCoordinates` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
 
+
+# Migrating Rust Code
+
+Rust already used a more type oriented interface, so the changes are not as drastic as to the Python API.
+
+## Removal of `MsgSender`
+
+The biggest change that `MsgSender` is gone and all logging happens instead directly on the [`RecordingStream::RecordingStream`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html)
+using its [`log`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log) and [`RecordingStream::log_timeless`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_timeless) functions.
+
+## Logging time
+
+Other than timeless on/off, time is not logged with these new logging functions.
+Instead, the time used for all subsequent logging functions is set using [`RecordingStream::set_timepoint`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_timepoint), or one of the shorthands [`RecordingStream::set_time_sequence`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_sequence)/[`RecordingStream::set_time_seconds`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_seconds)/[`RecordingStream::set_time_nanos`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.set_time_nanos)
+
+## Components -> Archetypes
+
+The new log messages consume any type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html) trait
+which is [implemented by](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html#implementors) all archetypes.
+All previously separately logged components have corresponding types and are used in one or more archetypes.
+See the respective API docs as well as the [Archetype Overview](types/archetypes.md) to learn more and find self-contained code examples.
+
+For continuing to log collections of components without implementing the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html)  trait, use [`RecordingStream::log_component_batches`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_component_batches)
+
+
+
+## Splatting
+
+Splatting is no longer done explicitly (before `MsgSender::splat`), but automatically inferred whenever 
+there is a single component together with larger component batches on the same entity path.
+See also [`RecordingStream::log_component_batches`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/struct.RecordingStream.html#method.log_component_batches) for more information.
