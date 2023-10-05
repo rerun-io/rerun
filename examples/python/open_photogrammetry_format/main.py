@@ -81,7 +81,7 @@ class OPFProject:
 
         self.path = path
         # pyopf doesn't seem to work with regular windows paths, but a "UNC dos path" works
-        path_as_str = "\\\\.\\" + str(path.absolute())  if os.name == 'nt' else str(path)
+        path_as_str = "\\\\.\\" + str(path.absolute()) if os.name == "nt" else str(path)
         self.project = resolve(load(path_as_str))
         self.log_as_frames = log_as_frames
 
