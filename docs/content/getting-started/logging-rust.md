@@ -130,7 +130,7 @@ For more information on how the rerun data model works, refer to our section on 
 
 Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method
 <!-- TODO(andreas): UPDATE DOC LINKS -->
-will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
+will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
 
 
