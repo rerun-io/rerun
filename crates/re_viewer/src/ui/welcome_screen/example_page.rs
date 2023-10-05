@@ -33,8 +33,13 @@ struct ExampleDesc {
 
 // TODO(#3190): we should attempt to update the manifest based on the online version
 fn load_example_manifest() -> Vec<ExampleDesc> {
-    serde_json::from_str(include_str!("../../../data/examples_manifest.json"))
-        .expect("Failed to parse data/examples_manifest.json")
+    let examples: Vec<ExampleDesc> =
+        serde_json::from_str(include_str!("../../../data/examples_manifest.json"))
+            .expect("Failed to parse data/examples_manifest.json");
+    if examples.is_empty() {
+        re_log::warn_once!("No examples found in examples_manifest.json");
+    }
+    examples
 }
 
 // TODO(ab): use design tokens
