@@ -112,6 +112,11 @@ impl ExamplePage {
         rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) -> WelcomeScreenResponse {
+        if self.examples.is_empty() {
+            ui.label("No examples found.");
+            return WelcomeScreenResponse::default();
+        }
+
         // vertical spacing isn't homogeneous so it's handled manually
         let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
         let column_count = (((ui.available_width() + grid_spacing.x)
