@@ -44,7 +44,7 @@ def all_archetypes() -> list[str]:
     quoted_strings = []
 
     # Regular expression pattern to match quoted strings
-    pattern = r'"(archetype.[^"]*)"'
+    pattern = r'"([^"]*)"'
 
     # Open the file for reading
     with open(file_path) as file:
@@ -56,6 +56,7 @@ def all_archetypes() -> list[str]:
             # Append the matched strings to the list
             quoted_strings.extend(matches)
 
+    assert len(quoted_strings) > 0, f"Found no archetypes in {file_path}"
     return quoted_strings
 
 
@@ -281,8 +282,9 @@ SECTION_TABLE: Final[list[Section]] = [
 
 def is_mentioned(thing: str) -> bool:
     for section in SECTION_TABLE:
-        if thing in section.func_list or thing in section.class_list:
-            return True
+        if section.class_list is not None:
+            if f"archetypes.{thing}" in section.class_list:
+                return True
     return False
 
 
