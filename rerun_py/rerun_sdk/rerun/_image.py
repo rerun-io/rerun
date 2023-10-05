@@ -14,6 +14,9 @@ from .components import DrawOrderLike, TensorData
 from .datatypes import TensorBuffer, TensorDimension
 
 
+__all__ = ["ImageFormat", "ImageEncoded"]
+
+
 class ImageFormat(Enum):
     """Image file format."""
 
@@ -38,9 +41,9 @@ class ImageFormat(Enum):
 
 class ImageEncoded(AsComponents):
     """
-    A monochrome or color image encoded with a common format (PNG, JPEG, etc).
+    A monochrome or color image encoded with a common format (PNG, JPEG, etc.).
 
-    The encoded image can be loaded from either a a file using its `path` or
+    The encoded image can be loaded from either a file using its `path` or
     provided directly via `contents`.
     """
 
@@ -58,7 +61,7 @@ class ImageEncoded(AsComponents):
         Parameters
         ----------
         path:
-            A path to an file stored on the local filesystem. Mutually
+            A path to a file stored on the local filesystem. Mutually
             exclusive with `contents`.
         contents:
             The contents of the file. Can be a BufferedReader, BytesIO, or

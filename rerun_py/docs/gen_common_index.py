@@ -104,7 +104,7 @@ SECTION_TABLE: Final[list[Section]] = [
         show_tables=False,
     ),
     Section(
-        title="DataTypes",
+        title="Datatypes",
         mod_path="rerun.datatypes",
         show_tables=False,
     ),
@@ -138,11 +138,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.SegmentationImage",
         ],
         gen_page=False,
-    ),
-    Section(
-        title="Image Helpers",
-        class_list=["ImageEncoded"],
-        show_tables=False,
     ),
     Section(
         title="Plotting",
