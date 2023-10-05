@@ -22,8 +22,8 @@ from tqdm import tqdm
 
 DEPTH_IMAGE_SCALING: Final = 1e4
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
-DATASET_URL_BASE: Final = "http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2"
-DATASET_URL_BASE_ALTERNATE: Final = "https://static.rerun.io/rgbd_dataset"
+DATASET_URL_BASE: Final = "https://static.rerun.io/rgbd_dataset"
+DATASET_URL_BASE_ALTERNATE: Final = "http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2"
 AVAILABLE_RECORDINGS: Final = ["cafe", "basements", "studies", "office_kitchens", "playroooms"]
 
 
@@ -124,7 +124,7 @@ def download_progress(url: str, dst: Path) -> None:
     """
     resp = requests.get(url, stream=True)
     if resp.status_code != 200:
-        raise ValueError("Failed to download file")
+        raise ValueError(f"Failed to download file (status code: {resp.status_code})")
     total = int(resp.headers.get("content-length", 0))
     chunk_size = 1024 * 1024
     # Can also replace 'file' with a io.BytesIO object
