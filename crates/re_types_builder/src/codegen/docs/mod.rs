@@ -163,10 +163,11 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         // TODO(#3651): s/nightly/stable
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/nightly/package/rerun/{}/{}/)",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/nightly/common/{}#rerun.{}.{})",
             object.name,
             object.kind.plural_snake_case(),
-            object.snake_case_name()
+            object.kind.plural_snake_case(),
+            object.name
         );
         // TODO(#3651): s/0.9.0-alpha.10/latest
         putln!(
