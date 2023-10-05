@@ -24,8 +24,8 @@ colored as described by the class's `AnnotationInfo`.
 * keypoint_connections: [`KeypointPair`](../datatypes/keypoint_pair.md)
 
 ## Links
- * 🐍 [Python API docs for `ClassDescription`](https://ref.rerun.io/docs/python/nightly/common/datatypes#rerun.datatypes.ClassDescription)
- * 🦀 [Rust API docs for `ClassDescription`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/datatypes/struct.ClassDescription.html)
+ * 🐍 [Python API docs for `ClassDescription`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ClassDescription)
+ * 🦀 [Rust API docs for `ClassDescription`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ClassDescription.html)
 
 
 ## Used by

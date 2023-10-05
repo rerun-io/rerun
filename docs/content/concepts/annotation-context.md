@@ -53,8 +53,8 @@ The Annotation Context is defined as a list of Class Descriptions that define ho
 
 Annotation contexts are logged with:
 
-* Python: 🐍[`rr.AnnotationContext`](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.AnnotationContext)
-* Rust: 🦀[`rerun::AnnotationContext`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.AnnotationContext.html#)
+* Python: 🐍[`rr.AnnotationContext`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.AnnotationContext)
+* Rust: 🦀[`rerun::AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html#)
 
 code-example: annotation-context
 
@@ -71,8 +71,8 @@ Segmentation images are single channel integer images/tensors where each pixel r
 By default, Rerun will automatically assign colors to each class id, but by defining an Annotation Context,
 you can explicitly determine the color of each class.
 
-* Python: [`rr.SegmentationImage`](https://ref.rerun.io/docs/python/nightly/common/archetypes/#rerun.archetypes.SegmentationImage)
-* Rust: Log a [`rerun::SegmentationImage`](https://docs.rs/rerun/0.9.0-alpha.6/rerun/archetypes/struct.SegmentationImage.html)
+* Python: [`rr.SegmentationImage`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.SegmentationImage)
+* Rust: Log a [`rerun::SegmentationImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SegmentationImage.html)
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/480w.png">

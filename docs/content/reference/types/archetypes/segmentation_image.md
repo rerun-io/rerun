@@ -17,8 +17,8 @@ Leading and trailing unit-dimensions are ignored, so that
 **Optional**: [`DrawOrder`](../components/draw_order.md)
 
 ## Links
- * 🐍 [Python API docs for `SegmentationImage`](https://ref.rerun.io/docs/python/nightly/common/archetypes#rerun.archetypes.SegmentationImage)
- * 🦀 [Rust API docs for `SegmentationImage`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.SegmentationImage.html)
+ * 🐍 [Python API docs for `SegmentationImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SegmentationImage)
+ * 🦀 [Rust API docs for `SegmentationImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SegmentationImage.html)
 
 ## Example
 
