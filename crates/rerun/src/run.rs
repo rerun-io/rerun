@@ -517,7 +517,7 @@ async fn run_impl(
             ));
 
             // Wait for both servers to shutdown.
-            web_server_handle.await?.ok();
+            web_server_handle.await?.map_err(anyhow::Error::from)?;
             return ws_server_handle.await?.map_err(anyhow::Error::from);
         }
 

@@ -36,13 +36,13 @@ pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
 
-    #[error("failed to bind to port {0}: {1}")]
+    #[error("Failed to bind to port {0} for HTTP: {1}")]
     BindFailed(WebViewerServerPort, hyper::Error),
 
-    #[error("failed to join web viewer server task: {0}")]
+    #[error("Failed to join web viewer server task: {0}")]
     JoinError(#[from] tokio::task::JoinError),
 
-    #[error("failed to serve web viewer: {0}")]
+    #[error("Failed to serve web viewer: {0}")]
     ServeFailed(hyper::Error),
 }
 
