@@ -83,7 +83,7 @@ Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/nightly/common
 ### log_extension_components
 Replace with `AnyValues`
 
-Python docs: TODO(jleibs): Link pending
+Python docs: [AnyValues](https://ref.rerun.io/docs/python/nightly/common/custom_data/#rerun.AnyValues)
 
 Notes:
  - Instead of passing `ext` as a dictionary, `AnyValues` now maps all keyword arguments directly to components.
