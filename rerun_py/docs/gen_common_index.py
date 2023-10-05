@@ -76,7 +76,15 @@ SECTION_TABLE: Final[list[Section]] = [
     ################################################################################
     Section(
         title="Initialization functions",
-        func_list=["init", "connect", "disconnect", "save", "serve", "spawn", "memory_recording"],
+        func_list=[
+            "init",
+            "connect",
+            "disconnect",
+            "save",
+            "serve",
+            "spawn",
+            "memory_recording",
+        ],
     ),
     Section(
         title="Logging functions",
@@ -137,7 +145,10 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Plotting",
-        class_list=["archetypes.BarChart", "archetypes.TimeSeriesScalar"],
+        class_list=[
+            "archetypes.BarChart",
+            "archetypes.TimeSeriesScalar",
+        ],
         gen_page=False,
     ),
     Section(
@@ -200,22 +211,26 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Script Helpers",
-        func_list=["script_add_args", "script_setup", "script_teardown"],
+        func_list=[
+            "script_add_args",
+            "script_setup",
+            "script_teardown",
+        ],
     ),
     Section(
         title="Other classes and functions",
         show_tables=False,
         func_list=[
-            "log_components",
-            "is_enabled",
             "get_data_recording",
             "get_global_data_recording",
-            "set_global_data_recording",
             "get_recording_id",
             "get_thread_local_data_recording",
+            "is_enabled",
+            "log_components",
+            "new_recording",
+            "set_global_data_recording",
             "set_thread_local_data_recording",
             "start_web_viewer_server",
-            "new_recording",
         ],
         class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
     ),
@@ -233,8 +248,8 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Deprecated Logging Methods",
         func_list=[
-            "log_arrow",
             "log_annotation_context",
+            "log_arrow",
             "log_cleared",
             "log_depth_image",
             "log_disconnected_space",
@@ -335,6 +350,7 @@ overview of what's possible and how.
                 fd.write("    options:\n")
                 fd.write("      show_root_heading: True\n")
                 fd.write("      heading_level: 3\n")
+                fd.write("      members_order: alphabetical\n")
                 # fd.write("      show_object_full_path: True\n")
                 if section.func_list or section.class_list:
                     fd.write("      members:\n")
