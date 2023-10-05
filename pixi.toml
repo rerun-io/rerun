@@ -9,7 +9,9 @@ platforms = ["linux-64"]
 [tasks]
 codegen = "cargo codegen"
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
-py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on=["py-build"] }
+py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
+  "py-build",
+] }
 
 [dependencies]
 attrs = ">=23.1.0"
