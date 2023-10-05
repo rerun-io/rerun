@@ -4,6 +4,264 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+## [0.9.0](https://github.com/rerun-io/rerun/compare/0.8.2...0.9.0) - New logging API - 2023-10-05
+
+[Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
+
+* Python: `pip install rerun-sdk`
+* Rust: `cargo add rerun` and `cargo install rerun-cli`
+* Online demo: <https://demo.rerun.io/version/0.9.0/>
+
+
+### Overview & Highlights
+Rerun 0.9.0 is a big release, that introduces a brand new logging API.
+This API is code-generated from a common definition, meaning the Python and Rust SDKs are very similar now.
+This will let us more easily extend and improve the API going forward.
+It is also the basis for our C++ API, which is coming in Rerun 0.10.0.
+
+Read [the migration guide](https://www.rerun.io/docs/reference/migration-0-9.md) for details!
+
+
+### In Detail
+#### 🐍 Python SDK
+- Deprecate legacy `Points{2|3}D` and all their components [#2768](https://github.com/rerun-io/rerun/pull/2768)
+- Implement roundtrip-ready `DisconnectedSpace` archetype [#2833](https://github.com/rerun-io/rerun/pull/2833)
+- Remove legacy `DisconnectedSpace` [#2835](https://github.com/rerun-io/rerun/pull/2835)
+- `DisconnectSpace` improvements [#2836](https://github.com/rerun-io/rerun/pull/2836)
+- Remove legacy `Transform3D` [#2846](https://github.com/rerun-io/rerun/pull/2846)
+- Implement roundtrip-ready `Arrows3D` archetype [#2883](https://github.com/rerun-io/rerun/pull/2883)
+- Sunset legacy `Arrow3D` [#2886](https://github.com/rerun-io/rerun/pull/2886)
+- Handle older numpy versions / py 3.8 in `VecND` extensions [#2896](https://github.com/rerun-io/rerun/pull/2896)
+- Redefine `PointND` components as SoA [#2894](https://github.com/rerun-io/rerun/pull/2894)
+- Redefine `Arrow3D` as SoA: introduce `Origin3D` and `Vector3D` [#2898](https://github.com/rerun-io/rerun/pull/2898)
+- Introduce new codegen types for annotation_context [#2895](https://github.com/rerun-io/rerun/pull/2895)
+- Implement roundtrip-ready `LineStrip{2|3}D` archetypes [#2925](https://github.com/rerun-io/rerun/pull/2925)
+- Sunset legacy `LineStrip{2|3}D` [#2929](https://github.com/rerun-io/rerun/pull/2929)
+- Codegen'd deserialization refactoring: correctness, error handling, helpers [#2953](https://github.com/rerun-io/rerun/pull/2953)
+- Add default value for `info` argument of `ClassDescription` [#3017](https://github.com/rerun-io/rerun/pull/3017)
+- Inject indicator components [#3121](https://github.com/rerun-io/rerun/pull/3121)
+- Be more explicit in our `AnnotationContext` python API [#3019](https://github.com/rerun-io/rerun/pull/3019)
+- Run all Python doc examples in CI [#3172](https://github.com/rerun-io/rerun/pull/3172)
+- Add `DrawOrder` component to `Image` archetype [#3182](https://github.com/rerun-io/rerun/pull/3182)
+- Introduce IDL-based Tensor/Image APIs for python. [#3188](https://github.com/rerun-io/rerun/pull/3188)
+- Introduce versioned `EntityPath` & refactor mesh/tensor caching [#3230](https://github.com/rerun-io/rerun/pull/3230)
+- Continue end-to-end support for Images and Tensors [#3237](https://github.com/rerun-io/rerun/pull/3237)
+- Box2D Archetype [#3282](https://github.com/rerun-io/rerun/pull/3282)
+- Implement `Clear` archetype for all SDKs [#3291](https://github.com/rerun-io/rerun/pull/3291)
+- Introduce new style for python extensions [#3302](https://github.com/rerun-io/rerun/pull/3302)
+- Create objects for delegating components [#3303](https://github.com/rerun-io/rerun/pull/3303)
+- Migrate all the datatypes to new `_ext.py` system [#3304](https://github.com/rerun-io/rerun/pull/3304)
+- Migrate all the components to new `_ext.py` system [#3316](https://github.com/rerun-io/rerun/pull/3316)
+- Migrate all the archetypes to new `_ext.py` system [#3317](https://github.com/rerun-io/rerun/pull/3317)
+- Now that types have been migrated, remove the old overrides implementation. [#3318](https://github.com/rerun-io/rerun/pull/3318)
+- Boxes3D archetype & port of old box api [#3339](https://github.com/rerun-io/rerun/pull/3339)
+- Introduce `as_components` interface for Python APIs [#3340](https://github.com/rerun-io/rerun/pull/3340)
+- Box2D/3D Python __init__ extension [#3348](https://github.com/rerun-io/rerun/pull/3348)
+- Restructure python codegen: move codegen to rerun and old log APIs to log_deprecated [#3374](https://github.com/rerun-io/rerun/pull/3374)
+- `Mesh3D` archetype [#3363](https://github.com/rerun-io/rerun/pull/3363)
+- Clarify matrix storage, improve Python API, add Python matrix array serializers [#3385](https://github.com/rerun-io/rerun/pull/3385)
+- Pinhole archetype definition/migration/tests/extensions [#3372](https://github.com/rerun-io/rerun/pull/3372)
+- `TimeSeriesScalar` archetype [#3397](https://github.com/rerun-io/rerun/pull/3397)
+- New explicit archetype API for logging barcharts [#3400](https://github.com/rerun-io/rerun/pull/3400)
+- `Asset3D` archetype [#3395](https://github.com/rerun-io/rerun/pull/3395)
+- Clean up python generated classes and allow `ComponentBatch(...)` style constructors [#3422](https://github.com/rerun-io/rerun/pull/3422)
+- Friendler `rr.Clear(recursive=xx)` APIs in python [#3446](https://github.com/rerun-io/rerun/pull/3446)
+- Allow any string as an entity path [#3443](https://github.com/rerun-io/rerun/pull/3443)
+- Make new APIs available at the toplevel rerun namespace [#3468](https://github.com/rerun-io/rerun/pull/3468)
+- Introduce splatted indicator components [#3479](https://github.com/rerun-io/rerun/pull/3479)
+- `MediaType` extension improvements for Python [#3511](https://github.com/rerun-io/rerun/pull/3511)
+- Check if another process is already listening on the port before trying to spawn [#3501](https://github.com/rerun-io/rerun/pull/3501)
+- Force kw-args on more Python functions [#3515](https://github.com/rerun-io/rerun/pull/3515)
+- `TextLog` integrations with native loggers [#3522](https://github.com/rerun-io/rerun/pull/3522)
+- Support for constructing `Boxes2D` from arrays of arbitrary formats [#3533](https://github.com/rerun-io/rerun/pull/3533)
+- Deprecate all of the legacy `log_` prefixed APIs. [#3564](https://github.com/rerun-io/rerun/pull/3564)
+- New decorator/context manager to catch exceptions when not in strict mode. [#3531](https://github.com/rerun-io/rerun/pull/3531)
+- Improve Asset3D and Blob APIs [#3591](https://github.com/rerun-io/rerun/pull/3591)
+- Port all Python examples to new APIs [#3545](https://github.com/rerun-io/rerun/pull/3545)
+- Introduce AnyValues as an alternative to extension_components [#3561](https://github.com/rerun-io/rerun/pull/3561)
+- Add upcasting support to `ClassDescription` [#3603](https://github.com/rerun-io/rerun/pull/3603)
+
+#### 🦀 Rust SDK
+- Deprecate legacy `Points{2|3}D` and all their components [#2768](https://github.com/rerun-io/rerun/pull/2768)
+- Implement roundtrip-ready `DisconnectedSpace` archetype [#2833](https://github.com/rerun-io/rerun/pull/2833)
+- Remove legacy `DisconnectedSpace` [#2835](https://github.com/rerun-io/rerun/pull/2835)
+- Remove legacy `Transform3D` [#2846](https://github.com/rerun-io/rerun/pull/2846)
+- Improved automatic `From` impl in Rust codegen backend [#2891](https://github.com/rerun-io/rerun/pull/2891)
+- Implement roundtrip-ready `Arrows3D` archetype [#2883](https://github.com/rerun-io/rerun/pull/2883)
+- Sunset legacy `Arrow3D` [#2886](https://github.com/rerun-io/rerun/pull/2886)
+- Redefine `PointND` components as SoA [#2894](https://github.com/rerun-io/rerun/pull/2894)
+- Redefine `Arrow3D` as SoA: introduce `Origin3D` and `Vector3D` [#2898](https://github.com/rerun-io/rerun/pull/2898)
+- Derive `app_id` from example name for all rust doc examples [#2912](https://github.com/rerun-io/rerun/pull/2912)
+- Implement roundtrip-ready `LineStrip{2|3}D` archetypes [#2925](https://github.com/rerun-io/rerun/pull/2925)
+- Sunset legacy `LineStrip{2|3}D` [#2929](https://github.com/rerun-io/rerun/pull/2929)
+- Fix major perf regression caused by unoptimized boundchecks [#2945](https://github.com/rerun-io/rerun/pull/2945)
+- Codegen'd deserialization refactoring: correctness, error handling, helpers [#2953](https://github.com/rerun-io/rerun/pull/2953)
+- A better Rust interface for `Color` datatype and component [#3115](https://github.com/rerun-io/rerun/pull/3115)
+- Inject indicator components [#3121](https://github.com/rerun-io/rerun/pull/3121)
+- Introduce Tensor and Image archetypes for rust [#3032](https://github.com/rerun-io/rerun/pull/3032)
+- Redesign `re_types` API ("as_components" model) [#3162](https://github.com/rerun-io/rerun/pull/3162)
+- Add `DrawOrder` component to `Image` archetype [#3182](https://github.com/rerun-io/rerun/pull/3182)
+- Introduce new `RecordingStream` logging APIs (sunset `MsgSender`) [#3184](https://github.com/rerun-io/rerun/pull/3184)
+- Introduce versioned `EntityPath` & refactor mesh/tensor caching [#3230](https://github.com/rerun-io/rerun/pull/3230)
+- Fix all remaining codegen casing issues [#3246](https://github.com/rerun-io/rerun/pull/3246)
+- Continue end-to-end support for Images and Tensors [#3237](https://github.com/rerun-io/rerun/pull/3237)
+- First-class indicator components for Rust [#3251](https://github.com/rerun-io/rerun/pull/3251)
+- Box2D Archetype [#3282](https://github.com/rerun-io/rerun/pull/3282)
+- Implement `Clear` archetype for all SDKs [#3291](https://github.com/rerun-io/rerun/pull/3291)
+- Boxes3D archetype & port of old box api [#3339](https://github.com/rerun-io/rerun/pull/3339)
+- Rust 1.72.1 and rerunio/docker_ci 0.9.1 [#3376](https://github.com/rerun-io/rerun/pull/3376)
+- `Mesh3D` archetype [#3363](https://github.com/rerun-io/rerun/pull/3363)
+- Pinhole archetype definition/migration/tests/extensions [#3372](https://github.com/rerun-io/rerun/pull/3372)
+- `TimeSeriesScalar` archetype [#3397](https://github.com/rerun-io/rerun/pull/3397)
+- New explicit archetype API for logging barcharts [#3400](https://github.com/rerun-io/rerun/pull/3400)
+- `Asset3D` archetype [#3395](https://github.com/rerun-io/rerun/pull/3395)
+- Introduce splatted indicator components [#3479](https://github.com/rerun-io/rerun/pull/3479)
+- Introduce `AsComponents` in Rust [#3482](https://github.com/rerun-io/rerun/pull/3482)
+- Make `FileSink` actually flush its data when asked to [#3525](https://github.com/rerun-io/rerun/pull/3525)
+- `TextLog` integrations with native loggers [#3522](https://github.com/rerun-io/rerun/pull/3522)
+
+#### 🪳 Bug Fixes
+- Remove draw order from 3d points [#2867](https://github.com/rerun-io/rerun/pull/2867)
+- Fix big bug in size estimation of array buffers [#2991](https://github.com/rerun-io/rerun/pull/2991)
+- Fix the Streams UI when the recording is empty [#3027](https://github.com/rerun-io/rerun/pull/3027)
+- Set shell to bash in reusable_build_and_upload_rerun_c.yml [#3048](https://github.com/rerun-io/rerun/pull/3048)
+- Clamp time panel height to avoid visual glitches [#3169](https://github.com/rerun-io/rerun/pull/3169)
+- Add missing title to `manifest.json` [#3186](https://github.com/rerun-io/rerun/pull/3186)
+- [bugfix] Allow user to edit colormap for depth images [#3241](https://github.com/rerun-io/rerun/pull/3241)
+- Fix lurking bug in datastore bucket sorting routines [#3281](https://github.com/rerun-io/rerun/pull/3281)
+- Fix row ordering flakiness when using clear APIs [#3288](https://github.com/rerun-io/rerun/pull/3288)
+- Improve viewport tile behavior [#3295](https://github.com/rerun-io/rerun/pull/3295)
+- Always codegen queries that contain `InstanceKey` [#3310](https://github.com/rerun-io/rerun/pull/3310)
+- Get rid of spurious warning and creating of TextDocumentView when using TextLogs [#3321](https://github.com/rerun-io/rerun/pull/3321)
+- Fix incorrect propagation of field's nullability into its inner list [#3352](https://github.com/rerun-io/rerun/pull/3352)
+- Fix post-GC purging of streams view time histogram [#3364](https://github.com/rerun-io/rerun/pull/3364)
+- Fix color greyscale colormap not being even [#3391](https://github.com/rerun-io/rerun/pull/3391)
+- Fix colormap picker preview & show it for depth point clouds as well [#3373](https://github.com/rerun-io/rerun/pull/3373)
+- Fix depth point cloud not taking transformation at its path into account [#3514](https://github.com/rerun-io/rerun/pull/3514)
+- Fix infinite recursion when putting a container inside a viewer tab [#3534](https://github.com/rerun-io/rerun/pull/3534)
+- Fix failing to preview small images [#3520](https://github.com/rerun-io/rerun/pull/3520)
+
+#### 🌁 Viewer Improvements
+- Open image and mesh files with drag-drop and File->Open [#3116](https://github.com/rerun-io/rerun/pull/3116)
+- Support loading images and meshes on web [#3131](https://github.com/rerun-io/rerun/pull/3131)
+- Add `rerun reset` command [#3145](https://github.com/rerun-io/rerun/pull/3145)
+- Show picking position when hovering something in the spatial view [#3227](https://github.com/rerun-io/rerun/pull/3227)
+- Rethink view selection & filtering + make all views opt-in [#3323](https://github.com/rerun-io/rerun/pull/3323)
+- Markdown support in `TextDocument` [#3343](https://github.com/rerun-io/rerun/pull/3343)
+- Click `recording://entity/path` links in markdown  [#3442](https://github.com/rerun-io/rerun/pull/3442)
+- Allow showing image shaped tensors in the tensor view [#3583](https://github.com/rerun-io/rerun/pull/3583)
+- Add option to display timestamps in the local system timezone [#3530](https://github.com/rerun-io/rerun/pull/3530) (thanks [@jparismorgan](https://github.com/jparismorgan)!)
+- Add obj mesh support to viewer [#3670](https://github.com/rerun-io/rerun/pull/3670)
+
+#### 🚀 Performance Improvements
+- Introduce new benchmark for string performance [#2926](https://github.com/rerun-io/rerun/pull/2926)
+- Pass through strings using arrow2::Buffers [#2931](https://github.com/rerun-io/rerun/pull/2931)
+- Introduce codegen optimizations for primitives and fixed-sized-arrays [#2970](https://github.com/rerun-io/rerun/pull/2970)
+- Optimize big point clouds by ~20% [#3108](https://github.com/rerun-io/rerun/pull/3108)
+- A nice speed up of 3D points clouds by ~69% [#3114](https://github.com/rerun-io/rerun/pull/3114)
+- Improve performance for many entities [#3078](https://github.com/rerun-io/rerun/pull/3078)
+- Turn on garbage-collection (`--memory-limit`) by default [#3161](https://github.com/rerun-io/rerun/pull/3161)
+- Optimize out unnecessary joins when querying archetypes [#3377](https://github.com/rerun-io/rerun/pull/3377)
+
+#### 🧑‍🏫 Examples
+- Add "rerun_example_" prefix to all our user-visible app-ids [#3112](https://github.com/rerun-io/rerun/pull/3112)
+- Add paper visualizations to examples [#3020](https://github.com/rerun-io/rerun/pull/3020) (thanks [@roym899](https://github.com/roym899)!)
+- API examples overhaul & roundtrip tests [#3204](https://github.com/rerun-io/rerun/pull/3204)
+- Generate manifest for examples page in viewer [#3332](https://github.com/rerun-io/rerun/pull/3332)
+- Fix `transform3d_simple` and reenable roundtrip test [#3401](https://github.com/rerun-io/rerun/pull/3401)
+- Update import path for HuggingFace's `randn_tensor` [#3506](https://github.com/rerun-io/rerun/pull/3506) (thanks [@hu-po](https://github.com/hu-po)!)
+- Add ControlNet example [#3568](https://github.com/rerun-io/rerun/pull/3568) (thanks [@roym899](https://github.com/roym899)!)
+
+#### 📚 Docs
+- Fix outdated links in docs [#2854](https://github.com/rerun-io/rerun/pull/2854)
+- Add how-to guide for clearing entities [#3211](https://github.com/rerun-io/rerun/pull/3211)
+- Support `\example` in codegen [#3378](https://github.com/rerun-io/rerun/pull/3378)
+- Docs codegen [#3445](https://github.com/rerun-io/rerun/pull/3445)
+- Generate component/datatype docs [#3535](https://github.com/rerun-io/rerun/pull/3535)
+- Update the python API docs site for the new APIs [#3565](https://github.com/rerun-io/rerun/pull/3565)
+- Add a how-to guide for using Rerun with custom data [#3634](https://github.com/rerun-io/rerun/pull/3634)
+
+#### 🖼 UI Improvements
+- Migrate to custom checkbox/radio_value UI [#2851](https://github.com/rerun-io/rerun/pull/2851)
+- Remove expansion effect from time panel toolbar [#2863](https://github.com/rerun-io/rerun/pull/2863)
+- Remove expansion effect from the large collapsing headers [#2864](https://github.com/rerun-io/rerun/pull/2864)
+- Change the styling and behaviour of hyperlinks [#2872](https://github.com/rerun-io/rerun/pull/2872)
+- Improve space view tab design [#2879](https://github.com/rerun-io/rerun/pull/2879)
+- Improve drag tab UI [#2893](https://github.com/rerun-io/rerun/pull/2893)
+- Normalize various text string in UI [#2902](https://github.com/rerun-io/rerun/pull/2902)
+- Add (debug-only) style panel [#2914](https://github.com/rerun-io/rerun/pull/2914)
+- Add clip rect in panels and use them for large collapsing headers [#2936](https://github.com/rerun-io/rerun/pull/2936)
+- Add Recordings section to the left panel [#2938](https://github.com/rerun-io/rerun/pull/2938)
+- New triangle collapse arrow for large collapsible header [#2920](https://github.com/rerun-io/rerun/pull/2920)
+- Add support for tree to `ListItem` [#2968](https://github.com/rerun-io/rerun/pull/2968)
+- Add hierarchical display in recordings panel [#2971](https://github.com/rerun-io/rerun/pull/2971)
+- Add support to close a recording [#2972](https://github.com/rerun-io/rerun/pull/2972)
+- Update to wgpu 0.17 & latest egui [#2980](https://github.com/rerun-io/rerun/pull/2980)
+- Show RAM use and data rate when hovering an entity in stream view [#2997](https://github.com/rerun-io/rerun/pull/2997)
+- Don't select the spaceview when maximizing it [#2988](https://github.com/rerun-io/rerun/pull/2988)
+- Add delete buttons in the Recordings UI [#2976](https://github.com/rerun-io/rerun/pull/2976)
+- Introduce a welcome screen when no recording is loaded [#2982](https://github.com/rerun-io/rerun/pull/2982)
+- Remove the limitation to a single dropped file [#3030](https://github.com/rerun-io/rerun/pull/3030)
+- Uniform icon, pointer, and tooltip for external links [#3026](https://github.com/rerun-io/rerun/pull/3026)
+- Improve styling of demo header [#3022](https://github.com/rerun-io/rerun/pull/3022)
+- Implement "Open file" dialog on Web [#3068](https://github.com/rerun-io/rerun/pull/3068)
+- Show Welcome Screen after closing recording even with `--skip-welcome-screen` [#3035](https://github.com/rerun-io/rerun/pull/3035)
+- Fix the 3d space view's tooltip help text [#3132](https://github.com/rerun-io/rerun/pull/3132)
+- Use `ListItem` in blueprint tree UI [#3118](https://github.com/rerun-io/rerun/pull/3118)
+- Use `ListItem` in Stream Tree UI [#3153](https://github.com/rerun-io/rerun/pull/3153)
+- Limit the size of component tooltips with `UiVerbosity::Reduced` [#3171](https://github.com/rerun-io/rerun/pull/3171)
+- Smaller AnnotationContext tooltip [#3217](https://github.com/rerun-io/rerun/pull/3217)
+- Add Examples page to the Welcome Screen [#3191](https://github.com/rerun-io/rerun/pull/3191)
+- `Welcome Page` refresh [#3219](https://github.com/rerun-io/rerun/pull/3219)
+- Show currently loading recordings in Recordings menu [#3307](https://github.com/rerun-io/rerun/pull/3307)
+- Update to latest egui + use new Image api [#3311](https://github.com/rerun-io/rerun/pull/3311)
+- Fix Boxes2D view not processing annotation labels [#3331](https://github.com/rerun-io/rerun/pull/3331)
+- Hide stream view and selection view in welcome app [#3333](https://github.com/rerun-io/rerun/pull/3333)
+- Tighter UI for Pinhole and when hovering images [#3579](https://github.com/rerun-io/rerun/pull/3579)
+
+#### 🕸️ Web
+- Move example description to README frontmatter [#3201](https://github.com/rerun-io/rerun/pull/3201)
+- Fix instantiateStreaming usage on web [#3209](https://github.com/rerun-io/rerun/pull/3209)
+- Web-Viewer: Don't auto-connect to `wss://hostname` when an `?url=` is missing [#3345](https://github.com/rerun-io/rerun/pull/3345)
+
+#### 📈 Analytics
+- Recreate the analytics state directory if necessary before creating pipeline [#2878](https://github.com/rerun-io/rerun/pull/2878)
+- Update resolved analytics URL [#3101](https://github.com/rerun-io/rerun/pull/3101)
+- Use `ehttp` in `re_analytics` [#3155](https://github.com/rerun-io/rerun/pull/3155)
+- Web analytics [#3166](https://github.com/rerun-io/rerun/pull/3166)
+- Keep track of how files are sourced for analytics and UI [#3371](https://github.com/rerun-io/rerun/pull/3371)
+
+#### 🧑‍💻 Dev-experience
+- Make `cargo codegen` work irrelevant of CWD [#2913](https://github.com/rerun-io/rerun/pull/2913)
+- `scripts/highlight_issues.py`: print issues with no comments [#2939](https://github.com/rerun-io/rerun/pull/2939)
+- Use `prettyplease` to improve formatting of generated Rust code [#2949](https://github.com/rerun-io/rerun/pull/2949)
+- Enable debug symbols in build scripts (`build.rs`) in dev mode [#2962](https://github.com/rerun-io/rerun/pull/2962)
+- Update egui via a `[patch]` [#2969](https://github.com/rerun-io/rerun/pull/2969)
+- Track file sizes [#3037](https://github.com/rerun-io/rerun/pull/3037)
+- Fix docs previews [#3066](https://github.com/rerun-io/rerun/pull/3066)
+- Name the rayon threads [#3060](https://github.com/rerun-io/rerun/pull/3060)
+- Improve size tracking table [#3117](https://github.com/rerun-io/rerun/pull/3117)
+- Remove `setup-rust` from toml lint job [#3143](https://github.com/rerun-io/rerun/pull/3143)
+- Render demo manifest [#3151](https://github.com/rerun-io/rerun/pull/3151)
+- Fix update PR body script [#3181](https://github.com/rerun-io/rerun/pull/3181)
+- Update CI `actions/checkout@v4` [#3208](https://github.com/rerun-io/rerun/pull/3208)
+- Update all uses of `actions/checkout` to use explicit `ref` [#3322](https://github.com/rerun-io/rerun/pull/3322)
+- Make 'Print datastore' viable with real world data [#3452](https://github.com/rerun-io/rerun/pull/3452)
+- Update workflows to support fork PRs [#3544](https://github.com/rerun-io/rerun/pull/3544)
+
+#### 🗣 Refactors
+- Remove legacy `re_components` [#3440](https://github.com/rerun-io/rerun/pull/3440)
+
+#### 📦 Dependencies
+- Update clang-format [#2942](https://github.com/rerun-io/rerun/pull/2942)
+- Rust 1.72 + format `let-else` (!) [#3102](https://github.com/rerun-io/rerun/pull/3102)
+- Update to egui 0.23 [#3523](https://github.com/rerun-io/rerun/pull/3523)
+
+#### 🤷‍♂️ Other
+- Rename Point2D/3D component to Position2D/3D and use it instead of Origin2D in Box2D [#3305](https://github.com/rerun-io/rerun/pull/3305)
+- Always protect at least one value on the timeline when running GC [#3357](https://github.com/rerun-io/rerun/pull/3357)
+
+
 ## [0.8.2](https://github.com/rerun-io/rerun/compare/0.8.1...0.8.2) - Bug fixes - 2023-09-05
 
 #### 🪳 Bug Fixes
