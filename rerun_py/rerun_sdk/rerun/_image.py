@@ -13,7 +13,6 @@ from .archetypes import Image
 from .components import DrawOrderLike, TensorData
 from .datatypes import TensorBuffer, TensorDimension
 
-
 __all__ = ["ImageFormat", "ImageEncoded"]
 
 
