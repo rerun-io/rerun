@@ -110,7 +110,7 @@ impl ViewPartSystem for TimeSeriesSystem {
 impl TimeSeriesSystem {
     fn load_scalars(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();

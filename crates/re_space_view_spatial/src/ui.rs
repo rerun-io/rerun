@@ -308,7 +308,7 @@ pub fn create_labels(
     labels: &[UiLabel],
     ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
-    parent_ui: &mut egui::Ui,
+    parent_ui: &egui::Ui,
     highlights: &SpaceViewHighlights,
     spatial_kind: SpatialSpaceViewKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
@@ -454,7 +454,7 @@ pub fn picking(
     mut response: egui::Response,
     space_from_ui: egui::emath::RectTransform,
     ui_clip_rect: egui::Rect,
-    parent_ui: &mut egui::Ui,
+    parent_ui: &egui::Ui,
     eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,

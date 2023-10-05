@@ -66,7 +66,7 @@ pub fn auto_spawn_heuristic(
 }
 
 pub fn update_object_property_heuristics(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
     entity_properties: &mut re_data_store::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
@@ -140,7 +140,7 @@ fn update_pinhole_property_heuristics(
 }
 
 fn update_depth_cloud_property_heuristics(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
     entity_properties: &mut re_data_store::EntityPropertyMap,
     spatial_kind: SpatialSpaceViewKind,

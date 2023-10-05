@@ -225,7 +225,7 @@ impl ViewTextFilters {
 
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
-    fn update(&mut self, ctx: &mut ViewerContext<'_>, entries: &[&Entry]) {
+    fn update(&mut self, ctx: &ViewerContext<'_>, entries: &[&Entry]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -267,7 +267,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
 fn table_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut TextSpaceViewState,
+    state: &TextSpaceViewState,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
 ) {

@@ -445,7 +445,7 @@ fn is_entity_processed_by_part_collection(
 }
 
 pub fn identify_entities_per_system_per_class(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
 ) -> EntitiesPerSystemPerClass {
     re_tracing::profile_function!();
 

@@ -46,7 +46,7 @@ pub fn recordings_panel_ui(
 }
 
 fn loading_receivers_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     rx: &ReceiveSet<LogMsg>,
     ui: &mut egui::Ui,
 ) -> bool {
@@ -297,7 +297,7 @@ fn data_source_string(data_source: &re_smart_channel::SmartChannelSource) -> Str
     }
 }
 
-fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     use re_ui::UICommandSender;
 
     if ctx

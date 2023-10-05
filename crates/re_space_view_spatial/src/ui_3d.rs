@@ -622,7 +622,7 @@ pub fn view_3d(
 }
 
 fn show_projections_from_2d_space(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     line_builder: &mut LineStripSeriesBuilder,
     space_cameras: &[SpaceCamera3D],
     tracked_space_camera: &Option<EntityPath>,

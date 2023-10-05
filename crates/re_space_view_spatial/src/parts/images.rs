@@ -54,7 +54,7 @@ pub struct ViewerImage {
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
     tensor_path_hash: VersionedInstancePathHash,
@@ -203,7 +203,7 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         _ent_props: &EntityProperties,
         arch_view: &ArchetypeView<Image>,
@@ -292,7 +292,7 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_depth_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
@@ -412,7 +412,7 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_segmentation_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         _ent_props: &EntityProperties,
         arch_view: &ArchetypeView<SegmentationImage>,
@@ -499,7 +499,7 @@ impl ImagesPart {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,

@@ -176,8 +176,8 @@ impl GpuRenderPipelinePool {
         &mut self,
         device: &wgpu::Device,
         frame_index: u64,
-        shader_modules: &mut GpuShaderModulePool,
-        pipeline_layouts: &mut GpuPipelineLayoutPool,
+        shader_modules: &GpuShaderModulePool,
+        pipeline_layouts: &GpuPipelineLayoutPool,
     ) {
         re_tracing::profile_function!();
         self.pool.current_frame_index = frame_index;

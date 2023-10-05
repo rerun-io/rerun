@@ -688,7 +688,7 @@ impl TimePanel {
 
 /// Draw the hovered/selected highlight background for a timeline row.
 fn highlight_timeline_row(
-    ui: &mut Ui,
+    ui: &Ui,
     ctx: &ViewerContext<'_>,
     painter: &Painter,
     item: &Item,
@@ -808,7 +808,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
 // ----------------------------------------------------------------------------
 
 fn initialize_time_ranges_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     time_x_range: Rangef,
     mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
@@ -875,7 +875,7 @@ fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
 fn paint_time_ranges_gaps(
     time_ranges_ui: &TimeRangesUi,
     re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     painter: &egui::Painter,
     y_range: Rangef,
 ) {
@@ -1015,7 +1015,7 @@ fn paint_time_ranges_gaps(
 fn interact_with_streams_rect(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     full_rect: &Rect,
     streams_rect: &Rect,
 ) -> egui::Response {
@@ -1077,7 +1077,7 @@ fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
