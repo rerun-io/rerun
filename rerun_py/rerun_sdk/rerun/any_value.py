@@ -30,7 +30,7 @@ class AnyBatchValue(ComponentBatchLike):
         this function so it's possible to pass them directly to AnyValues.
 
         If the object doesn't implement `as_arrow_array()`, it will be passed as an argument
-        to [pyarrow.array](https://arrow.apache.org/docs/python/generated/pyarrow.array.html).
+        to [pyarrow.array][] .
 
         Note: rerun requires that a given component only take on a single type.
         The first type logged will be the type that is used for all future logs
@@ -102,8 +102,7 @@ class AnyValues(AsComponents):
         Each kwarg will be logged as a separate component using the provided data.
          - The key will be used as the name of the component
          - The value must be able to be converted to an array of arrow types. In general, if
-           you can pass it to [pyarrow.array](https://arrow.apache.org/docs/python/generated/pyarrow.array.html),
-           you can log it as a extension component.
+           you can pass it to [pyarrow.array][] you can log it as a extension component.
 
         All values must either have the same length, or be singular in which case they will be
         treated as a splat.
