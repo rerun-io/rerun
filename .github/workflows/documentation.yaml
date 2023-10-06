@@ -27,7 +27,7 @@ jobs:
       - uses: jprochazk/linkinator-action@main
         with:
           paths: "**/*.md"
-          linksToSkip: "https://crates.io/crates/.*" # Avoid crates.io rate-limiting
+          linksToSkip: "https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*" # Avoid crates.io rate-limiting, and skip changelog PR links (so many)
           retry: true
           retryErrors: true
           retryErrorsCount: 5
