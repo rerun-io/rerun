@@ -93,7 +93,19 @@ class AnyBatchValue(ComponentBatchLike):
 
 
 class AnyValues(AsComponents):
-    """Helper to log arbitrary values as a bundle of components."""
+    """
+    Helper to log arbitrary values as a bundle of components.
+
+    Example
+    -------
+    ```python
+    rr.log(
+        "any_values", rr.AnyValues(
+            foo=[1.2, 3.4, 5.6], bar="hello world",
+        ),
+    )
+    ```
+    """
 
     def __init__(self, drop_untyped_nones: bool = True, **kwargs: Any) -> None:
         """
@@ -101,46 +113,47 @@ class AnyValues(AsComponents):
 
         Each kwarg will be logged as a separate component using the provided data.
          - The key will be used as the name of the component
-         - The value must be able to be converted to an array of arrow types. In general, if
-           you can pass it to [pyarrow.array][] you can log it as a extension component.
+         - The value must be able to be converted to an array of arrow types. In
+           general, if you can pass it to [pyarrow.array][] you can log it as a
+           extension component.
 
-        All values must either have the same length, or be singular in which case they will be
-        treated as a splat.
+        All values must either have the same length, or be singular in which
+        case they will be treated as a splat.
 
-        Note: rerun requires that a given component only take on a single type. The first type logged
-        will be the type that is used for all future logs of that component. The API will make
-        a best effort to do type conversion if supported by numpy and arrow. Any components that
-        can't be converted will be dropped.
+        Note: rerun requires that a given component only take on a single type.
+        The first type logged will be the type that is used for all future logs
+        of that component. The API will make a best effort to do type conversion
+        if supported by numpy and arrow. Any components that can't be converted
+        will result in a warning, or an exception in strict mode.
 
-        Note that `None` values provide a particular challenge as they have no type information,
-        until after the component has been logged with a particular type. By default, these values
-        are dropped. You can change this behavior by setting `drop_untyped_nones` to `False`, but
-        be aware that this will result in potential warnings or exceptions if you are running in
-        strict mode.
+        `None` values provide a particular challenge as they have no type
+        information, until after the component has been logged with a particular
+        type. By default, these values are dropped. This should generally be
+        fine as logging `None` to clear the value before it has been logged is
+        meaningless unless you are logging out-of-order data. In such cases,
+        consider introducing your own typed component via
+        [rerun.ComponentBatchLike][].
 
-        If you are want to inspect how your component will be converted to the underlying
-        arrow code, the following snippet is what is happening internally:
+        You can change this behavior by setting `drop_untyped_nones` to `False`,
+        but be aware that this will result in potential warnings or exceptions
+        if you are running in strict mode.
+
+        If you are want to inspect how your component will be converted to the
+        underlying arrow code, the following snippet is what is happening
+        internally:
         ```
         np_value = np.atleast_1d(np.array(value, copy=False))
         pa_value = pa.array(value)
+        ```
 
         Parameters
         ----------
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they have been
-            previously logged with a type.
-        ```
+            If True, any components that are None will be dropped unless they
+            have been previously logged with a type.
+        kwargs:
+            The components to be logged.
 
-        Example
-        -------
-        ```
-        rr.log(
-            "any_values",
-            rr.AnyValues(
-                foo=[1.2, 3.4, 5.6],
-                bar="hello world",
-            ),
-        )
         ```
         """
         global ANY_VALUE_TYPE_REGISTRY
@@ -155,6 +168,3 @@ class AnyValues(AsComponents):
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         return self.component_batches
-
-    def __repr__(self):
-        return f"AnyValues({self.component_batches})"
