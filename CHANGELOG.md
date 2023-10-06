@@ -19,7 +19,7 @@ This API is code-generated from a common definition, meaning the Python and Rust
 This will let us more easily extend and improve the API going forward.
 It is also the basis for our C++ API, which is coming in Rerun 0.10.0.
 
-Read [the migration guide](https://www.rerun.io/docs/reference/migration-0-9.md) for details!
+Read [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for details!
 
 <picture>
   <img src="https://static.rerun.io/0.9.0-start-screen/ee485acc4bf50519102180d01ae6338aef07e88e/full.png" alt="0.9.0 Welcome Screen">
