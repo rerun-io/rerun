@@ -14,7 +14,7 @@ from rerun.log_deprecated import (
     Color,
     Colors,
     OptionalClassIds,
-    _stroke_width_to_radii,
+    _radii_from_stroke_width,
 )
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -178,7 +178,7 @@ def log_obbs(
     else:
         rotations = None
 
-    radii = _stroke_width_to_radii(stroke_widths)
+    radii = _radii_from_stroke_width(stroke_widths)
 
     arch = Boxes3D(
         half_sizes=half_sizes,

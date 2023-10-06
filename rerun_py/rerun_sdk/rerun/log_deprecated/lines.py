@@ -10,7 +10,7 @@ from rerun._log import log
 from rerun.any_value import AnyValues
 from rerun.archetypes import LineStrips2D, LineStrips3D
 from rerun.error_utils import _send_warning
-from rerun.log_deprecated import Color, Colors, _stroke_width_to_radii
+from rerun.log_deprecated import Color, Colors, _radii_from_stroke_width
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -86,7 +86,7 @@ def log_line_strip(
 
     recording = RecordingStream.to_native(recording)
 
-    radii = _stroke_width_to_radii(stroke_width)
+    radii = _radii_from_stroke_width(stroke_width)
 
     positions = np.require(positions, dtype="float32")
     if positions.shape[1] == 2:
@@ -189,7 +189,7 @@ def log_line_strips_2d(
     if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
         line_strips = list(line_strips)
 
-    radii = _stroke_width_to_radii(stroke_widths)
+    radii = _radii_from_stroke_width(stroke_widths)
 
     arch = LineStrips2D(
         line_strips,
@@ -277,7 +277,7 @@ def log_line_strips_3d(
     if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
         line_strips = list(line_strips)
 
-    radii = _stroke_width_to_radii(stroke_widths)
+    radii = _radii_from_stroke_width(stroke_widths)
 
     arch = LineStrips3D(
         line_strips,
