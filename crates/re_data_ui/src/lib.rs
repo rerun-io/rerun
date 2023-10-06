@@ -199,7 +199,7 @@ impl DataUi for PathOp {
 // ---------------------------------------------------------------------------
 
 pub fn annotations(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     query: &re_arrow_store::LatestAtQuery,
     entity_path: &re_data_store::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {

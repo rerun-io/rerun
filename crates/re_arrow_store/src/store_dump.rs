@@ -225,5 +225,6 @@ fn filter_column<'a, T: 'a + Clone>(
     col_time
         .iter()
         .zip(column)
-        .filter_map(move |(time, v)| time_filter.contains((*time).into()).then(|| v.clone()))
+        .filter(move |(time, _)| time_filter.contains((**time).into()))
+        .map(|(_, v)| v.clone())
 }

@@ -24,7 +24,7 @@ pub enum TensorUploadError {
 }
 
 pub fn colormapped_texture(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
@@ -51,7 +51,7 @@ pub fn colormapped_texture(
 }
 
 fn upload_texture_slice_to_gpu(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     slice_selection: &SliceSelection,

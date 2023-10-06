@@ -221,7 +221,7 @@ where
         if let (Some(keypoint_id), Some(class_id), primary) = (keypoint_id, class_id, primary) {
             keypoints
                 .entry((class_id, query.latest_at.as_i64()))
-                .or_insert_with(Default::default)
+                .or_default()
                 .insert(keypoint_id.0, primary_into_position(&primary));
             class_description.annotation_info_with_keypoint(keypoint_id.0)
         } else {

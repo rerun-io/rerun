@@ -370,7 +370,7 @@ pub fn data_density_graph_ui(
     ctx: &mut ViewerContext<'_>,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     num_timeless_messages: usize,
     time_histogram: &TimeHistogram,
     row_rect: Rect,
@@ -500,7 +500,7 @@ pub fn data_density_graph_ui(
     }
 }
 
-fn graph_color(ctx: &mut ViewerContext<'_>, item: &Item, ui: &mut egui::Ui) -> Color32 {
+fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains(item);
     if is_selected {
         make_brighter(ui.visuals().widgets.active.fg_stroke.color)

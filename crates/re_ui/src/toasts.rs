@@ -128,7 +128,7 @@ impl Toasts {
     }
 }
 
-fn default_toast_contents(ui: &mut egui::Ui, toast: &mut Toast) -> egui::Response {
+fn default_toast_contents(ui: &mut egui::Ui, toast: &Toast) -> egui::Response {
     egui::Frame::window(ui.style())
         .inner_margin(10.0)
         .show(ui, |ui| {

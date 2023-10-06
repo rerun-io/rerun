@@ -895,7 +895,7 @@ impl App {
     /// The welcome screen can be displayed only when a blueprint is available (and no recording is
     /// loaded). This function implements the heuristic which determines when the welcome screen
     /// should show up.
-    fn should_show_welcome_screen(&mut self, store_hub: &mut StoreHub) -> bool {
+    fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
         // Don't show the welcome screen if we have actual data to display.
         if store_hub.current_recording().is_some() || store_hub.selected_application_id().is_some()
         {
@@ -1058,7 +1058,7 @@ impl eframe::App for App {
 
         // Heuristic to set the app_id to the welcome screen blueprint.
         // Must be called before `read_context` below.
-        if self.should_show_welcome_screen(&mut store_hub) {
+        if self.should_show_welcome_screen(&store_hub) {
             store_hub.set_app_id(StoreHub::welcome_screen_app_id());
         }
 
@@ -1127,7 +1127,7 @@ fn populate_space_view_class_registry_with_builtin(
     Ok(())
 }
 
-fn paint_background_fill(ui: &mut egui::Ui) {
+fn paint_background_fill(ui: &egui::Ui) {
     // This is required because the streams view (time panel)
     // has rounded top corners, which leaves a gap.
     // So we fill in that gap (and other) here.
