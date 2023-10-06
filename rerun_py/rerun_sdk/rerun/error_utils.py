@@ -70,19 +70,28 @@ def _send_warning_or_raise(
     message: str,
     depth_to_user_code: int,
     recording: RecordingStream | None = None,
+    exception_type: type[Exception] = ValueError,
 ) -> None:
     """
     Sends a warning about the usage of the Rerun SDK.
 
-    Used for recoverable problems.
-    You can also use this for unrecoverable problems,
-    or raise an exception and let the @log_decorator handle it instead.
+    Note: in strict mode this will instead raise the specified exception type
+    (defaults to ValueError).
+
+    This will both send a message to the Rerun viewer and log a warning using
+    `warning.warn` with a custom `RerunWarning` class.
+
+    This should generally be used for recoverable problems where you want execution
+    to continue in the local scope.
+
+    For unrecoverable problems where execution cannot otherwise continue, you should
+    instead raise an exception and let the `catch_and_log_exceptions` handle it.
     """
     from rerun._log import log
     from rerun.archetypes import TextLog
 
     if strict_mode():
-        raise TypeError(message)
+        raise exception_type(message)
 
     # Send the warning to the user first
     warnings.warn(message, category=RerunWarning, stacklevel=depth_to_user_code + 1)
