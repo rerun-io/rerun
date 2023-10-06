@@ -285,3 +285,42 @@ fn joint_visit() {
     assert_eq!(positions, positions_out);
     assert_eq!(expected_colors, colors_out);
 }
+
+#[test]
+fn joint_visit_with_empty() {
+    let positions = vec![
+        Position2D::new(1.0, 2.0), //
+        Position2D::new(3.0, 4.0),
+        Position2D::new(5.0, 6.0),
+        Position2D::new(7.0, 8.0),
+        Position2D::new(9.0, 10.0),
+    ];
+
+    let shared_ids = InstanceKey::from_iter(0..5);
+
+    let colors: Vec<Color> = vec![];
+
+    let positions_comp =
+        ComponentWithInstances::from_native(shared_ids.clone(), positions.clone()).unwrap();
+    let colors_comp = ComponentWithInstances::from_native(shared_ids, colors).unwrap();
+
+    let arch_view =
+        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+
+    let mut positions_out = Vec::<Position2D>::new();
+    let mut colors_out = Vec::<Option<Color>>::new();
+
+    itertools::izip!(
+        arch_view.iter_required_component::<Position2D>().unwrap(),
+        arch_view.iter_optional_component::<Color>().unwrap()
+    )
+    .for_each(|(point, color)| {
+        positions_out.push(point);
+        colors_out.push(color);
+    });
+
+    let expected_colors = vec![None, None, None, None, None];
+
+    assert_eq!(positions, positions_out);
+    assert_eq!(expected_colors, colors_out);
+}
