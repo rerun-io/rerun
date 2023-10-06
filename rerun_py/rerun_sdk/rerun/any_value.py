@@ -124,10 +124,10 @@ class AnyValues(AsComponents):
         The first type logged will be the type that is used for all future logs
         of that component. The API will make a best effort to do type conversion
         if supported by numpy and arrow. Any components that can't be converted
-        will result in a warning, or an exception in strict mode.
+        will result in a warning (or an exception in strict mode).
 
         `None` values provide a particular challenge as they have no type
-        information, until after the component has been logged with a particular
+        information until after the component has been logged with a particular
         type. By default, these values are dropped. This should generally be
         fine as logging `None` to clear the value before it has been logged is
         meaningless unless you are logging out-of-order data. In such cases,
@@ -135,8 +135,8 @@ class AnyValues(AsComponents):
         [rerun.ComponentBatchLike][].
 
         You can change this behavior by setting `drop_untyped_nones` to `False`,
-        but be aware that this will result in potential warnings or exceptions
-        if you are running in strict mode.
+        but be aware that this will result in potential warnings (or exceptions
+        in strict mode).
 
         If you are want to inspect how your component will be converted to the
         underlying arrow code, the following snippet is what is happening
