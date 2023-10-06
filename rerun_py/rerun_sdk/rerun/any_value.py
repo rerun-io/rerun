@@ -6,7 +6,7 @@ import numpy as np
 import pyarrow as pa
 
 from ._log import AsComponents, ComponentBatchLike
-from .error_utils import _send_warning_or_raise
+from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 ANY_VALUE_TYPE_REGISTRY: dict[str, Any] = {}
 
@@ -59,7 +59,9 @@ class AnyBatchValue(ComponentBatchLike):
         self.name = name
         self.pa_array = None
 
-        try:
+        with catch_and_log_exceptions(f"Converting data for '{name}'"):
+            if isinstance(value, pa.Array):
+                self.pa_array = value
             if hasattr(value, "as_arrow_array"):
                 self.pa_array = value.as_arrow_array()
             else:
@@ -70,17 +72,11 @@ class AnyBatchValue(ComponentBatchLike):
                     self.pa_array = pa.array(np_value, type=pa_type)
                 else:
                     if value is None:
-                        _send_warning_or_raise(f"AnyValues '{name}' of unknown type has no data. Ignoring.", 1)
+                        raise ValueError("Cannot convert None to arrow array. Type is unknown.")
                     else:
                         np_value = np.atleast_1d(np.array(value, copy=False))
                         self.pa_array = pa.array(np_value)
                         ANY_VALUE_TYPE_REGISTRY[name] = (np_value.dtype, self.pa_array.type)
-
-        except Exception as ex:
-            _send_warning_or_raise(
-                f"Error converting data to arrow for AnyValues '{name}'. Ignoring.\n{type(ex).__name__}: {ex}",
-                1,
-            )
 
     def is_valid(self) -> bool:
         return self.pa_array is not None

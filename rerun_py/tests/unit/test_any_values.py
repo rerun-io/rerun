@@ -43,4 +43,4 @@ def test_bad_any_value() -> None:
 
         assert len(batches) == 0
         assert len(warnings) == 1
-        assert "Error converting data to arrow for AnyValues 'bad_data'" in str(warnings[0].message)
+        assert "Converting data for 'bad_data':" in str(warnings[0].message)
