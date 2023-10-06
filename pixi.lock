@@ -62,61 +62,58 @@ package:
   manager: conda
   platform: linux-64
   dependencies:
-    libarrow: ==10.0.1 h1935d02_43_cpu
-  url: https://conda.anaconda.org/conda-forge/linux-64/arrow-cpp-10.0.1-ha770c72_43_cpu.conda
+    libarrow: ==10.0.1 hc3189b8_44_cpu
+  url: https://conda.anaconda.org/conda-forge/linux-64/arrow-cpp-10.0.1-ha770c72_44_cpu.conda
   hash:
-    md5: 0b8b77aba55ff9d44a03fbb59ba0a2b1
-    sha256: dcbf6d7a17f79187bd6e540146d416cb5fee07bab43b425ded63c2e7cda2352b
+    md5: 9085ef32fdacb90187d09a7def867fb5
+    sha256: fe1c16111692b769bfdaa80125cbb4d994e866fd9e83d85bf84a9dbd8d6ea906
   optional: false
   category: main
-  build: ha770c72_43_cpu
+  build: ha770c72_44_cpu
   arch: x86_64
   subdir: linux-64
-  build_number: 43
+  build_number: 44
   license: Apache-2.0
-  license_family: APACHE
-  size: 34161
-  timestamp: 1696001260754
+  size: 34141
+  timestamp: 1696592689038
 - name: arrow-cpp
   version: 10.0.1
   manager: conda
   platform: osx-arm64
   dependencies:
-    libarrow: ==10.0.1 he713f65_43_cpu
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/arrow-cpp-10.0.1-hce30654_43_cpu.conda
+    libarrow: ==10.0.1 he713f65_44_cpu
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/arrow-cpp-10.0.1-hce30654_44_cpu.conda
   hash:
-    md5: ea19b1ccbbb8f224bece4d1565582cd4
-    sha256: 8b09bd8d5b87437805b354ae58dd45916801847830e56216933cd7ebd452e0bb
+    md5: b1e2ad14fdbb4e093d8856f44f101dd4
+    sha256: f053812c247347af8c83e28ceec75d1303d77a1f82ff8c962fb9666be5f6cfd9
   optional: false
   category: main
-  build: hce30654_43_cpu
+  build: hce30654_44_cpu
   arch: aarch64
   subdir: osx-arm64
-  build_number: 43
+  build_number: 44
   license: Apache-2.0
-  license_family: APACHE
-  size: 34263
-  timestamp: 1696002412507
+  size: 34319
+  timestamp: 1696593771071
 - name: arrow-cpp
   version: 10.0.1
   manager: conda
   platform: win-64
   dependencies:
-    libarrow: ==10.0.1 h58a770d_43_cpu
-  url: https://conda.anaconda.org/conda-forge/win-64/arrow-cpp-10.0.1-h57928b3_43_cpu.conda
+    libarrow: ==10.0.1 h58a770d_44_cpu
+  url: https://conda.anaconda.org/conda-forge/win-64/arrow-cpp-10.0.1-h57928b3_44_cpu.conda
   hash:
-    md5: ecc8481ba26bc12dcf271364d68d2961
-    sha256: 1ca5d69c7ed425e8cce38dc95b50f15286b6d75f0cc15f147f7abf323a92ecbb
+    md5: 069703cf87380c23476ea1874106c099
+    sha256: c7e64f54fda8f8bb179420c3bdeb71636a6db320ebd00b599f8f35213fb2f9dc
   optional: false
   category: main
-  build: h57928b3_43_cpu
+  build: h57928b3_44_cpu
   arch: x86_64
   subdir: win-64
-  build_number: 43
+  build_number: 44
   license: Apache-2.0
-  license_family: APACHE
-  size: 34657
-  timestamp: 1696001503296
+  size: 34597
+  timestamp: 1696593807482
 - name: attrs
   version: 23.1.0
   manager: conda
@@ -1109,6 +1106,26 @@ package:
   license_family: Apache
   size: 3228453
   timestamp: 1696018718586
+- name: binutils
+  version: '2.40'
+  manager: conda
+  platform: linux-64
+  dependencies:
+    binutils_impl_linux-64: '>=2.40,<2.41.0a0'
+  url: https://conda.anaconda.org/conda-forge/linux-64/binutils-2.40-hdd6e379_0.conda
+  hash:
+    md5: ccc940fddbc3fcd3d79cd4c654c4b5c4
+    sha256: 35f3b042f295fd7387de11cf426ca8ee5257e5c98b88560c6c5ad4ef3c85d38c
+  optional: false
+  category: main
+  build: hdd6e379_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: GPL-3.0-only
+  license_family: GPL
+  size: 30469
+  timestamp: 1674833987166
 - name: binutils_impl_linux-64
   version: '2.40'
   manager: conda
@@ -1130,6 +1147,27 @@ package:
   license_family: GPL
   size: 5414922
   timestamp: 1674833958334
+- name: binutils_linux-64
+  version: '2.40'
+  manager: conda
+  platform: linux-64
+  dependencies:
+    binutils_impl_linux-64: 2.40.*
+    sysroot_linux-64: '*'
+  url: https://conda.anaconda.org/conda-forge/linux-64/binutils_linux-64-2.40-hbdbef99_2.conda
+  hash:
+    md5: adfebae9fdc63a598495dfe3b006973a
+    sha256: 333f3339d94c93bcc02a723e3e460cb6ff6075e05f5247e15bef5dcdcec541a3
+  optional: false
+  category: main
+  build: hbdbef99_2
+  arch: x86_64
+  subdir: linux-64
+  build_number: 2
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 28178
+  timestamp: 1694604071236
 - name: black
   version: 23.3.0
   manager: conda
@@ -1329,6 +1367,68 @@ package:
   license_family: MIT
   size: 112589
   timestamp: 1684783302054
+- name: c-compiler
+  version: 1.6.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    binutils: '*'
+    gcc: '*'
+    gcc_linux-64: 12.*
+  url: https://conda.anaconda.org/conda-forge/linux-64/c-compiler-1.6.0-hd590300_0.conda
+  hash:
+    md5: ea6c792f792bdd7ae6e7e2dee32f0a48
+    sha256: d741ff93d5f71a83a9be0f592682f31ca2d468c37177f18a8d1a2469bb821c05
+  optional: false
+  category: main
+  build: hd590300_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: BSD
+  size: 6184
+  timestamp: 1689097480051
+- name: c-compiler
+  version: 1.6.0
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    cctools: '>=949.0.1'
+    clang_osx-arm64: 15.*
+    ld64: '>=530'
+    llvm-openmp: '*'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/c-compiler-1.6.0-hd291e01_0.conda
+  hash:
+    md5: 7d58fb216ad601b545826449d8d4c34e
+    sha256: f2e837668ff628ef8b5d54fffbfe9596cdd3820f7c5a3fc5ad48b259ff99a501
+  optional: false
+  category: main
+  build: hd291e01_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: BSD
+  size: 6269
+  timestamp: 1689097851052
+- name: c-compiler
+  version: 1.6.0
+  manager: conda
+  platform: win-64
+  dependencies:
+    vs2019_win-64: '*'
+  url: https://conda.anaconda.org/conda-forge/win-64/c-compiler-1.6.0-hcfcfb64_0.conda
+  hash:
+    md5: 9246624ea9ea636c9801b3279f88f3a4
+    sha256: 10d113359a3906d9eda66062ab3a36e0f21381c8448ec50c7a9e09e0a9bb4f21
+  optional: false
+  category: main
+  build: hcfcfb64_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: BSD
+  size: 6381
+  timestamp: 1689097760340
 - name: ca-certificates
   version: 2023.7.22
   manager: conda
@@ -1383,6 +1483,56 @@ package:
   license: ISC
   size: 150013
   timestamp: 1690026269050
+- name: cctools
+  version: 973.0.1
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    cctools_osx-arm64: ==973.0.1 h2a25c60_14
+    ld64: ==609 h89fa09d_14
+    libllvm15: '>=15.0.7,<15.1.0a0'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/cctools-973.0.1-hd1ac623_14.conda
+  hash:
+    md5: 46c0f28ac1c5f417f46e028212f72f91
+    sha256: d7520a360b9d9ea0690f20403d19a9bee5069f5844aa2f092c5bd24816f0a84d
+  optional: false
+  category: main
+  build: hd1ac623_14
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 14
+  license: APSL-2.0
+  license_family: Other
+  size: 22053
+  timestamp: 1690768497252
+- name: cctools_osx-arm64
+  version: 973.0.1
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    ld64_osx-arm64: '>=609,<610.0a0'
+    libcxx: '*'
+    libllvm15: '>=15.0.7,<15.1.0a0'
+    libzlib: '>=1.2.13,<1.3.0a0'
+    sigtool: '*'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/cctools_osx-arm64-973.0.1-h2a25c60_14.conda
+  hash:
+    md5: 09f973985e770a7fbbca9a299af51a8b
+    sha256: 3c0b4237f5751617c2fa63180ae56ae8c39c349b1b30d78a651b0274758b65d1
+  optional: false
+  category: main
+  build: h2a25c60_14
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 14
+  constrains:
+  - ld64 609.*
+  - clang 15.0.*
+  - cctools 973.0.1.*
+  license: APSL-2.0
+  license_family: Other
+  size: 1122294
+  timestamp: 1690768462517
 - name: clang
   version: 15.0.7
   manager: conda
@@ -1753,6 +1903,73 @@ package:
   license_family: Apache
   size: 207487053
   timestamp: 1690554250567
+- name: clang_osx-arm64
+  version: 15.0.7
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    cctools_osx-arm64: '*'
+    clang: 15.0.7.*
+    compiler-rt: 15.0.7.*
+    ld64_osx-arm64: '*'
+    llvm-tools: 15.0.7.*
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/clang_osx-arm64-15.0.7-h77e971b_3.conda
+  hash:
+    md5: 4799cb60f8ff17edaf3574b28681d2a0
+    sha256: 556ab57b9d190bf3ad2b9e7ba3c164157f8d163489a65235c0cfe52478521da0
+  optional: false
+  category: main
+  build: h77e971b_3
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 3
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 20618
+  timestamp: 1684463162877
+- name: clangxx
+  version: 15.0.7
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    clang: ==15.0.7 hce30654_3
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/clangxx-15.0.7-default_h610c423_3.conda
+  hash:
+    md5: 1919a441b26f5cd1181870be6b4ce31a
+    sha256: 59e1545bac0207bb8b82c3718a16ec79dd9ac218eb00679f8cb5ed2cd115ffe3
+  optional: false
+  category: main
+  build: default_h610c423_3
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 3
+  license: Apache-2.0 WITH LLVM-exception
+  license_family: Apache
+  size: 133212
+  timestamp: 1690549817560
+- name: clangxx_osx-arm64
+  version: 15.0.7
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    clang_osx-arm64: ==15.0.7 h77e971b_3
+    clangxx: 15.0.7.*
+    libcxx: '>=15.0.7'
+    libllvm15: '>=15.0.7,<15.1.0a0'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/clangxx_osx-arm64-15.0.7-h768a7fd_3.conda
+  hash:
+    md5: 16e11574eeb3cfa3da194692da449aeb
+    sha256: 83c774c3dd206f4772a4a0abd10d21ad4aa9aa472fc9e2af16bf0b9a07476684
+  optional: false
+  category: main
+  build: h768a7fd_3
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 3
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 19504
+  timestamp: 1684463181478
 - name: click
   version: 8.1.7
   manager: conda
@@ -1970,6 +2187,112 @@ package:
   noarch: python
   size: 25170
   timestamp: 1666700778190
+- name: compiler-rt
+  version: 15.0.7
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    clang: 15.0.7.*
+    clangxx: 15.0.7.*
+    compiler-rt_osx-arm64: 15.0.7.*
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/compiler-rt-15.0.7-hf8d1dfb_1.conda
+  hash:
+    md5: 355703f3e33fd12037800d28680845cb
+    sha256: d2ab8bc610038e40dafdb6b6172343553f1f3aba4e9a4c540e878474062b1b89
+  optional: false
+  category: main
+  build: hf8d1dfb_1
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 1
+  license: Apache-2.0 WITH LLVM-exception
+  license_family: APACHE
+  size: 92034
+  timestamp: 1684403020973
+- name: compiler-rt_osx-arm64
+  version: 15.0.7
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    clang: 15.0.7.*
+    clangxx: 15.0.7.*
+  url: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_osx-arm64-15.0.7-hf8d1dfb_1.conda
+  hash:
+    md5: 0722cbdc69a52c82acc4e265913a21cd
+    sha256: 5a801e344b2a18983199190cb34ad798e3ce5966a4a4031c74f7e395d8c38802
+  optional: false
+  category: main
+  build: hf8d1dfb_1
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 1
+  constrains:
+  - compiler-rt 15.0.7
+  license: Apache-2.0 WITH LLVM-exception
+  license_family: APACHE
+  noarch: generic
+  size: 11283089
+  timestamp: 1684402974671
+- name: cxx-compiler
+  version: 1.6.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    c-compiler: ==1.6.0 hd590300_0
+    gxx: '*'
+    gxx_linux-64: 12.*
+  url: https://conda.anaconda.org/conda-forge/linux-64/cxx-compiler-1.6.0-h00ab1b0_0.conda
+  hash:
+    md5: 364c6ae36c4e36fcbd4d273cf4db78af
+    sha256: 472b6b7f967df1db634c67d71c6b31cd186d18b5d0548196c2e426833ff17d99
+  optional: false
+  category: main
+  build: h00ab1b0_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: BSD
+  size: 6179
+  timestamp: 1689097484095
+- name: cxx-compiler
+  version: 1.6.0
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    c-compiler: ==1.6.0 hd291e01_0
+    clangxx_osx-arm64: 15.*
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/cxx-compiler-1.6.0-h1995070_0.conda
+  hash:
+    md5: 35c1be0a08578238276ca9417fc1615c
+    sha256: f0a94c6312d0fd9e3d3c3546894bafa9f9b8b20a411bee0767ad4dac916f3eb5
+  optional: false
+  category: main
+  build: h1995070_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: BSD
+  size: 6301
+  timestamp: 1689097905706
+- name: cxx-compiler
+  version: 1.6.0
+  manager: conda
+  platform: win-64
+  dependencies:
+    vs2019_win-64: '*'
+  url: https://conda.anaconda.org/conda-forge/win-64/cxx-compiler-1.6.0-h91493d7_0.conda
+  hash:
+    md5: b1219f0b49bd243c7139cb9c42c4710c
+    sha256: 625af0fe202d3df70ba29bb6c80f3e45887b571a87dfd5bff94fa75577e2c417
+  optional: false
+  category: main
+  build: h91493d7_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: BSD
+  size: 6421
+  timestamp: 1689097764951
 - name: exceptiongroup
   version: 1.1.3
   manager: conda
@@ -2096,32 +2419,74 @@ package:
   license_family: APACHE
   size: 1695306
   timestamp: 1685303935893
+- name: gcc
+  version: 12.3.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    gcc_impl_linux-64: 12.3.0.*
+  url: https://conda.anaconda.org/conda-forge/linux-64/gcc-12.3.0-h8d2909c_2.conda
+  hash:
+    md5: e2f2f81f367e14ca1f77a870bda2fe59
+    sha256: 1bbf077688822993c39518056fb43d83ff0920eb42fef11e8714d2a298cc0f27
+  optional: false
+  category: main
+  build: h8d2909c_2
+  arch: x86_64
+  subdir: linux-64
+  build_number: 2
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 27086
+  timestamp: 1694604171830
 - name: gcc_impl_linux-64
-  version: 13.2.0
+  version: 12.3.0
   manager: conda
   platform: linux-64
   dependencies:
     binutils_impl_linux-64: '>=2.39'
-    libgcc-devel_linux-64: ==13.2.0 ha9c7c90_2
-    libgcc-ng: '>=13.2.0'
-    libgomp: '>=13.2.0'
-    libsanitizer: ==13.2.0 h7e041cc_2
-    libstdcxx-ng: '>=13.2.0'
+    libgcc-devel_linux-64: ==12.3.0 h8bca6fd_2
+    libgcc-ng: '>=12.3.0'
+    libgomp: '>=12.3.0'
+    libsanitizer: ==12.3.0 h0f45ef3_2
+    libstdcxx-ng: '>=12.3.0'
     sysroot_linux-64: '*'
-  url: https://conda.anaconda.org/conda-forge/linux-64/gcc_impl_linux-64-13.2.0-h338b0a0_2.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/gcc_impl_linux-64-12.3.0-he2b93b0_2.conda
   hash:
-    md5: b4f2ab4faf22658cca303570fd9a7662
-    sha256: 9fa30c6a01f1a8591dc9c6f99b4efc7b6cc8f83bfca931efe3a0699b7ef3518f
+    md5: 2f4d8677dc7dd87f93e9abfb2ce86808
+    sha256: 62a897343229e6dc4a3ace4f419a30e60a0a22ce7d0eac0b9bfb8f0308cf3de5
   optional: false
   category: main
-  build: h338b0a0_2
+  build: he2b93b0_2
   arch: x86_64
   subdir: linux-64
   build_number: 2
   license: GPL-3.0-only WITH GCC-exception-3.1
   license_family: GPL
-  size: 52904962
-  timestamp: 1695219534603
+  size: 51573870
+  timestamp: 1695218760476
+- name: gcc_linux-64
+  version: 12.3.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    binutils_linux-64: ==2.40 hbdbef99_2
+    gcc_impl_linux-64: 12.3.0.*
+    sysroot_linux-64: '*'
+  url: https://conda.anaconda.org/conda-forge/linux-64/gcc_linux-64-12.3.0-h76fc315_2.conda
+  hash:
+    md5: 11517e7b5c910c5b5d6985c0c7eb7f50
+    sha256: 86f6db7399ec0362e4c4025939debbfebc8ad9ccef75e3c0e4069f85b149f24d
+  optional: false
+  category: main
+  build: h76fc315_2
+  arch: x86_64
+  subdir: linux-64
+  build_number: 2
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 30351
+  timestamp: 1694604476800
 - name: gflags
   version: 2.2.2
   manager: conda
@@ -2206,6 +2571,72 @@ package:
   license_family: BSD
   size: 97658
   timestamp: 1649144191039
+- name: gxx
+  version: 12.3.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    gcc: 12.3.0.*
+    gxx_impl_linux-64: 12.3.0.*
+  url: https://conda.anaconda.org/conda-forge/linux-64/gxx-12.3.0-h8d2909c_2.conda
+  hash:
+    md5: 673bac341be6b90ef9e8abae7e52ca46
+    sha256: 5fd65768fb602fd21466831c96e7a2355a4df692507abbd481aa65a777151d85
+  optional: false
+  category: main
+  build: h8d2909c_2
+  arch: x86_64
+  subdir: linux-64
+  build_number: 2
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 26539
+  timestamp: 1694604501713
+- name: gxx_impl_linux-64
+  version: 12.3.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    gcc_impl_linux-64: ==12.3.0 he2b93b0_2
+    libstdcxx-devel_linux-64: ==12.3.0 h8bca6fd_2
+    sysroot_linux-64: '*'
+  url: https://conda.anaconda.org/conda-forge/linux-64/gxx_impl_linux-64-12.3.0-he2b93b0_2.conda
+  hash:
+    md5: f89b9916afc36fc5562fbfc11330a8a2
+    sha256: 1ca91c1a3892b61da7efe150f9a1830e18aac82f563b27bf707520cb3297cc7a
+  optional: false
+  category: main
+  build: he2b93b0_2
+  arch: x86_64
+  subdir: linux-64
+  build_number: 2
+  license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
+  size: 12667490
+  timestamp: 1695218983245
+- name: gxx_linux-64
+  version: 12.3.0
+  manager: conda
+  platform: linux-64
+  dependencies:
+    binutils_linux-64: ==2.40 hbdbef99_2
+    gcc_linux-64: ==12.3.0 h76fc315_2
+    gxx_impl_linux-64: 12.3.0.*
+    sysroot_linux-64: '*'
+  url: https://conda.anaconda.org/conda-forge/linux-64/gxx_linux-64-12.3.0-h8a814eb_2.conda
+  hash:
+    md5: f517b1525e9783849bd56a5dc45a9960
+    sha256: 9878771cf1316230150a795d213a2f1dd7dead07dc0bccafae20533d631d5e69
+  optional: false
+  category: main
+  build: h8a814eb_2
+  arch: x86_64
+  subdir: linux-64
+  build_number: 2
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 28640
+  timestamp: 1694604524890
 - name: icu
   version: '73.2'
   manager: conda
@@ -2438,6 +2869,58 @@ package:
   license_family: MIT
   size: 710894
   timestamp: 1692098129546
+- name: ld64
+  version: '609'
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    ld64_osx-arm64: ==609 hc4dc95b_14
+    libllvm15: '>=15.0.7,<15.1.0a0'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/ld64-609-h89fa09d_14.conda
+  hash:
+    md5: 5d2c82c220addd4630baaa7118a301d3
+    sha256: 1bddb451bb0f2e95414239c43a528ec6039f8c84a9b84a212a3a0d851c74306b
+  optional: false
+  category: main
+  build: h89fa09d_14
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 14
+  constrains:
+  - cctools_osx-arm64 973.0.1.*
+  - cctools 973.0.1.*
+  license: APSL-2.0
+  license_family: Other
+  size: 19226
+  timestamp: 1690768480431
+- name: ld64_osx-arm64
+  version: '609'
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    libcxx: '*'
+    libllvm15: '>=15.0.7,<15.1.0a0'
+    sigtool: '*'
+    tapi: '>=1100.0.11,<1101.0a0'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/ld64_osx-arm64-609-hc4dc95b_14.conda
+  hash:
+    md5: 1d41ae30b0c077ef3feab2f2e27bd593
+    sha256: 138f187e16d6952cb4f54ae1abef014a368948f0eb568c472f0798aa76fd959d
+  optional: false
+  category: main
+  build: hc4dc95b_14
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 14
+  constrains:
+  - cctools_osx-arm64 973.0.1.*
+  - clang >=15.0.7,<16.0a0
+  - cctools 973.0.1.*
+  - ld 609.*
+  license: APSL-2.0
+  license_family: Other
+  size: 1041974
+  timestamp: 1690768191902
 - name: ld_impl_linux-64
   version: '2.40'
   manager: conda
@@ -2557,26 +3040,25 @@ package:
     orc: '>=1.9.0,<1.9.1.0a0'
     re2: '>=2023.3.2,<2023.3.3.0a0'
     snappy: '>=1.1.10,<2.0a0'
-    ucx: '>=1.14.0,<1.15.0a0'
+    ucx: '>=1.15.0,<1.16.0a0'
     zstd: '>=1.5.5,<1.6.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-10.0.1-h1935d02_43_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libarrow-10.0.1-hc3189b8_44_cpu.conda
   hash:
-    md5: 025ad16b3f63b0469df3255b74bb2ee6
-    sha256: 3ddabd45ca46559641a9fa18ea7cf31657ecf5944d17125dd644ec4e3fa8c271
+    md5: 4eeabe3fad32d2a96082f7fc8706831a
+    sha256: f205679ff8f18a9284e09f1862fdbc22269cc7c39d0949bac3fd5ebd9e9bc3df
   optional: false
   category: main
-  build: h1935d02_43_cpu
+  build: hc3189b8_44_cpu
   arch: x86_64
   subdir: linux-64
-  build_number: 43
+  build_number: 44
   constrains:
-  - apache-arrow-proc =*=cpu
-  - parquet-cpp <0.0a0
   - arrow-cpp =10.0.1
+  - parquet-cpp <0.0a0
+  - apache-arrow-proc =*=cpu
   license: Apache-2.0
-  license_family: APACHE
-  size: 27232160
-  timestamp: 1696001173483
+  size: 27248742
+  timestamp: 1696592607446
 - name: libarrow
   version: 10.0.1
   manager: conda
@@ -2603,24 +3085,23 @@ package:
     re2: '>=2023.3.2,<2023.3.3.0a0'
     snappy: '>=1.1.10,<2.0a0'
     zstd: '>=1.5.5,<1.6.0a0'
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/libarrow-10.0.1-he713f65_43_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/libarrow-10.0.1-he713f65_44_cpu.conda
   hash:
-    md5: dabaa495c9c9c7662b8e7de2d1361e06
-    sha256: 7d14cbb9a32f61e87b9f0563cbecc358ed98fbfbf88a71f1d631ad349812ef8b
+    md5: 55c07aefe7dbfe592d94606dfc2ca55f
+    sha256: 4373d43fc16b3ccca21b43e4d4a05f6ef2974c5810eb3bad0a79a6890faa7910
   optional: false
   category: main
-  build: he713f65_43_cpu
+  build: he713f65_44_cpu
   arch: aarch64
   subdir: osx-arm64
-  build_number: 43
+  build_number: 44
   constrains:
   - arrow-cpp =10.0.1
   - apache-arrow-proc =*=cpu
   - parquet-cpp <0.0a0
   license: Apache-2.0
-  license_family: APACHE
-  size: 16895325
-  timestamp: 1696002319052
+  size: 16909047
+  timestamp: 1696593679184
 - name: libarrow
   version: 10.0.1
   manager: conda
@@ -2648,24 +3129,23 @@ package:
     vc: '>=14.2,<15'
     vc14_runtime: '>=14.29.30139'
     zstd: '>=1.5.5,<1.6.0a0'
-  url: https://conda.anaconda.org/conda-forge/win-64/libarrow-10.0.1-h58a770d_43_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/libarrow-10.0.1-h58a770d_44_cpu.conda
   hash:
-    md5: 95ce1762a13d6c1b967733a1f1f71027
-    sha256: f79a6bd7333bbd0fea3d91de2efd10b54ce232a916863b06c6f89153587d1ec8
+    md5: 8c4ccc5a4742b0a08ae751be4a5d8798
+    sha256: 68ee5fc622e8e7c4bbc653354ab0abf4b8f276345a34a3825af26153fa019427
   optional: false
   category: main
-  build: h58a770d_43_cpu
+  build: h58a770d_44_cpu
   arch: x86_64
   subdir: win-64
-  build_number: 43
+  build_number: 44
   constrains:
-  - apache-arrow-proc =*=cpu
-  - parquet-cpp <0.0a0
   - arrow-cpp =10.0.1
+  - parquet-cpp <0.0a0
+  - apache-arrow-proc =*=cpu
   license: Apache-2.0
-  license_family: APACHE
-  size: 15975191
-  timestamp: 1696001419069
+  size: 16020194
+  timestamp: 1696593685137
 - name: libblas
   version: 3.9.0
   manager: conda
@@ -3562,24 +4042,24 @@ package:
   size: 42063
   timestamp: 1636489106777
 - name: libgcc-devel_linux-64
-  version: 13.2.0
+  version: 12.3.0
   manager: conda
   platform: linux-64
   dependencies: {}
-  url: https://conda.anaconda.org/conda-forge/linux-64/libgcc-devel_linux-64-13.2.0-ha9c7c90_2.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libgcc-devel_linux-64-12.3.0-h8bca6fd_2.conda
   hash:
-    md5: 401c5cf212e568dab47e0677a000d2a7
-    sha256: 628a2c0ae7cb16b16218839d636a93b6cd27e6e464f003aa54a86cae06759759
+    md5: ed613582de7b8569fdc53ca141be176a
+    sha256: 7e12d0496389017ca526254913b24d9024e1728c849a0d6476a4b7fde9d03cba
   optional: false
   category: main
-  build: ha9c7c90_2
+  build: h8bca6fd_2
   arch: x86_64
   subdir: linux-64
   build_number: 2
   license: GPL-3.0-only WITH GCC-exception-3.1
   license_family: GPL
-  size: 2428361
-  timestamp: 1695219277108
+  size: 2405867
+  timestamp: 1695218559716
 - name: libgcc-ng
   version: 13.2.0
   manager: conda
@@ -4286,25 +4766,25 @@ package:
   size: 5205221
   timestamp: 1694477777276
 - name: libsanitizer
-  version: 13.2.0
+  version: 12.3.0
   manager: conda
   platform: linux-64
   dependencies:
-    libgcc-ng: '>=13.2.0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libsanitizer-13.2.0-h7e041cc_2.conda
+    libgcc-ng: '>=12.3.0'
+  url: https://conda.anaconda.org/conda-forge/linux-64/libsanitizer-12.3.0-h0f45ef3_2.conda
   hash:
-    md5: aa27066e2dcef56db7bc674f2230b6c9
-    sha256: f10895acd0791ee20124a540cfbdb1efd050744aa9718f694aec6df798fb57f1
+    md5: 4655db64eca78a6fcc4fb654fc1f8d57
+    sha256: a58add0b4477c59aee324b508d834267360b659f9c543f551ca4442196e656fe
   optional: false
   category: main
-  build: h7e041cc_2
+  build: h0f45ef3_2
   arch: x86_64
   subdir: linux-64
   build_number: 2
   license: GPL-3.0-only WITH GCC-exception-3.1
   license_family: GPL
-  size: 4111354
-  timestamp: 1695219428583
+  size: 3910499
+  timestamp: 1695218679356
 - name: libsqlite
   version: 3.43.0
   manager: conda
@@ -4432,6 +4912,25 @@ package:
   license_family: BSD
   size: 266806
   timestamp: 1685838242099
+- name: libstdcxx-devel_linux-64
+  version: 12.3.0
+  manager: conda
+  platform: linux-64
+  dependencies: {}
+  url: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-devel_linux-64-12.3.0-h8bca6fd_2.conda
+  hash:
+    md5: 7268a17e56eb099d1b8869bbbf46de4c
+    sha256: e8483069599561ef24b884c898442eadc510190f978fa388db3281b10c3c084e
+  optional: false
+  category: main
+  build: h8bca6fd_2
+  arch: x86_64
+  subdir: linux-64
+  build_number: 2
+  license: GPL-3.0-only WITH GCC-exception-3.1
+  license_family: GPL
+  size: 8542654
+  timestamp: 1695218598349
 - name: libstdcxx-ng
   version: 13.2.0
   manager: conda
@@ -4821,8 +5320,36 @@ package:
   constrains:
   - openmp 17.0.2|17.0.2.*
   license: Apache-2.0 WITH LLVM-exception
+  license_family: APACHE
   size: 275849
   timestamp: 1696555855843
+- name: llvm-tools
+  version: 15.0.7
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    libllvm15: ==15.0.7 h504e6bf_3
+    libxml2: '>=2.11.4,<2.12.0a0'
+    libzlib: '>=1.2.13,<1.3.0a0'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-tools-15.0.7-h504e6bf_3.conda
+  hash:
+    md5: 56a351b4eba7ce574fa2702770e74252
+    sha256: 102c7da379f508e55b60a24625a3174b85d7e716ead452c1d7c88f84174b7a99
+  optional: false
+  category: main
+  build: h504e6bf_3
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 3
+  constrains:
+  - llvmdev   15.0.7
+  - clang 15.0.7.*
+  - clang-tools 15.0.7.*
+  - llvm 15.0.7.*
+  license: Apache-2.0 WITH LLVM-exception
+  license_family: Apache
+  size: 10034129
+  timestamp: 1690530165545
 - name: lz4-c
   version: 1.9.4
   manager: conda
@@ -5860,83 +6387,80 @@ package:
   platform: linux-64
   dependencies:
     gflags: '>=2.2.2,<2.3.0a0'
-    libarrow: ==10.0.1 h1935d02_43_cpu
+    libarrow: ==10.0.1 hc3189b8_44_cpu
     libgcc-ng: '>=12'
     libstdcxx-ng: '>=12'
     numpy: '>=1.23.5,<2.0a0'
     python: '>=3.11,<3.12.0a0'
     python_abi: 3.11.* *_cp311
-  url: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-10.0.1-py311hdf9aeb4_43_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-10.0.1-py311hdf9aeb4_44_cpu.conda
   hash:
-    md5: 617d0eeacc6c968871a620f73a2acd11
-    sha256: d00f100a926470bcd128bfb9fda58cda537507fde9a262c1ce38ece5b8eaf4fe
+    md5: 1771fbe64fecac19035246d4791525a3
+    sha256: a7b4f55e57da79bf0e90f421f2078737a85c524a9f9b01c399da90eb3363ffef
   optional: false
   category: main
-  build: py311hdf9aeb4_43_cpu
+  build: py311hdf9aeb4_44_cpu
   arch: x86_64
   subdir: linux-64
-  build_number: 43
+  build_number: 44
   constrains:
   - apache-arrow-proc =*=cpu
   license: Apache-2.0
-  license_family: APACHE
-  size: 3464856
-  timestamp: 1696002823335
+  size: 3893289
+  timestamp: 1696593004335
 - name: pyarrow
   version: 10.0.1
   manager: conda
   platform: osx-arm64
   dependencies:
     gflags: '>=2.2.2,<2.3.0a0'
-    libarrow: ==10.0.1 he713f65_43_cpu
+    libarrow: ==10.0.1 he713f65_44_cpu
     libcxx: '>=14.0.6'
     numpy: '>=1.23.5,<2.0a0'
     python: '>=3.11,<3.12.0a0 *_cpython'
     python_abi: 3.11.* *_cp311
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-10.0.1-py311h1e679ab_43_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-10.0.1-py311h1e679ab_44_cpu.conda
   hash:
-    md5: 67455ee465c2d8d68e873b3c961e488b
-    sha256: ba36e74375d959290d963e013d16e14147d91cc09ee0f35d2c4f58dee0e0bde7
+    md5: 855ccb2ff15732410c8520c98d953560
+    sha256: 2c27ff03385f7135010a87cd2bc71cbf56263b17f85d4675db96de4a6da548c4
   optional: false
   category: main
-  build: py311h1e679ab_43_cpu
+  build: py311h1e679ab_44_cpu
   arch: aarch64
   subdir: osx-arm64
-  build_number: 43
+  build_number: 44
   constrains:
   - apache-arrow-proc =*=cpu
   license: Apache-2.0
-  license_family: APACHE
-  size: 3281653
-  timestamp: 1696003878866
+  size: 3315686
+  timestamp: 1696595673154
 - name: pyarrow
   version: 10.0.1
   manager: conda
   platform: win-64
   dependencies:
-    libarrow: ==10.0.1 h58a770d_43_cpu
+    libarrow: ==10.0.1 h58a770d_44_cpu
     numpy: '>=1.23.5,<2.0a0'
     python: '>=3.11,<3.12.0a0'
     python_abi: 3.11.* *_cp311
     ucrt: '>=10.0.20348.0'
     vc: '>=14.2,<15'
     vc14_runtime: '>=14.29.30139'
-  url: https://conda.anaconda.org/conda-forge/win-64/pyarrow-10.0.1-py311h6a6099b_43_cpu.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/pyarrow-10.0.1-py311h6a6099b_44_cpu.conda
   hash:
-    md5: c0305c20e75a5aecd920045134730b9d
-    sha256: 039e1c47111e49faa0da6d01d0ff5ae1c77065b8a0f5d4ecd181b65c31f89262
+    md5: 85b840d5bdcde185ab775d6d3f3933f5
+    sha256: cd004b57449c8c255463754b665cdcd0def668fb001bceb046f44222b3b2718b
   optional: false
   category: main
-  build: py311h6a6099b_43_cpu
+  build: py311h6a6099b_44_cpu
   arch: x86_64
   subdir: win-64
-  build_number: 43
+  build_number: 44
   constrains:
   - apache-arrow-proc =*=cpu
   license: Apache-2.0
-  license_family: APACHE
-  size: 2884670
-  timestamp: 1696002095429
+  size: 2892382
+  timestamp: 1696595180252
 - name: pytest
   version: 7.4.2
   manager: conda
@@ -6566,6 +7090,26 @@ package:
   noarch: python
   size: 464399
   timestamp: 1694548452441
+- name: sigtool
+  version: 0.1.3
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    openssl: '>=3.0.0,<4.0a0'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/sigtool-0.1.3-h44b9a77_0.tar.bz2
+  hash:
+    md5: 4a2cac04f86a4540b8c9b8d8f597848f
+    sha256: 70791ae00a3756830cb50451db55f63e2a42a2fa2a8f1bab1ebd36bbb7d55bff
+  optional: false
+  category: main
+  build: h44b9a77_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 210264
+  timestamp: 1643442231687
 - name: snappy
   version: 1.1.10
   manager: conda
@@ -6650,6 +7194,26 @@ package:
   noarch: generic
   size: 15277813
   timestamp: 1689214980563
+- name: tapi
+  version: 1100.0.11
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    libcxx: '>=11.0.0.a0'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/tapi-1100.0.11-he4954df_0.tar.bz2
+  hash:
+    md5: d83362e7d0513f35f454bc50b0ca591d
+    sha256: 1709265fbee693a9e8b4126b0a3e68a6c4718b05821c659279c1af051f2d40f3
+  optional: false
+  category: main
+  build: he4954df_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: NCSA
+  license_family: MIT
+  size: 191416
+  timestamp: 1602687595316
 - name: tbb
   version: 2021.10.0
   manager: conda
@@ -7004,7 +7568,7 @@ package:
   size: 1283972
   timestamp: 1666630199266
 - name: ucx
-  version: 1.14.1
+  version: 1.15.0
   manager: conda
   platform: linux-64
   dependencies:
@@ -7012,22 +7576,22 @@ package:
     libnuma: '>=2.0.16,<3.0a0'
     libstdcxx-ng: '>=12'
     rdma-core: '>=28.9,<29.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/ucx-1.14.1-h64cca9d_5.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/ucx-1.15.0-h64cca9d_0.conda
   hash:
-    md5: 39aa3b356d10d7e5add0c540945a0944
-    sha256: a62f3fb56849dc37270f9078e1c8ba32328bc3ba4d32cf1f7dace48b431d5abe
+    md5: b35b1f1a9fdbf93266c91f297dc9060e
+    sha256: 8a4dce10304fee0df715addec3d078421aa7aa0824422a6630d621d15bd98e5f
   optional: false
   category: main
-  build: h64cca9d_5
+  build: h64cca9d_0
   arch: x86_64
   subdir: linux-64
-  build_number: 5
+  build_number: 0
   constrains:
   - cuda-version >=11.2,<12
   license: BSD-3-Clause
   license_family: BSD
-  size: 15210025
-  timestamp: 1695214404131
+  size: 15425900
+  timestamp: 1696028080367
 - name: vc
   version: '14.3'
   manager: conda
@@ -7092,6 +7656,47 @@ package:
   license_family: BSD
   size: 17207
   timestamp: 1688020635322
+- name: vs2019_win-64
+  version: 19.29.30139
+  manager: conda
+  platform: win-64
+  dependencies:
+    vswhere: '*'
+  url: https://conda.anaconda.org/conda-forge/win-64/vs2019_win-64-19.29.30139-he1865b1_17.conda
+  hash:
+    md5: 6351cac64b43c84c64bb6fe646d6acfe
+    sha256: 48ae2875083ef9e0b4dc2a3045154a4197e67f948dec44ae02c5348960445b93
+  optional: false
+  category: main
+  build: he1865b1_17
+  arch: x86_64
+  subdir: win-64
+  build_number: 17
+  track_features:
+  - vc14
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 19812
+  timestamp: 1688020390940
+- name: vswhere
+  version: 3.1.4
+  manager: conda
+  platform: win-64
+  dependencies: {}
+  url: https://conda.anaconda.org/conda-forge/win-64/vswhere-3.1.4-h57928b3_0.conda
+  hash:
+    md5: b1d1d6a1f874d8c93a57b5efece52f03
+    sha256: 553c41fc1a883415a39444313f8d99236685529776fdd04e8d97288b73496002
+  optional: false
+  category: main
+  build: h57928b3_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 218421
+  timestamp: 1682376911339
 - name: wheel
   version: 0.38.4
   manager: conda
