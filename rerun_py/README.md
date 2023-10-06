@@ -142,7 +142,7 @@ or
 just py-docs-serve
 ```
 
-For information on how the docs system works, see: [docs/docs.md](docs/docs.md)
+For information on how the docs system works, see: [docs/writing_docs.md](docs/writing_docs.md)
 
 
 ## Troubleshooting
