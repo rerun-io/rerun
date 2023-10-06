@@ -6,7 +6,7 @@ import numpy as np
 import pyarrow as pa
 
 from ._log import AsComponents, ComponentBatchLike
-from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
+from .error_utils import catch_and_log_exceptions
 
 ANY_VALUE_TYPE_REGISTRY: dict[str, Any] = {}
 
@@ -21,7 +21,7 @@ class AnyBatchValue(ComponentBatchLike):
     See also [rerun.AnyValues][].
     """
 
-    def __init__(self, name: str, value: Any) -> None:
+    def __init__(self, name: str, value: Any, drop_untyped_nones: bool = True) -> None:
         """
         Construct a new AnyBatchValue.
 
@@ -53,6 +53,9 @@ class AnyBatchValue(ComponentBatchLike):
             The name of the component.
         value:
             The data to be logged as a component.
+        drop_untyped_nones:
+            If True, any components that are None will be dropped unless they have been
+            previously logged with a type.
         """
         np_type, pa_type = ANY_VALUE_TYPE_REGISTRY.get(name, (None, None))
 
@@ -62,7 +65,7 @@ class AnyBatchValue(ComponentBatchLike):
         with catch_and_log_exceptions(f"Converting data for '{name}'"):
             if isinstance(value, pa.Array):
                 self.pa_array = value
-            if hasattr(value, "as_arrow_array"):
+            elif hasattr(value, "as_arrow_array"):
                 self.pa_array = value.as_arrow_array()
             else:
                 if np_type is not None:
@@ -72,7 +75,8 @@ class AnyBatchValue(ComponentBatchLike):
                     self.pa_array = pa.array(np_value, type=pa_type)
                 else:
                     if value is None:
-                        raise ValueError("Cannot convert None to arrow array. Type is unknown.")
+                        if not drop_untyped_nones:
+                            raise ValueError("Cannot convert None to arrow array. Type is unknown.")
                     else:
                         np_value = np.atleast_1d(np.array(value, copy=False))
                         self.pa_array = pa.array(np_value)
@@ -91,7 +95,7 @@ class AnyBatchValue(ComponentBatchLike):
 class AnyValues(AsComponents):
     """Helper to log arbitrary values as a bundle of components."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, drop_untyped_nones: bool = True, **kwargs: Any) -> None:
         """
         Construct a new AnyValues bundle.
 
@@ -108,11 +112,23 @@ class AnyValues(AsComponents):
         a best effort to do type conversion if supported by numpy and arrow. Any components that
         can't be converted will be dropped.
 
+        Note that `None` values provide a particular challenge as they have no type information,
+        until after the component has been logged with a particular type. By default, these values
+        are dropped. You can change this behavior by setting `drop_untyped_nones` to `False`, but
+        be aware that this will result in potential warnings or exceptions if you are running in
+        strict mode.
+
         If you are want to inspect how your component will be converted to the underlying
         arrow code, the following snippet is what is happening internally:
         ```
         np_value = np.atleast_1d(np.array(value, copy=False))
         pa_value = pa.array(value)
+
+        Parameters
+        ----------
+        drop_untyped_nones:
+            If True, any components that are None will be dropped unless they have been
+            previously logged with a type.
         ```
 
         Example
@@ -131,10 +147,14 @@ class AnyValues(AsComponents):
 
         self.component_batches = []
 
-        for name, value in kwargs.items():
-            batch = AnyBatchValue(name, value)
-            if batch.is_valid():
-                self.component_batches.append(batch)
+        with catch_and_log_exceptions(self.__class__.__name__):
+            for name, value in kwargs.items():
+                batch = AnyBatchValue(name, value, drop_untyped_nones=drop_untyped_nones)
+                if batch.is_valid():
+                    self.component_batches.append(batch)
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         return self.component_batches
+
+    def __repr__(self):
+        return f"AnyValues({self.component_batches})"
