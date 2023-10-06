@@ -49,12 +49,16 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
         return np.atleast_1d(np.array(class_ids, dtype=np.uint16, copy=False))
 
 
-def _normalize_radii(radii: npt.ArrayLike | None = None) -> npt.NDArray[np.float32]:
-    """Normalize flexible radii arrays."""
-    if radii is None:
-        return np.array((), dtype=np.float32)
+def _radii_from_stroke_width(stroke_width: npt.ArrayLike | None = None) -> npt.NDArray[np.float32] | None:
+    """
+    Normalize and converts stroke widths to radii.
+
+    Returns None if radii is None.
+    """
+    if stroke_width is None:
+        return None
     else:
-        return np.atleast_1d(np.array(radii, dtype=np.float32, copy=False))
+        return np.atleast_1d(np.array(stroke_width, dtype=np.float32, copy=False)) / 2.0
 
 
 def _normalize_labels(labels: str | Sequence[str] | None) -> Sequence[str]:
