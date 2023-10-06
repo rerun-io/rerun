@@ -123,14 +123,24 @@ def log(
     # structural checks in performance-sensitive code. hasattr is
     if hasattr(entity, "as_component_batches"):
         components = list(entity.as_component_batches())
-    else:
+    elif isinstance(entity, Iterable):
         components = list(entity)
+    else:
+        raise TypeError(
+            f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
+            f"but got {type(entity)} instead."
+        )
 
     for ext in extra:
         if hasattr(ext, "as_component_batches"):
             components.extend(ext.as_component_batches())
-        else:
+        elif isinstance(ext, Iterable):
             components.extend(ext)
+        else:
+            raise TypeError(
+                f"Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, "
+                f"but got {type(entity)} instead."
+            )
 
     if hasattr(entity, "num_instances"):
         num_instances = entity.num_instances()
