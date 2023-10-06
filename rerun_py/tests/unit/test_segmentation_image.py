@@ -69,7 +69,7 @@ def test_segmentation_image_shapes() -> None:
         rr.DepthImage(img)
 
     for img in BAD_IMAGE_INPUTS:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             rr.DepthImage(img)
 
 
