@@ -10,7 +10,7 @@ from typing import Any, Callable, TypeVar, cast
 from .recording_stream import RecordingStream
 
 __all__ = [
-    "_send_warning",
+    "_send_warning_or_raise",
 ]
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
@@ -66,7 +66,7 @@ def _build_warning_context_string(skip_first: int) -> str:
     return "\n".join(f'File "{frame.filename}", line {frame.lineno}, in {frame.function}' for frame in outer_stack)
 
 
-def _send_warning(
+def _send_warning_or_raise(
     message: str,
     depth_to_user_code: int,
     recording: RecordingStream | None = None,
@@ -199,7 +199,7 @@ class catch_and_log_exceptions:
                     _rerun_exception_ctx.depth = None
 
                     for warning in pending_warnings:
-                        _send_warning(warning, depth_to_user_code=self.depth_to_user_code + 2)
+                        _send_warning_or_raise(warning, depth_to_user_code=self.depth_to_user_code + 2)
 
             # If we're back to the top of the stack, send out the pending warnings
 

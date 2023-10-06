@@ -7,7 +7,7 @@ import rerun_bindings as bindings
 
 from . import components as cmp
 from ._baseclasses import AsComponents, ComponentBatchLike
-from .error_utils import _send_warning, catch_and_log_exceptions
+from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
 __all__ = ["log", "IndicatorComponentBatch", "AsComponents"]
@@ -207,7 +207,7 @@ def log_components(
 
         # Skip components which were logged multiple times.
         if name in added:
-            _send_warning(
+            _send_warning_or_raise(
                 f"Component {name} was included multiple times. Only the first instance will be used.",
                 depth_to_user_code=1,
             )

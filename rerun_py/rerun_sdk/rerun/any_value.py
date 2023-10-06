@@ -6,7 +6,7 @@ import numpy as np
 import pyarrow as pa
 
 from ._log import AsComponents, ComponentBatchLike
-from .error_utils import _send_warning
+from .error_utils import _send_warning_or_raise
 
 ANY_VALUE_TYPE_REGISTRY: dict[str, Any] = {}
 
@@ -70,14 +70,14 @@ class AnyBatchValue(ComponentBatchLike):
                     self.pa_array = pa.array(np_value, type=pa_type)
                 else:
                     if value is None:
-                        _send_warning(f"AnyValues '{name}' of unknown type has no data. Ignoring.", 1)
+                        _send_warning_or_raise(f"AnyValues '{name}' of unknown type has no data. Ignoring.", 1)
                     else:
                         np_value = np.atleast_1d(np.array(value, copy=False))
                         self.pa_array = pa.array(np_value)
                         ANY_VALUE_TYPE_REGISTRY[name] = (np_value.dtype, self.pa_array.type)
 
         except Exception as ex:
-            _send_warning(
+            _send_warning_or_raise(
                 f"Error converting data to arrow for AnyValues '{name}'. Ignoring.\n{type(ex).__name__}: {ex}",
                 1,
             )

@@ -9,7 +9,7 @@ from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 from rerun._log import log
 from rerun.any_value import AnyValues
 from rerun.archetypes import LineStrips2D, LineStrips3D
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 from rerun.log_deprecated import Color, Colors, _radii_from_stroke_width
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -183,7 +183,7 @@ def log_line_strips_2d(
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
-            _send_warning("Only integer identifiers supported", 1)
+            _send_warning_or_raise("Only integer identifiers supported", 1)
 
     # New types use Sequence, not Iterable
     if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
@@ -271,7 +271,7 @@ def log_line_strips_3d(
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
-            _send_warning("Only integer identifiers supported", 1)
+            _send_warning_or_raise("Only integer identifiers supported", 1)
 
     # New types use Sequence, not Iterable
     if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):

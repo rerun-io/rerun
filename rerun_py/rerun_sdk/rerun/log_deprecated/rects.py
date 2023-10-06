@@ -10,7 +10,7 @@ from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 from rerun._log import log
 from rerun.any_value import AnyValues
 from rerun.archetypes import Boxes2D
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 from rerun.log_deprecated import Color, Colors, OptionalClassIds
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -208,7 +208,7 @@ def log_rects(
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
-            _send_warning("Only integer identifiers supported", 1)
+            _send_warning_or_raise("Only integer identifiers supported", 1)
 
     box2d_format = Box2DFormat.XYWH
     if rect_format == RectFormat.XYWH:
