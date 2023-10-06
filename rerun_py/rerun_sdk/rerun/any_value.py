@@ -154,7 +154,6 @@ class AnyValues(AsComponents):
         kwargs:
             The components to be logged.
 
-        ```
         """
         global ANY_VALUE_TYPE_REGISTRY
 
