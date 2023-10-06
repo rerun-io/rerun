@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import torch
 from rerun.components import (
     ClassId,
     ClassIdBatch,
@@ -83,6 +84,8 @@ vec2ds_arrays: list[Vec2DArrayLike] = [
     np.array([1, 2, 3, 4], dtype=np.float32),
     # Vec2DArrayLike: npt.NDArray[np.float32]
     np.array([1, 2, 3, 4], dtype=np.float32).reshape((2, 2, 1, 1, 1)),
+    # PyTorch array
+    torch.asarray([1, 2, 3, 4], dtype=torch.float32),
 ]
 
 
@@ -118,6 +121,8 @@ vec3ds_arrays: list[Vec3DArrayLike] = [
     np.array([1, 2, 3, 4, 5, 6], dtype=np.float32),
     # Vec3DArrayLike: npt.NDArray[np.float32]
     np.array([1, 2, 3, 4, 5, 6], dtype=np.float32).reshape((2, 3, 1, 1, 1)),
+    # PyTorch array
+    torch.asarray([1, 2, 3, 4, 5, 6], dtype=torch.float32),
 ]
 
 
@@ -153,6 +158,8 @@ vec4ds_arrays: list[Vec4DArrayLike] = [
     np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.float32),
     # Vec4DArrayLike: npt.NDArray[np.float32]
     np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.float32).reshape((2, 4, 1, 1, 1)),
+    # PyTorch array
+    torch.asarray([1, 2, 3, 4, 5, 6, 7, 8], dtype=torch.float32),
 ]
 
 
