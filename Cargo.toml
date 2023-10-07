@@ -114,7 +114,7 @@ emath = "0.23.0"
 enumset = "1.0.12"
 env_logger = "0.10"
 epaint = "0.23.0"
-ewebsock = "0.2"
+ewebsock = { git = "https://github.com/rerun-io/ewebsock.git", rev = "f7d1118123a85146e6f069348d601fbdd0f9f03f" }
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
 getrandom = "0.2"
