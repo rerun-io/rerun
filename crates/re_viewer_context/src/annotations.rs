@@ -143,13 +143,19 @@ pub struct ResolvedAnnotationInfo {
 
 impl ResolvedAnnotationInfo {
     /// `rgba` should be unmultiplied
+    #[inline]
     pub fn color(
         &self,
         rgba: Option<&[u8; 4]>,
         default_color: DefaultColor<'_>,
     ) -> re_renderer::Color32 {
-        if let Some([r, g, b, a]) = rgba {
-            re_renderer::Color32::from_rgba_unmultiplied(*r, *g, *b, *a)
+        if let Some([r, g, b, a]) = rgba.copied() {
+            if a == 255 {
+                // Common-case optimization
+                re_renderer::Color32::from_rgb(r, g, b)
+            } else {
+                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+            }
         } else if let Some(color) = self.annotation_info.as_ref().and_then(|info| {
             info.color
                 .map(|c| c.into())
@@ -168,6 +174,7 @@ impl ResolvedAnnotationInfo {
         }
     }
 
+    #[inline]
     pub fn label(&self, label: Option<&str>) -> Option<String> {
         if let Some(label) = label {
             Some(label.to_owned())
