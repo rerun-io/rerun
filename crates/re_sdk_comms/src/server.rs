@@ -1,10 +1,10 @@
 use std::{io::ErrorKind, time::Instant};
 
 use rand::{Rng as _, SeedableRng};
+use tokio::net::{TcpListener, TcpStream};
 
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
 use re_smart_channel::{Receiver, Sender};
-use tokio::net::{TcpListener, TcpStream};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ServerError {
