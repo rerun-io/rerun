@@ -259,10 +259,7 @@ impl ImagesPart {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(
-                    color.map(|c| c.to_array()).as_ref(),
-                    DefaultColor::OpaqueWhite,
-                );
+                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
@@ -379,10 +376,7 @@ impl ImagesPart {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(
-                    color.map(|c| c.to_array()).as_ref(),
-                    DefaultColor::OpaqueWhite,
-                );
+                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
@@ -467,10 +461,7 @@ impl ImagesPart {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(
-                    color.map(|c| c.to_array()).as_ref(),
-                    DefaultColor::OpaqueWhite,
-                );
+                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,

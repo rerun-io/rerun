@@ -146,10 +146,10 @@ impl ResolvedAnnotationInfo {
     #[inline]
     pub fn color(
         &self,
-        rgba: Option<&[u8; 4]>,
+        rgba: Option<[u8; 4]>,
         default_color: DefaultColor<'_>,
     ) -> re_renderer::Color32 {
-        if let Some([r, g, b, a]) = rgba.copied() {
+        if let Some([r, g, b, a]) = rgba {
             if a == 255 {
                 // Common-case optimization
                 re_renderer::Color32::from_rgb(r, g, b)

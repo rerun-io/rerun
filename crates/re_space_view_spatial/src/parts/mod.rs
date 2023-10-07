@@ -118,7 +118,7 @@ pub fn process_colors<'a, A: Archetype>(
         arch_view.iter_optional_component::<Color>()?,
     )
     .map(move |(annotation_info, color)| {
-        annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
+        annotation_info.color(color.map(|c| c.to_array()), default_color)
     }))
 }
 
@@ -134,9 +134,7 @@ pub fn process_labels<'a, A: Archetype>(
         annotation_infos.iter(),
         arch_view.iter_optional_component::<Text>()?,
     )
-    .map(move |(annotation_info, text)| {
-        annotation_info.label(text.as_ref().map(move |t| t.as_str()))
-    }))
+    .map(move |(annotation_info, text)| annotation_info.label(text.as_ref().map(|t| t.as_str()))))
 }
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
