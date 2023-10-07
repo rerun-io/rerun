@@ -93,6 +93,7 @@ directories-next = "2"
 document-features = "0.2"
 ecolor = "0.23.0"
 eframe = { version = "0.23.0", default-features = false, features = [
+  "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
