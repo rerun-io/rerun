@@ -113,6 +113,7 @@ impl<E: Example + 'static> Application<E> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: supported_backends(),
             dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
+            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
         });
         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
@@ -282,10 +283,12 @@ impl<E: Example + 'static> Application<E> {
                                     resolve_target: None,
                                     ops: wgpu::Operations {
                                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                                        store: true,
+                                        store: wgpu::StoreOp::Store,
                                     },
                                 })],
                                 depth_stencil_attachment: None,
+                                timestamp_writes: None,
+                                occlusion_query_set: None,
                             });
 
                         for draw_result in &draw_results {

@@ -198,8 +198,8 @@ webbrowser = "0.8"
 winit = "0.28.7"
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "0.17.0", features = ["fragile-send-sync-non-atomic-wasm"] }
-wgpu-core = "0.17.0"
+wgpu = { version = "0.18.0", features = ["fragile-send-sync-non-atomic-wasm"] }
+wgpu-core = "0.18.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 zune-core = "0.2"
@@ -230,3 +230,9 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+ecolor = { git = "https://github.com/emilk/egui.git",  commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
+eframe = { git = "https://github.com/emilk/egui.git",  commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
+egui = { git = "https://github.com/emilk/egui.git",  commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git",  commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
+emath = { git = "https://github.com/emilk/egui.git",  commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
+epaint = { git = "https://github.com/emilk/egui.git",  commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }

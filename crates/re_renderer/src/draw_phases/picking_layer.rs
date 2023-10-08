@@ -321,17 +321,19 @@ impl PickingLayerProcessor {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: true, // Store for readback!
+                    store: wgpu::StoreOp::Store, // Store for readback!
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.picking_depth_target.default_view,
                 depth_ops: Some(wgpu::Operations {
                     load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
-                    store: true, // Store for readback!
+                    store: wgpu::StoreOp::Store, // Store for readback!
                 }),
                 stencil_ops: None,
             }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         pass.set_bind_group(0, &self.bind_group_0, &[]);
@@ -590,10 +592,12 @@ impl DepthReadbackWorkaround {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: true, // Store for readback!
+                    store: wgpu::StoreOp::Store, // Store for readback!
                 },
             })],
             depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;

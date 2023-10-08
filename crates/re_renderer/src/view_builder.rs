@@ -556,17 +556,19 @@ impl ViewBuilder {
                         }),
                         // Don't care about the result, it's going to be resolved to the resolve target.
                         // This can have be much better perf, especially on tiler gpus.
-                        store: false,
+                        store: wgpu::StoreOp::Discard,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &setup.depth_buffer.default_view,
                     depth_ops: Some(wgpu::Operations {
                         load: Self::DEFAULT_DEPTH_CLEAR,
-                        store: false,
+                        store: wgpu::StoreOp::Discard,
                     }),
                     stencil_ops: None,
                 }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
