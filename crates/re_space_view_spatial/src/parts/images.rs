@@ -109,7 +109,7 @@ fn to_textured_rect(
                     .transform_vector3(glam::Vec3::X * width as f32),
                 extent_v: ent_context
                     .world_from_entity
-                    .transform_vector3(glam::Vec3::Y * (height as f32)),
+                    .transform_vector3(glam::Vec3::Y * height as f32),
                 colormapped_texture,
                 options: RectangleOptions {
                     texture_filter_magnification,

@@ -1,6 +1,6 @@
 use re_data_store::VersionedInstancePathHash;
 use re_renderer::{
-    renderer::{ColormappedTexture, TextureEncoding},
+    renderer::{ColormappedTexture, ShaderDecoding},
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
 use re_types::{
@@ -50,8 +50,8 @@ pub fn colormapped_texture(
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(
             color_mapping.map,
         )),
-        encoding: match &tensor.buffer {
-            &TensorBuffer::Nv12(_) => Some(TextureEncoding::Nv12),
+        shader_decoding: match &tensor.buffer {
+            &TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
             _ => None,
         },
     })

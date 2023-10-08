@@ -107,14 +107,14 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         let coord = in.texcoord * texture_dimensions;
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
-            normalized_value = (Vec4(decode_nv12(texture_uint,
+            normalized_value = decode_color(Vec4(decode_nv12(texture_uint,
                 clamp_to_edge_nearest_neighbor(coord, texture_dimensions))));
         } else {
             // bilinear
-            let v00 = (Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimensions))));
-            let v01 = (Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimensions))));
-            let v10 = (Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimensions))));
-            let v11 = (Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimensions))));
+            let v00 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimensions))));
+            let v01 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimensions))));
+            let v10 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimensions))));
+            let v11 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimensions))));
             normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
         }
     }

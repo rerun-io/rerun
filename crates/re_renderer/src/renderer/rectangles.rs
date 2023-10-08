@@ -50,7 +50,7 @@ pub enum TextureFilterMin {
 
 /// Describes how the color information is encoded in the texture.
 #[derive(Clone, Debug, PartialEq)]
-pub enum TextureEncoding {
+pub enum ShaderDecoding {
     Nv12,
 }
 
@@ -90,8 +90,8 @@ pub struct ColormappedTexture {
     /// Failure to set a color mapper for a one-component texture is an error.
     pub color_mapper: Option<ColorMapper>,
 
-    /// For textures that don't store color information in conventional RGB color space, you need to supply a TextureEncoding.
-    pub encoding: Option<TextureEncoding>,
+    /// For textures that need decoding in the shader, for example NV12 encoded images.
+    pub shader_decoding: Option<ShaderDecoding>,
 }
 
 /// How to map the normalized `.r` component to a color.
@@ -122,13 +122,13 @@ impl ColormappedTexture {
             gamma: 1.0,
             multiply_rgb_with_alpha: true,
             color_mapper: None,
-            encoding: None,
+            shader_decoding: None,
         }
     }
 
     pub fn width_height(&self) -> [u32; 2] {
-        match self.encoding {
-            Some(TextureEncoding::Nv12) => {
+        match self.shader_decoding {
+            Some(ShaderDecoding::Nv12) => {
                 let [width, height] = self.texture.width_height();
                 [width, height * 2 / 3]
             }
@@ -282,7 +282,7 @@ mod gpu_data {
                 gamma,
                 color_mapper,
                 multiply_rgb_with_alpha,
-                encoding: texture_encoding,
+                shader_decoding,
             } = colormapped_texture;
 
             let super::RectangleOptions {
@@ -297,7 +297,7 @@ mod gpu_data {
                 Some(wgpu::TextureSampleType::Float { .. }) => SAMPLE_TYPE_FLOAT,
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
                 Some(wgpu::TextureSampleType::Uint) => {
-                    if texture_encoding == &Some(super::TextureEncoding::Nv12) {
+                    if shader_decoding == &Some(super::ShaderDecoding::Nv12) {
                         SAMPLE_TYPE_NV12
                     } else {
                         SAMPLE_TYPE_UINT
@@ -320,8 +320,8 @@ mod gpu_data {
                     Some(ColorMapper::Texture(_)) => {
                         color_mapper_int = COLOR_MAPPER_TEXTURE;
                     }
-                    None => match texture_encoding {
-                        Some(super::TextureEncoding::Nv12) => color_mapper_int = COLOR_MAPPER_OFF,
+                    None => match shader_decoding {
+                        Some(super::ShaderDecoding::Nv12) => color_mapper_int = COLOR_MAPPER_OFF,
                         _ => return Err(RectangleError::MissingColorMapper),
                     },
                 },
@@ -464,7 +464,7 @@ impl RectangleDrawData {
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
-                    &(BindGroupDesc {
+                    &BindGroupDesc {
                         label: "RectangleInstance::bind_group".into(),
                         entries: smallvec![
                             uniform_buffer,
@@ -474,7 +474,7 @@ impl RectangleDrawData {
                             BindGroupEntry::DefaultTextureView(colormap_texture)
                         ],
                         layout: rectangle_renderer.bind_group_layout,
-                    }),
+                    },
                 ),
                 draw_outline_mask: rectangle.options.outline_mask.is_some(),
             });

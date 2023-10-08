@@ -16,7 +16,7 @@ use wgpu::TextureFormat;
 
 use re_renderer::{
     pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture, TextureEncoding},
+    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
@@ -119,15 +119,19 @@ pub fn color_tensor_to_gpu(
     .map_err(|err| anyhow::anyhow!("Failed to create texture for color tensor: {err}"))?;
 
     let texture_format = texture_handle.format();
-
-    // TODO(emilk): let the user specify the color space.
-    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || super::tensor_decode_srgb_gamma_heuristic(tensor_stats, tensor.dtype(), depth)?;
-
-    let encoding = match &tensor.buffer {
-        &TensorBuffer::Nv12(_) => Some(TextureEncoding::Nv12),
+    let shader_decoding = match &tensor.buffer {
+        &TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
         _ => None,
     };
+    // TODO(emilk): let the user specify the color space.
+    let decode_srgb = match shader_decoding {
+        Some(ShaderDecoding::Nv12) => true,
+        None => {
+            texture_format == TextureFormat::Rgba8Unorm
+                || super::tensor_decode_srgb_gamma_heuristic(tensor_stats, tensor.dtype(), depth)?
+        }
+    };
+
     // Special casing for normalized textures used above:
     let range = if matches!(
         texture_format,
@@ -136,14 +140,14 @@ pub fn color_tensor_to_gpu(
         [0.0, 1.0]
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
-    } else if encoding == Some(TextureEncoding::Nv12) {
+    } else if shader_decoding == Some(ShaderDecoding::Nv12) {
         [0.0, 1.0]
     } else {
         // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
         super::tensor_data_range_heuristic(tensor_stats, tensor.dtype())?
     };
 
-    let color_mapper = if encoding.is_none() && texture_format.components() == 1 {
+    let color_mapper = if shader_decoding.is_none() && texture_format.components() == 1 {
         // Single-channel images = luminance = grayscale
         Some(ColorMapper::Function(re_renderer::Colormap::Grayscale))
     } else {
@@ -153,12 +157,7 @@ pub fn color_tensor_to_gpu(
     // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
     // Assume that the texture is not pre-multiplied if it has an alpha channel.
     let multiply_rgb_with_alpha = depth == 4;
-
-    let gamma = if encoding == Some(TextureEncoding::Nv12) {
-        2.2
-    } else {
-        1.0
-    };
+    let gamma = 1.0;
 
     Ok(ColormappedTexture {
         texture: texture_handle,
@@ -167,7 +166,7 @@ pub fn color_tensor_to_gpu(
         multiply_rgb_with_alpha,
         gamma,
         color_mapper,
-        encoding,
+        shader_decoding,
     })
 }
 
@@ -240,7 +239,7 @@ pub fn class_id_tensor_to_gpu(
         multiply_rgb_with_alpha: false, // already premultiplied!
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
-        encoding: None,
+        shader_decoding: None,
     })
 }
 
@@ -274,7 +273,7 @@ pub fn depth_tensor_to_gpu(
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Function(re_renderer::Colormap::Turbo)),
-        encoding: None,
+        shader_decoding: None,
     })
 }
 

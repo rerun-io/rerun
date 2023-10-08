@@ -264,10 +264,10 @@ fn view_tensor(
         .iter()
         .any(|selector| selector.visible)
     {
-        (egui::Frame {
+        egui::Frame {
             inner_margin: egui::Margin::symmetric(16.0, 8.0),
             ..Default::default()
-        })
+        }
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
             selectors_ui(ui, state, tensor);

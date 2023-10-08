@@ -1,4 +1,7 @@
-use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
+use crate::{
+    archetypes::Tensor,
+    tensor_data::{TensorCastError, TensorDataType, TensorElement},
+};
 
 #[cfg(feature = "image")]
 use crate::tensor_data::{DecodedTensor, TensorImageLoadError, TensorImageSaveError};
@@ -47,15 +50,25 @@ impl TensorData {
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
         let shape_short = self.shape_short();
         match &self.buffer {
+            // In the case of NV12, return the shape of the RGB image, not the tensor size.
             TensorBuffer::Nv12(_) => {
                 // NV12 encodes a color image in 1.5 "channels" -> 1 luma (per pixel) + (1U+1V) / 4 pixels.
-                // Return the RGB size.
                 match shape_short {
-                    [h, w] => Some([h.size * 3 / 2, w.size, 3]),
+                    [h, w] => Some([h.size * 2 / 3, w.size, 3]),
                     _ => None,
                 }
             }
-            _ => {
+            TensorBuffer::U8(_)
+            | TensorBuffer::U16(_)
+            | TensorBuffer::U32(_)
+            | TensorBuffer::U64(_)
+            | TensorBuffer::I8(_)
+            | TensorBuffer::I16(_)
+            | TensorBuffer::I32(_)
+            | TensorBuffer::I64(_)
+            | TensorBuffer::F16(_)
+            | TensorBuffer::F32(_)
+            | TensorBuffer::F64(_) => {
                 match shape_short.len() {
                     1 => {
                         // Special case: Nx1(x1x1x …) tensors are treated as Nx1 gray images.
@@ -79,6 +92,7 @@ impl TensorData {
                     _ => None,
                 }
             }
+            TensorBuffer::Jpeg(_) => None,
         }
     }
 
