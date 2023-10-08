@@ -22,7 +22,7 @@ __all__ = ["LineStrip2D", "LineStrip2DArrayLike", "LineStrip2DBatch", "LineStrip
 @define(init=False)
 class LineStrip2D(LineStrip2DExt):
     r"""
-    A line strip in 2D space.
+    **Component**: A line strip in 2D space.
 
     A line strip is a list of points connected by line segments. It can be used to draw
     approximations of smooth curves.
@@ -77,11 +77,3 @@ class LineStrip2DBatch(BaseBatch[LineStrip2DArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
         return LineStrip2DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(LineStrip2DType())
-
-
-if hasattr(LineStrip2DExt, "deferred_patch_class"):
-    LineStrip2DExt.deferred_patch_class(LineStrip2D)

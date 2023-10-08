@@ -1,4 +1,4 @@
-use super::{AnnotationInfo, ClassDescription, ClassDescriptionMapElem, Color};
+use super::{AnnotationInfo, ClassDescription, ClassDescriptionMapElem, Rgba32};
 
 impl From<(u16, &str)> for ClassDescriptionMapElem {
     fn from(value: (u16, &str)) -> Self {
@@ -7,8 +7,8 @@ impl From<(u16, &str)> for ClassDescriptionMapElem {
     }
 }
 
-impl From<(u16, &str, Color)> for ClassDescriptionMapElem {
-    fn from(value: (u16, &str, Color)) -> Self {
+impl From<(u16, &str, Rgba32)> for ClassDescriptionMapElem {
+    fn from(value: (u16, &str, Rgba32)) -> Self {
         let class: ClassDescription = value.into();
         class.into()
     }

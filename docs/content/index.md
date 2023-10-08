@@ -1,50 +1,50 @@
 ---
-title: Documentation
+title: Welcome
 order: 0
 ---
+To get a feeling of what you can do with Rerun
+- browse the [example gallery](/examples) or
+- try Rerun directly [in your browser](https://app.rerun.io/).
 
-## Use Rerun to build intelligent software faster
+## What is Rerun?
 
-Rerun helps developers debug and understand their systems
-by quickly visualizing internal state and data.
+Rerun is an SDK and engine for visualizing and interacting with multimodal data streams.
 
-It's primarily focused on visualizing 2D and 3D computer vision and robotics data over time,
-but is under active development to expand support for more use-cases and data types.
+Rerun is
+- Simple to integrate and get started with
+- Usable from Python, Rust, and soon C++
+- Powerful, flexible, and extensible
+- Built in Rust to be cross platform and fast
+- Open source, dual licensed under MIT and Apache 2
 
-To get a sense of what you can do with Rerun right now,
-check out the [example gallery](/examples)
-or try out some [live demos](https://demo.rerun.io/) directly in your browser.
+Rerun is used by engineers and researchers in fields like computer vision and robotics
+to verify, debug, and demo.
 
-## Start learning
+For a list of built-in data types, see the [Types](reference/types.md) section.
 
-- Jump right in with [Python](getting-started/python.md) or [Rust](getting-started/rust.md).
-- Follow up with a [walkthrough of the viewer](getting-started/viewer-walkthrough.md) and a tutorial on logging data with [Python](getting-started/logging-python.md) or [Rust](getting-started/logging-rust.md).
-- Dive deeper in the [Concepts](concepts) section.
-- The [Reference](reference) covers data types, configuration and API details.
-    - Including simple examples of how to use each of the [loggable data types](reference/data_types.md)
+## How do you use it?
+<picture>
+  <img src="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/1200w.png">
+</picture>
+
+1. Stream multimodal data from your code by logging it with the Rerun SDK
+2. Visualize and interact with live or recorded streams, whether local or remote
+3. Interactively build layouts and customize visualizations
+4. Extend Rerun when you need to
 
 ## How does it work?
-It's quite simple:
+That's a big question for a welcome page. The short answer is that
+Rerun goes to extreme lengths to make handling and visualizing
+multimodal data streams easy and performant.
 
-1. Use the Rerun SDK to log data like text, tensors, images, point clouds, or metrics.
-2. The data you log gets sent to our viewer that automatically visualizes it live.
-3. You can then use the UI to interactively explore the data and customize layout and visualization options.
-4. Save recordings to file for later replay.
-5. You can also [extend Rerun in Rust](howto/extend-ui.md) to meet your specific needs.
 
-Under the hood Rerun:
-
-1. Serializes the data.
-2. Sends it to the viewer, on the same machine or across the network.
-3. Receives and deserializes the data, potentially coming in out-of-order from from multiple sources.
-4. Indexes it into our super fast in-memory time-series like database.
-5. Serves and renders that data at lightning speed as you interactively inspect and scroll back and forth in time.
-
-### Example Visualization
-![overview](https://static.rerun.io/9a555db43ccdc24a5a0d9afb3e9bf5c80b55f271_docs_overview.png)
 
 ## Can't find what you're looking for?
 
-- Drop in to the [Rerun Community Discord](https://discord.gg/xwcxHUjD35)
+- Join us in the [Rerun Community Discord](https://discord.gg/xwcxHUjD35)
 - Or [submit an issue](https://github.com/rerun-io/rerun/issues) in the Rerun GitHub project
 

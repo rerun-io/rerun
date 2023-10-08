@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import socket
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
@@ -44,6 +45,8 @@ _connect = connect  # we need this because Python scoping is horrible
 def save(path: str, recording: RecordingStream | None = None) -> None:
     """
     Stream all log-data to a file.
+
+    Call this _before_ you log any data!
 
     Parameters
     ----------
@@ -142,8 +145,29 @@ def serve(
     bindings.serve(open_browser, web_port, ws_port, recording=recording)
 
 
+# TODO(jleibs): Ideally this would include a quick handshake that we're not talking
+# to some other random process holding the port.
+def _check_for_existing_viewer(port: int) -> bool:
+    try:
+        # Try opening a connection to the port to see if something is there
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        s.connect(("127.0.0.1", port))
+        return True
+    except Exception:
+        # If the connection times out or is refused, the port is not open
+        return False
+    finally:
+        # Always close the socket to release resources
+        s.close()
+
+
 def spawn(
-    *, port: int = 9876, connect: bool = True, memory_limit: str = "75%", recording: RecordingStream | None = None
+    *,
+    port: int = 9876,
+    connect: bool = True,
+    memory_limit: str = "75%",
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Spawn a Rerun Viewer, listening on the given port.
@@ -167,7 +191,6 @@ def spawn(
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
     """
 
     import os
@@ -188,17 +211,32 @@ def spawn(
     if python_executable is None:
         python_executable = "python3"
 
-    # start_new_session=True ensures the spawned process does NOT die when
-    # we hit ctrl-c in the terminal running the parent Python process.
-    subprocess.Popen(
-        [python_executable, "-m", "rerun", f"--port={port}", f"--memory-limit={memory_limit}", "--skip-welcome-screen"],
-        env=new_env,
-        start_new_session=True,
-    )
+    # TODO(jleibs): More options to opt out of this behavior.
+    if _check_for_existing_viewer(port):
+        # Using print here for now rather than `logging.info` because logging.info isn't
+        # visible by default.
+        #
+        # If we spawn a process it's going to send a bunch of stuff to stdout anyways.
+        print(f"Found existing process on port {port}. Trying to connect.")
+    else:
+        # start_new_session=True ensures the spawned process does NOT die when
+        # we hit ctrl-c in the terminal running the parent Python process.
+        subprocess.Popen(
+            [
+                python_executable,
+                "-m",
+                "rerun",
+                f"--port={port}",
+                f"--memory-limit={memory_limit}",
+                "--skip-welcome-screen",
+            ],
+            env=new_env,
+            start_new_session=True,
+        )
 
-    # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
-    # For example, wait until it prints "Hosting a SDK server over TCP at …"
-    sleep(0.5)  # almost as good as waiting the correct amount of time
+        # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
+        # For example, wait until it prints "Hosting a SDK server over TCP at …"
+        sleep(0.5)  # almost as good as waiting the correct amount of time
 
     if connect:
         _connect(f"127.0.0.1:{port}", recording=recording)

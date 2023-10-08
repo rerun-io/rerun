@@ -1,4 +1,3 @@
-"""The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 from __future__ import annotations
 
 import functools
@@ -13,10 +12,12 @@ import numpy as np
 __all__ = [
     "AnnotationContext",
     "AnnotationInfo",
+    "AnyValues",
     "Arrows3D",
     "AsComponents",
     "Asset3D",
     "BarChart",
+    "Box2DFormat",
     "Boxes2D",
     "Boxes3D",
     "ClassDescription",
@@ -31,9 +32,14 @@ __all__ = [
     "LineStrips2D",
     "LineStrips3D",
     "LoggingHandler",
+    "Material",
     "MediaType",
+    "MemoryRecording",
     "Mesh3D",
     "MeshFormat",
+    "MeshProperties",
+    "OutOfTreeTransform3D",
+    "OutOfTreeTransform3DBatch",
     "Pinhole",
     "Points2D",
     "Points3D",
@@ -45,8 +51,10 @@ __all__ = [
     "Scale3D",
     "SegmentationImage",
     "Tensor",
+    "TensorData",
     "TextDocument",
     "TextLog",
+    "TextLogLevel",
     "TimeSeriesScalar",
     "Transform3D",
     "Translation3D",
@@ -54,6 +62,7 @@ __all__ = [
     "TranslationAndMat3x3",
     "TranslationRotationScale3D",
     "ViewCoordinates",
+    "archetypes",
     "bindings",
     "components",
     "connect",
@@ -115,6 +124,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from ._image import ImageEncoded, ImageFormat
 from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from .any_value import AnyValues
 from .archetypes import (
     AnnotationContext,
     Arrows3D,
@@ -140,8 +150,24 @@ from .archetypes import (
     Transform3D,
     ViewCoordinates,
 )
-from .components import MediaType
-from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
+from .archetypes.boxes2d_ext import Box2DFormat
+from .components import (
+    Material,
+    MediaType,
+    MeshProperties,
+    OutOfTreeTransform3D,
+    OutOfTreeTransform3DBatch,
+    TextLogLevel,
+)
+from .datatypes import (
+    Quaternion,
+    RotationAxisAngle,
+    Scale3D,
+    TensorData,
+    TranslationAndMat3x3,
+    TranslationRotationScale3D,
+)
+from .error_utils import set_strict_mode
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
 from .log_deprecated.bounding_box import log_obb, log_obbs
@@ -156,7 +182,7 @@ from .log_deprecated.points import log_point, log_points
 from .log_deprecated.rects import RectFormat, log_rect, log_rects
 from .log_deprecated.scalar import log_scalar
 from .log_deprecated.tensor import log_tensor
-from .log_deprecated.text import LoggingHandler, log_text_entry
+from .log_deprecated.text import log_text_entry
 from .log_deprecated.transform import (
     Rigid3D,
     Translation3D,
@@ -165,6 +191,8 @@ from .log_deprecated.transform import (
     log_transform3d,
     log_view_coordinates,
 )
+from .logging_handler import LoggingHandler
+from .recording import MemoryRecording
 from .recording_stream import (
     RecordingStream,
     get_application_id,
@@ -195,7 +223,6 @@ __all__ += [
     "unregister_shutdown",
     "cleanup_if_forked_child",
     "shutdown_at_exit",
-    "strict_mode",
     "set_strict_mode",
     "start_web_viewer_server",
 ]
@@ -220,13 +247,9 @@ def _init_recording_stream() -> None:
 _init_recording_stream()
 
 
-# If `True`, we raise exceptions on use error (wrong parameter types, etc.).
-# If `False` we catch all errors and log a warning instead.
-_strict_mode = False
-
-
 def init(
     application_id: str,
+    *,
     recording_id: str | None = None,
     spawn: bool = False,
     init_logging: bool = True,
@@ -293,8 +316,7 @@ def init(
         random.seed(0)
         np.random.seed(0)
 
-    global _strict_mode
-    _strict_mode = strict
+    set_strict_mode(strict)
 
     # Always check whether we are a forked child when calling init.  This should have happened
     # via `_register_on_fork` but it's worth being conservative.
@@ -302,7 +324,7 @@ def init(
 
     if init_logging:
         new_recording(
-            application_id,
+            application_id=application_id,
             recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
@@ -327,6 +349,7 @@ def init(
 
 
 def new_recording(
+    *,
     application_id: str,
     recording_id: str | None = None,
     make_default: bool = False,
@@ -498,35 +521,6 @@ def shutdown_at_exit(func: _TFunc) -> _TFunc:
 
 
 # ---
-
-
-def strict_mode() -> bool:
-    """
-    Strict mode enabled.
-
-    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
-    will result in exception being raised.
-    When strict mode is on, such problems are instead logged as warnings.
-
-    The default is OFF.
-    """
-
-    return _strict_mode
-
-
-def set_strict_mode(mode: bool) -> None:
-    """
-    Turn strict mode on/off.
-
-    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
-    will result in exception being raised.
-    When strict mode is off, such problems are instead logged as warnings.
-
-    The default is OFF.
-    """
-    global _strict_mode
-
-    _strict_mode = mode
 
 
 def start_web_viewer_server(port: int = 0) -> None:

@@ -212,7 +212,7 @@ impl AnnotationMap {
     /// An entity is considered its own (nearest) ancestor.
     pub fn load<'a>(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         time_query: &LatestAtQuery,
         entities: impl Iterator<Item = &'a EntityPath>,
     ) {

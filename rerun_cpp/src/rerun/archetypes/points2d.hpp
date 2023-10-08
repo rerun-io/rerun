@@ -23,28 +23,11 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A 2D point cloud with positions and optional colors, radii, labels, etc.
+        /// **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
         ///
-        /// ## Examples
+        /// ## Example
         ///
-        /// ```cpp,ignore
-        /// // Log some very simple points.
-        ///
-        /// #include <rerun.hpp>
-        ///
-        /// namespace rr = rerun;
-        ///
-        /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_points2d_simple");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
-        ///
-        ///     rec.log("points", rr::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}}));
-        ///
-        ///     // Log an extra rect to set the view bounds
-        ///     rec.log("bounds", rr::Boxes2D::from_half_sizes({{2.0f, 1.5f}}));
-        /// }
-        /// ```
-        ///
+        /// ### Randomly distributed 2D points with varying color and radius
         /// ```cpp,ignore
         /// // Log some very simple points.
         ///
@@ -95,6 +78,7 @@ namespace rerun {
             std::optional<std::vector<rerun::components::Text>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
@@ -165,6 +149,7 @@ namespace rerun {
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             Points2D& with_draw_order(rerun::components::DrawOrder _draw_order) {
                 draw_order = std::move(_draw_order);

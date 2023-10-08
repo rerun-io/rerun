@@ -14,6 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+/// **Component**: Material properties of a mesh.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Material(pub crate::datatypes::Material);
 
@@ -67,7 +68,7 @@ impl crate::Loggable for Material {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "albedo_factor".to_owned(),
-            data_type: <crate::datatypes::Color>::arrow_datatype(),
+            data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])
@@ -80,6 +81,7 @@ impl crate::Loggable for Material {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -112,6 +114,7 @@ impl crate::Loggable for Material {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::Material::from_arrow_opt(arrow_data)

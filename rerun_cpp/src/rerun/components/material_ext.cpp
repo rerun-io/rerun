@@ -12,7 +12,7 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            static Material from_albedo_factor(rerun::datatypes::Color color) {
+            static Material from_albedo_factor(rerun::datatypes::Rgba32 color) {
                 return Material(color);
             }
 

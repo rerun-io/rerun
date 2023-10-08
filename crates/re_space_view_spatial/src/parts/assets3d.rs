@@ -30,7 +30,7 @@ impl Default for Asset3DPart {
 impl Asset3DPart {
     fn process_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         instances: &mut Vec<MeshInstance>,
         arch_view: &ArchetypeView<Asset3D>,
         ent_path: &EntityPath,
@@ -41,7 +41,7 @@ impl Asset3DPart {
         let media_type = arch_view.raw_optional_mono_component::<MediaType>()?;
 
         let mesh = Asset3D {
-            data: arch_view.required_mono_component::<Blob>()?,
+            blob: arch_view.required_mono_component::<Blob>()?,
             media_type: media_type.clone(),
             // NOTE: Don't even try to cache the transform!
             transform: None,
@@ -52,7 +52,7 @@ impl Asset3DPart {
         let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
 
         // TODO(#3232): this is subtly wrong, the key should actually be a hash of everything that got
-        // cached, which includes the media type...
+        // cached, which includes the media type…
         let mesh = ctx.cache.entry(|c: &mut MeshCache| {
             c.entry(
                 &ent_path.to_string(),

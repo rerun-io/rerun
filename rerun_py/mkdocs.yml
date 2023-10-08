@@ -28,16 +28,24 @@ plugins:
             - https://numpy.org/doc/stable/objects.inv
             - https://ipython.readthedocs.io/en/stable/objects.inv
           options: # https://mkdocstrings.github.io/python/usage/#globallocal-options
-            show_source: no
+            docstring_section_style: spacy # list spacy table
             docstring_style: numpy
-            members_order: source
             heading_level: 3
-            show_root_heading: true
-            merge_init_into_class: true
+            filters: [
+                "!__attrs_clear__", # For internal use
+                "!^_[^_]", # Hide things starting with a single underscore
+                "!as_component_batches", # Inherited from AsComponents
+                "!indicator", # Inherited from Archetype
+                "!num_instances", # Inherited from AsComponents
+              ]
+            inherited_members: true
+            members_order: source # The order of class members
+            merge_init_into_class: false # Not compatible with `inherited_members`
+            show_if_no_docstring: false # We intentionally hide archetype fields
+            show_source: no
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_common_index.py
-        - docs/gen_package_index.py
   - literate-nav: # https://oprypin.github.io/mkdocs-literate-nav
       nav_file: SUMMARY.txt
   - redirects: # https://github.com/mkdocs/mkdocs-redirects
@@ -62,4 +70,3 @@ extra:
   version:
     provider: mike
     default: latest
-

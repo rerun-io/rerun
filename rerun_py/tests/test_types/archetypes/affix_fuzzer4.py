@@ -9,6 +9,7 @@ from typing import Any
 
 from attrs import define, field
 from rerun._baseclasses import Archetype
+from rerun.error_utils import catch_and_log_exceptions
 
 from .. import components, datatypes
 
@@ -19,6 +20,7 @@ __all__ = ["AffixFuzzer4"]
 class AffixFuzzer4(Archetype):
     def __init__(
         self: Any,
+        *,
         fuzz2101: datatypes.AffixFuzzer1ArrayLike | None = None,
         fuzz2102: datatypes.AffixFuzzer1ArrayLike | None = None,
         fuzz2103: datatypes.AffixFuzzer1ArrayLike | None = None,
@@ -41,26 +43,59 @@ class AffixFuzzer4(Archetype):
         """Create a new instance of the AffixFuzzer4 archetype."""
 
         # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(
+                fuzz2101=fuzz2101,
+                fuzz2102=fuzz2102,
+                fuzz2103=fuzz2103,
+                fuzz2104=fuzz2104,
+                fuzz2105=fuzz2105,
+                fuzz2106=fuzz2106,
+                fuzz2107=fuzz2107,
+                fuzz2108=fuzz2108,
+                fuzz2109=fuzz2109,
+                fuzz2110=fuzz2110,
+                fuzz2111=fuzz2111,
+                fuzz2112=fuzz2112,
+                fuzz2113=fuzz2113,
+                fuzz2114=fuzz2114,
+                fuzz2115=fuzz2115,
+                fuzz2116=fuzz2116,
+                fuzz2117=fuzz2117,
+                fuzz2118=fuzz2118,
+            )
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            fuzz2101=fuzz2101,
-            fuzz2102=fuzz2102,
-            fuzz2103=fuzz2103,
-            fuzz2104=fuzz2104,
-            fuzz2105=fuzz2105,
-            fuzz2106=fuzz2106,
-            fuzz2107=fuzz2107,
-            fuzz2108=fuzz2108,
-            fuzz2109=fuzz2109,
-            fuzz2110=fuzz2110,
-            fuzz2111=fuzz2111,
-            fuzz2112=fuzz2112,
-            fuzz2113=fuzz2113,
-            fuzz2114=fuzz2114,
-            fuzz2115=fuzz2115,
-            fuzz2116=fuzz2116,
-            fuzz2117=fuzz2117,
-            fuzz2118=fuzz2118,
+            fuzz2101=None,  # type: ignore[arg-type]
+            fuzz2102=None,  # type: ignore[arg-type]
+            fuzz2103=None,  # type: ignore[arg-type]
+            fuzz2104=None,  # type: ignore[arg-type]
+            fuzz2105=None,  # type: ignore[arg-type]
+            fuzz2106=None,  # type: ignore[arg-type]
+            fuzz2107=None,  # type: ignore[arg-type]
+            fuzz2108=None,  # type: ignore[arg-type]
+            fuzz2109=None,  # type: ignore[arg-type]
+            fuzz2110=None,  # type: ignore[arg-type]
+            fuzz2111=None,  # type: ignore[arg-type]
+            fuzz2112=None,  # type: ignore[arg-type]
+            fuzz2113=None,  # type: ignore[arg-type]
+            fuzz2114=None,  # type: ignore[arg-type]
+            fuzz2115=None,  # type: ignore[arg-type]
+            fuzz2116=None,  # type: ignore[arg-type]
+            fuzz2117=None,  # type: ignore[arg-type]
+            fuzz2118=None,  # type: ignore[arg-type]
         )
+
+    @classmethod
+    def _clear(cls) -> AffixFuzzer4:
+        """Produce an empty AffixFuzzer4, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     fuzz2101: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},

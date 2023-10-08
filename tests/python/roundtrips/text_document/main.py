@@ -20,7 +20,7 @@ def main() -> None:
     rr.log(
         "markdown",
         rr.TextDocument(
-            body="# Hello\nMarkdown with `code`!\n\nA random image:\n\n![A random image](https://picsum.photos/640/480)",
+            "# Hello\nMarkdown with `code`!\n\nA random image:\n\n![A random image](https://picsum.photos/640/480)",
             media_type=rr.MediaType.MARKDOWN,
         ),
     )

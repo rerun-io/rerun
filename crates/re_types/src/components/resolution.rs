@@ -14,9 +14,9 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Pixel resolution width & height, e.g. of a camera sensor.
+/// **Component**: Pixel resolution width & height, e.g. of a camera sensor.
 ///
-/// Typically in integer units, but for some usecases floating point may be used.
+/// Typically in integer units, but for some use cases floating point may be used.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct Resolution(pub crate::datatypes::Vec2D);
 
@@ -86,6 +86,7 @@ impl crate::Loggable for Resolution {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -153,6 +154,7 @@ impl crate::Loggable for Resolution {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -241,6 +243,7 @@ impl crate::Loggable for Resolution {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
@@ -249,44 +252,50 @@ impl crate::Loggable for Resolution {
             }
         }
         Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
-                            2usize,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
-                })
-                .with_context("rerun.components.Resolution#resolution")?;
-            let arrow_data_inner = &**arrow_data.values();
-            bytemuck::cast_slice::<_, [_; 2usize]>(
-                arrow_data_inner
+            let slice = {
+                let arrow_data = arrow_data
                     .as_any()
-                    .downcast_ref::<Float32Array>()
+                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
                         crate::DeserializationError::datatype_mismatch(
-                            DataType::Float32,
-                            arrow_data_inner.data_type().clone(),
+                            DataType::FixedSizeList(
+                                Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                2usize,
+                            ),
+                            arrow_data.data_type().clone(),
                         )
                     })
-                    .with_context("rerun.components.Resolution#resolution")?
-                    .values()
-                    .as_slice(),
-            )
-            .iter()
-            .copied()
-            .map(|v| crate::datatypes::Vec2D(v))
-        }
-        .map(|v| Self(v))
-        .collect::<Vec<_>>())
+                    .with_context("rerun.components.Resolution#resolution")?;
+                let arrow_data_inner = &**arrow_data.values();
+                bytemuck::cast_slice::<_, [_; 2usize]>(
+                    arrow_data_inner
+                        .as_any()
+                        .downcast_ref::<Float32Array>()
+                        .ok_or_else(|| {
+                            crate::DeserializationError::datatype_mismatch(
+                                DataType::Float32,
+                                arrow_data_inner.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.components.Resolution#resolution")?
+                        .values()
+                        .as_slice(),
+                )
+            };
+            {
+                re_tracing::profile_scope!("collect");
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::Vec2D(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
+            }
+        })
     }
 }

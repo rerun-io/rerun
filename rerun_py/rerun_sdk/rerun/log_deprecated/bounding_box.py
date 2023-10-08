@@ -4,14 +4,17 @@ from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import Boxes3D
 from rerun.datatypes import Quaternion
 from rerun.log_deprecated import (
     Color,
     Colors,
     OptionalClassIds,
+    _radii_from_stroke_width,
 )
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -22,6 +25,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_obb(
     entity_path: str,
@@ -39,6 +46,11 @@ def log_obb(
 ) -> None:
     """
     Log a 3D Oriented Bounding Box, or OBB.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Example:
     --------
@@ -89,6 +101,10 @@ def log_obb(
     )
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Boxes3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_obbs(
     entity_path: str,
@@ -105,13 +121,12 @@ def log_obbs(
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Log a 3D Oriented Bounding Box, or OBB.
+    Log a collection of 3D Oriented Bounding Boxes, or OBB.
 
-    Example:
-    --------
-    ```
-    rr.log_obb("my_obb", half_size=[1.0, 2.0, 3.0], position=[0, 0, 0], rotation_q=[0, 0, 0, 1])
-    ```
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Boxes3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Parameters
     ----------
@@ -163,11 +178,7 @@ def log_obbs(
     else:
         rotations = None
 
-    if stroke_widths is not None:
-        radii = np.asarray(stroke_widths, dtype="float32")
-        radii /= 2.0
-    else:
-        radii = None
+    radii = _radii_from_stroke_width(stroke_widths)
 
     arch = Boxes3D(
         half_sizes=half_sizes,
@@ -178,4 +189,4 @@ def log_obbs(
         labels=labels,
         class_ids=class_ids,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)

@@ -17,18 +17,22 @@ from .material_ext import MaterialExt
 __all__ = ["Material", "MaterialArrayLike", "MaterialBatch", "MaterialLike", "MaterialType"]
 
 
-def _material__albedo_factor__special_field_converter_override(x: datatypes.ColorLike | None) -> datatypes.Color | None:
+def _material__albedo_factor__special_field_converter_override(
+    x: datatypes.Rgba32Like | None,
+) -> datatypes.Rgba32 | None:
     if x is None:
         return None
-    elif isinstance(x, datatypes.Color):
+    elif isinstance(x, datatypes.Rgba32):
         return x
     else:
-        return datatypes.Color(x)
+        return datatypes.Rgba32(x)
 
 
 @define(init=False)
 class Material(MaterialExt):
-    def __init__(self: Any, albedo_factor: datatypes.ColorLike | None = None):
+    """**Datatype**: Material properties of a mesh."""
+
+    def __init__(self: Any, albedo_factor: datatypes.Rgba32Like | None = None):
         """
         Create a new instance of the Material datatype.
 
@@ -41,12 +45,12 @@ class Material(MaterialExt):
         # You can define your own __init__ function as a member of MaterialExt in material_ext.py
         self.__attrs_init__(albedo_factor=albedo_factor)
 
-    albedo_factor: datatypes.Color | None = field(
+    albedo_factor: datatypes.Rgba32 | None = field(
         default=None, converter=_material__albedo_factor__special_field_converter_override
     )
-    """
-    Optional color multiplier.
-    """
+    # Optional color multiplier.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 MaterialLike = Material
@@ -71,11 +75,3 @@ class MaterialBatch(BaseBatch[MaterialArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: MaterialArrayLike, data_type: pa.DataType) -> pa.Array:
         return MaterialExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MaterialType())
-
-
-if hasattr(MaterialExt, "deferred_patch_class"):
-    MaterialExt.deferred_patch_class(Material)

@@ -29,11 +29,11 @@
 //! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionRadius`):
 //! ```raw
 //!                   ___________________________________________________________________
-//! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
+//! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | …
 //!                   ___________________________________________________________________
 //! (vertex shader)  |             quad 0              |              quad 2             |
 //!                                    ______________________________________________________________
-//!                                   |               quad 1            |              quad 3        | ...
+//!                                   |               quad 1            |              quad 3        | …
 //! ```
 //!
 //! Why not a triangle *strip* instead if *list*?
@@ -126,8 +126,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, LineVertex, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawError, FileResolver, FileSystem, LineVertex, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 pub mod gpu_data {
@@ -217,7 +217,7 @@ bitflags! {
         /// Adds a round cap at the end of a line strip (excludes other end caps).
         const FLAG_CAP_END_ROUND = 0b0000_0010;
 
-        /// By default, line caps end at the last/first position of the the line strip.
+        /// By default, line caps end at the last/first position of the line strip.
         /// This flag makes end caps extend outwards.
         const FLAG_CAP_END_EXTEND_OUTWARDS = 0b0000_0100;
 
@@ -227,7 +227,7 @@ bitflags! {
         /// Adds a round cap at the start of a line strip (excludes other start caps).
         const FLAG_CAP_START_ROUND = 0b0001_0000;
 
-        /// By default, line caps end at the last/first position of the the line strip.
+        /// By default, line caps end at the last/first position of the line strip.
         /// This flag makes end caps extend outwards.
         const FLAG_CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
 
@@ -965,7 +965,7 @@ impl Renderer for LineRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawError> {
         let (pipeline_handle, bind_group_all_lines) = match phase {
             DrawPhase::OutlineMask => (
                 self.render_pipeline_outline_mask,

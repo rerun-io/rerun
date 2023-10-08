@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 
 class Mat3x3Ext:
+    """Extension for [Mat3x3][rerun.datatypes.Mat3x3]."""
+
     def __init__(self: Any, rows: Mat3x3Like | None = None, *, columns: Mat3x3Like | None = None) -> None:
         from . import Mat3x3
 
@@ -35,28 +37,21 @@ class Mat3x3Ext:
 
     @staticmethod
     def native_to_pa_array_override(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Mat3x3, Mat3x3Like
+        from . import Mat3x3
 
-        # Normalize into list of Mat3x3
-        if isinstance(data, Sequence):
-            # single matrix made up of flat float array.
-            if len(data) > 0 and (isinstance(data[0], float) or isinstance(data[0], int)):
-                matrices = [Mat3x3(cast(Mat3x3Like, data))]
-            # if there's a sequence nested, either it's several matrices in various formats
-            # where the first happens to be either a flat or nested sequence of floats,
-            # or it's a single matrix with a nested sequence of floats.
-            # for that to be true, the nested sequence must be 3 floats.
-            elif (
-                isinstance(data[0], Sequence)
-                and len(data[0]) == 3
-                and all((isinstance(elem, float) or isinstance(elem, int)) for elem in data[0])
-            ):
-                matrices = [Mat3x3(cast(Mat3x3Like, data))]
-            # several matrices otherwise!
-            else:
-                matrices = [Mat3x3(m) for m in data]
+        if isinstance(data, Mat3x3):
+            matrices = [data]
+        elif len(data) == 0:
+            matrices = []
         else:
-            matrices = [Mat3x3(data)]
+            try:
+                # Try to convert it to a single Mat3x3
+                # Will raise ValueError if the wrong shape
+                matrices = [Mat3x3(data)]  # type: ignore[arg-type]
+            except ValueError:
+                # Otherwise try to convert it to a sequence of Mat3x3s
+                # Let this value error propagate as the fallback
+                matrices = [Mat3x3(d) for d in data]
 
         float_arrays = np.asarray([matrix.flat_columns for matrix in matrices], dtype=np.float32).reshape(-1)
         return pa.FixedSizeListArray.from_arrays(float_arrays, type=data_type)

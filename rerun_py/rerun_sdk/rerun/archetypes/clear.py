@@ -17,11 +17,11 @@ __all__ = ["Clear"]
 @define(str=False, repr=False, init=False)
 class Clear(ClearExt, Archetype):
     """
-    Empties all the components of an entity.
+    **Archetype**: Empties all the components of an entity.
 
-    Examples
-    --------
-    Flat:
+    Example
+    -------
+    ### Flat:
     ```python
 
     import rerun as rr
@@ -40,36 +40,35 @@ class Clear(ClearExt, Archetype):
     for i in range(len(vectors)):
         rr.log(f"arrows/{i}", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
     ```
-
-    Recursive:
-    ```python
-
-    import rerun as rr
-
-    rr.init("rerun_example_clear_simple", spawn=True)
-
-    vectors = [(1.0, 0.0, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)]
-    origins = [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0), (0.5, -0.5, 0.0), (-0.5, -0.5, 0.0)]
-    colors = [(200, 0, 0), (0, 200, 0), (0, 0, 200), (200, 0, 200)]
-
-    # Log a handful of arrows.
-    for i, (vector, origin, color) in enumerate(zip(vectors, origins, colors)):
-        rr.log(f"arrows/{i}", rr.Arrows3D(vectors=vector, origins=origin, colors=color))
-
-    # Now clear all of them at once.
-    rr.log("arrows", rr.Clear(recursive=True))  # or `rr.Clear.recursive()`
-    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png">
+      <img src="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png" width="640">
+    </picture>
+    </center>
     """
 
     # __init__ can be found in clear_ext.py
 
-    recursive: components.ClearIsRecursiveBatch = field(
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            is_recursive=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> Clear:
+        """Produce an empty Clear, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
+
+    is_recursive: components.ClearIsRecursiveBatch = field(
         metadata={"component": "required"},
-        converter=components.ClearIsRecursiveBatch,  # type: ignore[misc]
+        converter=components.ClearIsRecursiveBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(ClearExt, "deferred_patch_class"):
-    ClearExt.deferred_patch_class(Clear)

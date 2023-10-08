@@ -18,16 +18,7 @@ use std::{
 
 use anyhow::Context as _;
 
-use rerun::{
-    archetypes::{
-        Boxes3D, Image, LineStrips2D, Pinhole, Points2D, Points3D, Transform3D, ViewCoordinates,
-    },
-    components::HalfSizes3D,
-    datatypes::TranslationRotationScale3D,
-    external::re_log,
-    time::{Time, TimePoint, TimeType, Timeline},
-    RecordingStream,
-};
+use rerun::external::re_log;
 
 // --- Rerun logging ---
 
@@ -35,14 +26,14 @@ struct ArFrame {
     dir: PathBuf,
     data: objectron::ArFrame,
     index: usize,
-    timepoint: TimePoint,
+    timepoint: rerun::TimePoint,
 }
 
 impl ArFrame {
     fn from_raw(
         dir: PathBuf,
         index: usize,
-        timepoint: TimePoint,
+        timepoint: rerun::TimePoint,
         ar_frame: objectron::ArFrame,
     ) -> Self {
         Self {
@@ -54,10 +45,10 @@ impl ArFrame {
     }
 }
 
-fn timepoint(index: usize, time: f64) -> TimePoint {
-    let timeline_time = Timeline::new("time", TimeType::Time);
-    let timeline_frame = Timeline::new("frame", TimeType::Sequence);
-    let time = Time::from_seconds_since_epoch(time);
+fn timepoint(index: usize, time: f64) -> rerun::TimePoint {
+    let timeline_time = rerun::Timeline::new_temporal("time");
+    let timeline_frame = rerun::Timeline::new_sequence("frame");
+    let time = rerun::Time::from_seconds_since_epoch(time);
     [
         (timeline_time, time.into()),
         (timeline_frame, (index as i64).into()),
@@ -78,7 +69,7 @@ impl<'a> From<&'a [objectron::FrameAnnotation]> for AnnotationsPerFrame<'a> {
 }
 
 fn log_ar_frame(
-    rec: &RecordingStream,
+    rec: &rerun::RecordingStream,
     annotations: &AnnotationsPerFrame<'_>,
     ar_frame: &ArFrame,
 ) -> anyhow::Result<()> {
@@ -100,11 +91,9 @@ fn log_ar_frame(
 }
 
 fn log_baseline_objects(
-    rec: &RecordingStream,
+    rec: &rerun::RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    use rerun::{components::Color, transform::TranslationAndMat3x3};
-
     let boxes = objects.iter().filter_map(|object| {
         Some({
             if object.r#type != objectron::object::Type::BoundingBox as i32 {
@@ -112,12 +101,13 @@ fn log_baseline_objects(
                 return None;
             }
 
-            let box_half_size: HalfSizes3D = (glam::Vec3::from_slice(&object.scale) * 0.5).into();
+            let box_half_size: rerun::HalfSizes3D =
+                (glam::Vec3::from_slice(&object.scale) * 0.5).into();
             let transform = {
                 let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                TranslationAndMat3x3::new(translation, rotation)
+                rerun::TranslationAndMat3x3::new(translation, rotation)
             };
             let label = object.category.as_str();
 
@@ -129,28 +119,28 @@ fn log_baseline_objects(
         let path = format!("world/annotations/box-{id}");
         rec.log_timeless(
             path.clone(),
-            &Boxes3D::from_half_sizes([bbox_half_size])
+            &rerun::Boxes3D::from_half_sizes([bbox_half_size])
                 .with_labels([label])
-                .with_colors([Color::from_rgb(160, 230, 130)]),
+                .with_colors([rerun::Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log_timeless(path, &Transform3D::new(transform))?;
+        rec.log_timeless(path, &rerun::Transform3D::new(transform))?;
     }
 
     Ok(())
 }
 
-fn log_video_frame(rec: &RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
+fn log_video_frame(rec: &rerun::RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
     let img = rerun::datatypes::TensorData::from_jpeg_file(&image_path)?;
 
     rec.set_timepoint(ar_frame.timepoint.clone());
-    rec.log("world/camera", &Image::new(img))
+    rec.log("world/camera", &rerun::Image::new(img))
         .map_err(Into::into)
 }
 
 fn log_ar_camera(
-    rec: &RecordingStream,
-    timepoint: TimePoint,
+    rec: &rerun::RecordingStream,
+    timepoint: rerun::TimePoint,
     ar_camera: &objectron::ArCamera,
 ) -> anyhow::Result<()> {
     // NOTE: the dataset is all row-major, transpose those matrices!
@@ -180,51 +170,50 @@ fn log_ar_camera(
 
     rec.log(
         "world/camera",
-        &Transform3D::new(TranslationRotationScale3D::rigid(translation, rot)),
+        &rerun::Transform3D::from_translation_rotation(translation, rot),
     )?;
 
     rec.log(
         "world/camera",
-        &Pinhole::new(intrinsics).with_resolution(resolution),
+        &rerun::Pinhole::new(intrinsics)
+            // See https://github.com/google-research-datasets/Objectron/issues/39 for coordinate systems
+            .with_camera_xyz(rerun::components::ViewCoordinates::RDF)
+            .with_resolution(resolution),
     )?;
 
     Ok(())
 }
 
 fn log_feature_points(
-    rec: &RecordingStream,
-    timepoint: TimePoint,
+    rec: &rerun::RecordingStream,
+    timepoint: rerun::TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
-    use rerun::components::{Color, InstanceKey};
-
     let ids = points.identifier.iter();
     let points = points.point.iter();
 
     rec.set_timepoint(timepoint);
     rec.log(
         "world/points",
-        &Points3D::new(points.map(|p| {
+        &rerun::Points3D::new(points.map(|p| {
             (
                 p.x.unwrap_or_default(),
                 p.y.unwrap_or_default(),
                 p.z.unwrap_or_default(),
             )
         }))
-        .with_instance_keys(ids.map(|id| InstanceKey(*id as _)))
-        .with_colors([Color::from_rgb(255, 255, 255)]),
+        .with_instance_keys(ids.map(|id| rerun::InstanceKey(*id as _)))
+        .with_colors([rerun::Color::from_rgb(255, 255, 255)]),
     )?;
 
     Ok(())
 }
 
 fn log_frame_annotations(
-    rec: &RecordingStream,
-    timepoint: &TimePoint,
+    rec: &rerun::RecordingStream,
+    timepoint: &rerun::TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
-    use rerun::components::{Color, InstanceKey};
-
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
         // capable of projecting the actual 3D points in real time now.
@@ -234,7 +223,7 @@ fn log_frame_annotations(
             .filter_map(|kp| {
                 kp.point_2d
                     .as_ref()
-                    .map(|p| (InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
+                    .map(|p| (rerun::InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
             })
             .unzip();
 
@@ -274,15 +263,15 @@ fn log_frame_annotations(
             }
             rec.log(
                 ent_path,
-                &LineStrips2D::new(linestrips(&points))
-                    .with_colors([Color::from_rgb(130, 160, 250)]),
+                &rerun::LineStrips2D::new(linestrips(&points))
+                    .with_colors([rerun::Color::from_rgb(130, 160, 250)]),
             )?;
         } else {
             rec.log(
                 ent_path,
-                &Points2D::new(points)
+                &rerun::Points2D::new(points)
                     .with_instance_keys(ids)
-                    .with_colors([Color::from_rgb(130, 160, 250)]),
+                    .with_colors([rerun::Color::from_rgb(130, 160, 250)]),
             )?;
         }
     }
@@ -338,7 +327,7 @@ fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloat
     Ok(std::time::Duration::from_secs_f64(seconds))
 }
 
-fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Parse protobuf dataset
     let store_info = args.recording.info().with_context(|| {
         use clap::ValueEnum as _;
@@ -351,9 +340,8 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     })?;
     let annotations = read_annotations(&store_info.path_annotations)?;
 
-    // See https://github.com/google-research-datasets/Objectron/issues/39
-    rec.log_timeless("world", &ViewCoordinates::RUB)?;
-    rec.log_timeless("world/camera", &ViewCoordinates::RDF)?;
+    // See https://github.com/google-research-datasets/Objectron/issues/39 for coordinate systems
+    rec.log_timeless("world", &rerun::ViewCoordinates::RUB)?;
 
     log_baseline_objects(rec, &annotations.objects)?;
 

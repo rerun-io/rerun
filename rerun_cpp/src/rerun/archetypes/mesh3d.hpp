@@ -22,7 +22,8 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+        /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex
+        /// properties.
         ///
         /// ## Example
         ///

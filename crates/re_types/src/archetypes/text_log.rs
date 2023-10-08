@@ -14,11 +14,59 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A log entry in a text log, comprised of a text body and its log level.
+/// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
+///
+/// ## Example
+///
+/// ### `text_log_integration`:
+/// ```ignore
+/// //! Shows integration of Rerun's `TextLog` with the native logging interface.
+///
+/// use rerun::external::log;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration").memory()?;
+///
+///     // Log a text entry directly:
+///     rec.log(
+///         "logs",
+///         &rerun::TextLog::new("this entry has loglevel TRACE")
+///             .with_level(rerun::TextLogLevel::TRACE),
+///     )?;
+///
+///     // Or log via a logging handler:
+///     rerun::Logger::new(rec.clone()) // recording streams are ref-counted
+///         .with_path_prefix("logs/handler")
+///         // You can also use the standard `RUST_LOG` environment variable!
+///         .with_filter(rerun::default_log_filter())
+///         .init()?;
+///     log::info!("This INFO log got added through the standard logging interface");
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png">
+///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextLog {
-    pub body: crate::components::Text,
+    /// The body of the message.
+    pub text: crate::components::Text,
+
+    /// The verbosity level of the message.
+    ///
+    /// This can be used to filter the log messages in the Rerun Viewer.
     pub level: Option<crate::components::TextLogLevel>,
+
+    /// Optional color to use for the log line in the Rerun Viewer.
     pub color: Option<crate::components::Color>,
 }
 
@@ -93,23 +141,24 @@ impl crate::Archetype for TextLog {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let body = {
+        let text = {
             let array = arrays_by_name
                 .get("rerun.components.Text")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#body")?;
+                .with_context("rerun.archetypes.TextLog#text")?;
             <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#body")?
+                .with_context("rerun.archetypes.TextLog#text")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#body")?
+                .with_context("rerun.archetypes.TextLog#text")?
         };
         let level = if let Some(array) = arrays_by_name.get("rerun.components.TextLogLevel") {
             Some({
@@ -137,16 +186,17 @@ impl crate::Archetype for TextLog {
         } else {
             None
         };
-        Ok(Self { body, level, color })
+        Ok(Self { text, level, color })
     }
 }
 
 impl crate::AsComponents for TextLog {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.body as &dyn crate::ComponentBatch).into()),
+            Some((&self.text as &dyn crate::ComponentBatch).into()),
             self.level
                 .as_ref()
                 .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
@@ -166,9 +216,9 @@ impl crate::AsComponents for TextLog {
 }
 
 impl TextLog {
-    pub fn new(body: impl Into<crate::components::Text>) -> Self {
+    pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
-            body: body.into(),
+            text: text.into(),
             level: None,
             color: None,
         }

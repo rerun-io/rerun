@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class ClassIdExt:
+    """Extension for [ClassId][rerun.datatypes.ClassId]."""
+
     @staticmethod
     def native_to_pa_array_override(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.uint16).flatten()

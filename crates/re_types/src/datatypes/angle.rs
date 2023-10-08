@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Angle in either radians or degrees.
+/// **Datatype**: Angle in either radians or degrees.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Angle {
     Radians(f32),
@@ -80,6 +80,7 @@ impl crate::Loggable for Angle {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -185,6 +186,7 @@ impl crate::Loggable for Angle {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

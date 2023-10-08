@@ -23,8 +23,14 @@ div.doc-object {
 }
 
 html {
-  filter: invert(1) contrast(90%) hue-rotate(180deg);
+  /* !!! This filter must match the img.filter exactly! */
+  filter: invert(1) contrast(100%) hue-rotate(180deg);
   background: white;
+}
+
+img {
+  /* !!! This filter must match the html.filter exactly to undo it! */
+  filter: invert(1) contrast(100%) hue-rotate(180deg);
 }
 
 body {

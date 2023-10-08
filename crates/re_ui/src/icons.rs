@@ -14,7 +14,10 @@ impl Icon {
     }
 
     pub fn as_image(&self) -> Image<'static> {
-        Image::new(ImageSource::Bytes(self.id.into(), self.png_bytes.into()))
+        Image::new(ImageSource::Bytes {
+            uri: self.id.into(),
+            bytes: self.png_bytes.into(),
+        })
     }
 }
 

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Annotation info annotating a class id or key-point id.
+/// **Datatype**: Annotation info annotating a class id or key-point id.
 ///
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
@@ -27,7 +27,7 @@ pub struct AnnotationInfo {
     pub label: Option<crate::datatypes::Utf8>,
 
     /// The color that will be applied to the annotated entity.
-    pub color: Option<crate::datatypes::Color>,
+    pub color: Option<crate::datatypes::Rgba32>,
 }
 
 impl<'a> From<AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
@@ -71,7 +71,7 @@ impl crate::Loggable for AnnotationInfo {
             },
             Field {
                 name: "color".to_owned(),
-                data_type: <crate::datatypes::Color>::arrow_datatype(),
+                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
                 is_nullable: true,
                 metadata: [].into(),
             },
@@ -85,6 +85,7 @@ impl crate::Loggable for AnnotationInfo {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -201,7 +202,7 @@ impl crate::Loggable for AnnotationInfo {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::datatypes::Color(data0) = datum;
+                                            let crate::datatypes::Rgba32(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -225,6 +226,7 @@ impl crate::Loggable for AnnotationInfo {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -248,7 +250,7 @@ impl crate::Loggable for AnnotationInfo {
                             },
                             Field {
                                 name: "color".to_owned(),
-                                data_type: <crate::datatypes::Color>::arrow_datatype(),
+                                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
@@ -364,7 +366,7 @@ impl crate::Loggable for AnnotationInfo {
                         .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
                         .map(|opt| opt.copied())
-                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Color(v)))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Rgba32(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(id, label, color),

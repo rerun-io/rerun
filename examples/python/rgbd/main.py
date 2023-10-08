@@ -22,7 +22,8 @@ from tqdm import tqdm
 
 DEPTH_IMAGE_SCALING: Final = 1e4
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
-DATASET_URL_BASE: Final = "http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2"
+DATASET_URL_BASE: Final = "https://static.rerun.io/rgbd_dataset"
+DATASET_URL_BASE_ALTERNATE: Final = "http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2"
 AVAILABLE_RECORDINGS: Final = ["cafe", "basements", "studies", "office_kitchens", "playroooms"]
 
 
@@ -50,7 +51,7 @@ def read_depth_image(buf: bytes) -> npt.NDArray[Any]:
 
 
 def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -72,22 +73,23 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rr.log_image("world/camera/image/rgb", img_rgb, jpeg_quality=95)
+                rr.log("world/camera/image/rgb", rr.Image(img_rgb).compress(jpeg_quality=95))
 
             elif f.filename.endswith(".pgm"):
                 buf = archive.read(f)
                 img_depth = read_depth_image(buf)
 
                 # Log the camera transforms:
-                rr.log_pinhole(
+                rr.log(
                     "world/camera/image",
-                    width=img_depth.shape[1],
-                    height=img_depth.shape[0],
-                    focal_length_px=0.7 * img_depth.shape[1],
+                    rr.Pinhole(
+                        resolution=[img_depth.shape[1], img_depth.shape[0]],
+                        focal_length=0.7 * img_depth.shape[1],
+                    ),
                 )
 
                 # Log the depth image to the cameras image-space:
-                rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
+                rr.log("world/camera/image/depth", rr.DepthImage(img_depth, meter=DEPTH_IMAGE_SCALING))
 
 
 def ensure_recording_downloaded(name: str) -> Path:
@@ -97,13 +99,18 @@ def ensure_recording_downloaded(name: str) -> Path:
         return recording_path
 
     url = f"{DATASET_URL_BASE}/{recording_filename}"
-    print(f"downloading {url} to {recording_path}")
+    alternate_url = f"{DATASET_URL_BASE_ALTERNATE}/{recording_filename}"
+
     os.makedirs(DATASET_DIR, exist_ok=True)
     try:
-        download_progress(url, recording_path)
+        try:
+            print(f"downloading {url} to {recording_path}")
+            download_progress(url, recording_path)
+        except ValueError:
+            print(f"Failed to download from {url}, trying backup URL {alternate_url} instead")
+            download_progress(alternate_url, recording_path)
     except BaseException as e:
-        if recording_path.exists():
-            os.remove(recording_path)
+        recording_path.unlink(missing_ok=True)
         raise e
 
     return recording_path
@@ -116,6 +123,8 @@ def download_progress(url: str, dst: Path) -> None:
     From: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
     """
     resp = requests.get(url, stream=True)
+    if resp.status_code != 200:
+        raise ValueError(f"Failed to download file (status code: {resp.status_code})")
     total = int(resp.headers.get("content-length", 0))
     chunk_size = 1024 * 1024
     # Can also replace 'file' with a io.BytesIO object

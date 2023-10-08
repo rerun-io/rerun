@@ -9,11 +9,10 @@ namespace rerun.archetypes;
 
 /// Empties all the components of an entity.
 ///
-/// \example clear_simple "Flat"
-/// \example clear_recursive "Recursive"
+/// \example clear_simple title="Flat" image="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png"
+/// \example clear_recursive !api "Recursive"
 table Clear (
-  "attr.rust.derive": "PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
-  recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
+  is_recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
 }

@@ -14,29 +14,37 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A bar chart.
+/// **Archetype**: A bar chart.
 ///
 /// The x values will be the indices of the array, and the bar heights will be the provided values.
 ///
 /// ## Example
 ///
+/// ### Simple bar chart
 /// ```ignore
 /// //! Create and log a bar chart
 ///
-/// use rerun::{archetypes::BarChart, RecordingStreamBuilder};
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_bar_chart").memory()?;
+///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_bar_chart").memory()?;
 ///
 ///     rec.log(
 ///         "bar_chart",
-///         &BarChart::new(vec![8_i64, 4, 0, 9, 1, 4, 1, 6, 9, 0]),
+///         &rerun::BarChart::new(vec![8_i64, 4, 0, 9, 1, 4, 1, 6, 9, 0]),
 ///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1200w.png">
+///   <img src="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct BarChart {
     /// The values. Should always be a rank-1 tensor.
@@ -108,6 +116,7 @@ impl crate::Archetype for BarChart {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -132,6 +141,7 @@ impl crate::Archetype for BarChart {
 
 impl crate::AsComponents for BarChart {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),

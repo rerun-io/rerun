@@ -12,7 +12,7 @@ __all__ = ["Transform3D", "Transform3DBatch", "Transform3DType"]
 
 
 class Transform3D(datatypes.Transform3D):
-    """An affine transform between two 3D spaces, represented in a given direction."""
+    """**Component**: An affine transform between two 3D spaces, represented in a given direction."""
 
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
@@ -26,7 +26,3 @@ class Transform3DType(datatypes.Transform3DType):
 
 class Transform3DBatch(datatypes.Transform3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Transform3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Transform3DType())

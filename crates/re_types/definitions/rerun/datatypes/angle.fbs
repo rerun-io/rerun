@@ -2,7 +2,7 @@ include "arrow/attributes.fbs";
 include "rust/attributes.fbs";
 include "fbs/attributes.fbs";
 
-include "./scalars.fbs";
+include "./float32.fbs";
 
 namespace rerun.datatypes;
 
@@ -10,8 +10,7 @@ namespace rerun.datatypes;
 
 /// Angle in either radians or degrees.
 union Angle (
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 200
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// \py 3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
   Radians: rerun.datatypes.Float32 (order: 100, transparent),

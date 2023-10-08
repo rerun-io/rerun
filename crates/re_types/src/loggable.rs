@@ -84,6 +84,7 @@ pub trait Loggable: Clone + Sized {
     where
         Self: 'a,
     {
+        re_tracing::profile_function!();
         Self::to_arrow_opt(data.into_iter().map(Some))
     }
 
@@ -95,6 +96,7 @@ pub trait Loggable: Clone + Sized {
     /// [`Loggable::arrow_field`].
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
+        re_tracing::profile_function!();
         Self::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| {
@@ -173,6 +175,21 @@ impl ComponentName {
         } else {
             full_name
         }
+    }
+
+    /// Is this an indicator component for an archetype?
+    pub fn is_indicator_component(&self) -> bool {
+        self.starts_with("rerun.components.") && self.ends_with("Indicator")
+    }
+
+    /// If this is an indicator component, for which archetype?
+    pub fn indicator_component_archetype(&self) -> Option<String> {
+        if let Some(name) = self.strip_prefix("rerun.components.") {
+            if let Some(name) = name.strip_suffix("Indicator") {
+                return Some(name.to_owned());
+            }
+        }
+        None
     }
 }
 

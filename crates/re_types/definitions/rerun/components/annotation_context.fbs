@@ -18,8 +18,8 @@ namespace rerun.components;
 /// path.
 table AnnotationContext (
   "attr.python.aliases": "datatypes.ClassDescriptionArrayLike, Sequence[datatypes.ClassDescriptionMapElemLike]",
-  "attr.rust.derive": "Default, Eq, PartialEq",
-  order: 100
+  "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
+  /// List of class descriptions, mapping class indices to class names, colors etc.
   class_map: [rerun.datatypes.ClassDescriptionMapElem] (order: 100);
 }

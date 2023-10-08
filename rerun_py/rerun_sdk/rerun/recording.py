@@ -15,6 +15,8 @@ DEFAULT_TIMEOUT = 2000
 
 
 class MemoryRecording:
+    """A recording that stores data in memory."""
+
     def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
 
@@ -22,12 +24,21 @@ class MemoryRecording:
         """Reset the data in the MemoryRecording."""
         self.storage.reset_data()
 
-    def reset_blueprint(self, add_to_app_default_blueprint: bool = False) -> None:
+    def reset_blueprint(self, *, add_to_app_default_blueprint: bool = False) -> None:
         """Reset the blueprint in the MemoryRecording."""
         self.storage.reset_blueprint(add_to_app_default_blueprint)
 
+    def num_msgs(self) -> int:
+        """
+        The number of pending messages in the MemoryRecording.
+
+        Note: counting the messages will flush the batcher in order to get a deterministic count.
+        """
+        return self.storage.num_msgs()  # type: ignore[no-any-return]
+
     def as_html(
         self,
+        *,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
         app_url: str | None = None,
@@ -107,6 +118,7 @@ class MemoryRecording:
 
     def show(
         self,
+        *,
         other: MemoryRecording | None = None,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,

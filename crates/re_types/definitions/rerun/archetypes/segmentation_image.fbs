@@ -14,10 +14,12 @@ namespace rerun.archetypes;
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
-/// \example segmentation_image_simple image="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png"
+/// \py See also [`AnnotationContext`][rerun.archetypes.AnnotationContext] to associate each class with a color and a label.
+/// \rs See also [`AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
+///
+/// \example segmentation_image_simple title="Simple segmentation image" image="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png"
 table SegmentationImage (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 
@@ -27,6 +29,7 @@ table SegmentationImage (
   // --- Optional ---
 
   /// An optional floating point value that specifies the 2D drawing order.
+  ///
   /// Objects with higher values are drawn on top of those with lower values.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 }

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 3D rotation.
+/// **Datatype**: A 3D rotation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Rotation3D {
     /// Rotation defined by a quaternion.
@@ -83,6 +83,7 @@ impl crate::Loggable for Rotation3D {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -231,6 +232,7 @@ impl crate::Loggable for Rotation3D {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

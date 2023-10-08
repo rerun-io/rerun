@@ -3,7 +3,7 @@
 //! The semantic pass transforms the low-level raw reflection data into higher level types that
 //! are much easier to inspect and manipulate / friendler to work with.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -21,7 +21,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Objects {
     /// Maps fully-qualified type names to their resolved object definitions.
-    pub objects: HashMap<String, Object>,
+    pub objects: BTreeMap<String, Object>,
 }
 
 impl Objects {
@@ -35,8 +35,8 @@ impl Objects {
 
     /// Runs the semantic pass on a deserialized flatbuffers [`FbsSchema`].
     pub fn from_raw_schema(include_dir_path: impl AsRef<Utf8Path>, schema: &FbsSchema<'_>) -> Self {
-        let mut resolved_objs = HashMap::new();
-        let mut resolved_enums = HashMap::new();
+        let mut resolved_objs = BTreeMap::new();
+        let mut resolved_enums = BTreeMap::new();
 
         let enums = schema.enums().iter().collect::<Vec<_>>();
         let objs = schema.objects().iter().collect::<Vec<_>>();
@@ -62,17 +62,17 @@ impl Objects {
         // Validate fields types: Archetype consist of components, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
-                if let Some(target_fqname) = field.typ.fqname() {
-                    let target_obj = &this[target_fqname];
+                if let Some(field_type_fqname) = field.typ.fqname() {
+                    let field_obj = &this[field_type_fqname];
                     if obj.kind == ObjectKind::Archetype {
-                        assert!(target_obj.kind == ObjectKind::Component,
+                        assert!(field_obj.kind == ObjectKind::Component,
                             "Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
-                            field.fqname, target_fqname
+                            field.fqname, field_type_fqname
                         );
                     } else {
-                        assert!(target_obj.kind == ObjectKind::Datatype,
+                        assert!(field_obj.kind == ObjectKind::Datatype,
                             "Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
-                            field.fqname, target_fqname
+                            field.fqname, field_type_fqname
                         );
                     }
                 } else {
@@ -104,18 +104,11 @@ impl Objects {
                             );
 
                             let ObjectField {
-                                virtpath: _,
-                                filepath: _,
                                 fqname,
-                                pkg_name: _,
-                                name: _,
-                                docs: _,
                                 typ,
                                 attrs,
-                                order: _,
-                                is_nullable: _,
-                                is_deprecated: _,
                                 datatype,
+                                ..
                             } = target_obj.fields.pop().unwrap();
 
                             field.typ = typ;
@@ -143,11 +136,7 @@ impl Objects {
         }
 
         // Remove whole objects marked as transparent.
-        this.objects = this
-            .objects
-            .drain()
-            .filter(|(_, obj)| !obj.is_transparent())
-            .collect();
+        this.objects.retain(|_, obj| !obj.is_transparent());
 
         this
     }
@@ -157,29 +146,19 @@ impl Objects {
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
-        let objs = self
-            .objects
+        self.objects
             .values_mut()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
-
-        let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order);
-
-        objs
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
+            .collect()
     }
 
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
     pub fn ordered_objects(&self, kind: Option<ObjectKind>) -> Vec<&Object> {
-        let objs = self
-            .objects
+        self.objects
             .values()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
-
-        let mut objs = objs.collect::<Vec<_>>();
-        objs.sort_by_key(|anyobj| anyobj.order);
-
-        objs
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
+            .collect()
     }
 }
 
@@ -239,6 +218,22 @@ impl ObjectKind {
             ObjectKind::Archetype => "archetypes",
         }
     }
+
+    pub fn singular_name(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Datatype",
+            ObjectKind::Component => "Component",
+            ObjectKind::Archetype => "Archetype",
+        }
+    }
+
+    pub fn plural_name(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Datatypes",
+            ObjectKind::Component => "Components",
+            ObjectKind::Archetype => "Archetypes",
+        }
+    }
 }
 
 /// A high-level representation of a flatbuffers object's documentation.
@@ -265,10 +260,10 @@ pub struct Docs {
     /// ```
     ///
     /// See also [`Docs::doc`].
-    pub tagged_docs: HashMap<String, Vec<String>>,
+    pub tagged_docs: BTreeMap<String, Vec<String>>,
 
     /// Contents of all the files included using `\include:<path>`.
-    pub included_files: HashMap<Utf8PathBuf, String>,
+    pub included_files: BTreeMap<Utf8PathBuf, String>,
 }
 
 impl Docs {
@@ -276,9 +271,9 @@ impl Docs {
         filepath: &Utf8Path,
         docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
     ) -> Self {
-        let mut included_files = HashMap::default();
+        let mut included_files = BTreeMap::default();
 
-        let include_file = |included_files: &mut HashMap<_, _>, raw_path: &str| {
+        let include_file = |included_files: &mut BTreeMap<_, _>, raw_path: &str| {
             let path: Utf8PathBuf = raw_path
                 .parse()
                 .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
@@ -343,14 +338,15 @@ impl Docs {
                 .collect::<Vec<_>>();
 
             let all_tags: HashSet<_> = tagged_lines.iter().map(|(tag, _)| tag).collect();
-            let mut tagged_docs = HashMap::new();
+            let mut tagged_docs = BTreeMap::new();
 
             for cur_tag in all_tags {
                 tagged_docs.insert(
                     cur_tag.clone(),
                     tagged_lines
                         .iter()
-                        .filter_map(|(tag, line)| (cur_tag == tag).then(|| line.clone()))
+                        .filter(|(tag, _)| cur_tag == tag)
+                        .map(|(_, line)| line.clone())
                         .collect(),
                 );
             }
@@ -393,9 +389,6 @@ pub struct Object {
 
     /// The object's attributes.
     pub attrs: Attributes,
-
-    /// The object's `order` attribute's value, which is always mandatory.
-    pub order: u32,
 
     /// The object's inner fields, which can be either struct members or union values.
     ///
@@ -446,7 +439,6 @@ impl Object {
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
@@ -460,6 +452,17 @@ impl Object {
                 })
                 .collect();
             fields.sort_by_key(|field| field.order);
+
+            // Make sure no two fields have the same order:
+            for (a, b) in fields.iter().tuple_windows() {
+                assert!(
+                    a.order != b.order,
+                    "{name:?}: Fields {:?} and {:?} have the same order",
+                    a.name,
+                    b.name
+                );
+            }
+
             fields
         };
 
@@ -480,7 +483,6 @@ impl Object {
             docs,
             kind,
             attrs,
-            order,
             fields,
             specifics: ObjectSpecifics::Struct {},
             datatype: None,
@@ -529,7 +531,6 @@ impl Object {
                 ))
             }
         };
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let fields: Vec<_> = enm
             .values()
@@ -560,7 +561,6 @@ impl Object {
             docs,
             kind,
             attrs,
-            order,
             fields,
             specifics: ObjectSpecifics::Union { utype },
             datatype: None,
@@ -843,6 +843,11 @@ impl ObjectField {
         crate::to_pascal_case(&self.name)
     }
 
+    /// Returns true if this object is part of testing and not to be used in the production SDK.
+    pub fn is_testing(&self) -> bool {
+        is_testing_fqname(&self.fqname)
+    }
+
     pub fn kind(&self) -> Option<FieldKind> {
         if self.has_attr(crate::ATTR_RERUN_COMPONENT_REQUIRED) {
             Some(FieldKind::Required)
@@ -975,7 +980,7 @@ impl Type {
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
                 unimplemented!("{typ:#?}")
             }
-            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants...
+            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
         }
     }
@@ -1121,7 +1126,7 @@ impl ElementType {
             | FbsBaseType::Array
             | FbsBaseType::Vector
             | FbsBaseType::Vector64 => unreachable!("{outer_type:#?} into {inner_type:#?}"),
-            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants...
+            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{inner_type:#?}"),
         }
     }
@@ -1181,7 +1186,7 @@ impl ElementType {
 
 /// A collection of arbitrary attributes.
 #[derive(Debug, Default, Clone)]
-pub struct Attributes(HashMap<String, Option<String>>);
+pub struct Attributes(BTreeMap<String, Option<String>>);
 
 impl Attributes {
     fn from_raw_attrs(
@@ -1193,7 +1198,7 @@ impl Attributes {
                     attrs
                         .into_iter()
                         .map(|kv| (kv.key().to_owned(), kv.value().map(ToOwned::to_owned)))
-                        .collect::<HashMap<_, _>>()
+                        .collect::<BTreeMap<_, _>>()
                 })
                 .unwrap_or_default(),
         )

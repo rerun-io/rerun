@@ -12,7 +12,7 @@ impl Asset3D {
     /// from the data at render-time. If it can't, rendering will fail with an error.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
-    pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self, anyhow::Error> {
+    pub fn from_file(path: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
         use anyhow::Context as _;
         let path = path.as_ref();
         let data = std::fs::read(path)
@@ -31,7 +31,7 @@ impl Asset3D {
         let bytes = bytes.as_ref();
         let media_type = media_type.map(Into::into);
         Self {
-            data: bytes.to_vec().into(),
+            blob: bytes.to_vec().into(),
             media_type: MediaType::or_guess_from_data(media_type, bytes),
             transform: None,
         }

@@ -22,7 +22,7 @@ __all__ = ["UVec4D", "UVec4DArrayLike", "UVec4DBatch", "UVec4DLike", "UVec4DType
 
 @define(init=False)
 class UVec4D:
-    """A uint vector in 4D space."""
+    """**Datatype**: A uint vector in 4D space."""
 
     def __init__(self: Any, xyzw: UVec4DLike):
         """Create a new instance of the UVec4D datatype."""
@@ -62,7 +62,3 @@ class UVec4DBatch(BaseBatch[UVec4DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: UVec4DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in uvec4d_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(UVec4DType())

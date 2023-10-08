@@ -18,8 +18,7 @@ namespace rerun.components;
 ///    0.0     0.0    1.0
 /// ```
 struct PinholeProjection (
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd"
 ) {
   image_from_camera: rerun.datatypes.Mat3x3 (order: 100);
 }

@@ -1,10 +1,10 @@
 //! Log a simple colored triangle, then update its vertices' positions each frame.
 
-use rerun::{archetypes::Mesh3D, components::Position3D, external::glam, RecordingStreamBuilder};
+use rerun::external::glam;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =
-        RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").memory()?;
+        rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").memory()?;
 
     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.set_time_sequence("frame", 0);
     rec.log(
         "triangle",
-        &Mesh3D::new(vertex_positions)
+        &rerun::Mesh3D::new(vertex_positions)
             .with_vertex_normals([[0.0, 0.0, 1.0]])
             .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF]),
     )?;
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rec.set_time_sequence("frame", i);
 
         let factor = (i as f32 * 0.04).sin().abs();
-        let vertex_positions: [Position3D; 3] = [
+        let vertex_positions: [rerun::Position3D; 3] = [
             (glam::Vec3::from(vertex_positions[0]) * factor).into(),
             (glam::Vec3::from(vertex_positions[1]) * factor).into(),
             (glam::Vec3::from(vertex_positions[2]) * factor).into(),

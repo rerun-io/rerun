@@ -12,10 +12,9 @@ namespace rerun.archetypes;
 /// If a transform or pinhole is logged on the same path, this archetype's components
 /// will be ignored.
 ///
-/// \example disconnected_space
+/// \example disconnected_space title="Disconnected Space" image="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1200w.png"
 table DisconnectedSpace (
-  "attr.rust.derive": "Copy, PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
   disconnected_space: rerun.components.DisconnectedSpace ("attr.rerun.component_required", order: 1000);
 }

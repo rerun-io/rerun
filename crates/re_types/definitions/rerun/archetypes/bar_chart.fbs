@@ -10,10 +10,9 @@ namespace rerun.archetypes;
 ///
 /// The x values will be the indices of the array, and the bar heights will be the provided values.
 ///
-/// \example bar_chart
+/// \example bar_chart title="Simple bar chart" image="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1200w.png"
 table BarChart (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

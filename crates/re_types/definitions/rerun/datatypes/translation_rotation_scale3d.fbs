@@ -11,8 +11,7 @@ namespace rerun.datatypes;
 
 /// Representation of an affine transform via separate translation, rotation & scale.
 table TranslationRotationScale3D (
-  "attr.rust.derive": "Copy, PartialEq",
-  order: 600
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// 3D translation vector, applied last.
   //
@@ -33,7 +32,9 @@ table TranslationRotationScale3D (
   scale: rerun.datatypes.Scale3D (nullable, order: 300);
 
   // TODO(#2641): make this field non-nullable when default values are supported
-  /// If true, the transform maps from the parent space to the space where the transform was logged.
-  /// Otherwise, the transform maps from the space to its parent.
+  /// If true, this transform is from the parent space to the space where the transform was logged.
+  ///
+  /// If false (default), the transform maps from this space to its parent,
+  /// i.e. the translation is the position in the parent space.
   from_parent: bool = false (order: 400);
 }

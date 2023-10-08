@@ -30,7 +30,7 @@ impl Default for Mesh3DPart {
 impl Mesh3DPart {
     fn process_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         instances: &mut Vec<MeshInstance>,
         arch_view: &ArchetypeView<Mesh3D>,
         ent_path: &EntityPath,

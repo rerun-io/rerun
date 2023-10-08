@@ -24,7 +24,7 @@ __all__ = ["Mat3x3", "Mat3x3ArrayLike", "Mat3x3Batch", "Mat3x3Like", "Mat3x3Type
 @define(init=False)
 class Mat3x3(Mat3x3Ext):
     """
-    A 3x3 Matrix.
+    **Datatype**: A 3x3 Matrix.
 
     Matrices in Rerun are stored as flat list of coefficients in column-major order:
     ```text
@@ -61,9 +61,9 @@ class Mat3x3(Mat3x3Ext):
     # __init__ can be found in mat3x3_ext.py
 
     flat_columns: npt.NDArray[np.float32] = field(converter=to_np_float32)
-    """
-    Flat list of matrix coefficients in column-major order.
-    """
+    # Flat list of matrix coefficients in column-major order.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat3x3Ext in mat3x3_ext.py
@@ -71,7 +71,7 @@ class Mat3x3(Mat3x3Ext):
 
 
 if TYPE_CHECKING:
-    Mat3x3Like = Union[Mat3x3, Sequence[float], Sequence[Sequence[float]], npt.ArrayLike]
+    Mat3x3Like = Union[Mat3x3, npt.ArrayLike]
 else:
     Mat3x3Like = Any
 
@@ -96,11 +96,3 @@ class Mat3x3Batch(BaseBatch[Mat3x3ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
         return Mat3x3Ext.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Mat3x3Type())
-
-
-if hasattr(Mat3x3Ext, "deferred_patch_class"):
-    Mat3x3Ext.deferred_patch_class(Mat3x3)

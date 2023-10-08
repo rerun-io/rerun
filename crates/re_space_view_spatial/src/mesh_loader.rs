@@ -38,17 +38,20 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let mesh_instances = if media_type == &MediaType::gltf() || media_type == &MediaType::glb()
-        {
-            re_renderer::importer::gltf::load_gltf_from_buffer(
+        let mesh_instances = match media_type.as_str() {
+            MediaType::GLTF | MediaType::GLB => re_renderer::importer::gltf::load_gltf_from_buffer(
                 &name,
                 bytes,
                 ResourceLifeTime::LongLived,
                 render_ctx,
-            )
-        } else {
-            anyhow::bail!("{media_type} files are not supported")
-        }?;
+            )?,
+            MediaType::OBJ => re_renderer::importer::obj::load_obj_from_buffer(
+                bytes,
+                ResourceLifeTime::LongLived,
+                render_ctx,
+            )?,
+            _ => anyhow::bail!("{media_type} files are not supported"),
+        };
 
         let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
 
@@ -67,14 +70,14 @@ impl LoadedMesh {
         re_tracing::profile_function!();
 
         let Asset3D {
-            data,
+            blob,
             media_type,
             transform: _,
         } = asset3d;
 
-        let media_type = MediaType::or_guess_from_data(media_type.clone(), data.0.as_slice())
+        let media_type = MediaType::or_guess_from_data(media_type.clone(), blob.0.as_slice())
             .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
-        let slf = Self::load_asset3d_parts(name, &media_type, data.0.as_slice(), render_ctx)?;
+        let slf = Self::load_asset3d_parts(name, &media_type, blob.0.as_slice(), render_ctx)?;
 
         Ok(slf)
     }

@@ -14,13 +14,14 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+/// **Datatype**: Material properties of a mesh.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct Material {
     /// Optional color multiplier.
-    pub albedo_factor: Option<crate::datatypes::Color>,
+    pub albedo_factor: Option<crate::datatypes::Rgba32>,
 }
 
-impl<T: Into<Option<crate::datatypes::Color>>> From<T> for Material {
+impl<T: Into<Option<crate::datatypes::Rgba32>>> From<T> for Material {
     fn from(v: T) -> Self {
         Self {
             albedo_factor: v.into(),
@@ -28,18 +29,18 @@ impl<T: Into<Option<crate::datatypes::Color>>> From<T> for Material {
     }
 }
 
-impl std::borrow::Borrow<Option<crate::datatypes::Color>> for Material {
+impl std::borrow::Borrow<Option<crate::datatypes::Rgba32>> for Material {
     #[inline]
-    fn borrow(&self) -> &Option<crate::datatypes::Color> {
+    fn borrow(&self) -> &Option<crate::datatypes::Rgba32> {
         &self.albedo_factor
     }
 }
 
 impl std::ops::Deref for Material {
-    type Target = Option<crate::datatypes::Color>;
+    type Target = Option<crate::datatypes::Rgba32>;
 
     #[inline]
-    fn deref(&self) -> &Option<crate::datatypes::Color> {
+    fn deref(&self) -> &Option<crate::datatypes::Rgba32> {
         &self.albedo_factor
     }
 }
@@ -72,7 +73,7 @@ impl crate::Loggable for Material {
         use ::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "albedo_factor".to_owned(),
-            data_type: <crate::datatypes::Color>::arrow_datatype(),
+            data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
         }])
@@ -85,6 +86,7 @@ impl crate::Loggable for Material {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -126,7 +128,7 @@ impl crate::Loggable for Material {
                             .map(|datum| {
                                 datum
                                     .map(|datum| {
-                                        let crate::datatypes::Color(data0) = datum;
+                                        let crate::datatypes::Rgba32(data0) = datum;
                                         data0
                                     })
                                     .unwrap_or_default()
@@ -149,6 +151,7 @@ impl crate::Loggable for Material {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
@@ -159,7 +162,7 @@ impl crate::Loggable for Material {
                     crate::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
                             name: "albedo_factor".to_owned(),
-                            data_type: <crate::datatypes::Color>::arrow_datatype(),
+                            data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
                             is_nullable: true,
                             metadata: [].into(),
                         }]),
@@ -198,7 +201,7 @@ impl crate::Loggable for Material {
                         .with_context("rerun.datatypes.Material#albedo_factor")?
                         .into_iter()
                         .map(|opt| opt.copied())
-                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Color(v)))
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Rgba32(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(albedo_factor),

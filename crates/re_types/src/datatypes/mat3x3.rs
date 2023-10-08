@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 3x3 Matrix.
+/// **Datatype**: A 3x3 Matrix.
 ///
 /// Matrices in Rerun are stored as flat list of coefficients in column-major order:
 /// ```text
@@ -25,7 +25,10 @@
 /// row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 /// ```
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
-pub struct Mat3x3(pub [f32; 9usize]);
+pub struct Mat3x3(
+    /// Flat list of matrix coefficients in column-major order.
+    pub [f32; 9usize],
+);
 
 impl From<[f32; 9usize]> for Mat3x3 {
     #[inline]
@@ -85,6 +88,7 @@ impl crate::Loggable for Mat3x3 {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -146,6 +150,7 @@ impl crate::Loggable for Mat3x3 {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

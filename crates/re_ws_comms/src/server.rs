@@ -43,7 +43,7 @@ impl RerunServer {
         };
 
         re_log::info!(
-            "Listening for websocket traffic on {}. Connect with a Rerun Web Viewer.",
+            "Listening for WebSocket traffic on {}. Connect with a Rerun Web Viewer.",
             slf.server_url()
         );
 

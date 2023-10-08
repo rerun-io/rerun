@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// ## Example
 ///
@@ -22,23 +22,30 @@
 /// ```ignore
 /// //! Log some very simple 2D boxes.
 ///
-/// use rerun::{archetypes::Boxes2D, RecordingStreamBuilder};
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
+///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
 ///
 ///     rec.log(
 ///         "simple",
-///         &Boxes2D::from_mins_and_sizes([(-1., -1.)], [(2., 2.)]),
+///         &rerun::Boxes2D::from_mins_and_sizes([(-1., -1.)], [(2., 2.)]),
 ///     )?;
 ///
 ///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &Boxes2D::from_sizes([(4., 3.)]))?;
+///     rec.log("bounds", &rerun::Boxes2D::from_sizes([(4., 3.)]))?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1200w.png">
+///   <img src="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Boxes2D {
     /// All half-extents that make up the batch of boxes.
@@ -47,16 +54,17 @@ pub struct Boxes2D {
     /// Optional center positions of the boxes.
     pub centers: Option<Vec<crate::components::Position2D>>,
 
-    /// Optional radii for the lines that make up the boxes.
-    pub radii: Option<Vec<crate::components::Radius>>,
-
     /// Optional colors for the boxes.
     pub colors: Option<Vec<crate::components::Color>>,
+
+    /// Optional radii for the lines that make up the boxes.
+    pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional text labels for the boxes.
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     ///
     /// The default for 2D boxes is 10.0.
@@ -156,6 +164,7 @@ impl crate::Archetype for Boxes2D {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -185,18 +194,6 @@ impl crate::Archetype for Boxes2D {
         } else {
             None
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes2D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes2D#radii")?
-            })
-        } else {
-            None
-        };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
@@ -205,6 +202,18 @@ impl crate::Archetype for Boxes2D {
                     .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
                     .collect::<crate::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#colors")?
+            })
+        } else {
+            None
+        };
+        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+            Some({
+                <crate::components::Radius>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Boxes2D#radii")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Boxes2D#radii")?
             })
         } else {
             None
@@ -262,8 +271,8 @@ impl crate::Archetype for Boxes2D {
         Ok(Self {
             half_sizes,
             centers,
-            radii,
             colors,
+            radii,
             labels,
             draw_order,
             class_ids,
@@ -274,6 +283,7 @@ impl crate::Archetype for Boxes2D {
 
 impl crate::AsComponents for Boxes2D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
@@ -281,10 +291,10 @@ impl crate::AsComponents for Boxes2D {
             self.centers
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
-            self.radii
+            self.colors
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
-            self.colors
+            self.radii
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
             self.labels
@@ -318,8 +328,8 @@ impl Boxes2D {
         Self {
             half_sizes: half_sizes.into_iter().map(Into::into).collect(),
             centers: None,
-            radii: None,
             colors: None,
+            radii: None,
             labels: None,
             draw_order: None,
             class_ids: None,
@@ -335,19 +345,19 @@ impl Boxes2D {
         self
     }
 
-    pub fn with_radii(
-        mut self,
-        radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
-    ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
-        self
-    }
-
     pub fn with_colors(
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
         self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_radii(
+        mut self,
+        radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
+    ) -> Self {
+        self.radii = Some(radii.into_iter().map(Into::into).collect());
         self
     }
 

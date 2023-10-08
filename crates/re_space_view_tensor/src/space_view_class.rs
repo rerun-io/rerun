@@ -300,7 +300,7 @@ fn view_tensor(
 fn tensor_slice_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut PerTensorState,
+    state: &PerTensorState,
     tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
     dimension_labels: [(String, bool); 2],
@@ -319,7 +319,7 @@ fn tensor_slice_ui(
 fn paint_tensor_slice(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut PerTensorState,
+    state: &PerTensorState,
     tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
@@ -573,7 +573,7 @@ fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
 }
 
 fn paint_axis_names(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     painter: &egui::Painter,
     rect: egui::Rect,
     font_id: egui::FontId,

@@ -14,7 +14,7 @@ __all__ = ["MediaType", "MediaTypeBatch", "MediaTypeType"]
 
 class MediaType(MediaTypeExt, datatypes.Utf8):
     """
-    A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
+    **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
 
     The complete reference of officially registered media types is maintained by the IANA and can be
     consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
@@ -34,9 +34,4 @@ class MediaTypeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = MediaTypeType()
 
 
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MediaTypeType())
-
-
-if hasattr(MediaTypeExt, "deferred_patch_class"):
-    MediaTypeExt.deferred_patch_class(MediaType)
+MediaTypeExt.deferred_patch_class(MediaType)

@@ -10,12 +10,14 @@ use rayon::prelude::*;
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples, Example},
+        common::{collect_examples_for_api_docs, Example},
         StringExt as _,
     },
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
+
+use super::common::ExampleInfo;
 
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";
@@ -25,6 +27,10 @@ const ARRAY_METHOD: &str = "__array__";
 
 /// The method used to convert a native type into a pyarrow array
 const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
+
+/// The method used for deferred patch class init.
+/// Use this for initialization constants that need to know the child (non-extension) class.
+const DEFERRED_PATCH_CLASS_METHOD: &str = "deferred_patch_class";
 
 /// The common suffix for method used to convert fields to their canonical representation.
 const FIELD_CONVERTER_SUFFIX: &str = "__field_converter_override";
@@ -85,14 +91,20 @@ impl PythonCodeGenerator {
 impl CodeGenerator for PythonCodeGenerator {
     fn generate(
         &mut self,
-        _reporter: &Reporter,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
     ) -> BTreeSet<Utf8PathBuf> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
-            self.generate_folder(objects, arrow_registry, object_kind, &mut files_to_write);
+            self.generate_folder(
+                reporter,
+                objects,
+                arrow_registry,
+                object_kind,
+                &mut files_to_write,
+            );
         }
 
         {
@@ -116,7 +128,7 @@ impl CodeGenerator for PythonCodeGenerator {
 
         for kind in ObjectKind::ALL {
             let folder_path = self.pkg_path.join(kind.plural_snake_case());
-            super::common::remove_old_files_from_folder(folder_path, &filepaths);
+            super::common::remove_old_files_from_folder(reporter, folder_path, &filepaths);
         }
 
         filepaths
@@ -177,20 +189,38 @@ struct ExtensionClass {
 
     /// Whether the `ObjectExt` contains __native_to_pa_array__()
     has_native_to_pa_array: bool,
+
+    /// Whether the `ObjectExt` contains a deferred_patch_class() method
+    has_deferred_patch_class: bool,
 }
 
 impl ExtensionClass {
-    fn new(base_path: &Utf8Path, obj: &Object) -> ExtensionClass {
+    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object) -> ExtensionClass {
         let file_name = format!("{}_ext.py", obj.snake_case_name());
-        let path = base_path.join(file_name.clone());
-        let module_name = path.file_stem().unwrap().to_owned();
+        let ext_filepath = base_path.join(file_name.clone());
+        let module_name = ext_filepath.file_stem().unwrap().to_owned();
         let mut name = obj.name.clone();
         name.push_str("Ext");
 
-        if path.exists() {
-            let contents = std::fs::read_to_string(&path)
-                .with_context(|| format!("couldn't load overrides module at {path:?}"))
+        if ext_filepath.exists() {
+            let contents = std::fs::read_to_string(&ext_filepath)
+                .with_context(|| format!("couldn't load overrides module at {ext_filepath:?}"))
                 .unwrap();
+
+            let mandatory_docstring = format!(
+                r#""""Extension for [{name}][rerun.{kind}.{name}].""""#,
+                name = obj.name,
+                kind = obj.kind.plural_snake_case()
+            );
+            if !contents.contains(&mandatory_docstring) {
+                reporter.error(
+                    ext_filepath.as_str(),
+                    &obj.fqname,
+                    format!(
+                        "The following docstring should be added to the `class`: {mandatory_docstring}"
+                    ),
+                );
+            }
 
             // Extract all methods
             // TODO(jleibs): Maybe pull in regex_light here
@@ -205,6 +235,7 @@ impl ExtensionClass {
             let has_init = methods.contains(&INIT_METHOD);
             let has_array = methods.contains(&ARRAY_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
+            let has_deferred_patch_class = methods.contains(&DEFERRED_PATCH_CLASS_METHOD);
             let field_converter_overrides = methods
                 .into_iter()
                 .filter(|l| l.ends_with(FIELD_CONVERTER_SUFFIX))
@@ -220,6 +251,7 @@ impl ExtensionClass {
                 has_init,
                 has_array,
                 has_native_to_pa_array,
+                has_deferred_patch_class,
             }
         } else {
             ExtensionClass {
@@ -231,6 +263,7 @@ impl ExtensionClass {
                 has_init: false,
                 has_array: false,
                 has_native_to_pa_array: false,
+                has_deferred_patch_class: false,
             }
         }
     }
@@ -239,6 +272,7 @@ impl ExtensionClass {
 impl PythonCodeGenerator {
     fn generate_folder(
         &self,
+        reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
@@ -248,8 +282,8 @@ impl PythonCodeGenerator {
         let test_kind_path = self.testing_pkg_path.join(object_kind.plural_snake_case());
 
         // (module_name, [object_name])
-        let mut mods = HashMap::<String, Vec<String>>::new();
-        let mut test_mods = HashMap::<String, Vec<String>>::new();
+        let mut mods = BTreeMap::<String, Vec<String>>::new();
+        let mut test_mods = BTreeMap::<String, Vec<String>>::new();
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
@@ -260,7 +294,7 @@ impl PythonCodeGenerator {
                 kind_path.join(format!("{}.py", obj.snake_case_name()))
             };
 
-            let ext_class = ExtensionClass::new(&kind_path, obj);
+            let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
 
             let names = match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
@@ -324,6 +358,7 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
+            from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
                 BaseExtensionType,
@@ -387,20 +422,15 @@ impl PythonCodeGenerator {
             );
 
             let obj_code = if obj.is_struct() {
-                code_for_struct(arrow_registry, &ext_class, objects, obj)
+                code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
             } else {
                 code_for_union(arrow_registry, &ext_class, objects, obj)
             };
             code.push_text(&obj_code, 1, 0);
 
-            if ext_class.found {
+            if ext_class.has_deferred_patch_class {
                 code.push_unindented_text(
-                    format!("if hasattr({}, 'deferred_patch_class'):", ext_class.name),
-                    1,
-                );
-                code.push_text(
                     format!("{}.deferred_patch_class({})", ext_class.name, obj.name),
-                    1,
                     1,
                 );
             }
@@ -409,8 +439,8 @@ impl PythonCodeGenerator {
         }
 
         // rerun/{datatypes|components|archetypes}/__init__.py
-        write_init(&kind_path, &mods, files_to_write);
-        write_init(&test_kind_path, &test_mods, files_to_write);
+        write_init_file(&kind_path, &mods, files_to_write);
+        write_init_file(&test_kind_path, &test_mods, files_to_write);
     }
 
     fn write_files(&self, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
@@ -458,9 +488,9 @@ impl PythonCodeGenerator {
     }
 }
 
-fn write_init(
+fn write_init_file(
     kind_path: &Utf8PathBuf,
-    mods: &HashMap<String, Vec<String>>,
+    mods: &BTreeMap<String, Vec<String>>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
     let path = kind_path.join("__init__.py");
@@ -508,6 +538,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 // --- Codegen core loop ---
 
 fn code_for_struct(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
@@ -516,11 +547,7 @@ fn code_for_struct(
     assert!(obj.is_struct());
 
     let Object {
-        name,
-        docs,
-        kind,
-        fields,
-        ..
+        name, kind, fields, ..
     } = obj;
 
     let mut code = String::new();
@@ -547,7 +574,7 @@ fn code_for_struct(
                 if field.is_nullable {
                     format!("converter={typ_unwrapped}Batch._optional, # type: ignore[misc]\n")
                 } else {
-                    format!("converter={typ_unwrapped}Batch, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch._required, # type: ignore[misc]\n")
                 }
             } else if !default_converter.is_empty() {
                 code.push_text(&converter_function, 1, 0);
@@ -595,7 +622,7 @@ fn code_for_struct(
     };
     code.push_unindented_text(format!("class {name}{superclass_decl}:"), 1);
 
-    code.push_text(quote_doc_from_docs(docs), 0, 4);
+    code.push_text(quote_obj_docs(obj), 0, 4);
 
     if ext_class.has_init {
         code.push_text(
@@ -603,11 +630,7 @@ fn code_for_struct(
             2,
             4,
         );
-    } else if !obj.is_delegating_component() {
-        // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
-        // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
-        code.push_text(quote_init_method(obj, ext_class, objects), 2, 4);
-    } else {
+    } else if obj.is_delegating_component() {
         code.push_text(
             format!(
                 "# You can define your own __init__ function as a member of {} in {}",
@@ -616,6 +639,14 @@ fn code_for_struct(
             2,
             4,
         );
+    } else {
+        // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
+        // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
+        code.push_text(quote_init_method(reporter, obj, ext_class, objects), 2, 4);
+    }
+
+    if obj.kind == ObjectKind::Archetype {
+        code.push_text(quote_clear_methods(obj), 2, 4);
     }
 
     if obj.is_delegating_component() {
@@ -644,18 +675,7 @@ fn code_for_struct(
             .chain(fields.iter().filter(|field| field.is_nullable));
         for field in fields_in_order {
             let ObjectField {
-                virtpath: _,
-                filepath: _,
-                fqname: _,
-                pkg_name: _,
-                name,
-                docs,
-                typ: _,
-                attrs: _,
-                order: _,
-                is_nullable,
-                is_deprecated: _,
-                datatype: _,
+                name, is_nullable, ..
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
@@ -695,7 +715,25 @@ fn code_for_struct(
 
             code.push_text(format!("{name}: {typ}"), 1, 4);
 
-            code.push_text(quote_doc_from_docs(docs), 0, 4);
+            // Generating docs for all the fields creates A LOT of visual noise in the API docs.
+            let show_fields_in_docs = false;
+            let doc_lines = lines_from_docs(&field.docs);
+            if !doc_lines.is_empty() {
+                if show_fields_in_docs {
+                    code.push_text(quote_doc_lines(&doc_lines), 0, 4);
+                } else {
+                    // Still include it for those that are reading the source file:
+                    for line in doc_lines {
+                        code.push_text(format!("# {line}"), 1, 4);
+                    }
+                    code.push_text("#", 1, 4);
+                    code.push_text(
+                    "# (Docstring intentionally commented out to hide this field from the docs)",
+                        2,
+                        4,
+                    );
+                }
+            }
         }
 
         if *kind == ObjectKind::Archetype {
@@ -735,11 +773,7 @@ fn code_for_union(
     assert_eq!(obj.kind, ObjectKind::Datatype);
 
     let Object {
-        name,
-        docs,
-        kind,
-        fields,
-        ..
+        name, kind, fields, ..
     } = obj;
 
     let mut code = String::new();
@@ -779,7 +813,7 @@ fn code_for_union(
         0,
     );
 
-    code.push_text(quote_doc_from_docs(docs), 0, 4);
+    code.push_text(quote_obj_docs(obj), 0, 4);
 
     if ext_class.has_init {
         code.push_text(
@@ -894,13 +928,19 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
 fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     let mut examples = examples.into_iter().peekable();
     while let Some(example) = examples.next() {
-        if let Some(title) = example.base.title {
-            lines.push(format!("{title}:"));
+        let ExampleInfo {
+            name, title, image, ..
+        } = &example.base;
+
+        if let Some(title) = title {
+            lines.push(format!("### {title}:"));
+        } else {
+            lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
         lines.extend(example.lines.into_iter());
         lines.push("```".into());
-        if let Some(image) = &example.base.image {
+        if let Some(image) = &image {
             lines.extend(image.image_stack());
         }
         if examples.peek().is_some() {
@@ -910,7 +950,18 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     }
 }
 
-fn quote_doc_from_docs(docs: &Docs) -> String {
+fn quote_obj_docs(obj: &Object) -> String {
+    let mut lines = lines_from_docs(&obj.docs);
+
+    if let Some(first_line) = lines.first_mut() {
+        // Prefix with object kind:
+        *first_line = format!("**{}**: {}", obj.kind.singular_name(), first_line);
+    }
+
+    quote_doc_lines(&lines)
+}
+
+fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
     for line in &mut lines {
         if line.starts_with(char::is_whitespace) {
@@ -918,7 +969,7 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
         }
     }
 
-    let examples = collect_examples(docs, "py", true).unwrap();
+    let examples = collect_examples_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
         lines.push(String::new());
         let (section_title, divider) = if examples.len() == 1 {
@@ -931,15 +982,18 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
         quote_examples(examples, &mut lines);
     }
 
+    lines
+}
+
+fn quote_doc_lines(lines: &[String]) -> String {
     if lines.is_empty() {
         return String::new();
     }
 
-    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
     let doc = lines
-        .into_iter()
+        .iter()
         .filter(|line| !line.starts_with(r#"""""#))
-        .collect_vec()
         .join("\n");
 
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
@@ -956,7 +1010,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             }
         }
 
-        let examples = collect_examples(&field.docs, "py", true).unwrap();
+        let examples = collect_examples_for_api_docs(&field.docs, "py", true).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples
             quote_examples(examples, &mut lines);
@@ -977,7 +1031,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
         lines.pop();
     }
 
-    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
     let doc = lines
         .into_iter()
         .filter(|line| !line.starts_with(r#"""""#))
@@ -1157,14 +1211,14 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     };
 
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
-    // nasty lazy circular dependencies in weird edge cases...
+    // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
     fqname.map(|fqname| quote_import_clauses_from_fqname(fqname))
 }
 
 fn quote_import_clauses_from_fqname(fqname: &str) -> String {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
-    // nasty lazy circular dependencies in weird edge cases...
+    // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
 
     let fqname = fqname.replace(".testing", "");
@@ -1488,9 +1542,6 @@ fn quote_arrow_support_from_obj(
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
                     {override_}
-
-            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-            # pa.register_extension_type({extension_type}())
             "#
         ))
     } else {
@@ -1502,15 +1553,12 @@ fn quote_arrow_support_from_obj(
 
             class {extension_batch}{batch_superclass_decl}:
                 _ARROW_TYPE = {extension_type}()
-
-            # TODO(cmc): bring back registration to pyarrow once legacy types are gone
-            # pa.register_extension_type({extension_type}())
             "#
         ))
     }
 }
 
-fn quote_argument_type_alias(
+fn quote_parameter_type_alias(
     arg_type_fqname: &str,
     class_fqname: &str,
     objects: &Objects,
@@ -1535,13 +1583,13 @@ fn quote_argument_type_alias(
     }
 }
 
-fn quote_init_argument_from_field(
+fn quote_init_parameter_from_field(
     field: &ObjectField,
     objects: &Objects,
     current_obj_fqname: &str,
 ) -> String {
     let type_annotation = if let Some(fqname) = field.typ.fqname() {
-        quote_argument_type_alias(fqname, current_obj_fqname, objects, field.typ.is_plural())
+        quote_parameter_type_alias(fqname, current_obj_fqname, objects, field.typ.is_plural())
     } else {
         let type_annotation = quote_field_type_from_field(objects, field, false).0;
         // Relax type annotation for numpy arrays.
@@ -1559,39 +1607,73 @@ fn quote_init_argument_from_field(
     }
 }
 
-fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects) -> String {
+fn quote_init_method(
+    reporter: &Reporter,
+    obj: &Object,
+    ext_class: &ExtensionClass,
+    objects: &Objects,
+) -> String {
     // If the type is fully transparent (single non-nullable field and not an archetype),
     // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
     // -> Whatever type aliases there are for this type, we need to pick them up.
-    let arguments: Vec<_> =
+    let parameters: Vec<_> =
         if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable
         {
             vec![format!(
                 "{}: {}",
                 obj.fields[0].name,
-                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
             )]
         } else if obj.is_union() {
             vec![format!(
                 "inner: {} | None = None",
-                quote_argument_type_alias(&obj.fqname, &obj.fqname, objects, false)
+                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
             )]
         } else {
-            obj.fields
+            let required = obj
+                .fields
                 .iter()
-                .sorted_by_key(|field| field.is_nullable)
-                .map(|field| quote_init_argument_from_field(field, objects, &obj.fqname))
-                .collect()
-        };
-    let head = format!("def __init__(self: Any, {}):", arguments.join(", "));
+                .filter(|field| !field.is_nullable)
+                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+                .collect_vec();
 
-    let argument_docs = if obj.is_union() {
+            let optional = obj
+                .fields
+                .iter()
+                .filter(|field| field.is_nullable)
+                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+                .collect_vec();
+
+            if optional.is_empty() {
+                required
+            } else if obj.kind == ObjectKind::Archetype {
+                // Force kw-args for all optional arguments:
+                required
+                    .into_iter()
+                    .chain(std::iter::once("*".to_owned()))
+                    .chain(optional)
+                    .collect()
+            } else {
+                required.into_iter().chain(optional).collect()
+            }
+        };
+
+    let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
+
+    let parameter_docs = if obj.is_union() {
         Vec::new()
     } else {
         obj.fields
             .iter()
             .filter_map(|field| {
                 if field.docs.doc.is_empty() {
+                    if !field.is_testing() && obj.fields.len() > 1 {
+                        reporter.error(
+                            &field.virtpath,
+                            &field.fqname,
+                            format!("Field {} is missing documentation", field.name),
+                        );
+                    }
                     None
                 } else {
                     let doc_content =
@@ -1614,11 +1696,11 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
         r#"""""#.to_owned(),
         format!("Create a new instance of the {} {doc_typedesc}.", obj.name),
     ];
-    if !argument_docs.is_empty() {
+    if !parameter_docs.is_empty() {
         doc_string_lines.push("\n".to_owned());
         doc_string_lines.push("Parameters".to_owned());
         doc_string_lines.push("----------".to_owned());
-        for doc in argument_docs {
+        for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
     };
@@ -1642,6 +1724,20 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
         format!("self.__attrs_init__({})", attribute_init.join(", "))
     };
 
+    // Make sure Archetypes catch and log exceptions as a fallback
+    let forwarding_call = if obj.kind == ObjectKind::Archetype {
+        unindent::unindent(&format!(
+            r#"
+            with catch_and_log_exceptions(context=self.__class__.__name__):
+                {forwarding_call}
+                return
+            self.__attrs_clear__()
+            "#
+        ))
+    } else {
+        forwarding_call
+    };
+
     format!(
         "{head}\n{}",
         indent::indent_all_by(
@@ -1649,6 +1745,33 @@ fn quote_init_method(obj: &Object, ext_class: &ExtensionClass, objects: &Objects
             format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),
         )
     )
+}
+
+fn quote_clear_methods(obj: &Object) -> String {
+    let param_nones = obj
+        .fields
+        .iter()
+        .map(|field| format!("{} = None, # type: ignore[arg-type]", field.name))
+        .join("\n                ");
+
+    let classname = &obj.name;
+
+    unindent::unindent(&format!(
+        r#"
+        def __attrs_clear__(self) -> None:
+            """Convenience method for calling `__attrs_init__` with all `None`s."""
+            self.__attrs_init__(
+                {param_nones}
+            )
+
+        @classmethod
+        def _clear(cls) -> {classname}:
+            """Produce an empty {classname}, bypassing `__init__`"""
+            inst = cls.__new__(cls)
+            inst.__attrs_clear__()
+            return inst
+        "#
+    ))
 }
 
 // --- Arrow registry code generators ---

@@ -14,8 +14,9 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A component indicating how long a meter is, expressed in native units.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+/// **Component**: A component indicating how long a meter is, expressed in native units.
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct DepthMeter(pub f32);
 
 impl From<f32> for DepthMeter {
@@ -68,6 +69,7 @@ impl crate::Loggable for DepthMeter {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -102,6 +104,7 @@ impl crate::Loggable for DepthMeter {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -131,6 +134,7 @@ impl crate::Loggable for DepthMeter {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
@@ -138,21 +142,23 @@ impl crate::Loggable for DepthMeter {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .ok_or_else(|| {
-                crate::DeserializationError::datatype_mismatch(
-                    DataType::Float32,
-                    arrow_data.data_type().clone(),
-                )
-            })
-            .with_context("rerun.components.DepthMeter#value")?
-            .values()
-            .as_slice()
-            .iter()
-            .copied()
-            .map(|v| Self(v))
-            .collect::<Vec<_>>())
+        Ok({
+            let slice = arrow_data
+                .as_any()
+                .downcast_ref::<Float32Array>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::Float32,
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.DepthMeter#value")?
+                .values()
+                .as_slice();
+            {
+                re_tracing::profile_scope!("collect");
+                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
     }
 }

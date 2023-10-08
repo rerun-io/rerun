@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
+from ..error_utils import catch_and_log_exceptions
+
 if TYPE_CHECKING:
     from ..datatypes import TensorDataLike
     from ..datatypes.tensor_data_ext import TensorLike
 
 
 class TensorExt:
+    """Extension for [Tensor][rerun.archetypes.Tensor]."""
+
     def __init__(
         self: Any,
         data: TensorDataLike | TensorLike | None = None,
@@ -36,9 +40,13 @@ class TensorExt:
         """
         from ..datatypes import TensorData
 
-        if not isinstance(data, TensorData):
-            data = TensorData(array=data, dim_names=dim_names)
-        elif dim_names is not None:
-            data = TensorData(buffer=data.buffer, dim_names=dim_names)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if not isinstance(data, TensorData):
+                data = TensorData(array=data, dim_names=dim_names)
+            elif dim_names is not None:
+                data = TensorData(buffer=data.buffer, dim_names=dim_names)
 
-        self.__attrs_init__(data=data)
+            self.__attrs_init__(data=data)
+            return
+
+        self.__attrs_clear__()

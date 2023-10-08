@@ -4,8 +4,10 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import DepthImage, Image, SegmentationImage
 from rerun.datatypes import TensorData
 from rerun.datatypes.tensor_data import TensorDataLike
@@ -19,6 +21,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Image(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_image(
     entity_path: str,
@@ -32,6 +38,11 @@ def log_image(
 ) -> None:
     """
     Log a gray or color image.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Image][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The image should either have 1, 3 or 4 channels (gray, RGB or RGBA).
 
@@ -73,10 +84,23 @@ def log_image(
 
     """
 
-    tensor_data = TensorData(array=image, jpeg_quality=jpeg_quality)
-    log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
+    img = Image(image, draw_order=draw_order)
+    if jpeg_quality is not None:
+        img = img.compress(jpeg_quality=jpeg_quality)  # type: ignore[assignment]
+
+    log(
+        entity_path,
+        img,
+        AnyValues(**(ext or {})),
+        timeless=timeless,
+        recording=recording,
+    )
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.DepthImage(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_depth_image(
     entity_path: str,
@@ -90,6 +114,11 @@ def log_depth_image(
 ) -> None:
     """
     Log a depth image.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.DepthImage][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The image must be a 2D array.
 
@@ -127,12 +156,16 @@ def log_depth_image(
     log(
         entity_path,
         DepthImage(tensor_data, draw_order=draw_order, meter=meter),
-        ext=ext,
+        AnyValues(**(ext or {})),
         timeless=timeless,
         recording=recording,
     )
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.SegmentationImage(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_segmentation_image(
     entity_path: str,
@@ -145,6 +178,11 @@ def log_segmentation_image(
 ) -> None:
     """
     Log an image made up of integer class-ids.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.SegmentationImage][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The image should have 1 channel, i.e. be either `H x W` or `H x W x 1`.
 
@@ -185,7 +223,7 @@ def log_segmentation_image(
     log(
         entity_path,
         SegmentationImage(tensor_data, draw_order=draw_order),
-        ext=ext,
+        AnyValues(**(ext or {})),
         timeless=timeless,
         recording=recording,
     )

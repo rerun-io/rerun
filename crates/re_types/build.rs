@@ -13,7 +13,7 @@ const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const ENTRYPOINT_PATH: &str = "./definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
-const DOC_CONTENT_DIR_PATH: &str = "../../docs/content/reference/data_types";
+const DOC_CONTENT_DIR_PATH: &str = "../../docs/content/reference/types";
 const CPP_OUTPUT_DIR_PATH: &str = "../../rerun_cpp";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun";
@@ -118,7 +118,7 @@ fn main() {
         ),
     );
 
-    report.panic_on_errors();
+    report.finalize();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }

@@ -15,6 +15,8 @@ NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
 
 class Vec4DExt:
+    """Extension for [Vec4D][rerun.datatypes.Vec4D]."""
+
     @staticmethod
     def native_to_pa_array_override(data: Vec4DArrayLike, data_type: pa.DataType) -> pa.Array:
         # TODO(ab): get rid of this once we drop support for Python 3.8. Make sure to pin numpy>=1.25.

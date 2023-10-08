@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// The description of a semantic Class.
+/// **Datatype**: The description of a semantic Class.
 ///
 /// If an entity is annotated with a corresponding `ClassId`, rerun will use
 /// the attached `AnnotationInfo` to derive labels and colors.
@@ -105,6 +105,7 @@ impl crate::Loggable for ClassDescription {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -268,6 +269,7 @@ impl crate::Loggable for ClassDescription {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

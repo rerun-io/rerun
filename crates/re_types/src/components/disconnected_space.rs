@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Specifies that the entity path at which this is logged is disconnected from its parent.
+/// **Component**: Specifies that the entity path at which this is logged is disconnected from its parent.
 ///
 /// This is useful for specifying that a subgraph is independent of the rest of the scene.
 ///
@@ -72,6 +72,7 @@ impl crate::Loggable for DisconnectedSpace {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -106,6 +107,7 @@ impl crate::Loggable for DisconnectedSpace {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data

@@ -16,9 +16,9 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_text_log")
 
-    rr.log("log", rr.TextLog(body="No level"))
-    rr.log("log", rr.TextLog(body="INFO level", level="INFO"))
-    rr.log("log", rr.TextLog(body="WILD level", level="WILD"))
+    rr.log("log", rr.TextLog("No level"))
+    rr.log("log", rr.TextLog("INFO level", level="INFO"))
+    rr.log("log", rr.TextLog("WILD level", level="WILD"))
 
     rr.script_teardown(args)
 

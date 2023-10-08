@@ -43,8 +43,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             world_from_mesh = node_data[0]
             rr.log(
                 path,
-                rr.datatypes.TranslationAndMat3x3(
-                    trimesh.transformations.translation_from_matrix(world_from_mesh), world_from_mesh[0:3, 0:3]
+                rr.Transform3D(
+                    translation=trimesh.transformations.translation_from_matrix(world_from_mesh),
+                    mat3x3=world_from_mesh[0:3, 0:3],
                 ),
             )
 
@@ -67,7 +68,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             rr.log(
                 path,
                 rr.Mesh3D(
-                    mesh.vertices,
+                    vertex_positions=mesh.vertices,
                     vertex_colors=vertex_colors,
                     vertex_normals=mesh.vertex_normals,
                     indices=mesh.faces,
@@ -109,7 +110,7 @@ def main() -> None:
     root = next(iter(scene.graph.nodes))
 
     # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
-    rr.log_view_coordinates(root, xyz="RUB", timeless=True)
+    rr.log(root, rr.ViewCoordinates.RUB, timeless=True)
     log_scene(scene, root)
 
     rr.script_teardown(args)

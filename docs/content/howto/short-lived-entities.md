@@ -10,7 +10,7 @@ The most straight forward option is to explicitly log that an entity has been cl
 
 For example, if you have an object tracking application, your code might look something like this:
 ```python
-...
+…
 for frame in sensors.read():
     # Associate the following logs with `frame == frame.id`
     rr.set_time_sequence("frame", frame.id)
@@ -30,7 +30,7 @@ for frame in sensors.read():
 In some cases, the best approach may be to rethink how you log data to better express what is actually happening. Take the following example where update frequencies don't match:
 
 ```python
-...
+…
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
     rr.set_time_sequence("frame", frame.id)
@@ -49,7 +49,7 @@ You could fix this example by logging `rr.ClearEntity`, but in this case it make
 Here is an example fix:
 ```python
 class Detector:
-    ...
+    …
     def detect(self, frame):
         downscaled = self.downscale(frame.image)
         # Log the downscaled image
@@ -60,7 +60,7 @@ class Detector:
         # Image and detections will update at the same frequency
         rr.log("downscaled/detections", rr.Rect2D(detection.bounds))
         return detection
-...
+…
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
     rr.set_time_sequence("frame", frame.id)

@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class DrawOrderExt:
+    """Extension for [DrawOrder][rerun.components.DrawOrder]."""
+
     @staticmethod
     def native_to_pa_array_override(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.float32).flatten()

@@ -14,75 +14,42 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+/// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///
-/// ## Examples
+/// See also [`Asset3D`][crate::archetypes::Asset3D].
+///
+/// ## Example
 ///
 /// ### Simple indexed 3D mesh
 /// ```ignore
 /// //! Log a simple colored triangle with indexed drawing.
 ///
-/// use rerun::{
-///     archetypes::Mesh3D,
-///     components::{Material, MeshProperties},
-///     RecordingStreamBuilder,
-/// };
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").memory()?;
-///
-///     rec.log(
-///         "triangle",
-///         &Mesh3D::new([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
-///             .with_vertex_normals([[0.0, 0.0, 1.0]])
-///             .with_vertex_colors([0x0000FFFF, 0x00FF00FF, 0xFF0000FF])
-///             .with_mesh_properties(MeshProperties::from_triangle_indices([[2, 1, 0]]))
-///             .with_mesh_material(Material::from_albedo_factor(0xCC00CCFF)),
-///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-///
-/// ### 3D mesh with partial updates
-/// ```ignore
-/// //! Log a simple colored triangle, then update its vertices' positions each frame.
-///
-/// use rerun::{archetypes::Mesh3D, components::Position3D, external::glam, RecordingStreamBuilder};
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").memory()?;
 ///
-///     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-///
-///     // Log the initial state of our triangle
-///     rec.set_time_sequence("frame", 0);
 ///     rec.log(
 ///         "triangle",
-///         &Mesh3D::new(vertex_positions)
+///         &rerun::Mesh3D::new([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
 ///             .with_vertex_normals([[0.0, 0.0, 1.0]])
-///             .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF]),
+///             .with_vertex_colors([0x0000FFFF, 0x00FF00FF, 0xFF0000FF])
+///             .with_mesh_properties(rerun::MeshProperties::from_triangle_indices([[2, 1, 0]]))
+///             .with_mesh_material(rerun::Material::from_albedo_factor(0xCC00CCFF)),
 ///     )?;
-///
-///     // Only update its vertices' positions each frame
-///     for i in 1..300 {
-///         rec.set_time_sequence("frame", i);
-///
-///         let factor = (i as f32 * 0.04).sin().abs();
-///         let vertex_positions: [Position3D; 3] = [
-///             (glam::Vec3::from(vertex_positions[0]) * factor).into(),
-///             (glam::Vec3::from(vertex_positions[1]) * factor).into(),
-///             (glam::Vec3::from(vertex_positions[2]) * factor).into(),
-///         ];
-///         rec.log_component_batches("triangle", false, [&vertex_positions as _])?;
-///     }
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png">
+///   <img src="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Mesh3D {
     /// The positions of each vertex.
@@ -196,6 +163,7 @@ impl crate::Archetype for Mesh3D {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -303,6 +271,7 @@ impl crate::Archetype for Mesh3D {
 
 impl crate::AsComponents for Mesh3D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),

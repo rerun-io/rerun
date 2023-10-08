@@ -14,10 +14,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A connection between two `Keypoints`.
+/// **Datatype**: A connection between two `Keypoints`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
+    /// The first point of the pair.
     pub keypoint0: crate::datatypes::KeypointId,
+
+    /// The second point of the pair.
     pub keypoint1: crate::datatypes::KeypointId,
 }
 
@@ -70,6 +73,7 @@ impl crate::Loggable for KeypointPair {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -165,6 +169,7 @@ impl crate::Loggable for KeypointPair {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

@@ -7,14 +7,13 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A batch of line strips with positions and optional colors, radii, labels, etc.
+/// 2D line strips with positions and optional colors, radii, labels, etc.
 ///
-/// \example line_strip2d_simple image="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png"
-/// \example line_segments2d_simple image="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png"
+/// \example line_strip2d_simple !api image="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png"
+/// \example line_segments2d_simple !api image="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png"
 /// \example line_strip2d_batch image="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/1200w.png"
 table LineStrips2D (
-  "attr.rust.derive": "PartialEq",
-  order: 100
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 
@@ -35,6 +34,7 @@ table LineStrips2D (
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// An optional floating point value that specifies the 2D drawing order of each line strip.
+  ///
   /// Objects with higher values are drawn on top of those with lower values.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 

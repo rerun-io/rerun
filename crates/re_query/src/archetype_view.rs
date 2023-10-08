@@ -177,7 +177,7 @@ where
         if let Some(primary_key) = self.primary_instance_key_iter.next() {
             loop {
                 match &self.next_component_instance_key {
-                    // If we have a next component key, we either...
+                    // If we have a next component key, we either…
                     Some(instance_key) => {
                         if instance_key.is_splat() {
                             if self.splatted_component_value.is_none() {
@@ -362,7 +362,6 @@ impl<A: Archetype> ArchetypeView<A> {
                 // Therefore there cannot be any null values, therefore we can go through the fast
                 // deserialization path.
                 let component_value_iter = {
-                    re_tracing::profile_scope!("try_from_arrow", C::name());
                     C::from_arrow(component.values.as_arrow_ref())?
                         .into_iter()
                         .map(Some)
@@ -373,10 +372,8 @@ impl<A: Archetype> ArchetypeView<A> {
                 )));
             }
 
-            let component_value_iter = {
-                re_tracing::profile_scope!("try_from_arrow_opt", C::name());
-                C::from_arrow_opt(component.values.as_arrow_ref())?.into_iter()
-            };
+            let component_value_iter =
+                { C::from_arrow_opt(component.values.as_arrow_ref())?.into_iter() };
 
             let primary_instance_key_iter = self.iter_instance_keys();
             let mut component_instance_key_iter = component.instance_keys().into_iter();
@@ -426,7 +423,6 @@ impl<A: Archetype> ArchetypeView<A> {
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            re_tracing::profile_scope!("try_from_arrow", C::name());
             return Ok(Some(
                 C::from_arrow(component.values.as_arrow_ref())?.into_iter(),
             ));

@@ -21,10 +21,13 @@ namespace rerun.datatypes;
 /// defined, and both keypoints exist within the instance of the class, then the
 /// keypoints should be connected with an edge. The edge should be labeled and
 /// colored as described by the class's `AnnotationInfo`.
+///
+/// \py Note that a `ClassDescription` can be directly logged using `rerun.log`.
+/// \py This is equivalent to logging a `rerun.AnnotationContext` containing
+/// \py a single `ClassDescription`.
 table ClassDescription (
   "attr.python.aliases": "datatypes.AnnotationInfoLike",
-  "attr.rust.derive": "Default, Eq, PartialEq",
-  order: 100
+  "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
   /// The `AnnotationInfo` for the class.
   info: rerun.datatypes.AnnotationInfo (order: 100);

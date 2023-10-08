@@ -14,10 +14,12 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+/// **Datatype**: Optional triangle indices for a mesh.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MeshProperties {
-    /// If specified, a flattened array of vertex indices that describe the mesh's triangles,
-    /// i.e. its length must be divisible by 3.
+    /// A flattened array of vertex indices that describe the mesh's triangles.
+    ///
+    /// Its length must be divisible by 3.
     pub indices: Option<crate::ArrowBuffer<u32>>,
 }
 
@@ -81,6 +83,7 @@ impl crate::Loggable for MeshProperties {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -166,6 +169,7 @@ impl crate::Loggable for MeshProperties {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

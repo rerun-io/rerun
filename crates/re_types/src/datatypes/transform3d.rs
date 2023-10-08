@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Representation of a 3D affine transform.
+/// **Datatype**: Representation of a 3D affine transform.
 ///
 /// Rarely used directly, prefer using the underlying representation classes and pass them
 /// directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`.
@@ -83,6 +83,7 @@ impl crate::Loggable for Transform3D {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -200,6 +201,7 @@ impl crate::Loggable for Transform3D {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

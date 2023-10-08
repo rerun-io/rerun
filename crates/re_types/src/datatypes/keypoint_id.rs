@@ -14,12 +14,24 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 16-bit ID representing a type of semantic keypoint within a class.
+/// **Datatype**: A 16-bit ID representing a type of semantic keypoint within a class.
 ///
-/// `KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`.
+/// `KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].
 ///
-/// Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct KeypointId(pub u16);
@@ -74,6 +86,7 @@ impl crate::Loggable for KeypointId {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -108,6 +121,7 @@ impl crate::Loggable for KeypointId {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data

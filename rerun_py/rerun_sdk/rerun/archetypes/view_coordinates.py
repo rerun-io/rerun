@@ -11,6 +11,7 @@ from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
+from ..error_utils import catch_and_log_exceptions
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates"]
@@ -19,7 +20,7 @@ __all__ = ["ViewCoordinates"]
 @define(str=False, repr=False, init=False)
 class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """
-    How we interpret the coordinate system of an entity/space.
+    **Archetype**: How we interpret the coordinate system of an entity/space.
 
     For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 
@@ -30,6 +31,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     Example
     -------
+    ### View coordinates for adjusting the eye camera:
     ```python
 
     import rerun as rr
@@ -45,21 +47,45 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         ),
     )
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png">
+      <img src="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png" width="640">
+    </picture>
+    </center>
     """
 
     def __init__(self: Any, xyz: components.ViewCoordinatesLike):
         """Create a new instance of the ViewCoordinates archetype."""
 
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
-        self.__attrs_init__(xyz=xyz)
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(xyz=xyz)
+            return
+        self.__attrs_clear__()
+
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            xyz=None,  # type: ignore[arg-type]
+        )
+
+    @classmethod
+    def _clear(cls) -> ViewCoordinates:
+        """Produce an empty ViewCoordinates, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     xyz: components.ViewCoordinatesBatch = field(
         metadata={"component": "required"},
-        converter=components.ViewCoordinatesBatch,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
 
 
-if hasattr(ViewCoordinatesExt, "deferred_patch_class"):
-    ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)
+ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

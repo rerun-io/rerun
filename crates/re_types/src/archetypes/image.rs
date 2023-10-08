@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A monochrome or color image.
+/// **Archetype**: A monochrome or color image.
 ///
 /// The shape of the `TensorData` must be mappable to:
 /// - A `HxW` tensor, treated as a grayscale image.
@@ -26,39 +26,43 @@
 ///
 /// ## Example
 ///
+/// ### `image_simple`:
 /// ```ignore
 /// //! Create and log an image
 ///
 /// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::{archetypes::Image, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_image_simple").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_image_simple").memory()?;
 ///
 ///     let mut image = Array::<u8, _>::zeros((8, 12, 3).f());
 ///     image.slice_mut(s![.., .., 0]).fill(255);
 ///     image.slice_mut(s![0..4, 0..6, 0]).fill(0);
 ///     image.slice_mut(s![0..4, 0..6, 1]).fill(255);
 ///
-///     rec.log("image", &Image::try_from(image)?)?;
+///     rec.log("image", &rerun::Image::try_from(image)?)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
-///   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png">
+///   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Image {
     /// The image data. Should always be a rank-2 or rank-3 tensor.
     pub data: crate::components::TensorData,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 }
@@ -134,6 +138,7 @@ impl crate::Archetype for Image {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -171,6 +176,7 @@ impl crate::Archetype for Image {
 
 impl crate::AsComponents for Image {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),

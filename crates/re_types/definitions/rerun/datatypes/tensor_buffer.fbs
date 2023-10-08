@@ -61,7 +61,6 @@ table NV12Buffer(order: 100, transparent) {
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
 union TensorBuffer (
-  order: 100,
   "attr.rust.derive_only": "Clone, PartialEq"
 ) {
   U8: U8Buffer (transparent, order:100),

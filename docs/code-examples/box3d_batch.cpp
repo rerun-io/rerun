@@ -24,9 +24,9 @@ int main() {
             })
             .with_radii(0.025f)
             .with_colors({
-                rr::datatypes::Color(255, 0, 0),
-                rr::datatypes::Color(0, 255, 0),
-                rr::datatypes::Color(0, 0, 255),
+                rr::datatypes::Rgba32(255, 0, 0),
+                rr::datatypes::Rgba32(0, 255, 0),
+                rr::datatypes::Rgba32(0, 0, 255),
             })
             .with_labels({"red", "green", "blue"})
     );

@@ -14,84 +14,17 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of line strips with positions and optional colors, radii, labels, etc.
+/// **Archetype**: 3D line strips with positions and optional colors, radii, labels, etc.
 ///
-/// ## Examples
-///
-/// ### Simple example
-/// ```ignore
-/// //! Log a simple line strip.
-///
-/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
-///
-///     let points = [
-///         [0., 0., 0.],
-///         [0., 0., 1.],
-///         [1., 0., 0.],
-///         [1., 0., 1.],
-///         [1., 1., 0.],
-///         [1., 1., 1.],
-///         [0., 1., 0.],
-///         [0., 1., 1.],
-///     ];
-///     rec.log("strip", &LineStrips3D::new([points]))?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1200w.png">
-///   <img src="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/full.png">
-/// </picture>
-///
-/// ### Many individual segments
-/// ```ignore
-/// //! Log a simple set of line segments.
-///
-/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
-///
-///     let points = [
-///         [0., 0., 0.],
-///         [0., 0., 1.],
-///         [1., 0., 0.],
-///         [1., 0., 1.],
-///         [1., 1., 0.],
-///         [1., 1., 1.],
-///         [0., 1., 0.],
-///         [0., 1., 1.],
-///     ];
-///     rec.log("segments", &LineStrips3D::new(points.chunks(2)))?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1200w.png">
-///   <img src="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/full.png">
-/// </picture>
+/// ## Example
 ///
 /// ### Many strips
 /// ```ignore
 /// //! Log a batch of 2d line strips.
 ///
-/// use rerun::{archetypes::LineStrips3D, RecordingStreamBuilder};
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
 ///
 ///     let strip1 = [[0., 0., 2.], [1., 0., 2.], [1., 1., 2.], [0., 1., 2.]];
 ///     let strip2 = [
@@ -106,7 +39,7 @@
 ///     ];
 ///     rec.log(
 ///         "strips",
-///         &LineStrips3D::new([strip1.to_vec(), strip2.to_vec()])
+///         &rerun::LineStrips3D::new([strip1.to_vec(), strip2.to_vec()])
 ///             .with_colors([0xFF0000FF, 0x00FF00FF])
 ///             .with_radii([0.025, 0.005])
 ///             .with_labels(["one strip here", "and one strip there"]),
@@ -116,13 +49,15 @@
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1200w.png">
-///   <img src="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png">
+///   <img src="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineStrips3D {
     /// All the actual 3D line strips that make up the batch.
@@ -227,6 +162,7 @@ impl crate::Archetype for LineStrips3D {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -318,6 +254,7 @@ impl crate::Archetype for LineStrips3D {
 
 impl crate::AsComponents for LineStrips3D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),

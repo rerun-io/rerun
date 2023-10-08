@@ -28,6 +28,7 @@ HAS_NO_RERUN_ARGS = {
 }
 
 MIN_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
+    "examples/python/controlnet": (3, 10),
     # pyopf requires Python 3.10
     "examples/python/open_photogrammetry_format": (3, 10),
 }
@@ -100,7 +101,6 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/rgbd",
             "examples/python/signed_distance_fields",
             "examples/python/structure_from_motion",
-            "examples/python/text_logging",
         ]
     else:
         examples = []

@@ -18,7 +18,8 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Specifies that the entity path at which this is logged is disconnected from its parent.
+        /// **Component**: Specifies that the entity path at which this is logged is disconnected
+        /// from its parent.
         ///
         /// This is useful for specifying that a subgraph is independent of the rest of the scene.
         ///

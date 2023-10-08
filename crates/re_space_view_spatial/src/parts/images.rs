@@ -54,7 +54,7 @@ pub struct ViewerImage {
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
     tensor_path_hash: VersionedInstancePathHash,
@@ -203,7 +203,7 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         _ent_props: &EntityProperties,
         arch_view: &ArchetypeView<Image>,
@@ -292,7 +292,7 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_depth_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
@@ -412,7 +412,7 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_segmentation_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         _ent_props: &EntityProperties,
         arch_view: &ArchetypeView<SegmentationImage>,
@@ -499,7 +499,7 @@ impl ImagesPart {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
@@ -510,17 +510,20 @@ impl ImagesPart {
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
-        let store = &ctx.store_db.entity_db.data_store;
-
-        let Some(intrinsics) = query_pinhole(store, &ctx.current_query(), parent_pinhole_path)
-        else {
+        let Some(intrinsics) = query_pinhole(
+            ctx.store_db.store(),
+            &ctx.current_query(),
+            parent_pinhole_path,
+        ) else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 
-        // TODO(cmc): getting to those extrinsics is no easy task :|
-        let world_from_view = parent_pinhole_path
-            .parent()
-            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+        // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
+        let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
+            parent_pinhole_path,
+            ctx.store_db.store(),
+            &ctx.current_query(),
+        );
         let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };

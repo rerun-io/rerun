@@ -37,7 +37,7 @@ impl ViewportBlueprint<'_> {
                 egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
                 egui_tiles::Tile::Container(_) => false,
             });
-            re_log::trace!("Found {focus_tab}: {found}");
+            re_log::trace!("Found tab {focus_tab}: {found}");
         }
 
         for tile_id in remove {
@@ -88,7 +88,7 @@ impl ViewportBlueprint<'_> {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        container: &mut egui_tiles::Container,
+        container: &egui_tiles::Container,
     ) {
         if let Some(child_id) = container.only_child() {
             // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood.
@@ -128,6 +128,10 @@ impl ViewportBlueprint<'_> {
         }
 
         if visibility_changed {
+            if self.auto_layout {
+                re_log::trace!("Container visibility changed - will no longer auto-layout");
+            }
+
             self.auto_layout = false; // Keep `auto_space_views` enabled.
             self.tree.set_visible(tile_id, visible);
         }
@@ -193,6 +197,10 @@ impl ViewportBlueprint<'_> {
         item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if visibility_changed {
+            if self.auto_layout {
+                re_log::trace!("Space view visibility changed - will no longer auto-layout");
+            }
+
             self.auto_layout = false; // Keep `auto_space_views` enabled.
             self.tree.set_visible(tile_id, visible);
         }

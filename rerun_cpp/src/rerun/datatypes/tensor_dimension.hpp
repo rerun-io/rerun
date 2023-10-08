@@ -18,10 +18,12 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A single dimension within a multi-dimensional tensor.
+        /// **Datatype**: A single dimension within a multi-dimensional tensor.
         struct TensorDimension {
+            /// The length of this dimension.
             uint64_t size;
 
+            /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
             std::optional<std::string> name;
 
           public:

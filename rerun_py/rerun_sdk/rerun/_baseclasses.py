@@ -5,6 +5,8 @@ from typing import Any, Generic, Iterable, Protocol, TypeVar
 import pyarrow as pa
 from attrs import define, fields
 
+from .error_utils import catch_and_log_exceptions
+
 T = TypeVar("T")
 
 
@@ -26,7 +28,13 @@ class ComponentBatchLike(Protocol):
 
 
 class AsComponents(Protocol):
-    """Describes interface for interpreting an object as a bundle of Components."""
+    """
+    Describes interface for interpreting an object as a bundle of Components.
+
+    Note: the `num_instances()` function is an optional part of this interface. The method does not need to be
+    implemented as it is only used after checking for its existence. (There is unfortunately no way to express this
+    correctly with the Python typing system, see https://github.com/python/typing/issues/601).
+    """
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -39,18 +47,18 @@ class AsComponents(Protocol):
         """
         ...
 
-    def num_instances(self) -> int | None:
-        """
-        (Optional) The number of instances in each batch.
-
-        If not implemented, the number of instances will be determined by the longest
-        batch in the bundle.
-
-        Each batch returned by `as_component_batches` should have this number of
-        elements, or 1 in the case it is a splat, or 0 in the case that
-        component is being cleared.
-        """
-        return None
+    # def num_instances(self) -> int | None:
+    #     """
+    #     (Optional) The number of instances in each batch.
+    #
+    #     If not implemented, the number of instances will be determined by the longest
+    #     batch in the bundle.
+    #
+    #     Each batch returned by `as_component_batches` should have this number of
+    #     elements, or 1 in the case it is a splat, or 0 in the case that
+    #     component is being cleared.
+    #     """
+    #     return None
 
 
 @define
@@ -150,9 +158,9 @@ class BaseBatch(Generic[T]):
     _ARROW_TYPE: BaseExtensionType = None  # type: ignore[assignment]
     """The pyarrow type of this batch."""
 
-    def __init__(self, data: T | None) -> None:
+    def __init__(self, data: T | None, strict: bool | None = None) -> None:
         """
-        Primary method for creating Arrow arrays for required components.
+        Construct a new batch.
 
         This method must flexibly accept native data (which comply with type `T`). Subclasses must provide a type
         parameter specifying the type of the native data (this is automatically handled by the code generator).
@@ -167,27 +175,38 @@ class BaseBatch(Generic[T]):
         ----------
         data : T | None
             The data to convert into an Arrow array.
+        strict : bool | None
+            Whether to raise an exception if the data cannot be converted into an Arrow array. If None, the value
+            defaults to the value of the `rerun.strict` global setting.
 
         Returns
         -------
         The Arrow array encapsulating the data.
         """
-
-        # If data is already an arrow array, use it
-        if isinstance(data, pa.Array):
-            if data.type == self._ARROW_TYPE:
-                self.pa_array = data
+        if data is not None:
+            with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
+                # If data is already an arrow array, use it
+                if isinstance(data, pa.Array) and data.type == self._ARROW_TYPE:
+                    self.pa_array = data
+                elif isinstance(data, pa.Array) and data.type == self._ARROW_TYPE.storage_type:
+                    self.pa_array = self._ARROW_TYPE.wrap_array(data)
+                else:
+                    self.pa_array = self._ARROW_TYPE.wrap_array(
+                        self._native_to_pa_array(data, self._ARROW_TYPE.storage_type)
+                    )
                 return
-            elif data.type == self._ARROW_TYPE.storage_type:
-                self.pa_array = self._ARROW_TYPE.wrap_array(data)
-                return
 
-        if data is None:
-            pa_array = _empty_pa_array(self._ARROW_TYPE.storage_type)
-        else:
-            pa_array = self._native_to_pa_array(data, self._ARROW_TYPE.storage_type)
+        # If we didn't return above, default to the empty array
+        self.pa_array = _empty_pa_array(self._ARROW_TYPE)
 
-        self.pa_array = self._ARROW_TYPE.wrap_array(pa_array)
+    @classmethod
+    def _required(cls, data: T | None) -> BaseBatch[T]:
+        """
+        Primary method for creating Arrow arrays for optional components.
+
+        Just calls through to __init__, but with clearer type annotations.
+        """
+        return cls(data)
 
     @classmethod
     def _optional(cls, data: T | None) -> BaseBatch[T] | None:
@@ -270,9 +289,10 @@ class ComponentBatchMixin(ComponentBatchLike):
         return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
 
 
+@catch_and_log_exceptions(context="creating empty array")
 def _empty_pa_array(type: pa.DataType) -> pa.Array:
     if isinstance(type, pa.ExtensionType):
-        return _empty_pa_array(type.storage_type)
+        return type.wrap_array(_empty_pa_array(type.storage_type))
 
     # Creation of empty arrays of dense unions aren't implemented in pyarrow yet.
     if isinstance(type, pa.UnionType):

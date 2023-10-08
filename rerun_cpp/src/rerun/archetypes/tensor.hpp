@@ -15,7 +15,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A generic n-dimensional Tensor.
+        /// **Archetype**: A generic n-dimensional Tensor.
         struct Tensor {
             /// The tensor data
             rerun::components::TensorData data;

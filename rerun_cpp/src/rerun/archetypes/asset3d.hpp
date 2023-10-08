@@ -21,7 +21,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
+        /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
         ///
         /// ## Example
         ///
@@ -57,15 +57,16 @@ namespace rerun {
         /// ```
         struct Asset3D {
             /// The asset's bytes.
-            rerun::components::Blob data;
+            rerun::components::Blob blob;
 
             /// The Media Type of the asset.
             ///
-            /// For instance:
+            /// Supported values:
             /// * `model/gltf-binary`
-            /// * `model/obj`
+            /// * `model/obj` (.mtl material files are not supported yet, references are silently
+            /// ignored)
             ///
-            /// If omitted, the viewer will try to guess from the data.
+            /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
             std::optional<rerun::components::MediaType> media_type;
 
@@ -137,15 +138,16 @@ namespace rerun {
           public:
             Asset3D() = default;
 
-            Asset3D(rerun::components::Blob _data) : data(std::move(_data)) {}
+            Asset3D(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
 
             /// The Media Type of the asset.
             ///
-            /// For instance:
+            /// Supported values:
             /// * `model/gltf-binary`
-            /// * `model/obj`
+            /// * `model/obj` (.mtl material files are not supported yet, references are silently
+            /// ignored)
             ///
-            /// If omitted, the viewer will try to guess from the data.
+            /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
             Asset3D& with_media_type(rerun::components::MediaType _media_type) {
                 media_type = std::move(_media_type);

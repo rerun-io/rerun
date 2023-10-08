@@ -17,10 +17,12 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A text element intended to be displayed in its own text-box.
+        /// **Archetype**: A text element intended to be displayed in its own text-box.
+        ///
+        /// Supports raw text and markdown.
         struct TextDocument {
             /// Contents of the text document.
-            rerun::components::Text body;
+            rerun::components::Text text;
 
             /// The Media Type of the text.
             ///
@@ -38,7 +40,7 @@ namespace rerun {
           public:
             TextDocument() = default;
 
-            TextDocument(rerun::components::Text _body) : body(std::move(_body)) {}
+            TextDocument(rerun::components::Text _text) : text(std::move(_text)) {}
 
             /// The Media Type of the text.
             ///

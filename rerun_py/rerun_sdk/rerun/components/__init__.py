@@ -37,8 +37,6 @@ from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, L
 from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
-from .origin2d import Origin2D, Origin2DBatch, Origin2DType
-from .origin3d import Origin3D, Origin3DBatch, Origin3DType
 from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .position2d import Position2D, Position2DBatch, Position2DType
@@ -137,12 +135,6 @@ __all__ = [
     "MeshProperties",
     "MeshPropertiesBatch",
     "MeshPropertiesType",
-    "Origin2D",
-    "Origin2DBatch",
-    "Origin2DType",
-    "Origin3D",
-    "Origin3DBatch",
-    "Origin3DType",
     "OutOfTreeTransform3D",
     "OutOfTreeTransform3DBatch",
     "OutOfTreeTransform3DType",

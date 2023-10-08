@@ -22,58 +22,11 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A batch of line strips with positions and optional colors, radii, labels, etc.
+        /// **Archetype**: 2D line strips with positions and optional colors, radii, labels, etc.
         ///
-        /// ## Examples
+        /// ## Example
         ///
-        /// ```cpp,ignore
-        /// // Log a simple line strip.
-        ///
-        /// #include <rerun.hpp>
-        ///
-        /// namespace rr = rerun;
-        ///
-        /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_line_strip2d");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
-        ///
-        ///     std::vector<rr::datatypes::Vec2D> strip = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
-        ///     {6.f, 0.f}}; rec.log("strip", rr::LineStrips2D(strip));
-        ///
-        ///     // Log an extra rect to set the view bounds
-        ///     rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 0.0f}},
-        ///     {{8.0f, 6.0f}}));
-        /// }
-        /// ```
-        ///
-        /// ```cpp,ignore
-        /// // Log a couple 2D line segments using 2D line strips.
-        ///
-        /// #include <rerun.hpp>
-        ///
-        /// namespace rr = rerun;
-        ///
-        /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_line_segments2d");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
-        ///
-        ///     // TODO(#3202): I want to do this!
-        ///     // std::vector<std::vector<rr::datatypes::Vec2D>> points = {
-        ///     //     {{0.f, 0.f}, {2.f, 1.f}},
-        ///     //     {{4.f, -1.f}, {6.f, 0.f}},
-        ///     // };
-        ///     // rec.log("segments", rr::LineStrips2D(points));
-        ///
-        ///     std::vector<rr::datatypes::Vec2D> points1 = {{0.f, 0.f}, {2.f, 1.f}};
-        ///     std::vector<rr::datatypes::Vec2D> points2 = {{4.f, -1.f}, {6.f, 0.f}};
-        ///     rec.log("segments", rr::LineStrips2D({points1, points2}));
-        ///
-        ///     // Log an extra rect to set the view bounds
-        ///     rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 0.0f}},
-        ///     {{8.0f, 6.0f}}));
-        /// }
-        /// ```
-        ///
+        /// ### `line_strip2d_batch`:
         /// ```cpp,ignore
         /// // Log a batch of 2d line strips.
         ///
@@ -116,7 +69,9 @@ namespace rerun {
             std::optional<std::vector<rerun::components::Text>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order of each line
-            /// strip. Objects with higher values are drawn on top of those with lower values.
+            /// strip.
+            ///
+            /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
             /// Optional `ClassId`s for the lines.
@@ -176,7 +131,9 @@ namespace rerun {
             }
 
             /// An optional floating point value that specifies the 2D drawing order of each line
-            /// strip. Objects with higher values are drawn on top of those with lower values.
+            /// strip.
+            ///
+            /// Objects with higher values are drawn on top of those with lower values.
             LineStrips2D& with_draw_order(rerun::components::DrawOrder _draw_order) {
                 draw_order = std::move(_draw_order);
                 return *this;

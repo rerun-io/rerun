@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// The `AnnotationContext` provides additional information on how to display entities.
+/// **Component**: The `AnnotationContext` provides additional information on how to display entities.
 ///
 /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
 /// the labels and colors will be looked up in the appropriate
@@ -22,7 +22,10 @@
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct AnnotationContext(pub Vec<crate::datatypes::ClassDescriptionMapElem>);
+pub struct AnnotationContext(
+    /// List of class descriptions, mapping class indices to class names, colors etc.
+    pub Vec<crate::datatypes::ClassDescriptionMapElem>,
+);
 
 impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>
     for AnnotationContext
@@ -73,6 +76,7 @@ impl crate::Loggable for AnnotationContext {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -129,6 +133,7 @@ impl crate::Loggable for AnnotationContext {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

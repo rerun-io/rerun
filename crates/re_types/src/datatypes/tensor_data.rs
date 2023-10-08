@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A multi-dimensional `Tensor` of data.
+/// **Datatype**: A multi-dimensional `Tensor` of data.
 ///
 /// The number of dimensions and their respective lengths is specified by the `shape` field.
 /// The dimensions are ordered from outermost to innermost. For example, in the common case of
@@ -82,6 +82,7 @@ impl crate::Loggable for TensorData {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -185,6 +186,7 @@ impl crate::Loggable for TensorData {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

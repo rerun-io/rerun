@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::Mesh3D,
     components::{ClassId, InstanceKey, Position3D, Vector3D},
-    datatypes::{Color, Material, MeshProperties, Vec3D},
+    datatypes::{Material, MeshProperties, Rgba32, Vec3D},
     Archetype as _, AsComponents as _,
 };
 
@@ -25,12 +25,12 @@ fn roundtrip() {
             Vector3D(Vec3D([40.0, 50.0, 60.0])), //
         ]),
         vertex_colors: Some(vec![
-            Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC).into(), //
-            Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD).into(),
+            Rgba32::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC).into(), //
+            Rgba32::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD).into(),
         ]),
         mesh_material: Some(
             Material {
-                albedo_factor: Some(Color::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33)),
+                albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33)),
             }
             .into(),
         ),

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// An affine transform between two 3D spaces, represented in a given direction.
+/// **Component**: An affine transform between two 3D spaces, represented in a given direction.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transform3D(
     /// Representation of the transform.
@@ -102,6 +102,7 @@ impl crate::Loggable for Transform3D {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -134,6 +135,7 @@ impl crate::Loggable for Transform3D {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::Transform3D::from_arrow_opt(arrow_data)

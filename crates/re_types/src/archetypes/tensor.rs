@@ -14,67 +14,39 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A generic n-dimensional Tensor.
+/// **Archetype**: A generic n-dimensional Tensor.
 ///
-/// ## Examples
+/// ## Example
 ///
+/// ### Simple Tensor
 /// ```ignore
 /// //! Create and log a tensor.
 ///
 /// use ndarray::{Array, ShapeBuilder};
-/// use rerun::{archetypes::Tensor, RecordingStreamBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_tensor_simple").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_tensor_simple").memory()?;
 ///
 ///     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
 ///     data.map_inplace(|x| *x = rand::random());
 ///
-///     let tensor = Tensor::try_from(data)?.with_names(["batch", "channel", "height", "width"]);
+///     let tensor = rerun::Tensor::try_from(data)?.with_names(["batch", "channel", "height", "width"]);
 ///     rec.log("tensor", &tensor)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png">
-///   <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png">
+///   <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png" width="640">
 /// </picture>
-///
-/// ```ignore
-/// //! Create and log a one dimensional tensor.
-///
-/// use ndarray::{Array, ShapeBuilder};
-/// use rand::{thread_rng, Rng};
-/// use rand_distr::StandardNormal;
-/// use rerun::{archetypes::Tensor, RecordingStreamBuilder};
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_tensors").memory()?;
-///
-///     let mut data = Array::<f64, _>::default((100).f());
-///     data.map_inplace(|x| *x = thread_rng().sample(StandardNormal));
-///
-///     rec.log(
-///         "tensor",
-///         &Tensor::try_from(data.as_standard_layout().view())?,
-///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/1200w.png">
-///   <img src="https://static.rerun.io/tensor_one_dim/cbf24b466fe9d9639777aefb34f1a00c3f30d7ab/full.png">
-/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tensor {
     /// The tensor data
@@ -146,6 +118,7 @@ impl crate::Archetype for Tensor {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -170,6 +143,7 @@ impl crate::Archetype for Tensor {
 
 impl crate::AsComponents for Tensor {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),

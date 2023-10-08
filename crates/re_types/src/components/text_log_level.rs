@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// The severity level of a text log message.
+/// **Component**: The severity level of a text log message.
 ///
 /// Recommended to be one of:
 /// * `"CRITICAL"`
@@ -85,6 +85,7 @@ impl crate::Loggable for TextLogLevel {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -145,6 +146,7 @@ impl crate::Loggable for TextLogLevel {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

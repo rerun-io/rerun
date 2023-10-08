@@ -19,9 +19,9 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Pixel resolution width & height, e.g. of a camera sensor.
+        /// **Component**: Pixel resolution width & height, e.g. of a camera sensor.
         ///
-        /// Typically in integer units, but for some usecases floating point may be used.
+        /// Typically in integer units, but for some use cases floating point may be used.
         struct Resolution {
             rerun::datatypes::Vec2D resolution;
 

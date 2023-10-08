@@ -29,6 +29,8 @@ __all__ = [
 
 @define(init=False)
 class MeshProperties(MeshPropertiesExt):
+    """**Datatype**: Optional triangle indices for a mesh."""
+
     def __init__(self: Any, indices: npt.ArrayLike | None = None):
         """
         Create a new instance of the MeshProperties datatype.
@@ -36,18 +38,20 @@ class MeshProperties(MeshPropertiesExt):
         Parameters
         ----------
         indices:
-             If specified, a flattened array of vertex indices that describe the mesh's triangles,
-             i.e. its length must be divisible by 3.
+             A flattened array of vertex indices that describe the mesh's triangles.
+
+             Its length must be divisible by 3.
         """
 
         # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
         self.__attrs_init__(indices=indices)
 
     indices: npt.NDArray[np.uint32] | None = field(default=None, converter=to_np_uint32)
-    """
-    If specified, a flattened array of vertex indices that describe the mesh's triangles,
-    i.e. its length must be divisible by 3.
-    """
+    # A flattened array of vertex indices that describe the mesh's triangles.
+    #
+    # Its length must be divisible by 3.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
@@ -87,11 +91,3 @@ class MeshPropertiesBatch(BaseBatch[MeshPropertiesArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: MeshPropertiesArrayLike, data_type: pa.DataType) -> pa.Array:
         return MeshPropertiesExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MeshPropertiesType())
-
-
-if hasattr(MeshPropertiesExt, "deferred_patch_class"):
-    MeshPropertiesExt.deferred_patch_class(MeshProperties)

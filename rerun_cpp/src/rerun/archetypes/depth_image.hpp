@@ -18,7 +18,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A depth image.
+        /// **Archetype**: A depth image.
         ///
         /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
         /// Each pixel corresponds to a depth value in units specified by `meter`.
@@ -34,6 +34,7 @@ namespace rerun {
             std::optional<rerun::components::DepthMeter> meter;
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
@@ -57,6 +58,7 @@ namespace rerun {
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             DepthImage& with_draw_order(rerun::components::DrawOrder _draw_order) {
                 draw_order = std::move(_draw_order);

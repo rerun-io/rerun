@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
 from rerun.archetypes import Asset3D
@@ -37,6 +38,10 @@ class MeshFormat(Enum):
     """Wavefront .obj format."""
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.Asset3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_mesh_file(
     entity_path: str,
@@ -50,6 +55,11 @@ def log_mesh_file(
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.Asset3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     You must pass either `mesh_bytes` or `mesh_path`.
 
@@ -89,13 +99,13 @@ def log_mesh_file(
     recording = RecordingStream.to_native(recording)
 
     if mesh_path is not None:
-        asset3d = Asset3D.from_file(str(mesh_path))
+        asset3d = Asset3D(path=mesh_path)
     elif mesh_bytes is not None:
         if mesh_format == MeshFormat.GLB:
             media_type = MediaType.GLB
         else:
             media_type = MediaType.OBJ
-        asset3d = Asset3D.from_bytes(mesh_bytes, media_type)
+        asset3d = Asset3D(contents=mesh_bytes, media_type=media_type)
     else:
         raise ValueError("must specify either `mesh_path` or `mesh_bytes`")
 
@@ -103,11 +113,15 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
         translation = transform[..., -1]
         mat = [transform[..., 0], transform[..., 1], transform[..., 2]]
-        asset3d.transform = OutOfTreeTransform3DBatch(TranslationAndMat3x3(translation=translation, matrix=mat))
+        asset3d.transform = OutOfTreeTransform3DBatch(TranslationAndMat3x3(translation=translation, mat3x3=mat))
 
     return log(entity_path, asset3d, timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.ImageEncoded(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_image_file(
     entity_path: str,
@@ -120,6 +134,11 @@ def log_image_file(
 ) -> None:
     """
     Log an image file given its contents or path on disk.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.ImageEncoded][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     You must pass either `img_bytes` or `img_path`.
 

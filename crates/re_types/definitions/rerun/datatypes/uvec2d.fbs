@@ -14,8 +14,7 @@ struct UVec2D (
   "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int]",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.tuple_struct",
-  "attr.rust.repr": "C",
-  order: 100
+  "attr.rust.repr": "C"
 ) {
   xy: [uint: 2] (order: 100);
 }

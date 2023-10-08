@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rerun.error_utils import _send_warning
+from ..error_utils import _send_warning, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from ..components import TensorDataBatch
@@ -10,7 +10,10 @@ if TYPE_CHECKING:
 
 
 class BarChartExt:
+    """Extension for [BarChart][rerun.archetypes.BarChart]."""
+
     @staticmethod
+    @catch_and_log_exceptions("BarChart converter")
     def values__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
         from ..components import TensorDataBatch
 

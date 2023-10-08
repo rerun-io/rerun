@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 3D rotation, represented either by a quaternion or a rotation around axis.
+/// **Component**: A 3D rotation, represented either by a quaternion or a rotation around axis.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Rotation3D(
     /// Representation of the rotation.
@@ -102,6 +102,7 @@ impl crate::Loggable for Rotation3D {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -134,6 +135,7 @@ impl crate::Loggable for Rotation3D {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::Rotation3D::from_arrow_opt(arrow_data)

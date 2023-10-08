@@ -12,7 +12,7 @@ __all__ = ["Position3D", "Position3DBatch", "Position3DType"]
 
 
 class Position3D(datatypes.Vec3D):
-    """A position in 3D space."""
+    """**Component**: A position in 3D space."""
 
     # You can define your own __init__ function as a member of Position3DExt in position3d_ext.py
 
@@ -26,7 +26,3 @@ class Position3DType(datatypes.Vec3DType):
 
 class Position3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Position3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Position3DType())

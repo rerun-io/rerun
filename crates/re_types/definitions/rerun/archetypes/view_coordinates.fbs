@@ -15,10 +15,10 @@ namespace rerun.archetypes;
 /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
 /// down, and the Z axis points forward.
 ///
-/// \example view_coordinates_simple
+/// \example view_coordinates_simple title="View coordinates for adjusting the eye camera" image="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png"
 table ViewCoordinates (
-  "attr.rust.derive": "Copy, PartialEq, Eq",
-  order: 100
+  "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
 ) {
   xyz: rerun.components.ViewCoordinates ("attr.rerun.component_required", required, order: 1000);
 }

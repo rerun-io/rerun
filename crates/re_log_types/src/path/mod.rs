@@ -30,7 +30,7 @@ use crate::Index;
 pub enum EntityPathPart {
     /// Corresponds to the name of a struct field.
     ///
-    /// Only a limited set of characters are allowed in a name.
+    /// Names must match the regex: `[a-zA-z0-9_-]+`
     Name(InternedString),
 
     /// Array/table/map member.

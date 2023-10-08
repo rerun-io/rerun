@@ -5,23 +5,23 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import Archetype
+from .transform3d_ext import Transform3DExt
 
 __all__ = ["Transform3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Transform3D(Archetype):
+class Transform3D(Transform3DExt, Archetype):
     """
-    A 3D transform.
+    **Archetype**: A 3D transform.
 
     Example
     -------
+    ### Variety of 3D transforms:
     ```python
     from math import pi
 
@@ -32,47 +32,51 @@ class Transform3D(Archetype):
 
     rr.log("base", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
-    rr.log("base/translated", rr.TranslationAndMat3x3(translation=[1, 0, 0]))
+    rr.log("base/translated", rr.Transform3D(translation=[1, 0, 0]))
     rr.log("base/translated", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
 
     rr.log(
         "base/rotated_scaled",
-        rr.TranslationRotationScale3D(
+        rr.Transform3D(
             rotation=RotationAxisAngle(axis=[0, 0, 1], angle=Angle(rad=pi / 4)),
             scale=2,
         ),
     )
     rr.log("base/rotated_scaled", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png">
-      <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png">
+      <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png" width="640">
     </picture>
+    </center>
     """
 
-    def __init__(self: Any, transform: datatypes.Transform3DLike):
-        """
-        Create a new instance of the Transform3D archetype.
+    # __init__ can be found in transform3d_ext.py
 
-        Parameters
-        ----------
-        transform:
-             The transform
-        """
+    def __attrs_clear__(self) -> None:
+        """Convenience method for calling `__attrs_init__` with all `None`s."""
+        self.__attrs_init__(
+            transform=None,  # type: ignore[arg-type]
+        )
 
-        # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
-        self.__attrs_init__(transform=transform)
+    @classmethod
+    def _clear(cls) -> Transform3D:
+        """Produce an empty Transform3D, bypassing `__init__`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_clear__()
+        return inst
 
     transform: components.Transform3DBatch = field(
         metadata={"component": "required"},
-        converter=components.Transform3DBatch,  # type: ignore[misc]
+        converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
-    """
-    The transform
-    """
+    # The transform
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

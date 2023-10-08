@@ -28,7 +28,7 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
     WgpuResourcePools,
 };
 
@@ -103,7 +103,7 @@ pub enum ColorMapper {
     /// Look up the color in this texture.
     ///
     /// The texture is indexed in a row-major fashion, so that the top left pixel
-    /// corresponds to the the normalized value of 0.0, and the
+    /// corresponds to the normalized value of 0.0, and the
     /// bottom right pixel is 1.0.
     ///
     /// The texture must have the format [`wgpu::TextureFormat::Rgba8UnormSrgb`].
@@ -661,7 +661,7 @@ impl Renderer for RectangleRenderer {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
         if draw_data.instances.is_empty() {
             return Ok(());

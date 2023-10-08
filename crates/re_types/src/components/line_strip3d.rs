@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A line strip in 3D space.
+/// **Component**: A line strip in 3D space.
 ///
 /// A line strip is a list of points connected by line segments. It can be used to draw
 /// approximations of smooth curves.
@@ -76,6 +76,7 @@ impl crate::Loggable for LineStrip3D {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -175,6 +176,7 @@ impl crate::Loggable for LineStrip3D {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

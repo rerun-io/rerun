@@ -128,8 +128,14 @@ pub struct MemorySinkStorage {
 
 impl Drop for MemorySinkStorage {
     fn drop(&mut self) {
-        if !self.msgs.read().is_empty() {
-            re_log::warn!("Dropping data in MemorySink");
+        for msg in self.msgs.read().iter() {
+            // Sinks intentionally end up with pending SetStoreInfo messages
+            // these are fine to drop safely. Anything else should produce a
+            // warning.
+            if !matches!(msg, LogMsg::SetStoreInfo(_)) {
+                re_log::warn!("Dropping data in MemorySink");
+                return;
+            }
         }
     }
 }
@@ -145,6 +151,12 @@ impl MemorySinkStorage {
     #[inline]
     pub fn read(&self) -> parking_lot::RwLockReadGuard<'_, Vec<LogMsg>> {
         self.msgs.read()
+    }
+
+    /// How many messages are currently written to this memory sink
+    #[inline]
+    pub fn num_msgs(&self) -> usize {
+        self.read().len()
     }
 
     /// Consumes and returns the inner array of [`LogMsg`].

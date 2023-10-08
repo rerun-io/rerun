@@ -278,6 +278,7 @@ impl TimePanel {
             &time_area_painter,
             timeline_rect.top()..=timeline_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
+            ctx.app_options.time_zone_for_timestamps,
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
@@ -424,7 +425,7 @@ impl TimePanel {
             return; // ignore entities that have no data for the current timeline, nor any timeless data.
         }
 
-        // The last part of the the path component
+        // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
             if tree.is_leaf() {
                 last_path_part.to_string()
@@ -687,7 +688,7 @@ impl TimePanel {
 
 /// Draw the hovered/selected highlight background for a timeline row.
 fn highlight_timeline_row(
-    ui: &mut Ui,
+    ui: &Ui,
     ctx: &ViewerContext<'_>,
     painter: &Painter,
     item: &Item,
@@ -799,7 +800,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         if is_time_safe_to_show(ctx.store_db, timeline, time_int.into()) {
             let time_type = ctx.rec_cfg.time_ctrl.time_type();
-            ui.monospace(time_type.format(time_int));
+            ui.monospace(time_type.format(time_int, ctx.app_options.time_zone_for_timestamps));
         }
     }
 }
@@ -807,7 +808,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
 // ----------------------------------------------------------------------------
 
 fn initialize_time_ranges_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     time_x_range: Rangef,
     mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
@@ -874,7 +875,7 @@ fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
 fn paint_time_ranges_gaps(
     time_ranges_ui: &TimeRangesUi,
     re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     painter: &egui::Painter,
     y_range: Rangef,
 ) {
@@ -1014,7 +1015,7 @@ fn paint_time_ranges_gaps(
 fn interact_with_streams_rect(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     full_rect: &Rect,
     streams_rect: &Rect,
 ) -> egui::Response {
@@ -1076,7 +1077,7 @@ fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {

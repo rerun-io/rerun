@@ -546,7 +546,12 @@ impl std::fmt::Display for DataRow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Row #{} @ '{}'", self.row_id, self.entity_path)?;
         for (timeline, time) in &self.timepoint {
-            writeln!(f, "- {}: {}", timeline.name(), timeline.typ().format(*time))?;
+            writeln!(
+                f,
+                "- {}: {}",
+                timeline.name(),
+                timeline.typ().format_utc(*time)
+            )?;
         }
 
         re_format::arrow::format_table(

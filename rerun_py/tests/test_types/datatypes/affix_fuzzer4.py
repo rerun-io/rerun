@@ -388,7 +388,3 @@ class AffixFuzzer4Batch(BaseBatch[AffixFuzzer4ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer4ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer4_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AffixFuzzer4Type())

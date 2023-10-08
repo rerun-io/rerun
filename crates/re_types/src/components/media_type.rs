@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
+/// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
 ///
 /// The complete reference of officially registered media types is maintained by the IANA and can be
 /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
@@ -80,6 +80,7 @@ impl crate::Loggable for MediaType {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -140,6 +141,7 @@ impl crate::Loggable for MediaType {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

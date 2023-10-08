@@ -3,16 +3,19 @@ from __future__ import annotations
 from typing import Any
 
 from .. import components, datatypes
+from ..error_utils import catch_and_log_exceptions
 
 
 class Arrows3DExt:
+    """Extension for [Arrows3D][rerun.archetypes.Arrows3D]."""
+
     def __init__(
         self: Any,
         *,
         vectors: datatypes.Vec3DArrayLike,
         origins: datatypes.Vec3DArrayLike | None = None,
         radii: components.RadiusArrayLike | None = None,
-        colors: datatypes.ColorArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,
@@ -47,12 +50,15 @@ class Arrows3DExt:
 
         # Custom constructor to remove positional arguments and force use of keyword arguments
         # while still making vectors required.
-        self.__attrs_init__(
-            vectors=vectors,
-            origins=origins,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            class_ids=class_ids,
-            instance_keys=instance_keys,
-        )
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(
+                vectors=vectors,
+                origins=origins,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                class_ids=class_ids,
+                instance_keys=instance_keys,
+            )
+            return
+        self.__attrs_clear__()

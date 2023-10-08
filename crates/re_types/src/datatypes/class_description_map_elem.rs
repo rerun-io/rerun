@@ -14,12 +14,15 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A helper type for mapping class IDs to class descriptions.
+/// **Datatype**: A helper type for mapping class IDs to class descriptions.
 ///
 /// This is internal to the `AnnotationContext` structure.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ClassDescriptionMapElem {
+    /// The key: the class ID.
     pub class_id: crate::datatypes::ClassId,
+
+    /// The value: class name, color, etc.
     pub class_description: crate::datatypes::ClassDescription,
 }
 
@@ -72,6 +75,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -157,6 +161,7 @@ impl crate::Loggable for ClassDescriptionMapElem {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

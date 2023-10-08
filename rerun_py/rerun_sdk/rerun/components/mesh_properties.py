@@ -12,6 +12,8 @@ __all__ = ["MeshProperties", "MeshPropertiesBatch", "MeshPropertiesType"]
 
 
 class MeshProperties(datatypes.MeshProperties):
+    """**Component**: Optional triangle indices for a mesh."""
+
     # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py
 
     # Note: there are no fields here because MeshProperties delegates to datatypes.MeshProperties
@@ -24,7 +26,3 @@ class MeshPropertiesType(datatypes.MeshPropertiesType):
 
 class MeshPropertiesBatch(datatypes.MeshPropertiesBatch, ComponentBatchMixin):
     _ARROW_TYPE = MeshPropertiesType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MeshPropertiesType())

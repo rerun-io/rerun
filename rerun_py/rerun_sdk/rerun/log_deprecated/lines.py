@@ -4,11 +4,13 @@ from typing import Any, Iterable, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import LineStrips2D, LineStrips3D
 from rerun.error_utils import _send_warning
-from rerun.log_deprecated import Color, Colors, _normalize_radii
+from rerun.log_deprecated import Color, Colors, _radii_from_stroke_width
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -20,6 +22,10 @@ __all__ = [
 ]
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips2D(…)) or `rr.log(…, rr.LineStrips3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_strip(
     entity_path: str,
@@ -34,6 +40,11 @@ def log_line_strip(
 ) -> None:
     r"""
     Log a line strip through 2D or 3D space.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips2D][] or [rerun.LineStrips3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     A line strip is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
@@ -75,8 +86,7 @@ def log_line_strip(
 
     recording = RecordingStream.to_native(recording)
 
-    stroke_widths = _normalize_radii(stroke_width)
-    radii = stroke_widths / 2.0
+    radii = _radii_from_stroke_width(stroke_width)
 
     positions = np.require(positions, dtype="float32")
     if positions.shape[1] == 2:
@@ -86,18 +96,22 @@ def log_line_strip(
             colors=color,
             draw_order=draw_order,
         )
-        return log(entity_path, strips2d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips2d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     elif positions.shape[1] == 3:
         strips3d = LineStrips3D(
             [positions],
             radii=radii,
             colors=color,
         )
-        return log(entity_path, strips3d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips3d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     else:
         raise TypeError("Positions should be either Nx2 or Nx3")
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips2D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_strips_2d(
     entity_path: str,
@@ -113,6 +127,11 @@ def log_line_strips_2d(
 ) -> None:
     r"""
     Log a batch of line strips through 2D space.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips2D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Each line strip is a list of points connected by line segments. It can be used to draw
     approximations of smooth curves.
@@ -170,8 +189,7 @@ def log_line_strips_2d(
     if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
         line_strips = list(line_strips)
 
-    stroke_widths = _normalize_radii(stroke_widths)
-    radii = stroke_widths / 2.0
+    radii = _radii_from_stroke_width(stroke_widths)
 
     arch = LineStrips2D(
         line_strips,
@@ -180,9 +198,13 @@ def log_line_strips_2d(
         draw_order=draw_order,
         instance_keys=identifiers_np,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_strips_3d(
     entity_path: str,
@@ -197,6 +219,11 @@ def log_line_strips_3d(
 ) -> None:
     r"""
     Log a batch of line strips through 3D space.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     Each line strip is a list of points connected by line segments. It can be used to draw approximations
     of smooth curves.
@@ -250,8 +277,7 @@ def log_line_strips_3d(
     if not isinstance(line_strips, Sequence) and isinstance(line_strips, Iterable):
         line_strips = list(line_strips)
 
-    stroke_widths = _normalize_radii(stroke_widths)
-    radii = stroke_widths / 2.0
+    radii = _radii_from_stroke_width(stroke_widths)
 
     arch = LineStrips3D(
         line_strips,
@@ -259,9 +285,13 @@ def log_line_strips_3d(
         colors=colors,
         instance_keys=identifiers_np,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.log(…, rr.LineStrips2D(…)) or `rr.log(…, rr.LineStrips3D(…))`.
+  See: https://www.rerun.io/docs/reference/migration-0-9 for more details."""
+)
 @log_decorator
 def log_line_segments(
     entity_path: str,
@@ -276,6 +306,11 @@ def log_line_segments(
 ) -> None:
     r"""
     Log many 2D or 3D line segments.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.log][] with [rerun.LineStrips2D][] or [rerun.LineStrips3D][].
+
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
 
     The points will be connected in even-odd pairs, like so:
 
@@ -331,7 +366,7 @@ def log_line_segments(
             colors=color,
             draw_order=draw_order,
         )
-        return log(entity_path, strips2d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips2d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     elif positions.ndim > 1 and positions.shape[1] == 3:
         # Same as above but for 3d points
         positions = positions.reshape([len(positions) // 2, 2, 3])
@@ -340,6 +375,6 @@ def log_line_segments(
             radii=stroke_width * 0.5 if stroke_width is not None else None,
             colors=color,
         )
-        return log(entity_path, strips3d, ext=ext, timeless=timeless, recording=recording)
+        return log(entity_path, strips3d, AnyValues(**(ext or {})), timeless=timeless, recording=recording)
     else:
         raise TypeError("Positions should be either Nx2 or Nx3")

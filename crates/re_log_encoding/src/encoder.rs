@@ -108,6 +108,10 @@ impl<W: std::io::Write> Encoder<W> {
 
         Ok(())
     }
+
+    pub fn flush_blocking(&mut self) -> std::io::Result<()> {
+        self.write.flush()
+    }
 }
 
 pub fn encode<'a>(

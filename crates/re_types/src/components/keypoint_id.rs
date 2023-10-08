@@ -14,12 +14,15 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 16-bit ID representing a type of semantic keypoint within a class.
+/// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 ///
-/// `KeypointId`s are only meaningful within the context of a `crate::components::ClassDescription`.
+/// `KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].
 ///
-/// Used to look up an `crate::components::AnnotationInfo` for a Keypoint within the `crate::components::AnnotationContext`.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
+#[derive(
+    Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable,
+)]
+#[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct KeypointId(pub crate::datatypes::KeypointId);
 
@@ -81,6 +84,7 @@ impl crate::Loggable for KeypointId {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -125,6 +129,7 @@ impl crate::Loggable for KeypointId {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -155,6 +160,7 @@ impl crate::Loggable for KeypointId {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
@@ -162,22 +168,28 @@ impl crate::Loggable for KeypointId {
                 return Err(crate::DeserializationError::missing_data());
             }
         }
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt16Array>()
-            .ok_or_else(|| {
-                crate::DeserializationError::datatype_mismatch(
-                    DataType::UInt16,
-                    arrow_data.data_type().clone(),
-                )
-            })
-            .with_context("rerun.components.KeypointId#id")?
-            .values()
-            .as_slice()
-            .iter()
-            .copied()
-            .map(|v| crate::datatypes::KeypointId(v))
-            .map(|v| Self(v))
-            .collect::<Vec<_>>())
+        Ok({
+            let slice = arrow_data
+                .as_any()
+                .downcast_ref::<UInt16Array>()
+                .ok_or_else(|| {
+                    crate::DeserializationError::datatype_mismatch(
+                        DataType::UInt16,
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.components.KeypointId#id")?
+                .values()
+                .as_slice();
+            {
+                re_tracing::profile_scope!("collect");
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::KeypointId(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
+            }
+        })
     }
 }

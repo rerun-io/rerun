@@ -444,7 +444,7 @@ fn colormap_props_ui(
 }
 
 fn pinhole_props_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
@@ -575,7 +575,7 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
 }
 
 fn transform3d_visualization_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,

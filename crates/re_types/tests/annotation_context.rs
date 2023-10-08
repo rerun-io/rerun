@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::AnnotationContext,
     components,
-    datatypes::{ClassDescription, Color, KeypointPair},
+    datatypes::{ClassDescription, KeypointPair, Rgba32},
     Archetype as _, AsComponents as _,
 };
 
@@ -12,7 +12,7 @@ fn roundtrip() {
     let expected = components::AnnotationContext::from([
         (1, "hello").into(),
         ClassDescription {
-            info: (2, "world", Color::from_rgb(3, 4, 5)).into(),
+            info: (2, "world", Rgba32::from_rgb(3, 4, 5)).into(),
             keypoint_annotations: vec![(17, "head").into(), (42, "shoulders").into()],
             keypoint_connections: KeypointPair::vec_from([(1, 2), (3, 4)]),
         },

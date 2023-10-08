@@ -14,62 +14,34 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of 3d boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
-/// ## Examples
-///
-/// ### Simple 3D boxes
-/// ```ignore
-/// //! Log a single 3D box.
-/// use rerun::archetypes::Boxes3D;
-/// use rerun::RecordingStreamBuilder;
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box3d").memory()?;
-///
-///     rec.log("simple", &Boxes3D::from_half_sizes([(2.0, 2.0, 1.0)]))?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png">
-///   <img src="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/full.png">
-/// </picture>
+/// ## Example
 ///
 /// ### Batch of 3D boxes
 /// ```ignore
 /// //! Log a batch of oriented bounding boxes.
-/// use rerun::{
-///     archetypes::Boxes3D,
-///     components::Color,
-///     datatypes::{Angle, Quaternion, Rotation3D, RotationAxisAngle},
-///     RecordingStreamBuilder,
-/// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box3d_batch").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch").memory()?;
 ///
 ///     rec.log(
 ///         "batch",
-///         &Boxes3D::from_centers_and_half_sizes(
+///         &rerun::Boxes3D::from_centers_and_half_sizes(
 ///             [(2.0, 0.0, 0.0), (-2.0, 0.0, 0.0), (0.0, 0.0, 2.0)],
 ///             [(2.0, 2.0, 1.0), (1.0, 1.0, 0.5), (2.0, 0.5, 1.0)],
 ///         )
 ///         .with_rotations([
-///             Rotation3D::IDENTITY,
-///             Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]).into(), // 45 degrees around Z
-///             RotationAxisAngle::new((0.0, 1.0, 0.0), Angle::Degrees(30.0)).into(),
+///             rerun::Rotation3D::IDENTITY,
+///             rerun::Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]).into(), // 45 degrees around Z
+///             rerun::RotationAxisAngle::new((0.0, 1.0, 0.0), rerun::Angle::Degrees(30.0)).into(),
 ///         ])
 ///         .with_radii([0.025])
 ///         .with_colors([
-///             Color::from_rgb(255, 0, 0),
-///             Color::from_rgb(0, 255, 0),
-///             Color::from_rgb(0, 0, 255),
+///             rerun::Color::from_rgb(255, 0, 0),
+///             rerun::Color::from_rgb(0, 255, 0),
+///             rerun::Color::from_rgb(0, 0, 255),
 ///         ])
 ///         .with_labels(["red", "green", "blue"]),
 ///     )?;
@@ -78,13 +50,15 @@
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/1200w.png">
-///   <img src="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/full.png">
+///   <img src="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Boxes3D {
     /// All half-extents that make up the batch of boxes.
@@ -197,6 +171,7 @@ impl crate::Archetype for Boxes3D {
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
     ) -> crate::DeserializationResult<Self> {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
@@ -314,6 +289,7 @@ impl crate::Archetype for Boxes3D {
 
 impl crate::AsComponents for Boxes3D {
     fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),

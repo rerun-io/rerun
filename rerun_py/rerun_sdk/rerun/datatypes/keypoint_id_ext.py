@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class KeypointIdExt:
+    """Extension for [KeypointId][rerun.datatypes.KeypointId]."""
+
     @staticmethod
     def native_to_pa_array_override(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.uint16).flatten()

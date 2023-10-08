@@ -54,12 +54,3 @@ Most views have an info icon at the top right corner.
 
 
 On hover it displays additional information on how to use a view.
-
-Event Log
----------
-By default, the viewer will show the main viewport in order to explore your data.
-With the Event Log, the viewer offers a dedicated mode for exploring raw logged raw messages from your application which will hide the main viewport.
-
-You switch back and forth between the Viewport and the Event Log with the main menu in the top bar:
-![the event log and how to get there](https://static.rerun.io/f43e1dde2befc9da20130fb99265b50baf035879_event-log.png)
-The Event Log shows all messages in a comprehensive table in the order they arrive in.

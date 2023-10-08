@@ -8,7 +8,7 @@
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
-#include "../components/origin3d.hpp"
+#include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../components/vector3d.hpp"
@@ -22,10 +22,11 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A batch of 3D arrows with optional colors, radii, labels, etc.
+        /// **Archetype**: 3D arrows with optional colors, radii, labels, etc.
         ///
         /// ## Example
         ///
+        /// ### Simple batch of 3D Arrows
         /// ```cpp,ignore
         /// // Log a batch of 3D arrows.
         ///
@@ -40,7 +41,7 @@ namespace rerun {
         ///     auto rec = rr::RecordingStream("rerun_example_arrow3d");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     std::vector<rr::components::Origin3D> origins;
+        ///     std::vector<rr::components::Position3D> origins;
         ///     std::vector<rr::components::Vector3D> vectors;
         ///     std::vector<rr::components::Color> colors;
         ///
@@ -65,10 +66,10 @@ namespace rerun {
             /// All the vectors for each arrow in the batch.
             std::vector<rerun::components::Vector3D> vectors;
 
-            /// All the origin points for each arrow in the batch.
+            /// All the origin (base) positions for each arrow in the batch.
             ///
             /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-            std::optional<std::vector<rerun::components::Origin3D>> origins;
+            std::optional<std::vector<rerun::components::Position3D>> origins;
 
             /// Optional radii for the arrows.
             ///
@@ -116,18 +117,18 @@ namespace rerun {
           public:
             Arrows3D() = default;
 
-            /// All the origin points for each arrow in the batch.
+            /// All the origin (base) positions for each arrow in the batch.
             ///
             /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-            Arrows3D& with_origins(std::vector<rerun::components::Origin3D> _origins) {
+            Arrows3D& with_origins(std::vector<rerun::components::Position3D> _origins) {
                 origins = std::move(_origins);
                 return *this;
             }
 
-            /// All the origin points for each arrow in the batch.
+            /// All the origin (base) positions for each arrow in the batch.
             ///
             /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-            Arrows3D& with_origins(rerun::components::Origin3D _origins) {
+            Arrows3D& with_origins(rerun::components::Position3D _origins) {
                 origins = std::vector(1, std::move(_origins));
                 return *this;
             }

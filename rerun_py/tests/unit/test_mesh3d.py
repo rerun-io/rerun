@@ -7,11 +7,11 @@ import rerun as rr
 from rerun.components import InstanceKeyArrayLike, MaterialBatch, MeshPropertiesBatch, Position3DBatch, Vector3DBatch
 from rerun.datatypes import (
     ClassIdArrayLike,
-    ColorArrayLike,
     Material,
     MaterialLike,
     MeshProperties,
     MeshPropertiesLike,
+    Rgba32ArrayLike,
     Vec3DArrayLike,
 )
 
@@ -80,7 +80,7 @@ def test_mesh3d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         vertex_positions = cast(Vec3DArrayLike, vertex_positions)
         vertex_normals = cast(Optional[Vec3DArrayLike], vertex_normals)
-        vertex_colors = cast(Optional[ColorArrayLike], vertex_colors)
+        vertex_colors = cast(Optional[Rgba32ArrayLike], vertex_colors)
         mesh_properties = cast(Optional[MeshPropertiesLike], mesh_properties)
         mesh_material = cast(Optional[MaterialLike], mesh_material)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
@@ -88,7 +88,7 @@ def test_mesh3d() -> None:
 
         print(
             f"E: rr.Mesh3D(\n"
-            f"    {vertex_positions}\n"
+            f"    vertex_normals={vertex_positions}\n"
             f"    vertex_normals={vertex_normals}\n"
             f"    vertex_colors={vertex_colors}\n"
             f"    mesh_properties={mesh_properties_objects}\n"
@@ -98,7 +98,7 @@ def test_mesh3d() -> None:
             f")"
         )
         arch = rr.Mesh3D(
-            vertex_positions,
+            vertex_positions=vertex_positions,
             vertex_normals=vertex_normals,
             vertex_colors=vertex_colors,
             mesh_properties=mesh_properties,

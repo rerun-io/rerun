@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import pathlib
+from typing import TYPE_CHECKING, Any
+
+from .. import components, datatypes
+from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from ..components import MediaType
-    from . import Asset3D
 
 
 def guess_media_type(path: str) -> MediaType | None:
@@ -24,30 +27,58 @@ def guess_media_type(path: str) -> MediaType | None:
 
 
 class Asset3DExt:
-    @staticmethod
-    def from_file(path: str) -> Asset3D:
+    """Extension for [Asset3D][rerun.archetypes.Asset3D]."""
+
+    def __init__(
+        self: Any,
+        *,
+        path: str | pathlib.Path | None = None,
+        contents: components.BlobLike | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+        transform: datatypes.Transform3DLike | None = None,
+    ):
         """
-        Creates a new [`Asset3D`] from the file contents at `path`.
+        Create a new instance of the Asset3D archetype.
 
-        The [`MediaType`] will be guessed from the file extension.
+        Parameters
+        ----------
+        path:
+            A path to an file stored on the local filesystem. Mutually
+            exclusive with `contents`.
 
-        If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess one
-        from the data at render-time. If it can't, rendering will fail with an error.
+        contents:
+            The contents of the file. Can be a BufferedReader, BytesIO, or
+            bytes. Mutually exclusive with `path`.
+
+        media_type:
+            The Media Type of the asset.
+
+            For instance:
+             * `model/gltf-binary`
+             * `model/obj`
+
+            If omitted, it will be guessed from the `path` (if any),
+            or the viewer will try to guess from the contents (magic header).
+            If the media type cannot be guessed, the viewer won't be able to render the asset.
+
+        transform:
+            An out-of-tree transform.
+
+            Applies a transformation to the asset itself without impacting its children.
         """
-        from . import Asset3D
 
-        with open(path, "rb") as file:
-            return Asset3D.from_bytes(file.read(), guess_media_type(path))
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if (path is None) == (contents is None):
+                raise ValueError("Must provide exactly one of 'path' or 'contents'")
 
-    @staticmethod
-    def from_bytes(data: bytes, media_type: MediaType | None) -> Asset3D:
-        """
-        Creates a new [`Asset3D`] from the given `bytes`.
+            if path is None:
+                blob = contents
+            else:
+                blob = open(path, "rb").read()
+                if media_type is None:
+                    media_type = guess_media_type(str(path))
 
-        If no [`MediaType`] is specified, the Rerun Viewer will try to guess one from the data
-        at render-time. If it can't, rendering will fail with an error.
-        """
-        from . import Asset3D
+            self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+            return
 
-        # TODO(cmc): we could try and guess using magic bytes here, like rust does.
-        return Asset3D(data=data, media_type=media_type)
+        self.__attrs_clear__()

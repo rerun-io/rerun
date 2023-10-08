@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Configures how a clear operation should behave - recurive or no?
+/// **Component**: Configures how a clear operation should behave - recursive or not?
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct ClearIsRecursive(
     /// If true, also clears all recursive children entities.
@@ -71,6 +71,7 @@ impl crate::Loggable for ClearIsRecursive {
     where
         Self: Clone + 'a,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
@@ -105,6 +106,7 @@ impl crate::Loggable for ClearIsRecursive {
     where
         Self: Sized,
     {
+        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
