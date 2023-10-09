@@ -64,24 +64,24 @@ namespace rerun {
         /// ```
         struct LineStrips3D {
             /// All the actual 3D line strips that make up the batch.
-            std::vector<rerun::components::LineStrip3D> strips;
+            ComponentBatch<rerun::components::LineStrip3D> strips;
 
             /// Optional radii for the line strips.
-            std::optional<std::vector<rerun::components::Radius>> radii;
+            std::optional<ComponentBatch<rerun::components::Radius>> radii;
 
             /// Optional colors for the line strips.
-            std::optional<std::vector<rerun::components::Color>> colors;
+            std::optional<ComponentBatch<rerun::components::Color>> colors;
 
             /// Optional text labels for the line strips.
-            std::optional<std::vector<rerun::components::Text>> labels;
+            std::optional<ComponentBatch<rerun::components::Text>> labels;
 
             /// Optional `ClassId`s for the lines.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            std::optional<std::vector<rerun::components::ClassId>> class_ids;
+            std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
 
             /// Unique identifiers for each individual line strip in the batch.
-            std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
+            std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -89,76 +89,43 @@ namespace rerun {
 
           public:
             LineStrips3D() = default;
+            LineStrips3D(LineStrips3D&& other) = default;
 
-            LineStrips3D(std::vector<rerun::components::LineStrip3D> _strips)
+            LineStrips3D(ComponentBatch<rerun::components::LineStrip3D> _strips)
                 : strips(std::move(_strips)) {}
 
-            LineStrips3D(rerun::components::LineStrip3D _strips) : strips(1, std::move(_strips)) {}
-
             /// Optional radii for the line strips.
-            LineStrips3D& with_radii(std::vector<rerun::components::Radius> _radii) {
+            LineStrips3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
-                return *this;
-            }
-
-            /// Optional radii for the line strips.
-            LineStrips3D& with_radii(rerun::components::Radius _radii) {
-                radii = std::vector(1, std::move(_radii));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional colors for the line strips.
-            LineStrips3D& with_colors(std::vector<rerun::components::Color> _colors) {
+            LineStrips3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
-                return *this;
-            }
-
-            /// Optional colors for the line strips.
-            LineStrips3D& with_colors(rerun::components::Color _colors) {
-                colors = std::vector(1, std::move(_colors));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional text labels for the line strips.
-            LineStrips3D& with_labels(std::vector<rerun::components::Text> _labels) {
+            LineStrips3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
-                return *this;
-            }
-
-            /// Optional text labels for the line strips.
-            LineStrips3D& with_labels(rerun::components::Text _labels) {
-                labels = std::vector(1, std::move(_labels));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional `ClassId`s for the lines.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            LineStrips3D& with_class_ids(std::vector<rerun::components::ClassId> _class_ids) {
+            LineStrips3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
-                return *this;
-            }
-
-            /// Optional `ClassId`s for the lines.
-            ///
-            /// The class ID provides colors and labels if not specified explicitly.
-            LineStrips3D& with_class_ids(rerun::components::ClassId _class_ids) {
-                class_ids = std::vector(1, std::move(_class_ids));
-                return *this;
+                return std::move(*this);
             }
 
             /// Unique identifiers for each individual line strip in the batch.
-            LineStrips3D& with_instance_keys(
-                std::vector<rerun::components::InstanceKey> _instance_keys
-            ) {
+            LineStrips3D with_instance_keys(
+                ComponentBatch<rerun::components::InstanceKey> _instance_keys
+            ) && {
                 instance_keys = std::move(_instance_keys);
-                return *this;
-            }
-
-            /// Unique identifiers for each individual line strip in the batch.
-            LineStrips3D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
-                instance_keys = std::vector(1, std::move(_instance_keys));
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
@@ -166,16 +133,8 @@ namespace rerun {
                 return strips.size();
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

@@ -10,22 +10,28 @@ namespace rerun {
         const char TextDocument::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.TextDocumentIndicator";
 
-        AnonymousComponentBatch TextDocument::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
-        }
+        Result<std::vector<SerializedComponentBatch>> TextDocument::serialize() const {
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(2);
 
-        std::vector<AnonymousComponentBatch> TextDocument::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(2);
-
-            comp_batches.emplace_back(text);
-            if (media_type.has_value()) {
-                comp_batches.emplace_back(media_type.value());
+            {
+                auto result = ComponentBatch(text).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
             }
-            comp_batches.emplace_back(TextDocument::indicator());
+            if (media_type.has_value()) {
+                auto result = ComponentBatch(media_type.value()).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
+            {
+                components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
 
-            return comp_batches;
+            return cells;
         }
     } // namespace archetypes
 } // namespace rerun

@@ -123,6 +123,7 @@ namespace rerun {
 
           public:
             Pinhole() = default;
+            Pinhole(Pinhole&& other) = default;
 
             Pinhole(rerun::components::PinholeProjection _image_from_camera)
                 : image_from_camera(std::move(_image_from_camera)) {}
@@ -135,9 +136,9 @@ namespace rerun {
             /// ```
             ///
             /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
-            Pinhole& with_resolution(rerun::components::Resolution _resolution) {
+            Pinhole with_resolution(rerun::components::Resolution _resolution) && {
                 resolution = std::move(_resolution);
-                return *this;
+                return std::move(*this);
             }
 
             /// Sets the view coordinates for the camera.
@@ -172,9 +173,9 @@ namespace rerun {
             /// The pinhole matrix (the `image_from_camera` argument) always project along the third
             /// (Z) axis, but will be re-oriented to project along the forward axis of the
             /// `camera_xyz` argument.
-            Pinhole& with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) {
+            Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
                 camera_xyz = std::move(_camera_xyz);
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
@@ -182,16 +183,8 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

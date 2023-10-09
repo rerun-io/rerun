@@ -9,25 +9,33 @@ namespace rerun {
     namespace archetypes {
         const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
 
-        AnonymousComponentBatch TextLog::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<TextLog::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
-        }
+        Result<std::vector<SerializedComponentBatch>> TextLog::serialize() const {
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(3);
 
-        std::vector<AnonymousComponentBatch> TextLog::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(3);
-
-            comp_batches.emplace_back(text);
+            {
+                auto result = ComponentBatch(text).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
             if (level.has_value()) {
-                comp_batches.emplace_back(level.value());
+                auto result = ComponentBatch(level.value()).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
             }
             if (color.has_value()) {
-                comp_batches.emplace_back(color.value());
+                auto result = ComponentBatch(color.value()).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
             }
-            comp_batches.emplace_back(TextLog::indicator());
+            {
+                components::IndicatorComponent<TextLog::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
 
-            return comp_batches;
+            return cells;
         }
     } // namespace archetypes
 } // namespace rerun

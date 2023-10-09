@@ -9,25 +9,33 @@ namespace rerun {
     namespace archetypes {
         const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
 
-        AnonymousComponentBatch Pinhole::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<Pinhole::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
-        }
+        Result<std::vector<SerializedComponentBatch>> Pinhole::serialize() const {
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(3);
 
-        std::vector<AnonymousComponentBatch> Pinhole::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(3);
-
-            comp_batches.emplace_back(image_from_camera);
+            {
+                auto result = ComponentBatch(image_from_camera).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
             if (resolution.has_value()) {
-                comp_batches.emplace_back(resolution.value());
+                auto result = ComponentBatch(resolution.value()).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
             }
             if (camera_xyz.has_value()) {
-                comp_batches.emplace_back(camera_xyz.value());
+                auto result = ComponentBatch(camera_xyz.value()).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
             }
-            comp_batches.emplace_back(Pinhole::indicator());
+            {
+                components::IndicatorComponent<Pinhole::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
 
-            return comp_batches;
+            return cells;
         }
     } // namespace archetypes
 } // namespace rerun

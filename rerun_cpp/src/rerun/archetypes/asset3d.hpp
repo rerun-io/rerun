@@ -137,6 +137,7 @@ namespace rerun {
 
           public:
             Asset3D() = default;
+            Asset3D(Asset3D&& other) = default;
 
             Asset3D(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
 
@@ -149,17 +150,17 @@ namespace rerun {
             ///
             /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
-            Asset3D& with_media_type(rerun::components::MediaType _media_type) {
+            Asset3D with_media_type(rerun::components::MediaType _media_type) && {
                 media_type = std::move(_media_type);
-                return *this;
+                return std::move(*this);
             }
 
             /// An out-of-tree transform.
             ///
             /// Applies a transformation to the asset itself without impacting its children.
-            Asset3D& with_transform(rerun::components::OutOfTreeTransform3D _transform) {
+            Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
                 transform = std::move(_transform);
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
@@ -167,16 +168,8 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

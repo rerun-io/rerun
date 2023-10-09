@@ -241,6 +241,7 @@ namespace rerun {
 
           public:
             Transform3D() = default;
+            Transform3D(Transform3D&& other) = default;
 
             Transform3D(rerun::components::Transform3D _transform)
                 : transform(std::move(_transform)) {}
@@ -250,16 +251,8 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

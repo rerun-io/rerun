@@ -84,6 +84,7 @@ namespace rerun {
 
           public:
             AffixFuzzer1() = default;
+            AffixFuzzer1(AffixFuzzer1&& other) = default;
 
             AffixFuzzer1(
                 rerun::components::AffixFuzzer1 _fuzz1001,
@@ -135,16 +136,8 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

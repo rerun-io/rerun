@@ -9,21 +9,23 @@ namespace rerun {
     namespace archetypes {
         const char Tensor::INDICATOR_COMPONENT_NAME[] = "rerun.components.TensorIndicator";
 
-        AnonymousComponentBatch Tensor::indicator() {
-            return ComponentBatch<components::IndicatorComponent<Tensor::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
-        }
+        Result<std::vector<SerializedComponentBatch>> Tensor::serialize() const {
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(1);
 
-        std::vector<AnonymousComponentBatch> Tensor::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
+            {
+                auto result = ComponentBatch(data).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
+            {
+                components::IndicatorComponent<Tensor::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
 
-            comp_batches.emplace_back(data);
-            comp_batches.emplace_back(Tensor::indicator());
-
-            return comp_batches;
+            return cells;
         }
     } // namespace archetypes
 } // namespace rerun

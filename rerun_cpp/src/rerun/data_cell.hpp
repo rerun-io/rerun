@@ -19,4 +19,15 @@ namespace rerun {
         /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
         std::shared_ptr<arrow::Buffer> buffer;
     };
+
+    // TODO: move and document?
+    struct SerializedComponentBatch {
+        SerializedComponentBatch() = default;
+
+        SerializedComponentBatch(size_t _num_instances, DataCell _data_cell)
+            : num_instances(_num_instances), data_cell(std::move(_data_cell)) {}
+
+        size_t num_instances;
+        DataCell data_cell;
+    };
 } // namespace rerun

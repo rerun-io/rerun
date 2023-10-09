@@ -66,29 +66,29 @@ namespace rerun {
         /// ```
         struct Boxes3D {
             /// All half-extents that make up the batch of boxes.
-            std::vector<rerun::components::HalfSizes3D> half_sizes;
+            ComponentBatch<rerun::components::HalfSizes3D> half_sizes;
 
             /// Optional center positions of the boxes.
-            std::optional<std::vector<rerun::components::Position3D>> centers;
+            std::optional<ComponentBatch<rerun::components::Position3D>> centers;
 
-            std::optional<std::vector<rerun::components::Rotation3D>> rotations;
+            std::optional<ComponentBatch<rerun::components::Rotation3D>> rotations;
 
             /// Optional colors for the boxes.
-            std::optional<std::vector<rerun::components::Color>> colors;
+            std::optional<ComponentBatch<rerun::components::Color>> colors;
 
             /// Optional radii for the lines that make up the boxes.
-            std::optional<std::vector<rerun::components::Radius>> radii;
+            std::optional<ComponentBatch<rerun::components::Radius>> radii;
 
             /// Optional text labels for the boxes.
-            std::optional<std::vector<rerun::components::Text>> labels;
+            std::optional<ComponentBatch<rerun::components::Text>> labels;
 
             /// Optional `ClassId`s for the boxes.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            std::optional<std::vector<rerun::components::ClassId>> class_ids;
+            std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
 
             /// Unique identifiers for each individual boxes in the batch.
-            std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
+            std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -98,19 +98,21 @@ namespace rerun {
             // Extensions to generated type defined in 'boxes3d_ext.cpp'
 
             /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
-            static Boxes3D from_half_sizes(std::vector<components::HalfSizes3D> _half_sizes) {
+            static Boxes3D from_half_sizes(ComponentBatch<components::HalfSizes3D> half_sizes) {
                 Boxes3D boxes;
-                boxes.half_sizes = std::move(_half_sizes);
+                boxes.half_sizes = std::move(half_sizes);
                 return boxes;
             }
 
             /// Creates new `Boxes3D` with `centers` and `half_sizes`.
             static Boxes3D from_centers_and_half_sizes(
-                std::vector<components::Position3D> _centers,
-                std::vector<components::HalfSizes3D> _half_sizes
+                ComponentBatch<components::Position3D> centers,
+                ComponentBatch<components::HalfSizes3D> half_sizes
             ) {
-                return Boxes3D::from_half_sizes(std::move(_half_sizes))
-                    .with_centers(std::move(_centers));
+                Boxes3D boxes;
+                boxes.half_sizes = std::move(half_sizes);
+                boxes.centers = std::move(centers);
+                return boxes;
             }
 
             /// Creates new `Boxes3D` with `half_sizes` created from (full) sizes.
@@ -125,10 +127,12 @@ namespace rerun {
             /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
             /// half-sizes from the input data.
             static Boxes3D from_centers_and_sizes(
-                std::vector<components::Position3D> centers,
+                ComponentBatch<components::Position3D> centers,
                 const std::vector<datatypes::Vec3D>& sizes
             ) {
-                return from_sizes(sizes).with_centers(std::move(centers));
+                Boxes3D boxes = from_sizes(std::move(sizes));
+                boxes.centers = std::move(centers);
+                return boxes;
             }
 
             /// Creates new `Boxes3D` with `half_sizes` and `centers` created from minimums and
@@ -143,92 +147,50 @@ namespace rerun {
 
           public:
             Boxes3D() = default;
+            Boxes3D(Boxes3D&& other) = default;
 
             /// Optional center positions of the boxes.
-            Boxes3D& with_centers(std::vector<rerun::components::Position3D> _centers) {
+            Boxes3D with_centers(ComponentBatch<rerun::components::Position3D> _centers) && {
                 centers = std::move(_centers);
-                return *this;
+                return std::move(*this);
             }
 
-            /// Optional center positions of the boxes.
-            Boxes3D& with_centers(rerun::components::Position3D _centers) {
-                centers = std::vector(1, std::move(_centers));
-                return *this;
-            }
-
-            Boxes3D& with_rotations(std::vector<rerun::components::Rotation3D> _rotations) {
+            Boxes3D with_rotations(ComponentBatch<rerun::components::Rotation3D> _rotations) && {
                 rotations = std::move(_rotations);
-                return *this;
-            }
-
-            Boxes3D& with_rotations(rerun::components::Rotation3D _rotations) {
-                rotations = std::vector(1, std::move(_rotations));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional colors for the boxes.
-            Boxes3D& with_colors(std::vector<rerun::components::Color> _colors) {
+            Boxes3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
-                return *this;
-            }
-
-            /// Optional colors for the boxes.
-            Boxes3D& with_colors(rerun::components::Color _colors) {
-                colors = std::vector(1, std::move(_colors));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional radii for the lines that make up the boxes.
-            Boxes3D& with_radii(std::vector<rerun::components::Radius> _radii) {
+            Boxes3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
-                return *this;
-            }
-
-            /// Optional radii for the lines that make up the boxes.
-            Boxes3D& with_radii(rerun::components::Radius _radii) {
-                radii = std::vector(1, std::move(_radii));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional text labels for the boxes.
-            Boxes3D& with_labels(std::vector<rerun::components::Text> _labels) {
+            Boxes3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
-                return *this;
-            }
-
-            /// Optional text labels for the boxes.
-            Boxes3D& with_labels(rerun::components::Text _labels) {
-                labels = std::vector(1, std::move(_labels));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional `ClassId`s for the boxes.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            Boxes3D& with_class_ids(std::vector<rerun::components::ClassId> _class_ids) {
+            Boxes3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
-                return *this;
-            }
-
-            /// Optional `ClassId`s for the boxes.
-            ///
-            /// The class ID provides colors and labels if not specified explicitly.
-            Boxes3D& with_class_ids(rerun::components::ClassId _class_ids) {
-                class_ids = std::vector(1, std::move(_class_ids));
-                return *this;
+                return std::move(*this);
             }
 
             /// Unique identifiers for each individual boxes in the batch.
-            Boxes3D& with_instance_keys(std::vector<rerun::components::InstanceKey> _instance_keys
-            ) {
+            Boxes3D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
+            ) && {
                 instance_keys = std::move(_instance_keys);
-                return *this;
-            }
-
-            /// Unique identifiers for each individual boxes in the batch.
-            Boxes3D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
-                instance_keys = std::vector(1, std::move(_instance_keys));
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
@@ -236,16 +198,8 @@ namespace rerun {
                 return half_sizes.size();
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

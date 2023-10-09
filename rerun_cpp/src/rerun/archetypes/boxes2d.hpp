@@ -48,19 +48,19 @@ namespace rerun {
         /// ```
         struct Boxes2D {
             /// All half-extents that make up the batch of boxes.
-            std::vector<rerun::components::HalfSizes2D> half_sizes;
+            ComponentBatch<rerun::components::HalfSizes2D> half_sizes;
 
             /// Optional center positions of the boxes.
-            std::optional<std::vector<rerun::components::Position2D>> centers;
+            std::optional<ComponentBatch<rerun::components::Position2D>> centers;
 
             /// Optional colors for the boxes.
-            std::optional<std::vector<rerun::components::Color>> colors;
+            std::optional<ComponentBatch<rerun::components::Color>> colors;
 
             /// Optional radii for the lines that make up the boxes.
-            std::optional<std::vector<rerun::components::Radius>> radii;
+            std::optional<ComponentBatch<rerun::components::Radius>> radii;
 
             /// Optional text labels for the boxes.
-            std::optional<std::vector<rerun::components::Text>> labels;
+            std::optional<ComponentBatch<rerun::components::Text>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///
@@ -72,10 +72,10 @@ namespace rerun {
             /// Optional `ClassId`s for the boxes.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            std::optional<std::vector<rerun::components::ClassId>> class_ids;
+            std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
 
             /// Unique identifiers for each individual boxes in the batch.
-            std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
+            std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -85,19 +85,21 @@ namespace rerun {
             // Extensions to generated type defined in 'boxes2d_ext.cpp'
 
             /// Creates new `Boxes2D` with `half_sizes` centered around the local origin.
-            static Boxes2D from_half_sizes(std::vector<components::HalfSizes2D> _half_sizes) {
+            static Boxes2D from_half_sizes(ComponentBatch<components::HalfSizes2D> half_sizes) {
                 Boxes2D boxes;
-                boxes.half_sizes = std::move(_half_sizes);
+                boxes.half_sizes = std::move(half_sizes);
                 return boxes;
             }
 
             /// Creates new `Boxes2D` with `centers` and `half_sizes`.
             static Boxes2D from_centers_and_half_sizes(
-                std::vector<components::Position2D> _centers,
-                std::vector<components::HalfSizes2D> _half_sizes
+                ComponentBatch<components::Position2D> centers,
+                ComponentBatch<components::HalfSizes2D> half_sizes
             ) {
-                return Boxes2D::from_half_sizes(std::move(_half_sizes))
-                    .with_centers(std::move(_centers));
+                Boxes2D boxes;
+                boxes.half_sizes = std::move(half_sizes);
+                boxes.centers = std::move(centers);
+                return boxes;
             }
 
             /// Creates new `Boxes2D` with `half_sizes` created from (full) sizes.
@@ -112,10 +114,12 @@ namespace rerun {
             /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
             /// half-sizes from the input data.
             static Boxes2D from_centers_and_sizes(
-                std::vector<components::Position2D> centers,
+                ComponentBatch<components::Position2D> centers,
                 const std::vector<datatypes::Vec2D>& sizes
             ) {
-                return from_sizes(sizes).with_centers(std::move(centers));
+                Boxes2D boxes = from_sizes(std::move(sizes));
+                boxes.centers = std::move(centers);
+                return boxes;
             }
 
             /// Creates new `Boxes2D` with `half_sizes` and `centers` created from minimums and
@@ -130,53 +134,30 @@ namespace rerun {
 
           public:
             Boxes2D() = default;
+            Boxes2D(Boxes2D&& other) = default;
 
             /// Optional center positions of the boxes.
-            Boxes2D& with_centers(std::vector<rerun::components::Position2D> _centers) {
+            Boxes2D with_centers(ComponentBatch<rerun::components::Position2D> _centers) && {
                 centers = std::move(_centers);
-                return *this;
-            }
-
-            /// Optional center positions of the boxes.
-            Boxes2D& with_centers(rerun::components::Position2D _centers) {
-                centers = std::vector(1, std::move(_centers));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional colors for the boxes.
-            Boxes2D& with_colors(std::vector<rerun::components::Color> _colors) {
+            Boxes2D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
-                return *this;
-            }
-
-            /// Optional colors for the boxes.
-            Boxes2D& with_colors(rerun::components::Color _colors) {
-                colors = std::vector(1, std::move(_colors));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional radii for the lines that make up the boxes.
-            Boxes2D& with_radii(std::vector<rerun::components::Radius> _radii) {
+            Boxes2D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
-                return *this;
-            }
-
-            /// Optional radii for the lines that make up the boxes.
-            Boxes2D& with_radii(rerun::components::Radius _radii) {
-                radii = std::vector(1, std::move(_radii));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional text labels for the boxes.
-            Boxes2D& with_labels(std::vector<rerun::components::Text> _labels) {
+            Boxes2D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
-                return *this;
-            }
-
-            /// Optional text labels for the boxes.
-            Boxes2D& with_labels(rerun::components::Text _labels) {
-                labels = std::vector(1, std::move(_labels));
-                return *this;
+                return std::move(*this);
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
@@ -184,38 +165,24 @@ namespace rerun {
             /// Objects with higher values are drawn on top of those with lower values.
             ///
             /// The default for 2D boxes is 10.0.
-            Boxes2D& with_draw_order(rerun::components::DrawOrder _draw_order) {
+            Boxes2D with_draw_order(rerun::components::DrawOrder _draw_order) && {
                 draw_order = std::move(_draw_order);
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional `ClassId`s for the boxes.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            Boxes2D& with_class_ids(std::vector<rerun::components::ClassId> _class_ids) {
+            Boxes2D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
-                return *this;
-            }
-
-            /// Optional `ClassId`s for the boxes.
-            ///
-            /// The class ID provides colors and labels if not specified explicitly.
-            Boxes2D& with_class_ids(rerun::components::ClassId _class_ids) {
-                class_ids = std::vector(1, std::move(_class_ids));
-                return *this;
+                return std::move(*this);
             }
 
             /// Unique identifiers for each individual boxes in the batch.
-            Boxes2D& with_instance_keys(std::vector<rerun::components::InstanceKey> _instance_keys
-            ) {
+            Boxes2D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
+            ) && {
                 instance_keys = std::move(_instance_keys);
-                return *this;
-            }
-
-            /// Unique identifiers for each individual boxes in the batch.
-            Boxes2D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
-                instance_keys = std::vector(1, std::move(_instance_keys));
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
@@ -223,16 +190,8 @@ namespace rerun {
                 return half_sizes.size();
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

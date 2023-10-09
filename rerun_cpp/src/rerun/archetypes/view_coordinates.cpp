@@ -10,22 +10,23 @@ namespace rerun {
         const char ViewCoordinates::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.ViewCoordinatesIndicator";
 
-        AnonymousComponentBatch ViewCoordinates::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<ViewCoordinates::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
-        }
+        Result<std::vector<SerializedComponentBatch>> ViewCoordinates::serialize() const {
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(1);
 
-        std::vector<AnonymousComponentBatch> ViewCoordinates::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
+            {
+                auto result = ComponentBatch(xyz).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
+            {
+                components::IndicatorComponent<ViewCoordinates::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
 
-            comp_batches.emplace_back(xyz);
-            comp_batches.emplace_back(ViewCoordinates::indicator());
-
-            return comp_batches;
+            return cells;
         }
     } // namespace archetypes
 } // namespace rerun

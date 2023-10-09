@@ -96,7 +96,7 @@ namespace rerun {
 
     Error RecordingStream::try_log_component_batches(
         const char* entity_path, size_t num_instances,
-        const std::vector<AnonymousComponentBatch>& component_lists
+        const std::vector<SerializedComponentBatch>& batches
     ) {
         if (num_instances == 0) {
             return Error::ok();
@@ -105,15 +105,11 @@ namespace rerun {
         std::vector<DataCell> instanced;
         std::vector<DataCell> splatted;
 
-        for (const auto& component_list : component_lists) {
-            const auto result = component_list.to_data_cell();
-            if (result.is_err()) {
-                return result.error;
-            }
-            if (num_instances > 1 && component_list.num_instances == 1) {
-                splatted.push_back(result.value);
+        for (const auto& batch : batches) {
+            if (num_instances > 1 && batch.num_instances == 1) {
+                splatted.push_back(batch.data_cell);
             } else {
-                instanced.push_back(result.value);
+                instanced.push_back(batch.data_cell);
             }
         }
 

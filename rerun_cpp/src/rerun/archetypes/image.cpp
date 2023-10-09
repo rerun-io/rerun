@@ -9,24 +9,28 @@ namespace rerun {
     namespace archetypes {
         const char Image::INDICATOR_COMPONENT_NAME[] = "rerun.components.ImageIndicator";
 
-        AnonymousComponentBatch Image::indicator() {
-            return ComponentBatch<components::IndicatorComponent<Image::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
-        }
+        Result<std::vector<SerializedComponentBatch>> Image::serialize() const {
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(2);
 
-        std::vector<AnonymousComponentBatch> Image::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(2);
-
-            comp_batches.emplace_back(data);
-            if (draw_order.has_value()) {
-                comp_batches.emplace_back(draw_order.value());
+            {
+                auto result = ComponentBatch(data).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
             }
-            comp_batches.emplace_back(Image::indicator());
+            if (draw_order.has_value()) {
+                auto result = ComponentBatch(draw_order.value()).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
+            {
+                components::IndicatorComponent<Image::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
 
-            return comp_batches;
+            return cells;
         }
     } // namespace archetypes
 } // namespace rerun

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <utility>
 #include <vector>
 
 #include "data_cell.hpp"
@@ -9,86 +10,197 @@
 namespace rerun {
     /// Generic list of components that are contiguous in memory.
     ///
-    /// Does *not* own the data, user is responsible for the lifetime independent of how it was
-    /// passed in.
-    template <typename ComponentType>
+    /// Any creation from a non-temporary will neither copy the data nor take ownership of it.
+    /// This means that any data passed in (unless temporary) must outlive the component batch!
+    ///
+    /// However, when created from a temporary, the component batch will take ownership of the data.
+    /// For details, refer to the documentation of the respective constructor.
+    ///
+    /// Implementation notes:
+    ///
+    /// Does intentionally not implement copy construction since this for the owned case this may
+    /// be expensive.Typically, there should be no need to copy component batches, so this more than
+    /// likely indicates a bug inside the Rerun SDK.
+    template <typename TComponent>
     class ComponentBatch {
       public:
-        const ComponentType* data;
-        size_t num_instances;
+        /// Creates a new empty component batch.
+        ///
+        /// Note that logging an empty component batch is different from logging no component batch:
+        /// When you log an empty component batch at an entity that already has some components of
+        /// the same type, it will clear out all components of that type.
+        ComponentBatch() : ownership(BatchOwnership::Borrowed) {
+            storage.borrowed.data = nullptr;
+            storage.borrowed.num_instances = 0;
+        }
 
-      public:
         /// Construct from a single component.
         ///
-        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
-        /// you need to ensure that the data outlives the component list.
-        ComponentBatch(const ComponentType& one_and_only) : data(&one_and_only), num_instances(1) {}
+        /// *Attention*: Does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component batch.
+        ComponentBatch(const TComponent& one_and_only) : ComponentBatch(&one_and_only, 1) {}
+
+        /// Construct from a single temporary component.
+        ///
+        /// Takes ownership of the data and moves it into the component batch.
+        /// TODO(andreas): Optimize this to not allocate a vector.
+        ComponentBatch(TComponent&& one_and_only) : ComponentBatch(std::vector{one_and_only}) {}
 
         /// Construct from a raw pointer and size.
-        ComponentBatch(const ComponentType* _data, size_t _num_instances)
-            : data(_data), num_instances(_num_instances) {}
+        ///
+        /// Naturally, this does not take ownership of the data.
+        ComponentBatch(const TComponent* data, size_t num_instances)
+            : ownership(BatchOwnership::Borrowed) {
+            storage.borrowed.data = data;
+            storage.borrowed.num_instances = num_instances;
+        }
 
         /// Construct from an std::vector.
         ///
-        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
-        /// you need to ensure that the data outlives the component list.
-        /// In particular, manipulating the passed vector after constructing the component list,
+        /// *Attention*: Does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component batch.
+        /// In particular, manipulating the passed vector after constructing the component batch,
         /// will invalidate it, similar to iterator invalidation.
-        ComponentBatch(const std::vector<ComponentType>& _data)
-            : data(_data.data()), num_instances(_data.size()) {}
+        ComponentBatch(const std::vector<TComponent>& data)
+            : ComponentBatch(data.data(), data.size()) {}
+
+        /// Construct from a temporary std::vector.
+        ///
+        /// Takes ownership of the data and moves it into the component batch.
+        ComponentBatch(std::vector<TComponent>&& data) : ownership(BatchOwnership::VectorOwned) {
+            // Don't assign, since the vector is in an undefined state and assigning may
+            // attempt to free data.
+            new (&storage.vector_owned) std::vector<TComponent>(data);
+        }
 
         /// Construct from an std::array.
         ///
-        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
-        /// you need to ensure that the data outlives the component list.
+        /// *Attention*: Does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component batch.
         template <size_t NumInstances>
-        ComponentBatch(const std::array<ComponentType, NumInstances>& _data)
-            : data(_data.data()), num_instances(NumInstances) {}
+        ComponentBatch(const std::array<TComponent, NumInstances>& data)
+            : ComponentBatch(data.data(), data.size()) {}
 
         /// Construct from a C-Array.
         ///
-        /// *Attention*: As with all other constructors, this does *not* take ownership of the data,
-        /// you need to ensure that the data outlives the component list.
+        /// *Attention*: Does *not* take ownership of the data,
+        /// you need to ensure that the data outlives the component batch.
         template <size_t NumInstances>
-        ComponentBatch(const ComponentType (&_data)[NumInstances])
-            : data(_data), num_instances(NumInstances) {}
+        ComponentBatch(const TComponent (&data)[NumInstances])
+            : ComponentBatch(&data[0], NumInstances) {}
 
-        /// Creates a Rerun DataCell from this list of components.
-        Result<rerun::DataCell> to_data_cell() const {
-            return ComponentType::to_data_cell(data, num_instances);
+        /// Construct from a temporary list.
+        ///
+        /// Persists the list into an internal std::vector.
+        /// If you want to avoid an allocation, you have to manually keep the data on the stack
+        /// (e.g. as std::array) and construct the batch from this instead.
+        ComponentBatch(std::initializer_list<TComponent> data)
+            : ownership(BatchOwnership::VectorOwned) {
+            // Don't assign, since the vector is in an undefined state and assigning may
+            // attempt to free data.
+            new (&storage.vector_owned) std::vector<TComponent>(data);
         }
-    };
 
-    /// A type erased version of `ComponentBatch`.
-    class AnonymousComponentBatch {
-      public:
-        const void* data;
-        size_t num_instances;
+        /// Move constructor.
+        ComponentBatch(ComponentBatch<TComponent>&& other) {
+            ownership = other.ownership;
+            switch (ownership) {
+                case BatchOwnership::Borrowed:
+                    storage.borrowed = other.storage.borrowed;
+                    break;
+                case BatchOwnership::VectorOwned:
+                    // Don't assign, since the vector is in an undefined state and assigning may
+                    // attempt to free data.
+                    new (&storage.vector_owned)
+                        std::vector<TComponent>(std::move(other.storage.vector_owned));
+                    break;
+            }
+        }
 
-      public:
-        /// Construct from any parameter that can be converted to a strongly typed component list.
-        template <typename ComponentBatchLikeType>
-        AnonymousComponentBatch(const ComponentBatchLikeType& component_list_like)
-            : AnonymousComponentBatch(ComponentBatch(component_list_like)) {}
+        /// Move assignment
+        void operator=(ComponentBatch<TComponent>&& other) {
+            this->~ComponentBatch();
+            new (this) ComponentBatch(std::move(other));
+        }
 
-        /// Construct from a strongly typed component list.
-        template <typename ComponentType>
-        AnonymousComponentBatch(const ComponentBatch<ComponentType>& component_list)
-            : data(component_list.data),
-              num_instances(component_list.num_instances),
-              to_data_cell_func([](const void* _data, size_t _num_instances) {
-                  return ComponentType::to_data_cell(
-                      reinterpret_cast<const ComponentType*>(_data),
-                      _num_instances
-                  );
-              }) {}
+        ~ComponentBatch() {
+            switch (ownership) {
+                case BatchOwnership::Borrowed:
+                    break; // nothing to do.
+                case BatchOwnership::VectorOwned:
+                    storage.vector_owned.~vector(); // Deallocate the vector!
+                    break;
+            }
+        }
 
-        /// Creates a Rerun DataCell from this list of components.
-        Result<rerun::DataCell> to_data_cell() const {
-            return to_data_cell_func(data, num_instances);
+        /// Returns the number of instances in this component batch.
+        size_t size() const {
+            switch (ownership) {
+                case BatchOwnership::Borrowed:
+                    return storage.borrowed.num_instances;
+                case BatchOwnership::VectorOwned:
+                    return storage.vector_owned.size();
+            }
+        }
+
+        /// Serializes the component batch into a rerun datacell that can be sent to a store.
+        Result<SerializedComponentBatch> serialize() const {
+            // TODO(andreas): `to_data_cell` should actually get our storage representation passed
+            // in which we'll allow "type adaptors" in the future (for e.g. setting a stride or
+            // similar).
+            switch (ownership) {
+                case BatchOwnership::Borrowed: {
+                    auto cell_result = TComponent::to_data_cell(
+                        storage.borrowed.data,
+                        storage.borrowed.num_instances
+                    );
+                    RR_RETURN_NOT_OK(cell_result.error);
+                    return SerializedComponentBatch(
+                        storage.borrowed.num_instances,
+                        std::move(cell_result.value)
+                    );
+                }
+
+                case BatchOwnership::VectorOwned: {
+                    auto cell_result = TComponent::to_data_cell(
+                        storage.vector_owned.data(),
+                        storage.vector_owned.size()
+                    );
+                    RR_RETURN_NOT_OK(cell_result.error);
+                    return SerializedComponentBatch(
+                        storage.vector_owned.size(),
+                        std::move(cell_result.value)
+                    );
+                }
+            }
         }
 
       private:
-        Result<rerun::DataCell> (*to_data_cell_func)(const void*, size_t);
+        enum class BatchOwnership {
+            /// The component batch does not own the data and only has a pointer and a
+            /// size.
+            Borrowed,
+
+            /// The component batch owns the data via an std::vector.
+            VectorOwned,
+        };
+
+        BatchOwnership ownership;
+
+        template <typename T>
+        union ComponentBatchStorage {
+            struct {
+                const T* data;
+                size_t num_instances;
+            } borrowed;
+
+            std::vector<T> vector_owned;
+
+            ComponentBatchStorage() {}
+
+            ~ComponentBatchStorage() {}
+        };
+
+        ComponentBatchStorage<TComponent> storage;
     };
 } // namespace rerun

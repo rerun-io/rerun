@@ -56,6 +56,7 @@ namespace rerun {
 
           public:
             DisconnectedSpace() = default;
+            DisconnectedSpace(DisconnectedSpace&& other) = default;
 
             DisconnectedSpace(rerun::components::DisconnectedSpace _disconnected_space)
                 : disconnected_space(std::move(_disconnected_space)) {}
@@ -65,16 +66,8 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

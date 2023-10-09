@@ -39,8 +39,8 @@ struct BadArchetype {
         return 1;
     }
 
-    std::vector<rerun::AnonymousComponentBatch> as_component_batches() const {
-        return {BadComponent()};
+    rerun::Result<std::vector<rerun::SerializedComponentBatch>> serialize() const {
+        return BadComponent::error;
     }
 };
 
@@ -388,7 +388,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 ),
             }));
             const auto [path, error] = variant;
-            auto v = rr::datatypes::Vec2D{1.0, 2.0};
+            auto v = rrc::Position2D{1.0, 2.0};
 
             THEN("try_log_data_row returns the correct error") {
                 CHECK(stream.try_log_data_row(path, 0, 0, nullptr).code == error);

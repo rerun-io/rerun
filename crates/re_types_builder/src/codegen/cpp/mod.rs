@@ -322,13 +322,199 @@ impl QuotedObject {
         hpp_type_extensions: &TokenStream,
     ) -> Self {
         match obj.specifics {
-            crate::ObjectSpecifics::Struct => {
-                Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
-            }
+            crate::ObjectSpecifics::Struct => match obj.kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
+                }
+                ObjectKind::Archetype => {
+                    Self::from_archetype(objects, obj, hpp_includes, hpp_type_extensions)
+                }
+            },
             crate::ObjectSpecifics::Union { .. } => {
                 Self::from_union(objects, obj, hpp_includes, hpp_type_extensions)
             }
         }
+    }
+
+    fn from_archetype(
+        objects: &Objects,
+        obj: &Object,
+        mut hpp_includes: Includes,
+        hpp_type_extensions: &TokenStream,
+    ) -> QuotedObject {
+        let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
+        let quoted_docs = quote_obj_docs(obj);
+
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        hpp_includes.insert_system("utility"); // std::move
+
+        let field_declarations = obj
+            .fields
+            .iter()
+            .map(|obj_field| {
+                let docstring = quote_field_docs(obj_field);
+                let field_name = format_ident!("{}", obj_field.name);
+                let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
+                let field_type = if obj_field.is_nullable {
+                    hpp_includes.insert_system("optional");
+                    quote! { std::optional<#field_type> }
+                } else {
+                    field_type
+                };
+
+                quote! {
+                    #NEWLINE_TOKEN
+                    #docstring
+                    #field_type #field_name
+                }
+            })
+            .collect_vec();
+
+        let (constants_hpp, constants_cpp) =
+            quote_constants_header_and_cpp(obj, objects, &type_ident);
+        let mut methods = Vec::new();
+
+        let required_component_fields = obj
+            .fields
+            .iter()
+            .filter(|field| !field.is_nullable)
+            .collect_vec();
+
+        // Constructors with all required components.
+        if !required_component_fields.is_empty() && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
+            let (parameters, assignments): (Vec<_>, Vec<_>) = required_component_fields
+                .iter()
+                .map(|obj_field| {
+                    let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
+                    let field_ident = format_ident!("{}", obj_field.name);
+                    // C++ compilers give warnings for re-using the same name as the member variable.
+                    let parameter_ident = format_ident!("_{}", obj_field.name);
+                    (
+                        quote! { #field_type #parameter_ident },
+                        quote! { #field_ident(std::move(#parameter_ident)) },
+                    )
+                })
+                .unzip();
+
+            methods.push(Method {
+                declaration: MethodDeclaration::constructor(quote! {
+                    #type_ident(#(#parameters),*) : #(#assignments),*
+                }),
+                ..Method::default()
+            });
+        }
+
+        // Builder methods for all optional components.
+        for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
+            let field_ident = format_ident!("{}", obj_field.name);
+            // C++ compilers give warnings for re-using the same name as the member variable.
+            let parameter_ident = format_ident!("_{}", obj_field.name);
+            let method_ident = format_ident!("with_{}", obj_field.name);
+            let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
+            methods.push(Method {
+                docs: obj_field.docs.clone().into(),
+                declaration: MethodDeclaration {
+                    is_static: false,
+                    return_type: quote!(#type_ident),
+                    name_and_parameters: quote! {
+                        #method_ident(#field_type #parameter_ident) &&
+                    },
+                },
+                definition_body: quote! {
+                    #field_ident = std::move(#parameter_ident);
+                    return std::move(*this);
+                },
+                inline: true,
+            });
+        }
+
+        // Num instances gives the number of primary instances.
+        {
+            let first_required_field = required_component_fields.first();
+            let definition_body = if let Some(field) = first_required_field {
+                let first_required_field_name = &format_ident!("{}", field.name);
+                if field.typ.is_plural() {
+                    quote!(return #first_required_field_name.size();)
+                } else {
+                    quote!(return 1;)
+                }
+            } else {
+                quote!(return 0;)
+            };
+            methods.push(Method {
+                docs: "Returns the number of primary instances of this archetype.".into(),
+                declaration: MethodDeclaration {
+                    is_static: false,
+                    return_type: quote!(size_t),
+                    name_and_parameters: quote! {
+                        num_instances() const
+                    },
+                },
+                definition_body,
+                inline: true,
+            });
+        }
+
+        // methods.push(archetype_indicator(
+        //     &type_ident,
+        //     &mut hpp_includes,
+        //     &mut cpp_includes,
+        // ));
+
+        methods.push(archetype_serialize(
+            &type_ident,
+            obj,
+            &mut hpp_includes,
+            &mut cpp_includes,
+        ));
+
+        let hpp_method_section = if methods.is_empty() {
+            quote! {}
+        } else {
+            let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+            // TODO(andreas): We should consider optimizing the move ctor - there's a lot of component batches to move.
+            quote! {
+                public:
+                    #type_ident() = default;
+                    #type_ident(#type_ident&& other) = default;
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #(#methods_hpp)*
+            }
+        };
+        let hpp = quote! {
+            #hpp_includes
+
+            namespace rerun {
+                namespace archetypes {
+                    #quoted_docs
+                    struct #type_ident {
+                        #(#field_declarations;)*
+
+                        #(#constants_hpp;)*
+
+                        #hpp_type_extensions
+
+                        #hpp_method_section
+                    };
+                }
+            }
+        };
+
+        let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&type_ident));
+        let cpp = quote! {
+            #cpp_includes
+
+            namespace rerun {
+                namespace archetypes {
+                    #(#constants_cpp;)*
+
+                    #(#methods_cpp)*
+                }
+            }
+        };
+
+        Self { hpp, cpp }
     }
 
     fn from_struct(
@@ -337,13 +523,11 @@ impl QuotedObject {
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> QuotedObject {
-        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes`, `components`, or `archetypes`
-        let type_name = &obj.name;
-        let type_ident = format_ident!("{type_name}"); // The PascalCase name of the object type.
+        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes` or `components`
+        let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
         let quoted_docs = quote_obj_docs(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
-        #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
@@ -366,206 +550,46 @@ impl QuotedObject {
             quote_constants_header_and_cpp(obj, objects, &type_ident);
         let mut methods = Vec::new();
 
-        match obj.kind {
-            ObjectKind::Datatype | ObjectKind::Component => {
-                if obj.fields.len() == 1 && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
-                    methods.extend(single_field_constructor_methods(
-                        obj,
-                        &mut hpp_includes,
-                        &type_ident,
-                        objects,
-                    ));
-                };
-
-                // Arrow serialization methods.
-                // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
-                methods.push(arrow_data_type_method(
-                    obj,
-                    objects,
-                    &mut hpp_includes,
-                    &mut cpp_includes,
-                    &mut hpp_declarations,
-                ));
-                methods.push(new_arrow_array_builder_method(
-                    obj,
-                    objects,
-                    &mut hpp_includes,
-                    &mut cpp_includes,
-                    &mut hpp_declarations,
-                ));
-                methods.push(fill_arrow_array_builder_method(
-                    obj,
-                    &type_ident,
-                    &mut cpp_includes,
-                    &mut hpp_declarations,
-                    objects,
-                ));
-
-                if obj.kind == ObjectKind::Component {
-                    methods.push(component_to_data_cell_method(
-                        &type_ident,
-                        &mut hpp_includes,
-                        &mut cpp_includes,
-                    ));
-                }
-            }
-            ObjectKind::Archetype => {
-                hpp_includes.insert_system("utility"); // std::move
-
-                let required_component_fields = obj
-                    .fields
-                    .iter()
-                    .filter(|field| !field.is_nullable)
-                    .collect_vec();
-
-                // Constructors with all required components.
-                if !required_component_fields.is_empty()
-                    && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
-                {
-                    let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
-                        .iter()
-                        .map(|obj_field| {
-                            let field_ident = format_ident!("{}", obj_field.name);
-                            let arg_ident = format_ident!("_{}", obj_field.name);
-                            (
-                                quote_variable(&mut hpp_includes, obj_field, &arg_ident),
-                                quote! { #field_ident(std::move(#arg_ident)) },
-                            )
-                        })
-                        .unzip();
-
-                    methods.push(Method {
-                        declaration: MethodDeclaration::constructor(quote! {
-                            #type_ident(#(#arguments),*) : #(#assignments),*
-                        }),
-                        ..Method::default()
-                    });
-
-                    // Provide a non-array version if there's any vectors.
-                    if required_component_fields
-                        .iter()
-                        .any(|obj_field| matches!(obj_field.typ, Type::Vector { .. }))
-                    {
-                        let (arguments, assignments): (Vec<_>, Vec<_>) = required_component_fields
-                            .iter()
-                            .map(|obj_field| {
-                                let field_ident = format_ident!("{}", obj_field.name);
-                                let arg_ident = format_ident!("_{}", obj_field.name);
-
-                                if let Type::Vector { elem_type } = &obj_field.typ {
-                                    let elem_type =
-                                        quote_element_type(&mut hpp_includes, elem_type);
-                                    (
-                                        quote! { #elem_type #arg_ident },
-                                        quote! { #field_ident(1, std::move(#arg_ident)) },
-                                    )
-                                } else {
-                                    (
-                                        quote_variable(&mut hpp_includes, obj_field, &arg_ident),
-                                        quote! { #field_ident(std::move(#arg_ident)) },
-                                    )
-                                }
-                            })
-                            .unzip();
-                        methods.push(Method {
-                            declaration: MethodDeclaration::constructor(quote! {
-                                #type_ident(#(#arguments),*) : #(#assignments),*
-                            }),
-                            ..Method::default()
-                        });
-                    }
-                }
-                // Builder methods for all optional components.
-                for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
-                    let field_ident = format_ident!("{}", obj_field.name);
-                    // C++ compilers give warnings for re-using the same name as the member variable.
-                    let parameter_ident = format_ident!("_{}", obj_field.name);
-                    let method_ident = format_ident!("with_{}", obj_field.name);
-                    let non_nullable = ObjectField {
-                        is_nullable: false,
-                        ..obj_field.clone()
-                    };
-                    let parameter_declaration =
-                        quote_variable(&mut hpp_includes, &non_nullable, &parameter_ident);
-                    methods.push(Method {
-                        docs: obj_field.docs.clone().into(),
-                        declaration: MethodDeclaration {
-                            is_static: false,
-                            return_type: quote!(#type_ident&),
-                            name_and_parameters: quote! {
-                                #method_ident(#parameter_declaration)
-                            },
-                        },
-                        definition_body: quote! {
-                            #field_ident = std::move(#parameter_ident);
-                            return *this;
-                        },
-                        inline: true,
-                    });
-
-                    // Provide a non-array version if it's a vector.
-                    if let Type::Vector { elem_type } = &obj_field.typ {
-                        hpp_includes.insert_system("vector"); // std::vector
-                        let elem_type = quote_element_type(&mut hpp_includes, elem_type);
-                        methods.push(Method {
-                            docs: obj_field.docs.clone().into(),
-                            declaration: MethodDeclaration {
-                                is_static: false,
-                                return_type: quote!(#type_ident&),
-                                name_and_parameters: quote! {
-                                    #method_ident(#elem_type #parameter_ident)
-                                },
-                            },
-                            definition_body: quote! {
-                                #field_ident = std::vector(1, std::move(#parameter_ident));
-                                return *this;
-                            },
-                            inline: true,
-                        });
-                    }
-                }
-
-                // Num instances gives the number of primary instances.
-                {
-                    let first_required_field = required_component_fields.first();
-                    let definition_body = if let Some(field) = first_required_field {
-                        let first_required_field_name = &format_ident!("{}", field.name);
-                        if field.typ.is_plural() {
-                            quote!(return #first_required_field_name.size();)
-                        } else {
-                            quote!(return 1;)
-                        }
-                    } else {
-                        quote!(return 0;)
-                    };
-                    methods.push(Method {
-                        docs: "Returns the number of primary instances of this archetype.".into(),
-                        declaration: MethodDeclaration {
-                            is_static: false,
-                            return_type: quote!(size_t),
-                            name_and_parameters: quote! {
-                                num_instances() const
-                            },
-                        },
-                        definition_body,
-                        inline: true,
-                    });
-                }
-
-                methods.push(archetype_indicator(
-                    &type_ident,
-                    &mut hpp_includes,
-                    &mut cpp_includes,
-                ));
-
-                methods.push(archetype_as_component_batches(
-                    &type_ident,
-                    obj,
-                    &mut hpp_includes,
-                    &mut cpp_includes,
-                ));
-            }
+        if obj.fields.len() == 1 && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
+            methods.extend(single_field_constructor_methods(
+                obj,
+                &mut hpp_includes,
+                &type_ident,
+                objects,
+            ));
         };
+
+        // Arrow serialization methods.
+        // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
+        methods.push(arrow_data_type_method(
+            obj,
+            objects,
+            &mut hpp_includes,
+            &mut cpp_includes,
+            &mut hpp_declarations,
+        ));
+        methods.push(new_arrow_array_builder_method(
+            obj,
+            objects,
+            &mut hpp_includes,
+            &mut cpp_includes,
+            &mut hpp_declarations,
+        ));
+        methods.push(fill_arrow_array_builder_method(
+            obj,
+            &type_ident,
+            &mut cpp_includes,
+            &mut hpp_declarations,
+            objects,
+        ));
+
+        if obj.kind == ObjectKind::Component {
+            methods.push(component_to_data_cell_method(
+                &type_ident,
+                &mut hpp_includes,
+                &mut cpp_includes,
+            ));
+        }
 
         let hpp_method_section = if methods.is_empty() {
             quote! {}
@@ -1272,7 +1296,7 @@ fn archetype_indicator(
     }
 }
 
-fn archetype_as_component_batches(
+fn archetype_serialize(
     type_ident: &Ident,
     obj: &Object,
     hpp_includes: &mut Includes,
@@ -1286,39 +1310,68 @@ fn archetype_as_component_batches(
 
     let num_fields = quote_integer(obj.fields.len());
     let push_batches = obj.fields.iter().map(|field| {
+        // TODO: trait will simplify these things (RIGHT?!)
+
         let field_name = format_ident!("{}", field.name);
-        if field.is_nullable {
+        if field.typ.is_plural() {
+            if field.is_nullable {
+                quote! {
+                    if (#field_name.has_value()) {
+                        auto result = #field_name.value().serialize();
+                        RR_RETURN_NOT_OK(result.error);
+                        cells.emplace_back(std::move(result.value));
+                    }
+                }
+            } else {
+                quote! {
+                    {
+                        auto result = #field_name.serialize();
+                        RR_RETURN_NOT_OK(result.error);
+                        cells.emplace_back(std::move(result.value));
+                    }
+                }
+            }
+        } else if field.is_nullable {
             quote! {
                 if (#field_name.has_value()) {
-                    comp_batches.emplace_back(#field_name.value());
+                    auto result = ComponentBatch(#field_name.value()).serialize();
+                    RR_RETURN_NOT_OK(result.error);
+                    cells.emplace_back(std::move(result.value));
                 }
             }
         } else {
             quote! {
-                comp_batches.emplace_back(#field_name);
+                {
+                    auto result = ComponentBatch(#field_name).serialize();
+                    RR_RETURN_NOT_OK(result.error);
+                    cells.emplace_back(std::move(result.value));
+                }
             }
         }
     });
 
     Method {
-        docs: "Collections all component lists into a list of component collections. \
-        *Attention:* The returned vector references this instance and does not take ownership of any data. \
-        Adding any new components to this archetype will invalidate the returned component lists!".into(),
+        docs: "TODO: move to trait".into(),
         declaration: MethodDeclaration {
             is_static: false,
-            return_type: quote!(std::vector<AnonymousComponentBatch>),
-            name_and_parameters: quote!(as_component_batches() const),
+            return_type: quote!(Result<std::vector<SerializedComponentBatch>>),
+            name_and_parameters: quote!(serialize() const),
         },
         definition_body: quote! {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(#num_fields);
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_batches)*
-            comp_batches.emplace_back(#type_ident::indicator());
+            {
+                components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return comp_batches;
+            return cells;
         },
         inline: false,
     }
@@ -1801,6 +1854,18 @@ fn quote_constants_header_and_cpp(
 fn are_types_disjoint(fields: &[ObjectField]) -> bool {
     let type_set: std::collections::HashSet<&Type> = fields.iter().map(|f| &f.typ).collect();
     type_set.len() == fields.len()
+}
+
+fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
+    match &obj_field.typ {
+        Type::Vector { elem_type } => {
+            hpp_includes.insert_rerun("component_batch.hpp");
+            let elem_type = quote_element_type(hpp_includes, elem_type);
+            quote! { ComponentBatch<#elem_type> }
+        }
+        Type::Object(fqname) => quote_fqname_as_type_path(hpp_includes, fqname),
+        _ => panic!("Only vectors and objects are allowed in archetypes."),
+    }
 }
 
 fn quote_variable_with_docstring(

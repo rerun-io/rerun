@@ -9,21 +9,23 @@ namespace rerun {
     namespace archetypes {
         const char Clear::INDICATOR_COMPONENT_NAME[] = "rerun.components.ClearIndicator";
 
-        AnonymousComponentBatch Clear::indicator() {
-            return ComponentBatch<components::IndicatorComponent<Clear::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
-        }
+        Result<std::vector<SerializedComponentBatch>> Clear::serialize() const {
+            std::vector<SerializedComponentBatch> cells;
+            cells.reserve(1);
 
-        std::vector<AnonymousComponentBatch> Clear::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
+            {
+                auto result = ComponentBatch(is_recursive).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
+            {
+                components::IndicatorComponent<Clear::INDICATOR_COMPONENT_NAME> indicator;
+                auto result = ComponentBatch(indicator).serialize();
+                RR_RETURN_NOT_OK(result.error);
+                cells.emplace_back(std::move(result.value));
+            }
 
-            comp_batches.emplace_back(is_recursive);
-            comp_batches.emplace_back(Clear::indicator());
-
-            return comp_batches;
+            return cells;
         }
     } // namespace archetypes
 } // namespace rerun

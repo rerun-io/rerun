@@ -33,41 +33,41 @@
 namespace rerun {
     namespace archetypes {
         struct AffixFuzzer2 {
-            std::vector<rerun::components::AffixFuzzer1> fuzz1101;
+            ComponentBatch<rerun::components::AffixFuzzer1> fuzz1101;
 
-            std::vector<rerun::components::AffixFuzzer2> fuzz1102;
+            ComponentBatch<rerun::components::AffixFuzzer2> fuzz1102;
 
-            std::vector<rerun::components::AffixFuzzer3> fuzz1103;
+            ComponentBatch<rerun::components::AffixFuzzer3> fuzz1103;
 
-            std::vector<rerun::components::AffixFuzzer4> fuzz1104;
+            ComponentBatch<rerun::components::AffixFuzzer4> fuzz1104;
 
-            std::vector<rerun::components::AffixFuzzer5> fuzz1105;
+            ComponentBatch<rerun::components::AffixFuzzer5> fuzz1105;
 
-            std::vector<rerun::components::AffixFuzzer6> fuzz1106;
+            ComponentBatch<rerun::components::AffixFuzzer6> fuzz1106;
 
-            std::vector<rerun::components::AffixFuzzer7> fuzz1107;
+            ComponentBatch<rerun::components::AffixFuzzer7> fuzz1107;
 
-            std::vector<rerun::components::AffixFuzzer8> fuzz1108;
+            ComponentBatch<rerun::components::AffixFuzzer8> fuzz1108;
 
-            std::vector<rerun::components::AffixFuzzer9> fuzz1109;
+            ComponentBatch<rerun::components::AffixFuzzer9> fuzz1109;
 
-            std::vector<rerun::components::AffixFuzzer10> fuzz1110;
+            ComponentBatch<rerun::components::AffixFuzzer10> fuzz1110;
 
-            std::vector<rerun::components::AffixFuzzer11> fuzz1111;
+            ComponentBatch<rerun::components::AffixFuzzer11> fuzz1111;
 
-            std::vector<rerun::components::AffixFuzzer12> fuzz1112;
+            ComponentBatch<rerun::components::AffixFuzzer12> fuzz1112;
 
-            std::vector<rerun::components::AffixFuzzer13> fuzz1113;
+            ComponentBatch<rerun::components::AffixFuzzer13> fuzz1113;
 
-            std::vector<rerun::components::AffixFuzzer14> fuzz1114;
+            ComponentBatch<rerun::components::AffixFuzzer14> fuzz1114;
 
-            std::vector<rerun::components::AffixFuzzer15> fuzz1115;
+            ComponentBatch<rerun::components::AffixFuzzer15> fuzz1115;
 
-            std::vector<rerun::components::AffixFuzzer16> fuzz1116;
+            ComponentBatch<rerun::components::AffixFuzzer16> fuzz1116;
 
-            std::vector<rerun::components::AffixFuzzer17> fuzz1117;
+            ComponentBatch<rerun::components::AffixFuzzer17> fuzz1117;
 
-            std::vector<rerun::components::AffixFuzzer18> fuzz1118;
+            ComponentBatch<rerun::components::AffixFuzzer18> fuzz1118;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
@@ -75,26 +75,27 @@ namespace rerun {
 
           public:
             AffixFuzzer2() = default;
+            AffixFuzzer2(AffixFuzzer2&& other) = default;
 
             AffixFuzzer2(
-                std::vector<rerun::components::AffixFuzzer1> _fuzz1101,
-                std::vector<rerun::components::AffixFuzzer2> _fuzz1102,
-                std::vector<rerun::components::AffixFuzzer3> _fuzz1103,
-                std::vector<rerun::components::AffixFuzzer4> _fuzz1104,
-                std::vector<rerun::components::AffixFuzzer5> _fuzz1105,
-                std::vector<rerun::components::AffixFuzzer6> _fuzz1106,
-                std::vector<rerun::components::AffixFuzzer7> _fuzz1107,
-                std::vector<rerun::components::AffixFuzzer8> _fuzz1108,
-                std::vector<rerun::components::AffixFuzzer9> _fuzz1109,
-                std::vector<rerun::components::AffixFuzzer10> _fuzz1110,
-                std::vector<rerun::components::AffixFuzzer11> _fuzz1111,
-                std::vector<rerun::components::AffixFuzzer12> _fuzz1112,
-                std::vector<rerun::components::AffixFuzzer13> _fuzz1113,
-                std::vector<rerun::components::AffixFuzzer14> _fuzz1114,
-                std::vector<rerun::components::AffixFuzzer15> _fuzz1115,
-                std::vector<rerun::components::AffixFuzzer16> _fuzz1116,
-                std::vector<rerun::components::AffixFuzzer17> _fuzz1117,
-                std::vector<rerun::components::AffixFuzzer18> _fuzz1118
+                ComponentBatch<rerun::components::AffixFuzzer1> _fuzz1101,
+                ComponentBatch<rerun::components::AffixFuzzer2> _fuzz1102,
+                ComponentBatch<rerun::components::AffixFuzzer3> _fuzz1103,
+                ComponentBatch<rerun::components::AffixFuzzer4> _fuzz1104,
+                ComponentBatch<rerun::components::AffixFuzzer5> _fuzz1105,
+                ComponentBatch<rerun::components::AffixFuzzer6> _fuzz1106,
+                ComponentBatch<rerun::components::AffixFuzzer7> _fuzz1107,
+                ComponentBatch<rerun::components::AffixFuzzer8> _fuzz1108,
+                ComponentBatch<rerun::components::AffixFuzzer9> _fuzz1109,
+                ComponentBatch<rerun::components::AffixFuzzer10> _fuzz1110,
+                ComponentBatch<rerun::components::AffixFuzzer11> _fuzz1111,
+                ComponentBatch<rerun::components::AffixFuzzer12> _fuzz1112,
+                ComponentBatch<rerun::components::AffixFuzzer13> _fuzz1113,
+                ComponentBatch<rerun::components::AffixFuzzer14> _fuzz1114,
+                ComponentBatch<rerun::components::AffixFuzzer15> _fuzz1115,
+                ComponentBatch<rerun::components::AffixFuzzer16> _fuzz1116,
+                ComponentBatch<rerun::components::AffixFuzzer17> _fuzz1117,
+                ComponentBatch<rerun::components::AffixFuzzer18> _fuzz1118
             )
                 : fuzz1101(std::move(_fuzz1101)),
                   fuzz1102(std::move(_fuzz1102)),
@@ -115,60 +116,13 @@ namespace rerun {
                   fuzz1117(std::move(_fuzz1117)),
                   fuzz1118(std::move(_fuzz1118)) {}
 
-            AffixFuzzer2(
-                rerun::components::AffixFuzzer1 _fuzz1101,
-                rerun::components::AffixFuzzer2 _fuzz1102,
-                rerun::components::AffixFuzzer3 _fuzz1103,
-                rerun::components::AffixFuzzer4 _fuzz1104,
-                rerun::components::AffixFuzzer5 _fuzz1105,
-                rerun::components::AffixFuzzer6 _fuzz1106,
-                rerun::components::AffixFuzzer7 _fuzz1107,
-                rerun::components::AffixFuzzer8 _fuzz1108,
-                rerun::components::AffixFuzzer9 _fuzz1109,
-                rerun::components::AffixFuzzer10 _fuzz1110,
-                rerun::components::AffixFuzzer11 _fuzz1111,
-                rerun::components::AffixFuzzer12 _fuzz1112,
-                rerun::components::AffixFuzzer13 _fuzz1113,
-                rerun::components::AffixFuzzer14 _fuzz1114,
-                rerun::components::AffixFuzzer15 _fuzz1115,
-                rerun::components::AffixFuzzer16 _fuzz1116,
-                rerun::components::AffixFuzzer17 _fuzz1117,
-                rerun::components::AffixFuzzer18 _fuzz1118
-            )
-                : fuzz1101(1, std::move(_fuzz1101)),
-                  fuzz1102(1, std::move(_fuzz1102)),
-                  fuzz1103(1, std::move(_fuzz1103)),
-                  fuzz1104(1, std::move(_fuzz1104)),
-                  fuzz1105(1, std::move(_fuzz1105)),
-                  fuzz1106(1, std::move(_fuzz1106)),
-                  fuzz1107(1, std::move(_fuzz1107)),
-                  fuzz1108(1, std::move(_fuzz1108)),
-                  fuzz1109(1, std::move(_fuzz1109)),
-                  fuzz1110(1, std::move(_fuzz1110)),
-                  fuzz1111(1, std::move(_fuzz1111)),
-                  fuzz1112(1, std::move(_fuzz1112)),
-                  fuzz1113(1, std::move(_fuzz1113)),
-                  fuzz1114(1, std::move(_fuzz1114)),
-                  fuzz1115(1, std::move(_fuzz1115)),
-                  fuzz1116(1, std::move(_fuzz1116)),
-                  fuzz1117(1, std::move(_fuzz1117)),
-                  fuzz1118(1, std::move(_fuzz1118)) {}
-
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return fuzz1101.size();
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun

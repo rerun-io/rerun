@@ -77,6 +77,7 @@ namespace rerun {
 
           public:
             TimeSeriesScalar() = default;
+            TimeSeriesScalar(TimeSeriesScalar&& other) = default;
 
             TimeSeriesScalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
 
@@ -88,9 +89,9 @@ namespace rerun {
             /// If all points within a single entity path (i.e. a line) share the same
             /// radius, then this radius will be used as the line width too. Otherwise, the
             /// line will use the default width of `1.0`.
-            TimeSeriesScalar& with_radius(rerun::components::Radius _radius) {
+            TimeSeriesScalar with_radius(rerun::components::Radius _radius) && {
                 radius = std::move(_radius);
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional color for the scalar entry.
@@ -104,9 +105,9 @@ namespace rerun {
             /// If all points within a single entity path (i.e. a line) share the same
             /// color, then this color will be used as the line color in the plot legend.
             /// Otherwise, the line will appear gray in the legend.
-            TimeSeriesScalar& with_color(rerun::components::Color _color) {
+            TimeSeriesScalar with_color(rerun::components::Color _color) && {
                 color = std::move(_color);
-                return *this;
+                return std::move(*this);
             }
 
             /// An optional label for the point.
@@ -117,9 +118,9 @@ namespace rerun {
             /// this label will be used as the label for the line itself. Otherwise, the
             /// line will be named after the entity path. The plot itself is named after
             /// the space it's in.
-            TimeSeriesScalar& with_label(rerun::components::Text _label) {
+            TimeSeriesScalar with_label(rerun::components::Text _label) && {
                 label = std::move(_label);
-                return *this;
+                return std::move(*this);
             }
 
             /// Specifies whether a point in a scatter plot should form a continuous line.
@@ -129,9 +130,9 @@ namespace rerun {
             /// Points within a single line do not have to all share the same scatteredness:
             /// the line will switch between a scattered and a continuous representation as
             /// required.
-            TimeSeriesScalar& with_scattered(rerun::components::ScalarScattering _scattered) {
+            TimeSeriesScalar with_scattered(rerun::components::ScalarScattering _scattered) && {
                 scattered = std::move(_scattered);
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
@@ -139,16 +140,8 @@ namespace rerun {
                 return 1;
             }
 
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
+            /// TODO: move to trait
+            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
     } // namespace archetypes
 } // namespace rerun
