@@ -6,6 +6,7 @@ from typing import Any, Optional, cast
 import numpy as np
 import pytest
 import rerun as rr
+import torch
 from rerun.components import (
     DrawOrderLike,
     InstanceKeyArrayLike,
@@ -45,6 +46,10 @@ strips_arrays: list[LineStrip2DArrayLike] = [
     [
         np.array([[0, 0], (2, 1), [4, -1], (6, 0)], dtype=np.float32),
         np.array([[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]], dtype=np.float32),
+    ],
+    [
+        torch.tensor([[0, 0], (2, 1), [4, -1], (6, 0)], dtype=torch.float32),
+        torch.tensor([[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]], dtype=torch.float32),
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([

@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import pytest
 import rerun as rr
+import torch
 from rerun.datatypes import TensorBuffer, TensorBufferType, TensorData, TensorDataLike, TensorDimension
 
 rng = np.random.default_rng(12345)
@@ -44,6 +45,8 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     # Assorted Extra Dimensions
     rng.integers(0, 255, (1, 10, 20)),
     rng.integers(0, 255, (10, 20, 1)),
+    # Torch tensors
+    torch.randint(0, 255, (10, 20)),
 ]
 
 BAD_IMAGE_INPUTS: list[TensorDataLike] = [
@@ -69,7 +72,7 @@ def test_segmentation_image_shapes() -> None:
         rr.DepthImage(img)
 
     for img in BAD_IMAGE_INPUTS:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             rr.DepthImage(img)
 
 
