@@ -24,6 +24,7 @@ plugins:
         python:
           paths: ["rerun_sdk"] # Lookup python modules relative to this path
           import: # Cross-references for python and numpy
+            - https://arrow.apache.org/docs/objects.inv
             - https://docs.python.org/3/objects.inv
             - https://numpy.org/doc/stable/objects.inv
             - https://ipython.readthedocs.io/en/stable/objects.inv

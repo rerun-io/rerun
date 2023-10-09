@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 
 from .._unions import build_dense_union
 
@@ -103,7 +103,7 @@ class TensorDataExt:
             if resolved_shape:
                 shape_tuple = tuple(d.size for d in resolved_shape)
                 if shape_tuple != array.shape:
-                    _send_warning(
+                    _send_warning_or_raise(
                         (
                             f"Provided array ({array.shape}) does not match shape argument ({shape_tuple}). "
                             + "Ignoring shape argument."
@@ -115,7 +115,7 @@ class TensorDataExt:
             if resolved_shape is None:
                 if dim_names:
                     if len(array.shape) != len(dim_names):
-                        _send_warning(
+                        _send_warning_or_raise(
                             (
                                 f"len(array.shape) = {len(array.shape)} != "
                                 + f"len(dim_names) = {len(dim_names)}. Dropping tensor dimension names."

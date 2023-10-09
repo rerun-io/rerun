@@ -99,14 +99,14 @@ def test_bad_tensors() -> None:
     # TODO(jleibs) send_warning bottoms out in TypeError but these ought to be ValueErrors
 
     # Wrong number of names
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         TensorData(
             dim_names=["a", "b", "c"],
             array=RANDOM_TENSOR_SOURCE,
         ),
 
     # Shape disagrees with array
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         TensorData(
             shape=[
                 TensorDimension(8, name="a"),

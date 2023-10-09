@@ -9,7 +9,7 @@ from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 from rerun._log import log
 from rerun.any_value import AnyValues
 from rerun.archetypes import Points2D, Points3D
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 from rerun.log_deprecated import (
     Color,
     Colors,
@@ -240,7 +240,7 @@ def log_points(
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
-            _send_warning("Only integer identifiers supported", 1)
+            _send_warning_or_raise("Only integer identifiers supported", 1)
 
     if positions.shape[1] == 2:
         points2d = Points2D(

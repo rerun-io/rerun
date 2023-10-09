@@ -88,7 +88,7 @@ def test_image_shapes() -> None:
         rr.Image(img)
 
     for img in BAD_IMAGE_INPUTS:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             rr.Image(img)
 
 

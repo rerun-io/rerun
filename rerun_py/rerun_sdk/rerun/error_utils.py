@@ -10,7 +10,7 @@ from typing import Any, Callable, TypeVar, cast
 from .recording_stream import RecordingStream
 
 __all__ = [
-    "_send_warning",
+    "_send_warning_or_raise",
 ]
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
@@ -66,23 +66,32 @@ def _build_warning_context_string(skip_first: int) -> str:
     return "\n".join(f'File "{frame.filename}", line {frame.lineno}, in {frame.function}' for frame in outer_stack)
 
 
-def _send_warning(
+def _send_warning_or_raise(
     message: str,
     depth_to_user_code: int,
     recording: RecordingStream | None = None,
+    exception_type: type[Exception] = ValueError,
 ) -> None:
     """
     Sends a warning about the usage of the Rerun SDK.
 
-    Used for recoverable problems.
-    You can also use this for unrecoverable problems,
-    or raise an exception and let the @log_decorator handle it instead.
+    Note: in strict mode this will instead raise the specified exception type
+    (defaults to ValueError).
+
+    This will both send a message to the Rerun viewer and log a warning using
+    `warning.warn` with a custom `RerunWarning` class.
+
+    This should generally be used for recoverable problems where you want execution
+    to continue in the local scope.
+
+    For unrecoverable problems where execution cannot otherwise continue, you should
+    instead raise an exception and let the `catch_and_log_exceptions` handle it.
     """
     from rerun._log import log
     from rerun.archetypes import TextLog
 
     if strict_mode():
-        raise TypeError(message)
+        raise exception_type(message)
 
     # Send the warning to the user first
     warnings.warn(message, category=RerunWarning, stacklevel=depth_to_user_code + 1)
@@ -199,7 +208,7 @@ class catch_and_log_exceptions:
                     _rerun_exception_ctx.depth = None
 
                     for warning in pending_warnings:
-                        _send_warning(warning, depth_to_user_code=self.depth_to_user_code + 2)
+                        _send_warning_or_raise(warning, depth_to_user_code=self.depth_to_user_code + 2)
 
             # If we're back to the top of the stack, send out the pending warnings
 
