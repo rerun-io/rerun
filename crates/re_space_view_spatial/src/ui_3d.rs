@@ -325,8 +325,8 @@ pub fn view_3d(
     let view_coordinates = ctx
         .store_db
         .store()
-        .query_latest_component(query.space_origin, &ctx.current_query())
-        .map(|c| c.value);
+        .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
+        .map(|(_, c)| c.value);
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
