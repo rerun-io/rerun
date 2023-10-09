@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pyarrow as pa
 
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
     from . import Mat3x3ArrayLike, Mat3x3Like
@@ -19,7 +19,7 @@ class Mat3x3Ext:
 
         if rows is not None:
             if columns is not None:
-                _send_warning("Can't specify both columns and rows of matrix.", 1, recording=None)
+                _send_warning_or_raise("Can't specify both columns and rows of matrix.", 1, recording=None)
 
             if isinstance(rows, Mat3x3):
                 self.flat_columns = rows.flat_columns
@@ -32,7 +32,7 @@ class Mat3x3Ext:
             arr = np.array(columns, dtype=np.float32).reshape(3, 3)
             self.flat_columns = arr.flatten("C")
         else:
-            _send_warning("Need to specify either columns or columns of matrix.", 1, recording=None)
+            _send_warning_or_raise("Need to specify either columns or columns of matrix.", 1, recording=None)
             self.flat_columns = np.identity(3, dtype=np.float32).flatten()
 
     @staticmethod
