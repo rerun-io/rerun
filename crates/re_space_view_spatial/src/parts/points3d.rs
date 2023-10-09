@@ -90,9 +90,6 @@ impl Points3DPart {
                 |p| (*p).into(),
             )?;
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
-
         if arch_view.num_instances() <= self.max_labels {
             re_tracing::profile_scope!("labels");
 
@@ -117,39 +114,44 @@ impl Points3DPart {
             )?);
         }
 
+        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(arch_view, ent_path)?;
+
+        let (positions, radii, colors, picking_instance_ids) = join4(
+            || {
+                re_tracing::profile_scope!("positions");
+                arch_view
+                    .iter_required_component::<Position3D>()
+                    .map(|p| p.map(glam::Vec3::from).collect_vec())
+            },
+            || {
+                re_tracing::profile_scope!("radii");
+                radii.collect_vec()
+            },
+            || {
+                re_tracing::profile_scope!("colors");
+                colors.collect_vec()
+            },
+            || {
+                re_tracing::profile_scope!("picking_ids");
+                arch_view
+                    .iter_instance_keys()
+                    .map(picking_id_from_instance_key)
+                    .collect_vec()
+            },
+        );
+
+        let positions = positions?;
+
         {
+            re_tracing::profile_scope!("to_gpu");
+
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
                 .batch("3d points")
                 .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-
-            let (positions, radii, colors, picking_instance_ids) = join4(
-                || {
-                    re_tracing::profile_scope!("positions");
-                    arch_view
-                        .iter_required_component::<Position3D>()
-                        .map(|p| p.map(glam::Vec3::from).collect_vec())
-                },
-                || {
-                    re_tracing::profile_scope!("radii");
-                    radii.collect_vec()
-                },
-                || {
-                    re_tracing::profile_scope!("colors");
-                    colors.collect_vec()
-                },
-                || {
-                    re_tracing::profile_scope!("picking_ids");
-                    arch_view
-                        .iter_instance_keys()
-                        .map(picking_id_from_instance_key)
-                        .collect_vec()
-                },
-            );
-
-            let positions = positions?;
 
             let mut point_range_builder =
                 point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
@@ -171,12 +173,12 @@ impl Points3DPart {
                     }
                 }
             }
-
-            self.data.extend_bounding_box_with_points(
-                positions.iter().copied(),
-                ent_context.world_from_entity,
-            );
         }
+
+        self.data.extend_bounding_box_with_points(
+            positions.iter().copied(),
+            ent_context.world_from_entity,
+        );
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
 

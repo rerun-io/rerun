@@ -84,9 +84,6 @@ impl Points2DPart {
                 |p| (*p).into(),
             )?;
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
-
         if arch_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
@@ -108,7 +105,37 @@ impl Points2DPart {
             )?);
         }
 
+        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(arch_view, ent_path)?;
+
+        let positions = arch_view
+            .iter_required_component::<Position2D>()?
+            .map(|pt| pt.into());
+
+        let picking_instance_ids = arch_view
+            .iter_instance_keys()
+            .map(picking_id_from_instance_key);
+
+        let positions: Vec<glam::Vec3> = {
+            re_tracing::profile_scope!("collect_positions");
+            positions.collect()
+        };
+        let radii: Vec<_> = {
+            re_tracing::profile_scope!("collect_radii");
+            radii.collect()
+        };
+        let colors: Vec<_> = {
+            re_tracing::profile_scope!("collect_colors");
+            colors.collect()
+        };
+        let picking_instance_ids: Vec<_> = {
+            re_tracing::profile_scope!("collect_picking_instance_ids");
+            picking_instance_ids.collect()
+        };
+
         {
+            re_tracing::profile_scope!("to_gpu");
+
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
                 .batch("2d points")
@@ -120,31 +147,6 @@ impl Points2DPart {
                 .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-
-            let positions = arch_view
-                .iter_required_component::<Position2D>()?
-                .map(|pt| pt.into());
-
-            let picking_instance_ids = arch_view
-                .iter_instance_keys()
-                .map(picking_id_from_instance_key);
-
-            let positions: Vec<glam::Vec3> = {
-                re_tracing::profile_scope!("collect_positions");
-                positions.collect()
-            };
-            let radii: Vec<_> = {
-                re_tracing::profile_scope!("collect_radii");
-                radii.collect()
-            };
-            let colors: Vec<_> = {
-                re_tracing::profile_scope!("collect_colors");
-                colors.collect()
-            };
-            let picking_instance_ids: Vec<_> = {
-                re_tracing::profile_scope!("collect_picking_instance_ids");
-                picking_instance_ids.collect()
-            };
 
             let mut point_range_builder =
                 point_batch.add_points_2d(&positions, &radii, &colors, &picking_instance_ids);
@@ -168,14 +170,12 @@ impl Points2DPart {
             }
         };
 
-        load_keypoint_connections(ent_context, ent_path, &keypoints);
-
         self.data.extend_bounding_box_with_points(
-            arch_view
-                .iter_required_component::<Position2D>()?
-                .map(|pt| pt.into()),
+            positions.iter().copied(),
             ent_context.world_from_entity,
         );
+
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         Ok(())
     }
