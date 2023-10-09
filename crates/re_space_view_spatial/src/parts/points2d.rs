@@ -84,27 +84,6 @@ impl Points2DPart {
                 |p| (*p).into(),
             )?;
 
-        if arch_view.num_instances() <= self.max_labels {
-            // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
-
-            let instance_path_hashes_for_picking = {
-                re_tracing::profile_scope!("instance_hashes");
-                arch_view
-                    .iter_instance_keys()
-                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
-                    .collect::<Vec<_>>()
-            };
-
-            self.data.ui_labels.extend(Self::process_labels(
-                arch_view,
-                &instance_path_hashes_for_picking,
-                &colors,
-                &annotation_infos,
-            )?);
-        }
-
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let radii = process_radii(arch_view, ent_path)?;
 
@@ -176,6 +155,27 @@ impl Points2DPart {
         );
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
+
+        if arch_view.num_instances() <= self.max_labels {
+            // Max labels is small enough that we can afford iterating on the colors again.
+            let colors =
+                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+
+            let instance_path_hashes_for_picking = {
+                re_tracing::profile_scope!("instance_hashes");
+                arch_view
+                    .iter_instance_keys()
+                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
+                    .collect::<Vec<_>>()
+            };
+
+            self.data.ui_labels.extend(Self::process_labels(
+                arch_view,
+                &instance_path_hashes_for_picking,
+                &colors,
+                &annotation_infos,
+            )?);
+        }
 
         Ok(())
     }
