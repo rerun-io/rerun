@@ -205,7 +205,7 @@ impl ImagesPart {
         &mut self,
         ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
-        _ent_props: &EntityProperties,
+        ent_props: &EntityProperties,
         arch_view: &ArchetypeView<Image>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -273,7 +273,13 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                self.extend_bbox(&textured_rect);
+                // Only update the bounding box if the image_plane_distance is not auto.
+                // This is because in auto mode the bounds will change the image plane heuristic,
+                // and there's no good reason to grow the size of the bounds only to the shrink
+                // the image plane as a result.
+                if !ent_props.pinhole_image_plane_distance.is_auto() {
+                    self.extend_bbox(&textured_rect);
+                }
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -393,7 +399,13 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                self.extend_bbox(&textured_rect);
+                // Only update the bounding box if the image_plane_distance is not auto.
+                // This is because in auto mode the bounds will change the image plane heuristic,
+                // and there's no good reason to grow the size of the bounds only to the shrink
+                // the image plane as a result.
+                if !ent_props.pinhole_image_plane_distance.is_auto() {
+                    self.extend_bbox(&textured_rect);
+                }
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -414,7 +426,7 @@ impl ImagesPart {
         &mut self,
         ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
-        _ent_props: &EntityProperties,
+        ent_props: &EntityProperties,
         arch_view: &ArchetypeView<SegmentationImage>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -481,7 +493,13 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                self.extend_bbox(&textured_rect);
+                // Only update the bounding box if the image_plane_distance is not auto.
+                // This is because in auto mode the bounds will change the image plane heuristic,
+                // and there's no good reason to grow the size of the bounds only to the shrink
+                // the image plane as a result.
+                if !ent_props.pinhole_image_plane_distance.is_auto() {
+                    self.extend_bbox(&textured_rect);
+                }
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
