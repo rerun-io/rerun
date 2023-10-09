@@ -32,6 +32,11 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.x
+          cache: pip
+          cache-dependency-path: |
+            **/requirements.txt
+            **/requirements-*.txt
+            rerun_py/pyproject.toml
 
       - name: Install deps
         run: |
