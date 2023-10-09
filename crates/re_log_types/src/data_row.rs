@@ -1,6 +1,6 @@
 use ahash::HashSetExt;
 use nohash_hasher::IntSet;
-use re_types::ComponentName;
+use re_types::{AsComponents, ComponentName};
 use smallvec::SmallVec;
 
 use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint};
@@ -266,6 +266,30 @@ pub struct DataRow {
 }
 
 impl DataRow {
+    /// Builds a new `DataRow` from anything implementing [`AsComponents`].
+    pub fn from_component_batches(
+        row_id: RowId,
+        timepoint: TimePoint,
+        entity_path: EntityPath,
+        as_components: &dyn AsComponents,
+    ) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
+
+        let data_cells = as_components
+            .as_component_batches()
+            .into_iter()
+            .map(|batch| DataCell::from_component_batch(batch.as_ref()))
+            .collect::<Result<Vec<DataCell>, _>>()?;
+
+        Ok(DataRow::from_cells(
+            row_id,
+            timepoint,
+            entity_path,
+            as_components.num_instances() as _,
+            data_cells,
+        )?)
+    }
+
     /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
     ///
     /// Fails if:
