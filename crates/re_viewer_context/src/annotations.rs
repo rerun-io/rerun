@@ -21,6 +21,13 @@ pub struct Annotations {
 }
 
 impl Annotations {
+    pub fn missing() -> Self {
+        Self {
+            row_id: MISSING_ROW_ID,
+            class_map: Default::default(),
+        }
+    }
+
     pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
         re_tracing::profile_function!();
 
@@ -286,10 +293,5 @@ impl AnnotationMap {
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 
 lazy_static! {
-    pub static ref MISSING_ANNOTATIONS: Arc<Annotations> = {
-        Arc::new(Annotations {
-            row_id: MISSING_ROW_ID,
-            class_map: Default::default(),
-        })
-    };
+    pub static ref MISSING_ANNOTATIONS: Arc<Annotations> = Arc::new(Annotations::missing());
 }

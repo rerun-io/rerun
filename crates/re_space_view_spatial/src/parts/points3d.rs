@@ -5,14 +5,12 @@ use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points3D,
     components::{Position3D, Text},
-    Archetype as _, ComponentNameSet,
+    Archetype as _, ComponentNameSet, DeserializationResult,
 };
 use re_viewer_context::{
     Annotations, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
-
-use itertools::Itertools as _;
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
@@ -211,14 +209,14 @@ impl ViewPartSystem for Points3DPart {
     }
 }
 
-// Public so we can write a benchmark for it!
+#[doc(hidden)] // Public for benchmarks
 pub struct LoadedPoints {
-    annotation_infos: ResolvedAnnotationInfos,
-    keypoints: Keypoints,
-    positions: Vec<glam::Vec3>,
-    radii: Vec<re_renderer::Size>,
-    colors: Vec<re_renderer::Color32>,
-    picking_instance_ids: Vec<PickingLayerInstanceId>,
+    pub annotation_infos: ResolvedAnnotationInfos,
+    pub keypoints: Keypoints,
+    pub positions: Vec<glam::Vec3>,
+    pub radii: Vec<re_renderer::Size>,
+    pub colors: Vec<re_renderer::Color32>,
+    pub picking_instance_ids: Vec<PickingLayerInstanceId>,
 }
 
 impl LoadedPoints {
@@ -237,43 +235,55 @@ impl LoadedPoints {
             (*p).into()
         })?;
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
-
         let (positions, radii, colors, picking_instance_ids) = join4(
-            || {
-                re_tracing::profile_scope!("positions");
-                arch_view
-                    .iter_required_component::<Position3D>()
-                    .map(|p| p.map(glam::Vec3::from).collect_vec())
-            },
-            || {
-                re_tracing::profile_scope!("radii");
-                radii.collect_vec()
-            },
-            || {
-                re_tracing::profile_scope!("colors");
-                colors.collect_vec()
-            },
-            || {
-                re_tracing::profile_scope!("picking_ids");
-                arch_view
-                    .iter_instance_keys()
-                    .map(picking_id_from_instance_key)
-                    .collect_vec()
-            },
+            || Self::load_positions(arch_view),
+            || Self::load_radii(arch_view, ent_path),
+            || Self::load_colors(arch_view, ent_path, &annotation_infos),
+            || Self::load_picking_ids(arch_view),
         );
-
-        let positions = positions?;
 
         Ok(Self {
             annotation_infos,
             keypoints,
-            positions,
-            radii,
-            colors,
+            positions: positions?,
+            radii: radii?,
+            colors: colors?,
             picking_instance_ids,
         })
+    }
+
+    pub fn load_positions(
+        arch_view: &ArchetypeView<Points3D>,
+    ) -> DeserializationResult<Vec<glam::Vec3>> {
+        re_tracing::profile_function!();
+        arch_view
+            .iter_required_component::<Position3D>()
+            .map(|p| p.map(glam::Vec3::from).collect())
+    }
+
+    pub fn load_radii(
+        arch_view: &ArchetypeView<Points3D>,
+        ent_path: &EntityPath,
+    ) -> Result<Vec<re_renderer::Size>, QueryError> {
+        re_tracing::profile_function!();
+        process_radii(arch_view, ent_path).map(|radii| radii.collect())
+    }
+
+    pub fn load_colors(
+        arch_view: &ArchetypeView<Points3D>,
+        ent_path: &EntityPath,
+        annotation_infos: &ResolvedAnnotationInfos,
+    ) -> Result<Vec<re_renderer::Color32>, QueryError> {
+        re_tracing::profile_function!();
+        process_colors(arch_view, ent_path, annotation_infos).map(|colors| colors.collect())
+    }
+
+    pub fn load_picking_ids(arch_view: &ArchetypeView<Points3D>) -> Vec<PickingLayerInstanceId> {
+        re_tracing::profile_function!();
+        arch_view
+            .iter_instance_keys()
+            .map(picking_id_from_instance_key)
+            .collect()
     }
 }
 

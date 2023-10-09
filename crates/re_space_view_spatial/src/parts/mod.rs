@@ -22,6 +22,9 @@ use re_types::components::Text;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
+#[doc(hidden)] // Public for benchmarks
+pub use points3d::LoadedPoints;
+
 use ahash::HashMap;
 
 use re_data_store::{EntityPath, InstancePathHash};
