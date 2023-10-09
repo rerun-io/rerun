@@ -86,7 +86,7 @@ pub fn color_tensor_to_gpu(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    let [height, width, depth] = height_width_depth(tensor)?;
+    let [height, width, depth] = texture_height_width_channels(tensor)?;
 
     let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
         let (data, format) = match (depth, &tensor.buffer) {
@@ -181,7 +181,7 @@ pub fn class_id_tensor_to_gpu(
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
-    let [_height, _width, depth] = height_width_depth(tensor)?;
+    let [_height, _width, depth] = texture_height_width_channels(tensor)?;
     anyhow::ensure!(
         depth == 1,
         "Cannot apply annotations to tensor of shape {:?}",
@@ -253,7 +253,7 @@ pub fn depth_tensor_to_gpu(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    let [_height, _width, depth] = height_width_depth(tensor)?;
+    let [_height, _width, depth] = texture_height_width_channels(tensor)?;
     anyhow::ensure!(
         depth == 1,
         "Depth tensor of weird shape: {:?}",
@@ -314,7 +314,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
     debug_name: &str,
     tensor: &'a DecodedTensor,
 ) -> anyhow::Result<Texture2DCreationDesc<'a>> {
-    let [height, width, depth] = height_width_depth(tensor)?;
+    let [height, width, depth] = texture_height_width_channels(tensor)?;
 
     let (data, format) = match depth {
         1 => {
@@ -510,13 +510,14 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
 
 // ----------------------------------------------------------------------------;
 
-fn height_width_depth(tensor: &TensorData) -> anyhow::Result<[u32; 3]> {
+fn texture_height_width_channels(tensor: &TensorData) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
 
     let Some([mut height, width, channel]) = tensor.image_height_width_channels() else {
         anyhow::bail!("Tensor is not an image");
     };
     height = match tensor.buffer {
+        // Correct the texture height for NV12, tensor.image_height_width_channels returns the RGB size for NV12 images. The actual texture size has dimensions (h*3/2, w, 1).
         TensorBuffer::Nv12(_) => height * 3 / 2,
         _ => height,
     };

@@ -203,6 +203,7 @@ impl TensorData {
         }
     }
 
+    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a valid NV12 image.
     pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
         let TensorBuffer::Nv12(buf) = &self.buffer else {
             return None;
