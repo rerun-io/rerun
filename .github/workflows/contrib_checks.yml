@@ -43,6 +43,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            **/requirements.txt
+            **/requirements-*.txt
+            rerun_py/pyproject.toml
 
       - name: Install Python dependencies
         run: |
@@ -67,6 +72,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
+          cache: pip
+          cache-dependency-path: |
+            **/requirements.txt
+            **/requirements-*.txt
+            rerun_py/pyproject.toml
 
       - name: Install Python dependencies
         run: |
@@ -216,6 +226,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
+          cache: pip
+          cache-dependency-path: |
+            **/requirements.txt
+            **/requirements-*.txt
+            rerun_py/pyproject.toml
 
       - name: Install dependencies
         run: |

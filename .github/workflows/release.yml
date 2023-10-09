@@ -52,9 +52,14 @@ jobs:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.x
+          cache: pip
+          cache-dependency-path: |
+            **/requirements.txt
+            **/requirements-*.txt
+            rerun_py/pyproject.toml
 
       - name: Install deps
         run: |
