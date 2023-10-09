@@ -78,7 +78,7 @@ impl Points2DPart {
 
         let (annotation_infos, keypoints) =
             process_annotations_and_keypoints::<Position2D, Points2D>(
-                query,
+                query.latest_at,
                 arch_view,
                 &ent_context.annotations,
                 |p| (*p).into(),

@@ -84,7 +84,7 @@ impl Points3DPart {
 
         let (annotation_infos, keypoints) =
             process_annotations_and_keypoints::<Position3D, Points3D>(
-                query,
+                query.latest_at,
                 arch_view,
                 &ent_context.annotations,
                 |p| (*p).into(),
