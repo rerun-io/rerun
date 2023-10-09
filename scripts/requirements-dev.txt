@@ -8,6 +8,7 @@ cryptography==38.0.4 # for scripts/upload_image.py
 google-cloud-storage==2.9.0 # for scripts/upload_image.py
 PyGithub==1.58.2 # for scripts/ci/generate_pr_summary.py and scripts/ci/update_pr_body.py
 Pillow # for scripts/upload_image.py
+torch
 tqdm
 requests
 gitignore_parser  # handle .gitignore
