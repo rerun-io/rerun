@@ -1,13 +1,15 @@
 use re_data_store::{EntityPath, InstancePathHash};
+use re_log_types::TimeInt;
 use re_query::{ArchetypeView, QueryError};
+use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points3D,
     components::{Position3D, Text},
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    Annotations, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use itertools::Itertools as _;
@@ -21,7 +23,7 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{picking_id_from_instance_key, Keypoints, SpatialViewPartData};
 
 pub struct Points3DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
@@ -82,42 +84,19 @@ impl Points3DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let (annotation_infos, keypoints) =
-            process_annotations_and_keypoints::<Position3D, Points3D>(
-                query.latest_at,
-                arch_view,
-                &ent_context.annotations,
-                |p| (*p).into(),
-            )?;
-
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
-
-        let (positions, radii, colors, picking_instance_ids) = join4(
-            || {
-                re_tracing::profile_scope!("positions");
-                arch_view
-                    .iter_required_component::<Position3D>()
-                    .map(|p| p.map(glam::Vec3::from).collect_vec())
-            },
-            || {
-                re_tracing::profile_scope!("radii");
-                radii.collect_vec()
-            },
-            || {
-                re_tracing::profile_scope!("colors");
-                colors.collect_vec()
-            },
-            || {
-                re_tracing::profile_scope!("picking_ids");
-                arch_view
-                    .iter_instance_keys()
-                    .map(picking_id_from_instance_key)
-                    .collect_vec()
-            },
-        );
-
-        let positions = positions?;
+        let LoadedPoints {
+            annotation_infos,
+            keypoints,
+            positions,
+            radii,
+            colors,
+            picking_instance_ids,
+        } = LoadedPoints::load(
+            arch_view,
+            ent_path,
+            query.latest_at,
+            &ent_context.annotations,
+        )?;
 
         {
             re_tracing::profile_scope!("to_gpu");
@@ -229,6 +208,72 @@ impl ViewPartSystem for Points3DPart {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+// Public so we can write a benchmark for it!
+pub struct LoadedPoints {
+    annotation_infos: ResolvedAnnotationInfos,
+    keypoints: Keypoints,
+    positions: Vec<glam::Vec3>,
+    radii: Vec<re_renderer::Size>,
+    colors: Vec<re_renderer::Color32>,
+    picking_instance_ids: Vec<PickingLayerInstanceId>,
+}
+
+impl LoadedPoints {
+    pub fn load(
+        arch_view: &ArchetypeView<Points3D>,
+        ent_path: &EntityPath,
+        latest_at: TimeInt,
+        annotations: &Annotations,
+    ) -> Result<Self, QueryError> {
+        re_tracing::profile_function!();
+
+        let (annotation_infos, keypoints) = process_annotations_and_keypoints::<
+            Position3D,
+            Points3D,
+        >(latest_at, arch_view, annotations, |p| {
+            (*p).into()
+        })?;
+
+        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(arch_view, ent_path)?;
+
+        let (positions, radii, colors, picking_instance_ids) = join4(
+            || {
+                re_tracing::profile_scope!("positions");
+                arch_view
+                    .iter_required_component::<Position3D>()
+                    .map(|p| p.map(glam::Vec3::from).collect_vec())
+            },
+            || {
+                re_tracing::profile_scope!("radii");
+                radii.collect_vec()
+            },
+            || {
+                re_tracing::profile_scope!("colors");
+                colors.collect_vec()
+            },
+            || {
+                re_tracing::profile_scope!("picking_ids");
+                arch_view
+                    .iter_instance_keys()
+                    .map(picking_id_from_instance_key)
+                    .collect_vec()
+            },
+        );
+
+        let positions = positions?;
+
+        Ok(Self {
+            annotation_infos,
+            keypoints,
+            positions,
+            radii,
+            colors,
+            picking_instance_ids,
+        })
     }
 }
 

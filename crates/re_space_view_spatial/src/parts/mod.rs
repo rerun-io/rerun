@@ -23,7 +23,6 @@ pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
 use ahash::HashMap;
-use std::sync::Arc;
 
 use re_data_store::{EntityPath, InstancePathHash};
 use re_types::components::{Color, InstanceKey};
@@ -169,7 +168,7 @@ pub fn process_radii<'a, A: Archetype>(
 fn process_annotations<Primary, A: Archetype>(
     query: &ViewQuery<'_>,
     arch_view: &re_query::ArchetypeView<A>,
-    annotations: &Arc<Annotations>,
+    annotations: &Annotations,
 ) -> Result<ResolvedAnnotationInfos, re_query::QueryError>
 where
     Primary: re_types::Component + Clone,
@@ -184,7 +183,7 @@ where
 fn process_annotations_and_keypoints<Primary, A: Archetype>(
     latest_at: re_log_types::TimeInt,
     arch_view: &re_query::ArchetypeView<A>,
-    annotations: &Arc<Annotations>,
+    annotations: &Annotations,
     mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
 ) -> Result<(ResolvedAnnotationInfos, Keypoints), re_query::QueryError>
 where
