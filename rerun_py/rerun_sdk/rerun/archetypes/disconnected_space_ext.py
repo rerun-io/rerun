@@ -11,7 +11,7 @@ class DisconnectedSpaceExt:
 
     def __init__(
         self: Any,
-        disconnected: bool | DisconnectedSpaceLike = True,
+        disconnected: DisconnectedSpaceLike = True,
     ):
         """
         Disconnect an entity from its parent.
