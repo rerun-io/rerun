@@ -29,7 +29,7 @@ pub trait ViewContextSystem {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
-// TODO(jleibs): This probably needs a better name nwo that it includes class name
+// TODO(jleibs): This probably needs a better name now that it includes class name
 pub struct ViewContextCollection {
     pub(crate) systems: HashMap<ViewSystemName, Box<dyn ViewContextSystem>>,
     pub(crate) space_view_class_name: SpaceViewClassName,
