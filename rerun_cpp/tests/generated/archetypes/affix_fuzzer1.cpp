@@ -3,8 +3,6 @@
 
 #include "affix_fuzzer1.hpp"
 
-#include <rerun/indicator_component.hpp>
-
 namespace rerun {
     namespace archetypes {
         const char AffixFuzzer1::INDICATOR_COMPONENT_NAME[] =
@@ -15,113 +13,124 @@ namespace rerun {
             cells.reserve(21);
 
             {
-                auto result = ComponentBatch(fuzz1001).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer1>(fuzz1001).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1002).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer2>(fuzz1002).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1003).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer3>(fuzz1003).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1004).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer4>(fuzz1004).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1005).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer5>(fuzz1005).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1006).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer6>(fuzz1006).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1007).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer7>(fuzz1007).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1008).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer8>(fuzz1008).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1009).serialize();
+                auto result = ComponentBatch<rerun::components::AffixFuzzer9>(fuzz1009).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1010).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer10>(fuzz1010).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1011).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer11>(fuzz1011).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1012).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer12>(fuzz1012).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1013).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer13>(fuzz1013).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1014).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer14>(fuzz1014).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1015).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer15>(fuzz1015).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1016).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer16>(fuzz1016).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1017).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer17>(fuzz1017).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1018).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer18>(fuzz1018).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1019).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer19>(fuzz1019).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1020).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer20>(fuzz1020).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                auto result = ComponentBatch(fuzz1021).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::AffixFuzzer21>(fuzz1021).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<AffixFuzzer1::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

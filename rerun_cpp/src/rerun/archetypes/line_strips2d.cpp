@@ -3,8 +3,6 @@
 
 #include "line_strips2d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char LineStrips2D::INDICATOR_COMPONENT_NAME[] =
@@ -35,7 +33,8 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             if (draw_order.has_value()) {
-                auto result = ComponentBatch(draw_order.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::DrawOrder>(draw_order.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
@@ -50,8 +49,7 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<LineStrips2D::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

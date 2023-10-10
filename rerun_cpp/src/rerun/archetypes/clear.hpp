@@ -7,6 +7,7 @@
 #include "../component_batch.hpp"
 #include "../components/clear_is_recursive.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -74,6 +75,7 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             // Extensions to generated type defined in 'clear_ext.cpp'

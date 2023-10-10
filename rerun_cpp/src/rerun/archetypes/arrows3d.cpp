@@ -3,8 +3,6 @@
 
 #include "arrows3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Arrows3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Arrows3DIndicator";
@@ -49,8 +47,7 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<Arrows3D::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

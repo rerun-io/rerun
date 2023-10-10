@@ -65,7 +65,7 @@ namespace rerun {
             }
 
             // Move the vector into a component batch.
-            return Boxes2D::from_half_sizes(ComponentBatch(std::move(half_sizes)));
+            return Boxes2D::from_half_sizes(std::move(half_sizes));
         }
 
         Boxes2D Boxes2D::from_mins_and_sizes(

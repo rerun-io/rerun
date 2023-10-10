@@ -94,7 +94,7 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    Error RecordingStream::try_log_component_batches(
+    Error RecordingStream::try_log_serialized_batches(
         const char* entity_path, size_t num_instances,
         const std::vector<SerializedComponentBatch>& batches
     ) {

@@ -147,7 +147,7 @@ namespace rerun {
         Error try_log_archetype(const char* entity_path, const T& archetype) {
             auto serialization_result = archetype.serialize();
             RR_RETURN_NOT_OK(serialization_result.error);
-            return try_log_component_batches(
+            return try_log_serialized_batches(
                 entity_path,
                 archetype.num_instances(),
                 serialization_result.value
@@ -167,8 +167,10 @@ namespace rerun {
         /// @see try_log_component_batch, log_component_batches, try_log_component_batches
         template <typename T>
         void log_component_batch(const char* entity_path, const T& component_batch) {
-            const auto batch = ComponentBatch(component_batch);
-            try_log_component_batches(entity_path, batch.size(), batch).log_on_failure();
+            const auto serialized = AsComponents<T>().serialize(component_batch);
+            serialized.error.log_on_failure();
+            try_log_serialized_batches(entity_path, serialized.value.size(), {serialized.value})
+                .log_on_failure();
         }
 
         /// Logs a single component batch.
@@ -182,8 +184,13 @@ namespace rerun {
         /// @see log_component_batch, log_component_batches, try_log_component_batches
         template <typename T>
         Error try_log_component_batch(const char* entity_path, const T& component_batch) {
-            const auto batch = ComponentBatch(component_batch);
-            return try_log_component_batches(entity_path, batch.size(), batch);
+            const auto serialized = AsComponents<T>().serialize(component_batch);
+            RR_RETURN_NOT_OK(serialized.error);
+            return try_log_serialized_batches(
+                entity_path,
+                serialized.value.size(),
+                {serialized.value}
+            );
         }
 
         /// Logs several component batches.
@@ -208,11 +215,7 @@ namespace rerun {
         void log_component_batches(
             const char* entity_path, size_t num_instances, const Ts&... component_batches
         ) {
-            try_log_component_batches(
-                entity_path,
-                num_instances,
-                ComponentBatch(component_batches)...
-            )
+            try_log_component_batches(entity_path, num_instances, component_batches...)
                 .log_on_failure();
         }
 
@@ -231,51 +234,31 @@ namespace rerun {
         Error try_log_component_batches(
             const char* entity_path, size_t num_instances, const Ts&... component_batches
         ) {
-            return try_log_component_batches(
-                entity_path,
-                num_instances,
-                ComponentBatch(component_batches)...
-            );
-        }
-
-        /// Logs several component batches, returning an error on failure.
-        ///
-        ///
-        /// @param num_instances
-        /// Specify the expected number of component instances present in each
-        /// list. Each can have either:
-        /// - exactly `num_instances` instances,
-        /// - a single instance (splat),
-        /// - or zero instance (clear).
-        ///
-        /// @see log_component_batches
-        template <typename... Ts>
-        Error try_log_component_batches(
-            const char* entity_path, size_t num_instances,
-            const ComponentBatch<Ts>&... component_batches
-        ) {
             std::vector<SerializedComponentBatch> serialized_batches;
             serialized_batches.reserve(sizeof...(Ts));
             Error err;
 
             (
                 [&] {
-                    const auto serialization_result = component_batches.serialize();
+                    const auto serialization_result =
+                        AsComponents<Ts>().serialize(component_batches);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
                     } else {
-                        serialized_batches.emplace_back(serialization_result.value);
+                        for (auto& batch : serialization_result.value) {
+                            serialized_batches.emplace_back(std::move(batch));
+                        }
                     }
                 }(),
                 ...
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_log_component_batches(entity_path, num_instances, serialized_batches);
+            return try_log_serialized_batches(entity_path, num_instances, serialized_batches);
         }
 
-        /// @copydoc try_log_component_batches
-        Error try_log_component_batches(
+        // TODO: docs
+        Error try_log_serialized_batches(
             const char* entity_path, size_t num_instances,
             const std::vector<SerializedComponentBatch>& batches
         );

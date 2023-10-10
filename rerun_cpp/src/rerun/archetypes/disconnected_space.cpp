@@ -3,8 +3,6 @@
 
 #include "disconnected_space.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =
@@ -15,14 +13,14 @@ namespace rerun {
             cells.reserve(1);
 
             {
-                auto result = ComponentBatch(disconnected_space).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::DisconnectedSpace>(disconnected_space)
+                        .serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<DisconnectedSpace::INDICATOR_COMPONENT_NAME>
-                    indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

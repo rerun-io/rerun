@@ -3,8 +3,6 @@
 
 #include "time_series_scalar.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char TimeSeriesScalar::INDICATOR_COMPONENT_NAME[] =
@@ -15,34 +13,33 @@ namespace rerun {
             cells.reserve(5);
 
             {
-                auto result = ComponentBatch(scalar).serialize();
+                auto result = ComponentBatch<rerun::components::Scalar>(scalar).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (radius.has_value()) {
-                auto result = ComponentBatch(radius.value()).serialize();
+                auto result = ComponentBatch<rerun::components::Radius>(radius.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (color.has_value()) {
-                auto result = ComponentBatch(color.value()).serialize();
+                auto result = ComponentBatch<rerun::components::Color>(color.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (label.has_value()) {
-                auto result = ComponentBatch(label.value()).serialize();
+                auto result = ComponentBatch<rerun::components::Text>(label.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (scattered.has_value()) {
-                auto result = ComponentBatch(scattered.value()).serialize();
+                auto result = ComponentBatch<rerun::components::ScalarScattering>(scattered.value())
+                                  .serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<TimeSeriesScalar::INDICATOR_COMPONENT_NAME>
-                    indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

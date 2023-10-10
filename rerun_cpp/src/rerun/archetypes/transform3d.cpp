@@ -3,8 +3,6 @@
 
 #include "transform3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Transform3D::INDICATOR_COMPONENT_NAME[] =
@@ -15,13 +13,12 @@ namespace rerun {
             cells.reserve(1);
 
             {
-                auto result = ComponentBatch(transform).serialize();
+                auto result = ComponentBatch<rerun::components::Transform3D>(transform).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<Transform3D::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

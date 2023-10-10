@@ -347,6 +347,7 @@ impl QuotedObject {
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
         hpp_includes.insert_system("utility"); // std::move
+        hpp_includes.insert_rerun("indicator_component.hpp");
 
         let field_declarations = obj
             .fields
@@ -492,6 +493,8 @@ impl QuotedObject {
                         #(#field_declarations;)*
 
                         #(#constants_hpp;)*
+
+                        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
                         #hpp_type_extensions
 
@@ -1269,33 +1272,6 @@ fn component_to_data_cell_method(
     }
 }
 
-fn archetype_indicator(
-    type_ident: &Ident,
-    hpp_includes: &mut Includes,
-    cpp_includes: &mut Includes,
-) -> Method {
-    hpp_includes.insert_rerun("data_cell.hpp");
-    hpp_includes.insert_rerun("arrow.hpp");
-    hpp_includes.insert_rerun("component_batch.hpp");
-    cpp_includes.insert_rerun("indicator_component.hpp");
-
-    Method {
-        docs: "Creates an `AnonymousComponentBatch` out of the associated indicator component. \
-        This allows for associating arbitrary indicator components with arbitrary data. \
-        Check out the `manual_indicator` API example to see what's possible."
-            .into(),
-        declaration: MethodDeclaration {
-            is_static: true,
-            return_type: quote!(AnonymousComponentBatch),
-            name_and_parameters: quote!(indicator()),
-        },
-        definition_body: quote! {
-            return ComponentBatch<components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
-        },
-        inline: false,
-    }
-}
-
 fn archetype_serialize(
     type_ident: &Ident,
     obj: &Object,
@@ -1305,7 +1281,6 @@ fn archetype_serialize(
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("arrow.hpp");
     hpp_includes.insert_rerun("component_batch.hpp");
-    cpp_includes.insert_rerun("indicator_component.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
     let num_fields = quote_integer(obj.fields.len());
@@ -1331,20 +1306,31 @@ fn archetype_serialize(
                     }
                 }
             }
-        } else if field.is_nullable {
-            quote! {
-                if (#field_name.has_value()) {
-                    auto result = ComponentBatch(#field_name.value()).serialize();
-                    RR_RETURN_NOT_OK(result.error);
-                    cells.emplace_back(std::move(result.value));
-                }
-            }
         } else {
-            quote! {
-                {
-                    auto result = ComponentBatch(#field_name).serialize();
-                    RR_RETURN_NOT_OK(result.error);
-                    cells.emplace_back(std::move(result.value));
+            // put on hpp_includes where it's already in
+            let field_type = quote_fqname_as_type_path(
+                hpp_includes,
+                field
+                    .typ
+                    .fqname()
+                    .expect("Archetypes only have components and vectors of components."),
+            );
+
+            if field.is_nullable {
+                quote! {
+                    if (#field_name.has_value()) {
+                        auto result = ComponentBatch<#field_type>(#field_name.value()).serialize();
+                        RR_RETURN_NOT_OK(result.error);
+                        cells.emplace_back(std::move(result.value));
+                    }
+                }
+            } else {
+                quote! {
+                    {
+                        auto result = ComponentBatch<#field_type>(#field_name).serialize();
+                        RR_RETURN_NOT_OK(result.error);
+                        cells.emplace_back(std::move(result.value));
+                    }
                 }
             }
         }
@@ -1364,8 +1350,7 @@ fn archetype_serialize(
             #NEWLINE_TOKEN
             #(#push_batches)*
             {
-                components::IndicatorComponent<#type_ident::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

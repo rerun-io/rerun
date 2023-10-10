@@ -3,8 +3,6 @@
 
 #include "clear.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Clear::INDICATOR_COMPONENT_NAME[] = "rerun.components.ClearIndicator";
@@ -14,13 +12,13 @@ namespace rerun {
             cells.reserve(1);
 
             {
-                auto result = ComponentBatch(is_recursive).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::ClearIsRecursive>(is_recursive).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<Clear::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

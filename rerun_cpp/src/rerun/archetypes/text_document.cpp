@@ -3,8 +3,6 @@
 
 #include "text_document.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char TextDocument::INDICATOR_COMPONENT_NAME[] =
@@ -15,18 +13,18 @@ namespace rerun {
             cells.reserve(2);
 
             {
-                auto result = ComponentBatch(text).serialize();
+                auto result = ComponentBatch<rerun::components::Text>(text).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (media_type.has_value()) {
-                auto result = ComponentBatch(media_type.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::MediaType>(media_type.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

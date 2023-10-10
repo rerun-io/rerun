@@ -3,8 +3,6 @@
 
 #include "asset3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
@@ -14,23 +12,25 @@ namespace rerun {
             cells.reserve(3);
 
             {
-                auto result = ComponentBatch(blob).serialize();
+                auto result = ComponentBatch<rerun::components::Blob>(blob).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (media_type.has_value()) {
-                auto result = ComponentBatch(media_type.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::MediaType>(media_type.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (transform.has_value()) {
-                auto result = ComponentBatch(transform.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::OutOfTreeTransform3D>(transform.value())
+                        .serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<Asset3D::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

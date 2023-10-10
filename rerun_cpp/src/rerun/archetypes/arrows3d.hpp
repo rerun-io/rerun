@@ -13,6 +13,7 @@
 #include "../components/text.hpp"
 #include "../components/vector3d.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -94,6 +95,7 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             // Extensions to generated type defined in 'arrows3d_ext.cpp'

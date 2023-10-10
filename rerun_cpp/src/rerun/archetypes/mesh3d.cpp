@@ -3,8 +3,6 @@
 
 #include "mesh3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Mesh3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Mesh3DIndicator";
@@ -19,7 +17,9 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             if (mesh_properties.has_value()) {
-                auto result = ComponentBatch(mesh_properties.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::MeshProperties>(mesh_properties.value())
+                        .serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
@@ -34,7 +34,8 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             if (mesh_material.has_value()) {
-                auto result = ComponentBatch(mesh_material.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::Material>(mesh_material.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
@@ -49,8 +50,7 @@ namespace rerun {
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<Mesh3D::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

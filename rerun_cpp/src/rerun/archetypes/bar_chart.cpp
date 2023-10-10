@@ -3,8 +3,6 @@
 
 #include "bar_chart.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
@@ -14,13 +12,12 @@ namespace rerun {
             cells.reserve(1);
 
             {
-                auto result = ComponentBatch(values).serialize();
+                auto result = ComponentBatch<rerun::components::TensorData>(values).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<BarChart::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

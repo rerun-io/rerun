@@ -3,8 +3,6 @@
 
 #include "text_log.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
@@ -14,23 +12,23 @@ namespace rerun {
             cells.reserve(3);
 
             {
-                auto result = ComponentBatch(text).serialize();
+                auto result = ComponentBatch<rerun::components::Text>(text).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (level.has_value()) {
-                auto result = ComponentBatch(level.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::TextLogLevel>(level.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (color.has_value()) {
-                auto result = ComponentBatch(color.value()).serialize();
+                auto result = ComponentBatch<rerun::components::Color>(color.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<TextLog::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

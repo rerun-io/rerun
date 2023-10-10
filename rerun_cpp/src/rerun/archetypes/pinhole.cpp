@@ -3,8 +3,6 @@
 
 #include "pinhole.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
@@ -14,23 +12,26 @@ namespace rerun {
             cells.reserve(3);
 
             {
-                auto result = ComponentBatch(image_from_camera).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::PinholeProjection>(image_from_camera)
+                        .serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (resolution.has_value()) {
-                auto result = ComponentBatch(resolution.value()).serialize();
+                auto result =
+                    ComponentBatch<rerun::components::Resolution>(resolution.value()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             if (camera_xyz.has_value()) {
-                auto result = ComponentBatch(camera_xyz.value()).serialize();
+                auto result = ComponentBatch<rerun::components::ViewCoordinates>(camera_xyz.value())
+                                  .serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
             {
-                components::IndicatorComponent<Pinhole::INDICATOR_COMPONENT_NAME> indicator;
-                auto result = ComponentBatch(indicator).serialize();
+                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

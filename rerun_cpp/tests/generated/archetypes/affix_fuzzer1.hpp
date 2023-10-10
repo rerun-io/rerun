@@ -29,6 +29,7 @@
 #include <rerun/arrow.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/data_cell.hpp>
+#include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 #include <vector>
@@ -81,6 +82,7 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             AffixFuzzer1() = default;
