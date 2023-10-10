@@ -7,7 +7,7 @@ use ndarray::Axis;
 use re_data_store::InstancePath;
 use re_data_store::VersionedInstancePathHash;
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, RowId};
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_types::{
@@ -289,9 +289,14 @@ fn view_tensor(
     };
 
     egui::ScrollArea::both().show(ui, |ui| {
-        if let Err(err) =
-            tensor_slice_ui(ctx, ui, state, tensor_path_hash, tensor, dimension_labels)
-        {
+        if let Err(err) = tensor_slice_ui(
+            ctx,
+            ui,
+            state,
+            tensor_path_hash.row_id,
+            tensor,
+            dimension_labels,
+        ) {
             ui.label(ctx.re_ui.error_text(err.to_string()));
         }
     });
@@ -301,12 +306,12 @@ fn tensor_slice_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &PerTensorState,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     dimension_labels: [(String, bool); 2],
 ) -> anyhow::Result<()> {
     let (response, painter, image_rect) =
-        paint_tensor_slice(ctx, ui, state, tensor_path_hash, tensor)?;
+        paint_tensor_slice(ctx, ui, state, tensor_data_row_id, tensor)?;
 
     if !response.hovered() {
         let font_id = egui::TextStyle::Body.resolve(ui.style());
@@ -320,17 +325,17 @@ fn paint_tensor_slice(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &PerTensorState,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     re_tracing::profile_function!();
 
     let tensor_stats = ctx
         .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
         ctx.render_ctx,
-        tensor_path_hash,
+        tensor_data_row_id,
         tensor,
         &tensor_stats,
         state,
