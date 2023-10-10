@@ -60,7 +60,7 @@ def log_data() -> None:
     rr.log("helix/structure/left", rr.Points3D(points1, colors=colors1, radii=0.08))
     rr.log("helix/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
 
-    rr.log("helix/structure/scaffolding", rr.LineStrips3D(list(zip(points1, points2)), colors=[128, 128, 128]))
+    rr.log("helix/structure/scaffolding", rr.LineStrips3D(np.stack((points1, points2), axis=1), colors=[128, 128, 128]))
 
     time_offsets = np.random.rand(NUM_POINTS)
     for i in range(400):
