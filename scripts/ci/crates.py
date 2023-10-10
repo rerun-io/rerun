@@ -28,6 +28,7 @@ import subprocess
 import sys
 from enum import Enum
 from glob import glob
+from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Any, Generator
 
@@ -372,7 +373,12 @@ def publish(dry_run: bool, token: str) -> None:
         print(dependency_graph)
         env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
         job = lambda id: publish_crate(crates[id], token, version, env)  # noqa: E731
-        DAG(dependency_graph).walk_parallel(job, max_tokens=30, refill_interval_s=1)
+        DAG(dependency_graph).walk_parallel(
+            job,
+            max_tokens=30,
+            refill_interval_s=1,
+            num_workers=min(3, cpu_count()),
+        )
 
 
 def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
