@@ -120,6 +120,12 @@ namespace rerun {
             return batch;
         }
 
+        /// Takes ownership of a single component, moving it into the component batch.
+        static ComponentBatch<TComponent> take_ownership(TComponent&& data) {
+            // TODO(andreas): there should be a special path here to avoid allocating a vector.
+            return take_ownership(std::vector<TComponent>{std::move(data)});
+        }
+
         /// Move constructor.
         ComponentBatch(ComponentBatch<TComponent>&& other) {
             switch (other.ownership) {
@@ -177,6 +183,8 @@ namespace rerun {
             // TODO(andreas): `to_data_cell` should actually get our storage representation passed
             // in which we'll allow "type adaptors" in the future (for e.g. setting a stride or
             // similar).
+            // TODO(andreas): For improved error messages we should add a static_assert that
+            // TComponent implements `to_data_cell`.
             switch (ownership) {
                 case BatchOwnership::Borrowed: {
                     auto cell_result = TComponent::to_data_cell(
@@ -293,9 +301,7 @@ namespace rerun {
         }
 
         ComponentBatch<TComponent> operator()(TComponent&& one_and_only) {
-            // TODO(andreas): Optimize this to not allocate a vector, instead have space enough for
-            // a single component. (maybe up to a certain size?)
-            return ComponentBatch<TComponent>::take_ownership({one_and_only});
+            return ComponentBatch<TComponent>::take_ownership(std::move(one_and_only));
         }
     };
 } // namespace rerun
