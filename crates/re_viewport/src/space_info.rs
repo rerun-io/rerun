@@ -1,12 +1,14 @@
+use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_space_view::UnreachableTransformReason;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
 use re_data_store::{store_db::EntityDb, EntityPath, EntityTree};
 use re_types::{
-    archetypes::Pinhole,
+    archetypes::{Boxes2D, Boxes3D, Image, Pinhole, Points2D, Points3D, TextDocument, TextLog},
     components::{DisconnectedSpace, Transform3D},
+    Archetype, ComponentName,
 };
 
 use crate::query_pinhole;
@@ -21,6 +23,14 @@ pub enum SpaceInfoConnection {
 
     /// Explicitly disconnected via a [`DisconnectedSpace`] component.
     Disconnected,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+enum SpaceInfoCategory {
+    Spatial2D,
+    Spatial3D,
+    Other,
+    Empty,
 }
 
 /// Information about one "space".
@@ -79,16 +89,19 @@ impl SpaceInfo {
                     continue;
                 };
 
-                // don't allow nested pinhole
-                let has_pinhole = matches!(
-                    connection,
+                let mut has_pinhole = false;
+
+                match connection {
                     SpaceInfoConnection::Connected {
-                        pinhole: Some(_),
-                        ..
+                        pinhole: Some(_), ..
+                    } => {
+                        has_pinhole = true;
+                        if encountered_pinhole {
+                            continue;
+                        }
                     }
-                );
-                if encountered_pinhole && has_pinhole {
-                    continue;
+                    SpaceInfoConnection::Connected { .. } => {}
+                    SpaceInfoConnection::Disconnected => continue,
                 }
 
                 visit_descendants_with_reachable_transform_recursively(
@@ -117,10 +130,93 @@ pub struct SpaceInfoCollection {
 }
 
 impl SpaceInfoCollection {
+    pub fn len(&self) -> usize {
+        self.spaces.len()
+    }
+}
+
+// TODO(jleibs): These need to get pulled from a registry of some form
+
+static INDICATORS_2D: once_cell::sync::Lazy<BTreeSet<ComponentName>> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            Points2D::indicator().name(),
+            Boxes2D::indicator().name(),
+            Image::indicator().name(),
+        ]
+        .iter()
+        .cloned()
+        .collect()
+    });
+static INDICATORS_3D: once_cell::sync::Lazy<BTreeSet<ComponentName>> =
+    once_cell::sync::Lazy::new(|| {
+        [Points3D::indicator().name(), Boxes3D::indicator().name()]
+            .iter()
+            .cloned()
+            .collect()
+    });
+static INDICATORS_OTHER: once_cell::sync::Lazy<BTreeSet<ComponentName>> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            TextLog::indicator().name(),
+            TextDocument::indicator().name(),
+        ]
+        .iter()
+        .cloned()
+        .collect()
+    });
+
+fn populate_categories(
+    categories: &mut BTreeMap<EntityPath, BTreeMap<SpaceInfoCategory, usize>>,
+    tree: &EntityTree,
+) -> BTreeMap<SpaceInfoCategory, usize> {
+    let key_set: BTreeSet<ComponentName> = tree.components.keys().cloned().collect();
+
+    let mut categories_for_subtree = BTreeMap::default();
+
+    for child in tree.children.values() {
+        for (cat, count) in populate_categories(categories, child) {
+            *categories_for_subtree.entry(cat).or_default() += count;
+        }
+    }
+
+    if !key_set.is_disjoint(&INDICATORS_2D) {
+        *categories_for_subtree
+            .entry(SpaceInfoCategory::Spatial2D)
+            .or_default() += 1;
+    }
+    if !key_set.is_disjoint(&INDICATORS_3D) {
+        *categories_for_subtree
+            .entry(SpaceInfoCategory::Spatial3D)
+            .or_default() += 1;
+    }
+    if !key_set.is_disjoint(&INDICATORS_OTHER) {
+        *categories_for_subtree
+            .entry(SpaceInfoCategory::Other)
+            .or_default() += 1;
+    }
+
+    categories.insert(tree.path.clone(), categories_for_subtree.clone());
+
+    categories_for_subtree
+}
+
+fn best_category(category_counts: &BTreeMap<SpaceInfoCategory, usize>) -> SpaceInfoCategory {
+    category_counts
+        .iter()
+        .sorted_by(|(_, v1), (_, v2)| v2.cmp(v1))
+        .next()
+        .map_or(SpaceInfoCategory::Empty, |(k, _)| *k)
+}
+
+impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
     pub fn new(entity_db: &EntityDb) -> Self {
         re_tracing::profile_function!();
+
+        let mut categories = BTreeMap::default();
+        populate_categories(&mut categories, &entity_db.tree);
 
         fn add_children(
             entity_db: &EntityDb,
@@ -128,6 +224,7 @@ impl SpaceInfoCollection {
             parent_space: &mut SpaceInfo,
             tree: &EntityTree,
             query: &LatestAtQuery,
+            categories: &BTreeMap<EntityPath, BTreeMap<SpaceInfoCategory, usize>>,
         ) {
             // Determine how the paths are connected.
             let store = &entity_db.data_store;
@@ -146,6 +243,20 @@ impl SpaceInfoCollection {
                 .map_or(false, |dp| dp.0)
             {
                 Some(SpaceInfoConnection::Disconnected)
+            } else if let (Some(parent_categories), Some(space_categories)) = (
+                categories.get(&parent_space.path),
+                categories.get(&tree.path),
+            ) {
+                let best_parent_category = best_category(parent_categories);
+                let best_space_category = best_category(space_categories);
+                if best_parent_category != best_space_category
+                    || parent_categories.get(&best_parent_category)
+                        == space_categories.get(&best_space_category)
+                {
+                    Some(SpaceInfoConnection::Disconnected)
+                } else {
+                    None
+                }
             } else {
                 None
             };
@@ -169,6 +280,7 @@ impl SpaceInfoCollection {
                         &mut child_space_info,
                         child_tree,
                         query,
+                        categories,
                     );
                 }
                 spaces_info
@@ -181,7 +293,14 @@ impl SpaceInfoCollection {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(entity_db, spaces_info, parent_space, child_tree, query);
+                    add_children(
+                        entity_db,
+                        spaces_info,
+                        parent_space,
+                        child_tree,
+                        query,
+                        categories,
+                    );
                 }
             }
         }
@@ -208,6 +327,7 @@ impl SpaceInfoCollection {
             &mut root_space_info,
             &entity_db.tree,
             &query,
+            &categories,
         );
         spaces_info
             .spaces
