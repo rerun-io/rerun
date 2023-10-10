@@ -231,7 +231,7 @@ fn write_examples_manifest() -> Result<()> {
 }
 
 fn write_examples_manifest_if_necessary() {
-    if !re_build_tools::is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
+    if !re_build_tools::is_in_rerun_workspace()
         || re_build_tools::is_tracked_env_var_set("RERUN_IS_PUBLISHING")
     {
         return;

@@ -37,7 +37,7 @@ fn main() {
         return;
     }
 
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
+    if !re_build_tools::is_in_rerun_workspace() {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
     }

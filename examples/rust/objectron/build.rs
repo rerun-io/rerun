@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use re_build_tools::{is_tracked_env_var_set, write_file_if_necessary};
+use re_build_tools::write_file_if_necessary;
 
 fn main() -> Result<(), std::io::Error> {
     if std::env::var("CI").is_ok() {
@@ -8,7 +8,7 @@ fn main() -> Result<(), std::io::Error> {
         // anyway.
         return Ok(());
     }
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
+    if !re_build_tools::is_in_rerun_workspace() {
         // Only run if we are in the rerun workspace, not on users machines (if we ever publish the example).
         return Ok(());
     }

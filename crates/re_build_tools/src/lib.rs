@@ -57,6 +57,13 @@ pub(crate) fn should_output_cargo_build_instructions() -> bool {
     OUTPUT_CARGO_BUILD_INSTRUCTIONS.load(Ordering::Relaxed)
 }
 
+/// Are we running inside the workspace of <https://github.com/rerun-io/rerun> ?
+///
+/// Otherwise we might be running on users machines.
+pub fn is_in_rerun_workspace() -> bool {
+    is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
+}
+
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 ///
 /// Use this crate together with the `re_build_info` crate.

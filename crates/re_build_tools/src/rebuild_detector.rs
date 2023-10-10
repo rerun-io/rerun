@@ -15,7 +15,7 @@ use crate::should_output_cargo_build_instructions;
 /// This will work even if the package depends on crates that are outside of the workspace,
 /// included with `path = …`
 pub fn rebuild_if_crate_changed(pkg_name: &str) {
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
+    if !crate::is_in_rerun_workspace() {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
     }
