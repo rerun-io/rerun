@@ -10,15 +10,17 @@ permissions:
   contents: read
 
 jobs:
+  # BEWARE(streetsidesoftware/cspell-action#187): a misconfigured cspell will _not_ have a non-zero exit code...
   spellcheck:
     name: Spellcheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: streetsidesoftware/cspell-action@v2
+      - uses: streetsidesoftware/cspell-action@v3
         with:
           config: "docs/cspell.json"
           files: "**/*.md"
+          strict: true
   linkinator:
     name: linkinator
     runs-on: ubuntu-latest
