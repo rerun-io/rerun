@@ -59,7 +59,7 @@ namespace rerun {
         ///     rec.log(
         ///         "triangle",
         ///         rr::Mesh3D(vertex_positions)
-        ///             .with_vertex_normals({0.0, 0.0, 1.0})
+        ///             .with_vertex_normals({{0.0, 0.0, 1.0}})
         ///             .with_vertex_colors(vertex_colors)
         ///             .with_mesh_properties(rrc::MeshProperties::from_triangle_indices(indices))
         ///             .with_mesh_material(rrc::Material::from_albedo_factor(0xCC00CCFF))

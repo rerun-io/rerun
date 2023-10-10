@@ -55,7 +55,7 @@ namespace rerun {
         ///                     rr::datatypes::Angle::degrees(30.0f)
         ///                 ),
         ///             })
-        ///             .with_radii(0.025f)
+        ///             .with_radii({0.025f})
         ///             .with_colors({
         ///                 rr::datatypes::Rgba32(255, 0, 0),
         ///                 rr::datatypes::Rgba32(0, 255, 0),
