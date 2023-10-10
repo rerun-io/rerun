@@ -17,92 +17,92 @@ namespace rerun {
         cells.reserve(18);
 
         {
-            auto result = archetype.fuzz1101.serialize();
+            auto result = (archetype.fuzz1101).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1102.serialize();
+            auto result = (archetype.fuzz1102).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1103.serialize();
+            auto result = (archetype.fuzz1103).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1104.serialize();
+            auto result = (archetype.fuzz1104).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1105.serialize();
+            auto result = (archetype.fuzz1105).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1106.serialize();
+            auto result = (archetype.fuzz1106).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1107.serialize();
+            auto result = (archetype.fuzz1107).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1108.serialize();
+            auto result = (archetype.fuzz1108).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1109.serialize();
+            auto result = (archetype.fuzz1109).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1110.serialize();
+            auto result = (archetype.fuzz1110).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1111.serialize();
+            auto result = (archetype.fuzz1111).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1112.serialize();
+            auto result = (archetype.fuzz1112).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1113.serialize();
+            auto result = (archetype.fuzz1113).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1114.serialize();
+            auto result = (archetype.fuzz1114).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1115.serialize();
+            auto result = (archetype.fuzz1115).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1116.serialize();
+            auto result = (archetype.fuzz1116).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1117.serialize();
+            auto result = (archetype.fuzz1117).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = archetype.fuzz1118.serialize();
+            auto result = (archetype.fuzz1118).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

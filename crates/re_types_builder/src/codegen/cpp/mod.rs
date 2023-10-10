@@ -1294,27 +1294,11 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
     let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
-        if field.typ.is_plural() {
-            if field.is_nullable {
-                quote! {
-                    if (#field_accessor.has_value()) {
-                        auto result = #field_accessor.value().serialize();
-                        RR_RETURN_NOT_OK(result.error);
-                        cells.emplace_back(std::move(result.value));
-                    }
-                }
-            } else {
-                quote! {
-                    {
-                        auto result = #field_accessor.serialize();
-                        RR_RETURN_NOT_OK(result.error);
-                        cells.emplace_back(std::move(result.value));
-                    }
-                }
-            }
-            // TODO: why are mono components different
+
+        // TODO(andreas): Introducing MonoComponentBatch will remove the need for this.
+        let wrapping_type = if field.typ.is_plural() {
+            quote!()
         } else {
-            // put on hpp_includes where it's already in
             let field_type = quote_fqname_as_type_path(
                 hpp_includes,
                 field
@@ -1322,22 +1306,23 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
                     .fqname()
                     .expect("Archetypes only have components and vectors of components."),
             );
+            quote!(ComponentBatch<#field_type>)
+        };
 
-            if field.is_nullable {
-                quote! {
-                    if (#field_accessor.has_value()) {
-                        auto result = ComponentBatch<#field_type>(#field_accessor.value()).serialize();
-                        RR_RETURN_NOT_OK(result.error);
-                        cells.emplace_back(std::move(result.value));
-                    }
+        if field.is_nullable {
+            quote! {
+                if (#field_accessor.has_value()) {
+                    auto result = #wrapping_type(#field_accessor.value()).serialize();
+                    RR_RETURN_NOT_OK(result.error);
+                    cells.emplace_back(std::move(result.value));
                 }
-            } else {
-                quote! {
-                    {
-                        auto result = ComponentBatch<#field_type>(#field_accessor).serialize();
-                        RR_RETURN_NOT_OK(result.error);
-                        cells.emplace_back(std::move(result.value));
-                    }
+            }
+        } else {
+            quote! {
+                {
+                    auto result = #wrapping_type(#field_accessor).serialize();
+                    RR_RETURN_NOT_OK(result.error);
+                    cells.emplace_back(std::move(result.value));
                 }
             }
         }
@@ -1857,6 +1842,9 @@ fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectFie
             let elem_type = quote_element_type(hpp_includes, elem_type);
             quote! { ComponentBatch<#elem_type> }
         }
+        // TODO(andreas): This should emit `MonoComponentBatch` which will be a constrainted version of `ComponentBatch`.
+        // (simply adapting `MonoComponentBatch` breaks some existing code, so this not entirely trivial to do.
+        //  Designing constraints for `MonoComponentBatch` is harder still)
         Type::Object(fqname) => quote_fqname_as_type_path(hpp_includes, fqname),
         _ => panic!("Only vectors and objects are allowed in archetypes."),
     }

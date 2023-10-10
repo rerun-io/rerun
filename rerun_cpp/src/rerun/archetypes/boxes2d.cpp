@@ -16,27 +16,27 @@ namespace rerun {
         cells.reserve(8);
 
         {
-            auto result = archetype.half_sizes.serialize();
+            auto result = (archetype.half_sizes).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.centers.has_value()) {
-            auto result = archetype.centers.value().serialize();
+            auto result = (archetype.centers.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = archetype.colors.value().serialize();
+            auto result = (archetype.colors.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = archetype.radii.value().serialize();
+            auto result = (archetype.radii.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            auto result = archetype.labels.value().serialize();
+            auto result = (archetype.labels.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
@@ -47,12 +47,12 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = archetype.class_ids.value().serialize();
+            auto result = (archetype.class_ids.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.instance_keys.has_value()) {
-            auto result = archetype.instance_keys.value().serialize();
+            auto result = (archetype.instance_keys.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

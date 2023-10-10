@@ -17,92 +17,92 @@ namespace rerun {
         cells.reserve(18);
 
         if (archetype.fuzz2101.has_value()) {
-            auto result = archetype.fuzz2101.value().serialize();
+            auto result = (archetype.fuzz2101.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2102.has_value()) {
-            auto result = archetype.fuzz2102.value().serialize();
+            auto result = (archetype.fuzz2102.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2103.has_value()) {
-            auto result = archetype.fuzz2103.value().serialize();
+            auto result = (archetype.fuzz2103.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2104.has_value()) {
-            auto result = archetype.fuzz2104.value().serialize();
+            auto result = (archetype.fuzz2104.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2105.has_value()) {
-            auto result = archetype.fuzz2105.value().serialize();
+            auto result = (archetype.fuzz2105.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2106.has_value()) {
-            auto result = archetype.fuzz2106.value().serialize();
+            auto result = (archetype.fuzz2106.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2107.has_value()) {
-            auto result = archetype.fuzz2107.value().serialize();
+            auto result = (archetype.fuzz2107.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2108.has_value()) {
-            auto result = archetype.fuzz2108.value().serialize();
+            auto result = (archetype.fuzz2108.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2109.has_value()) {
-            auto result = archetype.fuzz2109.value().serialize();
+            auto result = (archetype.fuzz2109.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2110.has_value()) {
-            auto result = archetype.fuzz2110.value().serialize();
+            auto result = (archetype.fuzz2110.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2111.has_value()) {
-            auto result = archetype.fuzz2111.value().serialize();
+            auto result = (archetype.fuzz2111.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2112.has_value()) {
-            auto result = archetype.fuzz2112.value().serialize();
+            auto result = (archetype.fuzz2112.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2113.has_value()) {
-            auto result = archetype.fuzz2113.value().serialize();
+            auto result = (archetype.fuzz2113.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2114.has_value()) {
-            auto result = archetype.fuzz2114.value().serialize();
+            auto result = (archetype.fuzz2114.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2115.has_value()) {
-            auto result = archetype.fuzz2115.value().serialize();
+            auto result = (archetype.fuzz2115.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2116.has_value()) {
-            auto result = archetype.fuzz2116.value().serialize();
+            auto result = (archetype.fuzz2116.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2117.has_value()) {
-            auto result = archetype.fuzz2117.value().serialize();
+            auto result = (archetype.fuzz2117.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2118.has_value()) {
-            auto result = archetype.fuzz2118.value().serialize();
+            auto result = (archetype.fuzz2118.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
