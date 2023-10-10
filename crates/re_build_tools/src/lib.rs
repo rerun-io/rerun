@@ -60,7 +60,12 @@ pub(crate) fn should_output_cargo_build_instructions() -> bool {
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 ///
 /// Use this crate together with the `re_build_info` crate.
-pub fn export_env_vars() {
+pub fn export_build_info_vars_for_crate(crate_name: &str) {
+    rebuild_if_crate_changed(crate_name);
+    export_build_info_env_vars();
+}
+
+fn export_build_info_env_vars() {
     // target triple
     set_env("RE_BUILD_TARGET_TRIPLE", &std::env::var("TARGET").unwrap());
     set_env("RE_BUILD_GIT_HASH", &git_hash().unwrap_or_default());
