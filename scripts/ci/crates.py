@@ -376,7 +376,7 @@ def publish(dry_run: bool, token: str) -> None:
         DAG(dependency_graph).walk_parallel(
             job,
             max_tokens=30,
-            refill_interval_s=1,
+            refill_interval_sec=1,
             num_workers=min(3, cpu_count()),
         )
 

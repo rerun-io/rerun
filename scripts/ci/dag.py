@@ -25,7 +25,7 @@ class DAG(Generic[_T]):
         f: Callable[[_T], None],
         *,
         max_tokens: int,
-        refill_interval_s: float,
+        refill_interval_sec: float,
         num_workers: int = max(1, cpu_count() - 1),
     ) -> None:
         """
@@ -36,7 +36,7 @@ class DAG(Generic[_T]):
         Concurrency is limited by the following bucket rate limiting algorithm:
         * Processing may not begin until a token can be acquired from the bucket.
         * There are at most `max_tokens - num_in_progress` in the bucket at any time.
-        * Tokens are refreshed every `refill_interval_s`.
+        * Tokens are refreshed every `refill_interval_sec`.
         """
 
         state = _State(self)
@@ -52,6 +52,7 @@ class DAG(Generic[_T]):
                 while not shutdown.is_set():
                     try:
                         node = task_queue.get_nowait()
+                        state._start(node)
                         f(node)
                         done_queue.put(node)
                     except Empty:
@@ -85,7 +86,7 @@ class DAG(Generic[_T]):
                 # the push and pull loops can eventually make progress.
                 while len(state._queue) > 0:  # push loop
                     now = time.time()
-                    if now - last_refill > refill_interval_s:
+                    if now - last_refill > refill_interval_sec:
                         tokens = max_tokens - num_in_progress
                         last_refill = now
 
@@ -104,15 +105,18 @@ class DAG(Generic[_T]):
                     time.sleep(0)  # yield here to prevent busy-looping
 
             shutdown.set()
+            state._sanity_check()
 
 
 class _NodeState(Generic[_T]):
     def __init__(self, node: _T):
         self.node = node
+        self.started: bool = False
+        """Whether or not a worker ever picked up this node for processing."""
         self.counter: int = 0
-        """The number of this node's dependencies which have not yet been processed"""
+        """The number of this node's dependencies which have not yet been processed."""
         self.dependents: list[_NodeState[_T]] = []
-        """The list of dependents which are waiting for this node to be processed"""
+        """The list of dependents which are waiting for this node to be processed."""
 
 
 class _State(Generic[_T]):
@@ -134,6 +138,9 @@ class _State(Generic[_T]):
             self._node_states[node] = _NodeState(node)
         return self._node_states[node]
 
+    def _start(self, node: _T) -> None:
+        self._node_states[node].started = True
+
     def _finish(self, node: _T) -> None:
         # mark the `node` as finished, which decrements the pending dependency counter on its dependents
         # once a node reaches `0` on its counter, it is marked ready and put in the queue for processing
@@ -146,6 +153,11 @@ class _State(Generic[_T]):
     def _is_done(self) -> bool:
         # the number of nodes in the graph should never change
         return self._num_finished == len(self._node_states)
+
+    def _sanity_check(self) -> None:
+        for node, state in self._node_states.items():
+            assert state.counter == 0, f"counter for {node} was not at 0"
+            assert state.started, f"{node} was never processed"
 
 
 # example:
@@ -175,12 +187,12 @@ def main() -> None:
     dag.walk_parallel(
         process,
         max_tokens=2,
-        refill_interval_s=1,
+        refill_interval_sec=1,
     )
     dag.walk_parallel(
         process,
         max_tokens=2,
-        refill_interval_s=1,
+        refill_interval_sec=1,
     )
 
 
