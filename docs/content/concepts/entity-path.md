@@ -31,7 +31,7 @@ rr.log("camera/image/detections/points", rr.Points2D(points))
 ```
 Nothing needs to be explicitly logged to `"camera"` or `"camera/image/detection"` to make the above valid.
 
-#### Path parts
+### Path parts
 
 A path can look like this: `camera/"Left"/detection/#42/bbox`. Each part (between the slashes) can either be:
 
@@ -55,3 +55,7 @@ the relationship between that entity and its direct parent.
  * In the future, it will also be possible to use path-hierarchy to set default-values for descendants
    ([#1158](https://github.com/rerun-io/rerun/issues/1158)).
 
+### Reserved Paths
+
+The path prefix "rerun/" is considered reserved for use by the Rerun SDK itself and should not be used for logging
+user data. This is where Rerun will log additional information such as warnings.
