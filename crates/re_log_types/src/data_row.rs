@@ -281,13 +281,15 @@ impl DataRow {
             .map(|batch| DataCell::from_component_batch(batch.as_ref()))
             .collect::<Result<Vec<DataCell>, _>>()?;
 
-        Ok(DataRow::from_cells(
+        let mut row = DataRow::from_cells(
             row_id,
             timepoint,
             entity_path,
             as_components.num_instances() as _,
             data_cells,
-        )?)
+        )?;
+        row.compute_all_size_bytes();
+        Ok(row)
     }
 
     /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
