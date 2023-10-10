@@ -37,6 +37,6 @@ SCENARIO(
         from_manual.instance_keys = {123ull, 124ull};
         from_manual.draw_order = 123;
 
-        test_serialization_for_manual_and_builder(from_manual, from_builder);
+        test_compare_archetype_serialization(from_manual, from_builder);
     }
 }

@@ -81,6 +81,6 @@ SCENARIO(
             }
         }
 
-        test_serialization_for_manual_and_builder(from_utilities, manual_archetype);
+        test_compare_archetype_serialization(from_utilities, manual_archetype);
     }
 }

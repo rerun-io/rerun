@@ -8,31 +8,28 @@
 #include <rerun/data_cell.hpp>
 
 template <typename T>
-void test_serialization_for_manual_and_builder(const T& from_manual, const T& from_builder) {
+void test_compare_archetype_serialization(const T& arch_a, const T& arch_b) {
     THEN("convert to component lists") {
-        auto from_builder_serialized_result = rerun::AsComponents<T>::serialize(from_builder);
-        auto from_manual_serialized_result = rerun::AsComponents<T>::serialize(from_manual);
+        auto arch_b_serialized_result = rerun::AsComponents<T>::serialize(arch_b);
+        auto arch_a_serialized_result = rerun::AsComponents<T>::serialize(arch_a);
 
         AND_THEN("serializing each list succeeds") {
-            REQUIRE(from_builder_serialized_result.is_ok());
-            REQUIRE(from_manual_serialized_result.is_ok());
+            REQUIRE(arch_b_serialized_result.is_ok());
+            REQUIRE(arch_a_serialized_result.is_ok());
 
-            const auto& from_builder_serialized = from_builder_serialized_result.value;
-            const auto& from_manual_serialized = from_manual_serialized_result.value;
-            REQUIRE(from_builder_serialized.size() == from_manual_serialized.size());
+            const auto& arch_b_serialized = arch_b_serialized_result.value;
+            const auto& arch_a_serialized = arch_a_serialized_result.value;
+            REQUIRE(arch_b_serialized.size() == arch_a_serialized.size());
 
             AND_THEN("the serialized data is the same") {
-                for (size_t i = 0; i < from_builder_serialized.size(); ++i) {
+                for (size_t i = 0; i < arch_b_serialized.size(); ++i) {
+                    CHECK(arch_b_serialized[i].num_instances == arch_a_serialized[i].num_instances);
                     CHECK(
-                        from_builder_serialized[i].num_instances ==
-                        from_manual_serialized[i].num_instances
+                        arch_b_serialized[i].data_cell.component_name ==
+                        arch_a_serialized[i].data_cell.component_name
                     );
-                    CHECK(
-                        from_builder_serialized[i].data_cell.component_name ==
-                        from_manual_serialized[i].data_cell.component_name
-                    );
-                    CHECK(from_builder_serialized[i].data_cell.buffer->Equals(
-                        *from_manual_serialized[i].data_cell.buffer
+                    CHECK(arch_b_serialized[i].data_cell.buffer->Equals(
+                        *arch_a_serialized[i].data_cell.buffer
                     ));
                 }
             }

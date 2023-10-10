@@ -31,7 +31,7 @@
 //         from_manual.class_ids = {126, 127};
 //         from_manual.instance_keys = {66ull, 666ull};
 
-//         test_serialization_for_manual_and_builder(from_manual, from_builder);
+//         test_compare_archetype_serialization(from_manual, from_builder);
 //     }
 
 //     GIVEN("Constructed from via from_centers_and_half_sizes and manually") {
@@ -41,7 +41,7 @@
 //         from_manual.centers = {{1.f, 2.f}};
 //         from_manual.half_sizes = {{4.f, 6.f}};
 
-//         test_serialization_for_manual_and_builder(from_manual, from_builder);
+//         test_compare_archetype_serialization(from_manual, from_builder);
 //     }
 
 //     GIVEN("Constructed from via from_sizes and manually") {
@@ -50,7 +50,7 @@
 //         Boxes2D from_manual;
 //         from_manual.half_sizes = {{0.5f, 1.f}};
 
-//         test_serialization_for_manual_and_builder(from_manual, from_builder);
+//         test_compare_archetype_serialization(from_manual, from_builder);
 //     }
 
 //     GIVEN("Constructed from via from_centers_and_sizes and manually") {
@@ -60,7 +60,7 @@
 //         from_manual.centers = {{1.f, 2.f}};
 //         from_manual.half_sizes = {{2.f, 3.f}};
 
-//         test_serialization_for_manual_and_builder(from_manual, from_builder);
+//         test_compare_archetype_serialization(from_manual, from_builder);
 //     }
 
 //     GIVEN("Constructed from via from_mins_and_sizes and manually") {
@@ -70,6 +70,6 @@
 //         from_manual.centers = {{0.f, 1.f}};
 //         from_manual.half_sizes = {{1.f, 2.f}};
 
-//         test_serialization_for_manual_and_builder(from_manual, from_builder);
+//         test_compare_archetype_serialization(from_manual, from_builder);
 //     }
 // }

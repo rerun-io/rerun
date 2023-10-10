@@ -30,7 +30,7 @@ SCENARIO(
         });
         from_manual.resolution = rerun::datatypes::Vec2D(1.0f, 2.0f);
 
-        test_serialization_for_manual_and_builder(from_manual, from_builder);
+        test_compare_archetype_serialization(from_manual, from_builder);
     }
 
     GIVEN("Constructed from via focal_length_and_resolution and manually") {
@@ -44,6 +44,6 @@ SCENARIO(
         });
         from_manual.resolution = rerun::datatypes::Vec2D(3.0f, 4.0f);
 
-        test_serialization_for_manual_and_builder(from_manual, from_builder);
+        test_compare_archetype_serialization(from_manual, from_builder);
     }
 }

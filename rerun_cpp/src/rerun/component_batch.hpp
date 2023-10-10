@@ -40,6 +40,23 @@ namespace rerun {
         );
     };
 
+    /// Type of ownership of the the batch's data.
+    ///
+    /// User access to this is typically only needed for debugging and testing.
+    enum class BatchOwnership {
+        /// The component batch does not own the data and only has a pointer and a
+        /// size.
+        Borrowed,
+
+        /// The component batch owns the data via an std::vector.
+        VectorOwned,
+
+        /// The component batch was moved.
+        /// This could be achieved by other means, but this makes it easiest to follow and
+        /// debug.
+        Moved,
+    };
+
     /// Generic list of components that are contiguous in memory.
     ///
     /// Any creation from a non-temporary will neither copy the data nor take ownership of it.
@@ -218,21 +235,14 @@ namespace rerun {
             }
         }
 
+        /// Returns the ownership of the component batch.
+        ///
+        /// This is usually only needed for debugging and testing.
+        BatchOwnership get_ownership() const {
+            return ownership;
+        }
+
       private:
-        enum class BatchOwnership {
-            /// The component batch does not own the data and only has a pointer and a
-            /// size.
-            Borrowed,
-
-            /// The component batch owns the data via an std::vector.
-            VectorOwned,
-
-            /// The component batch was moved.
-            /// This could be achieved by other means, but this makes it easiest to follow and
-            /// debug.
-            Moved,
-        };
-
         BatchOwnership ownership;
 
         template <typename T>
@@ -305,5 +315,3 @@ namespace rerun {
         }
     };
 } // namespace rerun
-
-// TODO: add tests for when things are owned or not.
