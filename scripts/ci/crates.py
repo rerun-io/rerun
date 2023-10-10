@@ -43,7 +43,7 @@ CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 
 
-def cargo(args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}, dry_run: bool = False) -> Any:
+def cargo(args: str, *, cwd: str | Path | None = None, env: dict[str, Any] = {}, dry_run: bool = False) -> Any:
     cmd = [CARGO_PATH] + args.split()
     # print(f"> {subprocess.list2cmdline(cmd)}")
     if not dry_run:
