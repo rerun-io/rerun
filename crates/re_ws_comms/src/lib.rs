@@ -9,7 +9,7 @@ mod client;
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "client")]
-pub use client::Connection;
+pub use client::viewer_to_server;
 
 #[cfg(feature = "server")]
 mod server;
