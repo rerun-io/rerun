@@ -375,8 +375,8 @@ def publish(dry_run: bool, token: str) -> None:
         job = lambda id: publish_crate(crates[id], token, version, env)  # noqa: E731
         DAG(dependency_graph).walk_parallel(
             job,
-            max_tokens=30,
-            refill_interval_sec=1,
+            max_tokens=30, # 30 tokens per minute (burst limit in crates.io)
+            refill_interval_sec=60,
             num_workers=min(3, cpu_count()),
         )
 

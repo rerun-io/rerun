@@ -111,10 +111,13 @@ class DAG(Generic[_T]):
 class _NodeState(Generic[_T]):
     def __init__(self, node: _T):
         self.node = node
+
         self.started: bool = False
         """Whether or not a worker ever picked up this node for processing."""
-        self.counter: int = 0
+
+        self.pending_dependencies: int = 0
         """The number of this node's dependencies which have not yet been processed."""
+
         self.dependents: list[_NodeState[_T]] = []
         """The list of dependents which are waiting for this node to be processed."""
 
@@ -126,12 +129,12 @@ class _State(Generic[_T]):
         self._num_finished: int = 0
 
         for node, deps in dag._graph.items():
-            new_node = self._get_or_insert(node)
-            new_node.counter += len(deps)
+            new_node_state = self._get_or_insert(node)
+            new_node_state.pending_dependencies += len(deps)
             for dep in deps:
-                self._get_or_insert(dep).dependents.append(new_node)
+                self._get_or_insert(dep).dependents.append(new_node_state)
 
-        self._queue.extend(state.node for state in self._node_states.values() if state.counter == 0)
+        self._queue.extend(state.node for state in self._node_states.values() if state.pending_dependencies == 0)
 
     def _get_or_insert(self, node: _T) -> _NodeState[_T]:
         if node not in self._node_states:
@@ -145,8 +148,9 @@ class _State(Generic[_T]):
         # mark the `node` as finished, which decrements the pending dependency counter on its dependents
         # once a node reaches `0` on its counter, it is marked ready and put in the queue for processing
         for dependent in self._node_states[node].dependents:
-            dependent.counter -= 1
-            if dependent.counter == 0:
+            assert dependent.pending_dependencies > 0, f"unexpected state for {dependent.node}"
+            dependent.pending_dependencies -= 1
+            if dependent.pending_dependencies == 0:
                 self._queue.append(dependent.node)
         self._num_finished += 1
 
@@ -156,7 +160,7 @@ class _State(Generic[_T]):
 
     def _sanity_check(self) -> None:
         for node, state in self._node_states.items():
-            assert state.counter == 0, f"counter for {node} was not at 0"
+            assert state.pending_dependencies == 0, f"pending_dependencies for {node} was not at 0"
             assert state.started, f"{node} was never processed"
 
 
