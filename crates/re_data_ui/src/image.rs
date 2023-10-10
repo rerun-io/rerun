@@ -32,7 +32,7 @@ impl EntityDataUi for re_types::components::TensorData {
     ) {
         re_tracing::profile_function!();
 
-        let row_id = ctx
+        let tensor_data_row_id = ctx
             .store_db
             .entity_db
             .data_store
@@ -40,10 +40,11 @@ impl EntityDataUi for re_types::components::TensorData {
             .map_or(RowId::ZERO, |tensor| tensor.row_id);
 
         // NOTE: Tensors don't support batches at the moment so always splat.
-        let tensor_path_hash = InstancePathHash::entity_splat(entity_path).versioned(row_id);
+        let tensor_path_hash =
+            InstancePathHash::entity_splat(entity_path).versioned(tensor_data_row_id);
         let decoded = ctx
             .cache
-            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, self.0.clone()));
+            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, self.0.clone()));
         match decoded {
             Ok(decoded) => {
                 let annotations = crate::annotations(ctx, query, entity_path);
@@ -80,7 +81,7 @@ fn tensor_ui(
     // Even if not, we will show info about the tensor.
     let tensor_stats = ctx
         .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
     let debug_name = entity_path.to_string();
 
     let meaning = image_meaning_for_entity(entity_path, ctx);

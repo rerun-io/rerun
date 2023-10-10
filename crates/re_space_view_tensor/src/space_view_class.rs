@@ -101,7 +101,7 @@ impl PerTensorState {
 
         let tensor_stats = ctx
             .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(*tensor_path_hash, tensor));
+            .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
         ctx.re_ui
             .selection_grid(ui, "tensor_selection_ui")
             .show(ui, |ui| {
@@ -327,7 +327,7 @@ fn paint_tensor_slice(
 
     let tensor_stats = ctx
         .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
         ctx.render_ctx,
         tensor_path_hash,

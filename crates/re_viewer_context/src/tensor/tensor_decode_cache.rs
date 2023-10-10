@@ -1,4 +1,3 @@
-use re_data_store::VersionedInstancePathHash;
 use re_log_types::RowId;
 use re_types::{
     datatypes::TensorData,
@@ -31,17 +30,19 @@ pub struct TensorDecodeCache {
 impl TensorDecodeCache {
     /// Decode some [`TensorData`] if necessary and cache the result.
     ///
+    /// The key should be the `RowId` of the `TensorData`.
+    /// NOTE: `TensorData` is never batched (they are mono-components),
+    /// so we don't need the instance id here.
+    ///
     /// This is a no-op for tensors that are not compressed.
     ///
     /// Currently supports JPEG encoded tensors.
     pub fn entry(
         &mut self,
-        key: VersionedInstancePathHash,
+        key: RowId,
         maybe_encoded_tensor: TensorData,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!();
-
-        let key = key.row_id;
 
         match DecodedTensor::try_from(maybe_encoded_tensor) {
             Ok(decoded_tensor) => Ok(decoded_tensor),

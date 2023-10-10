@@ -71,7 +71,7 @@ fn to_textured_rect(
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
         .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
@@ -239,12 +239,13 @@ impl ImagesPart {
                 return Ok(());
             }
 
+            let tensor_data_row_id = arch_view.primary_row_id();
             // NOTE: Tensors don't support batches at the moment so always splat.
             let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
+                InstancePathHash::entity_splat(ent_path).versioned(tensor_data_row_id);
             let tensor = match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
             {
                 Ok(tensor) => tensor,
                 Err(err) => {
@@ -330,12 +331,13 @@ impl ImagesPart {
                 return Ok(());
             }
 
+            let tensor_data_row_id = arch_view.primary_row_id();
             // NOTE: Tensors don't support batches at the moment so always splat.
             let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
+                InstancePathHash::entity_splat(ent_path).versioned(tensor_data_row_id);
             let tensor = match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
             {
                 Ok(tensor) => tensor,
                 Err(err) => {
@@ -447,12 +449,13 @@ impl ImagesPart {
                 return Ok(());
             }
 
+            let tensor_data_row_id = arch_view.primary_row_id();
             // NOTE: Tensors don't support batches at the moment so always splat.
             let tensor_path_hash =
                 InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
             let tensor = match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
             {
                 Ok(tensor) => tensor,
                 Err(err) => {
@@ -543,7 +546,7 @@ impl ImagesPart {
         let debug_name = ent_path.to_string();
         let tensor_stats = ctx
             .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
+            .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
         let depth_texture = re_viewer_context::gpu_bridge::depth_tensor_to_gpu(
             ctx.render_ctx,
             &debug_name,

@@ -720,12 +720,12 @@ fn image_hover_ui(
 
             let decoded_tensor = ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0));
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash.row_id, tensor.0));
             match decoded_tensor {
                 Ok(decoded_tensor) => {
                     let annotations = annotations.0.find(&instance_path.entity_path);
                     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
-                        c.entry(tensor_path_hash, &decoded_tensor)
+                        c.entry(tensor_path_hash.row_id, &decoded_tensor)
                     });
                     show_zoomed_image_region(
                         ctx.render_ctx,

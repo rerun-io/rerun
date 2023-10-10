@@ -1,5 +1,5 @@
-use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
+use re_arrow_store::{LatestAtQuery, VersionedComponent};
+use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::RowId;
 use re_types::{
     archetypes::Tensor,
@@ -50,7 +50,7 @@ impl ViewPartSystem for TensorSystem {
             if let Some(tensor) =
                 store.query_latest_component::<TensorData>(ent_path, &timeline_query)
             {
-                self.load_tensor_entity(ctx, ent_path, tensor.row_id, &props, tensor.value);
+                self.load_tensor_entity(ctx, ent_path, &props, tensor);
             }
         }
 
@@ -67,19 +67,17 @@ impl TensorSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         ent_path: &EntityPath,
-        row_id: RowId,
         _props: &EntityProperties,
-        tensor: TensorData,
+        tensor: VersionedComponent<TensorData>,
     ) {
-        // NOTE: Tensors don't support batches at the moment so always splat.
-        let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
         match ctx
             .cache
-            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+            .entry(|c: &mut TensorDecodeCache| c.entry(tensor.row_id, tensor.value.0))
         {
-            Ok(tensor) => {
+            Ok(decoded_tensor) => {
                 let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
-                self.tensors.insert(instance_path, (row_id, tensor));
+                self.tensors
+                    .insert(instance_path, (tensor.row_id, decoded_tensor));
             }
             Err(err) => {
                 re_log::warn_once!("Failed to decode decoding tensor at path {ent_path}: {err}");
