@@ -189,7 +189,7 @@ wasm-bindgen-futures = "0.4.33"
 web-sys = "0.3.61"
 web-time = "0.2.0"
 webbrowser = "0.8"
-winit = "0.28.1"
+winit = "0.28.7"
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
 wgpu = { version = "0.17.0", features = ["fragile-send-sync-non-atomic-wasm"] }
