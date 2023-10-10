@@ -51,6 +51,7 @@ where
             annotations: annotations.0.find(ent_path),
             shared_render_builders,
             highlight: query.highlights.entity_outline_mask(ent_path.hash()),
+            space_view_class_name: view_ctx.space_view_class_name(),
         };
 
         match query_archetype_with_history::<A, N>(

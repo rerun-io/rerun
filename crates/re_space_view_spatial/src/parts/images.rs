@@ -19,8 +19,9 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, gpu_bridge, DefaultColor, SpaceViewSystemExecutionError,
-    TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, gpu_bridge, DefaultColor, SpaceViewClass,
+    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
+    ViewerContext,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 
@@ -29,6 +30,7 @@ use crate::{
     parts::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
+    SpatialSpaceView2D,
 };
 
 use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
@@ -273,11 +275,14 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                // Only update the bounding box if the image_plane_distance is not auto.
-                // This is avoids a cyclic relationship where the image plane grows the bounds
-                // which in turn influence the size of the image plane.
+                // Only update the bounding box if this is a 2D space view or
+                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // relationship where the image plane grows the bounds which in
+                // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if !ent_props.pinhole_image_plane_distance.is_auto() {
+                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                {
                     self.extend_bbox(&textured_rect);
                 }
 
@@ -399,11 +404,14 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                // Only update the bounding box if the image_plane_distance is not auto.
-                // This is avoids a cyclic relationship where the image plane grows the bounds
-                // which in turn influence the size of the image plane.
+                // Only update the bounding box if this is a 2D space view or
+                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // relationship where the image plane grows the bounds which in
+                // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if !ent_props.pinhole_image_plane_distance.is_auto() {
+                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                {
                     self.extend_bbox(&textured_rect);
                 }
 
@@ -493,11 +501,14 @@ impl ImagesPart {
                 meaning,
                 color.into(),
             ) {
-                // Only update the bounding box if the image_plane_distance is not auto.
-                // This is avoids a cyclic relationship where the image plane grows the bounds
-                // which in turn influence the size of the image plane.
+                // Only update the bounding box if this is a 2D space view or
+                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // relationship where the image plane grows the bounds which in
+                // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if !ent_props.pinhole_image_plane_distance.is_auto() {
+                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                {
                     self.extend_bbox(&textured_rect);
                 }
 
