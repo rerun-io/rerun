@@ -197,19 +197,30 @@ jobs:
           python3 scripts/ci/crates.py version --bump minor --dev
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@v5.0.2
-        with:
-          token: ${{ secrets.RERUN_BOT_TOKEN }}
-          base: main
-          branch: "post-${{ github.ref_name }}"
-          commit-message: "bump versions to ${{ steps.update-version.outputs.version }}"
-          title: "Post-release ${{ needs.version.outputs.final }}"
-          labels: "⛴ release"
-          committer: "Rerun Bot <bot@rerun.io>"
-          author: "Rerun Bot <bot@rerun.io>"
-          body: |
-            ### What
+      - name: Commit new version
+        id: commit-version
+        run: |
+          branch_name="bump-${{ steps.update-version.outputs.version }}"
+          git checkout -b $branch_name
+          git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
+          git push -u origin $branch_name
+          echo "branch=$branch_name" >> "$GITHUB_OUTPUT"
 
-            - [x] Bump all crate versions to `${{ steps.update-version.outputs.version }}`
+      - name: Create pull request
+        run: |
+          echo '${{ secrets.RERUN_BOT_TOKEN }}' | gh auth login --with-token
+
+          cat <<EOF > pr-body.txt
+          ### What
+
+          - [x] Bump all crate versions to `${{ steps.update-version.outputs.version }}`
+          EOF
+
+          gh pr create \
+            --base main \
+            --head ${{ steps.commit-version.outputs.branch }} \
+            --label "⛴ release" \
+            --label "exclude from changelog" \
+            --fill \
+            --body-file pr-body.txt
 
