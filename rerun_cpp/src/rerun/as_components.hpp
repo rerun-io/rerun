@@ -22,41 +22,6 @@ namespace rerun {
         );
     };
 
-    /// AsComponents for a std::vector of components.
-    template <typename TComponent>
-    struct AsComponents<std::vector<TComponent>> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const std::vector<TComponent>& components
-        ) {
-            const auto result = ComponentBatch<TComponent>(components).serialize();
-            RR_RETURN_NOT_OK(result.error);
-            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
-        }
-    };
-
-    /// AsComponents for an std::array of components.
-    template <typename TComponent, size_t NumInstances>
-    struct AsComponents<std::array<TComponent, NumInstances>> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const std::array<TComponent, NumInstances>& components
-        ) {
-            const auto result = ComponentBatch<TComponent>(components).serialize();
-            RR_RETURN_NOT_OK(result.error);
-            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
-        }
-    };
-
-    /// AsComponents for an c-array of components.
-    template <typename TComponent, size_t NumInstances>
-    struct AsComponents<TComponent[NumInstances]> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(const TComponent (&array
-        )[NumInstances]) {
-            const auto result = ComponentBatch<TComponent>(array).serialize();
-            RR_RETURN_NOT_OK(result.error);
-            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
-        }
-    };
-
     /// AsComponents for an ComponentBatch.
     template <typename TComponent>
     struct AsComponents<ComponentBatch<TComponent>> {
@@ -69,16 +34,42 @@ namespace rerun {
         }
     };
 
+    /// AsComponents for a std::vector of components.
+    template <typename TComponent>
+    struct AsComponents<std::vector<TComponent>> {
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const std::vector<TComponent>& components
+        ) {
+            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+        }
+    };
+
+    /// AsComponents for an std::array of components.
+    template <typename TComponent, size_t NumInstances>
+    struct AsComponents<std::array<TComponent, NumInstances>> {
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const std::array<TComponent, NumInstances>& components
+        ) {
+            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+        }
+    };
+
+    /// AsComponents for an c-array of components.
+    template <typename TComponent, size_t NumInstances>
+    struct AsComponents<TComponent[NumInstances]> {
+        static Result<std::vector<SerializedComponentBatch>> serialize(const TComponent (&components
+        )[NumInstances]) {
+            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+        }
+    };
+
     /// AsComponents for single indicators
     template <const char Name[]>
     struct AsComponents<components::IndicatorComponent<Name>> {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const components::IndicatorComponent<Name>& indicator
         ) {
-            const auto result =
-                ComponentBatch<components::IndicatorComponent<Name>>(indicator).serialize();
-            RR_RETURN_NOT_OK(result.error);
-            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
+            return AsComponents<components::IndicatorComponent<Name>>::serialize(indicator);
         }
     };
 
