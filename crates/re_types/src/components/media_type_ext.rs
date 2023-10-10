@@ -73,7 +73,12 @@ impl MediaType {
         let path = path.as_ref();
 
         // `mime_guess` considers `.obj` to be a a tgif… but really it's way more likely to be an obj.
-        if path.extension().and_then(|ext| ext.to_str()) == Some("obj") {
+        if path
+            .extension()
+            .and_then(|ext| ext.to_str().map(|s| s.to_lowercase()))
+            .as_deref()
+            == Some("obj")
+        {
             return Some(Self::obj());
         }
 

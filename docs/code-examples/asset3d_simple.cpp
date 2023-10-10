@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> args(argv, argv + argc);
 
     if (args.size() < 2) {
-        std::cerr << "Usage: " << args[0] << " <path_to_asset.[gltf|glb]>" << std::endl;
+        std::cerr << "Usage: " << args[0] << " <path_to_asset.[gltf|glb|obj]>" << std::endl;
         return 1;
     }
 
