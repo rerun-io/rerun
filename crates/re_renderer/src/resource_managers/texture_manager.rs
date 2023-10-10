@@ -93,7 +93,7 @@ pub enum TextureCreationError {
     #[error("Texture with debug label {0:?} has zero width or height!")]
     ZeroSize(DebugLabel),
 
-    #[error("Texture was {width}x{height}, larger that the max of {max_texture_dimension_2d}")]
+    #[error("Texture was {width}x{height}, larger than the max of {max_texture_dimension_2d}")]
     TooLarge {
         width: u32,
         height: u32,
