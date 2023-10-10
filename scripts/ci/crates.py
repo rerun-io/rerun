@@ -30,6 +30,7 @@ from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
+import time
 from typing import Any, Generator
 
 import git
@@ -344,6 +345,21 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
     return False
 
 
+def get_retry_after(error_message: str) -> float | None:
+    RETRY_AFTER_START = "Please try again after "
+    RETRY_AFTER_END = " or email help@crates.io"
+    start = error_message.find(RETRY_AFTER_START)
+    if start == -1:
+        return None
+    start += len(RETRY_AFTER_START)  # todo: finish this
+    end = error_message.find(RETRY_AFTER_END, start)
+    if end == -1:
+        return None
+    print(error_message[start:end])
+
+    return time.time() + 2
+
+
 def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
     package = crate.manifest["package"]
     name = package["name"]
@@ -355,12 +371,33 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
         print(f"{Fore.GREEN}Already published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
     else:
         print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}…")
-        try:
-            cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
-            print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-        except:
-            print(f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}")
-            raise
+        retry_attempts = 5
+        while True:
+            try:
+                # cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
+                time.sleep(1)
+                subprocess.check_output(
+                    [
+                        "/bin/sh",
+                        "-c",
+                        "echo 'error: failed to publish to registry at https://crates.io\n\nCaused by:\n  the remote server responded with an error (status 429 Too Many Requests): You have published too many updates to existing crates in a short period of time. Please try again after Tue, 10 Oct 2023 15:52:48 GMT or email help@crates.io to have your limit increased.' ; exit 1",
+                    ],
+                    cwd=crate.path,
+                    env=env,
+                    stderr=subprocess.STDOUT,
+                )
+                print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+                break
+            except subprocess.CalledProcessError as e:
+                error_message = e.stdout.decode("utf-8").rstrip("\r|\n")
+                if retry_after := get_retry_after(error_message) and retry_attempts > 0:
+                    print("retry-after:", retry_after)
+                    print(f"{Fore.RED}Failed to publish{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}, retrying…")
+                    retry_attempts -= 1
+                    time.sleep(retry_after - time.time())
+                else:
+                    print(f"{Fore.RED}Failed to publish{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+                    raise
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -387,7 +424,9 @@ def publish(dry_run: bool, token: str) -> None:
         job = lambda id: publish_crate(crates[id], token, version, env)  # noqa: E731
         DAG(dependency_graph).walk_parallel(
             job,
-            max_tokens=30,  # 30 tokens per minute (burst limit in crates.io)
+            # 30 tokens per minute (burst limit in crates.io)
+            # undershoot a bit to make space
+            max_tokens=25,
             refill_interval_sec=60,
             # publishing already uses all cores, don't start too many publishes at once
             num_workers=min(3, cpu_count()),

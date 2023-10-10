@@ -58,6 +58,9 @@ class DAG(Generic[_T]):
                     except Empty:
                         time.sleep(0)  # yield to prevent busy-looping
                         continue
+                    except Exception as e:
+                        shutdown.set()
+                        print(e)
 
             for n in range(0, num_workers):  # start all workers
                 p.submit(worker, n)
@@ -65,7 +68,12 @@ class DAG(Generic[_T]):
             tokens = max_tokens
             num_in_progress = 0
             last_refill = time.time()
-            while not state._is_done():
+            while not shutdown.is_set():
+                if state._is_done():
+                    shutdown.set()
+                    state._sanity_check()
+                    break
+
                 # This loop has two parts, `push` and `pull`.
                 #
                 # The `push` loop attempts to push tasks
@@ -103,9 +111,6 @@ class DAG(Generic[_T]):
                         num_in_progress -= 1
                 except Empty:
                     time.sleep(0)  # yield here to prevent busy-looping
-
-            shutdown.set()
-            state._sanity_check()
 
 
 class _NodeState(Generic[_T]):
