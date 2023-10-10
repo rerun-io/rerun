@@ -25,6 +25,7 @@ namespace rerun {
         ///
         /// If a transform or pinhole is logged on the same path, this component will be ignored.
         struct DisconnectedSpace {
+            /// Whether the entity path at which this is logged is disconnected from its parent.
             bool is_disconnected;
 
             /// Name of the component, used for serialization.

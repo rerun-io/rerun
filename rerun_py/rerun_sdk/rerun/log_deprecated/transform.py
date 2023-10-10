@@ -198,7 +198,7 @@ def log_disconnected_space(
 
     recording = RecordingStream.to_native(recording)
 
-    log(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
+    log(entity_path, DisconnectedSpace(), timeless=timeless, recording=recording)
 
 
 @deprecated(
