@@ -220,6 +220,7 @@ pub struct LoadedPoints {
 }
 
 impl LoadedPoints {
+    #[inline]
     pub fn load(
         arch_view: &ArchetypeView<Points3D>,
         ent_path: &EntityPath,
@@ -252,6 +253,7 @@ impl LoadedPoints {
         })
     }
 
+    #[inline]
     pub fn load_positions(
         arch_view: &ArchetypeView<Points3D>,
     ) -> DeserializationResult<Vec<glam::Vec3>> {
@@ -262,6 +264,7 @@ impl LoadedPoints {
         })
     }
 
+    #[inline]
     pub fn load_radii(
         arch_view: &ArchetypeView<Points3D>,
         ent_path: &EntityPath,
@@ -273,6 +276,7 @@ impl LoadedPoints {
         })
     }
 
+    #[inline]
     pub fn load_colors(
         arch_view: &ArchetypeView<Points3D>,
         ent_path: &EntityPath,
@@ -285,6 +289,7 @@ impl LoadedPoints {
         })
     }
 
+    #[inline]
     pub fn load_picking_ids(arch_view: &ArchetypeView<Points3D>) -> Vec<PickingLayerInstanceId> {
         re_tracing::profile_function!();
         let iterator = arch_view

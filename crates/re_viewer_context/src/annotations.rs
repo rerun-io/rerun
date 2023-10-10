@@ -21,6 +21,7 @@ pub struct Annotations {
 }
 
 impl Annotations {
+    #[inline]
     pub fn missing() -> Self {
         Self {
             row_id: MISSING_ROW_ID,
