@@ -11,17 +11,17 @@ class DisconnectedSpaceExt:
 
     def __init__(
         self: Any,
-        disconnected: DisconnectedSpaceLike = True,
+        is_disconnected: DisconnectedSpaceLike = True,
     ):
         """
         Disconnect an entity from its parent.
 
         Parameters
         ----------
-        disconnected:
-            Wether or not the entity should be disconnected from the rest of the scene.
+        is_disconnected:
+            Whether or not the entity should be disconnected from the rest of the scene.
             Set to `True` to disconnect the entity from its parent.
             Set to `False` to disable the effects of this archetype, (re-)connecting the entity to its parent again.
         """
 
-        self.__attrs_init__(disconnected=disconnected)
+        self.__attrs_init__(is_disconnected=is_disconnected)
