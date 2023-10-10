@@ -18,9 +18,13 @@ class _Node(Generic[_T]):
 
 
 class DAG(Generic[_T]):
-    """A directed acyclic graph represented as an adjancency list."""
-
     def __init__(self, dependency_graph: dict[_T, list[_T]]):
+        """
+        Construct a directed acyclic graph from an adjacency list.
+
+        The `dependency_graph` _must not_ contain any cycles.
+        """
+
         self._nodes: dict[_T, _Node[_T]] = {}
         self._queue: list[_T] = []
         self._num_finished: int = 0
@@ -39,6 +43,8 @@ class DAG(Generic[_T]):
         return self._nodes[node]
 
     def _finish(self, node: _T) -> None:
+        # mark the `node` as finished, which decrements the pending dependency counter on its dependents
+        # once a node reaches `0` on its counter, it is marked ready and put in the queue for processing
         for dependent in self._nodes[node].dependents:
             dependent.counter -= 1
             if dependent.counter == 0:
@@ -46,6 +52,7 @@ class DAG(Generic[_T]):
         self._num_finished += 1
 
     def _is_done(self) -> bool:
+        # the number of nodes in the graph should never change
         return self._num_finished == len(self._nodes)
 
     def walk(self, f: Callable[[_T], None], max_tokens: int, refill_interval_s: float) -> None:
@@ -61,9 +68,10 @@ class DAG(Generic[_T]):
         """
 
         num_cpus = cpu_count()
+        # we need one main thread + N worker threads, so `N = num_cpus - 1`,
+        # and we need at least 1 worker thread.
         num_workers = num_cpus - 1 if num_cpus > 0 else 1
         with ThreadPoolExecutor(max_workers=num_workers) as p:
-            # It's important to _not_ use blocking `get` with these queues.
             task_queue: Queue[_T] = Queue()
             done_queue: Queue[_T] = Queue()
             shutdown: EventClass = Event()
@@ -74,14 +82,13 @@ class DAG(Generic[_T]):
                 while not shutdown.is_set():
                     try:
                         node = task_queue.get_nowait()
+                        f(node)
+                        done_queue.put(node)
                     except Empty:
-                        time.sleep(0)
+                        time.sleep(0)  # yield to prevent busy-looping
                         continue
 
-                    f(node)
-                    done_queue.put(node)
-
-            for n in range(0, num_workers):
+            for n in range(0, num_workers):  # start all workers
                 p.submit(worker, n)
 
             tokens = max_tokens
@@ -93,6 +100,7 @@ class DAG(Generic[_T]):
                 # The `push` loop attempts to push tasks
                 # onto the `task_queue` while there are
                 # some tasks ready to go, and some tokens left.
+                # It is also responsible for refreshing the bucket.
                 #
                 # The `pull` loop attempts to retrieve done
                 # tasks and decrement the dependency counter on
@@ -101,7 +109,12 @@ class DAG(Generic[_T]):
                 # Once a node has no pending dependencies left,
                 # it becomes ready and will be queued in one of
                 # the iterations of the `push` loop.
-                while len(self._queue) > 0:
+                #
+                # It's important to always use non-blocking `get`
+                # with the task and done queues.
+                # This is so that both the push and pull loops
+                # can eventually make progress.
+                while len(self._queue) > 0:  # push loop
                     now = time.time()
                     if now - last_refill > refill_interval_s:
                         tokens = max_tokens - in_progress
@@ -115,11 +128,11 @@ class DAG(Generic[_T]):
                     task_queue.put(self._queue.pop())
 
                 try:
-                    while True:
+                    while True:  # pull loop
                         self._finish(done_queue.get_nowait())
                         in_progress -= 1
                 except Empty:
-                    time.sleep(0)
+                    time.sleep(0)  # yield here to prevent busy-looping
 
             shutdown.set()
 
