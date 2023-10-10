@@ -27,19 +27,16 @@ class DAG(Generic[_T]):
         The `dependency_graph` _must not_ contain any cycles.
         """
 
-        self._nodes: dict[_T, _Node[_T]] = {}
-        self._queue: list[_T] = []
-        self._num_finished: int = 0
+        self._graph = dependency_graph
 
-        for node, deps in dependency_graph.items():
-            new_node = self._get_or_insert(node)
-            new_node.counter += len(deps)
-            for dep in deps:
-                self._get_or_insert(dep).dependents.append(new_node)
-
-        self._queue.extend(node.value for node in self._nodes.values() if node.counter == 0)
-
-    def walk_parallel(self, f: Callable[[_T], None], max_tokens: int, refill_interval_s: float) -> None:
+    def walk_parallel(
+        self,
+        f: Callable[[_T], None],
+        *,
+        max_tokens: int,
+        refill_interval_s: float,
+        num_workers: int = max(1, cpu_count() - 1),
+    ) -> None:
         """
         Process the graph in parallel.
 
@@ -51,10 +48,8 @@ class DAG(Generic[_T]):
         * Tokens are refreshed every `refill_interval_s`.
         """
 
-        num_cpus = cpu_count()
-        # we need one main thread + N worker threads, so `N = num_cpus - 1`,
-        # and we need at least 1 worker thread.
-        num_workers = num_cpus - 1 if num_cpus > 0 else 1
+        state = _State(self)
+
         with ThreadPoolExecutor(max_workers=num_workers) as p:
             task_queue: Queue[_T] = Queue()
             done_queue: Queue[_T] = Queue()
@@ -78,7 +73,7 @@ class DAG(Generic[_T]):
             tokens = max_tokens
             in_progress = 0
             last_refill = time.time()
-            while not self._is_done():
+            while not state._is_done():
                 # This loop has two parts, `push` and `pull`.
                 #
                 # The `push` loop attempts to push tasks
@@ -98,37 +93,52 @@ class DAG(Generic[_T]):
                 # with the task and done queues.
                 # This is so that both the push and pull loops
                 # can eventually make progress.
-                while len(self._queue) > 0:  # push loop
+                while len(state._queue) > 0:  # push loop
                     now = time.time()
                     if now - last_refill > refill_interval_s:
                         tokens = max_tokens - in_progress
                         last_refill = now
 
-                    if len(self._queue) == 0 or tokens == 0:
+                    if len(state._queue) == 0 or tokens == 0:
                         break
 
                     tokens -= 1
                     in_progress += 1
-                    task_queue.put(self._queue.pop())
+                    task_queue.put(state._queue.pop())
 
                 try:
                     while True:  # pull loop
-                        self._finish(done_queue.get_nowait())
+                        state._finish(done_queue.get_nowait())
                         in_progress -= 1
                 except Empty:
                     time.sleep(0)  # yield here to prevent busy-looping
 
             shutdown.set()
 
-    def _get_or_insert(self, node: _T) -> _Node[_T]:
-        if node not in self._nodes:
-            self._nodes[node] = _Node(node)
-        return self._nodes[node]
 
-    def _finish(self, node: _T) -> None:
-        # mark the `node` as finished, which decrements the pending dependency counter on its dependents
+class _State(Generic[_T]):
+    def __init__(self, dag: DAG[_T]):
+        self._nodes: dict[_T, _Node[_T]] = {}
+        self._queue: list[_T] = []
+        self._num_finished: int = 0
+
+        for value, deps in dag._graph.items():
+            new_node = self._get_or_insert(value)
+            new_node.counter += len(deps)
+            for value in deps:
+                self._get_or_insert(value).dependents.append(new_node)
+
+        self._queue.extend(node.value for node in self._nodes.values() if node.counter == 0)
+
+    def _get_or_insert(self, value: _T) -> _Node[_T]:
+        if value not in self._nodes:
+            self._nodes[value] = _Node(value)
+        return self._nodes[value]
+
+    def _finish(self, value: _T) -> None:
+        # mark the `value` as finished, which decrements the pending dependency counter on its dependents
         # once a node reaches `0` on its counter, it is marked ready and put in the queue for processing
-        for dependent in self._nodes[node].dependents:
+        for dependent in self._nodes[value].dependents:
             dependent.counter -= 1
             if dependent.counter == 0:
                 self._queue.append(dependent.value)
@@ -141,9 +151,9 @@ class DAG(Generic[_T]):
 
 # example:
 def main() -> None:
-    def process(node: str) -> None:
+    def process(value: str) -> None:
         time.sleep(0.5)
-        print(f"processed {node} at", time.time())
+        print(f"processed {value} at", time.time())
 
     # Tokens = 2
     # Refresh interval = 1s
@@ -153,14 +163,22 @@ def main() -> None:
     #   Processed B at T+1
     #   Processed D at T+1.5
     # `A` and `C` may swap places.
-    DAG(
+    dag = DAG(
         {
             "A": [],
             "B": ["A"],
             "C": [],
             "D": ["A", "B", "C"],
         }
-    ).walk_parallel(
+    )
+
+    # `walk_parallel` can be called multiple times
+    dag.walk_parallel(
+        process,
+        max_tokens=2,
+        refill_interval_s=1,
+    )
+    dag.walk_parallel(
         process,
         max_tokens=2,
         refill_interval_s=1,
