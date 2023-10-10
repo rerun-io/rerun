@@ -10,15 +10,6 @@ from typing import Callable, Generic, Hashable, TypeVar
 _T = TypeVar("_T", bound=Hashable)
 
 
-class _Node(Generic[_T]):
-    def __init__(self, value: _T):
-        self.value = value
-        self.counter: int = 0
-        """The number of this node's dependencies which have not yet been processed"""
-        self.dependents: list[_Node[_T]] = []
-        """The list of dependents which are waiting for this node to be processed"""
-
-
 class DAG(Generic[_T]):
     def __init__(self, dependency_graph: dict[_T, list[_T]]):
         """
@@ -116,44 +107,53 @@ class DAG(Generic[_T]):
             shutdown.set()
 
 
+class _NodeState(Generic[_T]):
+    def __init__(self, node: _T):
+        self.node = node
+        self.counter: int = 0
+        """The number of this node's dependencies which have not yet been processed"""
+        self.dependents: list[_NodeState[_T]] = []
+        """The list of dependents which are waiting for this node to be processed"""
+
+
 class _State(Generic[_T]):
     def __init__(self, dag: DAG[_T]):
-        self._nodes: dict[_T, _Node[_T]] = {}
+        self._node_states: dict[_T, _NodeState[_T]] = {}
         self._queue: list[_T] = []
         self._num_finished: int = 0
 
-        for value, deps in dag._graph.items():
-            new_node = self._get_or_insert(value)
+        for node, deps in dag._graph.items():
+            new_node = self._get_or_insert(node)
             new_node.counter += len(deps)
-            for value in deps:
-                self._get_or_insert(value).dependents.append(new_node)
+            for dep in deps:
+                self._get_or_insert(dep).dependents.append(new_node)
 
-        self._queue.extend(node.value for node in self._nodes.values() if node.counter == 0)
+        self._queue.extend(state.node for state in self._node_states.values() if state.counter == 0)
 
-    def _get_or_insert(self, value: _T) -> _Node[_T]:
-        if value not in self._nodes:
-            self._nodes[value] = _Node(value)
-        return self._nodes[value]
+    def _get_or_insert(self, node: _T) -> _NodeState[_T]:
+        if node not in self._node_states:
+            self._node_states[node] = _NodeState(node)
+        return self._node_states[node]
 
-    def _finish(self, value: _T) -> None:
-        # mark the `value` as finished, which decrements the pending dependency counter on its dependents
+    def _finish(self, node: _T) -> None:
+        # mark the `node` as finished, which decrements the pending dependency counter on its dependents
         # once a node reaches `0` on its counter, it is marked ready and put in the queue for processing
-        for dependent in self._nodes[value].dependents:
+        for dependent in self._node_states[node].dependents:
             dependent.counter -= 1
             if dependent.counter == 0:
-                self._queue.append(dependent.value)
+                self._queue.append(dependent.node)
         self._num_finished += 1
 
     def _is_done(self) -> bool:
         # the number of nodes in the graph should never change
-        return self._num_finished == len(self._nodes)
+        return self._num_finished == len(self._node_states)
 
 
 # example:
 def main() -> None:
-    def process(value: str) -> None:
+    def process(node: str) -> None:
         time.sleep(0.5)
-        print(f"processed {value} at", time.time())
+        print(f"processed {node} at", time.time())
 
     # Tokens = 2
     # Refresh interval = 1s
