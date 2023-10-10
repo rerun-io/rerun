@@ -8,8 +8,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
@@ -33,6 +33,27 @@ impl ViewPartSystem for TensorSystem {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(Tensor::indicator().name()).collect()
+    }
+
+    fn heuristic_filter(
+        &self,
+        store: &re_arrow_store::DataStore,
+        ent_path: &EntityPath,
+        query: &LatestAtQuery,
+        entity_components: &ComponentNameSet,
+    ) -> bool {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
+        // The tensor view can't display anything with less than two dimensions.
+        if let Some(tensor) =
+            store.query_latest_component::<re_types::components::TensorData>(ent_path, query)
+        {
+            !tensor.is_vector()
+        } else {
+            false
+        }
     }
 
     fn execute(
