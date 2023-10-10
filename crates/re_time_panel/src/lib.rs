@@ -417,10 +417,7 @@ impl TimePanel {
         tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
-        let tree_has_data_in_current_timeline = tree
-            .prefix_times
-            .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
-            || tree.num_timeless_messages() > 0;
+        let tree_has_data_in_current_timeline = ctx.tree_has_data_in_current_timeline(tree);
 
         // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
@@ -545,8 +542,7 @@ impl TimePanel {
                 let data = &tree.components[component_name];
 
                 let component_has_data_in_current_timeline =
-                    data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
-                        || data.num_timeless_messages() > 0;
+                    ctx.component_has_data_in_current_timeline(data);
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = Item::ComponentPath(component_path);
@@ -592,13 +588,10 @@ impl TimePanel {
                     messages_over_time.total_count() + data.num_timeless_messages() as u64;
                 response.on_hover_ui(|ui| {
                     if total_num_messages == 0 {
-                        ui.label(
-                            egui::RichText::new(format!(
-                                "No event logged on timeline {:?}",
-                                ctx.rec_cfg.time_ctrl.timeline().name()
-                            ))
-                            .color(Color32::KHAKI),
-                        );
+                        ui.label(ctx.re_ui.warning_text(format!(
+                            "No event logged on timeline {:?}",
+                            ctx.rec_cfg.time_ctrl.timeline().name()
+                        )));
                     } else {
                         ui.label(format!("Number of events: {total_num_messages}"));
                     }
