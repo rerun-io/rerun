@@ -80,7 +80,7 @@ class OPFProject:
         import os
 
         self.path = path
-        # TODO(Pix4D/pyopf#6):
+        # TODO(Pix4D/pyopf#6): https://github.com/Pix4D/pyopf/issues/6
         # pyopf doesn't seem to work with regular windows paths, but a "UNC dos path" works
         path_as_str = "\\\\.\\" + str(path.absolute()) if os.name == "nt" else str(path)
         self.project = resolve(load(path_as_str))
